@@ -314,7 +314,10 @@ use crate::server::Server;
 use crate::world::{BlockBreakingProgress, World};
 use bytes::Bytes;
 
-use super::combat::{self, AttackType, player_attack_sound};
+use super::combat::{
+    self, AttackType, can_smash_attack, mace_smash_damage_bonus, mace_smash_knockback,
+    player_attack_sound,
+};
 use super::hunger::HungerManager;
 use super::item::ItemEntity;
 use super::living::LivingEntity;
@@ -1423,27 +1426,23 @@ impl Player {
         let pos = victim_entity.pos.load();
         let attack_type = AttackType::new(self, attack_cooldown_progress as f32);
 
-        if matches!(attack_type, AttackType::Critical) {
-            damage *= 1.5;
-        }
-
-        let is_mace_smash = matches!(attack_type, AttackType::MaceSmash);
+        let is_mace_smash = item_stack.item.id == pumpkin_data::item::Item::MACE.id
+            && can_smash_attack(&self.living_entity);
+        // Vanilla adds the weapon's damage bonus before the critical hit multiplier.
         if is_mace_smash {
-            let fall_distance = self.living_entity.fall_distance.load() as f64;
-            let mut density_bonus_per_block = 0.0f64;
+            let fall_distance = f64::from(self.living_entity.fall_distance.load());
+            let mut smash_bonus_per_block = 0.0f64;
             if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>() {
                 for (enchantment, level) in enchantments.enchantment.iter() {
-                    enchantment.modify_fall_based_damage(*level, &mut density_bonus_per_block);
+                    enchantment.modify_fall_based_damage(*level, &mut smash_bonus_per_block);
                 }
             }
-            let base_smash_damage = if fall_distance <= 3.0 {
-                4.0 * fall_distance
-            } else if fall_distance <= 8.0 {
-                12.0 + 2.0 * (fall_distance - 3.0)
-            } else {
-                22.0 + (fall_distance - 8.0)
-            };
-            damage += base_smash_damage + density_bonus_per_block * fall_distance;
+            damage += smash_bonus_per_block
+                .mul_add(fall_distance, mace_smash_damage_bonus(fall_distance));
+        }
+
+        if matches!(attack_type, AttackType::Critical) {
+            damage *= 1.5;
         }
 
         if !victim.damage_with_context(
@@ -1486,89 +1485,32 @@ impl Player {
             }
         }
 
-        if is_mace_smash {
+        if is_mace_smash && victim.get_living_entity().is_some() {
+            let attacker = &self.living_entity.entity;
+            let velocity = attacker.velocity.load();
+            self.set_velocity(Vector3::new(velocity.x, f64::from(0.01f32), velocity.z));
+
             let fall_distance = self.living_entity.fall_distance.load();
-            self.living_entity.fall_distance.store(0.0);
-
-            let victim_on_ground = victim_entity.on_ground.load(Ordering::Relaxed);
-            let smash_sound = if victim_on_ground {
-                if fall_distance > 5.0 {
-                    Sound::ItemMaceSmashGroundHeavy
-                } else {
-                    Sound::ItemMaceSmashGround
-                }
-            } else {
+            let sound = if !victim_entity.on_ground.load(Ordering::Relaxed) {
                 Sound::ItemMaceSmashAir
+            } else if fall_distance > 5.0 {
+                Sound::ItemMaceSmashGroundHeavy
+            } else {
+                Sound::ItemMaceSmashGround
             };
-            world.play_sound(
-                smash_sound,
-                SoundCategory::Players,
-                &self.living_entity.entity.pos.load(),
-            );
+            world.play_sound(sound, SoundCategory::Players, &attacker.pos.load());
+            mace_smash_knockback(&world, self, victim.as_ref());
 
-            // ParticlesSmashAttack (2013, data 750)
-            world.sync_world_event(
-                pumpkin_data::world::WorldEvent::ParticlesSmashAttack,
-                victim_entity.block_pos.load(),
-                750,
-            );
-
-            // Smash knockback wave: 3.5 block radius around victim
-            let victim_pos = victim_entity.pos.load();
-            let search_box = victim_entity.bounding_box.load().expand(3.5, 3.5, 3.5);
-            let nearby_entities = world.get_entities_at_box(&search_box);
-            let attacker_id = self.entity_id();
-            let victim_id = victim_entity.entity_id;
-            let heavy_mult = if fall_distance > 5.0 { 2.0 } else { 1.0 };
-
-            for nearby in nearby_entities {
-                let ent = nearby.get_entity();
-                if ent.entity_id == attacker_id || ent.entity_id == victim_id {
-                    continue;
-                }
-                if nearby.get_living_entity().is_none() {
-                    continue;
-                }
-                let nearby_pos = ent.pos.load();
-                let dir = nearby_pos - victim_pos;
-                let dist = dir.length();
-                if dist <= 3.5 && dist > 0.0001 {
-                    let knockback_power = (3.5 - dist) * 0.7 * heavy_mult;
-                    if knockback_power > 0.0 {
-                        let norm = dir.normalize();
-                        ent.add_velocity(Vector3::new(
-                            norm.x * knockback_power,
-                            0.7,
-                            norm.z * knockback_power,
-                        ));
-                        if let Some(other_player) = nearby.cast_any().downcast_ref::<Player>() {
-                            other_player.try_send_client_packet(&CEntityVelocity::new(
-                                other_player.entity_id().into(),
-                                ent.velocity.load(),
-                            ));
-                        }
-                    }
-                }
-            }
-
-            // Attacker bounce / vertical velocity
-            let mut bounce_y = 0.01;
+            self.living_entity.fall_distance.store(0.0);
             if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>() {
                 for (enchantment, level) in enchantments.enchantment.iter() {
                     if **enchantment == Enchantment::WIND_BURST {
-                        bounce_y = 0.5 + 0.25 * (*level as f64);
+                        let boost_y = 0.5 + 0.25 * (*level as f64);
+                        let vel = self.living_entity.entity.velocity.load();
+                        self.set_velocity(Vector3::new(vel.x, boost_y, vel.z));
                     }
                 }
             }
-            let vel = self.living_entity.entity.velocity.load();
-            self.living_entity
-                .entity
-                .velocity
-                .store(Vector3::new(vel.x, bounce_y, vel.z));
-            self.try_send_client_packet(&CEntityVelocity::new(
-                self.entity_id().into(),
-                self.living_entity.entity.velocity.load(),
-            ));
         }
 
         player_attack_sound(&pos, &world, attack_type);
