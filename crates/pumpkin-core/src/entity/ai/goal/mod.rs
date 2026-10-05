@@ -13,6 +13,7 @@ pub mod breed;
 pub mod cat_lie_on_block;
 pub mod cat_sit_on_block;
 pub mod chase_player;
+pub mod climb_on_top_of_powder_snow;
 pub mod creeper_ignite;
 pub mod defend_village;
 pub mod destroy_egg;
