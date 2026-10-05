@@ -1,14 +1,18 @@
+use std::sync::Arc;
+
 use pumpkin_data::enchantment::Enchantment;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::{Block, BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_util::GameMode;
+use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use uuid::Uuid;
 
 use crate::block::BlockBehaviour;
 use crate::block::BrokenArgs;
 use crate::entity::r#type::from_type;
+use crate::world::World;
 
 #[pumpkin_block_from_tag("c:cobblestones/infested")]
 pub struct InfestedBlock;
@@ -64,6 +68,23 @@ impl InfestedBlock {
             .0;
         Some(copy_properties(infested_state, host))
     }
+
+    // Vanilla `InfestedBlock.spawnInfestation`.
+    pub fn spawn_infestation(world: &Arc<World>, position: &BlockPos) {
+        if !world.level_info.load().game_rules.block_drops {
+            return;
+        }
+
+        let bottom = position.0.to_f64();
+        let silverfish = from_type(
+            &EntityType::SILVERFISH,
+            Vector3::new(bottom.x + 0.5, bottom.y, bottom.z + 0.5),
+            world,
+            Uuid::new_v4(),
+        );
+        world.spawn_entity(silverfish.clone());
+        world.send_entity_status(silverfish.get_entity(), EntityStatus::Poof, None);
+    }
 }
 
 // Vanilla `InfestedBlock.getNewStateWithProperties`.
@@ -87,13 +108,6 @@ impl BlockBehaviour for InfestedBlock {
             return;
         }
 
-        let spawn_pos = Vector3::new(
-            f64::from(args.position.0.x) + 0.5,
-            f64::from(args.position.0.y),
-            f64::from(args.position.0.z) + 0.5,
-        );
-
-        let silverfish = from_type(&EntityType::SILVERFISH, spawn_pos, args.world, Uuid::new_v4());
-        args.world.spawn_entity(silverfish);
+        Self::spawn_infestation(args.world, args.position);
     }
 }

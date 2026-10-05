@@ -1,24 +1,32 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
-use pumpkin_data::Block;
+use pumpkin_data::BlockDirection;
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tag::{self, Taggable};
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_world::world::BlockFlags;
+use rand::RngExt;
 
+use crate::block::blocks::infested::InfestedBlock;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
-        Goal, active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
-        swim::SwimGoal, wander_around::WanderAroundGoal,
+        Controls, Goal, active_target::ActiveTargetGoal,
+        climb_on_top_of_powder_snow::ClimbOnTopOfPowderSnowGoal, melee_attack::MeleeAttackGoal,
+        revenge::RevengeGoal, swim::SwimGoal, to_goal_ticks, wander_around::WanderAroundGoal,
     },
     mob::{Mob, MobEntity},
 };
+
+const Y_OFFSETS: [i32; 11] = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5];
+const XZ_OFFSETS: [i32; 21] = [
+    0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8, -8, 9, -9, 10, -10,
+];
 
 pub struct SilverfishEntity {
     pub entity: Arc<MobEntity>,
@@ -35,10 +43,7 @@ impl SilverfishEntity {
             wake_up_friends_ticks: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(silverfish);
-        let mob_weak: Weak<dyn Mob> = {
-            let mob_arc: Arc<dyn Mob> = mob_arc.clone();
-            Arc::downgrade(&mob_arc)
-        };
+        let mob_weak = Arc::downgrade(&mob_arc);
 
         {
             let mut goal_selector = mob_arc
@@ -53,23 +58,17 @@ impl SilverfishEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(1, Box::new(SwimGoal::default()));
+            goal_selector.add_goal(1, Box::new(ClimbOnTopOfPowderSnowGoal));
             goal_selector.add_goal(
                 3,
-                Box::new(SilverfishWakeUpFriendsGoal::new(Arc::downgrade(&mob_arc))),
+                Box::new(SilverfishWakeUpFriendsGoal {
+                    silverfish: mob_weak,
+                }),
             );
             goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, false)));
-            goal_selector.add_goal(
-                5,
-                Box::new(SilverfishMergeWithStoneGoal::new(Arc::downgrade(&mob_arc))),
-            );
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(1.0)));
-            goal_selector.add_goal(
-                7,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
-            );
-            goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(5, Box::new(SilverfishMergeWithStoneGoal::new()));
 
-            target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
+            target_selector.add_goal(1, Box::new(RevengeGoal::new(true).alerting_others()));
             target_selector.add_goal(
                 2,
                 ActiveTargetGoal::with_default(&mob_arc.entity, &EntityType::PLAYER, true),
@@ -77,6 +76,154 @@ impl SilverfishEntity {
         };
 
         mob_arc
+    }
+}
+
+struct SilverfishMergeWithStoneGoal {
+    stroll: WanderAroundGoal,
+    selected_direction: Option<BlockDirection>,
+    do_merge: bool,
+}
+
+impl SilverfishMergeWithStoneGoal {
+    const fn new() -> Self {
+        Self {
+            stroll: WanderAroundGoal::with_interval(1.0, 10),
+            selected_direction: None,
+            do_merge: false,
+        }
+    }
+
+    fn merge_pos(mob: &dyn Mob, direction: BlockDirection) -> BlockPos {
+        let pos = mob.get_entity().pos.load();
+        BlockPos::containing(pos.x, pos.y + 0.5, pos.z).offset(direction.to_offset())
+    }
+}
+
+impl Goal for SilverfishMergeWithStoneGoal {
+    fn can_start(&mut self, mob: &dyn Mob) -> bool {
+        if mob.get_mob_entity().get_target().is_some() || !mob.is_navigator_idle() {
+            return false;
+        }
+
+        let world = mob.get_entity().world.load();
+        let mut random = mob.get_random();
+        if world.level_info.load().game_rules.mob_griefing
+            && random.random_range(0..to_goal_ticks(10)) == 0
+        {
+            let directions = BlockDirection::all();
+            let direction = directions[random.random_range(0..directions.len())];
+            let pos = Self::merge_pos(mob, direction);
+            if InfestedBlock::is_compatible_host_block(world.get_block_state(&pos)) {
+                self.selected_direction = Some(direction);
+                self.do_merge = true;
+                return true;
+            }
+        }
+
+        self.do_merge = false;
+        self.stroll.can_start(mob)
+    }
+
+    fn should_continue(&mut self, mob: &dyn Mob) -> bool {
+        !self.do_merge && self.stroll.should_continue(mob)
+    }
+
+    fn start(&mut self, mob: &dyn Mob) {
+        if !self.do_merge {
+            self.stroll.start(mob);
+            return;
+        }
+
+        let Some(direction) = self.selected_direction else {
+            return;
+        };
+        let world = mob.get_entity().world.load();
+        let pos = Self::merge_pos(mob, direction);
+        let state = world.get_block_state(&pos);
+        if let Some(infested) = InfestedBlock::infested_state_by_host(state) {
+            let host_state = state.id;
+            let written =
+                world.set_block_state_if(&pos, infested, BlockFlags::NOTIFY_ALL, |current| {
+                    current == host_state
+                });
+            if written.is_some() {
+                world.send_entity_status(mob.get_entity(), EntityStatus::Poof, None);
+                mob.get_entity().remove();
+            }
+        }
+    }
+
+    fn stop(&mut self, mob: &dyn Mob) {
+        self.stroll.stop(mob);
+        self.selected_direction = None;
+        self.do_merge = false;
+    }
+
+    fn tick(&mut self, mob: &dyn Mob) {
+        self.stroll.tick(mob);
+    }
+
+    fn controls(&self) -> Controls {
+        self.stroll.controls()
+    }
+}
+
+struct SilverfishWakeUpFriendsGoal {
+    silverfish: Weak<SilverfishEntity>,
+}
+
+impl Goal for SilverfishWakeUpFriendsGoal {
+    fn can_start(&mut self, _mob: &dyn Mob) -> bool {
+        self.silverfish
+            .upgrade()
+            .is_some_and(|silverfish| silverfish.wake_up_friends_ticks.load(Ordering::Relaxed) > 0)
+    }
+
+    fn tick(&mut self, mob: &dyn Mob) {
+        let Some(silverfish) = self.silverfish.upgrade() else {
+            return;
+        };
+
+        let remaining = silverfish.wake_up_friends_ticks.load(Ordering::Relaxed) - 1;
+        silverfish
+            .wake_up_friends_ticks
+            .store(remaining, Ordering::Relaxed);
+        if remaining > 0 {
+            return;
+        }
+
+        let world = mob.get_entity().world.load();
+        let base_pos = mob.get_entity().block_pos.load();
+        let mob_griefing = world.level_info.load().game_rules.mob_griefing;
+
+        for y_off in Y_OFFSETS {
+            for x_off in XZ_OFFSETS {
+                for z_off in XZ_OFFSETS {
+                    let pos = base_pos.offset(Vector3::new(x_off, y_off, z_off));
+                    let Some(host_state) =
+                        InfestedBlock::host_state_by_infested(world.get_block_state(&pos))
+                    else {
+                        continue;
+                    };
+
+                    if mob_griefing {
+                        if world
+                            .break_block(&pos, None, BlockFlags::NOTIFY_ALL)
+                            .is_some()
+                        {
+                            InfestedBlock::spawn_infestation(&world, &pos);
+                        }
+                    } else {
+                        world.set_block_state(&pos, host_state, BlockFlags::NOTIFY_ALL);
+                    }
+
+                    if mob.get_random().random_bool(0.5) {
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -121,209 +268,20 @@ impl Mob for SilverfishEntity {
         }
     }
 
-    fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
-        if source.is_some() && self.wake_up_friends_ticks.load(Ordering::Relaxed) == 0 {
-            self.wake_up_friends_ticks.store(20, Ordering::Relaxed);
+    fn pre_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
+        if !self.get_entity().is_invulnerable_to(&damage_type, source)
+            && self.wake_up_friends_ticks.load(Ordering::Relaxed) == 0
+            && (source.is_some()
+                || damage_type.has_tag(&tag::DamageType::MINECRAFT_ALWAYS_TRIGGERS_SILVERFISH))
+        {
+            self.wake_up_friends_ticks
+                .store(to_goal_ticks(20), Ordering::Relaxed);
         }
+
+        true
     }
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
-    }
-}
-
-fn get_infested_block_for_host(block: &Block) -> Option<&'static Block> {
-    if block.id == Block::STONE.id {
-        Some(&Block::INFESTED_STONE)
-    } else if block.id == Block::COBBLESTONE.id {
-        Some(&Block::INFESTED_COBBLESTONE)
-    } else if block.id == Block::STONE_BRICKS.id {
-        Some(&Block::INFESTED_STONE_BRICKS)
-    } else if block.id == Block::MOSSY_STONE_BRICKS.id {
-        Some(&Block::INFESTED_MOSSY_STONE_BRICKS)
-    } else if block.id == Block::CRACKED_STONE_BRICKS.id {
-        Some(&Block::INFESTED_CRACKED_STONE_BRICKS)
-    } else if block.id == Block::CHISELED_STONE_BRICKS.id {
-        Some(&Block::INFESTED_CHISELED_STONE_BRICKS)
-    } else if block.id == Block::DEEPSLATE.id {
-        Some(&Block::INFESTED_DEEPSLATE)
-    } else {
-        None
-    }
-}
-
-fn get_host_block_for_infested(block: &Block) -> Option<&'static Block> {
-    if block.id == Block::INFESTED_STONE.id {
-        Some(&Block::STONE)
-    } else if block.id == Block::INFESTED_COBBLESTONE.id {
-        Some(&Block::COBBLESTONE)
-    } else if block.id == Block::INFESTED_STONE_BRICKS.id {
-        Some(&Block::STONE_BRICKS)
-    } else if block.id == Block::INFESTED_MOSSY_STONE_BRICKS.id {
-        Some(&Block::MOSSY_STONE_BRICKS)
-    } else if block.id == Block::INFESTED_CRACKED_STONE_BRICKS.id {
-        Some(&Block::CRACKED_STONE_BRICKS)
-    } else if block.id == Block::INFESTED_CHISELED_STONE_BRICKS.id {
-        Some(&Block::CHISELED_STONE_BRICKS)
-    } else if block.id == Block::INFESTED_DEEPSLATE.id {
-        Some(&Block::DEEPSLATE)
-    } else {
-        None
-    }
-}
-
-pub struct SilverfishMergeWithStoneGoal {
-    silverfish: Weak<SilverfishEntity>,
-    merge_cooldown: i32,
-}
-
-impl SilverfishMergeWithStoneGoal {
-    #[must_use]
-    pub const fn new(silverfish: Weak<SilverfishEntity>) -> Self {
-        Self {
-            silverfish,
-            merge_cooldown: 0,
-        }
-    }
-}
-
-impl Goal for SilverfishMergeWithStoneGoal {
-    fn can_start(&mut self, _mob: &dyn Mob) -> bool {
-        let Some(silverfish) = self.silverfish.upgrade() else {
-            return false;
-        };
-        if silverfish.entity.get_target().is_some() {
-            return false;
-        }
-        self.merge_cooldown -= 1;
-        if self.merge_cooldown > 0 {
-            return false;
-        }
-        self.merge_cooldown = 20;
-
-        let entity = &silverfish.entity.living_entity.entity;
-        let world = entity.world.load();
-        if !world.level_info.load().game_rules.mob_griefing {
-            return false;
-        }
-
-        rand::random_range(0..10) == 0
-    }
-
-    fn start(&mut self, _mob: &dyn Mob) {
-        let Some(silverfish) = self.silverfish.upgrade() else {
-            return;
-        };
-        let entity = &silverfish.entity.living_entity.entity;
-        let world = entity.world.load();
-        let base_pos = entity.block_pos.load();
-
-        let directions = [
-            (0, -1, 0),
-            (0, 1, 0),
-            (-1, 0, 0),
-            (1, 0, 0),
-            (0, 0, -1),
-            (0, 0, 1),
-        ];
-        let offset = directions[rand::random_range(0..6)];
-        let target_pos = BlockPos::new(
-            base_pos.0.x + offset.0,
-            base_pos.0.y + offset.1,
-            base_pos.0.z + offset.2,
-        );
-
-        let block = world.get_block(&target_pos);
-        if let Some(infested) = get_infested_block_for_host(block) {
-            world.set_block_state(&target_pos, infested.default_state.id, BlockFlags::NOTIFY_ALL);
-            world.play_sound(
-                Sound::EntitySilverfishHurt,
-                SoundCategory::Hostile,
-                &entity.pos.load(),
-            );
-            entity.remove();
-        }
-    }
-}
-
-pub struct SilverfishWakeUpFriendsGoal {
-    silverfish: Weak<SilverfishEntity>,
-}
-
-impl SilverfishWakeUpFriendsGoal {
-    #[must_use]
-    pub const fn new(silverfish: Weak<SilverfishEntity>) -> Self {
-        Self { silverfish }
-    }
-}
-
-impl Goal for SilverfishWakeUpFriendsGoal {
-    fn can_start(&mut self, _mob: &dyn Mob) -> bool {
-        let Some(silverfish) = self.silverfish.upgrade() else {
-            return false;
-        };
-        silverfish.wake_up_friends_ticks.load(Ordering::Relaxed) > 0
-    }
-
-    fn should_continue(&mut self, _mob: &dyn Mob) -> bool {
-        let Some(silverfish) = self.silverfish.upgrade() else {
-            return false;
-        };
-        silverfish.wake_up_friends_ticks.load(Ordering::Relaxed) > 0
-    }
-
-    fn tick(&mut self, _mob: &dyn Mob) {
-        let Some(silverfish) = self.silverfish.upgrade() else {
-            return;
-        };
-        let remaining = silverfish.wake_up_friends_ticks.fetch_sub(1, Ordering::Relaxed) - 1;
-        if remaining > 0 {
-            return;
-        }
-
-        let entity = &silverfish.entity.living_entity.entity;
-        let world = entity.world.load();
-        let base_pos = entity.block_pos.load();
-        let mob_griefing = world.level_info.load().game_rules.mob_griefing;
-
-        'outer: for dy in -5..=5 {
-            for dx in -10..=10 {
-                for dz in -10..=10 {
-                    let test_pos = BlockPos::new(
-                        base_pos.0.x + dx,
-                        base_pos.0.y + dy,
-                        base_pos.0.z + dz,
-                    );
-                    let block = world.get_block(&test_pos);
-                    if let Some(host) = get_host_block_for_infested(block) {
-                        if mob_griefing {
-                            world.break_block(&test_pos, None, BlockFlags::NOTIFY_ALL);
-                            let spawn_pos = Vector3::new(
-                                f64::from(test_pos.0.x) + 0.5,
-                                f64::from(test_pos.0.y),
-                                f64::from(test_pos.0.z) + 0.5,
-                            );
-                            let new_entity = crate::entity::r#type::from_type(
-                                &EntityType::SILVERFISH,
-                                spawn_pos,
-                                &world,
-                                uuid::Uuid::new_v4(),
-                            );
-                            world.spawn_entity(new_entity);
-                        } else {
-                            world.set_block_state(
-                                &test_pos,
-                                host.default_state.id,
-                                BlockFlags::NOTIFY_ALL,
-                            );
-                        }
-
-                        if rand::random::<bool>() {
-                            break 'outer;
-                        }
-                    }
-                }
-            }
-        }
     }
 }
