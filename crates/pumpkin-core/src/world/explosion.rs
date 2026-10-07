@@ -6,6 +6,8 @@ use pumpkin_data::{
     damage::DamageType,
     entity::EntityType,
     fluid::Fluid,
+    particle::Particle,
+    sound::Sound,
     tag::{Tag, Taggable},
 };
 use pumpkin_util::math::{boundingbox::BoundingBox, position::BlockPos, vector3::Vector3};
@@ -186,12 +188,15 @@ impl ExplosionDamageCalculator for SimpleExplosionDamageCalculator {
 }
 
 pub struct Explosion {
-    power: f32,
-    pos: Vector3<f64>,
+    pub(super) power: f32,
+    pub(super) pos: Vector3<f64>,
     block_interaction: BlockInteraction,
     damage_calculator: Option<Arc<dyn ExplosionDamageCalculator>>,
     preserve_rails: bool,
     create_fire: bool,
+    pub(super) small_particle: Particle,
+    pub(super) large_particle: Particle,
+    pub(super) sound: Sound,
 }
 
 impl Explosion {
@@ -204,6 +209,9 @@ impl Explosion {
             damage_calculator: None,
             preserve_rails: false,
             create_fire: false,
+            small_particle: Particle::Explosion,
+            large_particle: Particle::ExplosionEmitter,
+            sound: Sound::EntityGenericExplode,
         }
     }
 
@@ -225,6 +233,19 @@ impl Explosion {
     #[must_use]
     pub const fn preserving_rails(mut self) -> Self {
         self.preserve_rails = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_particles_and_sound(
+        mut self,
+        small_particle: Particle,
+        large_particle: Particle,
+        sound: Sound,
+    ) -> Self {
+        self.small_particle = small_particle;
+        self.large_particle = large_particle;
+        self.sound = sound;
         self
     }
 
