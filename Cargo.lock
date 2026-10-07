@@ -3213,6 +3213,7 @@ dependencies = [
  "notify",
  "num-bigint 0.5.1",
  "ordered-float",
+ "percent-encoding",
  "pumpkin-auth",
  "pumpkin-command",
  "pumpkin-config",
