@@ -368,6 +368,11 @@ impl EvaluatorKind {
 pub trait PathNavigationTrait: Send + Sync {
     fn set_progress(&mut self, goal: NavigatorGoal);
     fn set_speed(&mut self, speed: f64);
+    /// The speed modifier the navigation is currently moving with.
+    ///
+    /// Mirrors the value vanilla sees on `MoveControl.getSpeedModifier()` when the path
+    /// navigation drives movement, used by mobs that key state (e.g. the cat sprint) off it.
+    fn get_speed(&self) -> f64;
     fn stop(&mut self);
     fn is_idle(&self) -> bool;
     fn is_done(&self) -> bool;
@@ -1295,6 +1300,9 @@ impl PathNavigationTrait for GroundPathNavigation {
     fn set_speed(&mut self, speed: f64) {
         self.inner.set_speed(speed);
     }
+    fn get_speed(&self) -> f64 {
+        self.inner.speed_modifier
+    }
 
     fn stop(&mut self) {
         self.inner.stop();
@@ -1507,6 +1515,9 @@ impl PathNavigationTrait for FlyingPathNavigation {
 
     fn set_speed(&mut self, speed: f64) {
         self.inner.set_speed(speed);
+    }
+    fn get_speed(&self) -> f64 {
+        self.inner.speed_modifier
     }
 
     fn stop(&mut self) {
@@ -1807,6 +1818,9 @@ impl PathNavigationTrait for WaterBoundPathNavigation {
 
     fn set_speed(&mut self, speed: f64) {
         self.inner.set_speed(speed);
+    }
+    fn get_speed(&self) -> f64 {
+        self.inner.speed_modifier
     }
 
     fn stop(&mut self) {
@@ -2111,6 +2125,9 @@ impl PathNavigationTrait for WallClimberNavigation {
     fn set_speed(&mut self, speed: f64) {
         self.inner.set_speed(speed);
     }
+    fn get_speed(&self) -> f64 {
+        self.inner.inner.speed_modifier
+    }
 
     fn stop(&mut self) {
         self.path_to_position = None;
@@ -2336,6 +2353,9 @@ impl PathNavigationTrait for AmphibiousPathNavigation {
 
     fn set_speed(&mut self, speed: f64) {
         self.inner.set_speed(speed);
+    }
+    fn get_speed(&self) -> f64 {
+        self.inner.speed_modifier
     }
 
     fn stop(&mut self) {
