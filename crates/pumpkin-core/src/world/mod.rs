@@ -5940,7 +5940,7 @@ impl World {
         &self,
         block: &Block,
         block_pos: BlockPos,
-        delay: u8,
+        delay: u32,
         priority: TickPriority,
     ) {
         self.level
@@ -5951,7 +5951,7 @@ impl World {
         &self,
         fluid: &Fluid,
         block_pos: BlockPos,
-        delay: u8,
+        delay: u32,
         priority: TickPriority,
     ) {
         self.level
