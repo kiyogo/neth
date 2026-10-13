@@ -12,6 +12,7 @@ use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity, equipment::RegionalDifficulty, skeleton::SkeletonEntityBase},
+    projectile::arrow::ArrowEntity,
 };
 use crate::world::World;
 
@@ -59,6 +60,12 @@ impl Mob for WitherSkeletonEntity {
                 blend: false,
             });
         }
+    }
+
+    fn get_arrow(&self, arrow: ArrowEntity) -> ArrowEntity {
+        // vanilla lights it for 100 seconds
+        arrow.set_flame(true);
+        arrow
     }
 
     fn pre_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) -> bool {
