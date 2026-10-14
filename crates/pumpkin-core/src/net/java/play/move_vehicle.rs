@@ -1,3 +1,5 @@
+use pumpkin_protocol::java::client::play::CMoveVehicle;
+
 #[allow(clippy::wildcard_imports)]
 use super::*;
 
