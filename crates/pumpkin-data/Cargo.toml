@@ -185,6 +185,10 @@ criterion.workspace = true
 name = "has_random_ticks"
 harness = false
 
+[[bench]]
+name = "recipe_matching"
+harness = false
+
 [package.metadata.cargo-machete]
 ignored = ["phf"]
 
