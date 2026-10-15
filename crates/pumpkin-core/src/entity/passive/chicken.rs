@@ -176,13 +176,12 @@ impl Mob for ChickenEntity {
         if let Some(variant_str) = nbt.get_string("variant")
             && let Some(variant) = ChickenVariant::from_name(variant_str)
         {
-            self.variant.store(variant.id(), Ordering::Relaxed);
+            self.set_variant(variant);
         }
         if let Some(sound_str) = nbt.get_string("sound_variant")
             && let Some(sound_variant) = ChickenSoundVariant::from_name(sound_str)
         {
-            self.sound_variant
-                .store(sound_variant as u8, Ordering::Relaxed);
+            self.set_sound_variant(sound_variant);
         }
     }
 
