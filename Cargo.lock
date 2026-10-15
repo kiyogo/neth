@@ -2122,6 +2122,9 @@ name = "ipnet"
 version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "is_terminal_polyfill"
@@ -3174,6 +3177,7 @@ dependencies = [
 name = "pumpkin-config"
 version = "0.2.0+26.3-26.51"
 dependencies = [
+ "ipnet",
  "pumpkin-util",
  "rand 0.10.3",
  "serde",

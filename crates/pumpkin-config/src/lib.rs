@@ -95,6 +95,7 @@ impl LoadConfiguration for PumpkinConfig {
         self.basic.validate();
         self.advanced.validate();
         self.telemetry.validate();
+        self.advanced.networking.java.proxy_protocol.validate();
 
         let Some(min_vd) = NonZero::new(2) else {
             return;

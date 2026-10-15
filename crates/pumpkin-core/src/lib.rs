@@ -17,8 +17,8 @@ use crate::net::bedrock::{
     nethernet::{NetherNetListener, load_or_create_identity_key},
     status::{IceSocket, StatusResponder},
 };
-use crate::net::java::JavaClient;
 use crate::net::java::pending::PendingConnection;
+use crate::net::java::{JavaClient, proxy_protocol::accept};
 use crate::net::{ClientPlatform, DisconnectReason, PacketHandlerResult, PacketRateLimiter};
 use crate::net::{lan_broadcast::LANBroadcast, management::ManagementServer, query};
 use crate::plugin::loader::PluginLoader;
@@ -576,6 +576,20 @@ impl PumpkinServer {
                         let server_clone = self.server.clone();
 
                         tasks.spawn(async move {
+                            let mut connection = connection;
+                            let effective_address = match accept(
+                                &mut connection,
+                                client_addr,
+                                &server_clone.advanced_config.networking.java.proxy_protocol,
+                                &STOP_INTERRUPT,
+                            ).await {
+                                Ok(Some(endpoints)) => endpoints.source,
+                                Ok(None) => client_addr,
+                                Err(error) => {
+                                    debug!("Rejected Java PROXY connection (id {client_id}): {error}");
+                                    return;
+                                }
+                            };
                             let packet_limiter = PacketRateLimiter::from_config(
                                 &server_clone.advanced_config.networking.java.packet_limiter,
                             );
@@ -586,6 +600,7 @@ impl PumpkinServer {
                                 packet_limiter,
                                 Arc::downgrade(&server_clone),
                             );
+                            pending.address = effective_address;
                             let login_result = pending.handle_login_sequence(&server_clone).await;
 
                             match login_result {

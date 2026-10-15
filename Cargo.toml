@@ -172,6 +172,7 @@ opt-level = 2
 debug = false
 
 [workspace.dependencies]
+ipnet = { version = "2.12", features = ["serde"] }
 tokio = { version = "1.53", default-features = false }
 syn = { version = "3.0", default-features = false, features = ["full", "parsing", "printing", "proc-macro", "clone-impls", "derive"] }
 
