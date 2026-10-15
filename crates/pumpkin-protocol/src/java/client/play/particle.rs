@@ -9,6 +9,71 @@ use crate::{
     ser::{NetworkReadExt, NetworkReadSliceExt, NetworkWriteExt, ReadingError, WritingError},
 };
 
+/// The particle ID is taken from [`Self::particle`] rather than passed
+/// alongside, so a payload can never be paired with the wrong particle.
+/// Particles that take no options are spawned through [`CParticle`] directly
+/// with an empty `data`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ParticleOptions {
+    /// `minecraft:trail`, vanilla's `TrailParticleOption`.
+    Trail {
+        /// The position the trail travels towards.
+        target: Vector3<f64>,
+        /// The trail color, encoded as `0xRRGGBB`. The top bits are ignored.
+        color: i32,
+        /// Life time in ticks.
+        duration: i32,
+    },
+}
+
+impl ParticleOptions {
+    /// The particle this payload belongs to.
+    #[must_use]
+    pub const fn particle(&self) -> pumpkin_data::particle::Particle {
+        match self {
+            Self::Trail { .. } => pumpkin_data::particle::Particle::Trail,
+        }
+    }
+
+    /// Whether `version` still has this particle under an ID of its own.
+    #[must_use]
+    pub fn is_supported_by(&self, version: JavaMinecraftVersion) -> bool {
+        match self {
+            Self::Trail { .. } => version >= JavaMinecraftVersion::V_1_21_2,
+        }
+    }
+
+    /// Writes the payload that follows the particle ID.
+    pub fn write(&self, write: impl Write) -> Result<(), WritingError> {
+        let mut write = write;
+        match *self {
+            Self::Trail {
+                target,
+                color,
+                duration,
+            } => {
+                write.write_f64_be(target.x)?;
+                write.write_f64_be(target.y)?;
+                write.write_f64_be(target.z)?;
+                write.write_i32_be(color)?;
+                write.write_var_int(&VarInt(duration))
+            }
+        }
+    }
+
+    /// The payload to send to a client on `version`, or `None` when that client
+    /// cannot read this particle and the packet must be dropped instead.
+    #[must_use]
+    pub fn encode_for(&self, version: JavaMinecraftVersion) -> Option<Vec<u8>> {
+        if !self.is_supported_by(version) {
+            return None;
+        }
+        let mut payload = Vec::new();
+        self.write(&mut payload).ok()?;
+        Some(payload)
+    }
+}
+
 /// Spawns a cluster of particles at a specific location.
 ///
 /// This is the most versatile visual packet in the protocol. It allows for
@@ -370,5 +435,52 @@ mod tests {
         let mut cursor = Cursor::new(bytes);
         let id = VarInt::decode(&mut cursor).unwrap();
         assert_eq!(id, VarInt(Particle::ExplosionEmitter as i32));
+    }
+
+    fn trail_options() -> super::ParticleOptions {
+        super::ParticleOptions::Trail {
+            target: Vector3::new(1.5, 2.25, -3.75),
+            color: 16_545_810,
+            duration: 23,
+        }
+    }
+
+    #[test]
+    fn trail_options_match_vanilla_stream_codec() {
+        let mut payload = Vec::new();
+        trail_options().write(&mut payload).unwrap();
+
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&1.5f64.to_be_bytes());
+        expected.extend_from_slice(&2.25f64.to_be_bytes());
+        expected.extend_from_slice(&(-3.75f64).to_be_bytes());
+        expected.extend_from_slice(&16_545_810i32.to_be_bytes());
+        expected.push(23);
+
+        assert_eq!(payload, expected);
+        assert_eq!(payload.len(), 29);
+    }
+
+    #[test]
+    fn trail_options_are_gated_on_versions_that_have_the_particle() {
+        let options = trail_options();
+
+        for version in [
+            JavaMinecraftVersion::V_26_2,
+            JavaMinecraftVersion::V_1_21_11,
+            JavaMinecraftVersion::V_1_21_4,
+            JavaMinecraftVersion::V_1_21_2,
+        ] {
+            assert!(options.is_supported_by(version), "{version:?}");
+        }
+
+        for version in [
+            JavaMinecraftVersion::V_1_21,
+            JavaMinecraftVersion::V_1_20_5,
+            JavaMinecraftVersion::V_1_16,
+            JavaMinecraftVersion::V_1_8,
+        ] {
+            assert!(!options.is_supported_by(version), "{version:?}");
+        }
     }
 }
