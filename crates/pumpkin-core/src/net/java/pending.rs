@@ -9,7 +9,7 @@ use crossbeam::atomic::AtomicCell;
 use pumpkin_config::networking::compression::CompressionInfo;
 use pumpkin_data::packet::CURRENT_MC_VERSION;
 use pumpkin_protocol::{
-    ClientPacket, ConnectionState, PacketDecodeError, RawPacket, ServerPacket,
+    ClientPacket, ConnectionState, PacketDecodeError, PacketEncodeError, RawPacket, ServerPacket,
     codec::var_int::VarInt,
     java::{
         client::config::CConfigDisconnect,
@@ -132,10 +132,14 @@ impl PendingConnection {
         let crypt_key: [u8; 16] = shared_secret
             .try_into()
             .map_err(|_| EncryptionError::SharedWrongLength)?;
-        self.network_reader
-            .set_encryption(&crypt_key)
-            .map_err(|_| EncryptionError::AlreadyEncrypted)?;
         self.network_writer
+            .set_encryption(&crypt_key)
+            .map_err(|error| match error {
+                PacketEncodeError::EncryptionAlreadyEnabled => EncryptionError::AlreadyEncrypted,
+                PacketEncodeError::UnflushedPlaintext => EncryptionError::UnflushedPlaintext,
+                other => EncryptionError::EncryptionSetupFailed(other.to_string()),
+            })?;
+        self.network_reader
             .set_encryption(&crypt_key)
             .map_err(|_| EncryptionError::AlreadyEncrypted)?;
         Ok(())
