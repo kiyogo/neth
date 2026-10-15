@@ -5307,17 +5307,21 @@ impl Player {
             .entity
             .no_physics
             .store(gamemode == GameMode::Spectator, Ordering::Relaxed);
-        self.living_entity
-            .entity
-            .world
-            .load()
-            .broadcast_packet_all(&CPlayerInfoUpdate::new(
-                PlayerInfoFlags::UPDATE_GAME_MODE.bits(),
-                &[pumpkin_protocol::java::client::play::Player {
-                    uuid: self.gameprofile.id,
-                    actions: &[PlayerAction::UpdateGameMode((gamemode as i32).into())],
-                }],
-            ));
+        let previous_gamemode = event.previous_gamemode;
+        let world = self.living_entity.entity.world.load();
+        world.broadcast_packet_all(&CPlayerInfoUpdate::new(
+            PlayerInfoFlags::UPDATE_GAME_MODE.bits(),
+            &[pumpkin_protocol::java::client::play::Player {
+                uuid: self.gameprofile.id,
+                actions: &[PlayerAction::UpdateGameMode((gamemode as i32).into())],
+            }],
+        ));
+
+        if gamemode == GameMode::Spectator {
+            world.hide_spectator_from_non_spectators(self);
+        } else if previous_gamemode == GameMode::Spectator {
+            world.show_former_spectator_to_non_spectators(self);
+        }
 
         self.client.try_enqueue_packet_editioned(
             &CGameEvent::new(GameEvent::ChangeGameMode, gamemode as i32 as f32),

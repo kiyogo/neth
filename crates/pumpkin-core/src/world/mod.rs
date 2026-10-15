@@ -3501,7 +3501,22 @@ impl World {
             velocity,
         );
 
-        self.broadcast_packet_except(&[player.gameprofile.id], &spawn_entity);
+        let is_spectator = player.gamemode.load() == GameMode::Spectator;
+        let except: Vec<uuid::Uuid> = if is_spectator {
+            self.players
+                .load()
+                .iter()
+                .filter(|p| {
+                    p.gameprofile.id == player.gameprofile.id
+                        || p.gamemode.load() != GameMode::Spectator
+                })
+                .map(|p| p.gameprofile.id)
+                .collect()
+        } else {
+            vec![player.gameprofile.id]
+        };
+
+        self.broadcast_packet_except(&except, &spawn_entity);
 
         // Broadcast metadata to Java players so they can correctly interact with the new player
         let skin_parts = player.config.load().skin_parts;
@@ -3527,7 +3542,7 @@ impl World {
             .players
             .load()
             .iter()
-            .filter(|c| c.gameprofile.id != id)
+            .filter(|c| c.gameprofile.id != id && (is_spectator || c.gamemode.load() != GameMode::Spectator))
         {
             Self::with_player_list_entry(existing_player, |java, bedrock| {
                 player.client.try_enqueue_packet_editioned(java, bedrock);
@@ -4758,6 +4773,91 @@ impl World {
     pub fn pair_new_player_with_tracked_entities(&self, player: &Arc<Player>) {
         self.entity_tracker
             .pair_new_player_with_tracked_entities(player, self);
+    }
+
+    /// Removes `player`'s in-world entity from every currently-connected client that
+    /// is not itself a spectator. Used when a player switches into Spectator mode
+    /// mid-game (e.g. via `/gamemode`): they were already spawned to everyone as a
+    /// normal entity, so non-spectators need an explicit removal to become fully
+    /// invisible to them, matching vanilla behavior. Other spectators keep seeing
+    /// the entity (rendered as a translucent head by the client itself) and are
+    /// therefore excluded from this broadcast.
+    pub fn hide_spectator_from_non_spectators(&self, player: &Player) {
+        let except: Vec<uuid::Uuid> = self
+            .players
+            .load()
+            .iter()
+            .filter(|p| {
+                p.gameprofile.id == player.gameprofile.id
+                    || p.gamemode.load() == GameMode::Spectator
+            })
+            .map(|p| p.gameprofile.id)
+            .collect();
+
+        let entity_id = player.entity_id();
+        self.broadcast_packet_except_editioned(
+            &except,
+            &CRemoveEntities::new(&[entity_id.into()]),
+            &pumpkin_protocol::bedrock::client::remove_actor::CRemoveActor::new(VarLong(entity_id as i64)),
+        );
+    }
+
+    /// Re-spawns `player`'s in-world entity for every currently-connected client
+    /// that is not itself a spectator. Used when a player leaves Spectator mode
+    /// mid-game: other spectators already have them spawned (they were never
+    /// hidden from other spectators), so only non-spectators need to see them
+    /// appear again.
+    pub fn show_former_spectator_to_non_spectators(&self, player: &Player) {
+        let entity_id = player.entity_id();
+        let entity = player.get_entity();
+        let position = entity.pos.load();
+        let velocity = entity.velocity.load();
+        let pitch = entity.pitch.load();
+        let yaw = entity.yaw.load();
+        let head_yaw = entity.head_yaw.load();
+        let gameprofile = &player.gameprofile;
+
+        let except: Vec<uuid::Uuid> = self
+            .players
+            .load()
+            .iter()
+            .filter(|p| {
+                p.gameprofile.id == gameprofile.id || p.gamemode.load() == GameMode::Spectator
+            })
+            .map(|p| p.gameprofile.id)
+            .collect();
+
+        let spawn_entity = CSpawnEntity::new(
+            entity_id.into(),
+            gameprofile.id,
+            i32::from(EntityType::PLAYER.id).into(),
+            position,
+            pitch,
+            yaw,
+            head_yaw,
+            0.into(),
+            velocity,
+        );
+
+        self.broadcast_packet_except(&except, &spawn_entity);
+
+        let skin_parts = player.config.load().skin_parts;
+        self.broadcast_skin_parts(
+            &except,
+            entity_id,
+            skin_parts,
+            &CSetActorData {
+                target_runtime_id: VarULong(entity_id as u64),
+                actor_data: player.get_entity().bedrock_metadata(),
+                synced_properties: PropertySyncData {
+                    int_entries_list: HashMap::new(),
+                    float_entries_list: HashMap::new(),
+                },
+                tick: VarULong(0),
+            },
+        );
+
+        self.send_player_equipment(player);
     }
 
     /// Removes a player from the world and broadcasts a disconnect message if enabled.
