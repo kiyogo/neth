@@ -16,7 +16,6 @@ impl JavaClient {
         use pumpkin_data::recipes::{CraftingRecipeTypes, RECIPES_COOKING, RECIPES_CRAFTING};
         use pumpkin_data::screen::WindowType;
         use pumpkin_inventory::crafting::recipe_provider::RecipeProvider;
-        use pumpkin_protocol::java::client::play::{CPlaceGhostRecipe, GhostRecipe};
 
         let target_id = packet.recipe_display_id.0 as usize;
         let use_max = packet.use_max_items;
@@ -66,7 +65,6 @@ impl JavaClient {
 
         let grid_size = grid_width * grid_width;
         let mut ingredient_slots: Vec<Option<GenericIngredient<'_>>> = vec![None; grid_size];
-        let ghost_recipe;
 
         if target_id < crafting_display_count {
             // Crafting recipe
@@ -84,7 +82,6 @@ impl JavaClient {
                 found
             });
             let Some(recipe) = recipe else { return };
-            ghost_recipe = GhostRecipe::Vanilla(recipe);
 
             match recipe {
                 CraftingRecipeTypes::CraftingShaped { pattern, key, .. } => {
@@ -124,7 +121,6 @@ impl JavaClient {
             let Some(DynamicRecipe::Crafting(crafting)) = dynamic_recipes.get(dynamic_id) else {
                 return;
             };
-            ghost_recipe = GhostRecipe::Dynamic(crafting);
 
             match crafting {
                 pumpkin_protocol::codec::recipe::OwnedCraftingRecipe::Shaped {
@@ -206,9 +202,15 @@ impl JavaClient {
         // Determine how many of each ingredient to place per slot.
         let active_ingredients: Vec<GenericIngredient<'_>> =
             ingredient_slots.iter().flatten().copied().collect();
-        let biggest_craftable = compute_biggest_craftable(&active_ingredients, &player.inventory);
+        let amount_to_craft = if use_max {
+            compute_biggest_craftable(&active_ingredients, &player.inventory)
+        } else if recipe_matches {
+            current_min.saturating_add(1)
+        } else {
+            1
+        };
 
-        if biggest_craftable == 0 {
+        if amount_to_craft == 0 {
             let screen_handler_arc = player
                 .current_screen_handler
                 .lock()
@@ -218,20 +220,8 @@ impl JavaClient {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .send_content_updates();
-            self.try_send_packet(&CPlaceGhostRecipe::new(
-                i32::from(packet.container_id),
-                ghost_recipe,
-            ));
             return;
         }
-
-        let amount_to_craft = if use_max {
-            biggest_craftable
-        } else if recipe_matches {
-            current_min.saturating_add(1).min(biggest_craftable)
-        } else {
-            1
-        };
 
         // Fill each grid slot with exactly `amount_to_craft` matching items.
         for (idx, ing) in ingredient_slots.iter().enumerate() {
