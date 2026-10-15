@@ -14,6 +14,8 @@ use pumpkin_protocol::codec::var_int::VarInt;
 use rand::RngExt;
 
 use crate::entity::custom_sound::CustomSound;
+use crate::entity::living::LivingEntity;
+use crate::world::World;
 use crate::entity::{
     Entity, EntityBase,
     ageable::AgeableMob,
@@ -133,11 +135,35 @@ impl WolfEntity {
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::FOX, false)
                     .when(TargetCondition::NonTamed),
             );
-            // 7: NearestAttackableTarget (Skeleton)
+            // 6: NonTameRandomTarget (Baby Turtle on land)
             target_selector.add_goal(
-                7,
-                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::SKELETON, false),
+                6,
+                ActiveTargetGoal::new(
+                    &mob_arc.mob_entity,
+                    &EntityType::TURTLE,
+                    10,
+                    false,
+                    false,
+                    Some(|target: &LivingEntity, _world: &World| {
+                        target.entity.age.load(Ordering::Relaxed) < 0
+                            && !target.entity.touching_water.load(Ordering::SeqCst)
+                    }),
+                )
+                .when(TargetCondition::NonTamed),
             );
+
+            // 7: NearestAttackableTarget (Skeletons: Skeleton, Wither Skeleton, Stray, Bogged)
+            for skeleton in [
+                &EntityType::SKELETON,
+                &EntityType::WITHER_SKELETON,
+                &EntityType::STRAY,
+                &EntityType::BOGGED,
+            ] {
+                target_selector.add_goal(
+                    7,
+                    ActiveTargetGoal::with_default(&mob_arc.mob_entity, skeleton, false),
+                );
+            }
         };
 
         mob_arc
