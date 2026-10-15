@@ -2004,6 +2004,10 @@ impl World {
                 for scheduled_tick in batch {
                     let pos = scheduled_tick.position;
                     let block = world.get_block(&pos);
+                    // ServerLevel.tickBlock drops ticks whose block has been replaced.
+                    if block.id != scheduled_tick.value.id {
+                        continue;
+                    }
                     if let Some(pumpkin_block) = world.block_registry.get_pumpkin_block(block.id) {
                         pumpkin_block.on_scheduled_tick(OnScheduledTickArgs {
                             world: &world,
@@ -2025,7 +2029,12 @@ impl World {
                 let world = world.clone();
                 for scheduled_tick in batch {
                     let pos = scheduled_tick.position;
-                    let fluid = world.get_fluid(&pos);
+                    let state_id = world.get_block_state_id(&pos);
+                    let Some(fluid) =
+                        Self::fluid_for_scheduled_tick(state_id, scheduled_tick.value)
+                    else {
+                        continue;
+                    };
                     if let Some(pumpkin_fluid) = world.block_registry.get_pumpkin_fluid(fluid.id) {
                         pumpkin_fluid.on_scheduled_tick(&world, fluid, &pos);
                     }
@@ -6012,6 +6021,12 @@ impl World {
     #[must_use]
     pub fn is_loaded(&self, position: &BlockPos) -> bool {
         self.get_block_state_id_if_loaded(position).is_some()
+    }
+
+    pub(crate) fn fluid_for_scheduled_tick(id: BlockStateId, scheduled: &Fluid) -> Option<&'static Fluid> {
+        let fluid = Self::get_fluid_from_state_id(id);
+        // Unlike vanilla, Pumpkin normalizes both source and flowing states for callbacks.
+        fluid.matches_type(scheduled).then_some(fluid)
     }
 
     fn get_fluid_from_state_id(id: BlockStateId) -> &'static pumpkin_data::fluid::Fluid {
