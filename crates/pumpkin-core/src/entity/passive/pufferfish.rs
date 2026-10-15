@@ -1,3 +1,4 @@
+use pumpkin_data::damage::DamageType;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 

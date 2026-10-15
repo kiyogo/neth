@@ -2,6 +2,7 @@ use crossbeam::atomic::AtomicCell;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
