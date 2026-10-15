@@ -3196,6 +3196,7 @@ impl World {
         }
     }
 
+    /// Finishes the Java login.
     #[expect(clippy::too_many_lines)]
     pub async fn spawn_java_player(
         &self,
@@ -3720,7 +3721,10 @@ impl World {
         player.on_screen_handler_opened(&player.player_screen_handler);
 
         player.send_active_effects();
-        player.breath_manager.send_air_supply(player);
+        player
+            .living_entity
+            .breath
+            .send_air_supply(player.get_entity());
         self.send_player_equipment(player);
         player
             .living_entity

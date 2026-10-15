@@ -91,6 +91,11 @@ impl CustomSound for ElderGuardianEntity {
 }
 
 impl Mob for ElderGuardianEntity {
+    /// Elder guardians never drown.
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }

@@ -105,6 +105,16 @@ impl Mob for TadpoleEntity {
         false
     }
 
+    /// Water animals never drown.
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
+    /// WaterAnimal.handleAirSupply.
+    fn dries_out_on_land(&self) -> bool {
+        true
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -129,7 +139,7 @@ impl Mob for TadpoleEntity {
         false
     }
 
-    fn mob_tick(&self, caller: &dyn EntityBase) {
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
         self.ageable_ai_step();
 
         let entity = &self.mob_entity.living_entity.entity;
@@ -139,16 +149,7 @@ impl Mob for TadpoleEntity {
 
         let in_water = entity.touching_water.load(std::sync::atomic::Ordering::Relaxed);
 
-        // Air supply / drowning on land (matching vanilla AbstractFish / WaterAnimal)
-        if in_water {
-            self.air_supply.store(300, std::sync::atomic::Ordering::Relaxed);
-        } else {
-            let air = self.air_supply.fetch_sub(1, std::sync::atomic::Ordering::Relaxed) - 1;
-            if air <= -20 {
-                self.air_supply.store(0, std::sync::atomic::Ordering::Relaxed);
-                caller.damage(caller, 2.0, pumpkin_data::damage::DamageType::DROWN);
-            }
-        }
+
 
         // Flop on land (matching vanilla AbstractFish.aiStep)
         if !in_water {

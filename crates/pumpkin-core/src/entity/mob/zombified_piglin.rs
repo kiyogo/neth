@@ -127,6 +127,10 @@ impl Mob for ZombifiedPiglinEntity {
         &self.mob_entity
     }
 
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

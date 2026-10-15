@@ -2,7 +2,6 @@ use crossbeam::atomic::AtomicCell;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 
-use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
@@ -55,6 +54,14 @@ impl Mob for GlowSquidEntity {
         false
     }
 
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
+    fn dries_out_on_land(&self) -> bool {
+        true
+    }
+
     fn custom_travel(&self, caller: &dyn EntityBase) -> bool {
         let entity = &self.mob_entity.living_entity.entity;
         entity.move_entity(caller, entity.velocity.load());
@@ -82,7 +89,7 @@ impl Mob for GlowSquidEntity {
         );
     }
 
-    fn mob_tick(&self, caller: &dyn EntityBase) {
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
@@ -90,16 +97,7 @@ impl Mob for GlowSquidEntity {
 
         let in_water = entity.touching_water.load(Ordering::Relaxed);
 
-        // Air supply / drowning on land (matching vanilla WaterAnimal / AgeableWaterCreature)
-        if in_water {
-            self.air_supply.store(300, Ordering::Relaxed);
-        } else {
-            let air = self.air_supply.fetch_sub(1, Ordering::Relaxed) - 1;
-            if air <= -20 {
-                self.air_supply.store(0, Ordering::Relaxed);
-                caller.damage(caller, 2.0, DamageType::DROWN);
-            }
-        }
+
 
         let mut rng = rand::rng();
 

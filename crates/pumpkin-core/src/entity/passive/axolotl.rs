@@ -270,6 +270,26 @@ impl Mob for AxolotlEntity {
         false
     }
 
+    /// Axolotls never drown.
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
+    /// Axolotl.handleAirSupply.
+    fn dries_out_on_land(&self) -> bool {
+        true
+    }
+
+    /// Rain counts as water.
+    fn rehydrates_in_rain(&self) -> bool {
+        true
+    }
+
+    /// Axolotl.getMaxAirSupply.
+    fn max_air_supply(&self) -> i32 {
+        6000
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
