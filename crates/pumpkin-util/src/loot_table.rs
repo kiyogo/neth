@@ -80,6 +80,12 @@ pub enum LootCondition {
     TableBonus {
         chances: &'static [f32],
     },
+    /// Matches when the broken block's state has all of these property values.
+    BlockStateProperty {
+        properties: &'static [(&'static str, &'static str)],
+    },
+    /// Matches when the inner condition doesn't.
+    Inverted(&'static Self),
     AllOf(&'static [Self]),
     AnyOf(&'static [Self]),
     EntityOnFire,
@@ -169,6 +175,10 @@ pub enum DynamicLootCondition {
         predicate: LootEntityPredicate,
     },
     Inverted(Box<Self>),
+    /// Matches when the broken block's state has all of these property values.
+    BlockStateProperty {
+        properties: Vec<(String, String)>,
+    },
     EntityOnFire,
     DirectAttackerWeaponEnchantment(String),
     WeatherCheck {
@@ -204,6 +214,13 @@ impl From<LootCondition> for DynamicLootCondition {
             LootCondition::TableBonus { chances } => Self::TableBonus {
                 chances: chances.to_vec().into_boxed_slice(),
             },
+            LootCondition::BlockStateProperty { properties } => Self::BlockStateProperty {
+                properties: properties
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .collect(),
+            },
+            LootCondition::Inverted(inner) => Self::Inverted(Box::new(Self::from(*inner))),
             LootCondition::AllOf(conditions) => {
                 Self::AllOf(conditions.iter().copied().map(Self::from).collect())
             }
