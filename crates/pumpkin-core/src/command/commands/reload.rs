@@ -26,8 +26,7 @@ impl CommandExecutor for ReloadExecutor {
             true,
         );
 
-        let server = context.server().clone();
-        server.reload_datapacks(&server);
+        context.server().reload_datapacks();
 
         Ok(0)
     }
