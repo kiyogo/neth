@@ -1,6 +1,8 @@
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::{Block, BlockStateId};
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_world::{chunk::ChunkHeightmapType, world::BlockFlags};
@@ -141,6 +143,18 @@ pub fn find_path(
     path
 }
 
+/// Vanilla `EnderDragon` sub entities, in `subEntities`: name, width, height.
+const PART_DIMENSIONS: [(&str, f32, f32); 8] = [
+    ("head", 1.0, 1.0),
+    ("neck", 3.0, 3.0),
+    ("body", 5.0, 3.0),
+    ("tail", 2.0, 2.0),
+    ("tail", 2.0, 2.0),
+    ("tail", 2.0, 2.0),
+    ("wing", 4.0, 2.0),
+    ("wing", 4.0, 2.0),
+];
+
 pub struct EnderDragonPart {
     pub entity: Entity,
     pub dragon_uuid: uuid::Uuid,
@@ -262,15 +276,24 @@ impl EnderDragonEntity {
         let _ = Entity::reserve_ids(8);
 
         let mut parts = Vec::new();
-        for i in 1..=8 {
+        for (i, (_name, width, height)) in PART_DIMENSIONS.iter().enumerate() {
             let part_entity = Entity::from_uuid_with_id(
-                base_id + i,
+                base_id + i as i32 + 1,
                 uuid::Uuid::new_v4(),
                 world.clone(),
                 entity.pos.load(),
                 &EntityType::ENDER_DRAGON,
             );
-            let part = Arc::new(EnderDragonPart::new(part_entity, dragon_uuid, (i - 1) as usize));
+            let dimensions = EntityDimensions::new(*width, *height, *height);
+            part_entity.entity_dimension.store(dimensions);
+            let part_pos = part_entity.pos.load();
+            part_entity.bounding_box.store(BoundingBox::new_from_pos(
+                part_pos.x,
+                part_pos.y,
+                part_pos.z,
+                &dimensions,
+            ));
+            let part = Arc::new(EnderDragonPart::new(part_entity, dragon_uuid, i));
             // TODO: world.add_entity_silent(part.clone() as Arc<dyn EntityBase>);
             parts.push(part);
         }
@@ -953,6 +976,13 @@ impl EnderDragonEntity {
             return false;
         }
 
+        let by_player = source.get_player().is_some();
+        if !by_player
+            && !damage_type.has_tag(&tag::DamageType::MINECRAFT_ALWAYS_HURTS_ENDER_DRAGONS)
+        {
+            return false;
+        }
+
         let living = &self.mob_entity.living_entity;
         let health_before = living.health.load();
 
@@ -1076,6 +1106,10 @@ impl Mob for EnderDragonEntity {
                 self.set_phase(EnderDragonPhase::Dying);
             }
         }
+    }
+
+    fn remove_when_far_away(&self, _distance_sq: f64) -> bool {
+        false
     }
 
     fn get_mob_gravity(&self) -> f64 {
