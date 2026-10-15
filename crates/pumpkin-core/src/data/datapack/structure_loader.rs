@@ -18,18 +18,25 @@ fn visit_structure_dir(dir: &Path, namespace: &str, prefix: &str, count: &mut us
     };
 
     for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         let path = entry.path();
         let Ok(file_name) = entry.file_name().into_string() else {
             continue;
         };
 
-        if path.is_dir() {
+        if file_type.is_dir() {
             let next_prefix = if prefix.is_empty() {
                 file_name
             } else {
                 format!("{prefix}/{file_name}")
             };
             visit_structure_dir(&path, namespace, &next_prefix, count);
+            continue;
+        }
+
+        if !file_type.is_file() {
             continue;
         }
 
@@ -81,18 +88,25 @@ fn visit_template_pool_dir(dir: &Path, namespace: &str, prefix: &str, count: &mu
     };
 
     for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         let path = entry.path();
         let Ok(file_name) = entry.file_name().into_string() else {
             continue;
         };
 
-        if path.is_dir() {
+        if file_type.is_dir() {
             let next_prefix = if prefix.is_empty() {
                 file_name
             } else {
                 format!("{prefix}/{file_name}")
             };
             visit_template_pool_dir(&path, namespace, &next_prefix, count);
+            continue;
+        }
+
+        if !file_type.is_file() {
             continue;
         }
 
@@ -152,18 +166,25 @@ fn visit_processor_list_dir(dir: &Path, namespace: &str, prefix: &str, count: &m
     };
 
     for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         let path = entry.path();
         let Ok(file_name) = entry.file_name().into_string() else {
             continue;
         };
 
-        if path.is_dir() {
+        if file_type.is_dir() {
             let next_prefix = if prefix.is_empty() {
                 file_name
             } else {
                 format!("{prefix}/{file_name}")
             };
             visit_processor_list_dir(&path, namespace, &next_prefix, count);
+            continue;
+        }
+
+        if !file_type.is_file() {
             continue;
         }
 

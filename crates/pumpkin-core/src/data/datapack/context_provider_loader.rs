@@ -99,13 +99,17 @@ fn load_context_providers_recursive(
     };
 
     for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
         let path = entry.path();
 
-        if path.is_dir() {
+        if file_type.is_dir() {
             load_context_providers_recursive(namespace, base_dir, &path, registry);
-        } else if path
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        } else if file_type.is_file()
+            && path
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
             && let Ok(rel_path) = path.strip_prefix(base_dir)
         {
             let mut stem_path = rel_path.to_string_lossy().to_string();
