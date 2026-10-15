@@ -3,7 +3,7 @@ use bytes::Bytes;
 use flate2::{Compress, Compression, FlushCompress, Status};
 use pumpkin_util::version::JavaMinecraftVersion;
 use thiserror::Error;
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 
 use crate::{
     Aes128Cfb8Enc, ClientPacket, CompressionLevel, CompressionThreshold, MAX_PACKET_DATA_SIZE,
@@ -16,6 +16,7 @@ use crate::{
 pub enum EncryptionWriter<W: AsyncWrite + Unpin> {
     Encrypt(Box<StreamEncryptor<W>>),
     None(W),
+    Buffered(BufWriter<W>),
 }
 
 impl<W: AsyncWrite + Unpin> EncryptionWriter<W> {
@@ -23,6 +24,9 @@ impl<W: AsyncWrite + Unpin> EncryptionWriter<W> {
     pub fn upgrade(self, cipher: Aes128Cfb8Enc) -> Self {
         match self {
             Self::None(stream) => Self::Encrypt(Box::new(StreamEncryptor::new(cipher, stream))),
+            Self::Buffered(stream) => {
+                Self::Encrypt(Box::new(StreamEncryptor::new(cipher, stream.into_inner())))
+            }
             Self::Encrypt(_) => self,
         }
     }
@@ -43,6 +47,10 @@ impl<W: AsyncWrite + Unpin> AsyncWrite for EncryptionWriter<W> {
                 let writer = std::pin::Pin::new(writer);
                 writer.poll_write(cx, buf)
             }
+            Self::Buffered(writer) => {
+                let writer = std::pin::Pin::new(writer);
+                writer.poll_write(cx, buf)
+            }
         }
     }
 
@@ -59,6 +67,10 @@ impl<W: AsyncWrite + Unpin> AsyncWrite for EncryptionWriter<W> {
                 let writer = std::pin::Pin::new(writer);
                 writer.poll_flush(cx)
             }
+            Self::Buffered(writer) => {
+                let writer = std::pin::Pin::new(writer);
+                writer.poll_flush(cx)
+            }
         }
     }
 
@@ -72,6 +84,10 @@ impl<W: AsyncWrite + Unpin> AsyncWrite for EncryptionWriter<W> {
                 writer.poll_shutdown(cx)
             }
             Self::None(writer) => {
+                let writer = std::pin::Pin::new(writer);
+                writer.poll_shutdown(cx)
+            }
+            Self::Buffered(writer) => {
                 let writer = std::pin::Pin::new(writer);
                 writer.poll_shutdown(cx)
             }
@@ -94,14 +110,25 @@ pub struct TCPNetworkEncoder<W: AsyncWrite + Unpin> {
 }
 
 impl<W: AsyncWrite + Unpin> TCPNetworkEncoder<W> {
-    pub const fn new(writer: W) -> Self {
+    const fn with_writer(writer: EncryptionWriter<W>) -> Self {
         Self {
-            writer: Some(EncryptionWriter::None(writer)),
+            writer: Some(writer),
             compression: None,
             compressor: None,
             compression_scratch: Vec::new(),
             frame_scratch: Vec::new(),
         }
+    }
+
+    /// Wrap an already configured writer; does not add buffering.
+    pub const fn new(writer: W) -> Self {
+        Self::with_writer(EncryptionWriter::None(writer))
+    }
+
+    /// Buffer plaintext writes until encryption is activated. Once encrypted,
+    /// the 16 KiB ciphertext buffer takes over without retaining this layer.
+    pub fn new_buffered(writer: W) -> Self {
+        Self::with_writer(EncryptionWriter::Buffered(BufWriter::new(writer)))
     }
 
     pub const fn set_compression(
