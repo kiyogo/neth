@@ -48,6 +48,7 @@ mod op;
 mod pardon;
 mod pardonip;
 mod particle;
+mod perf;
 mod place;
 mod playsound;
 mod plugin;
@@ -167,6 +168,7 @@ pub fn default_dispatcher(
     fetchprofile::register(&mut dispatcher, registry);
     worldborder::register(&mut dispatcher, registry);
     particle::register(&mut dispatcher, registry);
+    perf::register(&mut dispatcher, registry);
     playsound::register(&mut dispatcher, registry);
     fill::register(&mut dispatcher, registry);
     clear::register(&mut dispatcher, registry);

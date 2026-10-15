@@ -1,44 +1,94 @@
-use std::sync::{LazyLock, Mutex};
-use std::time::Instant;
+use std::sync::atomic::Ordering;
 
 use pumpkin_data::translation;
 use pumpkin_util::PermissionLvl;
 use pumpkin_util::permission::{Permission, PermissionDefault, PermissionRegistry};
 use pumpkin_util::text::TextComponent;
 
+use crate::command::CommandSender;
 use crate::command::argument_builder::{ArgumentBuilder, command, literal};
 use crate::command::context::command_context::CommandContext;
+use crate::command::context::command_source::CommandSource;
+use crate::command::errors::error_types::CommandErrorType;
 use crate::command::node::dispatcher::CommandDispatcher;
 use crate::command::node::{CommandExecutor, CommandExecutorResult};
+use crate::server::perf_profiler::{
+    PERF_PROFILE_DURATION, PerfProfileResult, StartPerfError, StopPerfError,
+};
 
-const DESCRIPTION: &str = "Starts or stops dedicated server performance profiling.";
+const DESCRIPTION: &str = "Captures info and metrics about the game for 10 seconds.";
 const PERMISSION: &str = "minecraft:command.perf";
 
-static PROFILING_START: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(|| Mutex::new(None));
+// Bedrock has no `/perf` command, so both editions use the Java keys.
+const ALREADY_RUNNING_ERROR_TYPE: CommandErrorType<0> = CommandErrorType::new(
+    translation::java::COMMANDS_PERF_ALREADYRUNNING,
+    translation::java::COMMANDS_PERF_ALREADYRUNNING,
+);
+
+const NOT_RUNNING_ERROR_TYPE: CommandErrorType<0> = CommandErrorType::new(
+    translation::java::COMMANDS_PERF_NOTRUNNING,
+    translation::java::COMMANDS_PERF_NOTRUNNING,
+);
+
+fn send_stopped_feedback(source: &CommandSource, result: PerfProfileResult) {
+    let seconds = result.duration.as_secs_f64();
+    let tps = result.ticks_per_second();
+    let feedback = if matches!(source.output, CommandSender::Player(_)) {
+        TextComponent::translate_cross(
+            translation::java::COMMANDS_PERF_STOPPED,
+            translation::java::COMMANDS_PERF_STOPPED,
+            [
+                TextComponent::text(format!("{seconds:.2}")),
+                TextComponent::text(result.ticks.to_string()),
+                TextComponent::text(format!("{tps:.2}")),
+            ],
+        )
+    } else {
+        // Non-player command sources cannot resolve translation placeholders
+        // server-side, so they receive an already-rendered message.
+        TextComponent::text(format!(
+            "Stopped performance profiling after {seconds:.2} seconds and {} ticks ({tps:.2} ticks per second)",
+            result.ticks
+        ))
+    };
+    source.send_feedback(feedback, false);
+}
 
 struct PerfStartExecutor;
 
 impl CommandExecutor for PerfStartExecutor {
     fn execute(&self, context: &CommandContext) -> CommandExecutorResult {
-        let mut guard = PROFILING_START
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let server = context.server();
+        let current_tick = server.tick_count.load(Ordering::Relaxed);
+        let generation = server.perf_profiler.start(current_tick).map_err(
+            |StartPerfError::AlreadyRunning| ALREADY_RUNNING_ERROR_TYPE.create_without_context(),
+        )?;
 
-        if guard.is_some() {
-            context.source.send_feedback(
-                TextComponent::translate(translation::java::COMMANDS_PERF_ALREADYRUNNING, []),
-                false,
-            );
-            return Ok(0);
-        }
-
-        *guard = Some(Instant::now());
         context.source.send_feedback(
-            TextComponent::translate(translation::java::COMMANDS_PERF_STARTED, []),
+            TextComponent::translate_cross(
+                translation::java::COMMANDS_PERF_STARTED,
+                translation::java::COMMANDS_PERF_STARTED,
+                [],
+            ),
             false,
         );
 
-        Ok(1)
+        // The command can run on the tick thread, outside a Tokio runtime context.
+        let runtime = server.runtime.clone();
+        let server = server.clone();
+        let source = context.source.clone();
+        runtime.spawn(async move {
+            tokio::time::sleep(PERF_PROFILE_DURATION).await;
+            let current_tick = server.tick_count.load(Ordering::Relaxed);
+            if let Some(result) = server
+                .perf_profiler
+                .stop_if_generation(generation, current_tick)
+            {
+                send_stopped_feedback(&source, result);
+            }
+        });
+
+        Ok(0)
     }
 }
 
@@ -46,39 +96,16 @@ struct PerfStopExecutor;
 
 impl CommandExecutor for PerfStopExecutor {
     fn execute(&self, context: &CommandContext) -> CommandExecutorResult {
-        let mut guard = PROFILING_START
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let server = context.server();
+        let current_tick = server.tick_count.load(Ordering::Relaxed);
+        let result = server
+            .perf_profiler
+            .stop(current_tick)
+            .map_err(|StopPerfError::NotRunning| NOT_RUNNING_ERROR_TYPE.create_without_context())?;
 
-        let Some(start_time) = guard.take() else {
-            context.source.send_feedback(
-                TextComponent::translate(translation::java::COMMANDS_PERF_NOTRUNNING, []),
-                false,
-            );
-            return Ok(0);
-        };
+        send_stopped_feedback(&context.source, result);
 
-        let duration_secs = start_time.elapsed().as_secs_f64();
-        let ticks = (duration_secs * 20.0).round() as u64;
-        let tps = if duration_secs > 0.0 {
-            ticks as f64 / duration_secs
-        } else {
-            20.0
-        };
-
-        context.source.send_feedback(
-            TextComponent::translate(
-                translation::java::COMMANDS_PERF_STOPPED,
-                [
-                    TextComponent::text(format!("{duration_secs:.2}")),
-                    TextComponent::text(ticks.to_string()),
-                    TextComponent::text(format!("{tps:.2}")),
-                ],
-            ),
-            false,
-        );
-
-        Ok(ticks as i32)
+        Ok(0)
     }
 }
 
