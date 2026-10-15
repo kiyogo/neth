@@ -6043,7 +6043,7 @@ impl World {
         fluid.matches_type(scheduled).then_some(fluid)
     }
 
-    fn get_fluid_from_state_id(id: BlockStateId) -> &'static pumpkin_data::fluid::Fluid {
+    pub(crate) fn get_fluid_from_state_id(id: BlockStateId) -> &'static pumpkin_data::fluid::Fluid {
         if let Some(fluid) = Fluid::from_state_id(id) {
             return fluid.to_flowing();
         }
