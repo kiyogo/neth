@@ -159,6 +159,16 @@ debug = true
 strip = false
 
 [profile.dev]
+# `line-tables-only` keeps file:line in panics, backtraces and crash-reports,
+# and only drops local-variable inspection in a step debugger.
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.dev.build-override]
+opt-level = 2
 debug = false
 
 [workspace.dependencies]
