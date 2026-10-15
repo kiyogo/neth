@@ -4672,6 +4672,14 @@ impl Player {
         self.damage_with_context(caller, amount, damage_type, None, None, None)
     }
 
+    #[must_use]
+    pub fn can_harm_player(&self, target: &Self) -> bool {
+        if !self.world().level_info.load().game_rules.pvp {
+            return false;
+        }
+        self.do_teams_allow_damage(target)
+    }
+
     pub fn damage_with_context(
         &self,
         caller: &dyn crate::entity::EntityBase,
@@ -4691,6 +4699,14 @@ impl Player {
         {
             return false;
         }
+
+        if source
+            .and_then(|source| source.get_player())
+            .is_some_and(|attacker| !attacker.can_harm_player(self))
+        {
+            return false;
+        }
+
         let damaged = self.living_entity.damage_with_context(
             caller,
             amount,

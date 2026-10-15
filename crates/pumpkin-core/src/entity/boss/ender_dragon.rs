@@ -665,6 +665,7 @@ impl EnderDragonEntity {
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
                     .is_sitting()
+                    && self.do_teams_allow_damage(player.as_ref())
                 {
                     player.damage(self, 5.0, DamageType::MOB_ATTACK);
                 }
