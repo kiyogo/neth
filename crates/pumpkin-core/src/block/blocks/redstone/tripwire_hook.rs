@@ -289,19 +289,20 @@ impl TripwireHookBlock {
     ) {
         let cat = SoundCategory::Blocks;
         let pos = block_pos.to_f64();
+        let center = block_pos.to_centered_f64();
         if on && !off {
             world.play_sound_raw(Sound::BlockTripwireClickOn as u16, cat, &pos, 0.4, 0.6);
-            world.emit_game_event(GameEvent::BlockActivate.name(), pos);
+            world.emit_game_event(GameEvent::BlockActivate.name(), center);
         } else if !on && off {
             world.play_sound_raw(Sound::BlockTripwireClickOff as u16, cat, &pos, 0.4, 0.5);
-            world.emit_game_event(GameEvent::BlockDeactivate.name(), pos);
+            world.emit_game_event(GameEvent::BlockDeactivate.name(), center);
         } else if attached && !detached {
             world.play_sound_raw(Sound::BlockTripwireAttach as u16, cat, &pos, 0.4, 0.7);
-            world.emit_game_event(GameEvent::BlockAttach.name(), pos);
+            world.emit_game_event(GameEvent::BlockAttach.name(), center);
         } else if !attached && detached {
             let pitch = 1.2 / rng().random::<f32>().mul_add(0.2, 0.9);
             world.play_sound_raw(Sound::BlockTripwireDetach as u16, cat, &pos, 0.4, pitch);
-            world.emit_game_event(GameEvent::BlockDetach.name(), pos);
+            world.emit_game_event(GameEvent::BlockDetach.name(), center);
         }
     }
 
