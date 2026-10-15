@@ -658,22 +658,32 @@ impl ProtoChunk {
         if local_y < 0 || local_y >= self.height() as i32 {
             return;
         }
+        self.set_block_state_direct(local_x, local_y, local_z, y as i16, block_state);
+    }
+
+    /// The noise-generation fast path: coordinates are chunk-local and already
+    /// checked against the dimension height by the caller.
+    #[inline]
+    fn set_block_state_direct(
+        &mut self,
+        local_x: i32,
+        local_y: i32,
+        local_z: i32,
+        block_y: i16,
+        block_state: &BlockState,
+    ) {
         if !block_state.is_air() {
             let index = Self::local_position_to_height_map_index(local_x, local_z);
-            let y = y as i16;
-            self.maybe_update_surface_height_map(index, y);
+            self.maybe_update_surface_height_map(index, block_y);
             let block = BlockId::from_state_id(block_state.id);
-
             let blocks_movement = blocks_movement(block_state, block);
             if blocks_movement {
-                self.maybe_update_ocean_floor_height_map(index, y);
+                self.maybe_update_ocean_floor_height_map(index, block_y);
             }
             if blocks_movement || block_state.is_liquid() {
-                self.maybe_update_motion_blocking_height_map(index, y);
+                self.maybe_update_motion_blocking_height_map(index, block_y);
                 if !block.has_tag(tag::Block::MINECRAFT_LEAVES) {
-                    {
-                        self.maybe_update_motion_blocking_no_leaves_height_map(index, y);
-                    }
+                    self.maybe_update_motion_blocking_no_leaves_height_map(index, block_y);
                 }
             }
         }
@@ -979,13 +989,18 @@ impl ProtoChunk {
     ) {
         let volume = *noise_sampler.volume();
         let densities = noise_sampler.sample_density();
+        let bottom_y = i32::from(self.bottom_y());
+        let height = i32::from(self.height());
 
         for z in 0..volume.size_z {
             let block_z = volume.block_z(z);
+            let local_z = block_z & 15;
             for x in 0..volume.size_x {
                 let block_x = volume.block_x(x);
+                let local_x = block_x & 15;
                 for y in (0..volume.size_y).rev() {
                     let block_y = volume.block_y(y);
+                    let local_y = block_y - bottom_y;
                     let index = volume.index_unchecked(x, y, z);
                     let block_state = noise_sampler
                         .sample_block_state(
@@ -996,7 +1011,15 @@ impl ProtoChunk {
                             surface_height_estimate_sampler,
                         )
                         .unwrap_or(generator.default_block);
-                    self.set_block_state(block_x, block_y, block_z, block_state);
+                    if (0..height).contains(&local_y) {
+                        self.set_block_state_direct(
+                            local_x,
+                            local_y,
+                            local_z,
+                            block_y as i16,
+                            block_state,
+                        );
+                    }
                 }
             }
         }
