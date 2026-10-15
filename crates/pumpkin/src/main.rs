@@ -70,11 +70,12 @@ async fn main() {
 
     let exec_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-    let config = PumpkinConfig::load(&exec_dir);
+    let mut config = PumpkinConfig::load(&exec_dir);
 
     // Install the logger before loading the vanilla data files, so their errors
     // (for example an unwritable data directory) actually reach the console.
     pumpkin_core::init_logger(&config.advanced);
+    config.apply_env_overrides();
 
     let vanilla_data = VanillaData::load();
 
