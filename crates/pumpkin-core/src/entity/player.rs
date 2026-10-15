@@ -4506,6 +4506,9 @@ impl Player {
 
                 // Registered after positioning, so spawns carry the new position.
                 new_world.add_arriving_player(&player);
+                new_world
+                    .entity_tracker
+                    .repair_respawned_player(&player, &new_world);
 
                 self.send_abilities_update();
 

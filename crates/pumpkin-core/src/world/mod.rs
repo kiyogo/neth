@@ -3383,7 +3383,9 @@ impl World {
         }];
         let player_info_update = CPlayerInfoUpdate::new(Self::TAB_LIST_ADD_FLAGS, &java_player);
 
-        self.broadcast_editioned(&player_info_update, &bedrock_player_list);
+        for world in server.worlds.load().iter() {
+            world.broadcast_editioned(&player_info_update, &bedrock_player_list);
+        }
 
         // If the player has a custom tab_list_name, send an update for it
         if let Some(tab_list_name) = player.get_tab_list_name() {
@@ -3392,7 +3394,7 @@ impl World {
                 uuid: gameprofile.id,
                 actions: &actions,
             }];
-            self.broadcast_packet_all(&CPlayerInfoUpdate::new(
+            server.broadcast_packet_all(&CPlayerInfoUpdate::new(
                 PlayerInfoFlags::UPDATE_DISPLAY_NAME.bits(),
                 &java_player,
             ));
@@ -3401,7 +3403,7 @@ impl World {
         // Here, we send all the infos of players who already joined.
         let mut players_tab_list_names = Vec::new();
         {
-            let players = self.players.load();
+            let players = server.get_all_players();
             let mut data_to_process = Vec::new();
             for p in players
                 .iter()
@@ -4933,7 +4935,15 @@ impl World {
                 }],
             };
 
-            self.broadcast_editioned(&CRemovePlayerInfo::new(&[uuid]), &bedrock_remove_player);
+            // Dimension changes keep the connection and its player-list entry.
+            if fire_event && let Some(server) = self.server.upgrade() {
+                for world in server.worlds.load().iter() {
+                    world.broadcast_editioned(
+                        &CRemovePlayerInfo::new(&[uuid]),
+                        &bedrock_remove_player,
+                    );
+                }
+            }
 
             self.broadcast_editioned(
                 &CRemoveEntities::new(&[entity_id.into()]),
