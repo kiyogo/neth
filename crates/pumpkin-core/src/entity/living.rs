@@ -3527,14 +3527,6 @@ impl LivingEntity {
         );
 
         if play_sound {
-            world.play_sound_fine(
-                self.hurt_sound(caller),
-                SoundCategory::Players,
-                &self.entity.pos.load(),
-                1.0,
-                self.get_pitch(),
-            );
-
             if let Some(source) = source {
                 let source_pos = source.get_entity().pos.load();
                 let target_pos = self.entity.pos.load();
@@ -3582,6 +3574,22 @@ impl LivingEntity {
 
         let max_h = self.get_max_health();
         let new_health = (self.health.load() - dmg_to_health).clamp(0.0, max_h);
+
+        if play_sound {
+            let sound = if new_health <= 0.0 {
+                Self::death_sound_for_entity(self.entity.entity_type)
+            } else {
+                self.hurt_sound(caller)
+            };
+
+            world.play_sound_fine(
+                sound,
+                SoundCategory::Players,
+                &self.entity.pos.load(),
+                1.0,
+                self.get_pitch(),
+            );
+        }
 
         if dmg_to_health > 0.0 {
             if let Some(player) = caller.get_player() {
