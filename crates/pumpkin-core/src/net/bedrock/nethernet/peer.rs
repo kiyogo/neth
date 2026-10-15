@@ -111,7 +111,7 @@ async fn negotiate_inner(
         address,
         state.incoming.clone(),
     ));
-    *handler.session.lock().await = Some(session.clone());
+    handler.set_session(session.clone()).await;
 
     let mut candidate_task = None;
     let result: Result<String, String> = async {
@@ -236,10 +236,28 @@ struct NetherNetEventHandler {
     gathering_notify: Arc<tokio::sync::Notify>,
 }
 
+impl NetherNetEventHandler {
+    async fn set_session(self: &Arc<Self>, session: Arc<NetherNetSession>) {
+        *self.session.lock().await = Some(session.clone());
+        let handler = self.clone();
+        tokio::spawn(async move {
+            // Signaling drops its session reference before the channels open.
+            // Keep that session alive, but bound abandoned negotiations and
+            // break the peer -> handler -> session -> peer cycle on closure.
+            session.wait_until_closed_or_abandoned().await;
+            handler.session.lock().await.take();
+            // A peer state callback may already have marked the session closed;
+            // transport cleanup must still run in that case.
+            session.close_transport().await;
+        });
+    }
+}
+
 #[async_trait]
 impl PeerConnectionEventHandler for NetherNetEventHandler {
     async fn on_data_channel(&self, channel: Arc<dyn DataChannel>) {
-        if let Some(session) = self.session.lock().await.as_ref()
+        let session = self.session.lock().await.clone();
+        if let Some(session) = session
             && let Err(error) = session.attach_channel(channel).await
         {
             warn!("Rejected NetherNet data channel: {error}");
