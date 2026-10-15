@@ -262,6 +262,9 @@ impl Chunk {
                 }
             }
         }
+        let terrain = proto_chunk.terrain_heightmaps();
+        heightmaps.world_surface_wg = terrain.world_surface_wg;
+        heightmaps.ocean_floor_wg = terrain.ocean_floor_wg;
         heightmaps
     }
 

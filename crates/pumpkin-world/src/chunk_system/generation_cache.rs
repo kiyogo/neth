@@ -321,6 +321,13 @@ impl GenerationCache for Cache {
     }
 
     fn get_top_y(&self, heightmap: &HeightMap, x: i32, z: i32) -> i32 {
+        if matches!(
+            heightmap,
+            HeightMap::WorldSurfaceWg | HeightMap::OceanFloorWg
+        ) && let Some(chunk) = self.try_get_proto_chunk(x >> 4, z >> 4)
+        {
+            return chunk.get_top_y(heightmap, x, z);
+        }
         match heightmap {
             HeightMap::WorldSurfaceWg => self.top_block_wg_height_exclusive(x, z),
             HeightMap::WorldSurface => self.top_block_height_exclusive(x, z),
@@ -400,7 +407,12 @@ impl GenerationCache for Cache {
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner);
                 let min_y = data.section.min_y;
-                heightmap.get(ChunkHeightmapType::WorldSurface, x, z, min_y)
+                let val = heightmap.get(ChunkHeightmapType::WorldSurfaceWg, x, z, min_y);
+                if val >= min_y {
+                    val + 1
+                } else {
+                    heightmap.get(ChunkHeightmapType::WorldSurface, x, z, min_y) + 1
+                }
             }
             Chunk::Proto(data) => data.top_block_wg_height_exclusive(x, z),
         }
@@ -413,8 +425,13 @@ impl GenerationCache for Cache {
             return 0;
         }
         match &self.chunks[(dx * self.size + dy) as usize] {
-            Chunk::Level(_data) => {
-                0 // todo missing
+            Chunk::Level(data) => {
+                let heightmap = data
+                    .heightmap
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let min_y = data.section.min_y;
+                heightmap.get(ChunkHeightmapType::MotionBlocking, x, z, min_y) + 1
             }
             Chunk::Proto(data) => data.ocean_floor_height_exclusive(x, z),
         }
@@ -427,7 +444,19 @@ impl GenerationCache for Cache {
             return 0;
         }
         match &self.chunks[(dx * self.size + dy) as usize] {
-            Chunk::Level(_data) => 0,
+            Chunk::Level(data) => {
+                let heightmap = data
+                    .heightmap
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let min_y = data.section.min_y;
+                let val = heightmap.get(ChunkHeightmapType::OceanFloorWg, x, z, min_y);
+                if val >= min_y {
+                    val + 1
+                } else {
+                    heightmap.get(ChunkHeightmapType::MotionBlocking, x, z, min_y) + 1
+                }
+            }
             Chunk::Proto(data) => data.ocean_floor_wg_height_exclusive(x, z),
         }
     }
@@ -741,6 +770,39 @@ mod tests {
     use super::{Chunk, SurfaceBiomeNeighborhood};
     use crate::chunk::ChunkData;
     use pumpkin_data::biome::Biome;
+
+    #[test]
+    fn neighboring_features_preserve_generation_heights() {
+        use super::{Cache, GenerationCache, StagedChunkEnum};
+        use crate::generation::{get_world_gen, proto_chunk::ProtoChunk};
+        use pumpkin_data::{Block, dimension::Dimension};
+        use pumpkin_util::{HeightMap, math::vector3::Vector3, world_seed::Seed};
+
+        let generator = get_world_gen(
+            Seed(0),
+            Dimension::OVERWORLD,
+            true,
+            Vec::new(),
+            String::new(),
+        );
+        let mut cache = Cache::new(-24, 37, 3);
+        for x in -24..=-22 {
+            for z in 37..=39 {
+                let mut chunk = ProtoChunk::new(x, z, &generator);
+                chunk.set_block_state(2, 60, 3, Block::STONE.default_state);
+                chunk.stage = StagedChunkEnum::Carvers;
+                cache.chunks.push(Chunk::Proto(Box::new(chunk)));
+            }
+        }
+        let pos = Vector3::new(-22 * 16 + 2, 70, 39 * 16 + 3);
+        cache.set_block_state(&pos, Block::OAK_LEAVES.default_state);
+        assert_eq!(
+            cache.get_top_y(&HeightMap::WorldSurfaceWg, pos.x, pos.z),
+            61
+        );
+        assert_eq!(cache.get_top_y(&HeightMap::OceanFloorWg, pos.x, pos.z), 61);
+        assert_eq!(cache.get_top_y(&HeightMap::WorldSurface, pos.x, pos.z), 71);
+    }
 
     #[test]
     fn surface_biome_snapshot_copies_level_chunk_palettes() {

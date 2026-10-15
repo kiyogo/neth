@@ -467,7 +467,7 @@ impl RuinedPortalPiece {
 
             let local_pos =
                 StructureTemplate::transform_block_pos(block.pos, mirror, rotation, pivot);
-            let world_pos = self.template_position + local_pos;
+            let mut world_pos = self.template_position + local_pos;
 
             if !chunk_box.contains_pos(&world_pos) {
                 continue;
@@ -481,7 +481,8 @@ impl RuinedPortalPiece {
                 };
                 processed_state = processor.process_with_context(
                     chunk,
-                    world_pos,
+                    &mut world_pos,
+                    block.pos.y,
                     current_state,
                     &mut block_entity_nbt,
                     &mut context,

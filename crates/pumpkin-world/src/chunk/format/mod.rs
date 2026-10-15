@@ -369,12 +369,8 @@ impl ChunkData {
             min_y,
         };
 
-        let heightmaps = root_tag.get_compound("Heightmaps").map_or(
-            ChunkHeightmaps {
-                world_surface: None,
-                motion_blocking: None,
-                motion_blocking_no_leaves: None,
-            },
+        let heightmaps = root_tag.get_compound("Heightmaps").map_or_else(
+            ChunkHeightmaps::default,
             // A heightmap of the wrong length is dropped rather than stored:
             // every reader indexes it by column and would run off the end.
             |h_compound| ChunkHeightmaps {
@@ -388,6 +384,14 @@ impl ChunkData {
                     .map(|a| a.to_vec().into_boxed_slice()),
                 motion_blocking_no_leaves: h_compound
                     .get_long_array("MOTION_BLOCKING_NO_LEAVES")
+                    .filter(|a| a.len() == ChunkHeightmaps::LONGS)
+                    .map(|a| a.to_vec().into_boxed_slice()),
+                world_surface_wg: h_compound
+                    .get_long_array("WORLD_SURFACE_WG")
+                    .filter(|a| a.len() == ChunkHeightmaps::LONGS)
+                    .map(|a| a.to_vec().into_boxed_slice()),
+                ocean_floor_wg: h_compound
+                    .get_long_array("OCEAN_FLOOR_WG")
                     .filter(|a| a.len() == ChunkHeightmaps::LONGS)
                     .map(|a| a.to_vec().into_boxed_slice()),
             },
@@ -543,6 +547,12 @@ impl ChunkData {
         }
         if let Some(ref arr) = heightmap_lock.motion_blocking_no_leaves {
             heightmaps_compound.put("MOTION_BLOCKING_NO_LEAVES", NbtTag::LongArray(arr.to_vec()));
+        }
+        if let Some(ref arr) = heightmap_lock.world_surface_wg {
+            heightmaps_compound.put("WORLD_SURFACE_WG", NbtTag::LongArray(arr.to_vec()));
+        }
+        if let Some(ref arr) = heightmap_lock.ocean_floor_wg {
+            heightmaps_compound.put("OCEAN_FLOOR_WG", NbtTag::LongArray(arr.to_vec()));
         }
         root_compound.put_compound("Heightmaps", heightmaps_compound);
 

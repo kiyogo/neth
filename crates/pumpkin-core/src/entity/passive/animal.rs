@@ -6,7 +6,7 @@ use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use uuid::Uuid;
 
-use crate::entity::{EntityBase, ageable::BABY_START_AGE, mob::Mob, player::Player, r#type::from_type};
+use crate::entity::{ageable::BABY_START_AGE, mob::Mob, player::Player, r#type::from_type};
 use crate::item::items::spawn_egg::prepare_egg_mob;
 use crate::plugin::api::events::entity::creature_spawn::CreatureSpawnReason;
 use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
