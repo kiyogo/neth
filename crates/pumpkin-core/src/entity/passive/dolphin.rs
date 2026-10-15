@@ -14,6 +14,7 @@ use pumpkin_util::math::vector3::Vector3;
 use crate::entity::{
     Entity, EntityBase,
     ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
+    ai::pathfinder::Navigator,
     ai::goal::{
         escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal,
@@ -41,6 +42,11 @@ impl DolphinEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
             Box::new(SmoothSwimmingMoveControl::new(85, 10, 1.0, 0.1, true));
+
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::water_bound(true);
 
         let dolphin = Self {
             mob_entity,

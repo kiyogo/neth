@@ -17,6 +17,7 @@ use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
     ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
+    ai::pathfinder::Navigator,
     ai::goal::{
         Goal, look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         random_swimming::RandomSwimmingGoal,
@@ -43,6 +44,11 @@ impl PufferfishEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
             Box::new(SmoothSwimmingMoveControl::new(85, 10, 1.0, 0.0, true));
+
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::water_bound(false);
 
         let pufferfish = Self {
             mob_entity,
