@@ -70,7 +70,7 @@ fn tall_plant_states(
         return None;
     }
 
-    let mut properties = TallSeagrassLikeProperties::from_state_id(state.id, block);
+    let mut properties = TallSeagrassLikeProperties::from_state_id(state.id);
     properties.r#half = DoubleBlockHalf::Lower;
     let lower_state = BlockState::from_id(properties.to_state_id(block));
     properties.r#half = DoubleBlockHalf::Upper;

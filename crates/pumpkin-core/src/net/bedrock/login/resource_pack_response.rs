@@ -54,8 +54,7 @@ impl BedrockClient {
             }
             SResourcePackClientResponse::STATUS_COMPLETED => {
                 debug!("Bedrock: SResourcePackResponse::STATUS_COMPLETED");
-<<<<<<< HEAD:crates/pumpkin-core/src/net/bedrock/login/resource_pack_response.rs
-                let player = self.player.load_full();
+                let player = self.player.load().upgrade();
                 if let Some(player) = player.as_ref() {
                     // Responses run concurrently, so the flag is swapped: only the
                     // first completed response may spawn the player.
@@ -66,9 +65,6 @@ impl BedrockClient {
                         );
                         return;
                     }
-=======
-                if let Some(player) = self.player.load().upgrade() {
->>>>>>> pr-3243:crates/pumpkin/src/net/bedrock/login/resource_pack_response.rs
                     player
                         .world()
                         .spawn_bedrock_player(&server.basic_config, player.clone(), server)

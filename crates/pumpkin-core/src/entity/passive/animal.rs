@@ -18,7 +18,7 @@ use pumpkin_util::math::vector3::Vector3;
 /// baby from it. Any other spawn egg is left to the normal use-on-block path, which
 /// places a new adult next to the mob.
 fn is_spawn_egg_for(item_stack: &ItemStack, entity_type: &EntityType) -> bool {
-    entity_from_egg(item_stack.item.id).is_some_and(|egg_type| &egg_type == entity_type)
+    entity_from_egg(item_stack.item.id).is_some_and(|egg_type| egg_type == entity_type)
 }
 
 pub trait Animal: Mob {

@@ -29,7 +29,9 @@ async fn disconnected_players_are_released() -> Result<(), Box<dyn std::error::E
         enabled: false,
         ..Default::default()
     };
-    let server = Server::new(basic, advanced, telemetry, data).await;
+    let server = Server::new(basic, advanced, telemetry, data, Vec::new())
+        .await
+        .expect("server");
     let world = server.get_world_from_dimension(&pumpkin_data::dimension::Dimension::OVERWORLD);
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let mut retained_players = Vec::new();
@@ -42,8 +44,13 @@ async fn disconnected_players_are_released() -> Result<(), Box<dyn std::error::E
             properties: ArcSwap::from_pointee(Vec::new()),
             profile_actions: None,
         };
-        let pending =
-            PendingConnection::new(stream, address, id, PacketRateLimiter::new(false, 0.0, 0.0));
+        let pending = PendingConnection::new(
+            stream,
+            address,
+            id,
+            PacketRateLimiter::new(false, 0.0, 0.0),
+            Arc::downgrade(&server),
+        );
         let client = Arc::new(ClientPlatform::Java(JavaClient::from_pending(
             pending,
             profile.clone(),

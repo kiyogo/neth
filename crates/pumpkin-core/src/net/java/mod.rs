@@ -435,8 +435,8 @@ impl JavaClient {
             return Some(packet_data);
         }
         // TODO: packets sent before `set_player` (e.g. an `add_player` kick) go out untranslated.
-        let player = self.player.load_full();
-        let Some(player) = player.as_ref() else {
+        let player = self.player.load();
+        let Some(player) = player.upgrade() else {
             return Some(packet_data);
         };
         let Some(server) = player.world().server.upgrade() else {

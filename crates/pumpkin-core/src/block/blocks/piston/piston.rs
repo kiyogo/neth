@@ -246,6 +246,7 @@ impl PistonBlock {
             pushed_block_state: BlockState::from_id(props.to_state_id(block)),
             current_progress: 0.0.into(),
             last_progress: 0.0.into(),
+            last_ticked: 0.into(),
             extending: false,
             source: true,
         }));
@@ -438,6 +439,7 @@ fn move_piston(
                 pushed_block_state: moved_state,
                 current_progress: 0.0.into(),
                 last_progress: 0.0.into(),
+                last_ticked: 0.into(),
                 extending: extend,
                 source: false,
             }));
@@ -469,6 +471,7 @@ fn move_piston(
             pushed_block_state: BlockState::from_id(props.to_state_id(&Block::PISTON_HEAD)),
             current_progress: 0.0.into(),
             last_progress: 0.0.into(),
+            last_ticked: 0.into(),
             extending: true,
             source: true,
         }));

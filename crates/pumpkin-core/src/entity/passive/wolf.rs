@@ -138,7 +138,7 @@ impl WolfEntity {
             // 6: NonTameRandomTarget (Baby Turtle on land)
             target_selector.add_goal(
                 6,
-                ActiveTargetGoal::new(
+                Box::new(ActiveTargetGoal::new(
                     &mob_arc.mob_entity,
                     &EntityType::TURTLE,
                     10,
@@ -148,7 +148,7 @@ impl WolfEntity {
                         target.entity.age.load(Ordering::Relaxed) < 0
                             && !target.entity.touching_water.load(Ordering::SeqCst)
                     }),
-                )
+                ))
                 .when(TargetCondition::NonTamed),
             );
 

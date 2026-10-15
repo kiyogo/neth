@@ -102,7 +102,6 @@ mod warden_spawn_tracker;
 mod worldborder;
 mod chase;
 mod jfr;
-mod perf;
 mod publish;
 mod unpublish;
 mod debugmobspawning;

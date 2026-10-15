@@ -19,6 +19,7 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::Receiver;
 use crossbeam::queue::SegQueue;
 use pumpkin_data::dimension::Dimension;
+use pumpkin_data::tag::Taggable;
 use pumpkin_inventory::Inventory;
 use pumpkin_inventory::player::ender_chest_inventory::EnderChestInventory;
 use pumpkin_protocol::RawPacket;
@@ -244,7 +245,7 @@ use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::statistic::StatisticCategory;
 use pumpkin_data::{
-    Block, BlockState, BlockStateId, Enchantment, block_state_remap::remap_block_state_for_version,
+    Block, BlockState, BlockStateId, Enchantment,
     screen::WindowType, tag, translation,
 };
 use pumpkin_inventory::player::{
@@ -2753,10 +2754,7 @@ impl Player {
         // A single VarInt, so at most 5 bytes.
         let mut data = Vec::with_capacity(5);
         // Writing to a `Vec` never fails.
-        let _ = data.write_var_int(&VarInt(i32::from(remap_block_state_for_version(
-            block_state_id.as_u16(),
-            client.version.load(),
-        ))));
+        let _ = data.write_var_int(&VarInt(i32::from(block_state_id.as_u16())));
 
         let packet = CParticle::new(
             false,
@@ -3878,7 +3876,7 @@ impl Player {
         let pos = entity.block_pos.load();
         let world = entity.world.load_full();
         let block = world.get_block(&pos);
-        if block.has_tag(&pumpkin_data::tag::Block::MINECRAFT_CLIMBABLE) {
+        if block.id.has_tag(pumpkin_data::tag::Block::MINECRAFT_CLIMBABLE) {
             return statistics::CustomStatistic::ClimbOneCm;
         }
 
@@ -8577,7 +8575,7 @@ impl InventoryPlayer for Player {
             let world = self.world();
             let state = world.get_block_state(&pos);
             let block = pumpkin_data::Block::from_state_id(state.id);
-            if block.has_tag(&pumpkin_data::tag::Block::MINECRAFT_ANVIL) {
+            if block.id.has_tag(pumpkin_data::tag::Block::MINECRAFT_ANVIL) {
                 if !self.has_infinite_materials() && rand::random::<f32>() < 0.12 {
                     if let Some(new_state) =
                         crate::block::blocks::anvil::AnvilBlock::damage(state.id)
