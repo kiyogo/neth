@@ -18,17 +18,37 @@ pub struct EscapeDangerGoal {
     goal_control: Controls,
     target: Option<Vector3<f64>>,
     running: bool,
+    panic_tag: &'static tag::Tag,
 }
 
 impl EscapeDangerGoal {
     #[must_use]
     pub fn new(speed: f64) -> Box<Self> {
-        Box::new(Self {
+        Box::new(Self::with_panic_tag(
+            speed,
+            &tag::DamageType::MINECRAFT_PANIC_CAUSES,
+        ))
+    }
+
+    /// Creates a panic goal that only reacts to environmental damage
+    /// (vanilla `TamableAnimalPanicGoal`, used by tamed animals like wolves and cats).
+    #[must_use]
+    pub fn with_environmental_panic(speed: f64) -> Box<Self> {
+        Box::new(Self::with_panic_tag(
+            speed,
+            &tag::DamageType::MINECRAFT_PANIC_ENVIRONMENTAL_CAUSES,
+        ))
+    }
+
+    #[must_use]
+    pub const fn with_panic_tag(speed: f64, panic_tag: &'static tag::Tag) -> Self {
+        Self {
             speed,
             goal_control: Controls::MOVE,
             target: None,
             running: false,
-        })
+            panic_tag,
+        }
     }
 
     #[must_use]
@@ -36,15 +56,13 @@ impl EscapeDangerGoal {
         self.running
     }
 
-    /// Only `#minecraft:panic_causes` damage makes a mob flee, and only while the source is still
+    /// Only damage types matching `panic_tag` make a mob flee, and only while the source is still
     /// remembered.
-    fn should_panic(mob: &dyn Mob) -> bool {
+    fn should_panic(&self, mob: &dyn Mob) -> bool {
         mob.get_mob_entity()
             .living_entity
             .get_last_damage_type()
-            .is_some_and(|damage_type| {
-                damage_type.has_tag(&tag::DamageType::MINECRAFT_PANIC_CAUSES)
-            })
+            .is_some_and(|damage_type| damage_type.has_tag(self.panic_tag))
     }
 
     /// Nearest water within 5 blocks horizontally, only when the mob is not stuck in a block.
@@ -88,7 +106,7 @@ impl EscapeDangerGoal {
 
 impl Goal for EscapeDangerGoal {
     fn can_start(&mut self, mob: &dyn Mob) -> bool {
-        if !Self::should_panic(mob) {
+        if !self.should_panic(mob) {
             return false;
         }
 
