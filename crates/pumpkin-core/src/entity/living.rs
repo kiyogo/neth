@@ -2877,8 +2877,10 @@ impl LivingEntity {
         !self.can_breathe_under_water()
     }
 
+    /// Vanilla `LivingEntity.canBeSeenByAnyone`, whose `isAlive` is health aware, unlike
+    /// `Entity::is_alive` which only means "not removed".
     pub fn is_part_of_game(&self) -> bool {
-        !self.is_spectator() && self.entity.is_alive()
+        !self.is_spectator() && self.entity.is_alive() && self.health.load() > 0.0
     }
 
     pub fn can_attack(&self, target: &dyn EntityBase) -> bool {
