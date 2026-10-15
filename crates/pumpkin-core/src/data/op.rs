@@ -24,7 +24,32 @@ impl LoadJSONConfiguration for OperatorConfig {
         Path::new("ops.json")
     }
     fn validate(&self) {
-        // TODO: Validate the operator configuration
+        use std::collections::HashSet;
+
+        let mut seen_uuids = HashSet::new();
+        let mut seen_names = HashSet::new();
+
+        for op in &self.ops {
+            if op.uuid.is_nil() {
+                tracing::warn!("Operator entry has nil UUID: {}", op.name);
+            } else if !seen_uuids.insert(op.uuid) {
+                tracing::warn!("Duplicate operator UUID: {}", op.uuid);
+            }
+
+            if op.name.trim().is_empty() {
+                tracing::warn!("Operator entry has empty name: {}", op.uuid);
+            } else if !seen_names.insert(op.name.to_lowercase()) {
+                tracing::warn!("Duplicate operator name (case-insensitive): {}", op.name);
+            }
+
+            if op.level as u8 > 4 {
+                tracing::warn!(
+                    "Operator {} has invalid permission level: {}",
+                    op.name,
+                    op.level as u8
+                );
+            }
+        }
     }
 }
 
@@ -72,5 +97,27 @@ mod tests {
         assert!(!config.ops[0].bypasses_player_limit);
         assert_eq!(config.ops[1].level, PermissionLvl::Zero);
         assert!(config.ops[1].bypasses_player_limit);
+    }
+
+    #[test]
+    fn validates_operator_configuration() {
+        let valid_config: OperatorConfig = serde_json::from_str(&format!(
+            r#"[
+                {{"uuid":"{TEST_UUID}","name":"Op1","level":4}},
+                {{"uuid":"{SECOND_TEST_UUID}","name":"Op2","level":2}}
+            ]"#
+        ))
+        .unwrap();
+        valid_config.validate();
+
+        let duplicate_config: OperatorConfig = serde_json::from_str(&format!(
+            r#"[
+                {{"uuid":"{TEST_UUID}","name":"Op1","level":4}},
+                {{"uuid":"{TEST_UUID}","name":"op1","level":2}},
+                {{"uuid":"00000000-0000-0000-0000-000000000000","name":"","level":1}}
+            ]"#
+        ))
+        .unwrap();
+        duplicate_config.validate();
     }
 }
