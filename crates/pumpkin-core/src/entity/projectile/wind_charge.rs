@@ -1,3 +1,4 @@
+use crossbeam::atomic::AtomicCell;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::Sound;
@@ -8,7 +9,7 @@ use std::{
     f64,
     sync::{
         Arc,
-        atomic::{AtomicU8, Ordering},
+        atomic::{AtomicU8, AtomicU64, Ordering},
     },
 };
 
@@ -25,6 +26,7 @@ use crate::{
 
 const DEFAULT_DEFLECT_COOLDOWN: u8 = 5;
 const JUMP_SCALE: f64 = 0.25;
+const DEFLECTED_ACCELERATION_POWER: f64 = 0.1;
 pub const WIND_CHARGE_GRAVITY: f64 = 0.0;
 
 enum WindChargeKind {
@@ -33,6 +35,8 @@ enum WindChargeKind {
 }
 
 pub struct WindChargeEntity {
+    owner_id: AtomicCell<Option<i32>>,
+    acceleration_power: AtomicU64,
     kind: WindChargeKind,
     thrown_item_entity: ThrownItemEntity,
 }
@@ -62,6 +66,8 @@ impl WindChargeEntity {
     #[must_use]
     pub const fn new_normal(thrown_item_entity: ThrownItemEntity) -> Self {
         Self {
+            owner_id: AtomicCell::new(thrown_item_entity.owner_id),
+            acceleration_power: AtomicU64::new(0),
             kind: WindChargeKind::Normal {
                 deflect_cooldown: AtomicU8::new(DEFAULT_DEFLECT_COOLDOWN),
             },
@@ -72,6 +78,8 @@ impl WindChargeEntity {
     #[must_use]
     pub const fn new_breeze(thrown_item_entity: ThrownItemEntity) -> Self {
         Self {
+            owner_id: AtomicCell::new(thrown_item_entity.owner_id),
+            acceleration_power: AtomicU64::new(0),
             kind: WindChargeKind::Breeze,
             thrown_item_entity,
         }
@@ -111,6 +119,23 @@ impl WindChargeEntity {
         self.get_entity().world.load().run_explosion(&explosion);
     }
 
+    pub fn redirect(&self, owner: Option<&dyn EntityBase>) {
+        if self
+            .deflect_cooldown()
+            .is_some_and(|cooldown| cooldown.load(Ordering::Relaxed) > 0)
+        {
+            return;
+        }
+        self.owner_id
+            .store(owner.map(|owner| owner.get_entity().entity_id));
+        if let Some(owner) = owner {
+            self.get_entity()
+                .set_velocity(owner.get_entity().rotation().to_f64());
+        }
+        self.acceleration_power
+            .store(DEFLECTED_ACCELERATION_POWER.to_bits(), Ordering::Relaxed);
+    }
+
     pub fn deflect(
         &mut self,
         deflection: &ProjectileDeflectionType,
@@ -129,11 +154,24 @@ impl WindChargeEntity {
 
 impl EntityBase for WindChargeEntity {
     fn get_owner_id(&self) -> Option<i32> {
-        self.thrown_item_entity.owner_id
+        self.owner_id.load()
     }
 
     fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
-        self.thrown_item_entity.process_tick(caller);
+        let entity = self.get_entity();
+        let velocity = entity.velocity.load();
+        let accel = f64::from_bits(self.acceleration_power.load(Ordering::Relaxed));
+        if velocity.length() > 1e-6 {
+            entity.velocity.store(
+                velocity
+                    .normalize()
+                    .multiply(accel, accel, accel)
+                    .add(&velocity),
+            );
+        }
+
+        self.thrown_item_entity
+            .process_tick_with_owner(caller, self.get_owner_id());
 
         if let Some(cooldown) = self.deflect_cooldown() {
             let cooldown_ticks = cooldown.load(Ordering::Relaxed);
@@ -159,7 +197,7 @@ impl EntityBase for WindChargeEntity {
         let hit_pos = hit.hit_pos();
         if let ProjectileHit::Entity { ref entity, .. } = hit {
             let world = self.get_entity().world.load();
-            let owner_id = self.thrown_item_entity.owner_id;
+            let owner_id = self.get_owner_id();
             let owner = owner_id.and_then(|id| world.get_entity_by_id(id));
 
             let _ = entity.damage_with_context(
