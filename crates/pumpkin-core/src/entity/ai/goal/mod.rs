@@ -45,6 +45,7 @@ pub mod pick_up_block;
 pub mod place_block;
 pub mod ranged_attack;
 pub mod ranged_crossbow_attack;
+pub mod pufferfish_puff;
 pub mod random_swimming;
 pub mod reset_universal_anger;
 pub mod restrict_sun;

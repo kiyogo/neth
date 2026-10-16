@@ -1,30 +1,60 @@
-use pumpkin_data::damage::DamageType;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
-
+use pumpkin_protocol::java::client::play::GameEvent;
+use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
+use crate::entity::ai::control::fish_move_control::FishMoveControl;
+use crate::entity::ai::goal::look_around::RandomLookAroundGoal;
+use crate::entity::ai::goal::look_at_entity::LookAtEntityGoal;
+use crate::entity::ai::goal::pufferfish_puff::PufferfishPuffGoal;
+use crate::entity::ai::goal::random_swimming::RandomSwimmingGoal;
+use crate::entity::ai::pathfinder::node::PathType;
+use crate::entity::ai::pathfinder::Navigator;
+use crate::entity::ai::target_predicate::TargetPredicate;
 use crate::entity::custom_sound::CustomSound;
-use crate::entity::{
-    Entity, EntityBase,
-    ai::control::fish_move_control::FishMoveControl,
-    ai::pathfinder::{node::PathType, Navigator},
-    ai::goal::{
-        Goal, look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
-        random_swimming::RandomSwimmingGoal,
-    },
-    mob::{Mob, MobEntity},
-    passive::fish,
-};
+use crate::entity::mob::{Mob, MobEntity};
+use crate::entity::passive::fish;
+use crate::entity::player::Player;
+use crate::entity::{Entity, EntityBase, EntityDimensions};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PuffState {
+    Small,
+    Mid,
+    Full,
+}
+
+impl PuffState {
+    #[must_use]
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::Small => 0,
+            Self::Mid => 1,
+            Self::Full => 2,
+        }
+    }
+
+    #[must_use]
+    pub const fn from_id(id: i32) -> Self {
+        match id {
+            0 => Self::Small,
+            1 => Self::Mid,
+            _ => Self::Full,
+        }
+    }
+}
 
 /// Represents a Pufferfish, a passive aquatic mob that can inflate when threatened.
 ///
@@ -56,15 +86,18 @@ impl PufferfishEntity {
         let pufferfish = Self {
             mob_entity,
             air_supply: AtomicI32::new(300),
-            puff_state: AtomicI32::new(0),
+            puff_state: AtomicI32::new(PuffState::Small.id()),
             inflate_counter: AtomicI32::new(0),
             deflate_timer: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(pufferfish);
+        mob_arc.refresh_dimensions();
+
         let mob_weak: Weak<dyn Mob> = {
-            let mob_arc: Arc<dyn Mob> = mob_arc.clone();
-            Arc::downgrade(&mob_arc)
+            let mob_dyn: Arc<dyn Mob> = mob_arc.clone();
+            Arc::downgrade(&mob_dyn)
         };
+        let puffer_weak = Arc::downgrade(&mob_arc);
 
         {
             let mut goal_selector = mob_arc
@@ -74,7 +107,7 @@ impl PufferfishEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(0, Box::new(RandomSwimmingGoal::new(1.0)));
-            goal_selector.add_goal(1, Box::new(PufferfishPuffGoal::new(mob_arc.clone())));
+            goal_selector.add_goal(1, Box::new(PufferfishPuffGoal::new(puffer_weak)));
             goal_selector.add_goal(
                 2,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -86,72 +119,133 @@ impl PufferfishEntity {
     }
 
     #[must_use]
-    pub fn get_puff_state(&self) -> i32 {
-        self.puff_state.load(Ordering::Relaxed)
+    pub fn get_puff_state(&self) -> PuffState {
+        PuffState::from_id(self.puff_state.load(Ordering::Relaxed))
     }
 
-    pub fn set_puff_state(&self, state: i32) {
-        let clamped = state.clamp(0, 2);
-        self.puff_state.store(clamped, Ordering::Relaxed);
+    pub fn set_puff_state(&self, state: PuffState) {
+        if self.puff_state.swap(state.id(), Ordering::Relaxed) == state.id() {
+            return;
+        }
         self.mob_entity
             .living_entity
             .entity
-            .set_synced_data(tracked_data::pufferfish::PUFF_STATE, VarInt(clamped));
+            .set_synced_data(tracked_data::pufferfish::PUFF_STATE, VarInt(state.id()));
+        self.refresh_dimensions();
     }
-}
 
-pub struct PufferfishPuffGoal {
-    fish: Arc<PufferfishEntity>,
-}
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let scale = match self.get_puff_state() {
+            PuffState::Small => 0.5,
+            PuffState::Mid => 0.7,
+            PuffState::Full => 1.0,
+        };
 
-impl PufferfishPuffGoal {
-    #[must_use]
-    pub const fn new(fish: Arc<PufferfishEntity>) -> Self {
-        Self { fish }
+        let dimensions = EntityDimensions {
+            width: entity.entity_type.dimension[0] * scale,
+            height: entity.entity_type.dimension[1] * scale,
+            eye_height: entity.entity_type.eye_height * scale,
+        };
+
+        let pos = entity.pos.load();
+        entity
+            .bounding_box
+            .store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
-}
 
-impl Goal for PufferfishPuffGoal {
-    fn can_start(&mut self, mob: &dyn Mob) -> bool {
-        let entity = &mob.get_mob_entity().living_entity.entity;
+    pub(crate) fn start_inflating(&self) {
+        self.inflate_counter.store(1, Ordering::Relaxed);
+        self.deflate_timer.store(0, Ordering::Relaxed);
+    }
+
+    pub(crate) fn stop_inflating(&self) {
+        self.inflate_counter.store(0, Ordering::Relaxed);
+    }
+
+    fn is_alive(&self) -> bool {
+        let living = &self.mob_entity.living_entity;
+        living.entity.is_alive() && !living.dead.load(Ordering::Relaxed)
+    }
+
+    fn make_sound(&self, sound: Sound) {
+        let entity = &self.mob_entity.living_entity.entity;
+        if !entity.is_silent() {
+            entity.play_sound(sound);
+        }
+    }
+
+    fn tick_puff(&self) {
+        let puff_state = self.get_puff_state();
+        let inflate_counter = self.inflate_counter.load(Ordering::Relaxed);
+
+        if inflate_counter > 0 {
+            if puff_state == PuffState::Small {
+                self.make_sound(Sound::EntityPufferFishBlowUp);
+                self.set_puff_state(PuffState::Mid);
+            } else if inflate_counter > 40 && puff_state == PuffState::Mid {
+                self.make_sound(Sound::EntityPufferFishBlowUp);
+                self.set_puff_state(PuffState::Full);
+            }
+            self.inflate_counter.fetch_add(1, Ordering::Relaxed);
+        } else if puff_state != PuffState::Small {
+            let deflate_timer = self.deflate_timer.load(Ordering::Relaxed);
+
+            if deflate_timer > 60 && puff_state == PuffState::Full {
+                self.make_sound(Sound::EntityPufferFishBlowOut);
+                self.set_puff_state(PuffState::Mid);
+            } else if deflate_timer > 100 && puff_state == PuffState::Mid {
+                self.make_sound(Sound::EntityPufferFishBlowOut);
+                self.set_puff_state(PuffState::Small);
+            }
+            self.deflate_timer.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    fn touch_nearby_mobs(&self, caller: &dyn EntityBase) {
+        let entity = &self.mob_entity.living_entity.entity;
         let world = entity.world.load();
-        let my_id = entity.entity_id;
-        let bb = entity.bounding_box.load().expand_all(2.0);
-        let entities = world.get_entities_at_box(&bb);
+        let bounding_box = entity.bounding_box.load().expand_all(0.3);
 
-        entities.iter().any(|e| {
-            let other_entity = e.get_entity();
-            if other_entity.entity_id == my_id || !other_entity.is_alive() {
-                return false;
+        for target in world.get_entities_at_box(&bounding_box) {
+            if target.get_mob().is_some()
+                && self.is_scary(caller, target.as_ref())
+                && target.get_entity().is_alive()
+            {
+                self.touch(caller, target.as_ref());
             }
-            if let Some(player) = e.get_player() {
-                return player.gamemode.load() != pumpkin_util::GameMode::Creative
-                    && player.gamemode.load() != pumpkin_util::GameMode::Spectator;
+        }
+    }
+
+    fn touch(&self, caller: &dyn EntityBase, mob: &dyn EntityBase) {
+        let puff_state = self.get_puff_state();
+        if mob.damage_with_context(
+            mob,
+            (1 + puff_state.id()) as f32,
+            DamageType::MOB_ATTACK,
+            None,
+            Some(caller),
+            Some(caller),
+        ) {
+            if let Some(living) = mob.get_living_entity() {
+                living.add_effect(poison(puff_state));
             }
-            other_entity.entity_type != &EntityType::PUFFERFISH
-                && other_entity.entity_type != &EntityType::COD
-                && other_entity.entity_type != &EntityType::SALMON
-                && other_entity.entity_type != &EntityType::TROPICAL_FISH
-        })
+            self.make_sound(Sound::EntityPufferFishSting);
+        }
     }
 
-    fn start(&mut self, _mob: &dyn Mob) {
-        self.fish.inflate_counter.store(1, Ordering::Relaxed);
-        self.fish.deflate_timer.store(0, Ordering::Relaxed);
-    }
+    pub fn is_scary(&self, tester: &dyn EntityBase, target: &dyn EntityBase) -> bool {
+        let world = self.mob_entity.living_entity.entity.world.load();
 
-    fn stop(&mut self, _mob: &dyn Mob) {
-        self.fish.inflate_counter.store(0, Ordering::Relaxed);
-    }
-}
-
-impl CustomSound for PufferfishEntity {
-    fn death_sound(&self) -> Option<Sound> {
-        Some(Sound::EntityPufferFishDeath)
-    }
-
-    fn hurt_sound(&self) -> Option<Sound> {
-        Some(Sound::EntityPufferFishHurt)
+        TargetPredicate::create_non_attackable()
+            .ignore_visibility()
+            .test(&world, Some(tester), target)
+            && !target.get_player().is_some_and(Player::is_creative)
+            && !target
+                .get_entity()
+                .entity_type
+                .has_tag(&tag::EntityType::MINECRAFT_NOT_SCARY_FOR_PUFFERFISH)
     }
 }
 
@@ -180,7 +274,7 @@ impl Mob for PufferfishEntity {
         true
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
+    fn mob_tick(&self, caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
@@ -189,11 +283,12 @@ impl Mob for PufferfishEntity {
         let world = entity.world.load_full();
         let in_water = entity.touching_water.load(Ordering::Relaxed);
 
-
-
         // Flop on land (matching vanilla AbstractFish.aiStep)
         if !in_water {
-            self.mob_entity.living_entity.movement_input.store(Vector3::new(0.0, 0.0, 0.0));
+            self.mob_entity
+                .living_entity
+                .movement_input
+                .store(Vector3::new(0.0, 0.0, 0.0));
         }
 
         if !in_water && entity.on_ground.load(Ordering::Relaxed) {
@@ -214,101 +309,66 @@ impl Mob for PufferfishEntity {
             }
         }
 
-        let inflate = self.inflate_counter.load(Ordering::Relaxed);
-        let state = self.get_puff_state();
-
-        // Vanilla inflation sequence
-        if inflate > 0 {
-            if state == 0 {
-                world.play_sound(
-                    Sound::EntityPufferFishBlowUp,
-                    SoundCategory::Neutral,
-                    &entity.pos.load(),
-                );
-                self.set_puff_state(1);
-            } else if inflate > 40 && state == 1 {
-                world.play_sound(
-                    Sound::EntityPufferFishBlowUp,
-                    SoundCategory::Neutral,
-                    &entity.pos.load(),
-                );
-                self.set_puff_state(2);
-            }
-            self.inflate_counter.fetch_add(1, Ordering::Relaxed);
-        } else if state != 0 {
-            // Vanilla deflation sequence
-            let deflate = self.deflate_timer.load(Ordering::Relaxed);
-            if deflate > 60 && state == 2 {
-                world.play_sound(
-                    Sound::EntityPufferFishBlowOut,
-                    SoundCategory::Neutral,
-                    &entity.pos.load(),
-                );
-                self.set_puff_state(1);
-            } else if deflate > 100 && state == 1 {
-                world.play_sound(
-                    Sound::EntityPufferFishBlowOut,
-                    SoundCategory::Neutral,
-                    &entity.pos.load(),
-                );
-                self.set_puff_state(0);
-            }
-            self.deflate_timer.fetch_add(1, Ordering::Relaxed);
+        if self.is_alive() && !self.mob_entity.is_no_ai() {
+            self.tick_puff();
         }
 
-        // Vanilla sting & poison aura when inflated
-        if state > 0 {
-            let bb = entity.bounding_box.load().expand_all(0.3);
-            let targets = world.get_entities_at_box(&bb);
-            let my_id = entity.entity_id;
+        if self.is_alive() && self.get_puff_state() != PuffState::Small {
+            self.touch_nearby_mobs(caller);
+        }
+    }
 
-            for target in targets {
-                let target_entity = target.get_entity();
-                if target_entity.entity_id == my_id || !target_entity.is_alive() {
-                    continue;
-                }
-                if target_entity.entity_type == &EntityType::PUFFERFISH {
-                    continue;
-                }
-                if let Some(player) = target.get_player() {
-                    if player.gamemode.load() == pumpkin_util::GameMode::Creative
-                        || player.gamemode.load() == pumpkin_util::GameMode::Spectator
-                    {
-                        continue;
-                    }
-                }
+    fn mob_player_collision(&self, player: &Arc<Player>) {
+        let puff_state = self.get_puff_state();
+        if puff_state == PuffState::Small {
+            return;
+        }
 
-                if let Some(living) = target.get_living_entity() {
-                    let damage = (1 + state) as f32;
-                    let damaged = target.damage(target.as_ref(), damage, DamageType::MOB_ATTACK);
-                    if damaged {
-                        living.add_effect(Effect {
-                            effect_type: &StatusEffect::POISON,
-                            duration: 60 * state,
-                            amplifier: 0,
-                            ambient: false,
-                            show_particles: true,
-                            show_icon: true,
-                            blend: true,
-                        });
-                        world.play_sound(
-                            Sound::EntityPufferFishSting,
-                            SoundCategory::Neutral,
-                            &entity.pos.load(),
-                        );
-                    }
-                }
+        let caller: &dyn EntityBase = self;
+        if player.damage_with_context(
+            &**player,
+            (1 + puff_state.id()) as f32,
+            DamageType::MOB_ATTACK,
+            None,
+            Some(caller),
+            Some(caller),
+        ) {
+            if !self.mob_entity.living_entity.entity.is_silent() {
+                player.send_game_event(GameEvent::PlayPufferfishStringSound, 0.0);
             }
+            player.add_effect(poison(puff_state));
         }
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
-        nbt.put_int("PuffState", self.get_puff_state());
+        nbt.put_int("PuffState", self.puff_state.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
-        if let Some(state) = nbt.get_int("PuffState") {
-            self.set_puff_state(state);
+        if let Some(state_id) = nbt.get_int("PuffState") {
+            self.set_puff_state(PuffState::from_id(state_id));
         }
+    }
+}
+
+impl CustomSound for PufferfishEntity {
+    fn death_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityPufferFishDeath)
+    }
+
+    fn hurt_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityPufferFishHurt)
+    }
+}
+
+const fn poison(puff_state: PuffState) -> Effect {
+    Effect {
+        effect_type: &StatusEffect::POISON,
+        duration: 60 * puff_state.id(),
+        amplifier: 0,
+        ambient: false,
+        show_particles: true,
+        show_icon: true,
+        blend: false,
     }
 }
