@@ -3906,7 +3906,7 @@ impl World {
     ) {
         let block_interaction = self.get_block_interaction(interaction);
         let explosion = Explosion::new(power, position, block_interaction).with_fire(create_fire);
-        self.run_explosion(&explosion, position, power);
+        self.run_explosion(&explosion);
     }
 
     pub fn explode_with_calculator(
@@ -3983,6 +3983,9 @@ impl World {
         let sound = IdOr::<SoundEvent>::Id(explosion.sound as u16);
         for player in self.players.load().iter() {
             if player.position().squared_distance_to_vec(&position) > 4096.0 {
+                if let Some(knockback) = result.player_knockback.get(&player.entity_id()) {
+                    player.get_entity().add_velocity(*knockback);
+                }
                 continue;
             }
             player.try_send_client_packet(&CExplosion::new(
