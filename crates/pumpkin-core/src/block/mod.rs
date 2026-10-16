@@ -502,6 +502,12 @@ pub fn loot_table_name(block: &Block) -> Cow<'_, str> {
     }
 }
 
+#[must_use]
+pub fn loot_table_block(block: &Block) -> &Block {
+    let name = loot_table_name(block);
+    Block::from_name(&name).unwrap_or(block)
+}
+
 /// The items a block drops: its loot table, or what the registration of a custom block says.
 fn block_loot(world: &Arc<World>, block: &Block, params: &LootContextParameters) -> Vec<ItemStack> {
     let Some(info) = block.dynamic_info() else {
@@ -549,7 +555,8 @@ pub fn drop_loot(
     experience: bool,
     params: &LootContextParameters,
 ) {
-    let items = block_loot(world, block, params);
+    let loot_block = loot_table_block(block);
+    let items = block_loot(world, loot_block, params);
     if !items.is_empty() {
         let mut event = crate::plugin::block::block_drop_item::BlockDropItemEvent {
             block_pos: *pos,
@@ -565,7 +572,7 @@ pub fn drop_loot(
             let block_entity = world.get_block_entity(pos);
             for mut stack in event.items {
                 if let Some(block_entity) = &block_entity
-                    && Block::from_item_id(stack.item.id) == Some(block)
+                    && Block::from_item_id(stack.item.id) == Some(loot_block)
                 {
                     block_entity.collect_item_components(&mut stack);
                 }
