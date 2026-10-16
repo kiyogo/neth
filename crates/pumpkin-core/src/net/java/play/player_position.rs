@@ -125,7 +125,9 @@ impl JavaClient {
                 let horizontal_collision = packet.collision & FLAG_IN_WALL != 0;
                 entity.on_ground.store(new_on_ground, Ordering::Relaxed);
                 entity.horizontal_collision.store(horizontal_collision, Ordering::Relaxed);
-                if new_on_ground && entity.is_fall_flying() {
+                let was_fall_flying = entity.is_fall_flying();
+                if was_fall_flying && (new_on_ground || !player.living_entity.has_elytra_equipped())
+                {
                     entity.set_fall_flying(false);
                 }
                 let world = &player.world();
@@ -162,7 +164,7 @@ impl JavaClient {
                         player.as_ref(),
                         height_difference,
                         packet.collision & FLAG_ON_GROUND != 0,
-                        player.gamemode.load() == GameMode::Creative,
+                        player.gamemode.load() == GameMode::Creative || was_fall_flying,
                     );
                 }
                 chunker::update_position(player);
@@ -286,7 +288,9 @@ impl JavaClient {
                 let horizontal_collision = (packet.collision & FLAG_IN_WALL) != 0;
                 entity.on_ground.store(new_on_ground, Ordering::Relaxed);
                 entity.horizontal_collision.store(horizontal_collision, Ordering::Relaxed);
-                if new_on_ground && entity.is_fall_flying() {
+                let was_fall_flying = entity.is_fall_flying();
+                if was_fall_flying && (new_on_ground || !player.living_entity.has_elytra_equipped())
+                {
                     entity.set_fall_flying(false);
                 }
 
@@ -341,7 +345,7 @@ impl JavaClient {
                         player.as_ref(),
                         height_difference,
                         (packet.collision & FLAG_ON_GROUND) != 0,
-                        player.gamemode.load() == GameMode::Creative,
+                        player.gamemode.load() == GameMode::Creative || was_fall_flying,
                     );
                 }
                 chunker::update_position(player);

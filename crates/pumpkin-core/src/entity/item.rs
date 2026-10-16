@@ -729,6 +729,19 @@ impl EntityBase for ItemEntity {
             return;
         }
 
+        let initial_count = self
+            .item_stack
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .item_count;
+        if initial_count == 0
+            || !player
+                .living_entity
+                .can_pickup(&self.entity, initial_count.into())
+        {
+            return;
+        }
+
         // Inserted in place under the lock, so a parallel merge or destruction can't act on a
         // stale copy. An empty stack was already destroyed or merged away.
         let (item_id, count_before, inserted, count_after, is_empty) = {
@@ -749,7 +762,6 @@ impl EntityBase for ItemEntity {
                 stack.is_empty(),
             )
         };
-
         if inserted || player.is_creative() {
             player.inventory_changed.store(true, Ordering::Relaxed);
 
@@ -769,7 +781,7 @@ impl EntityBase for ItemEntity {
 
             player
                 .living_entity
-                .pickup(&self.entity, amount_picked_up.into());
+                .broadcast_pickup(&self.entity, amount_picked_up.into());
 
             player
                 .current_screen_handler
