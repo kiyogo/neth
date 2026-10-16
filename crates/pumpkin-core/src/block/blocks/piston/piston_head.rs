@@ -14,20 +14,21 @@ pub struct PistonHeadBlock;
 
 impl BlockBehaviour for PistonHeadBlock {
     fn broken(&self, args: BrokenArgs<'_>) {
-        let props = PistonHeadProperties::from_state_id(args.state.id);
-        let pos = args
-            .position
-            .offset(props.facing.opposite().to_block_direction().to_offset());
-        let (new_block, new_state) = args.world.get_block_and_state_id(&pos);
-        if &Block::PISTON == new_block || &Block::STICKY_PISTON == new_block {
-            let base_props = PistonProps::from_state_id(new_state);
-            if base_props.extended && base_props.facing == props.facing {
-                let flags = if args.player.gamemode.load() == pumpkin_util::GameMode::Creative {
-                    BlockFlags::SKIP_DROPS
-                } else {
-                    BlockFlags::empty()
-                };
-                args.world.break_block(&pos, Some(args.player), flags);
+        if args.player.gamemode.load() == pumpkin_util::GameMode::Creative {
+            let props = PistonHeadProperties::from_state_id(args.state.id);
+            let pos = args
+                .position
+                .offset(props.facing.opposite().to_block_direction().to_offset());
+            let (new_block, new_state) = args.world.get_block_and_state_id(&pos);
+            if &Block::PISTON == new_block || &Block::STICKY_PISTON == new_block {
+                let base_props = PistonProps::from_state_id(new_state);
+                if base_props.extended && base_props.facing == props.facing {
+                    args.world.set_block_state(
+                        &pos,
+                        Block::AIR.default_state.id,
+                        BlockFlags::NOTIFY_ALL | BlockFlags::FORCE_STATE,
+                    );
+                }
             }
         }
     }
