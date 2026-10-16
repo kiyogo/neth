@@ -60,6 +60,7 @@ use crate::generation::structure::structures::{
     StructureGeneratorContext, StructureInstance, StructurePiecesCollector, create_chunk_random,
 };
 use crate::generation::surface::rule::try_apply_material_rule;
+use crate::lighting::section_flags::SectionMask;
 use crate::{
     chunk::CHUNK_AREA,
     generation::{biome, positions::chunk_pos},
@@ -145,6 +146,9 @@ pub struct ProtoChunk {
     pub default_block: &'static BlockState,
     biome_mixer_seed: i64,
     pub(crate) flat_block_map: Vec<BlockStateId>,
+    /// Sections holding a light emitting block. Set as blocks are written and never cleared, so
+    /// it can name a section that no longer emits, but never miss one that does.
+    pub(crate) emitter_sections: SectionMask,
     pub flat_biome_map: Box<[u8]>,
     pub flat_surface_height_map: [i16; CHUNK_AREA],
     pub flat_ocean_floor_height_map: [i16; CHUNK_AREA],
@@ -167,6 +171,11 @@ pub struct ProtoChunk {
     pub pending_block_entities: Vec<NbtCompound>,
     pending_structure_entities: Vec<NbtCompound>,
     pub fluid_ticks: Vec<ScheduledTick<&'static Fluid>>,
+    pub sky_light_height: u32,
+    /// `PumpkinCustomData` carried through generation so a chunk that is loaded, demoted
+    /// to a proto chunk and rebuilt does not silently lose it. Plugins own most of what
+    /// lives in here; dropping it is data loss, not a recomputable cache miss.
+    pub custom_data: NbtCompound,
 }
 
 pub struct TerrainCache {
@@ -251,6 +260,7 @@ impl ProtoChunk {
             default_block,
             biome_mixer_seed,
             flat_block_map: Vec::new(),
+            emitter_sections: SectionMask::default(),
             flat_biome_map: vec![
                 Biome::PLAINS.id;
                 biome_coords::from_block(CHUNK_DIM as i32) as usize
@@ -285,6 +295,8 @@ impl ProtoChunk {
             pending_block_entities: Vec::new(),
             pending_structure_entities: Vec::new(),
             fluid_ticks: Vec::new(),
+            sky_light_height: 0,
+            custom_data: NbtCompound::new(),
         }
     }
 
@@ -304,6 +316,11 @@ impl ProtoChunk {
         proto_chunk
             .blending_data
             .clone_from(&chunk_data.blending_data);
+        proto_chunk.custom_data = chunk_data
+            .custom_data
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
 
         // Chunks loaded from disk carry their block entities in the chunk data.
         // Keep them so the world can create the block entities when the chunk
@@ -747,8 +764,14 @@ impl ProtoChunk {
     #[must_use]
     pub fn get_block_state_raw(&self, x: i32, y: i32, z: i32) -> BlockStateId {
         debug_assert!((0..i32::from(self.height())).contains(&y));
-        self.flat_block_map
-            .get(Self::local_pos_to_block_index(x, y, z))
+        Self::block_in(&self.flat_block_map, x, y, z)
+    }
+
+    /// Reads a detached `flat_block_map`, so callers can hold other fields mutably meanwhile.
+    #[inline]
+    #[must_use]
+    pub(crate) fn block_in(map: &[BlockStateId], x: i32, y: i32, z: i32) -> BlockStateId {
+        map.get(Self::local_pos_to_block_index(x, y, z))
             .copied()
             .unwrap_or(BlockStateId::AIR)
     }
@@ -789,6 +812,10 @@ impl ProtoChunk {
         block_y: i16,
         block_state: &BlockState,
     ) {
+        if block_state.luminance > 0 {
+            self.emitter_sections.set((local_y >> 4) as usize);
+        }
+
         if !block_state.is_air() {
             let index = Self::local_position_to_height_map_index(local_x, local_z);
             self.maybe_update_surface_height_map(index, block_y);

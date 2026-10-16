@@ -1,5 +1,5 @@
 use crate::generation::proto_chunk::GenerationCache;
-use crate::lighting::engine::{BlockLightProvider, LightProvider};
+use crate::lighting::engine::BlockLightProvider;
 use pumpkin_data::block_properties::{BlockProperties, GrassBlockLikeProperties};
 use pumpkin_data::tag;
 use pumpkin_data::{Block, BlockId, BlockState};
