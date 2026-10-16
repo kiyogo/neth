@@ -1090,7 +1090,7 @@ mod tests {
         assert!(decoded.get_data_component::<UnbreakableImpl>().is_some());
     }
 
-    /// Translation keys survive item NBT persistence without becoming literal text.
+    #[test]
     fn item_stack_nbt_counts_outside_a_byte_are_rejected() {
         for count in [-1, 256] {
             let mut compound = NbtCompound::new();
