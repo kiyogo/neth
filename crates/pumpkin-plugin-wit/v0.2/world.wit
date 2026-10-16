@@ -494,6 +494,15 @@ interface %world {
         /// Returns all entities currently leashed to this entity.
         get-leashed-entities: func() -> list<entity>;
 
+        /// Returns whether this entity is currently leashed to another entity.
+        is-leashed: func() -> bool;
+
+        /// Returns the entity this entity is leashed to, if any.
+        get-leash-holder: func() -> option<entity>;
+
+        /// Returns all entities currently leashed to this entity.
+        get-leashed-entities: func() -> list<entity>;
+
         get-bounding-box: func() -> bounding-box;
 
         is-in-water: func() -> bool;
