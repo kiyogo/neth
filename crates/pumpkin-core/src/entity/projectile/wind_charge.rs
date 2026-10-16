@@ -153,6 +153,10 @@ impl WindChargeEntity {
 }
 
 impl EntityBase for WindChargeEntity {
+    fn can_hit(&self) -> bool {
+        !self.get_entity().is_removed()
+    }
+
     fn get_owner_id(&self) -> Option<i32> {
         self.owner_id.load()
     }
