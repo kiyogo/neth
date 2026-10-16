@@ -7,7 +7,9 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -15,6 +17,7 @@ use crate::entity::{
     item::ItemEntity,
     mob::{Mob, MobEntity, equipment::RegionalDifficulty, skeleton::SkeletonEntityBase},
     player::Player,
+    shearable::{Shearable, shear_by_player, shearing_loot},
 };
 use crate::world::World;
 
@@ -30,27 +33,18 @@ impl BoggedSkeletonEntity {
             entity,
             sheared: AtomicBool::new(false),
         };
-        let bogged_arc = Arc::new(bogged);
-        bogged_arc.mob_init_data_tracker();
-        bogged_arc
+        Arc::new(bogged)
     }
 
+    #[must_use]
     pub fn is_sheared(&self) -> bool {
         self.sheared.load(Ordering::Relaxed)
     }
 
     pub fn set_sheared(&self, sheared: bool) {
         self.sheared.store(sheared, Ordering::Relaxed);
-        let entity = &self.entity.mob_entity.living_entity.entity;
-        entity.set_synced_data(pumpkin_data::tracked_data::bogged::DATA_SHEARED, sheared);
-    }
-
-    fn mob_init_data_tracker(&self) {
-        let entity = &self.entity.mob_entity.living_entity.entity;
-        entity.set_synced_data(
-            pumpkin_data::tracked_data::bogged::DATA_SHEARED,
-            self.is_sheared(),
-        );
+        self.get_entity()
+            .set_synced_data(tracked_data::bogged::DATA_SHEARED, sheared);
     }
 }
 
@@ -64,12 +58,43 @@ impl CustomSound for BoggedSkeletonEntity {
     }
 }
 
+impl Shearable for BoggedSkeletonEntity {
+    fn shear(&self, sound_category: SoundCategory, tool: &ItemStack) -> bool {
+        if self.sheared.swap(true, Ordering::Relaxed) {
+            return false;
+        }
+
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        world.play_sound(Sound::EntityBoggedShear, sound_category, &pos);
+
+        let drop_pos = Vector3::new(pos.x, pos.y + f64::from(entity.height()), pos.z);
+        for drop in shearing_loot(entity, "minecraft:shearing/bogged", tool) {
+            world.spawn_entity(Arc::new(ItemEntity::new(
+                Entity::new(world.clone(), drop_pos, &EntityType::ITEM),
+                drop,
+            )));
+        }
+        self.set_sheared(true);
+        true
+    }
+
+    fn ready_for_shearing(&self) -> bool {
+        !self.is_sheared()
+    }
+}
+
 impl Mob for BoggedSkeletonEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.entity.mob_entity
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
+        Some(self)
+    }
+
+    fn as_shearable(&self) -> Option<&dyn Shearable> {
         Some(self)
     }
 
@@ -110,62 +135,24 @@ impl Mob for BoggedSkeletonEntity {
         Some(arrow)
     }
 
+    fn mob_init_data_tracker(&self) {
+        self.get_entity()
+            .set_synced_data(tracked_data::bogged::DATA_SHEARED, self.is_sheared());
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_bool("sheared", self.is_sheared());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
-        if let Some(sheared) = nbt.get_bool("sheared") {
-            self.set_sheared(sheared);
-        }
+        self.set_sheared(nbt.get_bool("sheared").unwrap_or(false));
     }
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
-        let item = item_stack.get_item();
-        if item == &Item::SHEARS && !self.is_sheared() {
-            let entity = self.get_entity();
-            let world = entity.world.load();
-            if let Some(player_arc) = world.get_player_by_uuid(player.gameprofile.id)
-                && let Some(server) = world.server.upgrade()
-            {
-                let mut event =
-                    crate::plugin::api::events::player::player_shear_entity::PlayerShearEntityEvent {
-                        player: player_arc,
-                        entity_id: entity.entity_id,
-                        hand: 0,
-                        cancelled: false,
-                    };
-                server.plugin_manager.fire_blocking(&server, &mut event);
-                if event.cancelled {
-                    return false;
-                }
-            }
-            let pos = entity.pos.load();
-
-            world.play_sound(Sound::EntityBoggedShear, SoundCategory::Players, &pos);
-
-            for _ in 0..2 {
-                let mushroom = if rand::random::<bool>() {
-                    &Item::BROWN_MUSHROOM
-                } else {
-                    &Item::RED_MUSHROOM
-                };
-
-                let item_entity = Arc::new(ItemEntity::new(
-                    Entity::new(world.clone(), pos, &EntityType::ITEM),
-                    ItemStack::new(1, mushroom),
-                ));
-
-                world.spawn_entity(item_entity);
-            }
-
-            self.set_sheared(true);
-            player.damage_held_item(1);
-
-            true
-        } else {
-            self.entity.mob_entity.mob_interact(player, item_stack)
+        if item_stack.get_item() == &Item::SHEARS && self.ready_for_shearing() {
+            return shear_by_player(self, player, item_stack);
         }
+        self.entity.mob_entity.mob_interact(player, item_stack)
     }
 
     fn populate_default_equipment_slots(
@@ -180,5 +167,23 @@ impl Mob for BoggedSkeletonEntity {
     fn populate_default_equipment_enchantments(&self, difficulty: &RegionalDifficulty) {
         self.entity
             .populate_default_equipment_enchantments(difficulty);
+    }
+}
+
+impl EntityBase for BoggedSkeletonEntity {
+    fn get_entity(&self) -> &Entity {
+        &self.entity.mob_entity.living_entity.entity
+    }
+
+    fn get_living_entity(&self) -> Option<&LivingEntity> {
+        Some(&self.entity.mob_entity.living_entity)
+    }
+
+    fn get_mob(&self) -> Option<&dyn Mob> {
+        Some(self)
+    }
+
+    fn cast_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
