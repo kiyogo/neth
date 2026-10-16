@@ -643,6 +643,9 @@ impl Level {
         if chunk.has_scheduled_ticks() {
             self.chunks_with_scheduled_ticks.insert(pos);
         }
+        if chunk.has_scheduled_ticks() {
+            self.chunks_with_scheduled_ticks.insert(pos);
+        }
         f(&chunk)
     }
 

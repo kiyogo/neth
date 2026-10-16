@@ -121,6 +121,10 @@ impl<'a, T: std::hash::Hash + Eq> ChunkTickScheduler<&'a T> {
         for queue in &mut inner.tick_queue {
             queue.retain(|tick| tick.position != pos || tick.value != value);
         }
+        inner.far_ticks.retain(|_, queue| {
+            queue.retain(|tick| tick.position != pos || tick.value != value);
+            !queue.is_empty()
+        });
 
         if inner.queued_ticks.is_empty() {
             *inner_guard = None;
@@ -295,7 +299,6 @@ mod tests {
         let loaded: ChunkTickScheduler<_> = saved.into_iter().collect();
         assert_eq!(fired_steps(&loaded, 3501), vec![(0, 3501)]);
     }
-
     #[test]
     fn remove_tick_clears_the_queued_entry() {
         let scheduler = ChunkTickScheduler::default();
