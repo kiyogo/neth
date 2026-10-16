@@ -459,7 +459,7 @@ fn move_piston(
             .break_block(
                 &broken_block_pos,
                 None,
-                BlockFlags::NOTIFY_LISTENERS | BlockFlags::FORCE_STATE,
+                BlockFlags::NOTIFY_LISTENERS | BlockFlags::UPDATE_KNOWN_SHAPE,
             )
             .is_some()
         {
@@ -483,7 +483,7 @@ fn move_piston(
         world.set_block_state(
             &target_pos,
             state,
-            BlockFlags::NOTIFY_LISTENERS | BlockFlags::MOVED,
+            BlockFlags::MOVED | BlockFlags::SKIP_BLOCK_ENTITY_REPLACED_CALLBACK,
         );
 
         if let Some(moved_state) = moved_block_states.get(moved_blocks.len() - 1 - index) {
@@ -514,7 +514,7 @@ fn move_piston(
         world.set_block_state(
             &extended_pos,
             props.to_state_id(&Block::MOVING_PISTON),
-            BlockFlags::NOTIFY_LISTENERS | BlockFlags::MOVED,
+            BlockFlags::MOVED | BlockFlags::SKIP_BLOCK_ENTITY_REPLACED_CALLBACK,
         );
         let mut props = PistonHeadLikeProperties::default(&Block::PISTON_HEAD);
         props.facing = dir.to_facing();
@@ -536,7 +536,7 @@ fn move_piston(
         world.set_block_state(
             &pos,
             air_state,
-            BlockFlags::NOTIFY_LISTENERS | BlockFlags::FORCE_STATE | BlockFlags::MOVED,
+            BlockFlags::NOTIFY_LISTENERS | BlockFlags::UPDATE_KNOWN_SHAPE | BlockFlags::MOVED,
         );
     }
 
