@@ -154,7 +154,6 @@ impl ShulkerBoxBlockEntity {
     pub const OPEN_ANIMATION_EVENT_TYPE: u8 = 1;
     pub const ID: &'static str = "minecraft:shulker_box";
     const ANIMATION_TICKS: u8 = 10;
-
     pub fn is_closed(&self) -> bool {
         self.viewers.get_viewer_count() == 0 && self.animation_progress.load(Ordering::Relaxed) == 0
     }

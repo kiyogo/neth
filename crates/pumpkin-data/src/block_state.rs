@@ -116,6 +116,12 @@ impl BlockState {
         self.state_flags & IS_FULL_CUBE != 0
     }
 
+    /// Static suffocation predicate extracted from vanilla; block entities may override it.
+    #[must_use]
+    pub const fn is_suffocating(&self) -> bool {
+        self.state_flags & IS_SUFFOCATING != 0
+    }
+
     /// Returns whether the block is solid.
     /// Solid blocks conduct redstone and block redstone wire.
     /// Non-solid blocks don't allow redstone wire on top to propagate their signal downwards in java.
@@ -435,8 +441,9 @@ pub(crate) const HAS_RANDOM_TICKS: u16 = 1 << 9;
 pub(crate) const IS_SOLID_RENDER: u16 = 1 << 10;
 pub(crate) const CAN_OCCLUDE: u16 = 1 << 11;
 pub(crate) const HAS_ANALOG_OUTPUT_SIGNAL: u16 = 1 << 12;
+pub(crate) const IS_SUFFOCATING: u16 = 1 << 13;
 /// Only set on blocks that plugins register, see `BlockState::never_suffocates`.
-pub(crate) const NEVER_SUFFOCATES: u16 = 1 << 13;
+pub(crate) const NEVER_SUFFOCATES: u16 = 1 << 14;
 
 // side_flags
 pub(crate) const DOWN_SIDE_SOLID: u8 = 1 << 0;

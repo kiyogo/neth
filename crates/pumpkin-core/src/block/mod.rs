@@ -1,3 +1,4 @@
+use pumpkin_data::block_properties::StickyPistonLikeProperties;
 use pumpkin_data::block_registry::BlockDrops;
 use pumpkin_data::fluid::Fluid;
 use pumpkin_data::item::Item;
@@ -58,7 +59,7 @@ pub(crate) fn is_suffocating(
         });
     }
     if matches!(block.id, BlockId::PISTON | BlockId::STICKY_PISTON) {
-        return !pumpkin_data::block_properties::StickyPistonLikeProperties::from_state_id(state.id).extended;
+        return !StickyPistonLikeProperties::from_state_id(state.id).extended;
     }
     state.is_suffocating()
 }
