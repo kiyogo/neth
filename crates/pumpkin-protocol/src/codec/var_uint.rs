@@ -225,7 +225,6 @@ mod tests {
                 .is_err()
         );
     }
-
     #[test]
     fn packet_read_rejects_overflowing_final_byte() {
         assert!(VarUInt::read(&mut &[0x80, 0x80, 0x80, 0x80, 0x10][..]).is_err());

@@ -197,7 +197,6 @@ mod tests {
         let mut overflow = [0xFF; 10];
         overflow[9] = 0x03;
         assert!(VarLong::read(&mut overflow.as_slice()).is_err());
-
         let mut too_big = vec![0x80; 9];
         too_big.push(0x02);
         assert!(VarLong::read(&mut &too_big[..]).is_err());

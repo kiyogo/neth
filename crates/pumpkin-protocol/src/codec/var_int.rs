@@ -260,7 +260,6 @@ mod tests {
                 .await
                 .is_err()
         );
-    }
 }
 
 #[cfg(test)]
