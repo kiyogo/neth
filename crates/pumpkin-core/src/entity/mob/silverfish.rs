@@ -236,7 +236,6 @@ impl CustomSound for SilverfishEntity {
         Some(Sound::EntitySilverfishHurt)
     }
 }
-
 impl Mob for SilverfishEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.entity
@@ -255,7 +254,6 @@ impl Mob for SilverfishEntity {
         let yaw = entity.yaw.load();
         entity.body_yaw.store(yaw);
         entity.head_yaw.store(yaw);
-
         // Vanilla ambient sound
         if rand::random_range(0..100) == 0 && !entity.silent.load(Ordering::Relaxed) {
             entity.world.load().play_sound_fine(
