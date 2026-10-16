@@ -53,6 +53,7 @@ impl TNTEntity {
             f64::from(position.0.z) + 0.5,
         );
         let entity = Entity::new(world.clone(), pos, &EntityType::TNT);
+        // TODO: vanilla rolls from `level.random`; same odds, not seed-reproducible.
         let rot = rand::random::<f64>() * TAU;
         entity
             .velocity

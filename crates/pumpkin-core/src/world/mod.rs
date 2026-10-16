@@ -6227,6 +6227,7 @@ impl World {
 
     pub fn drop_stack(self: &Arc<Self>, pos: &BlockPos, stack: ItemStack) {
         let half_height = f64::from(EntityType::ITEM.dimension[1]) / 2.0;
+        // TODO: vanilla `popResource` rolls from `level.random`; not seed-reproducible.
         let spawn_pos = {
             let mut r = rand::rng();
             Vector3::new(
