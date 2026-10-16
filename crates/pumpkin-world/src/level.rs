@@ -1130,33 +1130,29 @@ mod tests {
             0,
             Dimension::OVERWORLD,
         );
-        let pos = Vector2::new(0, 0);
+        let chunk_pos = Vector2::new(2, 3);
+        let block_pos = BlockPos::new(32, 64, 48);
+        let fluid_pos = BlockPos::new(33, 64, 48);
         level
             .loaded_chunks
-            .insert(pos, ChunkData::empty_sync(pos.x, pos.y));
-        level.schedule_block_tick(
-            &Block::STONE,
-            BlockPos::new(0, 64, 0),
-            1,
-            TickPriority::Normal,
-        );
+            .insert(chunk_pos, ChunkData::empty_sync(chunk_pos.x, chunk_pos.y));
+        level.schedule_block_tick(&Block::STONE, block_pos, 0, TickPriority::Normal);
+        level.schedule_fluid_tick(&Fluid::WATER, fluid_pos, 0, TickPriority::Normal);
 
         let inactive = FxHashSet::default();
         assert!(level.get_tick_data(&inactive, 0).block_ticks.is_empty());
-        assert!(level.chunks_with_scheduled_ticks.contains(&pos));
+        assert!(level.get_tick_data(&inactive, 0).fluid_ticks.is_empty());
+        assert!(level.chunks_with_scheduled_ticks.contains(&chunk_pos));
 
-        let active = FxHashSet::from_iter([pos]);
-        assert_eq!(level.get_tick_data(&active, 0).block_ticks.len(), 1);
+        let active = FxHashSet::from_iter([chunk_pos]);
+        let ticks = level.get_tick_data(&active, 0);
+        assert_eq!(ticks.block_ticks.len(), 1);
+        assert_eq!(ticks.fluid_ticks.len(), 1);
 
         // An unloaded chunk is dropped even when inactive; it re-registers when it loads.
-        level.schedule_block_tick(
-            &Block::STONE,
-            BlockPos::new(0, 64, 0),
-            1,
-            TickPriority::Normal,
-        );
-        level.loaded_chunks.remove(&pos);
+        level.schedule_block_tick(&Block::STONE, block_pos, 1, TickPriority::Normal);
+        level.loaded_chunks.remove(&chunk_pos);
         level.get_tick_data(&inactive, 0);
-        assert!(!level.chunks_with_scheduled_ticks.contains(&pos));
+        assert!(!level.chunks_with_scheduled_ticks.contains(&chunk_pos));
     }
 }
