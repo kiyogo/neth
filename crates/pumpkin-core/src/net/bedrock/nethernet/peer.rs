@@ -307,6 +307,115 @@ fn remove_component_two_candidates(sdp: &str) -> String {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn abandoned_sessions_expire_after_signaling_returns()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut abandoned = None;
+        let mut active = None;
+        for accepted in [false, true] {
+            let address = "127.0.0.1:19132".parse()?;
+            let handler = Arc::new(NetherNetEventHandler {
+                session: Mutex::new(None),
+                address,
+                gathering_notify: Arc::new(tokio::sync::Notify::new()),
+            });
+            let peer = Arc::new(
+                Box::pin(
+                    PeerConnectionBuilder::new()
+                        .with_handler(handler.clone())
+                        .with_udp_addrs(vec!["127.0.0.1:0"])
+                        .build(),
+                )
+                .await?,
+            );
+            let (incoming, _receiver) = mpsc::channel(1);
+            let session = Arc::new(NetherNetSession::new(peer.clone(), None, address, incoming));
+            handler.set_session(session.clone()).await;
+            if accepted {
+                session.channel_opened(1).await;
+                session.channel_opened(2).await;
+                active = Some(session.clone());
+            } else {
+                abandoned = Some(Arc::downgrade(&session));
+            }
+            drop(session);
+            drop(handler);
+        }
+        let weak = abandoned.ok_or("missing pending session")?;
+        // A signaling response is returned before the channels have opened.
+        assert!(
+            weak.upgrade().is_some(),
+            "signaling must keep the pending session alive"
+        );
+        let released = tokio::time::timeout(Duration::from_secs(35), async {
+            while weak.upgrade().is_some() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        assert!(
+            released.is_ok(),
+            "abandoned negotiation retained its session"
+        );
+        let active = active.ok_or("missing accepted session")?;
+        let stayed_open = !active.is_closed();
+        active.close().await;
+        assert!(
+            stayed_open,
+            "accepted session expired with the pending sessions"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn closed_sessions_are_released() -> Result<(), Box<dyn std::error::Error>> {
+        let address = "127.0.0.1:19132".parse()?;
+        let mut sessions = Vec::new();
+        for remote_close in [false, true] {
+            let handler = Arc::new(NetherNetEventHandler {
+                session: Mutex::new(None),
+                address,
+                gathering_notify: Arc::new(tokio::sync::Notify::new()),
+            });
+            let peer = Arc::new(
+                Box::pin(
+                    PeerConnectionBuilder::new()
+                        .with_handler(handler.clone())
+                        .with_udp_addrs(vec!["127.0.0.1:0"])
+                        .build(),
+                )
+                .await?,
+            );
+            let (incoming, _receiver) = mpsc::channel(1);
+            let session = Arc::new(NetherNetSession::new(peer.clone(), None, address, incoming));
+            handler.set_session(session.clone()).await;
+            let channel = peer
+                .create_data_channel("ReliableDataChannel", None)
+                .await?;
+            session.attach_channel(channel).await?;
+            sessions.push(Arc::downgrade(&session));
+            if remote_close {
+                handler
+                    .on_connection_state_change(RTCPeerConnectionState::Disconnected)
+                    .await;
+            }
+            session.close().await;
+            drop(session);
+            drop(handler);
+        }
+        let released = tokio::time::timeout(Duration::from_secs(1), async {
+            while sessions.iter().any(|session| session.upgrade().is_some()) {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await;
+        assert!(
+            released.is_ok(),
+            "closed sessions remain owned by their event handlers"
+        );
+        Ok(())
+    }
+
     #[test]
     fn data_channel_sdp_only_advertises_component_one() {
         let sdp = "v=0\r\na=candidate:1 1 udp 1 192.0.2.1 19134 typ host\r\na=candidate:1 2 udp 1 192.0.2.1 19134 typ host\r\na=end-of-candidates\r\n";
