@@ -1381,7 +1381,7 @@ impl Player {
         let mut damage_multiplier = 1.0;
 
         let mut extra_ench_damage = 0.0;
-        let mut knockback_level = 0u32;
+        let mut enchantment_knockback = 0.0f64;
 
         {
             let stack = &item_stack;
@@ -1394,7 +1394,7 @@ impl Player {
                     );
                     let mut kb = 0.0f32;
                     enchantment.modify_knockback(*level, &mut kb);
-                    knockback_level += kb as u32;
+                    enchantment_knockback += f64::from(kb);
                 }
             }
         }
@@ -1416,19 +1416,8 @@ impl Player {
         // Modify the added damage based on the multiplier.
         let mut damage = damage * damage_multiplier;
         damage += extra_ench_damage * attack_cooldown_progress;
-
-        if let Some(strength) = self
-            .living_entity
-            .get_effect(&pumpkin_data::effect::StatusEffect::STRENGTH)
-        {
-            damage += 3.0 * (f64::from(strength.amplifier) + 1.0);
-        }
-        if let Some(weakness) = self
-            .living_entity
-            .get_effect(&pumpkin_data::effect::StatusEffect::WEAKNESS)
-        {
-            damage -= 4.0 * (f64::from(weakness.amplifier) + 1.0);
-        }
+        // Strength and Weakness are modifiers on ATTACK_DAMAGE, so
+        // `base_damage` already carries them, like vanilla `Player.attack`.
         damage = damage.max(0.0);
 
         let pos = victim_entity.pos.load();
@@ -1550,11 +1539,15 @@ impl Player {
         );
 
         if victim.get_living_entity().is_some() {
-            // Vanilla `Player.attack` adds `LivingEntity.getKnockback()` - the Knockback
-            // enchantment bonus, halved - plus 0.5 for a sprint attack, on top of the base
-            // knockback the victim's damage handling applies. A plain hit adds nothing.
-            // `handle_knockback` halves `strength`, so these are twice the vanilla amount.
-            let mut knockback_strength = f64::from(knockback_level);
+            // Vanilla `LivingEntity.getKnockback` starts from the ATTACK_KNOCKBACK
+            // attribute and applies the weapon's enchantments, then halves:
+            // `(attribute + enchantment) / 2`. A sprint attack adds 0.5.
+            // `handle_knockback` halves its `strength`, so these are twice the
+            // vanilla amount.
+            let mut knockback_strength = self
+                .living_entity
+                .get_attribute_value(&Attributes::ATTACK_KNOCKBACK)
+                + enchantment_knockback;
             match attack_type {
                 AttackType::Knockback => knockback_strength += 1.0,
                 AttackType::Sweeping => {
@@ -1578,6 +1571,9 @@ impl Player {
                         Vector3::new(pos.x - 1.0, pos.y - 0.25, pos.z - 1.0),
                         Vector3::new(pos.x + 1.0, pos.y + 0.25, pos.z + 1.0),
                     );
+                    let yaw = f64::from(attacker_entity.yaw.load().to_radians());
+                    let knockback_x = yaw.sin();
+                    let knockback_z = -yaw.cos();
                     let victims = world.get_all_at_box(&search_box);
                     let attacker_yaw = (self.living_entity.entity.yaw.load() as f64).to_radians();
                     let sin_yaw = attacker_yaw.sin();
@@ -1593,24 +1589,25 @@ impl Player {
                                 - self.living_entity.entity.pos.load())
                             .length_squared();
                             if dist_sq < 9.0 {
-                                if other_victim.damage_with_context(
+                                let hurt = other_victim.damage_with_context(
                                     other_victim.as_ref(),
                                     sweep_damage,
                                     DamageType::PLAYER_ATTACK,
                                     Some(attacker_entity.pos.load()),
                                     Some(self),
                                     Some(self),
-                                ) && config.knockback
-                                {
-                                    other_ent.knockback(0.4, sin_yaw, cos_yaw);
-                                    if let Some(other_player) =
-                                        other_victim.cast_any().downcast_ref::<Player>()
-                                    {
-                                        other_player.try_send_client_packet(&CEntityVelocity::new(
-                                            other_player.entity_id().into(),
-                                            other_ent.velocity.load(),
-                                        ));
-                                    }
+                                );
+                                // Vanilla Player.doSweepAttack knocks every hurt victim
+                                // back by 0.4 along the attacker's facing.
+                                if hurt && let Some(living) = other_victim.get_living_entity() {
+                                    let resistance =
+                                        living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
+                                    other_victim.get_entity().apply_knockback(
+                                        combat::knockback_after_resistance(0.4, resistance),
+                                        knockback_x,
+                                        knockback_z,
+                                        Some(attacker_entity),
+                                    );
                                 }
                             }
                         }
@@ -1623,6 +1620,8 @@ impl Player {
             // would still slow the victim down.
             if config.knockback && knockback_strength > 0.0 {
                 combat::handle_knockback(attacker_entity, victim.as_ref(), knockback_strength);
+                // Vanilla `Player.causeExtraKnockback` ends the sprint.
+                self.living_entity.set_sprinting(false);
             }
         }
 
@@ -5612,6 +5611,7 @@ impl Player {
                         id: Self::EFFICIENCY_ATTRIBUTE_MODIFIER_ID.to_string(),
                         amount: f64::from(level * level + 1),
                         operation: ModifierOperation::Add,
+                        permanent: false,
                     });
                 } else {
                     inst.remove_modifier(Self::EFFICIENCY_ATTRIBUTE_MODIFIER_ID);
