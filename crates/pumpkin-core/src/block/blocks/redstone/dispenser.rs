@@ -34,8 +34,8 @@ use crate::entity::{Entity, EntityBase};
 use crate::item::ItemMetadata;
 use crate::item::items::boat::BoatItem;
 use crate::item::items::bucket::{
-    FilledBucketItem, get_mob_for_bucket, play_bucket_evaporation, should_evaporate_in_nether,
-    try_pickup_fluid_at, try_place_filled_bucket,
+    FilledBucketItem, check_extra_content, play_bucket_evaporation, play_empty_sound,
+    should_evaporate_in_nether, try_pickup_fluid_at, try_place_filled_bucket,
 };
 use crate::item::items::honeycomb::try_wax_block;
 use crate::item::items::ignite::ignition::Ignition;
@@ -839,35 +839,31 @@ impl DispenserBlock {
 
     fn dispense_filled_bucket(ctx: &DispenseContext<'_>, item: &mut ItemStack) {
         let front = Self::target_position(ctx);
-        let item_ref = item.item;
+        let (front_block, front_state) = ctx.world.get_block_and_state(&front);
+        // Vanilla `BlockState.canBeReplaced(Fluid)` is `replaceable || !solid`.
+        let can_place_fluid_inside = front_state.is_air()
+            || front_state.replaceable()
+            || !front_state.is_solid()
+            || front_block.is_waterloggable();
 
-        let emptied = if should_evaporate_in_nether(item.item, ctx.world) {
+        let emptied = if can_place_fluid_inside && should_evaporate_in_nether(item.item, ctx.world)
+        {
             play_bucket_evaporation(ctx.world, &front.to_f64());
             true
+        } else if try_place_filled_bucket(
+            ctx.world,
+            item.item,
+            *ctx.position,
+            ctx.facing.to_block_direction(),
+        ) {
+            play_empty_sound(ctx.world, item.item, front);
+            true
         } else {
-            try_place_filled_bucket(
-                ctx.world,
-                item.item,
-                *ctx.position,
-                ctx.facing.to_block_direction(),
-            )
+            false
         };
 
         if emptied {
-            if let Some((entity_type, sound)) = get_mob_for_bucket(item_ref) {
-                let spawn_coord = Vector3::new(
-                    f64::from(front.0.x) + 0.5,
-                    f64::from(front.0.y),
-                    f64::from(front.0.z) + 0.5,
-                );
-                let mob = from_type(entity_type, spawn_coord, ctx.world, Uuid::new_v4());
-                ctx.world.spawn_entity(mob);
-                ctx.world.play_sound(
-                    sound,
-                    pumpkin_data::sound::SoundCategory::Blocks,
-                    &spawn_coord,
-                );
-            }
+            check_extra_content(ctx.world, item.item, front);
             *item = ItemStack::new(1, &Item::BUCKET);
             Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserDispense);
         } else {
