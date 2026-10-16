@@ -95,6 +95,10 @@ impl BlockBehaviour for JukeboxBlock {
             Self::drop_record(args.position, args.world);
             // Stop the music and update block state
             Self::stop_playing(args.block, args.position, args.world);
+            args.world.emit_game_event(
+                GameEvent::BlockChange.name(),
+                args.position.to_centered_f64(),
+            );
             return BlockActionResult::Success;
         }
 
@@ -163,7 +167,6 @@ impl BlockBehaviour for JukeboxBlock {
                 crate::entity::player::advancement::trigger::AdvancementTrigger::PlayJukeboxInMeadows,
             );
         }
-
         world.emit_game_event(
             GameEvent::BlockChange.name(),
             args.position.to_centered_f64(),
