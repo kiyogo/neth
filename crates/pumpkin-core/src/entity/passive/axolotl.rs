@@ -27,6 +27,7 @@ use crate::entity::{
     passive::animal::Animal,
     player::Player,
 };
+use crate::item::items::bucket::create_filled_result;
 
 const TEMPT_ITEMS: &[&Item] = &[&Item::TROPICAL_FISH_BUCKET];
 
@@ -399,16 +400,7 @@ impl Mob for AxolotlEntity {
                     return false;
                 }
             }
-            item_stack.decrement_unless_creative(player.gamemode.load(), 1);
-            let mut bucket = ItemStack::new(1, &Item::AXOLOTL_BUCKET);
-            if item_stack.is_empty() {
-                *item_stack = bucket;
-            } else {
-                let was_added = player.inventory().insert_stack_anywhere(&mut bucket);
-                if !was_added && !bucket.is_empty() {
-                    world.drop_stack(&player.position().to_block_pos(), bucket);
-                }
-            }
+            create_filled_result(item_stack, player, &Item::AXOLOTL_BUCKET, false);
             player.increment_stat(
                 pumpkin_data::statistic::StatisticCategory::Used,
                 Item::WATER_BUCKET.id as i32,

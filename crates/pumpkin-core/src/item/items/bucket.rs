@@ -130,38 +130,37 @@ const fn get_fill_sound(item: &Item) -> Sound {
     }
 }
 
-fn give_player_bucket_item(player: &Player, item: &'static Item, hand: Hand) {
-    if player.gamemode.load() == GameMode::Creative {
+/// Mirrors vanilla `ItemUtils.createFilledResult`.
+pub(crate) fn create_filled_result(
+    item: &mut ItemStack,
+    player: &Player,
+    filled: &'static Item,
+    limit_creative_stack_size: bool,
+) {
+    let mut filled_stack = ItemStack::new(1, filled);
+    if limit_creative_stack_size && player.gamemode.load() == GameMode::Creative {
         let has_item = {
             let inv = player
                 .inventory
                 .main_inventory
                 .read()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            inv.iter().any(|stack| stack.item.id == item.id)
+            inv.iter().any(|stack| stack.item.id == filled.id)
         };
-        if has_item {
-            return;
+        if !has_item {
+            player.inventory.insert_stack_anywhere(&mut filled_stack);
         }
-        let mut item_stack = ItemStack::new(1, item);
-        player.inventory.insert_stack_anywhere(&mut item_stack);
-    } else {
-        let item_stack = ItemStack::new(1, item);
-        let mut held_stack = player.inventory.get_stack_in_hand(hand);
+        return;
+    }
 
-        if held_stack.item_count == 1 {
-            player.inventory.set_stack_in_hand(hand, item_stack);
-        } else {
-            held_stack.decrement(1);
-            player.inventory.set_stack_in_hand(hand, held_stack);
-            let mut stack_to_give = item_stack;
-            let was_added = player.inventory.insert_stack_anywhere(&mut stack_to_give);
-            if !was_added && !stack_to_give.is_empty() {
-                player
-                    .world()
-                    .drop_stack(&player.position().to_block_pos(), stack_to_give);
-            }
-        }
+    item.decrement_unless_creative(player.gamemode.load(), 1);
+    if item.is_empty() {
+        *item = filled_stack;
+    } else if !player.inventory.insert_stack_anywhere(&mut filled_stack) && !filled_stack.is_empty()
+    {
+        player
+            .world()
+            .drop_stack(&player.position().to_block_pos(), filled_stack);
     }
 }
 
@@ -364,10 +363,12 @@ impl ItemBehaviour for EmptyBucketItem {
             &block_pos.to_f64(),
         );
 
-        give_player_bucket_item(player, item, hand);
+        let mut held = player.inventory.get_stack_in_hand(hand);
+        create_filled_result(&mut held, player, item, true);
+        player.inventory.set_stack_in_hand(hand, held);
     }
 
-    fn use_on_entity(&self, _item: &mut ItemStack, player: &Player, entity: Arc<dyn EntityBase>) {
+    fn use_on_entity(&self, item: &mut ItemStack, player: &Player, entity: Arc<dyn EntityBase>) {
         let ent = entity.get_entity();
         let entity_type = ent.entity_type;
         if (entity_type == &EntityType::COW
@@ -390,7 +391,7 @@ impl ItemBehaviour for EmptyBucketItem {
                 Sound::EntityCowMilk
             };
             world.play_sound(sound, SoundCategory::Neutral, &ent.pos.load());
-            give_player_bucket_item(player, &Item::MILK_BUCKET, Hand::Right);
+            create_filled_result(item, player, &Item::MILK_BUCKET, true);
         }
     }
 
@@ -495,7 +496,7 @@ impl ItemBehaviour for FilledBucketItem {
                 let ent = entity.get_entity();
                 let world = ent.world.load();
                 world.play_sound(sound, SoundCategory::Neutral, &ent.pos.load());
-                give_player_bucket_item(player, mob_bucket, Hand::Right);
+                create_filled_result(item, player, mob_bucket, false);
                 ent.remove();
             }
         }
@@ -532,7 +533,9 @@ impl ItemBehaviour for MilkBucketItem {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .unwrap_or(Hand::Right);
         player.living_entity.reset_effects_and_attributes();
-        give_player_bucket_item(player, &Item::BUCKET, hand);
+        let mut held = player.inventory.get_stack_in_hand(hand);
+        create_filled_result(&mut held, player, &Item::BUCKET, true);
+        player.inventory.set_stack_in_hand(hand, held);
     }
 
     fn get_use_duration(&self) -> i32 {
