@@ -11,12 +11,20 @@ use crate::entity::ai::util::RandomExt;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
-    ai::goal::{
-        active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
+    ai::{
+        goal::{
+            active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
+            look_at_entity::LookAtEntityGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
+        },
+        util::RandomExt,
     },
     mob::{Mob, MobEntity},
 };
+
+const INITIAL_ALLOWED_HEIGHT_OFFSET: f32 = 0.5;
+const HEIGHT_OFFSET_CHANGE_INTERVAL: i32 = 100;
+const HEIGHT_OFFSET_SPREAD: f64 = 6.891;
+const ASCENT_ACCELERATION: f64 = 0.3f32 as f64;
 
 pub struct BlazeEntity {
     pub entity: Arc<MobEntity>,
@@ -33,7 +41,7 @@ impl BlazeEntity {
         let blaze = Self {
             entity,
             is_charged: AtomicBool::new(false),
-            allowed_height_offset: AtomicCell::new(0.5),
+            allowed_height_offset: AtomicCell::new(INITIAL_ALLOWED_HEIGHT_OFFSET),
             next_height_offset_change_tick: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(blaze);
@@ -132,33 +140,6 @@ impl Mob for BlazeEntity {
             caller.damage(caller, 1.0, DamageType::DROWN);
         }
 
-        // Vanilla height offset tracking & aerial flight boost
-        let next_offset_tick = self.next_height_offset_change_tick.load(Ordering::Relaxed);
-        if next_offset_tick <= 0 {
-            self.next_height_offset_change_tick
-                .store(100, Ordering::Relaxed);
-            let mut rng = rand::rng();
-            let new_offset = rng.triangle(0.5, 6.891) as f32;
-            self.allowed_height_offset.store(new_offset);
-        } else {
-            self.next_height_offset_change_tick
-                .store(next_offset_tick - 1, Ordering::Relaxed);
-        }
-
-        if let Some(target) = self.entity.get_target() {
-            let target_entity = target.get_entity();
-            if target_entity.is_alive() {
-                let target_eye_y = target_entity.pos.load().y + target_entity.get_eye_height();
-                let my_eye_y = base_entity.pos.load().y + base_entity.get_eye_height();
-                let allowed = f64::from(self.allowed_height_offset.load());
-                if target_eye_y > my_eye_y + allowed {
-                    let mut current_vel = base_entity.velocity.load();
-                    current_vel.y += (0.3 - current_vel.y) * 0.3;
-                    base_entity.velocity.store(current_vel);
-                }
-            }
-        }
-
         // Ambient sound
         if rand::random_range(0..100) == 0 && !base_entity.silent.load(Ordering::Relaxed) {
             base_entity.world.load().play_sound_fine(
@@ -173,5 +154,38 @@ impl Mob for BlazeEntity {
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
+    }
+
+    fn custom_server_ai_step(&self, _caller: &dyn EntityBase) {
+        if self
+            .next_height_offset_change_tick
+            .fetch_sub(1, Ordering::Relaxed)
+            <= 1
+        {
+            self.next_height_offset_change_tick
+                .store(HEIGHT_OFFSET_CHANGE_INTERVAL, Ordering::Relaxed);
+            let mut rng = self.get_random();
+            self.allowed_height_offset.store(rng.triangle(
+                f64::from(INITIAL_ALLOWED_HEIGHT_OFFSET),
+                HEIGHT_OFFSET_SPREAD,
+            ) as f32);
+        }
+
+        let Some(target) = self.entity.get_target() else {
+            return;
+        };
+        let entity = &self.entity.living_entity.entity;
+        if target.get_entity().get_eye_y()
+            > entity.get_eye_y() + f64::from(self.allowed_height_offset.load())
+            && self.can_attack(target.as_ref())
+        {
+            let velocity = entity.velocity.load();
+            entity.velocity.store(Vector3::new(
+                velocity.x,
+                velocity.y + (ASCENT_ACCELERATION - velocity.y) * ASCENT_ACCELERATION,
+                velocity.z,
+            ));
+            entity.velocity_dirty.store(true, Ordering::SeqCst);
+        }
     }
 }
