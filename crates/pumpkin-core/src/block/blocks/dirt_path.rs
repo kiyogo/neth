@@ -1,6 +1,6 @@
 use crate::block::{
     BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PathComputationType,
+    OnScheduledTickArgs, PathComputationType, push_entities_up,
 };
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, BlockDirection, BlockState, BlockStateId, tag};
@@ -59,25 +59,3 @@ fn can_place_at(world: &dyn BlockAccessor, block_pos: &BlockPos) -> bool {
     !state.is_solid() || block.has_tag(&tag::Block::MINECRAFT_FENCE_GATES)
 }
 
-pub fn push_entities_up(world: &crate::world::World, block_pos: &BlockPos) {
-    let aabb = BoundingBox::new(
-        Vector3::new(
-            block_pos.0.x as f64,
-            block_pos.0.y as f64 + 0.9,
-            block_pos.0.z as f64,
-        ),
-        Vector3::new(
-            block_pos.0.x as f64 + 1.0,
-            block_pos.0.y as f64 + 1.1,
-            block_pos.0.z as f64 + 1.0,
-        ),
-    );
-    for entity in world.get_entities_at_box(&aabb) {
-        let pos = entity.get_entity().pos.load();
-        if pos.y < block_pos.0.y as f64 + 1.0 {
-            entity
-                .get_entity()
-                .set_pos(Vector3::new(pos.x, block_pos.0.y as f64 + 1.0, pos.z));
-        }
-    }
-}
