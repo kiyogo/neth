@@ -592,10 +592,10 @@ pub fn serialize_java_packet(
             Some(buf.into())
         }
         ClientboundPacket::CPlaceGhostRecipe(data) => {
-            let p = pumpkin_protocol::java::client::play::CPlaceGhostRecipe {
-                window_id: data.window_id.try_into().unwrap(),
-                recipe_id: &data.recipe_id,
-            };
+            let p = pumpkin_protocol::java::client::play::CPlaceGhostRecipe::legacy(
+                data.window_id.try_into().unwrap(),
+                &data.recipe_id,
+            );
             let mut buf = Vec::new();
             pumpkin_core::net::java::JavaClient::write_packet_for_version(&p, version, &mut buf)
                 .unwrap();
