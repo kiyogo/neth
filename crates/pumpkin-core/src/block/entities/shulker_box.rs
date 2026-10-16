@@ -6,7 +6,7 @@ use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
 use std::any::Any;
 use std::sync::RwLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::{array::from_fn, sync::Arc};
 
 use crate::block::entities::BlockEntity;
@@ -22,6 +22,7 @@ pub struct ShulkerBoxBlockEntity {
 
     // Viewer
     pub viewers: ViewerCountTracker,
+    animation_progress: AtomicU8,
 }
 
 impl BlockEntity for ShulkerBoxBlockEntity {
@@ -43,6 +44,7 @@ impl BlockEntity for ShulkerBoxBlockEntity {
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
             viewers: ViewerCountTracker::new(),
+            animation_progress: AtomicU8::new(0),
         };
 
         pumpkin_inventory::sync_read_items_from_nbt(
@@ -63,6 +65,18 @@ impl BlockEntity for ShulkerBoxBlockEntity {
     fn tick(&self, world: &Arc<World>) {
         self.viewers
             .update_viewer_count::<Self>(self, world, &self.position);
+        let opening = self.viewers.get_viewer_count() > 0;
+        let _ = self.animation_progress.fetch_update(
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+            |progress| {
+                Some(if opening {
+                    (progress + 1).min(Self::ANIMATION_TICKS)
+                } else {
+                    progress.saturating_sub(1)
+                })
+            },
+        );
     }
 
     fn on_block_replaced(self: Arc<Self>, _world: &Arc<World>, _position: &BlockPos) {
@@ -168,6 +182,11 @@ impl ShulkerBoxBlockEntity {
     pub const INVENTORY_SIZE: usize = 27;
     pub const OPEN_ANIMATION_EVENT_TYPE: u8 = 1;
     pub const ID: &'static str = "minecraft:shulker_box";
+    const ANIMATION_TICKS: u8 = 10;
+
+    pub fn is_closed(&self) -> bool {
+        self.viewers.get_viewer_count() == 0 && self.animation_progress.load(Ordering::Relaxed) == 0
+    }
 
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
@@ -177,6 +196,7 @@ impl ShulkerBoxBlockEntity {
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
             viewers: ViewerCountTracker::new(),
+            animation_progress: AtomicU8::new(0),
         }
     }
 

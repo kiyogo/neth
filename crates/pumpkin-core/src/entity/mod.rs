@@ -1698,7 +1698,8 @@ impl Entity {
                 continue;
             }
 
-            let check_suffocation = !suffocating && state.is_suffocating();
+            let check_suffocation =
+                !suffocating && crate::block::is_suffocating(&world, &pos, block, state);
 
             World::check_collision(
                 &bounding_box,
