@@ -1,7 +1,7 @@
 use std::{
     ffi::{CString, NulError},
     net::{IpAddr, SocketAddr},
-    sync::{Arc, atomic::Ordering},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -16,7 +16,7 @@ use sha2::Sha256;
 use tokio::net::UdpSocket;
 use tracing::{error, info};
 
-use crate::{SHOULD_STOP, STOP_INTERRUPT, server::Server};
+use crate::server::Server;
 
 /// Token lifetime. One is accepted for the window it was minted in and the previous one.
 const TOKEN_WINDOW: u64 = 30;
@@ -71,10 +71,10 @@ pub async fn start_query_handler(server: Arc<Server>, query_addr: SocketAddr) {
     // Reused across packets; handling inline keeps a datagram flood from piling up tasks.
     let mut buf = vec![0; 1024];
 
-    while !SHOULD_STOP.load(Ordering::Relaxed) {
+    while !server.stop_token.is_cancelled() {
         let recv_result = tokio::select! {
             result = socket.recv_from(&mut buf) => Some(result),
-            () = STOP_INTERRUPT.cancelled() => None,
+            () = server.stop_token.cancelled() => None,
         };
 
         let Some(Ok((length, addr))) = recv_result else {
