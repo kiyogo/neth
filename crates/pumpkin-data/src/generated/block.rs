@@ -94677,6 +94677,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(0u16).unwrap(),
@@ -94716,6 +94718,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1,
         default_state: &BlockState {
             id: BlockStateId::new(1u16).unwrap(),
@@ -94755,6 +94759,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 2,
         default_state: &BlockState {
             id: BlockStateId::new(2u16).unwrap(),
@@ -94794,6 +94800,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 3,
         default_state: &BlockState {
             id: BlockStateId::new(3u16).unwrap(),
@@ -94833,6 +94841,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 4,
         default_state: &BlockState {
             id: BlockStateId::new(4u16).unwrap(),
@@ -94872,6 +94882,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 5,
         default_state: &BlockState {
             id: BlockStateId::new(5u16).unwrap(),
@@ -94911,6 +94923,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 6,
         default_state: &BlockState {
             id: BlockStateId::new(6u16).unwrap(),
@@ -94950,6 +94964,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 7,
         default_state: &BlockState {
             id: BlockStateId::new(7u16).unwrap(),
@@ -94989,6 +95005,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 54,
         default_state: &BlockState {
             id: BlockStateId::new(9u16).unwrap(),
@@ -95043,6 +95061,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 55,
         default_state: &BlockState {
             id: BlockStateId::new(10u16).unwrap(),
@@ -95082,6 +95102,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 56,
         default_state: &BlockState {
             id: BlockStateId::new(11u16).unwrap(),
@@ -95121,6 +95143,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 57,
         default_state: &BlockState {
             id: BlockStateId::new(13u16).unwrap(),
@@ -95175,6 +95199,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 62,
         default_state: &BlockState {
             id: BlockStateId::new(14u16).unwrap(),
@@ -95214,6 +95240,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 63,
         default_state: &BlockState {
             id: BlockStateId::new(15u16).unwrap(),
@@ -95256,6 +95284,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 64,
         default_state: &BlockState {
             id: BlockStateId::new(16u16).unwrap(),
@@ -95298,6 +95328,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 65,
         default_state: &BlockState {
             id: BlockStateId::new(17u16).unwrap(),
@@ -95340,6 +95372,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 66,
         default_state: &BlockState {
             id: BlockStateId::new(18u16).unwrap(),
@@ -95382,6 +95416,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 67,
         default_state: &BlockState {
             id: BlockStateId::new(19u16).unwrap(),
@@ -95424,6 +95460,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 68,
         default_state: &BlockState {
             id: BlockStateId::new(20u16).unwrap(),
@@ -95466,6 +95504,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 69,
         default_state: &BlockState {
             id: BlockStateId::new(21u16).unwrap(),
@@ -95508,6 +95548,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 209,
         default_state: &BlockState {
             id: BlockStateId::new(23u16).unwrap(),
@@ -95578,6 +95620,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 70,
         default_state: &BlockState {
             id: BlockStateId::new(25u16).unwrap(),
@@ -95620,6 +95664,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 71,
         default_state: &BlockState {
             id: BlockStateId::new(26u16).unwrap(),
@@ -95662,6 +95708,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 72,
         default_state: &BlockState {
             id: BlockStateId::new(27u16).unwrap(),
@@ -95704,6 +95752,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 73,
         default_state: &BlockState {
             id: BlockStateId::new(28u16).unwrap(),
@@ -95746,6 +95796,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 76,
         default_state: &BlockState {
             id: BlockStateId::new(29u16).unwrap(),
@@ -95788,6 +95840,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 77,
         default_state: &BlockState {
             id: BlockStateId::new(30u16).unwrap(),
@@ -95842,6 +95896,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 78,
         default_state: &BlockState {
             id: BlockStateId::new(32u16).unwrap(),
@@ -95896,6 +95952,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 79,
         default_state: &BlockState {
             id: BlockStateId::new(34u16).unwrap(),
@@ -95950,6 +96008,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 80,
         default_state: &BlockState {
             id: BlockStateId::new(36u16).unwrap(),
@@ -96004,6 +96064,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 81,
         default_state: &BlockState {
             id: BlockStateId::new(38u16).unwrap(),
@@ -96058,6 +96120,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 82,
         default_state: &BlockState {
             id: BlockStateId::new(40u16).unwrap(),
@@ -96112,6 +96176,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 83,
         default_state: &BlockState {
             id: BlockStateId::new(42u16).unwrap(),
@@ -96166,6 +96232,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 84,
         default_state: &BlockState {
             id: BlockStateId::new(44u16).unwrap(),
@@ -96220,6 +96288,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 85,
         default_state: &BlockState {
             id: BlockStateId::new(51u16).unwrap(),
@@ -96768,6 +96838,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 86,
         default_state: &BlockState {
             id: BlockStateId::new(86u16).unwrap(),
@@ -96822,6 +96894,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 87,
         default_state: &BlockState {
             id: BlockStateId::new(88u16).unwrap(),
@@ -96861,6 +96935,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(89u16).unwrap(),
@@ -97097,6 +97173,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(105u16).unwrap(),
@@ -97333,6 +97411,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 88,
         default_state: &BlockState {
             id: BlockStateId::new(121u16).unwrap(),
@@ -97372,6 +97452,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 89,
         default_state: &BlockState {
             id: BlockStateId::new(122u16).unwrap(),
@@ -97452,6 +97534,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 91,
         default_state: &BlockState {
             id: BlockStateId::new(126u16).unwrap(),
@@ -97491,6 +97575,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 92,
         default_state: &BlockState {
             id: BlockStateId::new(127u16).unwrap(),
@@ -97530,6 +97616,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 90,
         default_state: &BlockState {
             id: BlockStateId::new(128u16).unwrap(),
@@ -97610,6 +97698,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 99,
         default_state: &BlockState {
             id: BlockStateId::new(132u16).unwrap(),
@@ -97651,6 +97741,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 100,
         default_state: &BlockState {
             id: BlockStateId::new(133u16).unwrap(),
@@ -97692,6 +97784,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 95,
         default_state: &BlockState {
             id: BlockStateId::new(134u16).unwrap(),
@@ -97733,6 +97827,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 96,
         default_state: &BlockState {
             id: BlockStateId::new(135u16).unwrap(),
@@ -97774,6 +97870,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 93,
         default_state: &BlockState {
             id: BlockStateId::new(136u16).unwrap(),
@@ -97818,6 +97916,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 94,
         default_state: &BlockState {
             id: BlockStateId::new(137u16).unwrap(),
@@ -97862,6 +97962,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 109,
         default_state: &BlockState {
             id: BlockStateId::new(138u16).unwrap(),
@@ -97906,6 +98008,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 163,
         default_state: &BlockState {
             id: BlockStateId::new(140u16).unwrap(),
@@ -97976,6 +98080,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 164,
         default_state: &BlockState {
             id: BlockStateId::new(143u16).unwrap(),
@@ -98046,6 +98152,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 165,
         default_state: &BlockState {
             id: BlockStateId::new(146u16).unwrap(),
@@ -98116,6 +98224,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 166,
         default_state: &BlockState {
             id: BlockStateId::new(149u16).unwrap(),
@@ -98186,6 +98296,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 167,
         default_state: &BlockState {
             id: BlockStateId::new(152u16).unwrap(),
@@ -98256,6 +98368,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 168,
         default_state: &BlockState {
             id: BlockStateId::new(155u16).unwrap(),
@@ -98326,6 +98440,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 170,
         default_state: &BlockState {
             id: BlockStateId::new(158u16).unwrap(),
@@ -98396,6 +98512,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 169,
         default_state: &BlockState {
             id: BlockStateId::new(161u16).unwrap(),
@@ -98466,6 +98584,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 171,
         default_state: &BlockState {
             id: BlockStateId::new(164u16).unwrap(),
@@ -98536,6 +98656,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 172,
         default_state: &BlockState {
             id: BlockStateId::new(167u16).unwrap(),
@@ -98606,6 +98728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 173,
         default_state: &BlockState {
             id: BlockStateId::new(170u16).unwrap(),
@@ -98663,6 +98787,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 174,
         default_state: &BlockState {
             id: BlockStateId::new(172u16).unwrap(),
@@ -98730,6 +98856,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 177,
         default_state: &BlockState {
             id: BlockStateId::new(175u16).unwrap(),
@@ -98800,6 +98928,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 179,
         default_state: &BlockState {
             id: BlockStateId::new(178u16).unwrap(),
@@ -98870,6 +99000,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 180,
         default_state: &BlockState {
             id: BlockStateId::new(181u16).unwrap(),
@@ -98940,6 +99072,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 181,
         default_state: &BlockState {
             id: BlockStateId::new(184u16).unwrap(),
@@ -99010,6 +99144,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 182,
         default_state: &BlockState {
             id: BlockStateId::new(187u16).unwrap(),
@@ -99080,6 +99216,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 183,
         default_state: &BlockState {
             id: BlockStateId::new(190u16).unwrap(),
@@ -99150,6 +99288,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 184,
         default_state: &BlockState {
             id: BlockStateId::new(193u16).unwrap(),
@@ -99220,6 +99360,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 185,
         default_state: &BlockState {
             id: BlockStateId::new(196u16).unwrap(),
@@ -99290,6 +99432,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 178,
         default_state: &BlockState {
             id: BlockStateId::new(199u16).unwrap(),
@@ -99360,6 +99504,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 186,
         default_state: &BlockState {
             id: BlockStateId::new(202u16).unwrap(),
@@ -99430,6 +99576,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 187,
         default_state: &BlockState {
             id: BlockStateId::new(205u16).unwrap(),
@@ -99500,6 +99648,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 202,
         default_state: &BlockState {
             id: BlockStateId::new(208u16).unwrap(),
@@ -99570,6 +99720,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 203,
         default_state: &BlockState {
             id: BlockStateId::new(211u16).unwrap(),
@@ -99640,6 +99792,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 204,
         default_state: &BlockState {
             id: BlockStateId::new(214u16).unwrap(),
@@ -99710,6 +99864,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 205,
         default_state: &BlockState {
             id: BlockStateId::new(217u16).unwrap(),
@@ -99780,6 +99936,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 206,
         default_state: &BlockState {
             id: BlockStateId::new(220u16).unwrap(),
@@ -99850,6 +100008,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 207,
         default_state: &BlockState {
             id: BlockStateId::new(223u16).unwrap(),
@@ -99920,6 +100080,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 208,
         default_state: &BlockState {
             id: BlockStateId::new(226u16).unwrap(),
@@ -99990,6 +100152,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 210,
         default_state: &BlockState {
             id: BlockStateId::new(229u16).unwrap(),
@@ -100060,6 +100224,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 211,
         default_state: &BlockState {
             id: BlockStateId::new(232u16).unwrap(),
@@ -100130,6 +100296,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 212,
         default_state: &BlockState {
             id: BlockStateId::new(235u16).unwrap(),
@@ -100200,6 +100368,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 190,
         default_state: &BlockState {
             id: BlockStateId::new(238u16).unwrap(),
@@ -100270,6 +100440,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 191,
         default_state: &BlockState {
             id: BlockStateId::new(241u16).unwrap(),
@@ -100340,6 +100512,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 192,
         default_state: &BlockState {
             id: BlockStateId::new(244u16).unwrap(),
@@ -100410,6 +100584,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 193,
         default_state: &BlockState {
             id: BlockStateId::new(247u16).unwrap(),
@@ -100480,6 +100656,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 194,
         default_state: &BlockState {
             id: BlockStateId::new(250u16).unwrap(),
@@ -100550,6 +100728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 195,
         default_state: &BlockState {
             id: BlockStateId::new(253u16).unwrap(),
@@ -100620,6 +100800,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 196,
         default_state: &BlockState {
             id: BlockStateId::new(256u16).unwrap(),
@@ -100690,6 +100872,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 197,
         default_state: &BlockState {
             id: BlockStateId::new(259u16).unwrap(),
@@ -100760,6 +100944,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 198,
         default_state: &BlockState {
             id: BlockStateId::new(262u16).unwrap(),
@@ -100830,6 +101016,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 199,
         default_state: &BlockState {
             id: BlockStateId::new(265u16).unwrap(),
@@ -100900,6 +101088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 215,
         default_state: &BlockState {
             id: BlockStateId::new(294u16).unwrap(),
@@ -101295,6 +101485,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 216,
         default_state: &BlockState {
             id: BlockStateId::new(322u16).unwrap(),
@@ -101690,6 +101882,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 217,
         default_state: &BlockState {
             id: BlockStateId::new(350u16).unwrap(),
@@ -102085,6 +102279,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 218,
         default_state: &BlockState {
             id: BlockStateId::new(378u16).unwrap(),
@@ -102480,6 +102676,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 219,
         default_state: &BlockState {
             id: BlockStateId::new(406u16).unwrap(),
@@ -102875,6 +103073,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 220,
         default_state: &BlockState {
             id: BlockStateId::new(434u16).unwrap(),
@@ -103270,6 +103470,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 221,
         default_state: &BlockState {
             id: BlockStateId::new(462u16).unwrap(),
@@ -103665,6 +103867,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 222,
         default_state: &BlockState {
             id: BlockStateId::new(490u16).unwrap(),
@@ -104060,6 +104264,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 223,
         default_state: &BlockState {
             id: BlockStateId::new(518u16).unwrap(),
@@ -104455,6 +104661,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 224,
         default_state: &BlockState {
             id: BlockStateId::new(546u16).unwrap(),
@@ -104850,6 +105058,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 225,
         default_state: &BlockState {
             id: BlockStateId::new(574u16).unwrap(),
@@ -105245,6 +105455,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 226,
         default_state: &BlockState {
             id: BlockStateId::new(602u16).unwrap(),
@@ -105640,6 +105852,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 227,
         default_state: &BlockState {
             id: BlockStateId::new(630u16).unwrap(),
@@ -106035,6 +106249,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 228,
         default_state: &BlockState {
             id: BlockStateId::new(658u16).unwrap(),
@@ -106430,6 +106646,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 229,
         default_state: &BlockState {
             id: BlockStateId::new(659u16).unwrap(),
@@ -106469,6 +106687,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 230,
         default_state: &BlockState {
             id: BlockStateId::new(660u16).unwrap(),
@@ -106508,6 +106728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 231,
         default_state: &BlockState {
             id: BlockStateId::new(661u16).unwrap(),
@@ -106547,6 +106769,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 105,
         default_state: &BlockState {
             id: BlockStateId::new(662u16).unwrap(),
@@ -106591,6 +106815,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 106,
         default_state: &BlockState {
             id: BlockStateId::new(663u16).unwrap(),
@@ -106635,6 +106861,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 233,
         default_state: &BlockState {
             id: BlockStateId::new(664u16).unwrap(),
@@ -106674,6 +106902,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 835,
         default_state: &BlockState {
             id: BlockStateId::new(666u16).unwrap(),
@@ -106858,6 +107088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 234,
         default_state: &BlockState {
             id: BlockStateId::new(677u16).unwrap(),
@@ -106897,6 +107129,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 235,
         default_state: &BlockState {
             id: BlockStateId::new(678u16).unwrap(),
@@ -106936,6 +107170,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 236,
         default_state: &BlockState {
             id: BlockStateId::new(679u16).unwrap(),
@@ -106975,6 +107211,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 855,
         default_state: &BlockState {
             id: BlockStateId::new(681u16).unwrap(),
@@ -124553,6 +124791,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1219,
         default_state: &BlockState {
             id: BlockStateId::new(2033u16).unwrap(),
@@ -124789,6 +125029,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1220,
         default_state: &BlockState {
             id: BlockStateId::new(2049u16).unwrap(),
@@ -125025,6 +125267,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1221,
         default_state: &BlockState {
             id: BlockStateId::new(2065u16).unwrap(),
@@ -125261,6 +125505,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1222,
         default_state: &BlockState {
             id: BlockStateId::new(2081u16).unwrap(),
@@ -125497,6 +125743,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1223,
         default_state: &BlockState {
             id: BlockStateId::new(2097u16).unwrap(),
@@ -125733,6 +125981,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1224,
         default_state: &BlockState {
             id: BlockStateId::new(2113u16).unwrap(),
@@ -125969,6 +126219,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1225,
         default_state: &BlockState {
             id: BlockStateId::new(2129u16).unwrap(),
@@ -126205,6 +126457,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1226,
         default_state: &BlockState {
             id: BlockStateId::new(2145u16).unwrap(),
@@ -126441,6 +126695,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1227,
         default_state: &BlockState {
             id: BlockStateId::new(2161u16).unwrap(),
@@ -126677,6 +126933,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1228,
         default_state: &BlockState {
             id: BlockStateId::new(2177u16).unwrap(),
@@ -126913,6 +127171,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1229,
         default_state: &BlockState {
             id: BlockStateId::new(2193u16).unwrap(),
@@ -127149,6 +127409,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1230,
         default_state: &BlockState {
             id: BlockStateId::new(2209u16).unwrap(),
@@ -127385,6 +127647,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1231,
         default_state: &BlockState {
             id: BlockStateId::new(2225u16).unwrap(),
@@ -127621,6 +127885,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1232,
         default_state: &BlockState {
             id: BlockStateId::new(2241u16).unwrap(),
@@ -127857,6 +128123,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1233,
         default_state: &BlockState {
             id: BlockStateId::new(2257u16).unwrap(),
@@ -128093,6 +128361,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 1234,
         default_state: &BlockState {
             id: BlockStateId::new(2273u16).unwrap(),
@@ -128329,6 +128599,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1235,
         default_state: &BlockState {
             id: BlockStateId::new(2289u16).unwrap(),
@@ -128568,6 +128840,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 945,
         default_state: &BlockState {
             id: BlockStateId::new(2315u16).unwrap(),
@@ -128908,6 +129182,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 946,
         default_state: &BlockState {
             id: BlockStateId::new(2339u16).unwrap(),
@@ -129248,6 +129524,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 830,
         default_state: &BlockState {
             id: BlockStateId::new(2356u16).unwrap(),
@@ -129432,6 +129710,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 237,
         default_state: &BlockState {
             id: BlockStateId::new(2362u16).unwrap(),
@@ -129471,6 +129751,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 238,
         default_state: &BlockState {
             id: BlockStateId::new(2363u16).unwrap(),
@@ -129513,6 +129795,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 239,
         default_state: &BlockState {
             id: BlockStateId::new(2364u16).unwrap(),
@@ -129555,6 +129839,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 244,
         default_state: &BlockState {
             id: BlockStateId::new(2365u16).unwrap(),
@@ -129597,6 +129883,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 240,
         default_state: &BlockState {
             id: BlockStateId::new(2366u16).unwrap(),
@@ -129639,6 +129927,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 241,
         default_state: &BlockState {
             id: BlockStateId::new(2367u16).unwrap(),
@@ -129681,6 +129971,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 246,
         default_state: &BlockState {
             id: BlockStateId::new(2368u16).unwrap(),
@@ -129723,6 +130015,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 247,
         default_state: &BlockState {
             id: BlockStateId::new(2369u16).unwrap(),
@@ -129765,6 +130059,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 248,
         default_state: &BlockState {
             id: BlockStateId::new(2370u16).unwrap(),
@@ -129804,6 +130100,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(2372u16).unwrap(),
@@ -129858,6 +130156,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 829,
         default_state: &BlockState {
             id: BlockStateId::new(2379u16).unwrap(),
@@ -130042,6 +130342,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(2387u16).unwrap(),
@@ -130382,6 +130684,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 250,
         default_state: &BlockState {
             id: BlockStateId::new(2409u16).unwrap(),
@@ -130424,6 +130728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 251,
         default_state: &BlockState {
             id: BlockStateId::new(2410u16).unwrap(),
@@ -130466,6 +130772,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 252,
         default_state: &BlockState {
             id: BlockStateId::new(2411u16).unwrap(),
@@ -130508,6 +130816,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 253,
         default_state: &BlockState {
             id: BlockStateId::new(2412u16).unwrap(),
@@ -130550,6 +130860,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 254,
         default_state: &BlockState {
             id: BlockStateId::new(2413u16).unwrap(),
@@ -130592,6 +130904,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 255,
         default_state: &BlockState {
             id: BlockStateId::new(2414u16).unwrap(),
@@ -130634,6 +130948,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 256,
         default_state: &BlockState {
             id: BlockStateId::new(2415u16).unwrap(),
@@ -130676,6 +130992,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 257,
         default_state: &BlockState {
             id: BlockStateId::new(2416u16).unwrap(),
@@ -130718,6 +131036,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 258,
         default_state: &BlockState {
             id: BlockStateId::new(2417u16).unwrap(),
@@ -130760,6 +131080,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 259,
         default_state: &BlockState {
             id: BlockStateId::new(2418u16).unwrap(),
@@ -130802,6 +131124,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 260,
         default_state: &BlockState {
             id: BlockStateId::new(2419u16).unwrap(),
@@ -130844,6 +131168,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 261,
         default_state: &BlockState {
             id: BlockStateId::new(2420u16).unwrap(),
@@ -130886,6 +131212,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 262,
         default_state: &BlockState {
             id: BlockStateId::new(2421u16).unwrap(),
@@ -130928,6 +131256,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 263,
         default_state: &BlockState {
             id: BlockStateId::new(2422u16).unwrap(),
@@ -130970,6 +131300,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 264,
         default_state: &BlockState {
             id: BlockStateId::new(2423u16).unwrap(),
@@ -131012,6 +131344,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 265,
         default_state: &BlockState {
             id: BlockStateId::new(2424u16).unwrap(),
@@ -131054,6 +131388,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 266,
         default_state: &BlockState {
             id: BlockStateId::new(2436u16).unwrap(),
@@ -132125,6 +132461,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 267,
         default_state: &BlockState {
             id: BlockStateId::new(2516u16).unwrap(),
@@ -133196,6 +133534,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 268,
         default_state: &BlockState {
             id: BlockStateId::new(2596u16).unwrap(),
@@ -134267,6 +134607,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 269,
         default_state: &BlockState {
             id: BlockStateId::new(2676u16).unwrap(),
@@ -135338,6 +135680,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 270,
         default_state: &BlockState {
             id: BlockStateId::new(2756u16).unwrap(),
@@ -136409,6 +136753,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 271,
         default_state: &BlockState {
             id: BlockStateId::new(2836u16).unwrap(),
@@ -137480,6 +137826,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 272,
         default_state: &BlockState {
             id: BlockStateId::new(2916u16).unwrap(),
@@ -138551,6 +138899,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 273,
         default_state: &BlockState {
             id: BlockStateId::new(2996u16).unwrap(),
@@ -139622,6 +139972,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 274,
         default_state: &BlockState {
             id: BlockStateId::new(3076u16).unwrap(),
@@ -140693,6 +141045,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 275,
         default_state: &BlockState {
             id: BlockStateId::new(3156u16).unwrap(),
@@ -141764,6 +142118,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 276,
         default_state: &BlockState {
             id: BlockStateId::new(3236u16).unwrap(),
@@ -142835,6 +143191,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 277,
         default_state: &BlockState {
             id: BlockStateId::new(3316u16).unwrap(),
@@ -143906,6 +144264,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 278,
         default_state: &BlockState {
             id: BlockStateId::new(3396u16).unwrap(),
@@ -144977,6 +145337,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 279,
         default_state: &BlockState {
             id: BlockStateId::new(3476u16).unwrap(),
@@ -146048,6 +146410,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 280,
         default_state: &BlockState {
             id: BlockStateId::new(3556u16).unwrap(),
@@ -147119,6 +147483,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 281,
         default_state: &BlockState {
             id: BlockStateId::new(3636u16).unwrap(),
@@ -148190,6 +148556,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 282,
         default_state: &BlockState {
             id: BlockStateId::new(3708u16).unwrap(),
@@ -148299,6 +148667,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 283,
         default_state: &BlockState {
             id: BlockStateId::new(3714u16).unwrap(),
@@ -148408,6 +148778,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 284,
         default_state: &BlockState {
             id: BlockStateId::new(3720u16).unwrap(),
@@ -148517,6 +148889,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 285,
         default_state: &BlockState {
             id: BlockStateId::new(3726u16).unwrap(),
@@ -148626,6 +149000,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 286,
         default_state: &BlockState {
             id: BlockStateId::new(3732u16).unwrap(),
@@ -148735,6 +149111,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 287,
         default_state: &BlockState {
             id: BlockStateId::new(3738u16).unwrap(),
@@ -148844,6 +149222,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 288,
         default_state: &BlockState {
             id: BlockStateId::new(3744u16).unwrap(),
@@ -148953,6 +149333,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 289,
         default_state: &BlockState {
             id: BlockStateId::new(3750u16).unwrap(),
@@ -149062,6 +149444,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 290,
         default_state: &BlockState {
             id: BlockStateId::new(3756u16).unwrap(),
@@ -149171,6 +149555,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 291,
         default_state: &BlockState {
             id: BlockStateId::new(3762u16).unwrap(),
@@ -149280,6 +149666,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 292,
         default_state: &BlockState {
             id: BlockStateId::new(3768u16).unwrap(),
@@ -149389,6 +149777,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 293,
         default_state: &BlockState {
             id: BlockStateId::new(3774u16).unwrap(),
@@ -149498,6 +149888,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 294,
         default_state: &BlockState {
             id: BlockStateId::new(3780u16).unwrap(),
@@ -149607,6 +149999,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 295,
         default_state: &BlockState {
             id: BlockStateId::new(3786u16).unwrap(),
@@ -149716,6 +150110,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 296,
         default_state: &BlockState {
             id: BlockStateId::new(3792u16).unwrap(),
@@ -149825,6 +150221,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 297,
         default_state: &BlockState {
             id: BlockStateId::new(3798u16).unwrap(),
@@ -149934,6 +150332,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(3801u16).unwrap(),
@@ -150118,6 +150518,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 298,
         default_state: &BlockState {
             id: BlockStateId::new(3813u16).unwrap(),
@@ -150160,6 +150562,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 299,
         default_state: &BlockState {
             id: BlockStateId::new(3814u16).unwrap(),
@@ -150202,6 +150606,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 314,
         default_state: &BlockState {
             id: BlockStateId::new(3815u16).unwrap(),
@@ -150244,6 +150650,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 302,
         default_state: &BlockState {
             id: BlockStateId::new(3816u16).unwrap(),
@@ -150286,6 +150694,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 303,
         default_state: &BlockState {
             id: BlockStateId::new(3817u16).unwrap(),
@@ -150328,6 +150738,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 304,
         default_state: &BlockState {
             id: BlockStateId::new(3818u16).unwrap(),
@@ -150370,6 +150782,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 305,
         default_state: &BlockState {
             id: BlockStateId::new(3819u16).unwrap(),
@@ -150412,6 +150826,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 306,
         default_state: &BlockState {
             id: BlockStateId::new(3820u16).unwrap(),
@@ -150454,6 +150870,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 307,
         default_state: &BlockState {
             id: BlockStateId::new(3821u16).unwrap(),
@@ -150496,6 +150914,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 308,
         default_state: &BlockState {
             id: BlockStateId::new(3822u16).unwrap(),
@@ -150538,6 +150958,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 309,
         default_state: &BlockState {
             id: BlockStateId::new(3823u16).unwrap(),
@@ -150580,6 +151002,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 310,
         default_state: &BlockState {
             id: BlockStateId::new(3824u16).unwrap(),
@@ -150622,6 +151046,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 311,
         default_state: &BlockState {
             id: BlockStateId::new(3825u16).unwrap(),
@@ -150664,6 +151090,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 313,
         default_state: &BlockState {
             id: BlockStateId::new(3826u16).unwrap(),
@@ -150706,6 +151134,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 312,
         default_state: &BlockState {
             id: BlockStateId::new(3827u16).unwrap(),
@@ -150748,6 +151178,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 317,
         default_state: &BlockState {
             id: BlockStateId::new(3828u16).unwrap(),
@@ -150787,6 +151219,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 318,
         default_state: &BlockState {
             id: BlockStateId::new(3829u16).unwrap(),
@@ -150826,6 +151260,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 128,
         default_state: &BlockState {
             id: BlockStateId::new(3830u16).unwrap(),
@@ -150865,6 +151301,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 119,
         default_state: &BlockState {
             id: BlockStateId::new(3831u16).unwrap(),
@@ -150904,6 +151342,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 376,
         default_state: &BlockState {
             id: BlockStateId::new(3832u16).unwrap(),
@@ -150943,6 +151383,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 853,
         default_state: &BlockState {
             id: BlockStateId::new(3834u16).unwrap(),
@@ -151000,6 +151442,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 390,
         default_state: &BlockState {
             id: BlockStateId::new(3835u16).unwrap(),
@@ -151042,6 +151486,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 391,
         default_state: &BlockState {
             id: BlockStateId::new(3899u16).unwrap(),
@@ -154398,6 +154844,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 377,
         default_state: &BlockState {
             id: BlockStateId::new(4101u16).unwrap(),
@@ -155261,6 +155709,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 378,
         default_state: &BlockState {
             id: BlockStateId::new(4165u16).unwrap(),
@@ -156124,6 +156574,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 379,
         default_state: &BlockState {
             id: BlockStateId::new(4229u16).unwrap(),
@@ -156987,6 +157439,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 380,
         default_state: &BlockState {
             id: BlockStateId::new(4293u16).unwrap(),
@@ -157850,6 +158304,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 381,
         default_state: &BlockState {
             id: BlockStateId::new(4357u16).unwrap(),
@@ -158710,6 +159166,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 382,
         default_state: &BlockState {
             id: BlockStateId::new(4421u16).unwrap(),
@@ -159573,6 +160031,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 383,
         default_state: &BlockState {
             id: BlockStateId::new(4485u16).unwrap(),
@@ -160436,6 +160896,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 384,
         default_state: &BlockState {
             id: BlockStateId::new(4549u16).unwrap(),
@@ -161299,6 +161761,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 386,
         default_state: &BlockState {
             id: BlockStateId::new(4613u16).unwrap(),
@@ -162162,6 +162626,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 387,
         default_state: &BlockState {
             id: BlockStateId::new(4677u16).unwrap(),
@@ -163025,6 +163491,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 385,
         default_state: &BlockState {
             id: BlockStateId::new(4741u16).unwrap(),
@@ -163888,6 +164356,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 388,
         default_state: &BlockState {
             id: BlockStateId::new(4805u16).unwrap(),
@@ -164751,6 +165221,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 389,
         default_state: &BlockState {
             id: BlockStateId::new(4869u16).unwrap(),
@@ -165611,6 +166083,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 393,
         default_state: &BlockState {
             id: BlockStateId::new(4924u16).unwrap(),
@@ -165650,6 +166124,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 394,
         default_state: &BlockState {
             id: BlockStateId::new(4925u16).unwrap(),
@@ -165689,6 +166165,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 395,
         default_state: &BlockState {
             id: BlockStateId::new(4926u16).unwrap(),
@@ -165728,6 +166206,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 395,
         default_state: &BlockState {
             id: BlockStateId::new(4927u16).unwrap(),
@@ -165808,6 +166288,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(4962u16).unwrap(),
@@ -172492,6 +172974,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(5443u16).unwrap(),
@@ -172531,6 +173015,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 402,
         default_state: &BlockState {
             id: BlockStateId::new(5444u16).unwrap(),
@@ -172570,6 +173056,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 403,
         default_state: &BlockState {
             id: BlockStateId::new(5452u16).unwrap(),
@@ -172832,6 +173320,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 515,
         default_state: &BlockState {
             id: BlockStateId::new(5474u16).unwrap(),
@@ -173903,6 +174393,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 404,
         default_state: &BlockState {
             id: BlockStateId::new(5544u16).unwrap(),
@@ -174243,6 +174735,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 824,
         default_state: &BlockState {
             id: BlockStateId::new(6727u16).unwrap(),
@@ -191119,6 +191613,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 107,
         default_state: &BlockState {
             id: BlockStateId::new(6863u16).unwrap(),
@@ -191163,6 +191659,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 108,
         default_state: &BlockState {
             id: BlockStateId::new(6864u16).unwrap(),
@@ -191207,6 +191705,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 129,
         default_state: &BlockState {
             id: BlockStateId::new(6865u16).unwrap(),
@@ -191246,6 +191746,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 405,
         default_state: &BlockState {
             id: BlockStateId::new(6866u16).unwrap(),
@@ -191285,6 +191787,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1065,
         default_state: &BlockState {
             id: BlockStateId::new(6867u16).unwrap(),
@@ -191417,6 +191921,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 406,
         default_state: &BlockState {
             id: BlockStateId::new(6875u16).unwrap(),
@@ -191549,6 +192055,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 407,
         default_state: &BlockState {
             id: BlockStateId::new(6884u16).unwrap(),
@@ -191681,6 +192189,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1102,
         default_state: &BlockState {
             id: BlockStateId::new(6908u16).unwrap(),
@@ -192125,6 +192635,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1103,
         default_state: &BlockState {
             id: BlockStateId::new(6940u16).unwrap(),
@@ -192569,6 +193081,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1104,
         default_state: &BlockState {
             id: BlockStateId::new(6972u16).unwrap(),
@@ -193013,6 +193527,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1106,
         default_state: &BlockState {
             id: BlockStateId::new(7004u16).unwrap(),
@@ -193457,6 +193973,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1107,
         default_state: &BlockState {
             id: BlockStateId::new(7036u16).unwrap(),
@@ -193901,6 +194419,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1105,
         default_state: &BlockState {
             id: BlockStateId::new(7068u16).unwrap(),
@@ -194345,6 +194865,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1108,
         default_state: &BlockState {
             id: BlockStateId::new(7100u16).unwrap(),
@@ -194789,6 +195311,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1109,
         default_state: &BlockState {
             id: BlockStateId::new(7132u16).unwrap(),
@@ -195233,6 +195757,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1110,
         default_state: &BlockState {
             id: BlockStateId::new(7164u16).unwrap(),
@@ -195677,6 +196203,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1111,
         default_state: &BlockState {
             id: BlockStateId::new(7196u16).unwrap(),
@@ -196121,6 +196649,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1112,
         default_state: &BlockState {
             id: BlockStateId::new(7228u16).unwrap(),
@@ -196565,6 +197095,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 889,
         default_state: &BlockState {
             id: BlockStateId::new(7254u16).unwrap(),
@@ -197425,6 +197957,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 408,
         default_state: &BlockState {
             id: BlockStateId::new(7308u16).unwrap(),
@@ -197557,6 +198091,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 947,
         default_state: &BlockState {
             id: BlockStateId::new(7316u16).unwrap(),
@@ -197845,6 +198381,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 409,
         default_state: &BlockState {
             id: BlockStateId::new(7346u16).unwrap(),
@@ -198913,6 +199451,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1102,
         default_state: &BlockState {
             id: BlockStateId::new(7416u16).unwrap(),
@@ -199045,6 +199585,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1103,
         default_state: &BlockState {
             id: BlockStateId::new(7424u16).unwrap(),
@@ -199177,6 +199719,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1104,
         default_state: &BlockState {
             id: BlockStateId::new(7432u16).unwrap(),
@@ -199309,6 +199853,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1106,
         default_state: &BlockState {
             id: BlockStateId::new(7440u16).unwrap(),
@@ -199441,6 +199987,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1107,
         default_state: &BlockState {
             id: BlockStateId::new(7448u16).unwrap(),
@@ -199573,6 +200121,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1105,
         default_state: &BlockState {
             id: BlockStateId::new(7456u16).unwrap(),
@@ -199705,6 +200255,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1108,
         default_state: &BlockState {
             id: BlockStateId::new(7464u16).unwrap(),
@@ -199837,6 +200389,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1109,
         default_state: &BlockState {
             id: BlockStateId::new(7472u16).unwrap(),
@@ -199969,6 +200523,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1110,
         default_state: &BlockState {
             id: BlockStateId::new(7480u16).unwrap(),
@@ -200101,6 +200657,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1111,
         default_state: &BlockState {
             id: BlockStateId::new(7488u16).unwrap(),
@@ -200233,6 +200791,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1112,
         default_state: &BlockState {
             id: BlockStateId::new(7496u16).unwrap(),
@@ -200365,6 +200925,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1115,
         default_state: &BlockState {
             id: BlockStateId::new(7552u16).unwrap(),
@@ -201225,6 +201787,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1116,
         default_state: &BlockState {
             id: BlockStateId::new(7616u16).unwrap(),
@@ -202085,6 +202649,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1117,
         default_state: &BlockState {
             id: BlockStateId::new(7680u16).unwrap(),
@@ -202945,6 +203511,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1119,
         default_state: &BlockState {
             id: BlockStateId::new(7744u16).unwrap(),
@@ -203805,6 +204373,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1120,
         default_state: &BlockState {
             id: BlockStateId::new(7808u16).unwrap(),
@@ -204665,6 +205235,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1118,
         default_state: &BlockState {
             id: BlockStateId::new(7872u16).unwrap(),
@@ -205525,6 +206097,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1121,
         default_state: &BlockState {
             id: BlockStateId::new(7936u16).unwrap(),
@@ -206385,6 +206959,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1122,
         default_state: &BlockState {
             id: BlockStateId::new(8000u16).unwrap(),
@@ -207245,6 +207821,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1126,
         default_state: &BlockState {
             id: BlockStateId::new(8064u16).unwrap(),
@@ -208105,6 +208683,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1127,
         default_state: &BlockState {
             id: BlockStateId::new(8128u16).unwrap(),
@@ -208965,6 +209545,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1123,
         default_state: &BlockState {
             id: BlockStateId::new(8192u16).unwrap(),
@@ -209825,6 +210407,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1124,
         default_state: &BlockState {
             id: BlockStateId::new(8256u16).unwrap(),
@@ -210685,6 +211269,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1125,
         default_state: &BlockState {
             id: BlockStateId::new(8320u16).unwrap(),
@@ -211545,6 +212131,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1115,
         default_state: &BlockState {
             id: BlockStateId::new(8336u16).unwrap(),
@@ -211677,6 +212265,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1116,
         default_state: &BlockState {
             id: BlockStateId::new(8344u16).unwrap(),
@@ -211809,6 +212399,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1117,
         default_state: &BlockState {
             id: BlockStateId::new(8352u16).unwrap(),
@@ -211941,6 +212533,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1119,
         default_state: &BlockState {
             id: BlockStateId::new(8360u16).unwrap(),
@@ -212073,6 +212667,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1120,
         default_state: &BlockState {
             id: BlockStateId::new(8368u16).unwrap(),
@@ -212205,6 +212801,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1118,
         default_state: &BlockState {
             id: BlockStateId::new(8376u16).unwrap(),
@@ -212337,6 +212935,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1121,
         default_state: &BlockState {
             id: BlockStateId::new(8384u16).unwrap(),
@@ -212469,6 +213069,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1122,
         default_state: &BlockState {
             id: BlockStateId::new(8392u16).unwrap(),
@@ -212601,6 +213203,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1123,
         default_state: &BlockState {
             id: BlockStateId::new(8400u16).unwrap(),
@@ -212733,6 +213337,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1124,
         default_state: &BlockState {
             id: BlockStateId::new(8408u16).unwrap(),
@@ -212865,6 +213471,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1126,
         default_state: &BlockState {
             id: BlockStateId::new(8416u16).unwrap(),
@@ -212997,6 +213605,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1127,
         default_state: &BlockState {
             id: BlockStateId::new(8424u16).unwrap(),
@@ -213129,6 +213739,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1125,
         default_state: &BlockState {
             id: BlockStateId::new(8432u16).unwrap(),
@@ -213261,6 +213873,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 839,
         default_state: &BlockState {
             id: BlockStateId::new(8448u16).unwrap(),
@@ -213601,6 +214215,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 871,
         default_state: &BlockState {
             id: BlockStateId::new(8464u16).unwrap(),
@@ -213655,6 +214271,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 888,
         default_state: &BlockState {
             id: BlockStateId::new(8476u16).unwrap(),
@@ -214515,6 +215133,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 875,
         default_state: &BlockState {
             id: BlockStateId::new(8530u16).unwrap(),
@@ -214569,6 +215189,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 876,
         default_state: &BlockState {
             id: BlockStateId::new(8532u16).unwrap(),
@@ -214623,6 +215245,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 877,
         default_state: &BlockState {
             id: BlockStateId::new(8534u16).unwrap(),
@@ -214677,6 +215301,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 878,
         default_state: &BlockState {
             id: BlockStateId::new(8536u16).unwrap(),
@@ -214731,6 +215357,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 879,
         default_state: &BlockState {
             id: BlockStateId::new(8538u16).unwrap(),
@@ -214785,6 +215413,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 880,
         default_state: &BlockState {
             id: BlockStateId::new(8540u16).unwrap(),
@@ -214839,6 +215469,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 881,
         default_state: &BlockState {
             id: BlockStateId::new(8542u16).unwrap(),
@@ -214893,6 +215525,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 882,
         default_state: &BlockState {
             id: BlockStateId::new(8544u16).unwrap(),
@@ -214947,6 +215581,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 883,
         default_state: &BlockState {
             id: BlockStateId::new(8546u16).unwrap(),
@@ -215001,6 +215637,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 884,
         default_state: &BlockState {
             id: BlockStateId::new(8548u16).unwrap(),
@@ -215055,6 +215693,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 885,
         default_state: &BlockState {
             id: BlockStateId::new(8550u16).unwrap(),
@@ -215109,6 +215749,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 101,
         default_state: &BlockState {
             id: BlockStateId::new(8552u16).unwrap(),
@@ -215163,6 +215805,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 102,
         default_state: &BlockState {
             id: BlockStateId::new(8554u16).unwrap(),
@@ -215217,6 +215861,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 825,
         default_state: &BlockState {
             id: BlockStateId::new(8555u16).unwrap(),
@@ -215271,6 +215917,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 825,
         default_state: &BlockState {
             id: BlockStateId::new(8557u16).unwrap(),
@@ -215403,6 +216051,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 856,
         default_state: &BlockState {
             id: BlockStateId::new(8574u16).unwrap(),
@@ -215743,6 +216393,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 410,
         default_state: &BlockState {
             id: BlockStateId::new(8589u16).unwrap(),
@@ -215875,6 +216527,8 @@ impl Block {
         slipperiness: 0.98f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 411,
         default_state: &BlockState {
             id: BlockStateId::new(8597u16).unwrap(),
@@ -215914,6 +216568,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 412,
         default_state: &BlockState {
             id: BlockStateId::new(8598u16).unwrap(),
@@ -215953,6 +216609,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 413,
         default_state: &BlockState {
             id: BlockStateId::new(8599u16).unwrap(),
@@ -216189,6 +216847,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 414,
         default_state: &BlockState {
             id: BlockStateId::new(8615u16).unwrap(),
@@ -216231,6 +216891,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 415,
         default_state: &BlockState {
             id: BlockStateId::new(8616u16).unwrap(),
@@ -216270,6 +216932,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 327,
         default_state: &BlockState {
             id: BlockStateId::new(8617u16).unwrap(),
@@ -216506,6 +217170,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 416,
         default_state: &BlockState {
             id: BlockStateId::new(8634u16).unwrap(),
@@ -216560,6 +217226,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 417,
         default_state: &BlockState {
             id: BlockStateId::new(8666u16).unwrap(),
@@ -217007,6 +217675,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 433,
         default_state: &BlockState {
             id: BlockStateId::new(8667u16).unwrap(),
@@ -217046,6 +217716,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 0.4f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 434,
         default_state: &BlockState {
             id: BlockStateId::new(8668u16).unwrap(),
@@ -217085,6 +217757,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 435,
         default_state: &BlockState {
             id: BlockStateId::new(8669u16).unwrap(),
@@ -217124,6 +217798,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 436,
         default_state: &BlockState {
             id: BlockStateId::new(8671u16).unwrap(),
@@ -217191,6 +217867,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 437,
         default_state: &BlockState {
             id: BlockStateId::new(8674u16).unwrap(),
@@ -217258,6 +217936,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 439,
         default_state: &BlockState {
             id: BlockStateId::new(8676u16).unwrap(),
@@ -217297,6 +217977,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 439,
         default_state: &BlockState {
             id: BlockStateId::new(8677u16).unwrap(),
@@ -217377,6 +218059,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 440,
         default_state: &BlockState {
             id: BlockStateId::new(8681u16).unwrap(),
@@ -217416,6 +218100,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 440,
         default_state: &BlockState {
             id: BlockStateId::new(8682u16).unwrap(),
@@ -217496,6 +218182,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 441,
         default_state: &BlockState {
             id: BlockStateId::new(8686u16).unwrap(),
@@ -217535,6 +218223,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(8687u16).unwrap(),
@@ -217589,6 +218279,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 431,
         default_state: &BlockState {
             id: BlockStateId::new(8689u16).unwrap(),
@@ -217669,6 +218361,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 432,
         default_state: &BlockState {
             id: BlockStateId::new(8693u16).unwrap(),
@@ -217749,6 +218443,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1218,
         default_state: &BlockState {
             id: BlockStateId::new(8697u16).unwrap(),
@@ -217868,6 +218564,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 827,
         default_state: &BlockState {
             id: BlockStateId::new(8707u16).unwrap(),
@@ -218728,6 +219426,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 605,
         default_state: &BlockState {
             id: BlockStateId::new(8768u16).unwrap(),
@@ -218767,6 +219467,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 606,
         default_state: &BlockState {
             id: BlockStateId::new(8769u16).unwrap(),
@@ -218806,6 +219508,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 607,
         default_state: &BlockState {
             id: BlockStateId::new(8770u16).unwrap(),
@@ -218845,6 +219549,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 608,
         default_state: &BlockState {
             id: BlockStateId::new(8771u16).unwrap(),
@@ -218884,6 +219590,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 609,
         default_state: &BlockState {
             id: BlockStateId::new(8772u16).unwrap(),
@@ -218923,6 +219631,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 610,
         default_state: &BlockState {
             id: BlockStateId::new(8773u16).unwrap(),
@@ -218962,6 +219672,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 611,
         default_state: &BlockState {
             id: BlockStateId::new(8774u16).unwrap(),
@@ -219001,6 +219713,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 612,
         default_state: &BlockState {
             id: BlockStateId::new(8775u16).unwrap(),
@@ -219040,6 +219754,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 613,
         default_state: &BlockState {
             id: BlockStateId::new(8776u16).unwrap(),
@@ -219079,6 +219795,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 614,
         default_state: &BlockState {
             id: BlockStateId::new(8777u16).unwrap(),
@@ -219118,6 +219836,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 615,
         default_state: &BlockState {
             id: BlockStateId::new(8778u16).unwrap(),
@@ -219157,6 +219877,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 616,
         default_state: &BlockState {
             id: BlockStateId::new(8779u16).unwrap(),
@@ -219196,6 +219918,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 617,
         default_state: &BlockState {
             id: BlockStateId::new(8780u16).unwrap(),
@@ -219235,6 +219959,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 618,
         default_state: &BlockState {
             id: BlockStateId::new(8781u16).unwrap(),
@@ -219274,6 +220000,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 619,
         default_state: &BlockState {
             id: BlockStateId::new(8782u16).unwrap(),
@@ -219313,6 +220041,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 620,
         default_state: &BlockState {
             id: BlockStateId::new(8783u16).unwrap(),
@@ -219352,6 +220082,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 911,
         default_state: &BlockState {
             id: BlockStateId::new(8799u16).unwrap(),
@@ -220212,6 +220944,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 912,
         default_state: &BlockState {
             id: BlockStateId::new(8863u16).unwrap(),
@@ -221072,6 +221806,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 913,
         default_state: &BlockState {
             id: BlockStateId::new(8927u16).unwrap(),
@@ -221932,6 +222668,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 914,
         default_state: &BlockState {
             id: BlockStateId::new(8991u16).unwrap(),
@@ -222792,6 +223530,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 915,
         default_state: &BlockState {
             id: BlockStateId::new(9055u16).unwrap(),
@@ -223652,6 +224392,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 916,
         default_state: &BlockState {
             id: BlockStateId::new(9119u16).unwrap(),
@@ -224512,6 +225254,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 917,
         default_state: &BlockState {
             id: BlockStateId::new(9183u16).unwrap(),
@@ -225372,6 +226116,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 918,
         default_state: &BlockState {
             id: BlockStateId::new(9247u16).unwrap(),
@@ -226232,6 +226978,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 919,
         default_state: &BlockState {
             id: BlockStateId::new(9311u16).unwrap(),
@@ -227092,6 +227840,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 920,
         default_state: &BlockState {
             id: BlockStateId::new(9375u16).unwrap(),
@@ -227952,6 +228702,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 921,
         default_state: &BlockState {
             id: BlockStateId::new(9439u16).unwrap(),
@@ -228812,6 +229564,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 449,
         default_state: &BlockState {
             id: BlockStateId::new(9488u16).unwrap(),
@@ -228851,6 +229605,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 450,
         default_state: &BlockState {
             id: BlockStateId::new(9489u16).unwrap(),
@@ -228890,6 +229646,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 451,
         default_state: &BlockState {
             id: BlockStateId::new(9490u16).unwrap(),
@@ -228929,6 +229687,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 452,
         default_state: &BlockState {
             id: BlockStateId::new(9491u16).unwrap(),
@@ -228968,6 +229728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 453,
         default_state: &BlockState {
             id: BlockStateId::new(9492u16).unwrap(),
@@ -229007,6 +229769,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 454,
         default_state: &BlockState {
             id: BlockStateId::new(9493u16).unwrap(),
@@ -229046,6 +229810,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 442,
         default_state: &BlockState {
             id: BlockStateId::new(9494u16).unwrap(),
@@ -229085,6 +229851,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 443,
         default_state: &BlockState {
             id: BlockStateId::new(9495u16).unwrap(),
@@ -229124,6 +229892,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 444,
         default_state: &BlockState {
             id: BlockStateId::new(9496u16).unwrap(),
@@ -229163,6 +229933,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 445,
         default_state: &BlockState {
             id: BlockStateId::new(9497u16).unwrap(),
@@ -229202,6 +229974,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 446,
         default_state: &BlockState {
             id: BlockStateId::new(9498u16).unwrap(),
@@ -229241,6 +230015,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 447,
         default_state: &BlockState {
             id: BlockStateId::new(9499u16).unwrap(),
@@ -229280,6 +230056,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 461,
         default_state: &BlockState {
             id: BlockStateId::new(9500u16).unwrap(),
@@ -230140,6 +230918,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 462,
         default_state: &BlockState {
             id: BlockStateId::new(9564u16).unwrap(),
@@ -231000,6 +231780,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 463,
         default_state: &BlockState {
             id: BlockStateId::new(9628u16).unwrap(),
@@ -231860,6 +232642,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 464,
         default_state: &BlockState {
             id: BlockStateId::new(9723u16).unwrap(),
@@ -232304,6 +233088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 465,
         default_state: &BlockState {
             id: BlockStateId::new(9755u16).unwrap(),
@@ -232748,6 +233534,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 466,
         default_state: &BlockState {
             id: BlockStateId::new(9787u16).unwrap(),
@@ -233192,6 +233980,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 467,
         default_state: &BlockState {
             id: BlockStateId::new(9819u16).unwrap(),
@@ -233636,6 +234426,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 468,
         default_state: &BlockState {
             id: BlockStateId::new(9851u16).unwrap(),
@@ -234080,6 +234872,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 469,
         default_state: &BlockState {
             id: BlockStateId::new(9883u16).unwrap(),
@@ -234524,6 +235318,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 470,
         default_state: &BlockState {
             id: BlockStateId::new(9915u16).unwrap(),
@@ -234968,6 +235764,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 471,
         default_state: &BlockState {
             id: BlockStateId::new(9947u16).unwrap(),
@@ -235412,6 +236210,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 472,
         default_state: &BlockState {
             id: BlockStateId::new(9979u16).unwrap(),
@@ -235856,6 +236656,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 473,
         default_state: &BlockState {
             id: BlockStateId::new(9983u16).unwrap(),
@@ -235962,6 +236764,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 474,
         default_state: &BlockState {
             id: BlockStateId::new(9989u16).unwrap(),
@@ -236068,6 +236872,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 475,
         default_state: &BlockState {
             id: BlockStateId::new(9995u16).unwrap(),
@@ -236174,6 +236980,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 476,
         default_state: &BlockState {
             id: BlockStateId::new(10001u16).unwrap(),
@@ -236280,6 +237088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 477,
         default_state: &BlockState {
             id: BlockStateId::new(10007u16).unwrap(),
@@ -236386,6 +237196,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 478,
         default_state: &BlockState {
             id: BlockStateId::new(10013u16).unwrap(),
@@ -236492,6 +237304,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 479,
         default_state: &BlockState {
             id: BlockStateId::new(10019u16).unwrap(),
@@ -236598,6 +237412,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 480,
         default_state: &BlockState {
             id: BlockStateId::new(10025u16).unwrap(),
@@ -236704,6 +237520,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 481,
         default_state: &BlockState {
             id: BlockStateId::new(10031u16).unwrap(),
@@ -236810,6 +237628,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 482,
         default_state: &BlockState {
             id: BlockStateId::new(10065u16).unwrap(),
@@ -237254,6 +238074,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 430,
         default_state: &BlockState {
             id: BlockStateId::new(10066u16).unwrap(),
@@ -237293,6 +238115,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 483,
         default_state: &BlockState {
             id: BlockStateId::new(10067u16).unwrap(),
@@ -237332,6 +238156,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(10068u16).unwrap(),
@@ -237412,6 +238238,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(10072u16).unwrap(),
@@ -237492,6 +238320,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1258,
         default_state: &BlockState {
             id: BlockStateId::new(10076u16).unwrap(),
@@ -237624,6 +238454,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1259,
         default_state: &BlockState {
             id: BlockStateId::new(10084u16).unwrap(),
@@ -237756,6 +238588,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 484,
         default_state: &BlockState {
             id: BlockStateId::new(10123u16).unwrap(),
@@ -238203,6 +239037,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 485,
         default_state: &BlockState {
             id: BlockStateId::new(10251u16).unwrap(),
@@ -239898,6 +240734,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 486,
         default_state: &BlockState {
             id: BlockStateId::new(10379u16).unwrap(),
@@ -241590,6 +242428,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 932,
         default_state: &BlockState {
             id: BlockStateId::new(10387u16).unwrap(),
@@ -242037,6 +242877,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 493,
         default_state: &BlockState {
             id: BlockStateId::new(10423u16).unwrap(),
@@ -243105,6 +243947,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 494,
         default_state: &BlockState {
             id: BlockStateId::new(10503u16).unwrap(),
@@ -244173,6 +245017,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 495,
         default_state: &BlockState {
             id: BlockStateId::new(10583u16).unwrap(),
@@ -245241,6 +246087,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 496,
         default_state: &BlockState {
             id: BlockStateId::new(10653u16).unwrap(),
@@ -245295,6 +246143,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 497,
         default_state: &BlockState {
             id: BlockStateId::new(10654u16).unwrap(),
@@ -245334,6 +246184,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 487,
         default_state: &BlockState {
             id: BlockStateId::new(10655u16).unwrap(),
@@ -245373,6 +246225,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 488,
         default_state: &BlockState {
             id: BlockStateId::new(10656u16).unwrap(),
@@ -245412,6 +246266,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 489,
         default_state: &BlockState {
             id: BlockStateId::new(10668u16).unwrap(),
@@ -246480,6 +247336,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 490,
         default_state: &BlockState {
             id: BlockStateId::new(10740u16).unwrap(),
@@ -246586,6 +247444,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 491,
         default_state: &BlockState {
             id: BlockStateId::new(10746u16).unwrap(),
@@ -250826,6 +251686,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 492,
         default_state: &BlockState {
             id: BlockStateId::new(11067u16).unwrap(),
@@ -250865,6 +251727,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 498,
         default_state: &BlockState {
             id: BlockStateId::new(11068u16).unwrap(),
@@ -250904,6 +251768,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 501,
         default_state: &BlockState {
             id: BlockStateId::new(11100u16).unwrap(),
@@ -251348,6 +252214,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 502,
         default_state: &BlockState {
             id: BlockStateId::new(11112u16).unwrap(),
@@ -252416,6 +253284,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1269,
         default_state: &BlockState {
             id: BlockStateId::new(11181u16).unwrap(),
@@ -252496,6 +253366,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 507,
         default_state: &BlockState {
             id: BlockStateId::new(11185u16).unwrap(),
@@ -252535,6 +253407,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1276,
         default_state: &BlockState {
             id: BlockStateId::new(11193u16).unwrap(),
@@ -252667,6 +253541,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1277,
         default_state: &BlockState {
             id: BlockStateId::new(11194u16).unwrap(),
@@ -252714,6 +253590,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1277,
         default_state: &BlockState {
             id: BlockStateId::new(11195u16).unwrap(),
@@ -252797,6 +253675,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1277,
         default_state: &BlockState {
             id: BlockStateId::new(11198u16).unwrap(),
@@ -252844,6 +253724,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1277,
         default_state: &BlockState {
             id: BlockStateId::new(11199u16).unwrap(),
@@ -252927,6 +253809,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(11202u16).unwrap(),
@@ -252966,6 +253850,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 508,
         default_state: &BlockState {
             id: BlockStateId::new(11207u16).unwrap(),
@@ -253098,6 +253984,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 509,
         default_state: &BlockState {
             id: BlockStateId::new(11211u16).unwrap(),
@@ -253137,6 +254025,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 511,
         default_state: &BlockState {
             id: BlockStateId::new(11212u16).unwrap(),
@@ -253176,6 +254066,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 854,
         default_state: &BlockState {
             id: BlockStateId::new(11214u16).unwrap(),
@@ -253230,6 +254122,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1198,
         default_state: &BlockState {
             id: BlockStateId::new(11215u16).unwrap(),
@@ -253414,6 +254308,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0.75f32,
+        fall_distance_reduction: 0.5f32,
         item_id: 319,
         default_state: &BlockState {
             id: BlockStateId::new(11227u16).unwrap(),
@@ -253546,6 +254442,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 512,
         default_state: &BlockState {
             id: BlockStateId::new(11246u16).unwrap(),
@@ -254614,6 +255512,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 103,
         default_state: &BlockState {
             id: BlockStateId::new(11315u16).unwrap(),
@@ -254658,6 +255558,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 104,
         default_state: &BlockState {
             id: BlockStateId::new(11316u16).unwrap(),
@@ -254702,6 +255604,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 513,
         default_state: &BlockState {
             id: BlockStateId::new(11318u16).unwrap(),
@@ -254834,6 +255738,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 851,
         default_state: &BlockState {
             id: BlockStateId::new(11334u16).unwrap(),
@@ -255070,6 +255976,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1062,
         default_state: &BlockState {
             id: BlockStateId::new(11468u16).unwrap(),
@@ -256762,6 +257670,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 514,
         default_state: &BlockState {
             id: BlockStateId::new(11469u16).unwrap(),
@@ -256801,6 +257711,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 516,
         default_state: &BlockState {
             id: BlockStateId::new(11481u16).unwrap(),
@@ -257872,6 +258784,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 517,
         default_state: &BlockState {
             id: BlockStateId::new(11561u16).unwrap(),
@@ -258943,6 +259857,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 518,
         default_state: &BlockState {
             id: BlockStateId::new(11641u16).unwrap(),
@@ -260014,6 +260930,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 529,
         default_state: &BlockState {
             id: BlockStateId::new(11716u16).unwrap(),
@@ -260198,6 +261116,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 530,
         default_state: &BlockState {
             id: BlockStateId::new(11722u16).unwrap(),
@@ -260237,6 +261157,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 531,
         default_state: &BlockState {
             id: BlockStateId::new(11726u16).unwrap(),
@@ -264477,6 +265399,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 532,
         default_state: &BlockState {
             id: BlockStateId::new(12050u16).unwrap(),
@@ -268717,6 +269641,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1377,
         default_state: &BlockState {
             id: BlockStateId::new(12371u16).unwrap(),
@@ -268756,6 +269682,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12372u16).unwrap(),
@@ -268795,6 +269723,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12373u16).unwrap(),
@@ -268834,6 +269764,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12374u16).unwrap(),
@@ -268873,6 +269805,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12375u16).unwrap(),
@@ -268912,6 +269846,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12376u16).unwrap(),
@@ -268951,6 +269887,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12377u16).unwrap(),
@@ -268990,6 +269928,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12378u16).unwrap(),
@@ -269029,6 +269969,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12379u16).unwrap(),
@@ -269068,6 +270010,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12380u16).unwrap(),
@@ -269107,6 +270051,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12381u16).unwrap(),
@@ -269146,6 +270092,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12382u16).unwrap(),
@@ -269185,6 +270133,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12383u16).unwrap(),
@@ -269224,6 +270174,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12384u16).unwrap(),
@@ -269263,6 +270215,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12385u16).unwrap(),
@@ -269302,6 +270256,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12386u16).unwrap(),
@@ -269341,6 +270297,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12387u16).unwrap(),
@@ -269380,6 +270338,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12388u16).unwrap(),
@@ -269419,6 +270379,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12389u16).unwrap(),
@@ -269458,6 +270420,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12390u16).unwrap(),
@@ -269497,6 +270461,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12391u16).unwrap(),
@@ -269536,6 +270502,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12392u16).unwrap(),
@@ -269575,6 +270543,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12393u16).unwrap(),
@@ -269614,6 +270584,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12394u16).unwrap(),
@@ -269653,6 +270625,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12395u16).unwrap(),
@@ -269692,6 +270666,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12396u16).unwrap(),
@@ -269731,6 +270707,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12397u16).unwrap(),
@@ -269770,6 +270748,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12398u16).unwrap(),
@@ -269809,6 +270789,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12399u16).unwrap(),
@@ -269848,6 +270830,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12400u16).unwrap(),
@@ -269887,6 +270871,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(12401u16).unwrap(),
@@ -269926,6 +270912,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1378,
         default_state: &BlockState {
             id: BlockStateId::new(12402u16).unwrap(),
@@ -270058,6 +271046,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1379,
         default_state: &BlockState {
             id: BlockStateId::new(12410u16).unwrap(),
@@ -270190,6 +271180,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 858,
         default_state: &BlockState {
             id: BlockStateId::new(12427u16).unwrap(),
@@ -270530,6 +271522,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 859,
         default_state: &BlockState {
             id: BlockStateId::new(12451u16).unwrap(),
@@ -270870,6 +271864,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 860,
         default_state: &BlockState {
             id: BlockStateId::new(12475u16).unwrap(),
@@ -271210,6 +272206,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 861,
         default_state: &BlockState {
             id: BlockStateId::new(12499u16).unwrap(),
@@ -271550,6 +272548,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 862,
         default_state: &BlockState {
             id: BlockStateId::new(12523u16).unwrap(),
@@ -271890,6 +272890,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 863,
         default_state: &BlockState {
             id: BlockStateId::new(12547u16).unwrap(),
@@ -272230,6 +273232,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 864,
         default_state: &BlockState {
             id: BlockStateId::new(12571u16).unwrap(),
@@ -272570,6 +273574,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 865,
         default_state: &BlockState {
             id: BlockStateId::new(12595u16).unwrap(),
@@ -272910,6 +273916,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 866,
         default_state: &BlockState {
             id: BlockStateId::new(12619u16).unwrap(),
@@ -273250,6 +274258,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 867,
         default_state: &BlockState {
             id: BlockStateId::new(12643u16).unwrap(),
@@ -273590,6 +274600,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 868,
         default_state: &BlockState {
             id: BlockStateId::new(12667u16).unwrap(),
@@ -273930,6 +274942,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1384,
         default_state: &BlockState {
             id: BlockStateId::new(12698u16).unwrap(),
@@ -274374,6 +275388,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1384,
         default_state: &BlockState {
             id: BlockStateId::new(12715u16).unwrap(),
@@ -274506,6 +275522,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1385,
         default_state: &BlockState {
             id: BlockStateId::new(12738u16).unwrap(),
@@ -274950,6 +275968,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1385,
         default_state: &BlockState {
             id: BlockStateId::new(12755u16).unwrap(),
@@ -275082,6 +276102,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1387,
         default_state: &BlockState {
             id: BlockStateId::new(12778u16).unwrap(),
@@ -275526,6 +276548,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1387,
         default_state: &BlockState {
             id: BlockStateId::new(12795u16).unwrap(),
@@ -275658,6 +276682,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1386,
         default_state: &BlockState {
             id: BlockStateId::new(12818u16).unwrap(),
@@ -276102,6 +277128,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1386,
         default_state: &BlockState {
             id: BlockStateId::new(12835u16).unwrap(),
@@ -276234,6 +277262,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1388,
         default_state: &BlockState {
             id: BlockStateId::new(12858u16).unwrap(),
@@ -276678,6 +277708,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1388,
         default_state: &BlockState {
             id: BlockStateId::new(12875u16).unwrap(),
@@ -276810,6 +277842,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1389,
         default_state: &BlockState {
             id: BlockStateId::new(12898u16).unwrap(),
@@ -277254,6 +278288,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1389,
         default_state: &BlockState {
             id: BlockStateId::new(12915u16).unwrap(),
@@ -277386,6 +278422,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1390,
         default_state: &BlockState {
             id: BlockStateId::new(12938u16).unwrap(),
@@ -277830,6 +278868,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1390,
         default_state: &BlockState {
             id: BlockStateId::new(12955u16).unwrap(),
@@ -277962,6 +279002,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 553,
         default_state: &BlockState {
             id: BlockStateId::new(12962u16).unwrap(),
@@ -278042,6 +279084,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 554,
         default_state: &BlockState {
             id: BlockStateId::new(12966u16).unwrap(),
@@ -278122,6 +279166,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 555,
         default_state: &BlockState {
             id: BlockStateId::new(12970u16).unwrap(),
@@ -278202,6 +279248,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 852,
         default_state: &BlockState {
             id: BlockStateId::new(12975u16).unwrap(),
@@ -278542,6 +279590,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 873,
         default_state: &BlockState {
             id: BlockStateId::new(12998u16).unwrap(),
@@ -278778,6 +279828,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 874,
         default_state: &BlockState {
             id: BlockStateId::new(13014u16).unwrap(),
@@ -279014,6 +280066,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 828,
         default_state: &BlockState {
             id: BlockStateId::new(13031u16).unwrap(),
@@ -279250,6 +280304,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 848,
         default_state: &BlockState {
             id: BlockStateId::new(13062u16).unwrap(),
@@ -279694,6 +280750,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 826,
         default_state: &BlockState {
             id: BlockStateId::new(13078u16).unwrap(),
@@ -279733,6 +280791,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 110,
         default_state: &BlockState {
             id: BlockStateId::new(13079u16).unwrap(),
@@ -279777,6 +280837,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 834,
         default_state: &BlockState {
             id: BlockStateId::new(13080u16).unwrap(),
@@ -279947,6 +281009,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 557,
         default_state: &BlockState {
             id: BlockStateId::new(13090u16).unwrap(),
@@ -279986,6 +281050,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 556,
         default_state: &BlockState {
             id: BlockStateId::new(13091u16).unwrap(),
@@ -280025,6 +281091,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 559,
         default_state: &BlockState {
             id: BlockStateId::new(13093u16).unwrap(),
@@ -280092,6 +281160,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 560,
         default_state: &BlockState {
             id: BlockStateId::new(13106u16).unwrap(),
@@ -281160,6 +282230,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 948,
         default_state: &BlockState {
             id: BlockStateId::new(13188u16).unwrap(),
@@ -281500,6 +282572,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 836,
         default_state: &BlockState {
             id: BlockStateId::new(13200u16).unwrap(),
@@ -281684,6 +282758,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 561,
         default_state: &BlockState {
             id: BlockStateId::new(13211u16).unwrap(),
@@ -281723,6 +282799,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 562,
         default_state: &BlockState {
             id: BlockStateId::new(13212u16).unwrap(),
@@ -281762,6 +282840,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 563,
         default_state: &BlockState {
             id: BlockStateId::new(13213u16).unwrap(),
@@ -281801,6 +282881,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 564,
         default_state: &BlockState {
             id: BlockStateId::new(13214u16).unwrap(),
@@ -281840,6 +282922,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 565,
         default_state: &BlockState {
             id: BlockStateId::new(13215u16).unwrap(),
@@ -281879,6 +282963,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 566,
         default_state: &BlockState {
             id: BlockStateId::new(13216u16).unwrap(),
@@ -281918,6 +283004,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 567,
         default_state: &BlockState {
             id: BlockStateId::new(13217u16).unwrap(),
@@ -281957,6 +283045,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 568,
         default_state: &BlockState {
             id: BlockStateId::new(13218u16).unwrap(),
@@ -281996,6 +283086,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 569,
         default_state: &BlockState {
             id: BlockStateId::new(13219u16).unwrap(),
@@ -282035,6 +283127,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 570,
         default_state: &BlockState {
             id: BlockStateId::new(13220u16).unwrap(),
@@ -282074,6 +283168,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 571,
         default_state: &BlockState {
             id: BlockStateId::new(13221u16).unwrap(),
@@ -282113,6 +283209,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 572,
         default_state: &BlockState {
             id: BlockStateId::new(13222u16).unwrap(),
@@ -282152,6 +283250,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 573,
         default_state: &BlockState {
             id: BlockStateId::new(13223u16).unwrap(),
@@ -282191,6 +283291,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 574,
         default_state: &BlockState {
             id: BlockStateId::new(13224u16).unwrap(),
@@ -282230,6 +283332,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 575,
         default_state: &BlockState {
             id: BlockStateId::new(13225u16).unwrap(),
@@ -282269,6 +283373,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 576,
         default_state: &BlockState {
             id: BlockStateId::new(13226u16).unwrap(),
@@ -282308,6 +283414,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 621,
         default_state: &BlockState {
             id: BlockStateId::new(13258u16).unwrap(),
@@ -282752,6 +283860,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 622,
         default_state: &BlockState {
             id: BlockStateId::new(13290u16).unwrap(),
@@ -283196,6 +284306,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 623,
         default_state: &BlockState {
             id: BlockStateId::new(13322u16).unwrap(),
@@ -283640,6 +284752,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 624,
         default_state: &BlockState {
             id: BlockStateId::new(13354u16).unwrap(),
@@ -284084,6 +285198,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 625,
         default_state: &BlockState {
             id: BlockStateId::new(13386u16).unwrap(),
@@ -284528,6 +285644,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 626,
         default_state: &BlockState {
             id: BlockStateId::new(13418u16).unwrap(),
@@ -284972,6 +286090,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 627,
         default_state: &BlockState {
             id: BlockStateId::new(13450u16).unwrap(),
@@ -285416,6 +286536,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 628,
         default_state: &BlockState {
             id: BlockStateId::new(13482u16).unwrap(),
@@ -285860,6 +286982,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 629,
         default_state: &BlockState {
             id: BlockStateId::new(13514u16).unwrap(),
@@ -286304,6 +287428,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 630,
         default_state: &BlockState {
             id: BlockStateId::new(13546u16).unwrap(),
@@ -286748,6 +287874,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 631,
         default_state: &BlockState {
             id: BlockStateId::new(13578u16).unwrap(),
@@ -287192,6 +288320,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 632,
         default_state: &BlockState {
             id: BlockStateId::new(13610u16).unwrap(),
@@ -287636,6 +288766,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 633,
         default_state: &BlockState {
             id: BlockStateId::new(13642u16).unwrap(),
@@ -288080,6 +289212,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 634,
         default_state: &BlockState {
             id: BlockStateId::new(13674u16).unwrap(),
@@ -288524,6 +289658,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 635,
         default_state: &BlockState {
             id: BlockStateId::new(13706u16).unwrap(),
@@ -288968,6 +290104,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 636,
         default_state: &BlockState {
             id: BlockStateId::new(13738u16).unwrap(),
@@ -289412,6 +290550,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 519,
         default_state: &BlockState {
             id: BlockStateId::new(13750u16).unwrap(),
@@ -290483,6 +291623,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 520,
         default_state: &BlockState {
             id: BlockStateId::new(13830u16).unwrap(),
@@ -291554,6 +292696,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 521,
         default_state: &BlockState {
             id: BlockStateId::new(13910u16).unwrap(),
@@ -292625,6 +293769,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 522,
         default_state: &BlockState {
             id: BlockStateId::new(13990u16).unwrap(),
@@ -293696,6 +294842,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 523,
         default_state: &BlockState {
             id: BlockStateId::new(14070u16).unwrap(),
@@ -294767,6 +295915,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 524,
         default_state: &BlockState {
             id: BlockStateId::new(14150u16).unwrap(),
@@ -295838,6 +296988,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 525,
         default_state: &BlockState {
             id: BlockStateId::new(14230u16).unwrap(),
@@ -296909,6 +298061,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 526,
         default_state: &BlockState {
             id: BlockStateId::new(14310u16).unwrap(),
@@ -297980,6 +299134,8 @@ impl Block {
         slipperiness: 0.8f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 1f32,
+        fall_distance_reduction: 0f32,
         item_id: 831,
         default_state: &BlockState {
             id: BlockStateId::new(14379u16).unwrap(),
@@ -298019,6 +299175,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 577,
         default_state: &BlockState {
             id: BlockStateId::new(14381u16).unwrap(),
@@ -298073,6 +299231,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 578,
         default_state: &BlockState {
             id: BlockStateId::new(14413u16).unwrap(),
@@ -298517,6 +299677,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 910,
         default_state: &BlockState {
             id: BlockStateId::new(14429u16).unwrap(),
@@ -299377,6 +300539,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 637,
         default_state: &BlockState {
             id: BlockStateId::new(14478u16).unwrap(),
@@ -299416,6 +300580,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 638,
         default_state: &BlockState {
             id: BlockStateId::new(14479u16).unwrap(),
@@ -299455,6 +300621,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 639,
         default_state: &BlockState {
             id: BlockStateId::new(14480u16).unwrap(),
@@ -299494,6 +300662,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 640,
         default_state: &BlockState {
             id: BlockStateId::new(14492u16).unwrap(),
@@ -300562,6 +301732,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 641,
         default_state: &BlockState {
             id: BlockStateId::new(14572u16).unwrap(),
@@ -301630,6 +302802,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 642,
         default_state: &BlockState {
             id: BlockStateId::new(14652u16).unwrap(),
@@ -302698,6 +303872,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 369,
         default_state: &BlockState {
             id: BlockStateId::new(14724u16).unwrap(),
@@ -302804,6 +303980,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 370,
         default_state: &BlockState {
             id: BlockStateId::new(14730u16).unwrap(),
@@ -302910,6 +304088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 371,
         default_state: &BlockState {
             id: BlockStateId::new(14736u16).unwrap(),
@@ -303016,6 +304196,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 643,
         default_state: &BlockState {
             id: BlockStateId::new(14739u16).unwrap(),
@@ -303055,6 +304237,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 579,
         default_state: &BlockState {
             id: BlockStateId::new(14741u16).unwrap(),
@@ -303125,6 +304309,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 580,
         default_state: &BlockState {
             id: BlockStateId::new(14743u16).unwrap(),
@@ -303167,6 +304353,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 581,
         default_state: &BlockState {
             id: BlockStateId::new(14744u16).unwrap(),
@@ -303209,6 +304397,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 582,
         default_state: &BlockState {
             id: BlockStateId::new(14745u16).unwrap(),
@@ -303251,6 +304441,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 583,
         default_state: &BlockState {
             id: BlockStateId::new(14746u16).unwrap(),
@@ -303293,6 +304485,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 584,
         default_state: &BlockState {
             id: BlockStateId::new(14747u16).unwrap(),
@@ -303335,6 +304529,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 585,
         default_state: &BlockState {
             id: BlockStateId::new(14748u16).unwrap(),
@@ -303377,6 +304573,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 586,
         default_state: &BlockState {
             id: BlockStateId::new(14749u16).unwrap(),
@@ -303419,6 +304617,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 587,
         default_state: &BlockState {
             id: BlockStateId::new(14750u16).unwrap(),
@@ -303461,6 +304661,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 588,
         default_state: &BlockState {
             id: BlockStateId::new(14751u16).unwrap(),
@@ -303503,6 +304705,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 589,
         default_state: &BlockState {
             id: BlockStateId::new(14752u16).unwrap(),
@@ -303545,6 +304749,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 590,
         default_state: &BlockState {
             id: BlockStateId::new(14753u16).unwrap(),
@@ -303587,6 +304793,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 591,
         default_state: &BlockState {
             id: BlockStateId::new(14754u16).unwrap(),
@@ -303629,6 +304837,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 592,
         default_state: &BlockState {
             id: BlockStateId::new(14755u16).unwrap(),
@@ -303671,6 +304881,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 593,
         default_state: &BlockState {
             id: BlockStateId::new(14756u16).unwrap(),
@@ -303713,6 +304925,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 594,
         default_state: &BlockState {
             id: BlockStateId::new(14757u16).unwrap(),
@@ -303755,6 +304969,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 595,
         default_state: &BlockState {
             id: BlockStateId::new(14758u16).unwrap(),
@@ -303797,6 +305013,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 596,
         default_state: &BlockState {
             id: BlockStateId::new(14759u16).unwrap(),
@@ -303836,6 +305054,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 112,
         default_state: &BlockState {
             id: BlockStateId::new(14760u16).unwrap(),
@@ -303878,6 +305098,8 @@ impl Block {
         slipperiness: 0.98f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 597,
         default_state: &BlockState {
             id: BlockStateId::new(14761u16).unwrap(),
@@ -303917,6 +305139,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 599,
         default_state: &BlockState {
             id: BlockStateId::new(14763u16).unwrap(),
@@ -303974,6 +305198,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 600,
         default_state: &BlockState {
             id: BlockStateId::new(14765u16).unwrap(),
@@ -304031,6 +305257,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 601,
         default_state: &BlockState {
             id: BlockStateId::new(14767u16).unwrap(),
@@ -304088,6 +305316,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 602,
         default_state: &BlockState {
             id: BlockStateId::new(14769u16).unwrap(),
@@ -304145,6 +305375,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 603,
         default_state: &BlockState {
             id: BlockStateId::new(14771u16).unwrap(),
@@ -304202,6 +305434,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 604,
         default_state: &BlockState {
             id: BlockStateId::new(14773u16).unwrap(),
@@ -304259,6 +305493,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1417,
         default_state: &BlockState {
             id: BlockStateId::new(14782u16).unwrap(),
@@ -304495,6 +305731,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1418,
         default_state: &BlockState {
             id: BlockStateId::new(14798u16).unwrap(),
@@ -304731,6 +305969,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1419,
         default_state: &BlockState {
             id: BlockStateId::new(14814u16).unwrap(),
@@ -304967,6 +306207,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1420,
         default_state: &BlockState {
             id: BlockStateId::new(14830u16).unwrap(),
@@ -305203,6 +306445,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1421,
         default_state: &BlockState {
             id: BlockStateId::new(14846u16).unwrap(),
@@ -305439,6 +306683,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1422,
         default_state: &BlockState {
             id: BlockStateId::new(14862u16).unwrap(),
@@ -305675,6 +306921,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1423,
         default_state: &BlockState {
             id: BlockStateId::new(14878u16).unwrap(),
@@ -305911,6 +307159,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1424,
         default_state: &BlockState {
             id: BlockStateId::new(14894u16).unwrap(),
@@ -306147,6 +307397,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1425,
         default_state: &BlockState {
             id: BlockStateId::new(14910u16).unwrap(),
@@ -306383,6 +307635,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1426,
         default_state: &BlockState {
             id: BlockStateId::new(14926u16).unwrap(),
@@ -306619,6 +307873,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1427,
         default_state: &BlockState {
             id: BlockStateId::new(14942u16).unwrap(),
@@ -306855,6 +308111,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1428,
         default_state: &BlockState {
             id: BlockStateId::new(14958u16).unwrap(),
@@ -307091,6 +308349,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1429,
         default_state: &BlockState {
             id: BlockStateId::new(14974u16).unwrap(),
@@ -307327,6 +308587,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1430,
         default_state: &BlockState {
             id: BlockStateId::new(14990u16).unwrap(),
@@ -307563,6 +308825,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1431,
         default_state: &BlockState {
             id: BlockStateId::new(15006u16).unwrap(),
@@ -307799,6 +309063,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1432,
         default_state: &BlockState {
             id: BlockStateId::new(15022u16).unwrap(),
@@ -308035,6 +309301,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1417,
         default_state: &BlockState {
             id: BlockStateId::new(15030u16).unwrap(),
@@ -308115,6 +309383,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1418,
         default_state: &BlockState {
             id: BlockStateId::new(15034u16).unwrap(),
@@ -308195,6 +309465,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1419,
         default_state: &BlockState {
             id: BlockStateId::new(15038u16).unwrap(),
@@ -308275,6 +309547,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1420,
         default_state: &BlockState {
             id: BlockStateId::new(15042u16).unwrap(),
@@ -308355,6 +309629,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1421,
         default_state: &BlockState {
             id: BlockStateId::new(15046u16).unwrap(),
@@ -308435,6 +309711,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1422,
         default_state: &BlockState {
             id: BlockStateId::new(15050u16).unwrap(),
@@ -308515,6 +309793,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1423,
         default_state: &BlockState {
             id: BlockStateId::new(15054u16).unwrap(),
@@ -308595,6 +309875,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1424,
         default_state: &BlockState {
             id: BlockStateId::new(15058u16).unwrap(),
@@ -308675,6 +309957,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1425,
         default_state: &BlockState {
             id: BlockStateId::new(15062u16).unwrap(),
@@ -308755,6 +310039,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1426,
         default_state: &BlockState {
             id: BlockStateId::new(15066u16).unwrap(),
@@ -308835,6 +310121,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1427,
         default_state: &BlockState {
             id: BlockStateId::new(15070u16).unwrap(),
@@ -308915,6 +310203,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1428,
         default_state: &BlockState {
             id: BlockStateId::new(15074u16).unwrap(),
@@ -308995,6 +310285,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1429,
         default_state: &BlockState {
             id: BlockStateId::new(15078u16).unwrap(),
@@ -309075,6 +310367,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1430,
         default_state: &BlockState {
             id: BlockStateId::new(15082u16).unwrap(),
@@ -309155,6 +310449,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1431,
         default_state: &BlockState {
             id: BlockStateId::new(15086u16).unwrap(),
@@ -309235,6 +310531,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1432,
         default_state: &BlockState {
             id: BlockStateId::new(15090u16).unwrap(),
@@ -309315,6 +310613,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 644,
         default_state: &BlockState {
             id: BlockStateId::new(15094u16).unwrap(),
@@ -309354,6 +310654,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 645,
         default_state: &BlockState {
             id: BlockStateId::new(15095u16).unwrap(),
@@ -309393,6 +310695,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 646,
         default_state: &BlockState {
             id: BlockStateId::new(15096u16).unwrap(),
@@ -309432,6 +310736,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 647,
         default_state: &BlockState {
             id: BlockStateId::new(15108u16).unwrap(),
@@ -310500,6 +311806,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 341,
         default_state: &BlockState {
             id: BlockStateId::new(15180u16).unwrap(),
@@ -310609,6 +311917,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 342,
         default_state: &BlockState {
             id: BlockStateId::new(15186u16).unwrap(),
@@ -310718,6 +312028,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 343,
         default_state: &BlockState {
             id: BlockStateId::new(15192u16).unwrap(),
@@ -310827,6 +312139,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 344,
         default_state: &BlockState {
             id: BlockStateId::new(15198u16).unwrap(),
@@ -310936,6 +312250,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 345,
         default_state: &BlockState {
             id: BlockStateId::new(15204u16).unwrap(),
@@ -311045,6 +312361,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 346,
         default_state: &BlockState {
             id: BlockStateId::new(15210u16).unwrap(),
@@ -311154,6 +312472,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 347,
         default_state: &BlockState {
             id: BlockStateId::new(15216u16).unwrap(),
@@ -311263,6 +312583,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 348,
         default_state: &BlockState {
             id: BlockStateId::new(15222u16).unwrap(),
@@ -311372,6 +312694,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 349,
         default_state: &BlockState {
             id: BlockStateId::new(15228u16).unwrap(),
@@ -311481,6 +312805,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 350,
         default_state: &BlockState {
             id: BlockStateId::new(15234u16).unwrap(),
@@ -311590,6 +312916,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 351,
         default_state: &BlockState {
             id: BlockStateId::new(15240u16).unwrap(),
@@ -311699,6 +313027,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 352,
         default_state: &BlockState {
             id: BlockStateId::new(15246u16).unwrap(),
@@ -311808,6 +313138,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 355,
         default_state: &BlockState {
             id: BlockStateId::new(15252u16).unwrap(),
@@ -311914,6 +313246,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 357,
         default_state: &BlockState {
             id: BlockStateId::new(15258u16).unwrap(),
@@ -312020,6 +313354,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 358,
         default_state: &BlockState {
             id: BlockStateId::new(15264u16).unwrap(),
@@ -312126,6 +313462,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 359,
         default_state: &BlockState {
             id: BlockStateId::new(15270u16).unwrap(),
@@ -312232,6 +313570,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 360,
         default_state: &BlockState {
             id: BlockStateId::new(15276u16).unwrap(),
@@ -312338,6 +313678,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 361,
         default_state: &BlockState {
             id: BlockStateId::new(15282u16).unwrap(),
@@ -312444,6 +313786,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 362,
         default_state: &BlockState {
             id: BlockStateId::new(15288u16).unwrap(),
@@ -312550,6 +313894,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 363,
         default_state: &BlockState {
             id: BlockStateId::new(15294u16).unwrap(),
@@ -312656,6 +314002,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 364,
         default_state: &BlockState {
             id: BlockStateId::new(15300u16).unwrap(),
@@ -312762,6 +314110,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 365,
         default_state: &BlockState {
             id: BlockStateId::new(15306u16).unwrap(),
@@ -312868,6 +314218,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 366,
         default_state: &BlockState {
             id: BlockStateId::new(15312u16).unwrap(),
@@ -312974,6 +314326,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 367,
         default_state: &BlockState {
             id: BlockStateId::new(15318u16).unwrap(),
@@ -313080,6 +314434,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 375,
         default_state: &BlockState {
             id: BlockStateId::new(15321u16).unwrap(),
@@ -313119,6 +314475,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 356,
         default_state: &BlockState {
             id: BlockStateId::new(15325u16).unwrap(),
@@ -313225,6 +314583,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 374,
         default_state: &BlockState {
             id: BlockStateId::new(15328u16).unwrap(),
@@ -313264,6 +314624,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 372,
         default_state: &BlockState {
             id: BlockStateId::new(15329u16).unwrap(),
@@ -313303,6 +314665,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 373,
         default_state: &BlockState {
             id: BlockStateId::new(15330u16).unwrap(),
@@ -313342,6 +314706,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 933,
         default_state: &BlockState {
             id: BlockStateId::new(15338u16).unwrap(),
@@ -313789,6 +315155,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 934,
         default_state: &BlockState {
             id: BlockStateId::new(15370u16).unwrap(),
@@ -314236,6 +315604,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 935,
         default_state: &BlockState {
             id: BlockStateId::new(15402u16).unwrap(),
@@ -314683,6 +316053,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 936,
         default_state: &BlockState {
             id: BlockStateId::new(15434u16).unwrap(),
@@ -315130,6 +316502,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 937,
         default_state: &BlockState {
             id: BlockStateId::new(15466u16).unwrap(),
@@ -315577,6 +316951,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 938,
         default_state: &BlockState {
             id: BlockStateId::new(15498u16).unwrap(),
@@ -316024,6 +317400,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 939,
         default_state: &BlockState {
             id: BlockStateId::new(15530u16).unwrap(),
@@ -316471,6 +317849,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 940,
         default_state: &BlockState {
             id: BlockStateId::new(15562u16).unwrap(),
@@ -316918,6 +318298,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 941,
         default_state: &BlockState {
             id: BlockStateId::new(15594u16).unwrap(),
@@ -317365,6 +318747,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 942,
         default_state: &BlockState {
             id: BlockStateId::new(15626u16).unwrap(),
@@ -317812,6 +319196,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 418,
         default_state: &BlockState {
             id: BlockStateId::new(15682u16).unwrap(),
@@ -318259,6 +319645,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 419,
         default_state: &BlockState {
             id: BlockStateId::new(15714u16).unwrap(),
@@ -318706,6 +320094,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 420,
         default_state: &BlockState {
             id: BlockStateId::new(15746u16).unwrap(),
@@ -319153,6 +320543,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 421,
         default_state: &BlockState {
             id: BlockStateId::new(15778u16).unwrap(),
@@ -319600,6 +320992,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 422,
         default_state: &BlockState {
             id: BlockStateId::new(15810u16).unwrap(),
@@ -320047,6 +321441,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 423,
         default_state: &BlockState {
             id: BlockStateId::new(15842u16).unwrap(),
@@ -320494,6 +321890,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 424,
         default_state: &BlockState {
             id: BlockStateId::new(15874u16).unwrap(),
@@ -320941,6 +322339,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 425,
         default_state: &BlockState {
             id: BlockStateId::new(15906u16).unwrap(),
@@ -321388,6 +322788,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 426,
         default_state: &BlockState {
             id: BlockStateId::new(15938u16).unwrap(),
@@ -321835,6 +323237,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 427,
         default_state: &BlockState {
             id: BlockStateId::new(15970u16).unwrap(),
@@ -322282,6 +323686,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 890,
         default_state: &BlockState {
             id: BlockStateId::new(15982u16).unwrap(),
@@ -323142,6 +324548,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 891,
         default_state: &BlockState {
             id: BlockStateId::new(16046u16).unwrap(),
@@ -324002,6 +325410,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 892,
         default_state: &BlockState {
             id: BlockStateId::new(16110u16).unwrap(),
@@ -324862,6 +326272,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 893,
         default_state: &BlockState {
             id: BlockStateId::new(16174u16).unwrap(),
@@ -325722,6 +327134,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 894,
         default_state: &BlockState {
             id: BlockStateId::new(16238u16).unwrap(),
@@ -326582,6 +327996,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 895,
         default_state: &BlockState {
             id: BlockStateId::new(16302u16).unwrap(),
@@ -327442,6 +328858,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 896,
         default_state: &BlockState {
             id: BlockStateId::new(16366u16).unwrap(),
@@ -328302,6 +329720,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 897,
         default_state: &BlockState {
             id: BlockStateId::new(16430u16).unwrap(),
@@ -329162,6 +330582,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 898,
         default_state: &BlockState {
             id: BlockStateId::new(16494u16).unwrap(),
@@ -330022,6 +331444,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 899,
         default_state: &BlockState {
             id: BlockStateId::new(16558u16).unwrap(),
@@ -330882,6 +332306,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 396,
         default_state: &BlockState {
             id: BlockStateId::new(16615u16).unwrap(),
@@ -330988,6 +332414,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 397,
         default_state: &BlockState {
             id: BlockStateId::new(16680u16).unwrap(),
@@ -331848,6 +333276,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 398,
         default_state: &BlockState {
             id: BlockStateId::new(16681u16).unwrap(),
@@ -331954,6 +333384,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 399,
         default_state: &BlockState {
             id: BlockStateId::new(16687u16).unwrap(),
@@ -331993,6 +333425,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 368,
         default_state: &BlockState {
             id: BlockStateId::new(16691u16).unwrap(),
@@ -332099,6 +333533,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 400,
         default_state: &BlockState {
             id: BlockStateId::new(16695u16).unwrap(),
@@ -332166,6 +333602,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 401,
         default_state: &BlockState {
             id: BlockStateId::new(16708u16).unwrap(),
@@ -333234,6 +334672,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 510,
         default_state: &BlockState {
             id: BlockStateId::new(16777u16).unwrap(),
@@ -333273,6 +334713,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1436,
         default_state: &BlockState {
             id: BlockStateId::new(16778u16).unwrap(),
@@ -333327,6 +334769,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1437,
         default_state: &BlockState {
             id: BlockStateId::new(16781u16).unwrap(),
@@ -333485,6 +334929,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 315,
         default_state: &BlockState {
             id: BlockStateId::new(16791u16).unwrap(),
@@ -333542,6 +334988,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1439,
         default_state: &BlockState {
             id: BlockStateId::new(16792u16).unwrap(),
@@ -333622,6 +335070,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 598,
         default_state: &BlockState {
             id: BlockStateId::new(16796u16).unwrap(),
@@ -333661,6 +335111,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(16797u16).unwrap(),
@@ -333700,6 +335152,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 648,
         default_state: &BlockState {
             id: BlockStateId::new(16804u16).unwrap(),
@@ -333884,6 +335338,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 649,
         default_state: &BlockState {
             id: BlockStateId::new(16816u16).unwrap(),
@@ -334068,6 +335524,8 @@ impl Block {
         slipperiness: 0.98f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(16822u16).unwrap(),
@@ -334148,6 +335606,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 650,
         default_state: &BlockState {
             id: BlockStateId::new(16826u16).unwrap(),
@@ -334187,6 +335647,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 651,
         default_state: &BlockState {
             id: BlockStateId::new(16827u16).unwrap(),
@@ -334226,6 +335688,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 653,
         default_state: &BlockState {
             id: BlockStateId::new(16828u16).unwrap(),
@@ -334265,6 +335729,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 654,
         default_state: &BlockState {
             id: BlockStateId::new(16830u16).unwrap(),
@@ -334332,6 +335798,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 655,
         default_state: &BlockState {
             id: BlockStateId::new(16832u16).unwrap(),
@@ -334371,6 +335839,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 833,
         default_state: &BlockState {
             id: BlockStateId::new(16838u16).unwrap(),
@@ -334555,6 +336025,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 656,
         default_state: &BlockState {
             id: BlockStateId::new(16849u16).unwrap(),
@@ -334661,6 +336133,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 657,
         default_state: &BlockState {
             id: BlockStateId::new(16855u16).unwrap(),
@@ -334767,6 +336241,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 658,
         default_state: &BlockState {
             id: BlockStateId::new(16861u16).unwrap(),
@@ -334873,6 +336349,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 659,
         default_state: &BlockState {
             id: BlockStateId::new(16867u16).unwrap(),
@@ -334979,6 +336457,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 660,
         default_state: &BlockState {
             id: BlockStateId::new(16873u16).unwrap(),
@@ -335085,6 +336565,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 661,
         default_state: &BlockState {
             id: BlockStateId::new(16879u16).unwrap(),
@@ -335191,6 +336673,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 662,
         default_state: &BlockState {
             id: BlockStateId::new(16885u16).unwrap(),
@@ -335297,6 +336781,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 663,
         default_state: &BlockState {
             id: BlockStateId::new(16891u16).unwrap(),
@@ -335403,6 +336889,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 664,
         default_state: &BlockState {
             id: BlockStateId::new(16897u16).unwrap(),
@@ -335509,6 +336997,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 665,
         default_state: &BlockState {
             id: BlockStateId::new(16903u16).unwrap(),
@@ -335615,6 +337105,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 666,
         default_state: &BlockState {
             id: BlockStateId::new(16909u16).unwrap(),
@@ -335721,6 +337213,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 667,
         default_state: &BlockState {
             id: BlockStateId::new(16915u16).unwrap(),
@@ -335827,6 +337321,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 668,
         default_state: &BlockState {
             id: BlockStateId::new(16921u16).unwrap(),
@@ -335933,6 +337429,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 669,
         default_state: &BlockState {
             id: BlockStateId::new(16927u16).unwrap(),
@@ -336039,6 +337537,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 670,
         default_state: &BlockState {
             id: BlockStateId::new(16933u16).unwrap(),
@@ -336145,6 +337645,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 671,
         default_state: &BlockState {
             id: BlockStateId::new(16939u16).unwrap(),
@@ -336251,6 +337753,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 672,
         default_state: &BlockState {
             id: BlockStateId::new(16945u16).unwrap(),
@@ -336357,6 +337861,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 673,
         default_state: &BlockState {
             id: BlockStateId::new(16947u16).unwrap(),
@@ -336437,6 +337943,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 674,
         default_state: &BlockState {
             id: BlockStateId::new(16951u16).unwrap(),
@@ -336517,6 +338025,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 675,
         default_state: &BlockState {
             id: BlockStateId::new(16955u16).unwrap(),
@@ -336597,6 +338107,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 676,
         default_state: &BlockState {
             id: BlockStateId::new(16959u16).unwrap(),
@@ -336677,6 +338189,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 677,
         default_state: &BlockState {
             id: BlockStateId::new(16963u16).unwrap(),
@@ -336757,6 +338271,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 678,
         default_state: &BlockState {
             id: BlockStateId::new(16967u16).unwrap(),
@@ -336837,6 +338353,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 679,
         default_state: &BlockState {
             id: BlockStateId::new(16971u16).unwrap(),
@@ -336917,6 +338435,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 680,
         default_state: &BlockState {
             id: BlockStateId::new(16975u16).unwrap(),
@@ -336997,6 +338517,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 681,
         default_state: &BlockState {
             id: BlockStateId::new(16979u16).unwrap(),
@@ -337077,6 +338599,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 682,
         default_state: &BlockState {
             id: BlockStateId::new(16983u16).unwrap(),
@@ -337157,6 +338681,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 683,
         default_state: &BlockState {
             id: BlockStateId::new(16987u16).unwrap(),
@@ -337237,6 +338763,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 684,
         default_state: &BlockState {
             id: BlockStateId::new(16991u16).unwrap(),
@@ -337317,6 +338845,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 685,
         default_state: &BlockState {
             id: BlockStateId::new(16995u16).unwrap(),
@@ -337397,6 +338927,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 686,
         default_state: &BlockState {
             id: BlockStateId::new(16999u16).unwrap(),
@@ -337477,6 +339009,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 687,
         default_state: &BlockState {
             id: BlockStateId::new(17003u16).unwrap(),
@@ -337557,6 +339091,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 688,
         default_state: &BlockState {
             id: BlockStateId::new(17007u16).unwrap(),
@@ -337637,6 +339173,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 689,
         default_state: &BlockState {
             id: BlockStateId::new(17011u16).unwrap(),
@@ -337676,6 +339214,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 690,
         default_state: &BlockState {
             id: BlockStateId::new(17012u16).unwrap(),
@@ -337715,6 +339255,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 691,
         default_state: &BlockState {
             id: BlockStateId::new(17013u16).unwrap(),
@@ -337754,6 +339296,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 692,
         default_state: &BlockState {
             id: BlockStateId::new(17014u16).unwrap(),
@@ -337793,6 +339337,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 693,
         default_state: &BlockState {
             id: BlockStateId::new(17015u16).unwrap(),
@@ -337832,6 +339378,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 694,
         default_state: &BlockState {
             id: BlockStateId::new(17016u16).unwrap(),
@@ -337871,6 +339419,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 695,
         default_state: &BlockState {
             id: BlockStateId::new(17017u16).unwrap(),
@@ -337910,6 +339460,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 696,
         default_state: &BlockState {
             id: BlockStateId::new(17018u16).unwrap(),
@@ -337949,6 +339501,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 697,
         default_state: &BlockState {
             id: BlockStateId::new(17019u16).unwrap(),
@@ -337988,6 +339542,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 698,
         default_state: &BlockState {
             id: BlockStateId::new(17020u16).unwrap(),
@@ -338027,6 +339583,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 699,
         default_state: &BlockState {
             id: BlockStateId::new(17021u16).unwrap(),
@@ -338066,6 +339624,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 700,
         default_state: &BlockState {
             id: BlockStateId::new(17022u16).unwrap(),
@@ -338105,6 +339665,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 701,
         default_state: &BlockState {
             id: BlockStateId::new(17023u16).unwrap(),
@@ -338144,6 +339706,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 702,
         default_state: &BlockState {
             id: BlockStateId::new(17024u16).unwrap(),
@@ -338183,6 +339747,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 703,
         default_state: &BlockState {
             id: BlockStateId::new(17025u16).unwrap(),
@@ -338222,6 +339788,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 704,
         default_state: &BlockState {
             id: BlockStateId::new(17026u16).unwrap(),
@@ -338261,6 +339829,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 705,
         default_state: &BlockState {
             id: BlockStateId::new(17038u16).unwrap(),
@@ -339329,6 +340899,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 706,
         default_state: &BlockState {
             id: BlockStateId::new(17118u16).unwrap(),
@@ -340397,6 +341969,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 707,
         default_state: &BlockState {
             id: BlockStateId::new(17198u16).unwrap(),
@@ -341465,6 +343039,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 708,
         default_state: &BlockState {
             id: BlockStateId::new(17278u16).unwrap(),
@@ -342533,6 +344109,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 709,
         default_state: &BlockState {
             id: BlockStateId::new(17358u16).unwrap(),
@@ -343601,6 +345179,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 710,
         default_state: &BlockState {
             id: BlockStateId::new(17438u16).unwrap(),
@@ -344669,6 +346249,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 711,
         default_state: &BlockState {
             id: BlockStateId::new(17518u16).unwrap(),
@@ -345737,6 +347319,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 712,
         default_state: &BlockState {
             id: BlockStateId::new(17598u16).unwrap(),
@@ -346805,6 +348389,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 713,
         default_state: &BlockState {
             id: BlockStateId::new(17678u16).unwrap(),
@@ -347873,6 +349459,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 714,
         default_state: &BlockState {
             id: BlockStateId::new(17758u16).unwrap(),
@@ -348941,6 +350529,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 715,
         default_state: &BlockState {
             id: BlockStateId::new(17838u16).unwrap(),
@@ -350009,6 +351599,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 716,
         default_state: &BlockState {
             id: BlockStateId::new(17918u16).unwrap(),
@@ -351077,6 +352669,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 717,
         default_state: &BlockState {
             id: BlockStateId::new(17998u16).unwrap(),
@@ -352145,6 +353739,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 718,
         default_state: &BlockState {
             id: BlockStateId::new(18078u16).unwrap(),
@@ -353213,6 +354809,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 719,
         default_state: &BlockState {
             id: BlockStateId::new(18158u16).unwrap(),
@@ -354281,6 +355879,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 720,
         default_state: &BlockState {
             id: BlockStateId::new(18238u16).unwrap(),
@@ -355349,6 +356949,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 721,
         default_state: &BlockState {
             id: BlockStateId::new(18310u16).unwrap(),
@@ -355455,6 +357057,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 722,
         default_state: &BlockState {
             id: BlockStateId::new(18316u16).unwrap(),
@@ -355561,6 +357165,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 723,
         default_state: &BlockState {
             id: BlockStateId::new(18322u16).unwrap(),
@@ -355667,6 +357273,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 724,
         default_state: &BlockState {
             id: BlockStateId::new(18328u16).unwrap(),
@@ -355773,6 +357381,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 725,
         default_state: &BlockState {
             id: BlockStateId::new(18334u16).unwrap(),
@@ -355879,6 +357489,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 726,
         default_state: &BlockState {
             id: BlockStateId::new(18340u16).unwrap(),
@@ -355985,6 +357597,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 727,
         default_state: &BlockState {
             id: BlockStateId::new(18346u16).unwrap(),
@@ -356091,6 +357705,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 728,
         default_state: &BlockState {
             id: BlockStateId::new(18352u16).unwrap(),
@@ -356197,6 +357813,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 729,
         default_state: &BlockState {
             id: BlockStateId::new(18358u16).unwrap(),
@@ -356303,6 +357921,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 730,
         default_state: &BlockState {
             id: BlockStateId::new(18364u16).unwrap(),
@@ -356409,6 +358029,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 731,
         default_state: &BlockState {
             id: BlockStateId::new(18370u16).unwrap(),
@@ -356515,6 +358137,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 732,
         default_state: &BlockState {
             id: BlockStateId::new(18376u16).unwrap(),
@@ -356621,6 +358245,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 733,
         default_state: &BlockState {
             id: BlockStateId::new(18382u16).unwrap(),
@@ -356727,6 +358353,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 734,
         default_state: &BlockState {
             id: BlockStateId::new(18388u16).unwrap(),
@@ -356833,6 +358461,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 735,
         default_state: &BlockState {
             id: BlockStateId::new(18394u16).unwrap(),
@@ -356939,6 +358569,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 736,
         default_state: &BlockState {
             id: BlockStateId::new(18400u16).unwrap(),
@@ -357045,6 +358677,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 737,
         default_state: &BlockState {
             id: BlockStateId::new(18403u16).unwrap(),
@@ -357084,6 +358718,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 738,
         default_state: &BlockState {
             id: BlockStateId::new(18404u16).unwrap(),
@@ -357123,6 +358759,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 739,
         default_state: &BlockState {
             id: BlockStateId::new(18405u16).unwrap(),
@@ -357162,6 +358800,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 740,
         default_state: &BlockState {
             id: BlockStateId::new(18406u16).unwrap(),
@@ -357201,6 +358841,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 741,
         default_state: &BlockState {
             id: BlockStateId::new(18407u16).unwrap(),
@@ -357240,6 +358882,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 742,
         default_state: &BlockState {
             id: BlockStateId::new(18408u16).unwrap(),
@@ -357279,6 +358923,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 743,
         default_state: &BlockState {
             id: BlockStateId::new(18409u16).unwrap(),
@@ -357318,6 +358964,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 744,
         default_state: &BlockState {
             id: BlockStateId::new(18410u16).unwrap(),
@@ -357357,6 +359005,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 745,
         default_state: &BlockState {
             id: BlockStateId::new(18411u16).unwrap(),
@@ -357396,6 +359046,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 746,
         default_state: &BlockState {
             id: BlockStateId::new(18412u16).unwrap(),
@@ -357435,6 +359087,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 747,
         default_state: &BlockState {
             id: BlockStateId::new(18413u16).unwrap(),
@@ -357474,6 +359128,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 748,
         default_state: &BlockState {
             id: BlockStateId::new(18414u16).unwrap(),
@@ -357513,6 +359169,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 749,
         default_state: &BlockState {
             id: BlockStateId::new(18415u16).unwrap(),
@@ -357552,6 +359210,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 750,
         default_state: &BlockState {
             id: BlockStateId::new(18416u16).unwrap(),
@@ -357591,6 +359251,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 751,
         default_state: &BlockState {
             id: BlockStateId::new(18417u16).unwrap(),
@@ -357630,6 +359292,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 752,
         default_state: &BlockState {
             id: BlockStateId::new(18418u16).unwrap(),
@@ -357669,6 +359333,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 328,
         default_state: &BlockState {
             id: BlockStateId::new(18419u16).unwrap(),
@@ -358035,6 +359701,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18445u16).unwrap(),
@@ -358074,6 +359742,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1144,
         default_state: &BlockState {
             id: BlockStateId::new(18446u16).unwrap(),
@@ -358116,6 +359786,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 753,
         default_state: &BlockState {
             id: BlockStateId::new(18447u16).unwrap(),
@@ -358300,6 +359972,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 754,
         default_state: &BlockState {
             id: BlockStateId::new(18459u16).unwrap(),
@@ -358367,6 +360041,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 755,
         default_state: &BlockState {
             id: BlockStateId::new(18463u16).unwrap(),
@@ -358811,6 +360487,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 756,
         default_state: &BlockState {
             id: BlockStateId::new(18494u16).unwrap(),
@@ -358850,6 +360528,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 757,
         default_state: &BlockState {
             id: BlockStateId::new(18495u16).unwrap(),
@@ -358889,6 +360569,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 758,
         default_state: &BlockState {
             id: BlockStateId::new(18496u16).unwrap(),
@@ -358928,6 +360610,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 759,
         default_state: &BlockState {
             id: BlockStateId::new(18497u16).unwrap(),
@@ -358967,6 +360651,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 760,
         default_state: &BlockState {
             id: BlockStateId::new(18498u16).unwrap(),
@@ -359006,6 +360692,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 761,
         default_state: &BlockState {
             id: BlockStateId::new(18499u16).unwrap(),
@@ -359045,6 +360733,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 762,
         default_state: &BlockState {
             id: BlockStateId::new(18500u16).unwrap(),
@@ -359084,6 +360774,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 763,
         default_state: &BlockState {
             id: BlockStateId::new(18501u16).unwrap(),
@@ -359123,6 +360815,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 764,
         default_state: &BlockState {
             id: BlockStateId::new(18502u16).unwrap(),
@@ -359162,6 +360856,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 765,
         default_state: &BlockState {
             id: BlockStateId::new(18503u16).unwrap(),
@@ -359201,6 +360897,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 775,
         default_state: &BlockState {
             id: BlockStateId::new(18504u16).unwrap(),
@@ -359255,6 +360953,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 771,
         default_state: &BlockState {
             id: BlockStateId::new(18506u16).unwrap(),
@@ -359309,6 +361009,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 772,
         default_state: &BlockState {
             id: BlockStateId::new(18508u16).unwrap(),
@@ -359363,6 +361065,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 773,
         default_state: &BlockState {
             id: BlockStateId::new(18510u16).unwrap(),
@@ -359417,6 +361121,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 774,
         default_state: &BlockState {
             id: BlockStateId::new(18512u16).unwrap(),
@@ -359471,6 +361177,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 766,
         default_state: &BlockState {
             id: BlockStateId::new(18514u16).unwrap(),
@@ -359525,6 +361233,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 767,
         default_state: &BlockState {
             id: BlockStateId::new(18516u16).unwrap(),
@@ -359579,6 +361289,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 768,
         default_state: &BlockState {
             id: BlockStateId::new(18518u16).unwrap(),
@@ -359633,6 +361345,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 769,
         default_state: &BlockState {
             id: BlockStateId::new(18520u16).unwrap(),
@@ -359687,6 +361401,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 770,
         default_state: &BlockState {
             id: BlockStateId::new(18522u16).unwrap(),
@@ -359741,6 +361457,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 781,
         default_state: &BlockState {
             id: BlockStateId::new(18524u16).unwrap(),
@@ -359795,6 +361513,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 782,
         default_state: &BlockState {
             id: BlockStateId::new(18526u16).unwrap(),
@@ -359849,6 +361569,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 783,
         default_state: &BlockState {
             id: BlockStateId::new(18528u16).unwrap(),
@@ -359903,6 +361625,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 784,
         default_state: &BlockState {
             id: BlockStateId::new(18530u16).unwrap(),
@@ -359957,6 +361681,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 785,
         default_state: &BlockState {
             id: BlockStateId::new(18532u16).unwrap(),
@@ -360011,6 +361737,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 776,
         default_state: &BlockState {
             id: BlockStateId::new(18534u16).unwrap(),
@@ -360065,6 +361793,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 777,
         default_state: &BlockState {
             id: BlockStateId::new(18536u16).unwrap(),
@@ -360119,6 +361849,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 778,
         default_state: &BlockState {
             id: BlockStateId::new(18538u16).unwrap(),
@@ -360173,6 +361905,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 779,
         default_state: &BlockState {
             id: BlockStateId::new(18540u16).unwrap(),
@@ -360227,6 +361961,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 780,
         default_state: &BlockState {
             id: BlockStateId::new(18542u16).unwrap(),
@@ -360281,6 +362017,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 781,
         default_state: &BlockState {
             id: BlockStateId::new(18544u16).unwrap(),
@@ -360413,6 +362151,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 782,
         default_state: &BlockState {
             id: BlockStateId::new(18552u16).unwrap(),
@@ -360545,6 +362285,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 783,
         default_state: &BlockState {
             id: BlockStateId::new(18560u16).unwrap(),
@@ -360677,6 +362419,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 784,
         default_state: &BlockState {
             id: BlockStateId::new(18568u16).unwrap(),
@@ -360809,6 +362553,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 785,
         default_state: &BlockState {
             id: BlockStateId::new(18576u16).unwrap(),
@@ -360941,6 +362687,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 776,
         default_state: &BlockState {
             id: BlockStateId::new(18584u16).unwrap(),
@@ -361073,6 +362821,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 777,
         default_state: &BlockState {
             id: BlockStateId::new(18592u16).unwrap(),
@@ -361205,6 +362955,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 778,
         default_state: &BlockState {
             id: BlockStateId::new(18600u16).unwrap(),
@@ -361337,6 +363089,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 779,
         default_state: &BlockState {
             id: BlockStateId::new(18608u16).unwrap(),
@@ -361469,6 +363223,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 780,
         default_state: &BlockState {
             id: BlockStateId::new(18616u16).unwrap(),
@@ -361601,6 +363357,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 249,
         default_state: &BlockState {
             id: BlockStateId::new(18624u16).unwrap(),
@@ -361733,6 +363491,8 @@ impl Block {
         slipperiness: 0.989f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 786,
         default_state: &BlockState {
             id: BlockStateId::new(18632u16).unwrap(),
@@ -361772,6 +363532,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 787,
         default_state: &BlockState {
             id: BlockStateId::new(18633u16).unwrap(),
@@ -361826,6 +363588,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18635u16).unwrap(),
@@ -361865,6 +363629,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 340,
         default_state: &BlockState {
             id: BlockStateId::new(18636u16).unwrap(),
@@ -362052,6 +363818,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18648u16).unwrap(),
@@ -362091,6 +363859,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18649u16).unwrap(),
@@ -362130,6 +363900,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18650u16).unwrap(),
@@ -362169,6 +363941,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(18651u16).unwrap(),
@@ -362223,6 +363997,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 788,
         default_state: &BlockState {
             id: BlockStateId::new(18664u16).unwrap(),
@@ -363291,6 +365067,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 789,
         default_state: &BlockState {
             id: BlockStateId::new(18744u16).unwrap(),
@@ -364359,6 +366137,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 790,
         default_state: &BlockState {
             id: BlockStateId::new(18824u16).unwrap(),
@@ -365427,6 +367207,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 791,
         default_state: &BlockState {
             id: BlockStateId::new(18904u16).unwrap(),
@@ -366495,6 +368277,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 792,
         default_state: &BlockState {
             id: BlockStateId::new(18984u16).unwrap(),
@@ -367563,6 +369347,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 793,
         default_state: &BlockState {
             id: BlockStateId::new(19064u16).unwrap(),
@@ -368631,6 +370417,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 794,
         default_state: &BlockState {
             id: BlockStateId::new(19144u16).unwrap(),
@@ -369699,6 +371487,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 795,
         default_state: &BlockState {
             id: BlockStateId::new(19224u16).unwrap(),
@@ -370767,6 +372557,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 796,
         default_state: &BlockState {
             id: BlockStateId::new(19304u16).unwrap(),
@@ -371835,6 +373627,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 797,
         default_state: &BlockState {
             id: BlockStateId::new(19384u16).unwrap(),
@@ -372903,6 +374697,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 798,
         default_state: &BlockState {
             id: BlockStateId::new(19464u16).unwrap(),
@@ -373971,6 +375767,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 799,
         default_state: &BlockState {
             id: BlockStateId::new(19544u16).unwrap(),
@@ -375039,6 +376837,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 800,
         default_state: &BlockState {
             id: BlockStateId::new(19624u16).unwrap(),
@@ -376107,6 +377907,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 801,
         default_state: &BlockState {
             id: BlockStateId::new(19704u16).unwrap(),
@@ -377175,6 +378977,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 806,
         default_state: &BlockState {
             id: BlockStateId::new(19776u16).unwrap(),
@@ -377281,6 +379085,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 807,
         default_state: &BlockState {
             id: BlockStateId::new(19782u16).unwrap(),
@@ -377387,6 +379193,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 808,
         default_state: &BlockState {
             id: BlockStateId::new(19788u16).unwrap(),
@@ -377493,6 +379301,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 809,
         default_state: &BlockState {
             id: BlockStateId::new(19794u16).unwrap(),
@@ -377599,6 +379409,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 810,
         default_state: &BlockState {
             id: BlockStateId::new(19800u16).unwrap(),
@@ -377705,6 +379517,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 811,
         default_state: &BlockState {
             id: BlockStateId::new(19806u16).unwrap(),
@@ -377811,6 +379625,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 812,
         default_state: &BlockState {
             id: BlockStateId::new(19812u16).unwrap(),
@@ -377917,6 +379733,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 813,
         default_state: &BlockState {
             id: BlockStateId::new(19818u16).unwrap(),
@@ -378023,6 +379841,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 814,
         default_state: &BlockState {
             id: BlockStateId::new(19824u16).unwrap(),
@@ -378129,6 +379949,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 815,
         default_state: &BlockState {
             id: BlockStateId::new(19830u16).unwrap(),
@@ -378235,6 +380057,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 816,
         default_state: &BlockState {
             id: BlockStateId::new(19836u16).unwrap(),
@@ -378341,6 +380165,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 817,
         default_state: &BlockState {
             id: BlockStateId::new(19842u16).unwrap(),
@@ -378447,6 +380273,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 818,
         default_state: &BlockState {
             id: BlockStateId::new(19848u16).unwrap(),
@@ -378553,6 +380381,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 533,
         default_state: &BlockState {
             id: BlockStateId::new(19854u16).unwrap(),
@@ -382793,6 +384623,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 534,
         default_state: &BlockState {
             id: BlockStateId::new(20178u16).unwrap(),
@@ -387033,6 +388865,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 535,
         default_state: &BlockState {
             id: BlockStateId::new(20502u16).unwrap(),
@@ -391273,6 +393107,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 536,
         default_state: &BlockState {
             id: BlockStateId::new(20826u16).unwrap(),
@@ -395513,6 +397349,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 537,
         default_state: &BlockState {
             id: BlockStateId::new(21150u16).unwrap(),
@@ -399753,6 +401591,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 538,
         default_state: &BlockState {
             id: BlockStateId::new(21474u16).unwrap(),
@@ -403993,6 +405833,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 539,
         default_state: &BlockState {
             id: BlockStateId::new(21798u16).unwrap(),
@@ -408233,6 +410075,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 540,
         default_state: &BlockState {
             id: BlockStateId::new(22122u16).unwrap(),
@@ -412473,6 +414317,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 541,
         default_state: &BlockState {
             id: BlockStateId::new(22446u16).unwrap(),
@@ -416713,6 +418559,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 542,
         default_state: &BlockState {
             id: BlockStateId::new(22770u16).unwrap(),
@@ -420953,6 +422801,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 543,
         default_state: &BlockState {
             id: BlockStateId::new(23094u16).unwrap(),
@@ -425193,6 +427043,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 544,
         default_state: &BlockState {
             id: BlockStateId::new(23418u16).unwrap(),
@@ -429433,6 +431285,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 545,
         default_state: &BlockState {
             id: BlockStateId::new(23742u16).unwrap(),
@@ -433673,6 +435527,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 823,
         default_state: &BlockState {
             id: BlockStateId::new(24094u16).unwrap(),
@@ -434120,6 +435976,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1493,
         default_state: &BlockState {
             id: BlockStateId::new(24095u16).unwrap(),
@@ -434200,6 +436058,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1506,
         default_state: &BlockState {
             id: BlockStateId::new(24100u16).unwrap(),
@@ -434384,6 +436244,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1507,
         default_state: &BlockState {
             id: BlockStateId::new(24112u16).unwrap(),
@@ -434516,6 +436378,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1508,
         default_state: &BlockState {
             id: BlockStateId::new(24120u16).unwrap(),
@@ -434648,6 +436512,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1509,
         default_state: &BlockState {
             id: BlockStateId::new(24127u16).unwrap(),
@@ -434687,6 +436553,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1510,
         default_state: &BlockState {
             id: BlockStateId::new(24128u16).unwrap(),
@@ -434726,6 +436594,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1511,
         default_state: &BlockState {
             id: BlockStateId::new(24133u16).unwrap(),
@@ -434910,6 +436780,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 837,
         default_state: &BlockState {
             id: BlockStateId::new(24144u16).unwrap(),
@@ -435149,6 +437021,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1512,
         default_state: &BlockState {
             id: BlockStateId::new(24157u16).unwrap(),
@@ -435188,6 +437062,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1513,
         default_state: &BlockState {
             id: BlockStateId::new(24158u16).unwrap(),
@@ -435268,6 +437144,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1514,
         default_state: &BlockState {
             id: BlockStateId::new(24163u16).unwrap(),
@@ -435712,6 +437590,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1515,
         default_state: &BlockState {
             id: BlockStateId::new(24197u16).unwrap(),
@@ -435792,6 +437672,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1516,
         default_state: &BlockState {
             id: BlockStateId::new(24201u16).unwrap(),
@@ -435872,6 +437754,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1517,
         default_state: &BlockState {
             id: BlockStateId::new(24205u16).unwrap(),
@@ -435952,6 +437836,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1518,
         default_state: &BlockState {
             id: BlockStateId::new(24209u16).unwrap(),
@@ -436032,6 +437918,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1519,
         default_state: &BlockState {
             id: BlockStateId::new(24213u16).unwrap(),
@@ -436112,6 +438000,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1520,
         default_state: &BlockState {
             id: BlockStateId::new(24217u16).unwrap(),
@@ -436192,6 +438082,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1521,
         default_state: &BlockState {
             id: BlockStateId::new(24221u16).unwrap(),
@@ -436272,6 +438164,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1522,
         default_state: &BlockState {
             id: BlockStateId::new(24225u16).unwrap(),
@@ -436352,6 +438246,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1523,
         default_state: &BlockState {
             id: BlockStateId::new(24229u16).unwrap(),
@@ -436432,6 +438328,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1524,
         default_state: &BlockState {
             id: BlockStateId::new(24233u16).unwrap(),
@@ -436512,6 +438410,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1527,
         default_state: &BlockState {
             id: BlockStateId::new(24237u16).unwrap(),
@@ -436956,6 +438856,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1528,
         default_state: &BlockState {
             id: BlockStateId::new(24269u16).unwrap(),
@@ -437400,6 +439302,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1525,
         default_state: &BlockState {
             id: BlockStateId::new(24298u16).unwrap(),
@@ -437483,6 +439387,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 176,
         default_state: &BlockState {
             id: BlockStateId::new(24303u16).unwrap(),
@@ -437550,6 +439456,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 189,
         default_state: &BlockState {
             id: BlockStateId::new(24306u16).unwrap(),
@@ -437617,6 +439525,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 214,
         default_state: &BlockState {
             id: BlockStateId::new(24309u16).unwrap(),
@@ -437684,6 +439594,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 201,
         default_state: &BlockState {
             id: BlockStateId::new(24312u16).unwrap(),
@@ -437751,6 +439663,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 61,
         default_state: &BlockState {
             id: BlockStateId::new(24314u16).unwrap(),
@@ -437790,6 +439704,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 321,
         default_state: &BlockState {
             id: BlockStateId::new(24315u16).unwrap(),
@@ -437829,6 +439745,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 652,
         default_state: &BlockState {
             id: BlockStateId::new(24316u16).unwrap(),
@@ -437868,6 +439786,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 323,
         default_state: &BlockState {
             id: BlockStateId::new(24317u16).unwrap(),
@@ -437907,6 +439827,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 324,
         default_state: &BlockState {
             id: BlockStateId::new(24318u16).unwrap(),
@@ -437946,6 +439868,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 175,
         default_state: &BlockState {
             id: BlockStateId::new(24320u16).unwrap(),
@@ -438013,6 +439937,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 188,
         default_state: &BlockState {
             id: BlockStateId::new(24323u16).unwrap(),
@@ -438080,6 +440006,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 213,
         default_state: &BlockState {
             id: BlockStateId::new(24326u16).unwrap(),
@@ -438147,6 +440075,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 200,
         default_state: &BlockState {
             id: BlockStateId::new(24329u16).unwrap(),
@@ -438214,6 +440144,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 60,
         default_state: &BlockState {
             id: BlockStateId::new(24331u16).unwrap(),
@@ -438253,6 +440185,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 320,
         default_state: &BlockState {
             id: BlockStateId::new(24332u16).unwrap(),
@@ -438292,6 +440226,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1529,
         default_state: &BlockState {
             id: BlockStateId::new(24333u16).unwrap(),
@@ -438331,6 +440267,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 325,
         default_state: &BlockState {
             id: BlockStateId::new(24334u16).unwrap(),
@@ -438697,6 +440635,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(24360u16).unwrap(),
@@ -438736,6 +440676,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 326,
         default_state: &BlockState {
             id: BlockStateId::new(24361u16).unwrap(),
@@ -439102,6 +441044,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(24387u16).unwrap(),
@@ -439141,6 +441085,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 322,
         default_state: &BlockState {
             id: BlockStateId::new(24388u16).unwrap(),
@@ -439180,6 +441126,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 74,
         default_state: &BlockState {
             id: BlockStateId::new(24389u16).unwrap(),
@@ -439219,6 +441167,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 75,
         default_state: &BlockState {
             id: BlockStateId::new(24390u16).unwrap(),
@@ -439258,6 +441208,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 353,
         default_state: &BlockState {
             id: BlockStateId::new(24394u16).unwrap(),
@@ -439364,6 +441316,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 354,
         default_state: &BlockState {
             id: BlockStateId::new(24400u16).unwrap(),
@@ -439470,6 +441424,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 886,
         default_state: &BlockState {
             id: BlockStateId::new(24404u16).unwrap(),
@@ -439524,6 +441480,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 887,
         default_state: &BlockState {
             id: BlockStateId::new(24406u16).unwrap(),
@@ -439578,6 +441536,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 428,
         default_state: &BlockState {
             id: BlockStateId::new(24438u16).unwrap(),
@@ -440022,6 +441982,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 429,
         default_state: &BlockState {
             id: BlockStateId::new(24470u16).unwrap(),
@@ -440466,6 +442428,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 922,
         default_state: &BlockState {
             id: BlockStateId::new(24486u16).unwrap(),
@@ -441326,6 +443290,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 923,
         default_state: &BlockState {
             id: BlockStateId::new(24550u16).unwrap(),
@@ -442186,6 +444152,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 943,
         default_state: &BlockState {
             id: BlockStateId::new(24606u16).unwrap(),
@@ -442630,6 +444598,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 944,
         default_state: &BlockState {
             id: BlockStateId::new(24638u16).unwrap(),
@@ -443074,6 +445044,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 527,
         default_state: &BlockState {
             id: BlockStateId::new(24674u16).unwrap(),
@@ -444142,6 +446114,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 528,
         default_state: &BlockState {
             id: BlockStateId::new(24754u16).unwrap(),
@@ -445210,6 +447184,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 869,
         default_state: &BlockState {
             id: BlockStateId::new(24832u16).unwrap(),
@@ -445550,6 +447526,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 870,
         default_state: &BlockState {
             id: BlockStateId::new(24856u16).unwrap(),
@@ -445890,6 +447868,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 900,
         default_state: &BlockState {
             id: BlockStateId::new(24882u16).unwrap(),
@@ -446750,6 +448730,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 901,
         default_state: &BlockState {
             id: BlockStateId::new(24946u16).unwrap(),
@@ -447610,6 +449592,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1113,
         default_state: &BlockState {
             id: BlockStateId::new(25016u16).unwrap(),
@@ -448054,6 +450038,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1114,
         default_state: &BlockState {
             id: BlockStateId::new(25048u16).unwrap(),
@@ -448498,6 +450484,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1113,
         default_state: &BlockState {
             id: BlockStateId::new(25064u16).unwrap(),
@@ -448630,6 +450618,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1114,
         default_state: &BlockState {
             id: BlockStateId::new(25072u16).unwrap(),
@@ -448762,6 +450752,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 997,
         default_state: &BlockState {
             id: BlockStateId::new(25080u16).unwrap(),
@@ -448842,6 +450834,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 998,
         default_state: &BlockState {
             id: BlockStateId::new(25093u16).unwrap(),
@@ -449026,6 +451020,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 999,
         default_state: &BlockState {
             id: BlockStateId::new(25095u16).unwrap(),
@@ -449106,6 +451102,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1000,
         default_state: &BlockState {
             id: BlockStateId::new(25099u16).unwrap(),
@@ -449145,6 +451143,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1505,
         default_state: &BlockState {
             id: BlockStateId::new(25100u16).unwrap(),
@@ -449293,6 +451293,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 838,
         default_state: &BlockState {
             id: BlockStateId::new(25109u16).unwrap(),
@@ -449532,6 +451534,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1531,
         default_state: &BlockState {
             id: BlockStateId::new(25125u16).unwrap(),
@@ -449875,6 +451879,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1532,
         default_state: &BlockState {
             id: BlockStateId::new(25149u16).unwrap(),
@@ -450218,6 +452224,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 0.4f32,
         jump_velocity_multiplier: 0.5f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 832,
         default_state: &BlockState {
             id: BlockStateId::new(25173u16).unwrap(),
@@ -450257,6 +452265,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1534,
         default_state: &BlockState {
             id: BlockStateId::new(25174u16).unwrap(),
@@ -450296,6 +452306,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 130,
         default_state: &BlockState {
             id: BlockStateId::new(25175u16).unwrap(),
@@ -450335,6 +452347,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 111,
         default_state: &BlockState {
             id: BlockStateId::new(25176u16).unwrap(),
@@ -450374,6 +452388,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1536,
         default_state: &BlockState {
             id: BlockStateId::new(25177u16).unwrap(),
@@ -450413,6 +452429,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1549,
         default_state: &BlockState {
             id: BlockStateId::new(25178u16).unwrap(),
@@ -450506,6 +452524,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(25183u16).unwrap(),
@@ -450545,6 +452565,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(25184u16).unwrap(),
@@ -450584,6 +452606,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(25185u16).unwrap(),
@@ -450623,6 +452647,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(25186u16).unwrap(),
@@ -450662,6 +452688,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1535,
         default_state: &BlockState {
             id: BlockStateId::new(25187u16).unwrap(),
@@ -450701,6 +452729,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1537,
         default_state: &BlockState {
             id: BlockStateId::new(25188u16).unwrap(),
@@ -450740,6 +452770,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1539,
         default_state: &BlockState {
             id: BlockStateId::new(25200u16).unwrap(),
@@ -451808,6 +453840,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 546,
         default_state: &BlockState {
             id: BlockStateId::new(25272u16).unwrap(),
@@ -456048,6 +458082,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1538,
         default_state: &BlockState {
             id: BlockStateId::new(25596u16).unwrap(),
@@ -456154,6 +458190,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1541,
         default_state: &BlockState {
             id: BlockStateId::new(25599u16).unwrap(),
@@ -456193,6 +458231,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1545,
         default_state: &BlockState {
             id: BlockStateId::new(25600u16).unwrap(),
@@ -456232,6 +458272,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1548,
         default_state: &BlockState {
             id: BlockStateId::new(25601u16).unwrap(),
@@ -456271,6 +458313,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1544,
         default_state: &BlockState {
             id: BlockStateId::new(25602u16).unwrap(),
@@ -456310,6 +458354,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1546,
         default_state: &BlockState {
             id: BlockStateId::new(25606u16).unwrap(),
@@ -456416,6 +458462,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1547,
         default_state: &BlockState {
             id: BlockStateId::new(25620u16).unwrap(),
@@ -457484,6 +459532,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 548,
         default_state: &BlockState {
             id: BlockStateId::new(25692u16).unwrap(),
@@ -461724,6 +463774,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1540,
         default_state: &BlockState {
             id: BlockStateId::new(26013u16).unwrap(),
@@ -461763,6 +463815,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1543,
         default_state: &BlockState {
             id: BlockStateId::new(26025u16).unwrap(),
@@ -462831,6 +464885,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1542,
         default_state: &BlockState {
             id: BlockStateId::new(26097u16).unwrap(),
@@ -462937,6 +464993,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 872,
         default_state: &BlockState {
             id: BlockStateId::new(26101u16).unwrap(),
@@ -462991,6 +465049,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 857,
         default_state: &BlockState {
             id: BlockStateId::new(26111u16).unwrap(),
@@ -463331,6 +465391,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 547,
         default_state: &BlockState {
             id: BlockStateId::new(26129u16).unwrap(),
@@ -467571,6 +469633,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 500,
         default_state: &BlockState {
             id: BlockStateId::new(26450u16).unwrap(),
@@ -467610,6 +469674,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 499,
         default_state: &BlockState {
             id: BlockStateId::new(26451u16).unwrap(),
@@ -467649,6 +469715,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 558,
         default_state: &BlockState {
             id: BlockStateId::new(26452u16).unwrap(),
@@ -467688,6 +469756,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1550,
         default_state: &BlockState {
             id: BlockStateId::new(26456u16).unwrap(),
@@ -467924,6 +469994,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1551,
         default_state: &BlockState {
             id: BlockStateId::new(26472u16).unwrap(),
@@ -468160,6 +470232,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1552,
         default_state: &BlockState {
             id: BlockStateId::new(26488u16).unwrap(),
@@ -468396,6 +470470,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1553,
         default_state: &BlockState {
             id: BlockStateId::new(26504u16).unwrap(),
@@ -468632,6 +470708,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1554,
         default_state: &BlockState {
             id: BlockStateId::new(26520u16).unwrap(),
@@ -468868,6 +470946,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1555,
         default_state: &BlockState {
             id: BlockStateId::new(26536u16).unwrap(),
@@ -469104,6 +471184,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1556,
         default_state: &BlockState {
             id: BlockStateId::new(26552u16).unwrap(),
@@ -469340,6 +471422,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1557,
         default_state: &BlockState {
             id: BlockStateId::new(26568u16).unwrap(),
@@ -469576,6 +471660,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1558,
         default_state: &BlockState {
             id: BlockStateId::new(26584u16).unwrap(),
@@ -469812,6 +471898,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1559,
         default_state: &BlockState {
             id: BlockStateId::new(26600u16).unwrap(),
@@ -470048,6 +472136,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1560,
         default_state: &BlockState {
             id: BlockStateId::new(26616u16).unwrap(),
@@ -470284,6 +472374,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1561,
         default_state: &BlockState {
             id: BlockStateId::new(26632u16).unwrap(),
@@ -470520,6 +472612,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1562,
         default_state: &BlockState {
             id: BlockStateId::new(26648u16).unwrap(),
@@ -470756,6 +472850,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1563,
         default_state: &BlockState {
             id: BlockStateId::new(26664u16).unwrap(),
@@ -470992,6 +473088,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1564,
         default_state: &BlockState {
             id: BlockStateId::new(26680u16).unwrap(),
@@ -471228,6 +473326,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1565,
         default_state: &BlockState {
             id: BlockStateId::new(26696u16).unwrap(),
@@ -471464,6 +473564,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1566,
         default_state: &BlockState {
             id: BlockStateId::new(26712u16).unwrap(),
@@ -471700,6 +473802,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26726u16).unwrap(),
@@ -471754,6 +473858,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26728u16).unwrap(),
@@ -471808,6 +473914,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26730u16).unwrap(),
@@ -471862,6 +473970,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26732u16).unwrap(),
@@ -471916,6 +474026,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26734u16).unwrap(),
@@ -471970,6 +474082,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26736u16).unwrap(),
@@ -472024,6 +474138,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26738u16).unwrap(),
@@ -472078,6 +474194,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26740u16).unwrap(),
@@ -472132,6 +474250,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26742u16).unwrap(),
@@ -472186,6 +474306,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26744u16).unwrap(),
@@ -472240,6 +474362,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26746u16).unwrap(),
@@ -472294,6 +474418,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26748u16).unwrap(),
@@ -472348,6 +474474,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26750u16).unwrap(),
@@ -472402,6 +474530,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26752u16).unwrap(),
@@ -472456,6 +474586,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26754u16).unwrap(),
@@ -472510,6 +474642,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26756u16).unwrap(),
@@ -472564,6 +474698,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(26758u16).unwrap(),
@@ -472618,6 +474754,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 117,
         default_state: &BlockState {
             id: BlockStateId::new(26759u16).unwrap(),
@@ -472657,6 +474795,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 118,
         default_state: &BlockState {
             id: BlockStateId::new(26760u16).unwrap(),
@@ -472696,6 +474836,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1570,
         default_state: &BlockState {
             id: BlockStateId::new(26770u16).unwrap(),
@@ -472880,6 +475022,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1569,
         default_state: &BlockState {
             id: BlockStateId::new(26782u16).unwrap(),
@@ -473064,6 +475208,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1568,
         default_state: &BlockState {
             id: BlockStateId::new(26794u16).unwrap(),
@@ -473248,6 +475394,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1567,
         default_state: &BlockState {
             id: BlockStateId::new(26806u16).unwrap(),
@@ -473432,6 +475580,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 12,
         default_state: &BlockState {
             id: BlockStateId::new(26809u16).unwrap(),
@@ -473471,6 +475621,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 13,
         default_state: &BlockState {
             id: BlockStateId::new(26813u16).unwrap(),
@@ -473577,6 +475729,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 14,
         default_state: &BlockState {
             id: BlockStateId::new(26827u16).unwrap(),
@@ -474645,6 +476799,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 15,
         default_state: &BlockState {
             id: BlockStateId::new(26899u16).unwrap(),
@@ -478885,6 +481041,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 17,
         default_state: &BlockState {
             id: BlockStateId::new(27220u16).unwrap(),
@@ -478924,6 +481082,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 18,
         default_state: &BlockState {
             id: BlockStateId::new(27224u16).unwrap(),
@@ -479030,6 +481190,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 19,
         default_state: &BlockState {
             id: BlockStateId::new(27238u16).unwrap(),
@@ -480098,6 +482260,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 20,
         default_state: &BlockState {
             id: BlockStateId::new(27310u16).unwrap(),
@@ -484338,6 +486502,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 16,
         default_state: &BlockState {
             id: BlockStateId::new(27631u16).unwrap(),
@@ -484377,6 +486543,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 21,
         default_state: &BlockState {
             id: BlockStateId::new(27632u16).unwrap(),
@@ -484416,6 +486584,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 22,
         default_state: &BlockState {
             id: BlockStateId::new(27636u16).unwrap(),
@@ -484522,6 +486692,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 23,
         default_state: &BlockState {
             id: BlockStateId::new(27650u16).unwrap(),
@@ -485590,6 +487762,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 24,
         default_state: &BlockState {
             id: BlockStateId::new(27722u16).unwrap(),
@@ -489830,6 +492004,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 25,
         default_state: &BlockState {
             id: BlockStateId::new(28043u16).unwrap(),
@@ -489869,6 +492045,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 26,
         default_state: &BlockState {
             id: BlockStateId::new(28044u16).unwrap(),
@@ -489908,6 +492086,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 27,
         default_state: &BlockState {
             id: BlockStateId::new(28045u16).unwrap(),
@@ -490001,6 +492181,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 28,
         default_state: &BlockState {
             id: BlockStateId::new(28053u16).unwrap(),
@@ -490107,6 +492289,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 29,
         default_state: &BlockState {
             id: BlockStateId::new(28067u16).unwrap(),
@@ -491175,6 +493359,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 30,
         default_state: &BlockState {
             id: BlockStateId::new(28139u16).unwrap(),
@@ -495415,6 +497601,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 31,
         default_state: &BlockState {
             id: BlockStateId::new(28460u16).unwrap(),
@@ -495454,6 +497642,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 32,
         default_state: &BlockState {
             id: BlockStateId::new(28464u16).unwrap(),
@@ -495560,6 +497750,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 33,
         default_state: &BlockState {
             id: BlockStateId::new(28478u16).unwrap(),
@@ -496628,6 +498820,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 34,
         default_state: &BlockState {
             id: BlockStateId::new(28550u16).unwrap(),
@@ -500868,6 +503062,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 35,
         default_state: &BlockState {
             id: BlockStateId::new(28871u16).unwrap(),
@@ -500907,6 +503103,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 36,
         default_state: &BlockState {
             id: BlockStateId::new(28875u16).unwrap(),
@@ -501013,6 +503211,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 37,
         default_state: &BlockState {
             id: BlockStateId::new(28889u16).unwrap(),
@@ -502081,6 +504281,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 38,
         default_state: &BlockState {
             id: BlockStateId::new(28961u16).unwrap(),
@@ -506321,6 +508523,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 39,
         default_state: &BlockState {
             id: BlockStateId::new(29282u16).unwrap(),
@@ -506360,6 +508564,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 40,
         default_state: &BlockState {
             id: BlockStateId::new(29283u16).unwrap(),
@@ -506399,6 +508605,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 41,
         default_state: &BlockState {
             id: BlockStateId::new(29287u16).unwrap(),
@@ -506505,6 +508713,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 42,
         default_state: &BlockState {
             id: BlockStateId::new(29301u16).unwrap(),
@@ -507573,6 +509783,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 43,
         default_state: &BlockState {
             id: BlockStateId::new(29373u16).unwrap(),
@@ -511813,6 +514025,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 44,
         default_state: &BlockState {
             id: BlockStateId::new(29694u16).unwrap(),
@@ -511852,6 +514066,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 45,
         default_state: &BlockState {
             id: BlockStateId::new(29698u16).unwrap(),
@@ -511958,6 +514174,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 46,
         default_state: &BlockState {
             id: BlockStateId::new(29712u16).unwrap(),
@@ -513026,6 +515244,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 47,
         default_state: &BlockState {
             id: BlockStateId::new(29784u16).unwrap(),
@@ -517266,6 +519486,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 48,
         default_state: &BlockState {
             id: BlockStateId::new(30105u16).unwrap(),
@@ -517305,6 +519527,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 49,
         default_state: &BlockState {
             id: BlockStateId::new(30109u16).unwrap(),
@@ -517411,6 +519635,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 50,
         default_state: &BlockState {
             id: BlockStateId::new(30123u16).unwrap(),
@@ -518479,6 +520705,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 51,
         default_state: &BlockState {
             id: BlockStateId::new(30195u16).unwrap(),
@@ -522719,6 +524947,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 52,
         default_state: &BlockState {
             id: BlockStateId::new(30516u16).unwrap(),
@@ -522758,6 +524988,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 11,
         default_state: &BlockState {
             id: BlockStateId::new(30517u16).unwrap(),
@@ -522797,6 +525029,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 232,
         default_state: &BlockState {
             id: BlockStateId::new(30518u16).unwrap(),
@@ -522836,6 +525070,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1131,
         default_state: &BlockState {
             id: BlockStateId::new(30519u16).unwrap(),
@@ -522875,6 +525111,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 849,
         default_state: &BlockState {
             id: BlockStateId::new(30521u16).unwrap(),
@@ -524151,6 +526389,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 850,
         default_state: &BlockState {
             id: BlockStateId::new(30617u16).unwrap(),
@@ -529171,6 +531411,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 503,
         default_state: &BlockState {
             id: BlockStateId::new(31000u16).unwrap(),
@@ -529212,6 +531454,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 504,
         default_state: &BlockState {
             id: BlockStateId::new(31128u16).unwrap(),
@@ -530904,6 +533148,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 505,
         default_state: &BlockState {
             id: BlockStateId::new(31130u16).unwrap(),
@@ -530958,6 +533204,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 506,
         default_state: &BlockState {
             id: BlockStateId::new(31138u16).unwrap(),
@@ -531090,6 +533338,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 120,
         default_state: &BlockState {
             id: BlockStateId::new(31139u16).unwrap(),
@@ -531129,6 +533379,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 121,
         default_state: &BlockState {
             id: BlockStateId::new(31140u16).unwrap(),
@@ -531168,6 +533420,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 122,
         default_state: &BlockState {
             id: BlockStateId::new(31141u16).unwrap(),
@@ -531207,6 +533461,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 123,
         default_state: &BlockState {
             id: BlockStateId::new(31142u16).unwrap(),
@@ -531246,6 +533502,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 124,
         default_state: &BlockState {
             id: BlockStateId::new(31143u16).unwrap(),
@@ -531285,6 +533543,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 125,
         default_state: &BlockState {
             id: BlockStateId::new(31144u16).unwrap(),
@@ -531324,6 +533584,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 126,
         default_state: &BlockState {
             id: BlockStateId::new(31145u16).unwrap(),
@@ -531363,6 +533625,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 127,
         default_state: &BlockState {
             id: BlockStateId::new(31146u16).unwrap(),
@@ -531402,6 +533666,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 97,
         default_state: &BlockState {
             id: BlockStateId::new(31147u16).unwrap(),
@@ -531443,6 +533709,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 98,
         default_state: &BlockState {
             id: BlockStateId::new(31148u16).unwrap(),
@@ -531484,6 +533752,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 139,
         default_state: &BlockState {
             id: BlockStateId::new(31149u16).unwrap(),
@@ -531523,6 +533793,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 140,
         default_state: &BlockState {
             id: BlockStateId::new(31150u16).unwrap(),
@@ -531562,6 +533834,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 141,
         default_state: &BlockState {
             id: BlockStateId::new(31151u16).unwrap(),
@@ -531601,6 +533875,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 142,
         default_state: &BlockState {
             id: BlockStateId::new(31152u16).unwrap(),
@@ -531640,6 +533916,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 143,
         default_state: &BlockState {
             id: BlockStateId::new(31153u16).unwrap(),
@@ -531679,6 +533957,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 144,
         default_state: &BlockState {
             id: BlockStateId::new(31154u16).unwrap(),
@@ -531718,6 +533998,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 145,
         default_state: &BlockState {
             id: BlockStateId::new(31155u16).unwrap(),
@@ -531757,6 +534039,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 146,
         default_state: &BlockState {
             id: BlockStateId::new(31156u16).unwrap(),
@@ -531796,6 +534080,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 131,
         default_state: &BlockState {
             id: BlockStateId::new(31157u16).unwrap(),
@@ -531835,6 +534121,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 132,
         default_state: &BlockState {
             id: BlockStateId::new(31158u16).unwrap(),
@@ -531874,6 +534162,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 133,
         default_state: &BlockState {
             id: BlockStateId::new(31159u16).unwrap(),
@@ -531913,6 +534203,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 134,
         default_state: &BlockState {
             id: BlockStateId::new(31160u16).unwrap(),
@@ -531952,6 +534244,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 135,
         default_state: &BlockState {
             id: BlockStateId::new(31161u16).unwrap(),
@@ -531991,6 +534285,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 136,
         default_state: &BlockState {
             id: BlockStateId::new(31162u16).unwrap(),
@@ -532030,6 +534326,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 137,
         default_state: &BlockState {
             id: BlockStateId::new(31163u16).unwrap(),
@@ -532069,6 +534367,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 138,
         default_state: &BlockState {
             id: BlockStateId::new(31164u16).unwrap(),
@@ -532108,6 +534408,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 147,
         default_state: &BlockState {
             id: BlockStateId::new(31176u16).unwrap(),
@@ -533176,6 +535478,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 148,
         default_state: &BlockState {
             id: BlockStateId::new(31256u16).unwrap(),
@@ -534244,6 +536548,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 149,
         default_state: &BlockState {
             id: BlockStateId::new(31336u16).unwrap(),
@@ -535312,6 +537618,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 150,
         default_state: &BlockState {
             id: BlockStateId::new(31416u16).unwrap(),
@@ -536380,6 +538688,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 151,
         default_state: &BlockState {
             id: BlockStateId::new(31496u16).unwrap(),
@@ -537448,6 +539758,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 152,
         default_state: &BlockState {
             id: BlockStateId::new(31576u16).unwrap(),
@@ -538516,6 +540828,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 153,
         default_state: &BlockState {
             id: BlockStateId::new(31656u16).unwrap(),
@@ -539584,6 +541898,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 154,
         default_state: &BlockState {
             id: BlockStateId::new(31736u16).unwrap(),
@@ -540652,6 +542968,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 155,
         default_state: &BlockState {
             id: BlockStateId::new(31808u16).unwrap(),
@@ -540758,6 +543076,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 156,
         default_state: &BlockState {
             id: BlockStateId::new(31814u16).unwrap(),
@@ -540864,6 +543184,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 157,
         default_state: &BlockState {
             id: BlockStateId::new(31820u16).unwrap(),
@@ -540970,6 +543292,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 158,
         default_state: &BlockState {
             id: BlockStateId::new(31826u16).unwrap(),
@@ -541076,6 +543400,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 159,
         default_state: &BlockState {
             id: BlockStateId::new(31832u16).unwrap(),
@@ -541182,6 +543508,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 160,
         default_state: &BlockState {
             id: BlockStateId::new(31838u16).unwrap(),
@@ -541288,6 +543616,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 161,
         default_state: &BlockState {
             id: BlockStateId::new(31844u16).unwrap(),
@@ -541394,6 +543724,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 162,
         default_state: &BlockState {
             id: BlockStateId::new(31850u16).unwrap(),
@@ -541500,6 +543832,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 902,
         default_state: &BlockState {
             id: BlockStateId::new(31864u16).unwrap(),
@@ -542360,6 +544694,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 903,
         default_state: &BlockState {
             id: BlockStateId::new(31928u16).unwrap(),
@@ -543220,6 +545556,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 904,
         default_state: &BlockState {
             id: BlockStateId::new(31992u16).unwrap(),
@@ -544080,6 +546418,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 905,
         default_state: &BlockState {
             id: BlockStateId::new(32056u16).unwrap(),
@@ -544940,6 +547280,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 906,
         default_state: &BlockState {
             id: BlockStateId::new(32120u16).unwrap(),
@@ -545800,6 +548142,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 907,
         default_state: &BlockState {
             id: BlockStateId::new(32184u16).unwrap(),
@@ -546660,6 +549004,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 908,
         default_state: &BlockState {
             id: BlockStateId::new(32248u16).unwrap(),
@@ -547520,6 +549866,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 909,
         default_state: &BlockState {
             id: BlockStateId::new(32312u16).unwrap(),
@@ -548380,6 +550728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 924,
         default_state: &BlockState {
             id: BlockStateId::new(32380u16).unwrap(),
@@ -549240,6 +551590,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 925,
         default_state: &BlockState {
             id: BlockStateId::new(32444u16).unwrap(),
@@ -550100,6 +552452,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 926,
         default_state: &BlockState {
             id: BlockStateId::new(32508u16).unwrap(),
@@ -550960,6 +553314,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 927,
         default_state: &BlockState {
             id: BlockStateId::new(32572u16).unwrap(),
@@ -551820,6 +554176,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 928,
         default_state: &BlockState {
             id: BlockStateId::new(32636u16).unwrap(),
@@ -552680,6 +555038,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 929,
         default_state: &BlockState {
             id: BlockStateId::new(32700u16).unwrap(),
@@ -553540,6 +555900,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 930,
         default_state: &BlockState {
             id: BlockStateId::new(32764u16).unwrap(),
@@ -554400,6 +556762,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 931,
         default_state: &BlockState {
             id: BlockStateId::new(32828u16).unwrap(),
@@ -555260,6 +557624,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1621,
         default_state: &BlockState {
             id: BlockStateId::new(32878u16).unwrap(),
@@ -555314,6 +557680,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1622,
         default_state: &BlockState {
             id: BlockStateId::new(32880u16).unwrap(),
@@ -555368,6 +557736,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1623,
         default_state: &BlockState {
             id: BlockStateId::new(32882u16).unwrap(),
@@ -555422,6 +557792,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1624,
         default_state: &BlockState {
             id: BlockStateId::new(32884u16).unwrap(),
@@ -555476,6 +557848,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1625,
         default_state: &BlockState {
             id: BlockStateId::new(32886u16).unwrap(),
@@ -555530,6 +557904,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1626,
         default_state: &BlockState {
             id: BlockStateId::new(32888u16).unwrap(),
@@ -555584,6 +557960,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1627,
         default_state: &BlockState {
             id: BlockStateId::new(32890u16).unwrap(),
@@ -555638,6 +558016,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1628,
         default_state: &BlockState {
             id: BlockStateId::new(32892u16).unwrap(),
@@ -555692,6 +558072,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1629,
         default_state: &BlockState {
             id: BlockStateId::new(32896u16).unwrap(),
@@ -555772,6 +558154,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1630,
         default_state: &BlockState {
             id: BlockStateId::new(32900u16).unwrap(),
@@ -555852,6 +558236,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1631,
         default_state: &BlockState {
             id: BlockStateId::new(32904u16).unwrap(),
@@ -555932,6 +558318,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1632,
         default_state: &BlockState {
             id: BlockStateId::new(32908u16).unwrap(),
@@ -556012,6 +558400,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1633,
         default_state: &BlockState {
             id: BlockStateId::new(32912u16).unwrap(),
@@ -556092,6 +558482,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1634,
         default_state: &BlockState {
             id: BlockStateId::new(32916u16).unwrap(),
@@ -556172,6 +558564,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1635,
         default_state: &BlockState {
             id: BlockStateId::new(32920u16).unwrap(),
@@ -556252,6 +558646,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1636,
         default_state: &BlockState {
             id: BlockStateId::new(32924u16).unwrap(),
@@ -556332,6 +558728,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1637,
         default_state: &BlockState {
             id: BlockStateId::new(32926u16).unwrap(),
@@ -556672,6 +559070,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1638,
         default_state: &BlockState {
             id: BlockStateId::new(32950u16).unwrap(),
@@ -557012,6 +559412,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1639,
         default_state: &BlockState {
             id: BlockStateId::new(32974u16).unwrap(),
@@ -557352,6 +559754,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1640,
         default_state: &BlockState {
             id: BlockStateId::new(32998u16).unwrap(),
@@ -557692,6 +560096,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1641,
         default_state: &BlockState {
             id: BlockStateId::new(33022u16).unwrap(),
@@ -558032,6 +560438,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1642,
         default_state: &BlockState {
             id: BlockStateId::new(33046u16).unwrap(),
@@ -558372,6 +560780,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1643,
         default_state: &BlockState {
             id: BlockStateId::new(33070u16).unwrap(),
@@ -558712,6 +561122,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1644,
         default_state: &BlockState {
             id: BlockStateId::new(33094u16).unwrap(),
@@ -559052,6 +561464,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1645,
         default_state: &BlockState {
             id: BlockStateId::new(33118u16).unwrap(),
@@ -559496,6 +561910,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1646,
         default_state: &BlockState {
             id: BlockStateId::new(33150u16).unwrap(),
@@ -559940,6 +562356,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1647,
         default_state: &BlockState {
             id: BlockStateId::new(33182u16).unwrap(),
@@ -560384,6 +562802,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1648,
         default_state: &BlockState {
             id: BlockStateId::new(33214u16).unwrap(),
@@ -560828,6 +563248,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1649,
         default_state: &BlockState {
             id: BlockStateId::new(33246u16).unwrap(),
@@ -561272,6 +563694,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1650,
         default_state: &BlockState {
             id: BlockStateId::new(33278u16).unwrap(),
@@ -561716,6 +564140,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1651,
         default_state: &BlockState {
             id: BlockStateId::new(33310u16).unwrap(),
@@ -562160,6 +564586,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1652,
         default_state: &BlockState {
             id: BlockStateId::new(33342u16).unwrap(),
@@ -562604,6 +565032,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 840,
         default_state: &BlockState {
             id: BlockStateId::new(33392u16).unwrap(),
@@ -562944,6 +565374,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 841,
         default_state: &BlockState {
             id: BlockStateId::new(33416u16).unwrap(),
@@ -563284,6 +565716,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 842,
         default_state: &BlockState {
             id: BlockStateId::new(33440u16).unwrap(),
@@ -563624,6 +566058,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 843,
         default_state: &BlockState {
             id: BlockStateId::new(33464u16).unwrap(),
@@ -563964,6 +566400,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 844,
         default_state: &BlockState {
             id: BlockStateId::new(33488u16).unwrap(),
@@ -564304,6 +566742,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 845,
         default_state: &BlockState {
             id: BlockStateId::new(33512u16).unwrap(),
@@ -564644,6 +567084,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 846,
         default_state: &BlockState {
             id: BlockStateId::new(33536u16).unwrap(),
@@ -564984,6 +567426,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 847,
         default_state: &BlockState {
             id: BlockStateId::new(33560u16).unwrap(),
@@ -565324,6 +567768,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 53,
         default_state: &BlockState {
             id: BlockStateId::new(33565u16).unwrap(),
@@ -565363,6 +567809,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1571,
         default_state: &BlockState {
             id: BlockStateId::new(33571u16).unwrap(),
@@ -565651,6 +568099,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1572,
         default_state: &BlockState {
             id: BlockStateId::new(33591u16).unwrap(),
@@ -565939,6 +568389,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1526,
         default_state: &BlockState {
             id: BlockStateId::new(33607u16).unwrap(),
@@ -566646,6 +569098,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(33659u16).unwrap(),
@@ -566703,6 +569157,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 316,
         default_state: &BlockState {
             id: BlockStateId::new(33660u16).unwrap(),
@@ -566745,6 +569201,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 242,
         default_state: &BlockState {
             id: BlockStateId::new(33661u16).unwrap(),
@@ -566787,6 +569245,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 243,
         default_state: &BlockState {
             id: BlockStateId::new(33662u16).unwrap(),
@@ -566829,6 +569289,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 332,
         default_state: &BlockState {
             id: BlockStateId::new(33663u16).unwrap(),
@@ -566868,6 +569330,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 329,
         default_state: &BlockState {
             id: BlockStateId::new(33664u16).unwrap(),
@@ -567107,6 +569571,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 330,
         default_state: &BlockState {
             id: BlockStateId::new(33680u16).unwrap(),
@@ -567346,6 +569812,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 331,
         default_state: &BlockState {
             id: BlockStateId::new(33696u16).unwrap(),
@@ -567585,6 +570053,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 333,
         default_state: &BlockState {
             id: BlockStateId::new(33712u16).unwrap(),
@@ -567624,6 +570094,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 338,
         default_state: &BlockState {
             id: BlockStateId::new(33714u16).unwrap(),
@@ -568071,6 +570543,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 338,
         default_state: &BlockState {
             id: BlockStateId::new(33746u16).unwrap(),
@@ -568206,6 +570680,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 339,
         default_state: &BlockState {
             id: BlockStateId::new(33756u16).unwrap(),
@@ -568445,6 +570921,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 337,
         default_state: &BlockState {
             id: BlockStateId::new(33770u16).unwrap(),
@@ -568502,6 +570980,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 58,
         default_state: &BlockState {
             id: BlockStateId::new(33771u16).unwrap(),
@@ -568541,6 +571021,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 59,
         default_state: &BlockState {
             id: BlockStateId::new(33772u16).unwrap(),
@@ -568580,6 +571062,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 8,
         default_state: &BlockState {
             id: BlockStateId::new(33774u16).unwrap(),
@@ -568647,6 +571131,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 9,
         default_state: &BlockState {
             id: BlockStateId::new(33776u16).unwrap(),
@@ -568686,6 +571172,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 802,
         default_state: &BlockState {
             id: BlockStateId::new(33788u16).unwrap(),
@@ -569754,6 +572242,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 819,
         default_state: &BlockState {
             id: BlockStateId::new(33860u16).unwrap(),
@@ -569860,6 +572350,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 549,
         default_state: &BlockState {
             id: BlockStateId::new(33866u16).unwrap(),
@@ -574100,6 +576592,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 10,
         default_state: &BlockState {
             id: BlockStateId::new(34187u16).unwrap(),
@@ -574139,6 +576633,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 803,
         default_state: &BlockState {
             id: BlockStateId::new(34199u16).unwrap(),
@@ -575207,6 +577703,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 820,
         default_state: &BlockState {
             id: BlockStateId::new(34271u16).unwrap(),
@@ -575313,6 +577811,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 550,
         default_state: &BlockState {
             id: BlockStateId::new(34277u16).unwrap(),
@@ -579553,6 +582053,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 457,
         default_state: &BlockState {
             id: BlockStateId::new(34598u16).unwrap(),
@@ -579592,6 +582094,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 805,
         default_state: &BlockState {
             id: BlockStateId::new(34610u16).unwrap(),
@@ -580660,6 +583164,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 822,
         default_state: &BlockState {
             id: BlockStateId::new(34682u16).unwrap(),
@@ -580766,6 +583272,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 552,
         default_state: &BlockState {
             id: BlockStateId::new(34688u16).unwrap(),
@@ -585006,6 +587514,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 455,
         default_state: &BlockState {
             id: BlockStateId::new(35009u16).unwrap(),
@@ -585045,6 +587555,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 804,
         default_state: &BlockState {
             id: BlockStateId::new(35021u16).unwrap(),
@@ -586113,6 +588625,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 821,
         default_state: &BlockState {
             id: BlockStateId::new(35093u16).unwrap(),
@@ -586219,6 +588733,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 551,
         default_state: &BlockState {
             id: BlockStateId::new(35099u16).unwrap(),
@@ -590459,6 +592975,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 459,
         default_state: &BlockState {
             id: BlockStateId::new(35420u16).unwrap(),
@@ -590498,6 +593016,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 456,
         default_state: &BlockState {
             id: BlockStateId::new(35421u16).unwrap(),
@@ -590537,6 +593057,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 458,
         default_state: &BlockState {
             id: BlockStateId::new(35422u16).unwrap(),
@@ -590576,6 +593098,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 448,
         default_state: &BlockState {
             id: BlockStateId::new(35424u16).unwrap(),
@@ -590643,6 +593167,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 438,
         default_state: &BlockState {
             id: BlockStateId::new(35426u16).unwrap(),
@@ -590682,6 +593208,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 113,
         default_state: &BlockState {
             id: BlockStateId::new(35427u16).unwrap(),
@@ -590721,6 +593249,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 114,
         default_state: &BlockState {
             id: BlockStateId::new(35428u16).unwrap(),
@@ -590760,6 +593290,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 115,
         default_state: &BlockState {
             id: BlockStateId::new(35429u16).unwrap(),
@@ -590799,6 +593331,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(35430u16).unwrap(),
@@ -590838,6 +593372,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(35431u16).unwrap(),
@@ -590877,6 +593413,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1573,
         default_state: &BlockState {
             id: BlockStateId::new(35433u16).unwrap(),
@@ -590944,6 +593482,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1574,
         default_state: &BlockState {
             id: BlockStateId::new(35436u16).unwrap(),
@@ -591011,6 +593551,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1575,
         default_state: &BlockState {
             id: BlockStateId::new(35439u16).unwrap(),
@@ -591078,6 +593620,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1576,
         default_state: &BlockState {
             id: BlockStateId::new(35441u16).unwrap(),
@@ -591117,6 +593661,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 460,
         default_state: &BlockState {
             id: BlockStateId::new(35442u16).unwrap(),
@@ -591156,6 +593702,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 392,
         default_state: &BlockState {
             id: BlockStateId::new(35452u16).unwrap(),
@@ -591392,6 +593940,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1237,
         default_state: &BlockState {
             id: BlockStateId::new(35504u16).unwrap(),
@@ -592044,6 +594594,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1653,
         default_state: &BlockState {
             id: BlockStateId::new(35513u16).unwrap(),
@@ -592228,6 +594780,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 1656,
         default_state: &BlockState {
             id: BlockStateId::new(35523u16).unwrap(),
@@ -592672,6 +595226,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 116,
         default_state: &BlockState {
             id: BlockStateId::new(35552u16).unwrap(),
@@ -592726,6 +595282,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 336,
         default_state: &BlockState {
             id: BlockStateId::new(35553u16).unwrap(),
@@ -592768,6 +595326,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 334,
         default_state: &BlockState {
             id: BlockStateId::new(35554u16).unwrap(),
@@ -594905,6 +597465,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 335,
         default_state: &BlockState {
             id: BlockStateId::new(35716u16).unwrap(),
@@ -594962,6 +597524,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 300,
         default_state: &BlockState {
             id: BlockStateId::new(35718u16).unwrap(),
@@ -595004,6 +597568,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 301,
         default_state: &BlockState {
             id: BlockStateId::new(35719u16).unwrap(),
@@ -595046,6 +597612,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(35720u16).unwrap(),
@@ -595085,6 +597653,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 0,
         default_state: &BlockState {
             id: BlockStateId::new(35721u16).unwrap(),
@@ -595124,6 +597694,8 @@ impl Block {
         slipperiness: 0.6f32,
         velocity_multiplier: 1f32,
         jump_velocity_multiplier: 1f32,
+        bounce_restitution: 0f32,
+        fall_distance_reduction: 0f32,
         item_id: 245,
         default_state: &BlockState {
             id: BlockStateId::new(35722u16).unwrap(),
