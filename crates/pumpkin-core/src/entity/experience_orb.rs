@@ -257,6 +257,10 @@ impl EntityBase for ExperienceOrbEntity {
         &self.entity
     }
 
+    fn receives_player_touch(&self) -> bool {
+        true
+    }
+
     fn damage_with_context(
         &self,
         _caller: &dyn EntityBase,

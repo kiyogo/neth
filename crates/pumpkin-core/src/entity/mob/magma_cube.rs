@@ -89,6 +89,10 @@ impl Mob for MagmaCubeEntity {
         self.slime.post_tick();
     }
 
+    fn mob_receives_player_touch(&self) -> bool {
+        true
+    }
+
     fn mob_player_collision(&self, player: &Arc<crate::entity::player::Player>) {
         if !self.slime.do_teams_allow_damage(&**player) {
             return;

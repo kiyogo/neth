@@ -34,7 +34,7 @@ use pumpkin_data::{
     sound::{Sound, SoundCategory},
 };
 use pumpkin_nbt::{compound::NbtCompound, tag::NbtTag};
-use pumpkin_protocol::bedrock::client::{CAddActor, CSetActorMotion};
+use pumpkin_protocol::bedrock::client::CAddActor;
 use pumpkin_protocol::codec::var_long::VarLong;
 use pumpkin_protocol::{
     PositionFlag,
@@ -45,8 +45,8 @@ use pumpkin_protocol::{
     codec::var_int::VarInt,
     codec::var_ulong::VarULong,
     java::client::play::{
-        CEntityPositionSync, CEntityVelocity, CPlayerPosition, CSetEntityMetadata, CSetPassengers,
-        CSpawnEntity, Metadata, MetadataSerializer,
+        CEntityPositionSync, CPlayerPosition, CSetEntityMetadata, CSetPassengers, CSpawnEntity,
+        Metadata, MetadataSerializer,
     },
 };
 use pumpkin_util::math::vector3::Axis;
@@ -77,6 +77,7 @@ pub mod area_effect_cloud;
 pub mod attributes;
 pub mod boss;
 pub mod breath;
+pub mod client_push;
 pub mod custom_sound;
 pub mod decoration;
 pub mod effect;
@@ -100,6 +101,7 @@ pub mod synched_entity_data;
 pub mod tnt;
 pub mod r#type;
 pub mod vehicle;
+pub mod velocity;
 
 pub use lightning::LightningBoltEntity;
 
@@ -367,6 +369,16 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         false
     }
 
+    /// `other` is solid while this entity moves.
+    fn can_collide_with(&self, _other: &dyn EntityBase) -> bool {
+        false
+    }
+
+    /// Skips the entity scan for movers whose `can_collide_with` is always false.
+    fn has_entity_collisions(&self) -> bool {
+        false
+    }
+
     fn can_hit(&self) -> bool {
         false
     }
@@ -554,6 +566,11 @@ pub trait EntityBase: Send + Sync + std::any::Any {
     /// Called when a player collides with an entity
     fn on_player_collision(&self, _player: &Arc<Player>) {}
 
+    /// When false, world tick skips the player-touch scan for this entity.
+    fn receives_player_touch(&self) -> bool {
+        false
+    }
+
     fn is_passenger(&self) -> bool {
         self.get_entity().has_vehicle()
     }
@@ -575,172 +592,9 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         false
     }
 
+    /// Vanilla `Entity.push(Entity)`.
     fn push(&self, entity: &dyn EntityBase) {
-        let self_entity = self.get_entity();
-        let other_entity = entity.get_entity();
-
-        if self_entity.no_physics.load(Ordering::Relaxed)
-            || other_entity.no_physics.load(Ordering::Relaxed)
-        {
-            return;
-        }
-
-        if self_entity.has_passenger(other_entity.entity_id)
-            || other_entity.has_passenger(self_entity.entity_id)
-        {
-            return;
-        }
-
-        let mut dx = other_entity.pos.load().x - self_entity.pos.load().x;
-        let mut dz = other_entity.pos.load().z - self_entity.pos.load().z;
-        let mut d = dx.abs().max(dz.abs());
-        if d >= 0.01 {
-            d = d.sqrt();
-            dx /= d;
-            dz /= d;
-            let mut d2 = 1.0 / d;
-            if d2 > 1.0 {
-                d2 = 1.0;
-            }
-            dx *= d2;
-            dz *= d2;
-            dx *= 0.05;
-            dz *= 0.05;
-
-            if !self_entity.has_passengers() && self.is_pushable() {
-                let mut vel = self_entity.velocity.load();
-                vel.x -= dx;
-                vel.z -= dz;
-                self_entity.velocity.store(vel);
-                self_entity.velocity_dirty.store(true, Ordering::SeqCst);
-            }
-
-            if !other_entity.has_passengers() && entity.is_pushable() {
-                let mut vel = other_entity.velocity.load();
-                vel.x += dx;
-                vel.z += dz;
-                other_entity.velocity.store(vel);
-                other_entity.velocity_dirty.store(true, Ordering::SeqCst);
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_lines)]
-    fn push_entities(&self, dyn_self: &dyn EntityBase) -> bool {
-        let mut picked_up = false;
-        let mut pushed = false;
-        let self_entity = self.get_entity();
-        let entity_bb = self_entity.bounding_box.load();
-
-        if !self.is_pushable() {
-            return false;
-        }
-
-        let world = self_entity.world.load();
-
-        let is_rideable_minecart = self_entity.entity_type.id == EntityType::MINECART.id;
-        let is_abstract_minecart = is_rideable_minecart
-            || self_entity.entity_type.id == EntityType::CHEST_MINECART.id
-            || self_entity.entity_type.id == EntityType::COMMAND_BLOCK_MINECART.id
-            || self_entity.entity_type.id == EntityType::FURNACE_MINECART.id
-            || self_entity.entity_type.id == EntityType::HOPPER_MINECART.id
-            || self_entity.entity_type.id == EntityType::SPAWNER_MINECART.id
-            || self_entity.entity_type.id == EntityType::TNT_MINECART.id;
-
-        let is_minecart_fn = |id| -> bool {
-            id == EntityType::MINECART.id
-                || id == EntityType::CHEST_MINECART.id
-                || id == EntityType::COMMAND_BLOCK_MINECART.id
-                || id == EntityType::FURNACE_MINECART.id
-                || id == EntityType::HOPPER_MINECART.id
-                || id == EntityType::SPAWNER_MINECART.id
-                || id == EntityType::TNT_MINECART.id
-        };
-
-        if is_abstract_minecart {
-            let is_vehicle = self.is_vehicle();
-
-            if is_rideable_minecart && !is_vehicle {
-                let pickup_bb = entity_bb.expand(0.2, 0.0, 0.2);
-                let other_entities = world.get_entities_at_box(&pickup_bb);
-
-                for other in other_entities {
-                    if other.get_entity().entity_id != self_entity.entity_id {
-                        let other_type = other.get_entity().entity_type.id;
-                        let is_iron_golem = other_type == EntityType::IRON_GOLEM.id;
-                        let is_other_minecart = is_minecart_fn(other_type);
-
-                        if !is_iron_golem
-                            && !is_other_minecart
-                            && !other.is_passenger()
-                            && other.is_pushable()
-                            && other.get_entity().riding_cooldown.load(Relaxed) == 0
-                            && let Some(self_arc) = world.get_entity_by_id(self_entity.entity_id)
-                        {
-                            self_entity.add_passenger(self_arc, other.clone());
-                            picked_up = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            let push_bb = entity_bb.expand(1.0e-7, 1.0e-7, 1.0e-7);
-
-            let other_entities = world.get_entities_at_box(&push_bb);
-            for other in other_entities {
-                if other.get_entity().entity_id != self_entity.entity_id {
-                    let other_type = other.get_entity().entity_type.id;
-                    let is_other_minecart = is_minecart_fn(other_type);
-                    let is_iron_golem = other_type == EntityType::IRON_GOLEM.id;
-
-                    if is_rideable_minecart {
-                        if (is_iron_golem
-                            || is_other_minecart
-                            || is_vehicle
-                            || !other.get_entity().has_vehicle())
-                            && other.is_pushable()
-                        {
-                            dyn_self.push(other.as_ref());
-                            pushed = true;
-                        }
-                    } else if !self.has_passenger(other.as_ref())
-                        && other.is_pushable()
-                        && is_other_minecart
-                    {
-                        dyn_self.push(other.as_ref());
-                        pushed = true;
-                    }
-                }
-            }
-
-            let players = world.get_players_at_box(&push_bb);
-            for player in players {
-                if player.get_entity().entity_id != self_entity.entity_id && is_rideable_minecart {
-                    dyn_self.push(player.as_ref());
-                    pushed = true;
-                    // Non-rideable minecarts (hoppers, chests) do not push players in vanilla.
-                }
-            }
-        } else {
-            let other_entities = world.get_entities_at_box(&entity_bb);
-            for other in other_entities {
-                if other.get_entity().entity_id != self_entity.entity_id {
-                    dyn_self.push(other.as_ref());
-                    pushed = true;
-                }
-            }
-
-            let players = world.get_players_at_box(&entity_bb);
-            for player in players {
-                if player.get_entity().entity_id != self_entity.entity_id {
-                    dyn_self.push(player.as_ref());
-                    pushed = true;
-                }
-            }
-        }
-
-        picked_up && !pushed
+        velocity::push_apart(self, entity);
     }
 
     fn on_hit(&self, _hit: crate::entity::projectile::ProjectileHit) {}
@@ -1012,10 +866,15 @@ pub struct Entity {
     pub movement_multiplier: AtomicCell<Vector3<f64>>,
     /// Vanilla `needsSync`: tracker resyncs position and velocity of entities
     pub velocity_dirty: AtomicBool,
+<<<<<<< HEAD
     /// Set on damage so the entity's own client gets its motion once, mirroring
     /// vanilla `Entity.hurtMarked`. Consumed by `LivingEntity::tick`; it must stay a
     /// one-shot per hit, otherwise it degrades into a per-tick self-sync.
     pub hurt_marked: AtomicBool,
+=======
+    /// velocity goes to the own client
+    pub sync_velocity: AtomicBool,
+>>>>>>> 256dba417e8758c54ef1ffcadfe3f9676cca5164
     /// Set when an Entity is to be removed but could still be referenced
     pub removed: AtomicBool,
     /// The last sent yaw value (encoded as u8) for change detection
@@ -1156,7 +1015,11 @@ impl Entity {
             synched_data: synched_entity_data::SynchedEntityData::new(),
             movement_multiplier: AtomicCell::new(Vector3::default()),
             velocity_dirty: AtomicBool::new(true),
+<<<<<<< HEAD
             hurt_marked: AtomicBool::new(false),
+=======
+            sync_velocity: AtomicBool::new(false),
+>>>>>>> 256dba417e8758c54ef1ffcadfe3f9676cca5164
             removed: AtomicBool::new(false),
             last_sent_yaw: AtomicU8::new(0),
             last_sent_pitch: AtomicU8::new(0),
@@ -1170,15 +1033,6 @@ impl Entity {
             VarInt(300),
         );
         entity
-    }
-
-    pub fn add_velocity(&self, velocity: Vector3<f64>) {
-        self.set_velocity(self.velocity.load() + velocity);
-    }
-
-    pub fn set_velocity(&self, velocity: Vector3<f64>) {
-        self.velocity.store(velocity);
-        self.send_velocity();
     }
 
     /// Updates the world reference for this entity.
@@ -1346,6 +1200,7 @@ impl Entity {
         self.set_synced_data(tracked_data::entity::DATA_NO_GRAVITY, no_gravity);
     }
 
+<<<<<<< HEAD
     /// Vanilla `hurtMarked` path: immediate, to watchers and self.
     pub fn send_velocity(&self) {
         let (je_packet, be_packet) = self.velocity_packets();
@@ -1384,6 +1239,8 @@ impl Entity {
         )
     }
 
+=======
+>>>>>>> 256dba417e8758c54ef1ffcadfe3f9676cca5164
     #[must_use]
     pub fn get_dimensions(&self, pose: EntityPose) -> EntityDimensions {
         if pose == EntityPose::Sleeping {
@@ -1524,12 +1381,11 @@ impl Entity {
 
         let bounding_box = self.bounding_box.load();
 
-        let (collisions, block_positions) = self
-            .world
-            .load()
-            .get_block_collisions(bounding_box.stretch(movement), caller);
+        let area = bounding_box.stretch(movement);
+        let (collisions, block_positions) = self.world.load().get_block_collisions(area, caller);
+        let entity_collisions = self.entity_collisions(caller, area);
 
-        if collisions.is_empty() {
+        if collisions.is_empty() && entity_collisions.is_empty() {
             return movement;
         }
 
@@ -1617,46 +1473,6 @@ impl Entity {
         }
         best.map(|(_, pos)| pos)
     }
-
-    /// Applies knockback to the entity, following vanilla Minecraft's mechanics.
-    /// `LivingEntity.takeKnockback()`
-    /// This function calculates the entity's new velocity based on the specified knockback strength and direction.
-    ///
-    /// Knockback resistance is not applied here, because it is a `LivingEntity`
-    /// attribute and this is an `Entity` method. Callers modelling vanilla's
-    /// `LivingEntity.knockback` scale `strength` with
-    /// `combat::knockback_after_resistance` first; callers modelling vanilla's raw
-    /// `Entity.push` (such as the ender dragon) pass `strength` unscaled.
-    pub fn apply_knockback(&self, strength: f64, mut x: f64, mut z: f64) {
-        if strength <= 0.0 {
-            return;
-        }
-
-        self.velocity_dirty.store(true, Ordering::SeqCst);
-
-        // This has some vanilla magic
-
-        while x.mul_add(x, z * z) < 1.0E-5 {
-            x = (rand::random::<f64>() - rand::random::<f64>()) * 0.01;
-
-            z = (rand::random::<f64>() - rand::random::<f64>()) * 0.01;
-        }
-
-        let var8 = Vector3::new(x, 0.0, z).normalize() * strength;
-
-        let velocity = self.velocity.load();
-
-        self.velocity.store(Vector3::new(
-            velocity.x / 2.0 - var8.x,
-            if self.on_ground.load(Relaxed) {
-                (velocity.y / 2.0 + strength).min(0.4)
-            } else {
-                velocity.y
-            },
-            velocity.z / 2.0 - var8.z,
-        ));
-    }
-
     // Part of LivingEntity.tickMovement() in yarn
 
     pub fn check_zero_velo(&self) {
@@ -2629,31 +2445,6 @@ impl Entity {
 
     pub fn height(&self) -> f32 {
         self.entity_dimension.load().height
-    }
-
-    /// Applies knockback to the entity, following vanilla Minecraft's mechanics.
-    ///
-    /// This function calculates the entity's new velocity based on the specified knockback strength and direction.
-    pub fn knockback(&self, strength: f64, x: f64, z: f64) {
-        // This has some vanilla magic
-        let mut x = x;
-        let mut z = z;
-        while x.mul_add(x, z * z) < 1.0E-5 {
-            x = (rand::random::<f64>() - rand::random::<f64>()) * 0.01;
-            z = (rand::random::<f64>() - rand::random::<f64>()) * 0.01;
-        }
-
-        let var8 = Vector3::new(x, 0.0, z).normalize() * strength;
-        let velocity = self.velocity.load();
-        self.velocity.store(Vector3::new(
-            velocity.x / 2.0 - var8.x,
-            if self.on_ground.load(Relaxed) {
-                (velocity.y / 2.0 + strength).min(0.4)
-            } else {
-                velocity.y
-            },
-            velocity.z / 2.0 - var8.z,
-        ));
     }
 
     pub fn set_sneaking(&self, sneaking: bool) {
@@ -3779,6 +3570,40 @@ impl Entity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .is_some()
+    }
+
+    /// Vanilla `getRootVehicle`, by id.
+    pub fn root_vehicle_id(&self) -> i32 {
+        let mut root = self.get_vehicle();
+        let mut id = self.entity_id;
+        while let Some(vehicle) = root {
+            id = vehicle.get_entity().entity_id;
+            root = vehicle.get_entity().get_vehicle();
+        }
+        id
+    }
+
+    /// Vanilla `isPassengerOfSameVehicle`.
+    pub fn is_passenger_of_same_vehicle(&self, other: &Self) -> bool {
+        self.root_vehicle_id() == other.root_vehicle_id()
+    }
+
+    /// boxes of entities `caller` can't move through
+    fn entity_collisions(&self, caller: &dyn EntityBase, area: BoundingBox) -> Vec<BoundingBox> {
+        if !caller.has_entity_collisions() {
+            return Vec::new();
+        }
+        self.world
+            .load()
+            .get_all_at_box(&area.expand_all(1.0E-7))
+            .into_iter()
+            .filter(|other| {
+                other.get_entity().entity_id != self.entity_id
+                    && !other.is_spectator()
+                    && caller.can_collide_with(other.as_ref())
+            })
+            .map(|other| other.get_entity().bounding_box.load())
+            .collect()
     }
 
     pub fn get_vehicle(&self) -> Option<Arc<dyn EntityBase>> {

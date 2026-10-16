@@ -11,7 +11,7 @@ use std::{
     net::SocketAddr,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
     },
 };
 
@@ -129,6 +129,8 @@ pub struct BedrockClient {
     /// Whether the player has been spawned into its world; set by the first completed
     /// resource pack response so later ones cannot spawn it again.
     spawned: AtomicBool,
+    /// Last processed `PlayerAuthInput` tick. Motion for the own player must carry it.
+    pub input_tick: AtomicU64,
     /// Separate from normal vitals caching so the first rejected use always gets corrected.
     last_food_rejection_tick: AtomicCell<Option<i32>>,
     pub client_cache_supported: AtomicBool,
@@ -178,6 +180,7 @@ impl BedrockClient {
             next_form_id: AtomicU32::new(0),
             inventory_opened: AtomicBool::new(false),
             spawned: AtomicBool::new(false),
+            input_tick: AtomicU64::new(0),
             last_food_rejection_tick: AtomicCell::new(None),
             client_cache_supported: AtomicBool::new(false),
             blob_cache: std::sync::Mutex::new(HashMap::new()),
