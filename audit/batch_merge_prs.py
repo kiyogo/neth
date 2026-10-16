@@ -3,6 +3,13 @@ import subprocess
 import sys
 import os
 
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 GROUP3_REJECT = [3819, 3469, 4074]
 
 def run_cmd(cmd, cwd=None):
@@ -38,8 +45,9 @@ def main():
         title = p['title']
         author = p.get('author', {}).get('login', '') if isinstance(p.get('author'), dict) else p.get('author', '')
 
-        # Skip if already marked processed
-        if str(num) in processed and processed[str(num)].get('status') in ['already_merged', 'clean_merged', 'conflict_resolved']:
+        val = processed.get(str(num))
+        status = val.get('status') if isinstance(val, dict) else val
+        if status in ['already_merged', 'clean_merged', 'conflict_resolved', 'superseded']:
             continue
 
         print(f"\n==========================================")
@@ -81,8 +89,8 @@ def main():
             with open(progress_file, 'w', encoding='utf-8') as f:
                 json.dump(processed, f, indent=2)
             batch_clean_count += 1
-            if batch_clean_count >= 10:
-                print(f"[!] Reached batch of {batch_clean_count} clean merges. Pausing for verification.")
+            if batch_clean_count >= 20:
+                print(f"[!] Reached batch of {batch_clean_count} clean merges. Pausing to sync.")
                 break
         else:
             print(f"[!] Merge conflict on PR #{num}!")
