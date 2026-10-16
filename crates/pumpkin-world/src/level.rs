@@ -573,6 +573,9 @@ impl Level {
             .map(|p| *p)
             .collect();
         for pos in scheduled_chunk_pos {
+            if !active_chunks.contains(&pos) {
+                continue;
+            }
             if let Some(chunk) = self.loaded_chunks.get(&pos) {
                 // Vanilla keeps ticks pending until the chunk is simulated (`LevelTicks.tickCheck`).
                 if !active_chunks.contains(&pos) {
