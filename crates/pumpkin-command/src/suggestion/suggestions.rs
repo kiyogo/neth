@@ -195,7 +195,6 @@ impl SuggestionsBuilder {
         }
         self
     }
-
     /// Suggests each tag id as `#id`, filtered like vanilla's
     /// `SharedSuggestionProvider.suggestResource(tags, builder, "#")`.
     #[must_use]
@@ -214,6 +213,7 @@ impl SuggestionsBuilder {
         }
         self
     }
+
     fn matches_substr(pattern: &str, input: &str) -> bool {
         let mut current_str = input;
         while !current_str.starts_with(pattern) {
