@@ -2,6 +2,7 @@ use crate::block::blocks::chests::get_container;
 use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use crate::block::entities::BlockEntity;
 use crate::entity::experience_orb::ExperienceOrbEntity;
+use crate::entity::item::ItemEntity;
 use crate::plugin::api::events::inventory::hopper_inventory_search::HopperInventorySearchEvent;
 use crate::plugin::api::events::inventory::inventory_move_item::InventoryMoveItemEvent;
 use crate::plugin::api::events::inventory::inventory_pickup_item::InventoryPickupItemEvent;
@@ -24,7 +25,7 @@ use std::sync::RwLock;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64};
 
-/// Vanilla `Hopper.SUCK_AABB`: from the hopper's bowl up to the top of the block above.
+/// Vanilla `Hopper.SUCK_AABB`: from the floor of the hopper's bowl to the top of the block above.
 const SUCK_AABB: BoundingBox = BoundingBox::new_array([0.0, 11.0 / 16.0, 0.0], [1.0, 2.0, 1.0]);
 
 pub struct HopperBlockEntity {
@@ -458,6 +459,8 @@ impl HopperBlockEntity {
             return;
         }
         let to_empty = to.is_empty();
+        // Vanilla `Container.getMaxStackSize(ItemStack)`, which `setItem` limits the slot to.
+        let max_count = to.get_max_count_per_stack().min(stack.get_max_stack_size());
         let success = if let Some(hopper) = to.as_any().downcast_ref::<Self>() {
             // One lock for read and write: a parallel insert into the same slot would otherwise
             // overwrite this one with its stale copy, or the reverse.
@@ -465,10 +468,10 @@ impl HopperBlockEntity {
                 .items
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            Self::merge_into_slot(&mut items[slot], stack)
+            Self::merge_into_slot(&mut items[slot], stack, max_count)
         } else {
             let mut dst = to.get_stack(slot);
-            let success = Self::merge_into_slot(&mut dst, stack);
+            let success = Self::merge_into_slot(&mut dst, stack, max_count);
             if success {
                 to.set_stack(slot, dst);
             }
@@ -500,10 +503,14 @@ impl HopperBlockEntity {
     }
 
     /// The slot half of vanilla `tryMoveInItem`: fills an empty `dst` with `stack`, or tops
-    /// `dst` up from it. Returns whether anything moved.
-    fn merge_into_slot(dst: &mut ItemStack, stack: &mut ItemStack) -> bool {
+    /// `dst` up from it, up to `max_count`. Returns whether anything moved.
+    fn merge_into_slot(dst: &mut ItemStack, stack: &mut ItemStack, max_count: u8) -> bool {
         if dst.is_empty() {
-            *dst = std::mem::replace(stack, ItemStack::EMPTY.clone());
+            *dst = if stack.item_count > max_count {
+                stack.split(max_count)
+            } else {
+                std::mem::replace(stack, ItemStack::EMPTY.clone())
+            };
             return true;
         }
         if !dst.are_items_and_components_equal(stack) {
@@ -511,7 +518,7 @@ impl HopperBlockEntity {
         }
         let moved = stack
             .item_count
-            .min(stack.get_max_stack_size().saturating_sub(dst.item_count));
+            .min(max_count.saturating_sub(dst.item_count));
         stack.decrement(moved);
         dst.increment(moved);
         moved > 0
@@ -757,5 +764,18 @@ mod tests {
         assert_eq!(hopper.get_stack(0).item_count, 64);
         assert_eq!(leftover.get_item().id, Item::DIAMOND.id);
         assert_eq!(leftover.item_count, 6);
+    }
+
+    /// A stack over the item's limit, like one loaded from NBT, fills a slot only up to that limit.
+    #[test]
+    fn add_stack_splits_an_oversized_stack_across_slots() {
+        let hopper = hopper_holding(ItemStack::EMPTY.clone());
+
+        let leftover =
+            HopperBlockEntity::add_stack(None, &hopper, ItemStack::new(99, &Item::DIAMOND));
+
+        assert!(leftover.is_empty());
+        assert_eq!(hopper.get_stack(0).item_count, 64);
+        assert_eq!(hopper.get_stack(1).item_count, 35);
     }
 }
