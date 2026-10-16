@@ -804,6 +804,8 @@ pub struct Block {
     pub states: Vec<BlockState>,
     /// Experience points dropped when the block is mined, if any.
     pub experience: Option<Experience>,
+    /// Loot table identifier
+    pub loot_table: Option<String>,
     /// Position-derived shape offset applied by vanilla, if any.
     shape_offset: Option<BlockShapeOffset>,
     /// Spawn floor predicate for this block, if any.
@@ -830,6 +832,12 @@ impl ToTokens for Block {
         let experience = if let Some(exp) = &self.experience {
             let exp_tokens = exp.to_token_stream();
             quote! { Some(#exp_tokens) }
+        } else {
+            quote! { None }
+        };
+        let loot_table = if let Some(loot) = &self.loot_table {
+            let loot_lit = LitStr::new(loot, Span::call_site());
+            quote! { Some(#loot_lit) }
         } else {
             quote! { None }
         };
@@ -867,6 +875,7 @@ impl ToTokens for Block {
                 states: &[#(#states),*],
                 flammable: #flammable,
                 experience: #experience,
+                loot_table: #loot_table,
             }
         });
     }

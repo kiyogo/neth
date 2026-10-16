@@ -536,11 +536,10 @@ pub fn loot_table_block(block: &Block) -> &Block {
 /// The items a block drops: its loot table, or what the registration of a custom block says.
 fn block_loot(world: &Arc<World>, block: &Block, params: &LootContextParameters) -> Vec<ItemStack> {
     let Some(info) = block.dynamic_info() else {
-        return loot_table_items(
-            world,
-            &format!("minecraft:blocks/{}", loot_table_name(block)),
-            params,
-        );
+        let Some(table) = block.loot_table else {
+            return Vec::new();
+        };
+        return loot_table_items(world, table, params);
     };
     match &info.registration.drops {
         BlockDrops::Nothing => Vec::new(),
