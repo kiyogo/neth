@@ -1497,6 +1497,8 @@ impl LivingEntity {
             && mob.custom_travel(caller)
         {
             // Handled by custom mob travel (e.g. Squid)
+        } else if touching_water && caller.travel_in_water() {
+            // The entity swam on its own.
         } else if (touching_water || self.entity.touching_lava.load(SeqCst))
             && should_swim_in_fluids
             && self.entity.entity_type != &EntityType::STRIDER

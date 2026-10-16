@@ -16,13 +16,14 @@ use rand::RngExt;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
-    ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
-    ai::pathfinder::Navigator,
+    ai::control::fish_move_control::FishMoveControl,
+    ai::pathfinder::{node::PathType, Navigator},
     ai::goal::{
         Goal, look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         random_swimming::RandomSwimmingGoal,
     },
     mob::{Mob, MobEntity},
+    passive::fish,
 };
 
 /// Represents a Pufferfish, a passive aquatic mob that can inflate when threatened.
@@ -43,12 +44,14 @@ impl PufferfishEntity {
             .move_control
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            Box::new(SmoothSwimmingMoveControl::new(85, 10, 1.0, 0.0, true));
+            Box::new(FishMoveControl::default());
 
+        let mut navigator = Navigator::water_bound(false);
+        navigator.set_pathfinding_malus(PathType::Water, 0.0);
         *mob_entity
             .navigator
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::water_bound(false);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = navigator;
 
         let pufferfish = Self {
             mob_entity,
@@ -159,6 +162,10 @@ impl Mob for PufferfishEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
+        fish::travel_in_water(self, caller)
     }
 
     fn is_pushed_by_fluids(&self) -> bool {

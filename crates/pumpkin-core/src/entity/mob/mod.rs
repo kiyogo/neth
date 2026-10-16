@@ -1547,6 +1547,10 @@ pub trait Mob: EntityBase + Send + Sync {
         true
     }
 
+    fn mob_travel_in_water(&self, _caller: &dyn EntityBase) -> bool {
+        false
+    }
+
     /// Override mob movement if the mob has custom travel physics (e.g. Squid).
     /// Returns true if travel was handled and standard travel should be skipped.
     fn custom_travel(&self, _caller: &dyn EntityBase) -> bool {
@@ -1556,6 +1560,10 @@ pub trait Mob: EntityBase + Send + Sync {
 impl<T: Mob + Send + 'static> EntityBase for T {
     fn get_mob(&self) -> Option<&dyn Mob> {
         Some(self)
+    }
+
+    fn travel_in_water(&self) -> bool {
+        self.mob_travel_in_water(self)
     }
 
     fn is_pushed_by_fluids(&self) -> bool {

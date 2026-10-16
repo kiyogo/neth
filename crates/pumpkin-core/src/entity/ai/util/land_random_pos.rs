@@ -109,7 +109,7 @@ pub fn move_pos_up_out_of_solid(
         }
     }
 
-    if goal_utils::is_not_stable(world, &pos) {
+    if goal_utils::is_not_stable(mob, world, &pos) {
         return None;
     }
 

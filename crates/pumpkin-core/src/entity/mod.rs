@@ -370,6 +370,12 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         false
     }
 
+    /// Moves the entity through water itself instead of the shared water movement, and says
+    /// whether it did. Fish do, so they neither sink like walkers nor hop out at the shore.
+    fn travel_in_water(&self) -> bool {
+        false
+    }
+
     fn set_sprinting(&self, is_sprinting: bool) {
         if let Some(living) = self.get_living_entity() {
             living.set_sprinting(is_sprinting);

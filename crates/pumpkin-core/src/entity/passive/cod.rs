@@ -8,14 +8,16 @@ use rand::RngExt;
 
 use crate::entity::{
     Entity, EntityBase,
-    ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
-    ai::pathfinder::Navigator,
+    ai::control::fish_move_control::FishMoveControl,
     ai::goal::{
+        avoid_entity::AvoidEntityGoal, escape_danger::EscapeDangerGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         random_swimming::RandomSwimmingGoal,
     },
+    ai::pathfinder::{node::PathType, Navigator},
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
+    passive::fish,
 };
 
 /// Represents a Cod, a common passive aquatic mob.
@@ -33,12 +35,14 @@ impl CodEntity {
             .move_control
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            Box::new(SmoothSwimmingMoveControl::new(85, 10, 1.0, 0.0, true));
+            Box::new(FishMoveControl::default());
 
+        let mut navigator = Navigator::water_bound(false);
+        navigator.set_pathfinding_malus(PathType::Water, 0.0);
         *mob_entity
             .navigator
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::water_bound(false);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = navigator;
 
         let cod = Self {
             mob_entity,
@@ -57,12 +61,17 @@ impl CodEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(RandomSwimmingGoal::new(1.0)));
+            goal_selector.add_goal(0, EscapeDangerGoal::new(1.25));
             goal_selector.add_goal(
                 1,
+                Box::new(AvoidEntityGoal::new(&EntityType::PLAYER, 8.0, 1.6, 1.4)),
+            );
+            goal_selector.add_goal(2, Box::new(RandomSwimmingGoal::new(1.0)));
+            goal_selector.add_goal(
+                3,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
             );
-            goal_selector.add_goal(2, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(4, Box::new(RandomLookAroundGoal::default()));
         };
 
         mob_arc
@@ -76,6 +85,10 @@ impl Mob for CodEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
+        fish::travel_in_water(self, caller)
     }
 
     fn is_pushed_by_fluids(&self) -> bool {
