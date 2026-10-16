@@ -111,11 +111,7 @@ impl JavaClient {
             }
         }}
 
-        let equipment_slot = if matches!(hand, Hand::Right) {
-            EquipmentSlot::MAIN_HAND
-        } else {
-            EquipmentSlot::OFF_HAND
-        };
+        let equipment_slot = EquipmentSlot::from_hand(hand);
 
         let slot_index = if matches!(hand, Hand::Right) {
             inventory.get_selected_slot() as usize

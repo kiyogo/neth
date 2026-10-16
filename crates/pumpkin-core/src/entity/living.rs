@@ -2756,10 +2756,7 @@ impl LivingEntity {
                 if stack.item_count == 0 {
                     stack = ItemStack::EMPTY.clone();
                 }
-                let slot = match hand {
-                    Hand::Right => EquipmentSlot::MAIN_HAND,
-                    Hand::Left => EquipmentSlot::OFF_HAND,
-                };
+                let slot = EquipmentSlot::from_hand(hand);
                 if let Some(player) = caller.get_player() {
                     player
                         .inventory()
