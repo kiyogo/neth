@@ -164,7 +164,9 @@ impl BlockBehaviour for FarmlandBlock {
 /// Vanilla `FarmBlock.canSurvive`: determines if farmland can remain without reverting to dirt.
 fn can_place_at(world: &dyn BlockAccessor, block_pos: &BlockPos) -> bool {
     let (block, state) = world.get_block_and_state(&block_pos.up());
-    !state.is_solid() || block.has_tag(&tag::Block::MINECRAFT_MAINTAINS_FARMLAND)
+    !state.is_solid()
+        || block.has_tag(&tag::Block::MINECRAFT_MAINTAINS_FARMLAND)
+        || block.has_tag(&tag::Block::MINECRAFT_FENCE_GATES)
 }
 
 fn is_water_nearby(world: &Arc<World>, block_pos: &BlockPos) -> bool {
