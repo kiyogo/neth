@@ -4,7 +4,10 @@ use crate::block::{
 };
 use crate::world::World;
 use pumpkin_data::block_properties::RedstoneOreLikeProperties;
+use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::{Block, BlockId, BlockState};
+use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_protocol::java::server::play::SUseItemOn;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
@@ -31,7 +34,35 @@ impl BlockBehaviour for RedstoneOreBlock {
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         let state = args.world.get_block_state(args.position);
         Self::light_up(args.world, args.position, args.block, state);
-        if !args.item_stack.is_empty() && Block::from_item_id(args.item_stack.item.id).is_some() {
+        if args.item_stack.is_empty() {
+            return BlockActionResult::Success;
+        }
+        let Some(placed_block) = Block::from_item_id(args.item_stack.item.id) else {
+            return BlockActionResult::Success;
+        };
+        // Vanilla only passes a block item on when BlockPlaceContext.canPlace() holds; otherwise the use is consumed.
+        let use_item_on = SUseItemOn {
+            hand: VarInt(i32::from(*args.equipment_slot == EquipmentSlot::OFF_HAND)),
+            position: *args.position,
+            face: VarInt(i32::from(args.hit.face.to_index())),
+            cursor_pos: *args.hit.cursor_pos,
+            inside_block: false,
+            is_against_world_border: false,
+            sequence: VarInt(0),
+        };
+        if args
+            .server
+            .block_registry
+            .placement_target(
+                args.world,
+                args.player,
+                placed_block,
+                &use_item_on,
+                *args.position,
+                *args.hit.face,
+            )
+            .is_some()
+        {
             BlockActionResult::Pass
         } else {
             BlockActionResult::Success
