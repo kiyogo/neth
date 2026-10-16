@@ -65,6 +65,7 @@ impl JavaClient {
 
         let grid_size = grid_width * grid_width;
         let mut ingredient_slots: Vec<Option<GenericIngredient<'_>>> = vec![None; grid_size];
+        let ghost_recipe;
 
         if target_id < crafting_display_count {
             // Crafting recipe
@@ -82,6 +83,7 @@ impl JavaClient {
                 found
             });
             let Some(recipe) = recipe else { return };
+            ghost_recipe = pumpkin_protocol::java::client::play::GhostRecipe::Vanilla(recipe);
 
             match recipe {
                 CraftingRecipeTypes::CraftingShaped { pattern, key, .. } => {
@@ -121,6 +123,7 @@ impl JavaClient {
             let Some(DynamicRecipe::Crafting(crafting)) = dynamic_recipes.get(dynamic_id) else {
                 return;
             };
+            ghost_recipe = pumpkin_protocol::java::client::play::GhostRecipe::Dynamic(crafting);
 
             match crafting {
                 pumpkin_protocol::codec::recipe::OwnedCraftingRecipe::Shaped {
@@ -228,6 +231,10 @@ impl JavaClient {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .send_content_updates();
+            self.try_send_packet(&pumpkin_protocol::java::client::play::CPlaceGhostRecipe::new(
+                i32::from(packet.container_id),
+                ghost_recipe,
+            ));
             return;
         };
 
