@@ -16963,6 +16963,8 @@ pub const fn blocks_movement(block_state: &BlockState, id: BlockId) -> bool {
     block_state.is_solid() && !matches!(id, BlockId::COBWEB | BlockId::BAMBOO_SAPLING)
 }
 impl BlockState {
+    #[doc = r" Bedrock has no tables for the states of blocks that plugins register, they show as stone."]
+    const BEDROCK_PLACEHOLDER: BlockStateId = Block::STONE.default_state.id;
     const STATE_ID_TO_BEDROCK: &[u32] = &[
         3690217760, 2150698529, 3385275638, 118998978, 2538477610, 1362605798, 1683032592,
         200169620, 3727763636, 3727763636, 2186211206, 1884368513, 1711067891, 1711067891,
@@ -21894,20 +21896,26 @@ impl BlockState {
     #[doc = r" If you need access to the block use `BlockState::from_id_with_block` instead."]
     #[inline]
     #[must_use]
-    pub const fn from_id(id: BlockStateId) -> &'static Self {
+    pub fn from_id(id: BlockStateId) -> &'static Self {
+        if id.as_u16() >= BlockStateId::STATE_COUNT {
+            return Self::from_dynamic_id(id);
+        }
         unsafe { std::hint::assert_unchecked(id.as_u16() < BlockStateId::STATE_COUNT) }
         mappings::STATE_FROM_STATE_ID[id.as_u16() as usize]
     }
     #[doc = r" Get a block state from a state id and the corresponding block."]
     #[inline]
     #[must_use]
-    pub const fn from_id_with_block(id: BlockStateId) -> (&'static Block, &'static Self) {
+    pub fn from_id_with_block(id: BlockStateId) -> (&'static Block, &'static Self) {
         let block = Block::from_state_id(id);
         let state = Self::from_id(id);
         (block, state)
     }
     #[must_use]
     pub const fn to_be_network_id(id: BlockStateId) -> u32 {
+        if id.as_u16() >= BlockStateId::STATE_COUNT {
+            return Self::STATE_ID_TO_BEDROCK[Self::BEDROCK_PLACEHOLDER.as_u16() as usize];
+        }
         unsafe { std::hint::assert_unchecked(id.as_u16() < BlockStateId::STATE_COUNT) }
         Self::STATE_ID_TO_BEDROCK[id.as_u16() as usize]
     }
@@ -595480,30 +595488,40 @@ impl Block {
     #[inline]
     #[must_use]
     pub fn from_registry_key(name: &str) -> Option<&'static Self> {
-        mappings::BLOCK_FROM_NAME_MAP.get(name)
+        mappings::BLOCK_FROM_NAME_MAP
+            .get(name)
+            .or_else(|| Self::from_dynamic_registry_key(name))
     }
     #[doc = r" Try to get a block from a namespace prefixed name."]
     #[must_use]
     pub fn from_name(name: &str) -> Option<&'static Self> {
         let key = name.strip_prefix("minecraft:").unwrap_or(name);
-        mappings::BLOCK_FROM_NAME_MAP.get(key)
+        mappings::BLOCK_FROM_NAME_MAP
+            .get(key)
+            .or_else(|| Self::from_dynamic_registry_key(name))
     }
     #[doc = r" Get a [`Block`] from a [`BlockId`]"]
     #[inline]
     #[must_use]
-    pub const fn from_id(id: BlockId) -> &'static Self {
+    pub fn from_id(id: BlockId) -> &'static Self {
+        if id.as_u16() >= BlockId::BLOCK_COUNT {
+            return Self::from_dynamic_id(id);
+        }
         unsafe { std::hint::assert_unchecked(id.as_u16() < BlockId::BLOCK_COUNT) }
         mappings::TYPE_FROM_RAW_ID[id.as_u16() as usize]
     }
     #[doc = r" Get a [`Block`] from a state id"]
     #[inline]
     #[must_use]
-    pub const fn from_state_id(id: BlockStateId) -> &'static Self {
+    pub fn from_state_id(id: BlockStateId) -> &'static Self {
+        if id.as_u16() >= BlockStateId::STATE_COUNT {
+            return Self::from_dynamic_state_id(id);
+        }
         Self::from_id(BlockId::from_state_id(id))
     }
     #[doc = r" Try to parse a block from an item id."]
     #[must_use]
-    pub const fn from_item_id(id: u16) -> Option<&'static Self> {
+    pub fn from_item_id(id: u16) -> Option<&'static Self> {
         #[allow(unreachable_patterns)]
         match id {
             0u16 => Some(&Self::AIR),
@@ -596648,7 +596666,7 @@ impl Block {
             300u16 => Some(&Self::OPEN_EYEBLOSSOM),
             301u16 => Some(&Self::CLOSED_EYEBLOSSOM),
             245u16 => Some(&Self::FIREFLY_BUSH),
-            _ => None,
+            _ => Self::from_dynamic_item_id(id),
         }
     }
     #[track_caller]
@@ -597635,7 +597653,7 @@ impl Block {
                 Box::new(PaleOakWoodLikeProperties::from_state_id(state_id))
             }
             BlockId::CHORUS_FLOWER => Box::new(ChorusFlowerLikeProperties::from_state_id(state_id)),
-            _ => return None,
+            _ => return self.dynamic_properties(state_id),
         })
     }
     #[track_caller]
@@ -598622,7 +598640,10 @@ impl Block {
                 Box::new(PaleOakWoodLikeProperties::from_props(props, self))
             }
             BlockId::CHORUS_FLOWER => Box::new(ChorusFlowerLikeProperties::from_props(props, self)),
-            _ => panic!("Invalid props"),
+            _ => match self.dynamic_from_properties(props) {
+                Some(properties) => properties,
+                None => panic!("Invalid props"),
+            },
         }
     }
 }
@@ -599917,7 +599938,10 @@ impl BlockId {
     #[doc = r" Get a [`BlockId`] from a [`BlockStateId`]"]
     #[inline]
     #[must_use]
-    pub const fn from_state_id(id: BlockStateId) -> BlockId {
+    pub fn from_state_id(id: BlockStateId) -> BlockId {
+        if id.as_u16() >= BlockStateId::STATE_COUNT {
+            return Self::from_dynamic_state_id(id);
+        }
         unsafe { std::hint::assert_unchecked(id.as_u16() < BlockStateId::STATE_COUNT) }
         mappings::BLOCK_ID_FROM_STATE_ID[id.as_u16() as usize]
     }
