@@ -78,7 +78,7 @@ impl WolfEntity {
             // 1: SwimGoal (FloatGoal)
             goal_selector.add_goal(1, Box::new(SwimGoal::default()));
             // 1: EscapeDangerGoal (TamableAnimalPanicGoal) — only environmental damage causes panic
-            goal_selector.add_goal(1, EscapeDangerGoal::with_environmental_panic(1.5));
+            goal_selector.add_goal(1, EscapeDangerGoal::new_environmental(1.5));
             // 3: Avoid Llama
             goal_selector.add_goal(
                 3,
