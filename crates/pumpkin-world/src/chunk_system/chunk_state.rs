@@ -311,6 +311,7 @@ impl Chunk {
                 inhabited_time: AtomicU64::new(0),
                 custom_data: Mutex::new(NbtCompound::new()),
                 sky_light_height_cache: std::sync::atomic::AtomicU32::new(0),
+                preserved_tags: Mutex::new(NbtCompound::new()),
             })),
         ) {
             Self::Proto(proto) => proto,
@@ -363,6 +364,7 @@ impl Chunk {
             // erase every plugin's stored data on that round trip.
             custom_data: Mutex::new(proto_chunk.custom_data),
             sky_light_height_cache: std::sync::atomic::AtomicU32::new(proto_chunk.sky_light_height),
+            preserved_tags: Mutex::new(NbtCompound::new()),
         };
 
         // Worldgen already computed the cut -> persist it right away so the

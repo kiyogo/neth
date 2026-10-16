@@ -92,6 +92,7 @@ impl ToFromWasmEvent for ChunkLoad {
                     inhabited_time: std::sync::atomic::AtomicU64::new(0),
                     custom_data: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                     sky_light_height_cache: std::sync::atomic::AtomicU32::new(0),
+                    preserved_tags: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                 };
                 Self {
                     world,
@@ -147,6 +148,7 @@ impl ToFromWasmEvent for ChunkSave {
                     inhabited_time: std::sync::atomic::AtomicU64::new(0),
                     custom_data: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                     sky_light_height_cache: std::sync::atomic::AtomicU32::new(0),
+                    preserved_tags: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                 };
                 Self {
                     world,
@@ -198,6 +200,7 @@ impl ToFromWasmEvent for ChunkSend {
                     inhabited_time: std::sync::atomic::AtomicU64::new(0),
                     custom_data: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                     sky_light_height_cache: std::sync::atomic::AtomicU32::new(0),
+                    preserved_tags: std::sync::Mutex::new(pumpkin_nbt::compound::NbtCompound::new()),
                 };
                 Self {
                     world,
