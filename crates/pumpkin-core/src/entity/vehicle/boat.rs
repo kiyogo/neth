@@ -1,8 +1,5 @@
-mod chest;
-mod container;
-
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::entity::EntityType;
@@ -19,16 +16,26 @@ use crate::server::Server;
 
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::tag;
 use pumpkin_protocol::java::client::play::Metadata;
 
 use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::vehicle::vehicle::VehicleEntity;
+use block_effects::BoatMovement;
+use physics::BoatStatus;
+
+const TIME_TO_EJECT: f32 = 60.0;
 
 pub struct BoatEntity {
     pub vehicle: VehicleEntity,
     kind: BoatKind,
     ticks_underwater: AtomicCell<f32>,
+    status: AtomicCell<Option<BoatStatus>>,
+    water_level: AtomicCell<f64>,
+    land_friction: AtomicCell<f32>,
+    last_yd: AtomicCell<f64>,
+    movements: Mutex<VecDeque<BoatMovement>>,
     left_paddle_moving: AtomicBool,
     right_paddle_moving: AtomicBool,
 }
@@ -61,6 +68,11 @@ impl BoatEntity {
             vehicle: VehicleEntity::new(entity),
             kind,
             ticks_underwater: AtomicCell::new(0.0),
+            status: AtomicCell::new(None),
+            water_level: AtomicCell::new(0.0),
+            land_friction: AtomicCell::new(0.0),
+            last_yd: AtomicCell::new(0.0),
+            movements: Mutex::new(VecDeque::new()),
             left_paddle_moving: AtomicBool::new(false),
             right_paddle_moving: AtomicBool::new(false),
         }
@@ -142,6 +154,75 @@ impl BoatEntity {
                 translation::java::ENTITY_MINECRAFT_CHEST_BOAT,
                 translation::bedrock::ENTITY_CHEST_BOAT_NAME,
             ),
+    fn tick_underwater(&self, status: BoatStatus) {
+        let ticks = if status.is_underwater() {
+            self.ticks_underwater.load() + 1.0
+        } else {
+            0.0
+        };
+        self.ticks_underwater.store(ticks);
+        if ticks < TIME_TO_EJECT {
+            return;
+        }
+
+        let passengers = self
+            .vehicle
+            .entity
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        for passenger in passengers.iter().rev() {
+            self.vehicle
+                .entity
+                .remove_passenger(passenger.get_entity().entity_id);
+        }
+    }
+
+    fn is_client_controlled(&self) -> bool {
+        self.vehicle
+            .entity
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .first()
+            .is_some_and(|passenger| passenger.get_player().is_some())
+    }
+
+    fn get_max_passengers(&self) -> usize {
+        if self.is_chest_boat() { 1 } else { 2 }
+    }
+
+    fn is_chest_boat(&self) -> bool {
+        tag::Item::MINECRAFT_CHEST_BOATS
+            .0
+            .contains(&self.vehicle.entity.entity_type.resource_name)
+    }
+
+    fn tick_passengers(&self) {
+        let entity = &self.vehicle.entity;
+        let passengers = entity
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        for passenger in passengers {
+            if let Some(player) = passenger.get_player() {
+                player.ride_tick();
+            }
+            if entity.has_passenger(passenger.get_entity().entity_id) {
+                self.position_rider(passenger.as_ref());
+            }
+        }
+    }
+
+    pub(in crate::entity) fn can_push(&self, other: &Entity, is_boat: bool) -> bool {
+        let bounds = self.vehicle.entity.bounding_box.load();
+        let other_bottom = other.bounding_box.load().min.y;
+        if is_boat {
+            other_bottom < bounds.max.y
+        } else {
+            other_bottom <= bounds.min.y
         }
     }
 }
@@ -158,16 +239,32 @@ impl EntityBase for BoatEntity {
     fn get_vehicle_entity(&self) -> Option<&VehicleEntity> {
         Some(&self.vehicle)
     }
-
-    fn tick(&self, _caller: &dyn EntityBase, _server: &Server) {
+    fn tick(&self, caller: &dyn EntityBase, server: &Server) {
+        let status = self.get_status();
+        let old_status = self.status.swap(Some(status));
+        self.tick_underwater(status);
         self.vehicle.tick();
-
-        let underwater = self.ticks_underwater.load();
-        if self.vehicle.entity.touching_water.load(Ordering::Relaxed) {
-            self.ticks_underwater.store((underwater + 1.0).min(60.0));
-        } else if underwater > 0.0 {
-            self.ticks_underwater.store((underwater - 1.0).max(0.0));
+        let entity = &self.vehicle.entity;
+        entity.tick(caller, server);
+        if entity.is_removed() {
+            return;
         }
+
+        // Vanilla leaves ridden boat movement to its controlling player's client.
+        if self.is_client_controlled() {
+            entity.velocity.store(Vector3::default());
+        } else {
+            if self.left_paddle_moving.load(Ordering::Relaxed)
+                || self.right_paddle_moving.load(Ordering::Relaxed)
+            {
+                self.set_paddles(false, false);
+            }
+            let surface_offset = self.float_boat(old_status, status);
+            self.move_boat(caller, surface_offset);
+        }
+        self.apply_effects_from_blocks();
+        entity.tick_block_collisions(caller);
+        self.tick_passengers();
     }
 
     fn init_data_tracker(&self) {
@@ -219,7 +316,7 @@ impl EntityBase for BoatEntity {
             return self.open_inventory(player);
         }
 
-        if self.ticks_underwater.load() >= 60.0 {
+        if self.ticks_underwater.load() >= TIME_TO_EJECT || self.is_eye_in_water() {
             return false;
         }
 
@@ -230,7 +327,7 @@ impl EntityBase for BoatEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .len()
-            >= 2
+            >= self.get_max_passengers()
         {
             return false;
         }
@@ -252,7 +349,7 @@ impl EntityBase for BoatEntity {
             .entity
             .add_passenger(vehicle, passenger as Arc<dyn EntityBase>);
 
-        true
+        self.vehicle.entity.has_passenger(player.entity_id())
     }
 
     fn set_paddle_state(&self, left: bool, right: bool) {
@@ -266,6 +363,13 @@ impl EntityBase for BoatEntity {
         true
     }
 
+    fn get_gravity(&self) -> f64 {
+        if self.vehicle.entity.has_no_gravity() {
+            0.0
+        } else {
+            physics::DEFAULT_GRAVITY
+        }
+    }
     fn write_custom_nbt(&self, nbt: &mut NbtCompound) {
         if let BoatKind::Chest(boat) = &self.kind {
             boat.write_nbt(nbt);

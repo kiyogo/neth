@@ -3135,9 +3135,27 @@ impl Player {
         }
     }
 
+    pub(in crate::entity) fn ride_tick(&self) {
+        let entity = self.get_entity();
+        if matches!(self.client.as_ref(), ClientPlatform::Java(_))
+            && entity.is_sneaking()
+            && let Some(vehicle) = entity.get_vehicle()
+        {
+            vehicle.get_entity().remove_passenger(self.entity_id());
+        }
+    }
+
     /// `ServerPlayer.tick`.
     #[expect(clippy::too_many_lines)]
     pub fn tick<'a>(&'a self, server: &'a Server) {
+        // Clients send sneak input before their final vehicle movement for the tick.
+        if !self.get_entity().get_vehicle().is_some_and(|vehicle| {
+            vehicle
+                .cast_any()
+                .is::<crate::entity::vehicle::boat::BoatEntity>()
+        }) {
+            self.ride_tick();
+        }
         self.update_equipment_attributes(false);
         if self.is_spectator() {
             self.living_entity
@@ -4660,11 +4678,23 @@ impl Player {
     /// Rarly used, for example when waking up the player from a bed or their first time spawn. Otherwise, the `teleport` method should be used.
     /// The player should respond with the `SConfirmTeleport` packet.
     pub fn request_teleport(&self, position: Vector3<f64>, yaw: f32, pitch: f32) {
+        self.request_teleport_with_flags(position, yaw, pitch, Vec::new());
+    }
+
+    pub(crate) fn request_teleport_with_flags(
+        &self,
+        position: Vector3<f64>,
+        yaw: f32,
+        pitch: f32,
+        relatives: Vec<pumpkin_protocol::PositionFlag>,
+    ) -> bool {
+        use pumpkin_protocol::PositionFlag;
+
         // This is the ultra special magic code used to create the teleport id
         // This returns the old value
         // This operation wraps around on overflow.
         let Some(server) = self.world().server.upgrade() else {
-            return;
+            return false;
         };
         if let Some(player_arc) = self.world().get_player_by_uuid(self.gameprofile.id) {
             let mut event = PlayerTeleportEvent {
@@ -4675,7 +4705,7 @@ impl Player {
             };
             server.plugin_manager.fire_blocking(&server, &mut event);
             if event.cancelled {
-                return;
+                return false;
             }
         }
 
@@ -4688,7 +4718,18 @@ impl Player {
         let teleport_id = i + 1;
         self.living_entity.entity.set_pos(position);
         let entity = &self.living_entity.entity;
-        entity.set_rotation(yaw, pitch);
+        entity.set_rotation(
+            if relatives.contains(&PositionFlag::YRot) {
+                entity.yaw.load() + yaw
+            } else {
+                yaw
+            },
+            if relatives.contains(&PositionFlag::XRot) {
+                entity.pitch.load() + pitch
+            } else {
+                pitch
+            },
+        );
         match self.client.as_ref() {
             ClientPlatform::Java(client) => {
                 self.register_pending_teleport(teleport_id.into(), position);
@@ -4698,8 +4739,7 @@ impl Player {
                     Vector3::new(0.0, 0.0, 0.0),
                     yaw,
                     pitch,
-                    // TODO
-                    Vec::new(),
+                    relatives,
                 );
                 if let Ok(data) = client.serialize_packet(&packet) {
                     client.try_enqueue_packet(data);
@@ -4713,9 +4753,9 @@ impl Player {
                         position.y as f32 + entity.entity_type.eye_height,
                         position.z as f32,
                     ),
-                    pitch,
-                    yaw,
-                    yaw,
+                    entity.pitch.load(),
+                    entity.yaw.load(),
+                    entity.yaw.load(),
                     CBedrockMovePlayer::MODE_TELEPORT,
                     false,
                     VarULong(0),
@@ -4728,6 +4768,7 @@ impl Player {
                 }
             }
         }
+        true
     }
 
     /// Nudges the player by a relative offset without touching their velocity or

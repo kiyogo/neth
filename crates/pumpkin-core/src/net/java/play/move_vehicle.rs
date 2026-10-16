@@ -2,12 +2,52 @@ use pumpkin_protocol::java::client::play::CMoveVehicle;
 
 #[allow(clippy::wildcard_imports)]
 use super::*;
+use crate::entity::vehicle::boat::BoatEntity;
 
 impl JavaClient {
     pub fn handle_move_vehicle(&self, player: &Arc<Player>, packet: &SMoveVehicle) {
+        if !packet.x.is_finite()
+            || !packet.y.is_finite()
+            || !packet.z.is_finite()
+            || !packet.yaw.is_finite()
+            || !packet.pitch.is_finite()
+        {
+            self.try_kick(&TextComponent::translate_cross(
+                translation::java::MULTIPLAYER_DISCONNECT_INVALID_VEHICLE_MOVEMENT,
+                translation::java::MULTIPLAYER_DISCONNECT_INVALID_VEHICLE_MOVEMENT,
+                [],
+            ));
+            return;
+        }
+        if !player.has_client_loaded()
+            || player
+                .awaiting_teleport
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .is_some()
+        {
+            return;
+        }
+
+        let entity = player.get_entity();
+        let Some(vehicle) = entity.get_vehicle() else {
+            return;
+        };
+        let vehicle_entity = vehicle.get_entity();
+        let is_controller = vehicle_entity
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .first()
+            .is_some_and(|passenger| passenger.get_entity().entity_id == entity.entity_id);
+        if !is_controller {
+            return;
+        }
+
         // A movement packet was received this tick — tracked for SClientTickEnd zeroing.
         self.received_movement_this_tick
             .store(true, Ordering::Relaxed);
+<<<<<<< HEAD
 
         if !packet.x.is_finite()
             || !packet.y.is_finite()
@@ -82,43 +122,51 @@ impl JavaClient {
         let mut final_pos = pos;
         let mut other_player_passengers = Vec::new();
         let from = vehicle_entity.pos.load();
-        vehicle_entity.set_pos(pos);
-        vehicle_entity.set_rotation(packet.yaw, packet.pitch);
 
-        if let Some(vehicle) = vehicle.get_vehicle_entity() {
-            let move_result = vehicle.move_vehicle(from, pos);
-            final_pos = move_result.position;
-            vehicle_entity.set_pos(final_pos);
+        if let Some(boat) = vehicle.cast_any().downcast_ref::<BoatEntity>() {
+            if !boat.move_from_client(player, pos, packet.yaw, packet.pitch) {
+                return;
+            }
+            final_pos = vehicle_entity.pos.load();
+        } else {
+            vehicle_entity.set_pos(pos);
+            vehicle_entity.set_rotation(packet.yaw, packet.pitch);
 
-            let passengers = vehicle_entity
-                .passengers
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .clone();
-            let world = vehicle_entity.world.load();
-            for passenger in passengers {
-                let passenger_entity = passenger.get_entity();
-                passenger_entity.set_pos(final_pos);
-                if passenger_entity.entity_id != entity.entity_id
-                    && let Some(player) = world.get_player_by_id(passenger_entity.entity_id)
-                {
-                    other_player_passengers.push(player);
+            if let Some(vehicle) = vehicle.get_vehicle_entity() {
+                let move_result = vehicle.move_vehicle(from, pos);
+                final_pos = move_result.position;
+                vehicle_entity.set_pos(final_pos);
+
+                let passengers = vehicle_entity
+                    .passengers
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .clone();
+                let world = vehicle_entity.world.load();
+                for passenger in passengers {
+                    let passenger_entity = passenger.get_entity();
+                    passenger_entity.set_pos(final_pos);
+                    if passenger_entity.entity_id != entity.entity_id
+                        && let Some(player) = world.get_player_by_id(passenger_entity.entity_id)
+                    {
+                        other_player_passengers.push(player);
+                    }
                 }
-            }
 
-            if move_result.cancelled {
-                vehicle_entity.velocity.store(Vector3::new(0.0, 0.0, 0.0));
-                vehicle_entity.send_velocity();
-            }
+                if move_result.cancelled {
+                    vehicle_entity.velocity.store(Vector3::new(0.0, 0.0, 0.0));
+                    vehicle_entity.send_velocity();
+                }
 
-            if final_pos != pos {
-                self.try_send_packet(&CMoveVehicle::new(
-                    final_pos.x,
-                    final_pos.y,
-                    final_pos.z,
-                    vehicle_entity.yaw.load(),
-                    vehicle_entity.pitch.load(),
-                ));
+                if final_pos != pos {
+                    self.try_send_packet(&CMoveVehicle::new(
+                        final_pos.x,
+                        final_pos.y,
+                        final_pos.z,
+                        vehicle_entity.yaw.load(),
+                        vehicle_entity.pitch.load(),
+                    ));
+                }
             }
         }
         entity.set_pos(final_pos);
