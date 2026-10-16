@@ -4994,6 +4994,7 @@ impl Player {
     pub fn set_flying(&self, flying: bool) {
         if flying {
             self.living_entity.fall_distance.store(0.0);
+            self.get_entity().set_fall_flying(false);
         }
         self.abilities
             .lock()

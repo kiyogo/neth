@@ -2804,12 +2804,44 @@ impl Entity {
         self.sprinting.load(Ordering::Relaxed)
     }
     pub fn check_fall_flying(&self) -> bool {
-        !self.on_ground.load(Relaxed) && !self.touching_water.load(Relaxed)
+        if self.on_ground.load(Relaxed) || self.touching_water.load(Relaxed) {
+            return false;
+        }
+        if let Some(living) = self.get_living_entity() {
+            if let Some(player) = living.get_player() {
+                if player
+                    .abilities
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .flying
+                {
+                    return false;
+                }
+            }
+            let equipment = living
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if !equipment.equipment.iter().any(|(slot, stack)| {
+                matches!(
+                    slot,
+                    pumpkin_data::data_component_impl::EquipmentSlot::Chest(_)
+                ) && stack.get_item() == &pumpkin_data::item::Item::ELYTRA
+            }) {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn set_fall_flying(&self, fall_flying: bool) {
         if self.fall_flying.swap(fall_flying, Relaxed) != fall_flying {
             self.set_flag(Flag::FallFlying, fall_flying);
+            if fall_flying
+                && let Some(player) = self.get_player()
+            {
+                player.set_flying(false);
+            }
         }
     }
     pub fn is_fall_flying(&self) -> bool {

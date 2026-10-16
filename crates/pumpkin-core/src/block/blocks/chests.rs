@@ -616,58 +616,59 @@ fn compute_chest_props(
     face: BlockDirection,
 ) -> (ChestType, HorizontalFacing) {
     let player_facing = player.get_entity().get_horizontal_facing();
-    let chest_facing = player_facing.opposite();
+    let mut facing = player_facing.opposite();
+    let mut chest_type = ChestType::Single;
 
-    if player.get_entity().pose.load() == EntityPose::Crouching {
-        let Some(face) = face.to_horizontal_facing() else {
-            return (ChestType::Single, chest_facing);
-        };
+    let is_crouching = player.get_entity().pose.load() == EntityPose::Crouching;
 
-        let (clicked_block, clicked_block_state) =
-            world.get_block_and_state_id(&block_pos.offset(face.to_offset()));
-
-        if clicked_block == block {
-            let clicked_props = ChestLikeProperties::from_state_id(clicked_block_state);
-
-            if clicked_props.r#type != ChestType::Single {
-                return (ChestType::Single, chest_facing);
-            }
-
-            if clicked_props.facing.rotate_clockwise() == face {
-                return (ChestType::Left, clicked_props.facing);
-            } else if clicked_props.facing.rotate_counter_clockwise() == face {
-                return (ChestType::Right, clicked_props.facing);
+    if is_crouching {
+        if let Some(horizontal_face) = face.to_horizontal_facing() {
+            let neighbor_dir = horizontal_face.opposite();
+            let neighbor_pos = block_pos.offset(neighbor_dir.to_offset());
+            let (neighbor_block, neighbor_state_id) = world.get_block_and_state_id(&neighbor_pos);
+            if neighbor_block == block {
+                let neighbor_props = ChestLikeProperties::from_state_id(neighbor_state_id);
+                if neighbor_props.r#type == ChestType::Single
+                    && neighbor_props.facing.to_axis() != horizontal_face.to_axis()
+                {
+                    facing = neighbor_props.facing;
+                    chest_type = if facing.rotate_counter_clockwise() == neighbor_dir {
+                        ChestType::Right
+                    } else {
+                        ChestType::Left
+                    };
+                }
             }
         }
-
-        return (ChestType::Single, chest_facing);
     }
 
-    if get_chest_properties_if_can_connect(
-        world,
-        block,
-        block_pos,
-        chest_facing,
-        chest_facing.rotate_clockwise(),
-        ChestType::Single,
-    )
-    .is_some()
-    {
-        (ChestType::Left, chest_facing)
-    } else if get_chest_properties_if_can_connect(
-        world,
-        block,
-        block_pos,
-        chest_facing,
-        chest_facing.rotate_counter_clockwise(),
-        ChestType::Single,
-    )
-    .is_some()
-    {
-        (ChestType::Right, chest_facing)
-    } else {
-        (ChestType::Single, chest_facing)
+    if chest_type == ChestType::Single && !is_crouching {
+        if get_chest_properties_if_can_connect(
+            world,
+            block,
+            block_pos,
+            facing,
+            facing.rotate_clockwise(),
+            ChestType::Single,
+        )
+        .is_some()
+        {
+            chest_type = ChestType::Left;
+        } else if get_chest_properties_if_can_connect(
+            world,
+            block,
+            block_pos,
+            facing,
+            facing.rotate_counter_clockwise(),
+            ChestType::Single,
+        )
+        .is_some()
+        {
+            chest_type = ChestType::Right;
+        }
     }
+
+    (chest_type, facing)
 }
 
 fn get_chest_properties_if_can_connect(
