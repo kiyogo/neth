@@ -21,6 +21,7 @@ use crate::{
     },
     entity::EntityBase,
 };
+use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
 
 #[pumpkin_block_from_tag("minecraft:campfires")]
@@ -116,6 +117,21 @@ impl BlockBehaviour for CampfireBlock {
         }
     }
 
+    fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
+        let props = CampfireLikeProperties::from_state_id(args.state.id);
+        if !args.projectile.get_entity().is_on_fire() || props.lit || props.waterlogged {
+            return;
+        }
+
+        let mut lit_props = props;
+        lit_props.lit = true;
+        args.world.set_block_state(
+            args.position,
+            lit_props.to_state_id(args.block),
+            BlockFlags::NOTIFY_ALL,
+        );
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let is_replacing_water = matches!(args.replacing, BlockIsReplacing::Water(_));
         let mut props = CampfireLikeProperties::from_state_id(args.block.default_state.id);
@@ -153,19 +169,6 @@ impl BlockBehaviour for CampfireBlock {
         false
     }
 
-    fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
-        if args.projectile.get_entity().is_on_fire() {
-            let mut props = CampfireLikeProperties::from_state_id(args.state.id);
-            if !props.lit && !props.waterlogged {
-                props.lit = true;
-                args.world.set_block_state(
-                    args.position,
-                    props.to_state_id(args.block),
-                    BlockFlags::NOTIFY_ALL,
-                );
-            }
-        }
-    }
 }
 
 fn is_signal_fire_base_block(block: &Block) -> bool {
