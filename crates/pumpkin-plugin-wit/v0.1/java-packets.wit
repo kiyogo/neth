@@ -3,6 +3,11 @@ package pumpkin:plugin@0.1.0;
 interface java-packets {
   use uuid.{ uuid };
   use common.{ nbt-tree };
+  record profile-property {
+    name: string,
+    value: string,
+    signature: option<string>,
+  }
   /// Sent by the client to inform the server about its local settings
   record config-s-client-information-config {
     /// The language code used by the client (e.g., "`en_us`")
@@ -668,7 +673,7 @@ interface java-packets {
     username: string,
     /// A list of properties for the player's profile, such as skin data and signatures.
     /// This is typically retrieved from the Mojang authentication servers.
-    properties: list<property>,
+    properties: list<profile-property>,
     /// (<1.21.2) Whether strict error handling should be enabled.
     strict-error-handling: bool,
     /// Added in 26.2
@@ -1665,7 +1670,7 @@ interface java-packets {
   }
   record player-action-add-player {
     name: string,
-    properties: list<property>,
+    properties: list<profile-property>,
   }
   variant player-action {
     add-player(player-action-add-player),
@@ -2108,9 +2113,9 @@ interface java-packets {
   }
   record c-update-attributes {
     entity-id: s32,
-    properties: list<property>,
+    properties: list<attribute-property>,
   }
-  record property {
+  record attribute-property {
     id: s32,
     value: f64,
     modifiers: list<attribute-modifier>,
@@ -2818,6 +2823,7 @@ interface java-packets {
     /// This packet provides the client with the information required to display the
     /// server in the multiplayer menu, including the MOTD, player count, and icon
     status-c-status-response(status-c-status-response),
+    c-login-success(c-login-success),
     unknown,
   }
 }
