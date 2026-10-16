@@ -1,0 +1,72 @@
+{
+  "2482": {
+    "status": "already_merged",
+    "title": "perf(protocol): buffer encrypted writes",
+    "author": "JamieLittle16"
+  },
+  "2489": {
+    "status": "clean_merged",
+    "title": "perf(protocol): use zlib-rs for Java compression",
+    "author": "JamieLittle16"
+  },
+  "2504": {
+    "status": "already_merged",
+    "title": "fix(data): don't panic when the data directory can't be created",
+    "author": "Sawlyer"
+  },
+  "2506": {
+    "status": "conflict_resolved",
+    "title": "perf(world): optimize chunk noise generation and buffer allocations",
+    "author": "JamieLittle16",
+    "conflict_files": [
+      "crates/pumpkin-world/src/generation/proto_chunk.rs"
+    ]
+  },
+  "2542": {
+    "status": "already_merged",
+    "title": "fix(entity): use block particles when an armor stand breaks"
+  },
+  "2565": {
+    "status": "already_merged",
+    "title": "feat(entity): spawn a baby when using a matching spawn egg on an animal"
+  },
+  "2607": {
+    "status": "already_merged",
+    "title": "Fix spectator players being visible to normal players"
+  },
+  "2751": {
+    "status": "conflict_resolved",
+    "title": "fix(recipe): show ghost recipe for missing ingredients"
+  },
+  "2792": {
+    "status": "already_merged",
+    "title": "perf(protocol): add typed prepared packet representations (superseded by #2482)"
+  },
+  "2793": {
+    "status": "conflict_resolved",
+    "title": "fix: resolve placement modifiers per position"
+  },
+  "2795": {
+    "status": "already_merged",
+    "title": "fix: untamed wolves attack their prey (superseded by NonTameRandomTarget)"
+  },
+  "2828": {
+    "status": "already_merged",
+    "title": "feat(plugin): native cdylib plugin loading via native-wit"
+  },
+  "2853": {
+    "status": "already_merged",
+    "title": "feat: add Bedrock skins for java players"
+  },
+  "2858": {
+    "status": "clean_merged",
+    "title": "feat(build): decrease incremental build times by ~1.5x",
+    "author": "BjornTheProgrammer"
+  },
+  "2918": {
+    "status": "in_conflict",
+    "title": "fix(bedrock): advancement translations",
+    "author": "ZlordHUN",
+    "conflict_files": []
+  }
+}
