@@ -1201,6 +1201,7 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+<<<<<<< HEAD
     /// Sound played periodically while alive.
     fn get_ambient_sound(&self) -> Option<Sound> {
         None
@@ -1914,6 +1915,14 @@ impl<T: Mob + Send + 'static> EntityBase for T {
 
     fn get_y_velocity_drag(&self) -> Option<f64> {
         self.get_mob_y_velocity_drag()
+    }
+
+    fn travel_in_water(&self) -> bool {
+        self.mob_travel_in_water(self)
+    }
+
+    fn is_pushed_by_fluids(&self) -> bool {
+        self.mob_is_pushed_by_fluids()
     }
 
     fn get_experience_reward(&self, _killer: Option<&dyn EntityBase>) -> u32 {
