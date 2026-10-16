@@ -56,6 +56,8 @@ pub(crate) mod debug_profiler;
 pub mod enchantment;
 mod key_store;
 pub mod perf_profiler;
+#[cfg(profiler)]
+pub(crate) mod profiler;
 pub mod recipe;
 pub mod scheduler;
 pub mod seasonal_events;
@@ -892,6 +894,19 @@ impl Server {
             error!("Failed to save level.dat: {err}");
         }
         info!("Completed worlds");
+        #[cfg(profiler)]
+        {
+            let counters = profiler::counters(self);
+            match tokio::task::spawn_blocking(move || {
+                pumpkin_profiler::PROFILER.shutdown(&counters)
+            })
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => error!("Failed to save profiler report on shutdown: {error}"),
+                Err(error) => error!("Profiler shutdown task failed: {error}"),
+            }
+        }
     }
 
     /// Broadcasts a packet to all players in all worlds.
@@ -1280,6 +1295,8 @@ impl Server {
             players.par_iter().for_each(|player| {
                 let _guard = player_handle.enter();
                 player.process_inbound_packets();
+                #[cfg(profiler)]
+                let _profile = pumpkin_profiler::cpu::span(pumpkin_profiler::cpu::Phase::Players);
                 player.tick(self);
             });
         }
@@ -1287,6 +1304,9 @@ impl Server {
 
     /// Ticks the game logic for all worlds. This is the part that is affected by `/tick freeze`.
     pub fn tick_worlds(self: &Arc<Self>) {
+        #[cfg(profiler)]
+        let functions_profile =
+            pumpkin_profiler::cpu::span(pumpkin_profiler::cpu::Phase::Functions);
         let source = crate::command::CommandSender::Console
             .into_source(self)
             .with_silent();
@@ -1304,6 +1324,8 @@ impl Server {
             self,
             self.tick_count.load(std::sync::atomic::Ordering::Relaxed) as u64,
         );
+        #[cfg(profiler)]
+        drop(functions_profile);
 
         self.sync_game_time();
 

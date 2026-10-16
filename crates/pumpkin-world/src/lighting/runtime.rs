@@ -275,6 +275,8 @@ impl DynamicLightEngine {
         let start = Instant::now();
         let mut updates = 0;
         if !self.queues_empty() {
+            #[cfg(profiler)]
+            let _profile = pumpkin_profiler::cpu::span(pumpkin_profiler::cpu::Phase::Lighting);
             let _guard = self
                 .propagate_lock
                 .lock()

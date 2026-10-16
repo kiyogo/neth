@@ -1040,6 +1040,8 @@ impl LightEngine {
             return;
         }
 
+        #[cfg(profiler)]
+        let _profile = pumpkin_profiler::cpu::span(pumpkin_profiler::cpu::Phase::Lighting);
         self.sky_light.convert_light(cache);
         self.block_light.propagate_light(cache);
 
