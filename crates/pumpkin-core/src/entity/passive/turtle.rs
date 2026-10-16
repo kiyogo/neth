@@ -100,6 +100,12 @@ impl TurtleEntity {
         let entity = self.get_entity();
         entity.set_synced_data(pumpkin_data::tracked_data::turtle::LAYING_EGG, laying_egg);
     }
+
+    /// Vanilla `Turtle.BABY_ON_LAND_SELECTOR`: a hatchling out of the water.
+    #[must_use]
+    pub fn baby_on_land_selector(target: &LivingEntity, _world: &World) -> bool {
+        target.entity.age.load(Ordering::Relaxed) < 0 && !target.entity.is_in_water()
+    }
 }
 
 impl AgeableMob for TurtleEntity {
