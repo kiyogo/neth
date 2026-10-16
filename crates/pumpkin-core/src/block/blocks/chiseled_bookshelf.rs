@@ -14,6 +14,7 @@ use crate::{
 use pumpkin_data::{
     BlockStateId,
     block_properties::{ChiseledBookshelfLikeProperties, HorizontalFacing},
+    game_event::GameEvent,
     item::Item,
     item_stack::ItemStack,
     sound::{Sound, SoundCategory},
@@ -142,6 +143,7 @@ impl ChiseledBookshelfBlock {
         entity.update_state(properties, world, slot as usize);
 
         world.play_sound(sound, SoundCategory::Blocks, &position.to_centered_f64());
+        world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
     }
 
     fn try_remove_book(
@@ -167,6 +169,7 @@ impl ChiseledBookshelfBlock {
         entity.update_state(properties, world, slot as usize);
 
         world.play_sound(sound, SoundCategory::Blocks, &position.to_centered_f64());
+        world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
     }
 
     fn get_slot_for_hit(hit: &BlockHitResult<'_>, facing: HorizontalFacing) -> Option<i8> {
