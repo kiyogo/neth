@@ -1,5 +1,6 @@
 use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use pumpkin_data::block_properties::{BarrelLikeProperties, BlockProperties};
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, FacingExt, item_stack::ItemStack};
 use pumpkin_nbt::compound::NbtCompound;
@@ -120,14 +121,16 @@ impl BlockEntity for BarrelBlockEntity {
 }
 
 impl ViewerCountListener for BarrelBlockEntity {
-    fn on_container_open(&self, world: &Arc<World>, _position: &BlockPos) {
+    fn on_container_open(&self, world: &Arc<World>, position: &BlockPos) {
         self.play_sound(world, Sound::BlockBarrelOpen);
         self.set_open(world, true);
+        world.emit_game_event(GameEvent::ContainerOpen.name(), position.to_centered_f64());
     }
 
-    fn on_container_close(&self, world: &Arc<World>, _position: &BlockPos) {
+    fn on_container_close(&self, world: &Arc<World>, position: &BlockPos) {
         self.play_sound(world, Sound::BlockBarrelClose);
         self.set_open(world, false);
+        world.emit_game_event(GameEvent::ContainerClose.name(), position.to_centered_f64());
     }
 }
 
