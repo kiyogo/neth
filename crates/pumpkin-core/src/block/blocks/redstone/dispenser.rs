@@ -1118,6 +1118,24 @@ impl DispenserBlock {
         true
     }
 
+    fn dispense_bone_meal(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
+        let target = Self::target_position(ctx);
+        let (block, state) = ctx.world.get_block_and_state(&target);
+        if !ctx
+            .world
+            .block_registry
+            .bone_meal(block, ctx.world, &target, state.id)
+        {
+            return false;
+        }
+
+        ctx.world
+            .sync_world_event(WorldEvent::ParticlesAndSoundPlantGrowth, target, 15);
+        let _ = item.split(1);
+        Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserDispense);
+        true
+    }
+
     fn dispense_glowstone(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> Option<bool> {
         const MAX_CHARGES: u8 = 4;
 
