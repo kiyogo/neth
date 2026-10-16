@@ -1,5 +1,6 @@
 use pumpkin_data::data_component_impl::ContainerImpl;
 use pumpkin_data::game_event::GameEvent;
+use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
@@ -16,6 +17,7 @@ use pumpkin_inventory::{Clearable, Inventory, sync_write_items_to_nbt};
 
 pub struct ShulkerBoxBlockEntity {
     pub position: BlockPos,
+    pub components: BlockEntityComponents,
     pub items: RwLock<[ItemStack; Self::INVENTORY_SIZE]>,
     pub dirty: AtomicBool,
     pub comparator_dirty: AtomicBool,
@@ -26,6 +28,8 @@ pub struct ShulkerBoxBlockEntity {
 }
 
 impl BlockEntity for ShulkerBoxBlockEntity {
+    super::components::impl_container_components!();
+
     fn resource_location(&self) -> &'static str {
         Self::ID
     }
@@ -34,12 +38,14 @@ impl BlockEntity for ShulkerBoxBlockEntity {
         self.position
     }
 
+    /// Loads persistent components and inventory state without generating deferred loot.
     fn from_nbt(nbt: &pumpkin_nbt::compound::NbtCompound, position: BlockPos) -> Self
     where
         Self: Sized,
     {
         let mut shulker_box = Self {
             position,
+            components: BlockEntityComponents::from_nbt(nbt, RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
@@ -47,19 +53,24 @@ impl BlockEntity for ShulkerBoxBlockEntity {
             animation_progress: AtomicU8::new(0),
         };
 
-        pumpkin_inventory::sync_read_items_from_nbt(
-            nbt,
-            shulker_box
-                .items
-                .get_mut()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        );
-
+        if !shulker_box.components.has_loot_table() {
+            pumpkin_inventory::sync_read_items_from_nbt(
+                nbt,
+                shulker_box
+                    .items
+                    .get_mut()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner),
+            );
+        }
         shulker_box
     }
 
+    /// Persists the component fields together with current container state.
     fn write_nbt(&self, nbt: &mut NbtCompound) {
-        self.write_inventory_nbt(nbt, true);
+        self.components.write_nbt(nbt);
+        if !self.components.has_loot_table() {
+            self.write_inventory_nbt(nbt, true);
+        }
     }
 
     fn tick(&self, world: &Arc<World>) {
@@ -87,42 +98,6 @@ impl BlockEntity for ShulkerBoxBlockEntity {
         Some(self)
     }
 
-    fn collect_item_components(&self, stack: &mut ItemStack) {
-        let items = self
-            .items
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let contents: Vec<(u8, ItemStack)> = items
-            .iter()
-            .enumerate()
-            .filter(|(_, item)| !item.is_empty())
-            .map(|(slot, item)| (slot as u8, item.clone()))
-            .collect();
-
-        if !contents.is_empty() {
-            stack.set_data_component(ContainerImpl { items: contents });
-        }
-    }
-
-    fn apply_item_components(&self, stack: &ItemStack) {
-        let Some(container) = stack.get_data_component::<ContainerImpl>() else {
-            return;
-        };
-
-        let mut items = self
-            .items
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-        for (slot, item) in &container.items {
-            if let Some(target) = items.get_mut(*slot as usize) {
-                *target = item.clone();
-            }
-        }
-
-        self.mark_dirty();
-    }
-
     fn drops_for_creative_player(&self) -> bool {
         !self.is_empty()
     }
@@ -143,8 +118,10 @@ impl BlockEntity for ShulkerBoxBlockEntity {
         self.dirty.store(false, Ordering::Relaxed);
     }
 
+    /// Sends the container fields used by chunk updates without generating deferred loot.
     fn chunk_data_nbt(&self) -> Option<NbtCompound> {
         let mut nbt = NbtCompound::new();
+        self.components.write_client_nbt(&mut nbt);
         if let Ok(items) = self.items.try_read() {
             sync_write_items_to_nbt(items.as_slice(), &mut nbt);
         }
@@ -188,10 +165,12 @@ impl ShulkerBoxBlockEntity {
         self.viewers.get_viewer_count() == 0 && self.animation_progress.load(Ordering::Relaxed) == 0
     }
 
+    /// Creates an empty container with component storage at the supplied position.
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
         Self {
             position,
+            components: BlockEntityComponents::new(RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),

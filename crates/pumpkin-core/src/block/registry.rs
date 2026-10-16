@@ -693,6 +693,8 @@ impl BlockRegistry {
     }
 
     #[expect(clippy::too_many_lines)]
+    /// Places a block after collision and plugin checks, then restores and synchronizes item components.
+    /// Returns the placed position and state, `None` when placement is rejected, or a placement error.
     pub fn place_block(
         &self,
         player: &Arc<Player>,
@@ -837,6 +839,7 @@ impl BlockRegistry {
                 block_entity = restored;
             }
             block_entity.apply_item_components(&stack);
+            world.update_block_entity(&block_entity);
         }
 
         self.player_placed(PlayerPlacedArgs {

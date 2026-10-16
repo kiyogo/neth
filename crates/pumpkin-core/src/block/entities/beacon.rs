@@ -23,6 +23,7 @@ use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::chunk::ChunkHeightmapType;
 
+use crate::block::entities::components::{BlockEntityComponents, CONTAINER_FIELDS};
 use crate::block::entities::{BlockEntity, PropertyDelegate};
 use crate::world::World;
 
@@ -44,8 +45,7 @@ pub struct BeaconBlockEntity {
     last_check_y: AtomicI32,
     /// Set when the primary effect changes while the beam is up; consumed by `tick`.
     play_select_sound: AtomicBool,
-    custom_name: Mutex<Option<String>>,
-    lock_key: Mutex<Option<String>>,
+    pub components: BlockEntityComponents,
 }
 
 /// Blocks the beam passes through and takes its colour from (`BeaconBeamBlock` in vanilla).
@@ -70,8 +70,7 @@ impl BeaconBlockEntity {
             checking_beam_blocked: AtomicBool::new(false),
             last_check_y: AtomicI32::new(position.0.y - 1),
             play_select_sound: AtomicBool::new(false),
-            custom_name: Mutex::new(None),
-            lock_key: Mutex::new(None),
+            components: BlockEntityComponents::new(CONTAINER_FIELDS),
         }
     }
 
@@ -250,8 +249,12 @@ impl BlockEntity for BeaconBlockEntity {
         self.position
     }
 
+    fn component_state(&self) -> Option<&BlockEntityComponents> {
+        Some(&self.components)
+    }
+
     fn from_nbt(nbt: &NbtCompound, position: BlockPos) -> Self {
-        let entity = Self::new(position);
+        let mut entity = Self::new(position);
         entity.primary_effect.store(
             Self::effect_from_nbt(nbt, "primary_effect"),
             Ordering::Relaxed,
@@ -262,16 +265,7 @@ impl BlockEntity for BeaconBlockEntity {
         );
         // `Levels` is saved but, as in vanilla, not loaded: a reloaded beacon starts at 0 and
         // replays its activation on the first pulse.
-        *entity
-            .custom_name
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            nbt.get_string("CustomName").map(str::to_string);
-        *entity
-            .lock_key
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            nbt.get_string("Lock").map(str::to_string);
+        entity.components = BlockEntityComponents::from_nbt(nbt, CONTAINER_FIELDS);
         entity
     }
 
@@ -287,22 +281,7 @@ impl BlockEntity for BeaconBlockEntity {
             self.secondary_effect.load(Ordering::Relaxed),
         );
         nbt.put_int("Levels", self.levels.load(Ordering::Relaxed));
-        if let Some(name) = self
-            .custom_name
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .as_ref()
-        {
-            nbt.put_string("CustomName", name.clone());
-        }
-        if let Some(lock) = self
-            .lock_key
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .as_ref()
-        {
-            nbt.put_string("Lock", lock.clone());
-        }
+        self.components.write_nbt(nbt);
     }
 
     /// Mirrors `BeaconBlockEntity.tick`.
@@ -386,7 +365,18 @@ impl BlockEntity for BeaconBlockEntity {
 
     fn chunk_data_nbt(&self) -> Option<NbtCompound> {
         let mut nbt = NbtCompound::new();
-        self.write_nbt(&mut nbt);
+        Self::effect_to_nbt(
+            &mut nbt,
+            "primary_effect",
+            self.primary_effect.load(Ordering::Relaxed),
+        );
+        Self::effect_to_nbt(
+            &mut nbt,
+            "secondary_effect",
+            self.secondary_effect.load(Ordering::Relaxed),
+        );
+        nbt.put_int("Levels", self.levels.load(Ordering::Relaxed));
+        self.components.write_custom_nbt(&mut nbt);
         Some(nbt)
     }
 

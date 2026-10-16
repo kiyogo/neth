@@ -1,4 +1,5 @@
 use crate::block::blocks::chests::get_container;
+use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use crate::block::entities::BlockEntity;
 use crate::entity::experience_orb::ExperienceOrbEntity;
 use crate::plugin::api::events::inventory::hopper_inventory_search::HopperInventorySearchEvent;
@@ -28,6 +29,7 @@ const SUCK_AABB: BoundingBox = BoundingBox::new_array([0.0, 11.0 / 16.0, 0.0], [
 
 pub struct HopperBlockEntity {
     pub position: BlockPos,
+    pub components: BlockEntityComponents,
     pub items: RwLock<[ItemStack; Self::INVENTORY_SIZE]>,
     pub dirty: AtomicBool,
     pub comparator_dirty: AtomicBool,
@@ -66,20 +68,28 @@ struct Extraction {
 }
 
 impl BlockEntity for HopperBlockEntity {
+    super::components::impl_container_components!();
+
+    /// Persists the component fields together with current container state.
     fn write_nbt(&self, nbt: &mut NbtCompound) {
+        self.components.write_nbt(nbt);
         nbt.put(
             "TransferCooldown",
             NbtTag::Int(self.cooldown_time.load(Ordering::Relaxed)),
         );
-        self.write_inventory_nbt(nbt, true);
+        if !self.components.has_loot_table() {
+            self.write_inventory_nbt(nbt, true);
+        }
     }
 
+    /// Loads persistent components and inventory state without generating deferred loot.
     fn from_nbt(nbt: &pumpkin_nbt::compound::NbtCompound, position: BlockPos) -> Self
     where
         Self: Sized,
     {
         let mut hopper = Self {
             position,
+            components: BlockEntityComponents::from_nbt(nbt, RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
@@ -88,14 +98,15 @@ impl BlockEntity for HopperBlockEntity {
             ticked_game_time: AtomicI64::new(0),
         };
 
-        pumpkin_inventory::sync_read_items_from_nbt(
-            nbt,
-            hopper
-                .items
-                .get_mut()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        );
-
+        if !hopper.components.has_loot_table() {
+            pumpkin_inventory::sync_read_items_from_nbt(
+                nbt,
+                hopper
+                    .items
+                    .get_mut()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner),
+            );
+        }
         hopper
     }
 
@@ -154,8 +165,10 @@ impl BlockEntity for HopperBlockEntity {
         self.dirty.store(false, Ordering::Relaxed);
     }
 
+    /// Sends the container fields used by chunk updates without generating deferred loot.
     fn chunk_data_nbt(&self) -> Option<NbtCompound> {
         let mut nbt = NbtCompound::new();
+        self.components.write_client_nbt(&mut nbt);
         nbt.put(
             "TransferCooldown",
             NbtTag::Int(self.cooldown_time.load(Ordering::Relaxed)),
@@ -175,10 +188,12 @@ impl HopperBlockEntity {
     pub const INVENTORY_SIZE: usize = 5;
     pub const ID: &'static str = "minecraft:hopper";
 
+    /// Creates an empty container with component storage at the supplied position.
     #[must_use]
     pub fn new(position: BlockPos, facing: FacingHopper) -> Self {
         Self {
             position,
+            components: BlockEntityComponents::new(RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),

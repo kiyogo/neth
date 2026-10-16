@@ -27,7 +27,7 @@ impl JavaClient {
             && pick_item.include_data
             && let Some(block_entity) = world.get_block_entity(&pick_item.pos)
         {
-            block_entity.collect_implicit_components(&mut stack);
+            block_entity.collect_pick_item_components(&mut stack);
         }
 
         let slot_with_stack = player.inventory().get_slot_with_stack(&stack);

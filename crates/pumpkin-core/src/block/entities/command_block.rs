@@ -103,7 +103,7 @@ impl BlockEntity for CommandBlockEntity {
         self.write_sync_nbt(nbt);
     }
 
-    fn collect_implicit_components(&self, stack: &mut pumpkin_data::item_stack::ItemStack) {
+    fn collect_pick_item_components(&self, stack: &mut pumpkin_data::item_stack::ItemStack) {
         let mut nbt = NbtCompound::new();
         self.write_sync_nbt(&mut nbt);
         nbt.put_string("id", Self::ID.to_string());

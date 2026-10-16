@@ -1,3 +1,4 @@
+use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use pumpkin_data::block_properties::{BarrelLikeProperties, BlockProperties};
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, FacingExt, item_stack::ItemStack};
@@ -24,17 +25,18 @@ use super::BlockEntity;
 
 pub struct BarrelBlockEntity {
     pub position: BlockPos,
+    pub components: BlockEntityComponents,
     pub items: RwLock<[ItemStack; Self::INVENTORY_SIZE]>,
     pub dirty: AtomicBool,
     pub comparator_dirty: AtomicBool,
 
     // Viewer
     viewers: ViewerCountTracker,
-    pub loot_table: std::sync::Mutex<Option<String>>,
-    pub loot_table_seed: i64,
 }
 
 impl BlockEntity for BarrelBlockEntity {
+    super::components::impl_container_components!();
+
     fn resource_location(&self) -> &'static str {
         Self::ID
     }
@@ -43,29 +45,21 @@ impl BlockEntity for BarrelBlockEntity {
         self.position
     }
 
+    /// Loads persistent components and inventory state without generating deferred loot.
     fn from_nbt(nbt: &pumpkin_nbt::compound::NbtCompound, position: BlockPos) -> Self
     where
         Self: Sized,
     {
-        let loot_table_key = nbt.get_string("LootTable").map(|s| s.to_string());
-        let loot_table_seed = nbt.get_long("LootTableSeed").unwrap_or(0);
-
         let mut barrel = Self {
             position,
+            components: BlockEntityComponents::from_nbt(nbt, RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
             viewers: ViewerCountTracker::new(),
-            loot_table: std::sync::Mutex::new(loot_table_key),
-            loot_table_seed,
         };
 
-        let has_loot_table = barrel
-            .loot_table
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some();
-        if !has_loot_table {
+        if !barrel.components.has_loot_table() {
             pumpkin_inventory::sync_read_items_from_nbt(
                 nbt,
                 barrel
@@ -74,21 +68,13 @@ impl BlockEntity for BarrelBlockEntity {
                     .unwrap_or_else(std::sync::PoisonError::into_inner),
             );
         }
-
         barrel
     }
 
+    /// Persists the component fields together with current container state.
     fn write_nbt(&self, nbt: &mut NbtCompound) {
-        if let Some(ref key) = *self
-            .loot_table
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-        {
-            nbt.put_string("LootTable", key.clone());
-            if self.loot_table_seed != 0 {
-                nbt.put_long("LootTableSeed", self.loot_table_seed);
-            }
-        } else {
+        self.components.write_nbt(nbt);
+        if !self.components.has_loot_table() {
             self.write_inventory_nbt(nbt, true);
         }
     }
@@ -118,14 +104,11 @@ impl BlockEntity for BarrelBlockEntity {
         self.dirty.store(false, Ordering::Relaxed);
     }
 
+    /// Sends the container fields used by chunk updates without generating deferred loot.
     fn chunk_data_nbt(&self) -> Option<NbtCompound> {
-        let has_loot_table = self
-            .loot_table
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some();
         let mut nbt = NbtCompound::new();
-        if !has_loot_table && let Ok(guard) = self.items.try_read() {
+        self.components.write_client_nbt(&mut nbt);
+        if let Ok(guard) = self.items.try_read() {
             sync_write_items_to_nbt(&*guard, &mut nbt);
         }
         Some(nbt)
@@ -133,21 +116,6 @@ impl BlockEntity for BarrelBlockEntity {
 
     fn as_any(&self) -> &dyn Any {
         self
-    }
-
-    fn take_loot_table(&self) -> Option<(String, i64)> {
-        let mut guard = self
-            .loot_table
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        guard.take().map(|key| (key, self.loot_table_seed))
-    }
-
-    fn has_loot_table(&self) -> bool {
-        self.loot_table
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some()
     }
 }
 
@@ -167,16 +135,16 @@ impl BarrelBlockEntity {
     pub const INVENTORY_SIZE: usize = 27;
     pub const ID: &'static str = "minecraft:barrel";
 
+    /// Creates an empty container with component storage at the supplied position.
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
         Self {
             position,
+            components: BlockEntityComponents::new(RANDOMIZABLE_CONTAINER_FIELDS),
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
             viewers: ViewerCountTracker::new(),
-            loot_table: std::sync::Mutex::new(None),
-            loot_table_seed: 0,
         }
     }
 
