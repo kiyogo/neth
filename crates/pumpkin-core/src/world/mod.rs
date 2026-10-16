@@ -6371,7 +6371,6 @@ impl World {
         // Unlike vanilla, Pumpkin normalizes both source and flowing states for callbacks.
         fluid.matches_type(scheduled).then_some(fluid)
     }
-
     pub(crate) fn get_fluid_from_state_id(id: BlockStateId) -> &'static pumpkin_data::fluid::Fluid {
         if let Some(fluid) = Fluid::from_state_id(id) {
             return fluid.to_flowing();
