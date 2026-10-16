@@ -26,7 +26,6 @@ use pumpkin_data::dimension::Dimension;
 use pumpkin_util::permission::PermissionManager;
 use pumpkin_util::text::color::NamedColor;
 use pumpkin_world::dimension::into_level;
-use pumpkin_world::generation::generator::GeneratorInit;
 use pumpkin_world::world::WorldPortalExt;
 use tracing::{debug, error, info, warn};
 
@@ -208,16 +207,17 @@ impl Server {
             }
             Err(WorldInfoError::InfoNotFound) => {
                 warn!(
-                    "No {LEVEL_DAT_FILE_NAME} in {}, creating a new world with seed {}",
+                    "No {LEVEL_DAT_FILE_NAME} in {}, creating a new {} world with seed {}",
                     world_path.display(),
+                    basic_config.level_type,
                     basic_config.seed.0 as i64
                 );
-                let overworld_gen = pumpkin_world::generation::generator::VanillaGenerator::new(
+                let mut default_data = LevelData::for_new_world(
                     basic_config.seed,
-                    Dimension::OVERWORLD,
+                    &basic_config.level_type,
+                    &basic_config.generator_settings,
+                    basic_config.generate_structures,
                 );
-                let mut default_data =
-                    LevelData::from_world_generator(basic_config.seed, &overworld_gen);
                 if basic_config.hardcore {
                     default_data.difficulty = Difficulty::Hard;
                     default_data.difficulty_locked = true;
