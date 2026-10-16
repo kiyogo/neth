@@ -748,13 +748,8 @@ impl EntityBase for ArrowEntity {
             }
         }
 
-        // Players are not in world.entities
-        let candidates = world.get_entities_at_box(&search_box).into_iter().chain(
-            world
-                .get_players_at_box(&search_box)
-                .into_iter()
-                .map(|player| player as Arc<dyn EntityBase>),
-        );
+        // Entity collisions
+        let candidates = world.get_all_at_box(&search_box);
         for cand in candidates {
             if self.should_skip_collision(entity, &cand) {
                 continue;

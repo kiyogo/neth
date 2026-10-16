@@ -18,6 +18,7 @@ use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::sound::Sound;
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::tracked_data;
 use pumpkin_data::{Block, BlockDirection};
@@ -101,6 +102,7 @@ pub struct MobEntity {
     pub breeder: AtomicCell<Option<Uuid>>,
     pub persistence_required: AtomicBool,
     pub no_action_time: AtomicI32,
+    pub ambient_sound_time: AtomicI32,
     pending_riders: std::sync::Mutex<Vec<Arc<dyn EntityBase>>>,
     mob_flags: AtomicU8,
 }
@@ -190,6 +192,7 @@ impl MobEntity {
             breeder: AtomicCell::new(None),
             persistence_required: AtomicBool::new(false),
             no_action_time: AtomicI32::new(0),
+            ambient_sound_time: AtomicI32::new(0),
             pending_riders: std::sync::Mutex::new(Vec::new()),
             mob_flags: AtomicU8::new(0),
         }
@@ -916,6 +919,16 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.can_attack(target)
     }
 
+    /// Arrow projectile to shoot when using a bow.
+    fn get_arrow_projectile(&self) -> Option<ItemStack> {
+        None
+    }
+
+    /// Minimum attack interval for ranged bow attacks in ticks.
+    fn get_min_attack_interval(&self) -> Option<i32> {
+        None
+    }
+
     /// Takes the navigation lock, so callers must not already hold it.
     fn is_navigator_idle(&self) -> bool {
         self.get_mob_entity()
@@ -1116,6 +1129,34 @@ pub trait Mob: EntityBase + Send + Sync {
 
     fn get_mob_y_velocity_drag(&self) -> Option<f64> {
         None
+    }
+
+    /// Sound played periodically while alive.
+    fn get_ambient_sound(&self) -> Option<Sound> {
+        None
+    }
+
+    /// Interval in ticks between ambient sound attempts.
+    fn get_ambient_sound_interval(&self) -> i32 {
+        80
+    }
+
+    /// Plays the ambient sound.
+    fn play_ambient_sound(&self) {
+        if let Some(sound) = self.get_ambient_sound() {
+            let mob_entity = self.get_mob_entity();
+            let living_entity = &mob_entity.living_entity;
+            let entity = &living_entity.entity;
+            let category = living_entity.sound_category(false);
+            let world = entity.world.load();
+            world.play_sound_fine(
+                sound,
+                category,
+                &entity.pos.load(),
+                1.0,
+                living_entity.get_pitch(),
+            );
+        }
     }
 
     fn as_ageable(&self) -> Option<&dyn crate::entity::ageable::AgeableMob> {
@@ -1582,6 +1623,18 @@ impl<T: Mob + Send + 'static> EntityBase for T {
         }
 
         mob_entity.check_despawn(self);
+
+        // Vanilla Mob.baseTick ambient sound
+        let ambient_time = mob_entity.ambient_sound_time.fetch_add(1, Relaxed);
+        if ambient_time >= 0
+            && mob_entity.living_entity.entity.is_alive()
+            && rand::random_range(0..1000) < ambient_time
+        {
+            mob_entity
+                .ambient_sound_time
+                .store(-self.get_ambient_sound_interval(), Relaxed);
+            self.play_ambient_sound();
+        }
 
         if let Some(neutral) = self.as_neutral() {
             neutral.update_persistent_anger();

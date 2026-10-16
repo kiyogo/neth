@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::data_component_impl::EquipmentSlot;
@@ -7,7 +6,7 @@ use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::potion::Effect;
-use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::sound::Sound;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -88,21 +87,7 @@ impl Mob for WitherSkeletonEntity {
         // Vanilla WitherSkeleton does not generate equipment enchantments
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
-        let base_entity = &self.entity.mob_entity.living_entity.entity;
-        if !base_entity.is_alive() {
-            return;
-        }
-
-        // Ambient sound
-        if rand::random_range(0..100) == 0 && !base_entity.silent.load(Ordering::Relaxed) {
-            base_entity.world.load().play_sound_fine(
-                Sound::EntityWitherSkeletonAmbient,
-                SoundCategory::Hostile,
-                &base_entity.pos.load(),
-                1.0,
-                1.0,
-            );
-        }
+    fn get_ambient_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityWitherSkeletonAmbient)
     }
 }

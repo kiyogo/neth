@@ -1,10 +1,9 @@
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::sound::Sound;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity, skeleton::SkeletonEntityBase},
 };
@@ -30,21 +29,8 @@ impl Mob for ParchedSkeletonEntity {
         Some(self)
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
-        let entity = &self.entity.mob_entity.living_entity.entity;
-        if !entity.is_alive() {
-            return;
-        }
-
-        if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
-            entity.world.load().play_sound_fine(
-                Sound::EntitySkeletonAmbient,
-                SoundCategory::Hostile,
-                &entity.pos.load(),
-                1.0,
-                1.0,
-            );
-        }
+    fn get_ambient_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityParchedAmbient)
     }
 }
 

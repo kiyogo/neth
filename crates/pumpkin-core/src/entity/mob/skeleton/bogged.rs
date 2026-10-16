@@ -1,6 +1,8 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use pumpkin_data::data_component_impl::{PotionContentsImpl, StatusEffectInstance};
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -23,8 +25,7 @@ pub struct BoggedSkeletonEntity {
 
 impl BoggedSkeletonEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
-        // Bogged attack interval is 70 ticks (50 on Hard difficulty)
-        let entity = SkeletonEntityBase::new_with_attack_interval(entity, 70);
+        let entity = SkeletonEntityBase::new(entity);
         let bogged = Self {
             entity,
             sheared: AtomicBool::new(false),
@@ -72,50 +73,41 @@ impl Mob for BoggedSkeletonEntity {
         Some(self)
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
-        let base_entity = &self.entity.mob_entity.living_entity.entity;
-        if !base_entity.is_alive() {
-            return;
-        }
+    fn get_ambient_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityBoggedAmbient)
+    }
 
-        // Ambient sound
-        if rand::random_range(0..100) == 0 && !base_entity.silent.load(Ordering::Relaxed) {
-            base_entity.world.load().play_sound_fine(
-                Sound::EntityBoggedAmbient,
-                SoundCategory::Hostile,
-                &base_entity.pos.load(),
-                1.0,
-                1.0,
-            );
+    fn get_min_attack_interval(&self) -> Option<i32> {
+        let world = self.get_entity().world.load();
+        if world.get_difficulty() == pumpkin_util::Difficulty::Hard {
+            Some(50)
+        } else {
+            Some(70)
         }
     }
 
-    fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
-        let item = item_stack.get_item();
-        if item == &Item::SHEARS && !self.is_sheared() {
-            self.set_sheared(true);
-            let entity = &self.entity.mob_entity.living_entity.entity;
-            let world = entity.world.load();
-            let pos = entity.pos.load();
-            world.play_sound(
-                Sound::EntityBoggedShear,
-                pumpkin_data::sound::SoundCategory::Players,
-                &pos,
-            );
+    fn get_arrow_projectile(&self) -> Option<ItemStack> {
+        // Plain arrow avoids PotionDurationScale reducing the 100-tick poison duration.
+        let mut arrow = ItemStack::new(1, &Item::ARROW);
 
-            // Vanilla drops from shearing/bogged loot table: 1 brown mushroom and 1 red mushroom
-            for mushroom in [&Item::BROWN_MUSHROOM, &Item::RED_MUSHROOM] {
-                let item_entity = Arc::new(ItemEntity::new(
-                    Entity::new(world.clone(), pos, &EntityType::ITEM),
-                    ItemStack::new(1, mushroom),
-                ));
-                world.spawn_entity(item_entity);
-            }
-            player.damage_held_item(1);
-            return true;
-        }
+        let poison_effect = StatusEffectInstance {
+            effect_id: Cow::Borrowed("minecraft:poison"),
+            amplifier: 0,
+            duration: 100,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+        };
 
-        self.get_mob_entity().mob_interact(player, item_stack)
+        let potion_contents = PotionContentsImpl {
+            potion_id: None,
+            custom_color: None,
+            custom_effects: vec![poison_effect],
+            custom_name: None,
+        };
+
+        arrow.set_data_component(potion_contents);
+        Some(arrow)
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
@@ -125,6 +117,54 @@ impl Mob for BoggedSkeletonEntity {
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(sheared) = nbt.get_bool("sheared") {
             self.set_sheared(sheared);
+        }
+    }
+
+    fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
+        let item = item_stack.get_item();
+        if item == &Item::SHEARS && !self.is_sheared() {
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            if let Some(player_arc) = world.get_player_by_uuid(player.gameprofile.id)
+                && let Some(server) = world.server.upgrade()
+            {
+                let mut event =
+                    crate::plugin::api::events::player::player_shear_entity::PlayerShearEntityEvent {
+                        player: player_arc,
+                        entity_id: entity.entity_id,
+                        hand: 0,
+                        cancelled: false,
+                    };
+                server.plugin_manager.fire_blocking(&server, &mut event);
+                if event.cancelled {
+                    return false;
+                }
+            }
+            let pos = entity.pos.load();
+
+            world.play_sound(Sound::EntityBoggedShear, SoundCategory::Players, &pos);
+
+            for _ in 0..2 {
+                let mushroom = if rand::random::<bool>() {
+                    &Item::BROWN_MUSHROOM
+                } else {
+                    &Item::RED_MUSHROOM
+                };
+
+                let item_entity = Arc::new(ItemEntity::new(
+                    Entity::new(world.clone(), pos, &EntityType::ITEM),
+                    ItemStack::new(1, mushroom),
+                ));
+
+                world.spawn_entity(item_entity);
+            }
+
+            self.set_sheared(true);
+            player.damage_held_item(1);
+
+            true
+        } else {
+            self.entity.mob_entity.mob_interact(player, item_stack)
         }
     }
 
