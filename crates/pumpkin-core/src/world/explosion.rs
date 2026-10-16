@@ -14,10 +14,15 @@ use pumpkin_data::{
 };
 use pumpkin_util::math::{boundingbox::BoundingBox, position::BlockPos, vector3::Vector3};
 use pumpkin_world::chunk::ChunkData;
-use rustc_hash::FxHashMap;
+use rand::RngExt;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    block::{ExplodeArgs, collect_loot},
+    block::{
+        ExplodeArgs,
+        blocks::fire::{FireBlockBase, fire::FireBlock},
+        collect_loot,
+    },
     entity::{Entity, EntityBase, item::ItemEntity},
     net::ClientPlatform,
     world::loot::LootContextParameters,
@@ -109,6 +114,10 @@ pub trait ExplosionDamageCalculator: Send + Sync {
             * explosion.power as f64
             + 1.0) as f32
     }
+}
+
+const fn should_create_fire(roll: u8, state: &BlockState, below: &BlockState) -> bool {
+    roll == 0 && state.is_air() && below.is_solid_render()
 }
 
 /// Default explosion damage calculator implementing vanilla standard explosion rules.
@@ -268,12 +277,39 @@ impl Explosion {
             || block.id == Block::ACTIVATOR_RAIL.id
     }
 
+    fn place_fire(
+        world: &Arc<World>,
+        affected_positions: &FxHashSet<BlockPos>,
+        fire_roll: &mut impl FnMut() -> u8,
+    ) {
+        for pos in affected_positions {
+            if !should_create_fire(
+                fire_roll(),
+                world.get_block_state(pos),
+                world.get_block_state(&pos.down()),
+            ) {
+                continue;
+            }
+
+            let fire_block = FireBlockBase::get_fire_type(world, pos);
+            let fire_state_id = FireBlock.get_state_for_position(world, &fire_block, pos);
+            let _ =
+                world.set_block_state_if(pos, fire_state_id, BlockFlags::NOTIFY_ALL, |state_id| {
+                    state_id == Block::AIR.default_state.id
+                });
+        }
+    }
+
     #[allow(clippy::too_many_lines)]
     fn get_blocks_to_destroy(
         &self,
         world: &World,
-    ) -> FxHashMap<BlockPos, (&'static Block, &'static BlockState)> {
+    ) -> (
+        FxHashMap<BlockPos, (&'static Block, &'static BlockState)>,
+        FxHashSet<BlockPos>,
+    ) {
         let mut map = FxHashMap::default();
+        let mut affected_positions = FxHashSet::default();
 
         let mut chunk_cache: FxHashMap<
             pumpkin_util::math::vector2::Vector2<i32>,
@@ -353,6 +389,10 @@ impl Explosion {
                             },
                         );
 
+                        if h > 0.0 {
+                            affected_positions.insert(block_pos);
+                        }
+
                         if !state.is_air() || !fluid_state.is_empty {
                             let protects_rail = self.protects_rail(world, &block_pos, block);
                             let resistance = if protects_rail {
@@ -387,7 +427,7 @@ impl Explosion {
                 }
             }
         }
-        map
+        (map, affected_positions)
     }
 
     fn damage_entities(&self, world: &Arc<World>) -> FxHashMap<i32, Vector3<f64>> {
@@ -597,18 +637,30 @@ impl Explosion {
 
     pub fn explode(&self, world: &Arc<World>) -> ExplosionResult {
         let player_knockback = self.damage_entities(world);
-        let block_count = self.interact_with_blocks(world);
+        let block_count = self.interact_with_blocks(world, || rand::rng().random_range(0..3));
         ExplosionResult {
             block_count,
             player_knockback,
         }
     }
 
-    fn interact_with_blocks(&self, world: &Arc<World>) -> u32 {
+    #[cfg(test)]
+    fn explode_with_fire_roll(&self, world: &Arc<World>, fire_roll: impl FnMut() -> u8) -> u32 {
+        self.damage_entities(world);
+        self.interact_with_blocks(world, fire_roll)
+    }
+
+    fn interact_with_blocks(&self, world: &Arc<World>, mut fire_roll: impl FnMut() -> u8) -> u32 {
         match self.block_interaction {
-            BlockInteraction::Keep => 0,
+            BlockInteraction::Keep => {
+                if self.create_fire {
+                    let (_, affected_positions) = self.get_blocks_to_destroy(world);
+                    Self::place_fire(world, &affected_positions, &mut fire_roll);
+                }
+                0
+            }
             BlockInteraction::TriggerBlock => {
-                let blocks = self.get_blocks_to_destroy(world);
+                let (blocks, affected_positions) = self.get_blocks_to_destroy(world);
                 for (pos, (block, _state)) in &blocks {
                     let pumpkin_block = world.block_registry.get_pumpkin_block(block.id);
                     if let Some(pumpkin_block) = pumpkin_block {
@@ -618,6 +670,9 @@ impl Explosion {
                             position: pos,
                         });
                     }
+                }
+                if self.create_fire {
+                    Self::place_fire(world, &affected_positions, &mut fire_roll);
                 }
                 0
             }
@@ -639,7 +694,8 @@ impl Explosion {
                     return 0;
                 }
 
-                let mut blocks: Vec<_> = self.get_blocks_to_destroy(world).into_iter().collect();
+                let (blocks, affected_positions) = self.get_blocks_to_destroy(world);
+                let mut blocks: Vec<_> = blocks.into_iter().collect();
                 // TODO: vanilla shuffles with `level.random`; same odds, not seed-reproducible.
                 blocks.shuffle(&mut rand::rng());
                 let decay_drops = self.block_interaction == BlockInteraction::DestroyWithDecay;
@@ -688,20 +744,7 @@ impl Explosion {
                     world.drop_stack(&pos, stack);
                 }
                 if self.create_fire {
-                    for (pos, _) in &blocks {
-                        if rand::rng().random_range(0..3) == 0
-                            && world.get_block_state(pos).is_air()
-                            && world
-                                .get_block_state(&pos.down())
-                                .is_side_solid(pumpkin_data::BlockDirection::Up)
-                        {
-                            world.set_block_state(
-                                pos,
-                                Block::FIRE.default_state.id,
-                                BlockFlags::NOTIFY_ALL,
-                            );
-                        }
-                    }
+                    Self::place_fire(world, &affected_positions, &mut fire_roll);
                 }
                 blocks.len() as u32
             }
@@ -729,11 +772,51 @@ fn add_or_append_stack(
 
 #[cfg(test)]
 mod tests {
-    use super::{Explosion, World, add_or_append_stack};
-    use pumpkin_data::Block;
-    use pumpkin_data::item::Item;
-    use pumpkin_data::item_stack::ItemStack;
-    use pumpkin_util::math::{position::BlockPos, vector3::Vector3};
+    use std::sync::{Arc, Weak};
+
+    use arc_swap::ArcSwap;
+    use pumpkin_config::world::LevelConfig;
+    use pumpkin_data::{
+        Block, BlockDirection, dimension::Dimension, item::Item, item_stack::ItemStack,
+    };
+    use pumpkin_util::{
+        math::{position::BlockPos, vector2::Vector2, vector3::Vector3},
+        world_seed::Seed,
+    };
+    use pumpkin_world::{chunk::ChunkData, level::Level};
+
+    use crate::{
+        block::registry::default_registry,
+        world::{LevelData, World},
+    };
+
+    use super::{
+        BlockFlags, BlockInteraction, Explosion, add_or_append_stack, should_create_fire,
+    };
+
+    type TestWorld = (Arc<World>, Arc<Level>, tempfile::TempDir);
+
+    fn test_world() -> Result<TestWorld, Box<dyn std::error::Error>> {
+        let folder = tempfile::tempdir()?;
+        let level = Level::from_root_folder(
+            &LevelConfig::default(),
+            folder.path().to_path_buf(),
+            0,
+            Dimension::OVERWORLD,
+        );
+        let level_info = Arc::new(ArcSwap::from_pointee(LevelData::default(Seed(0))));
+        let world = Arc::new(World::load(
+            level.clone(),
+            level_info,
+            Dimension::OVERWORLD,
+            default_registry(),
+            Weak::new(),
+        ));
+        level
+            .loaded_chunks
+            .insert(Vector2::new(0, 0), ChunkData::empty_sync(0, 0));
+        Ok((world, level, folder))
+    }
 
     #[test]
     fn exposure_ray_leaving_ground_is_not_obstructed() {
@@ -790,6 +873,65 @@ mod tests {
             });
             assert_eq!(hit.is_some(), expected_hit, "ray at Y={height}");
         }
+    }
+
+    #[test]
+    fn explosions_are_non_incendiary_by_default() {
+        let explosion = Explosion::new(5.0, Vector3::new(0.0, 0.0, 0.0), BlockInteraction::Destroy);
+        assert!(!explosion.create_fire);
+    }
+
+    #[test]
+    fn explosions_can_opt_in_to_fire() {
+        let explosion =
+            Explosion::new(5.0, Vector3::new(0.0, 0.0, 0.0), BlockInteraction::Destroy).with_fire(true);
+        assert!(explosion.create_fire);
+    }
+
+    #[test]
+    fn fire_requires_air_a_zero_roll_and_solid_render_support() {
+        let air = &Block::AIR.default_state;
+        let stone = &Block::STONE.default_state;
+
+        assert!(should_create_fire(0, air, stone));
+        assert!(!should_create_fire(1, air, stone));
+        assert!(!should_create_fire(2, air, stone));
+        assert!(!should_create_fire(u8::MAX, air, stone));
+        assert!(!should_create_fire(0, Block::FIRE.default_state, stone));
+        assert!(!should_create_fire(0, air, Block::AIR.default_state));
+        let glass = &Block::GLASS.default_state;
+        assert!(glass.is_side_solid(BlockDirection::Up));
+        assert!(!glass.is_solid_render());
+        assert!(!should_create_fire(0, air, glass));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn keep_explosion_ignites_affected_air_without_destroying_blocks()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let (world, level, _folder) = test_world()?;
+        for x in 4..=11 {
+            for z in 4..=11 {
+                world.set_block_state(
+                    &BlockPos::new(x, 63, z),
+                    Block::STONE.default_state.id,
+                    BlockFlags::empty(),
+                );
+            }
+        }
+
+        let explosion =
+            Explosion::new(4.0, Vector3::new(8.5, 64.0, 8.5), BlockInteraction::Keep).with_fire(true);
+        let destroyed = explosion.explode_with_fire_roll(&world, || 0);
+        let fire_was_created = (4..=11)
+            .any(|x| (4..=11).any(|z| world.get_block(&BlockPos::new(x, 64, z)) == &Block::FIRE));
+        let floor_remains = (4..=11)
+            .all(|x| (4..=11).all(|z| world.get_block(&BlockPos::new(x, 63, z)) == &Block::STONE));
+        level.shutdown().await;
+
+        assert_eq!(destroyed, 0);
+        assert!(fire_was_created);
+        assert!(floor_remains);
+        Ok(())
     }
 
     #[test]

@@ -14,8 +14,7 @@ use crate::entity::EntityBase;
 /// Vanilla `RespawnAnchorBlock.MAX_CHARGES`.
 const MAX_CHARGES: u8 = 4;
 
-/// Returns whether a respawn anchor should explode for the current charge and dimension state.
-const fn should_explode(charges: u8, respawn_anchor_works: bool) -> bool {
+const fn should_explode_in_unsupported_dimension(charges: u8, respawn_anchor_works: bool) -> bool {
     charges > 0 && !respawn_anchor_works
 }
 
@@ -66,16 +65,28 @@ impl BlockBehaviour for RespawnAnchorBlock {
         let state_id = args.world.get_block_state_id(args.position);
         let props = RespawnAnchorLikeProperties::from_state_id(state_id);
 
-        if props.charges == 0 {
-            return BlockActionResult::Pass;
-        }
-
-        if should_explode(props.charges, args.world.dimension.respawn_anchor_works) {
+        if should_explode_in_unsupported_dimension(
+            props.charges,
+            args.world.dimension.respawn_anchor_works,
+        ) {
             args.world
                 .break_block(args.position, None, BlockFlags::SKIP_DROPS);
             let center_pos = args.position.to_centered_f64();
             args.world
                 .explode_with_fire(center_pos, 5.0, true, crate::world::ExplosionInteraction::Block);
+            return BlockActionResult::SuccessServer;
+        }
+
+        if !args.world.dimension.respawn_anchor_works {
+            return BlockActionResult::Pass;
+        }
+
+        if props.charges == 0 {
+            args.player
+                .send_system_message(&pumpkin_macros::translate_cross!(
+                    translation::java::BLOCK_MINECRAFT_BED_NO_SLEEP,
+                    translation::bedrock::TILE_BED_NOSLEEP
+                ));
             return BlockActionResult::SuccessServer;
         }
 
@@ -118,19 +129,20 @@ impl BlockBehaviour for RespawnAnchorBlock {
 
 #[cfg(test)]
 mod tests {
-    use super::should_explode;
+    use super::{MAX_CHARGES, should_explode_in_unsupported_dimension};
 
     #[test]
     fn uncharged_anchor_never_explodes() {
-        assert!(!should_explode(0, false));
-        assert!(!should_explode(0, true));
+        assert!(!should_explode_in_unsupported_dimension(0, false));
+        assert!(!should_explode_in_unsupported_dimension(0, true));
     }
 
     #[test]
     fn charged_anchor_explodes_only_where_unsupported() {
-        assert!(should_explode(1, false));
-        assert!(should_explode(4, false));
-        assert!(!should_explode(1, true));
-        assert!(!should_explode(4, true));
+        assert!(should_explode_in_unsupported_dimension(1, false));
+        assert!(should_explode_in_unsupported_dimension(MAX_CHARGES, false));
+        assert!(!should_explode_in_unsupported_dimension(1, true));
+        assert!(!should_explode_in_unsupported_dimension(MAX_CHARGES, true));
+    }
     }
 }
