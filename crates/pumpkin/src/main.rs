@@ -89,6 +89,7 @@ async fn main() {
     pumpkin_core::init_logger(&config.advanced);
     config.apply_env_overrides();
 
+
     let vanilla_data = VanillaData::load();
 
     info!(
