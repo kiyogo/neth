@@ -614,7 +614,7 @@ pub fn spawn_mobs_for_chunk_generation(
     let zo = chunk_z << 4;
 
     while rand::random::<f32>() < biome.creature_spawn_probability {
-        let Some(spawner_data) = choose_weighted_spawner(creatures) else {
+        let Some(spawner_data) = choose_spawner(creatures, &mut rand::rng()) else {
             continue;
         };
 
@@ -939,95 +939,46 @@ pub const FORTRESS_ENEMIES: &[Spawner] = &[
         r#type: "minecraft:blaze",
         min_count: 2,
         max_count: 3,
+        weight: 10,
     },
     Spawner {
         r#type: "minecraft:wither_skeleton",
         min_count: 5,
         max_count: 5,
+        weight: 8,
     },
     Spawner {
         r#type: "minecraft:zombified_piglin",
         min_count: 4,
         max_count: 4,
+        weight: 5,
     },
     Spawner {
         r#type: "minecraft:magma_cube",
         min_count: 4,
         max_count: 4,
+        weight: 3,
     },
     Spawner {
         r#type: "minecraft:skeleton",
         min_count: 5,
         max_count: 5,
+        weight: 2,
     },
 ];
 
-#[must_use]
-#[expect(clippy::match_same_arms)]
-pub fn get_spawner_weight(spawner_type: &str) -> u32 {
-    let name = spawner_type
-        .strip_prefix("minecraft:")
-        .unwrap_or(spawner_type);
-    match name {
-        // High frequency common monsters
-        "zombie" | "skeleton" | "creeper" | "spider" | "slime" => 100,
-        "husk" | "stray" | "drowned" => 80,
-        "bogged" => 30,
-        "cave_spider" => 20,
-        "enderman" => 10,
-        "witch" | "zombie_villager" => 5,
-
-        // Nether Fortress enemies
-        "blaze" => 10,
-        "wither_skeleton" => 8,
-        "magma_cube" => 3,
-        "ghast" => 50,
-        "zombified_piglin" => 100,
-        "piglin" => 15,
-        "hoglin" => 9,
-        "strider" => 60,
-
-        // Animals / Creatures
-        "sheep" => 12,
-        "pig" | "chicken" | "armadillo" | "frog" => 10,
-        "cow" => 8,
-        "horse" | "goat" => 5,
-        "fox" | "rabbit" => 8,
-        "wolf" => 5,
-        "ocelot" | "parrot" => 40,
-        "donkey" | "camel" | "polar_bear" | "panda" => 1,
-
-        // Water
-        "salmon" | "tropical_fish" | "pufferfish" => 15,
-        "cod" | "squid" | "glow_squid" | "axolotl" | "bat" => 10,
-        "turtle" => 5,
-        "dolphin" => 2,
-
-        _ => 10,
-    }
+/// Picks a spawner in proportion to its weight, like vanilla `WeightedList::getRandom`.
+/// Returns `None` for an empty list or when every weight is zero.
+pub fn choose_spawner<'a, R: rand::Rng + ?Sized>(
+    spawners: &'a [Spawner],
+    rng: &mut R,
+) -> Option<&'a Spawner> {
+    spawners.choose_weighted(rng, |s| s.weight).ok()
 }
 
 #[must_use]
 pub fn choose_weighted_spawner(spawners: &[Spawner]) -> Option<&Spawner> {
-    if spawners.is_empty() {
-        return None;
-    }
-    if spawners.len() == 1 {
-        return Some(&spawners[0]);
-    }
-    let total_weight: u32 = spawners.iter().map(|s| get_spawner_weight(s.r#type)).sum();
-    if total_weight == 0 {
-        return spawners.choose(&mut rng());
-    }
-    let mut roll = rng().random_range(0..total_weight);
-    for spawner in spawners {
-        let w = get_spawner_weight(spawner.r#type);
-        if roll < w {
-            return Some(spawner);
-        }
-        roll -= w;
-    }
-    spawners.last()
+    choose_spawner(spawners, &mut rng())
 }
 
 #[must_use]
@@ -1072,6 +1023,8 @@ pub fn can_spawn_mob_at(
     })
 }
 
+/// Picks a weighted random spawner for `category` from the biome at `block_pos`, like
+/// vanilla `NaturalSpawner::getRandomSpawnMobAt`.
 #[must_use]
 pub fn get_random_spawn_mob_at(
     world: &Arc<World>,
@@ -1082,7 +1035,7 @@ pub fn get_random_spawn_mob_at(
         let below = block_pos.down();
         let below_block = world.get_block(&below);
         if below_block == &Block::NETHER_BRICKS || below_block == &Block::RED_NETHER_BRICKS {
-            return choose_weighted_spawner(FORTRESS_ENEMIES);
+            return choose_spawner(FORTRESS_ENEMIES, &mut rng());
         }
     }
 
@@ -1106,7 +1059,7 @@ pub fn get_random_spawn_mob_at(
             id if id == MobCategory::MISC.id => biome.spawners.misc,
             _ => biome.spawners.misc,
         };
-        choose_weighted_spawner(spawners)
+        choose_spawner(spawners, &mut rng())
     }
 }
 
@@ -1331,16 +1284,18 @@ mod tests {
                 r#type: "minecraft:zombie",
                 min_count: 4,
                 max_count: 4,
+                weight: 100,
             },
             Spawner {
                 r#type: "minecraft:witch",
                 min_count: 1,
                 max_count: 1,
+                weight: 5,
             },
         ];
 
-        let zombie_weight = get_spawner_weight("minecraft:zombie");
-        let witch_weight = get_spawner_weight("minecraft:witch");
+        let zombie_weight = spawners[0].weight;
+        let witch_weight = spawners[1].weight;
         assert_eq!(zombie_weight, 100);
         assert_eq!(witch_weight, 5);
         assert!(zombie_weight > witch_weight * 10);
@@ -1371,7 +1326,7 @@ mod tests {
         assert!(names.contains(&"minecraft:skeleton"));
 
         for spawner in FORTRESS_ENEMIES {
-            assert!(get_spawner_weight(spawner.r#type) > 0);
+            assert!(spawner.weight > 0);
         }
     }
 
@@ -1382,6 +1337,69 @@ mod tests {
         assert!(is_valid_spawn_floor(Block::NETHER_BRICKS.default_state, &EntityType::ZOMBIFIED_PIGLIN));
         assert!(is_valid_spawn_floor(Block::NETHER_BRICKS.default_state, &EntityType::MAGMA_CUBE));
         assert!(is_valid_spawn_floor(Block::NETHER_BRICKS.default_state, &EntityType::SKELETON));
+    }
+
+    #[test]
+    fn vanilla_spawn_weights_are_preserved() {
+        // Nether wastes in vanilla: zombified piglin 100, ghast 50, piglin 15,
+        // magma cube 2, enderman 1. A uniform pick would make endermen 34x too common.
+        let weights: Vec<_> = Biome::NETHER_WASTES
+            .spawners
+            .monster
+            .iter()
+            .map(|s| (s.r#type, s.weight))
+            .collect();
+        assert_eq!(
+            weights,
+            [
+                ("minecraft:ghast", 50),
+                ("minecraft:zombified_piglin", 100),
+                ("minecraft:magma_cube", 2),
+                ("minecraft:enderman", 1),
+                ("minecraft:piglin", 15),
+            ]
+        );
+    }
+
+    #[test]
+    fn spawners_are_picked_by_weight() {
+        use rand::{SeedableRng, rngs::StdRng};
+
+        let spawner = |r#type, weight| Spawner {
+            r#type,
+            min_count: 1,
+            max_count: 1,
+            weight,
+        };
+        let mut rng = StdRng::seed_from_u64(0);
+
+        let spawners = [
+            spawner("minecraft:common", 99),
+            spawner("minecraft:rare", 1),
+        ];
+        let rare = (0..10_000)
+            .filter(|_| {
+                choose_spawner(&spawners, &mut rng).map(|s| s.r#type) == Some("minecraft:rare")
+            })
+            .count();
+        // Expect about 100; a uniform pick would give about 5000.
+        assert!(
+            (50..=150).contains(&rare),
+            "rare spawner picked {rare} times"
+        );
+
+        let spawners = [
+            spawner("minecraft:never", 0),
+            spawner("minecraft:always", 1),
+        ];
+        for _ in 0..1_000 {
+            assert_eq!(
+                choose_spawner(&spawners, &mut rng).map(|s| s.r#type),
+                Some("minecraft:always")
+            );
+        }
+        assert!(choose_spawner(&spawners[..1], &mut rng).is_none());
+        assert!(choose_spawner(&[], &mut rng).is_none());
     }
 }
 
