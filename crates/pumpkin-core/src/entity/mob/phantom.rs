@@ -1,10 +1,11 @@
 use std::f32::consts::PI;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_util::math::wrap_degrees;
@@ -33,6 +34,7 @@ pub struct PhantomEntity {
     pub move_target_point: AtomicCell<Vector3<f64>>,
     pub anchor_point: AtomicCell<Vector3<f64>>,
     pub flight_speed: AtomicCell<f32>,
+    pub phantom_size: AtomicI32,
 }
 
 fn approach_degrees(from: f32, to: f32, max_step: f32) -> f32 {
@@ -65,6 +67,7 @@ impl PhantomEntity {
             move_target_point: AtomicCell::new(anchor),
             anchor_point: AtomicCell::new(anchor),
             flight_speed: AtomicCell::new(0.2),
+            phantom_size: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(phantom);
         let phantom_weak = Arc::downgrade(&mob_arc);
@@ -504,16 +507,30 @@ impl Mob for PhantomEntity {
         }
     }
 
+    fn mob_init_data_tracker(&self) {
+        let entity = self.get_entity();
+        entity.set_synced_data(
+            tracked_data::phantom::ID_SIZE,
+            self.phantom_size.load(Ordering::Relaxed),
+        );
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         let anchor = self.anchor_point.load();
         nbt.put_int("AX", anchor.x as i32);
         nbt.put_int("AY", anchor.y as i32);
         nbt.put_int("AZ", anchor.z as i32);
+        nbt.put_int("Size", self.phantom_size.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let (Some(x), Some(y), Some(z)) = (nbt.get_int("AX"), nbt.get_int("AY"), nbt.get_int("AZ")) {
             self.anchor_point.store(Vector3::new(f64::from(x), f64::from(y), f64::from(z)));
+        }
+        if let Some(size) = nbt.get_int("Size") {
+            self.phantom_size.store(size, Ordering::Relaxed);
+            let entity = self.get_entity();
+            entity.set_synced_data(tracked_data::phantom::ID_SIZE, size);
         }
     }
 }
