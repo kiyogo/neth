@@ -453,7 +453,7 @@ impl CommandExecutor for LootExecutor {
                 let world = context.world();
                 let block_state = world.get_block_state(&pos);
                 let block = world.get_block(&pos);
-                let key = format!("minecraft:blocks/{}", block.name);
+                let key = format!("minecraft:blocks/{}", crate::block::loot_table_name(block));
 
                 let loot_table = context
                     .server()
