@@ -2015,9 +2015,14 @@ impl VillagerEntity {
         self.work_at_job_site(&world, game_time, day_time, day);
 
         let age = self.get_entity().age.load(Ordering::Relaxed);
+        // When awake, nothing changes; when asleep, it remains stationary with every tick
+        if self.get_entity().pose.load() == EntityPose::Sleeping {
+        self.get_entity().set_velocity(Vector3::default());
+        }
         if age % 20 != 0 {
             return;
         }
+        
         self.update_job_site(&world);
 
         // 1. Bed / Sleeping logic (for all villagers: babies, nitwits, adults)
@@ -2071,7 +2076,11 @@ impl VillagerEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(home);
         }
-
+        // AI-made: while a villager is sleeping, keep it motionless and skip the rest of this tick.
+        // This guard is intentionally minimal and has not been play-tested yet.
+        if self.get_entity().pose.load() == EntityPose::Sleeping {
+            self.get_entity().set_velocity(Vector3::default());
+        }
         // 2. Iron Golem spawning logic (only for adults)
         let profession = self
             .villager_data
