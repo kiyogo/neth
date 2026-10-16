@@ -55,6 +55,7 @@ bindgen!({
         "pumpkin:plugin/world@0.1.0.[method]living-entity.damage": async | store | trappable,
         "pumpkin:plugin/world@0.1.0.[method]mob.clear-ai-goals": async | store | trappable,
         "pumpkin:plugin/world@0.1.0.[method]world.create-explosion": async | store | trappable,
+        "pumpkin:plugin/world@0.1.0.[method]world.load-chunk": async | store | trappable,
         "pumpkin:plugin/world@0.1.0.[method]world.save": async | store | trappable,
         "pumpkin:plugin/world@0.1.0.[method]world.set-block": async | store | trappable,
         "pumpkin:plugin/world@0.1.0.[method]world.set-block-by-id": async | store | trappable,
