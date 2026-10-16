@@ -47,7 +47,6 @@ impl JavaClient {
         // A movement packet was received this tick — tracked for SClientTickEnd zeroing.
         self.received_movement_this_tick
             .store(true, Ordering::Relaxed);
-<<<<<<< HEAD
 
         if !packet.x.is_finite()
             || !packet.y.is_finite()

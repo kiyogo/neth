@@ -1201,7 +1201,6 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
-<<<<<<< HEAD
     /// Sound played periodically while alive.
     fn get_ambient_sound(&self) -> Option<Sound> {
         None

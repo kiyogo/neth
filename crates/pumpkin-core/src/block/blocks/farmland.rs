@@ -25,11 +25,7 @@ pub struct FarmlandBlock;
 
 impl BlockBehaviour for FarmlandBlock {
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
-<<<<<<< HEAD
-        super::dirt_path::push_entities_up(args.world, args.position);
-=======
         push_entities_up(args.world, args.position);
->>>>>>> 1772f93fc555dcfbde09a0a01ea8403cc319e1bd
         args.world.set_block_state(
             args.position,
             Block::DIRT.default_state.id,

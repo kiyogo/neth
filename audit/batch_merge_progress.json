@@ -60,13 +60,1568 @@
   },
   "2858": {
     "status": "clean_merged",
-    "title": "feat(build): decrease incremental build times by ~1.5x",
-    "author": "BjornTheProgrammer"
+    "title": "feat(build): decrease incremental build times by ~1.5x"
   },
   "2918": {
-    "status": "in_conflict",
-    "title": "fix(bedrock): advancement translations",
-    "author": "ZlordHUN",
-    "conflict_files": []
+    "status": "conflict_resolved",
+    "title": "fix(bedrock): advancement translations"
+  },
+  "2958": {
+    "status": "already_merged",
+    "title": "feat(pumpkin): add /perf command"
+  },
+  "2985": {
+    "status": "already_merged",
+    "title": "fix(config): don't overwrite the config file when a field has the wrong type"
+  },
+  "2995": {
+    "status": "already_merged",
+    "title": "fix(piston): stop block swapping from corrupting pistons"
+  },
+  "3017": {
+    "status": "conflict_resolved",
+    "title": "feat(block): add farmland trampling",
+    "author": "Simlesk"
+  },
+  "3041": {
+    "status": "conflict_resolved",
+    "title": "fix(worldgen): generate both halves of double-height plants",
+    "author": "Love0118"
+  },
+  "3057": {
+    "status": "superseded",
+    "title": "feat!: Correct Piston behaviour",
+    "author": "zinedinp",
+    "notes": "Monolithic PR touching 60+ files; superseded by modular PRs #2995, #4047, #3794, #4054"
+  },
+  "3075": {
+    "status": "already_merged",
+    "title": "feat(world): safe spawn position check for player join and respawn",
+    "author": "Q2297045667"
+  },
+  "3079": {
+    "status": "conflict_resolved",
+    "title": "fix(block): send trail particle options when eyeblossoms change state",
+    "author": "catdum200"
+  },
+  "3132": {
+    "status": "conflict_resolved",
+    "title": "fix(block): restore correct lever placement orientation",
+    "author": "pxperr"
+  },
+  "3135": {
+    "status": "conflict_resolved",
+    "title": "fix(block): restore lever's moved guard and normal_use result",
+    "author": "pxperr"
+  },
+  "3145": {
+    "status": "conflict_resolved",
+    "title": "fix(net): honor movement lock for vehicle movement",
+    "author": "Srinivasan-78"
+  },
+  "3149": {
+    "status": "already_merged",
+    "title": "Fix VehicleMoveEvent not triggering and canceling",
+    "author": "Neol3108"
+  },
+  "3179": {
+    "status": "already_merged",
+    "title": "perf(worldgen): prune biome distance checks early",
+    "author": "nobuildersnotools"
+  },
+  "3190": {
+    "status": "conflict_resolved",
+    "title": "fix(combat): sync equipment attributes",
+    "author": "MegalithOfficial"
+  },
+  "3216": {
+    "status": "clean_merged",
+    "title": "feat(plugin): fire BlockFormEvent for lava conversions",
+    "author": "pxperr"
+  },
+  "3221": {
+    "status": "already_merged",
+    "title": "fix(entity): play death sound on lethal hit and send Poof when removing a corpse",
+    "author": "xudoyberdi0410"
+  },
+  "3231": {
+    "status": "clean_merged",
+    "title": "chore(ci): add ferrflow for automated versioning",
+    "author": "BryanFRD"
+  },
+  "3237": {
+    "status": "already_merged",
+    "title": "fix(loot): evaluate entity property conditions (#3225) ",
+    "author": "BatuhanAksoyy"
+  },
+  "3238": {
+    "status": "conflict_resolved",
+    "title": "feat(world): lighting engine flood, shape occlusion, and sky cut height",
+    "author": "zinedinp"
+  },
+  "3243": {
+    "status": "already_merged",
+    "title": "fix: release disconnected player ownership cycles",
+    "author": "nobuildersnotools"
+  },
+  "3244": {
+    "status": "already_merged",
+    "title": "fix: retire completed Bedrock chunk blob payloads",
+    "author": "nobuildersnotools"
+  },
+  "3245": {
+    "status": "conflict_resolved",
+    "title": "fix: release closed and abandoned NetherNet sessions",
+    "author": "nobuildersnotools"
+  },
+  "3257": {
+    "status": "already_merged",
+    "title": "feat(java): add HAProxy PROXY v2 support",
+    "author": "HookWoods"
+  },
+  "3260": {
+    "status": "conflict_resolved",
+    "title": "chore(ci): fix the android(aarch64) test workflow",
+    "author": "W9pi3cZ1"
+  },
+  "3275": {
+    "status": "already_merged",
+    "title": "fix(entity): give all living entities an air supply",
+    "author": "CaptainParis"
+  },
+  "3277": {
+    "status": "conflict_resolved",
+    "title": "fix: prevent badland mineshafts from generating above ground",
+    "author": "YTBGG"
+  },
+  "3307": {
+    "status": "already_merged",
+    "title": "Fire PlayerDropItemEvent when dropping from GUI",
+    "author": "vyPal"
+  },
+  "3320": {
+    "status": "already_merged",
+    "title": "perf(world): avoid repeated scans when packing dense palettes",
+    "author": "JulesB40"
+  },
+  "3335": {
+    "status": "already_merged",
+    "title": "perf(worldgen): compute concurrent structure cache misses once",
+    "author": "JulesB40"
+  },
+  "3348": {
+    "status": "already_merged",
+    "title": "fix: preserve goat horn instrument components",
+    "author": "JulesB40"
+  },
+  "3349": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): sync item push velocity and force position updates when pushed",
+    "author": "IsaiahJaiden"
+  },
+  "3351": {
+    "status": "clean_merged",
+    "title": "fix: avoid tool break effects when placing the last block",
+    "author": "JulesB40"
+  },
+  "3352": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): panic goals only trigger on vanilla panic damage causes",
+    "author": "IsaiahJaiden"
+  },
+  "3353": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): keep fish wander targets in water",
+    "author": "IsaiahJaiden"
+  },
+  "3354": {
+    "status": "superseded",
+    "title": "feat: support packet events across all connection states",
+    "author": "ErrorsErrors",
+    "note": "Superseded by PR #3249 and PR #3824"
+  },
+  "3355": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin,QOL): plugin show information, reload, and tab-auto-completion",
+    "author": "zinedinp"
+  },
+  "3373": {
+    "status": "conflict_resolved",
+    "title": "feat(config): validate listener ports and addresses before startup",
+    "author": "MegalithOfficial"
+  },
+  "3394": {
+    "status": "conflict_resolved",
+    "title": "fix: defer datapack load functions until the next game tick",
+    "author": "JulesB40"
+  },
+  "3395": {
+    "status": "clean_merged",
+    "title": "fix: preserve player equipment on death",
+    "author": "JulesB40"
+  },
+  "3407": {
+    "status": "superseded",
+    "title": "fix(dragon-parts): make the ender dragon hittable and stop it despawning",
+    "author": "zinedinp",
+    "note": "Superseded by modern dragon fight and part architecture in pumpkin-core"
+  },
+  "3410": {
+    "status": "conflict_resolved",
+    "title": "fix(egg): keep the Pterodactyl allocation port in sync on every start",
+    "author": "Laggy60"
+  },
+  "3412": {
+    "status": "conflict_resolved",
+    "title": "fix(brewing): follow screen slot rules and fire the start event",
+    "author": "Laggy60"
+  },
+  "3414": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): keep armor stand name and let projectiles break it",
+    "author": "Laggy60"
+  },
+  "3415": {
+    "status": "clean_merged",
+    "title": "fix(world): drop blocks that lose support after a creative break",
+    "author": "Laggy60"
+  },
+  "3416": {
+    "status": "clean_merged",
+    "title": "fix(block): deal stalagmite damage when landing on pointed dripstone",
+    "author": "Laggy60"
+  },
+  "3417": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): drop falling blocks as items when they can't land",
+    "author": "Laggy60"
+  },
+  "3418": {
+    "status": "conflict_resolved",
+    "title": "fix(loot): honour block state conditions in generated loot tables",
+    "author": "Laggy60"
+  },
+  "3420": {
+    "status": "conflict_resolved",
+    "title": "fix(config): make configuration load failures visible before the logger is ready",
+    "author": "Developers13"
+  },
+  "3421": {
+    "status": "clean_merged",
+    "title": "fix(entity): make sheep sync color in read_nbt",
+    "author": "orpos"
+  },
+  "3422": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): make chicken sync variant in read_nbt",
+    "author": "orpos"
+  },
+  "3424": {
+    "status": "clean_merged",
+    "title": "perf: avoid allocations when matching recipe ingredients",
+    "author": "nobuildersnotools"
+  },
+  "3425": {
+    "status": "conflict_resolved",
+    "title": "perf: stream nearest entity searches",
+    "author": "nobuildersnotools"
+  },
+  "3427": {
+    "status": "clean_merged",
+    "title": "perf(bedrock): Reuse indexed palettes for Bedrock chunk packets",
+    "author": "nobuildersnotools"
+  },
+  "3428": {
+    "status": "conflict_resolved",
+    "title": "fix: project village paths onto terrain",
+    "author": "enderliker"
+  },
+  "3432": {
+    "status": "conflict_resolved",
+    "title": "fix(player): preserve visibility and equipment across dimensions",
+    "author": "JulesB40"
+  },
+  "3433": {
+    "status": "conflict_resolved",
+    "title": "Prevent datapack loaders from following symlinks",
+    "author": "potatosips"
+  },
+  "3438": {
+    "status": "conflict_resolved",
+    "title": "fix(worldgen): gate freeze-top-layer snow on face support and light",
+    "author": "Kurenaiiiii"
+  },
+  "3441": {
+    "status": "clean_merged",
+    "title": "chore(deps): bump actions/github-script from 8 to 9",
+    "author": "app/dependabot"
+  },
+  "3442": {
+    "status": "clean_merged",
+    "title": "chore(deps): bump DeterminateSystems/magic-nix-cache-action from 14 to 15",
+    "author": "app/dependabot"
+  },
+  "3443": {
+    "status": "clean_merged",
+    "title": "chore(deps): bump signpath/github-action-submit-signing-request from 2 to 3",
+    "author": "app/dependabot"
+  },
+  "3444": {
+    "status": "clean_merged",
+    "title": "chore(deps): bump DeterminateSystems/nix-installer-action from 22 to 23",
+    "author": "app/dependabot"
+  },
+  "3447": {
+    "status": "clean_merged",
+    "title": "fix(world): preserve Paper overworld settings on import",
+    "author": "younghyun1"
+  },
+  "3458": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): use the per-mob panic damage tags for wolves, pandas, armadillos and polar bears",
+    "author": "Developers13"
+  },
+  "3459": {
+    "status": "conflict_resolved",
+    "title": "fix(elytra): vanilla-parity fixes for gliding and flight state",
+    "author": "darkzmaj"
+  },
+  "3460": {
+    "status": "conflict_resolved",
+    "title": "fix(item-drops): apply air drag once in grounded item friction",
+    "author": "darkzmaj"
+  },
+  "3461": {
+    "status": "clean_merged",
+    "title": "fix(setworldspawn): actually persist the new spawn point to level.dat",
+    "author": "darkzmaj"
+  },
+  "3462": {
+    "status": "conflict_resolved",
+    "title": "fix(firework-rocket): render the rocket and always allow launching",
+    "author": "darkzmaj"
+  },
+  "3463": {
+    "status": "clean_merged",
+    "title": "fix(protocol): fix stream desync and lost text for named items in bundles",
+    "author": "darkzmaj"
+  },
+  "3465": {
+    "status": "conflict_resolved",
+    "title": "Guard stale block-entity property decoding (split 2/2 of #3011)",
+    "author": "darkzmaj"
+  },
+  "3466": {
+    "status": "conflict_resolved",
+    "title": "Fix wrong teleport id",
+    "author": "Neol3108"
+  },
+  "3467": {
+    "status": "clean_merged",
+    "title": "perf(bedrock): Don't send all-air sub-chunks in level chunk packet for bedrock",
+    "author": "zinedinp"
+  },
+  "3473": {
+    "status": "clean_merged",
+    "title": "fix: avoid duplicate experience packets",
+    "author": "HP-network"
+  },
+  "3475": {
+    "status": "clean_merged",
+    "title": "fix(worldborder): select center block for collapsed clamp ranges \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3476": {
+    "status": "clean_merged",
+    "title": "fix(entity): stop sending a player its own stale motion on every push \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Developers13"
+  },
+  "3479": {
+    "status": "conflict_resolved",
+    "title": "Fix/falling block partial landing 3153",
+    "author": "Thijs226"
+  },
+  "3485": {
+    "status": "clean_merged",
+    "title": "Fix SIGINT",
+    "author": "Neol3108"
+  },
+  "3493": {
+    "status": "clean_merged",
+    "title": "feat(scheduler): add cancellation and completion tracking to scheduler",
+    "author": "Phoenixxo"
+  },
+  "3497": {
+    "status": "conflict_resolved",
+    "title": "Add spawn_falling_block API",
+    "author": "Neol3108"
+  },
+  "3504": {
+    "status": "clean_merged",
+    "title": "fix(server): enforce Hard difficulty at startup for hardcore worlds",
+    "author": "Kurenaiiiii"
+  },
+  "3505": {
+    "status": "clean_merged",
+    "title": "fix(plugin-wit): import all host interfaces\ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3506": {
+    "status": "conflict_resolved",
+    "title": "fix(player): spectate after hardcore death",
+    "author": "Thijs226"
+  },
+  "3507": {
+    "status": "conflict_resolved",
+    "title": "fix(loot): preserve block entity components in drops",
+    "author": "younghyun1"
+  },
+  "3508": {
+    "status": "conflict_resolved",
+    "title": "Fix WASM command node requirement handlers",
+    "author": "Thijs226"
+  },
+  "3509": {
+    "status": "conflict_resolved",
+    "title": "fix(block): encode eyeblossom trail particle data",
+    "author": "Thijs226"
+  },
+  "3523": {
+    "status": "conflict_resolved",
+    "title": "fix(block): prevent empty respawn anchor explosions",
+    "author": "Thijs226"
+  },
+  "3524": {
+    "status": "conflict_resolved",
+    "title": "Fire `EntityChangeBlockEvent` when falling block lands",
+    "author": "Neol3108"
+  },
+  "3525": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): pass attacker position so shields can block melee attacks",
+    "author": "YuEfSaEDU"
+  },
+  "3526": {
+    "status": "conflict_resolved",
+    "title": "fix(world): report level.dat replacement failures",
+    "author": "Thijs226"
+  },
+  "3543": {
+    "status": "conflict_resolved",
+    "title": "fix(inventory): respect Curse of Binding on armor removal",
+    "author": "Thijs226"
+  },
+  "3544": {
+    "status": "conflict_resolved",
+    "title": "fix(combat): pass attacker position for shield blocking",
+    "author": "Thijs226"
+  },
+  "3546": {
+    "status": "conflict_resolved",
+    "title": "fix(block): block chests under sitting cats",
+    "author": "Thijs226"
+  },
+  "3547": {
+    "status": "conflict_resolved",
+    "title": "fix(explosion): ignite bed and respawn anchor blasts",
+    "author": "Thijs226"
+  },
+  "3549": {
+    "status": "clean_merged",
+    "title": "fix(jukebox): restore playback state after reload",
+    "author": "HP-network"
+  },
+  "3553": {
+    "status": "conflict_resolved",
+    "title": "fix(world): pause scheduled ticks outside active chunks",
+    "author": "HP-network"
+  },
+  "3554": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin-api): expose native chunk loading",
+    "author": "Thijs226"
+  },
+  "3555": {
+    "status": "conflict_resolved",
+    "title": "fix(block): relight campfires hit by burning projectiles",
+    "author": "HP-network"
+  },
+  "3556": {
+    "status": "conflict_resolved",
+    "title": "fix(block): collapse big dripleaves hit by projectiles",
+    "author": "HP-network"
+  },
+  "3559": {
+    "status": "conflict_resolved",
+    "title": "fix(block): allow lily pads on waterlogged blocks",
+    "author": "HP-network"
+  },
+  "3562": {
+    "status": "conflict_resolved",
+    "title": "fix: preserve farmland and dirt paths under fence gates",
+    "author": "HP-network"
+  },
+  "3582": {
+    "status": "conflict_resolved",
+    "title": "feat(villager): sleeping, breeding and food pickup",
+    "author": "MidnightDoes"
+  },
+  "3584": {
+    "status": "conflict_resolved",
+    "title": "fix(tripwire): damage shears when disarming tripwire",
+    "author": "HP-network"
+  },
+  "3585": {
+    "status": "conflict_resolved",
+    "title": "fix(block): move entities when farmland turns to dirt",
+    "author": "HP-network"
+  },
+  "3586": {
+    "status": "conflict_resolved",
+    "title": "fix(enderman): validate carried block placement",
+    "author": "HP-network"
+  },
+  "3587": {
+    "status": "conflict_resolved",
+    "title": "fix(boat): use raycast hit position for placement",
+    "author": "HP-network"
+  },
+  "3592": {
+    "status": "conflict_resolved",
+    "title": "fix(block/sugar_cane): allow placement next to water, waterlogged blocks",
+    "author": "AdmerPRO"
+  },
+  "3594": {
+    "status": "clean_merged",
+    "title": "feat(data): validate operator configuration",
+    "author": "AdmerPRO"
+  },
+  "3612": {
+    "status": "conflict_resolved",
+    "title": "feat(warden): add anger management",
+    "author": "MegalithOfficial"
+  },
+  "3630": {
+    "status": "already_merged",
+    "title": "feat(entity): move piglins and piglin brutes onto the brain",
+    "author": "wiflow",
+    "note": "Already merged in commit 4edb09e58"
+  },
+  "3617": {
+    "status": "superseded",
+    "title": "feat(entity): move piglins and piglin brutes onto the brain",
+    "author": "wiflow",
+    "note": "superseded by PR #3630 (commit 4edb09e58)"
+  },
+  "3632": {
+    "status": "conflict_resolved",
+    "title": "fix(tripwire): emit state change game events \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3633": {
+    "status": "conflict_resolved",
+    "title": "fix(protocol): reject overflowing final-byte varint payloads \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3634": {
+    "status": "conflict_resolved",
+    "title": "fix(world): harden player and level data saves \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3636": {
+    "status": "conflict_resolved",
+    "title": "fix(block): respawn anchor, campfire, waxing and infested fixes \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3637": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): melee shield blocking and suspicious block breaking \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3638": {
+    "status": "clean_merged",
+    "title": "fix(server): force hard difficulty on hardcore worlds \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3639": {
+    "status": "clean_merged",
+    "title": "fix(world): only tick scheduled ticks in active chunks \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3640": {
+    "status": "conflict_resolved",
+    "title": "fix(redstone): tripwire shears and dispenser bone meal \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3641": {
+    "status": "conflict_resolved",
+    "title": "fix(inventory): lock curse of binding armor outside creative \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3642": {
+    "status": "conflict_resolved",
+    "title": "fix(command): order gamemode feedback args per edition \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3644": {
+    "status": "clean_merged",
+    "title": "fix(entity): float experience orbs in water \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3645": {
+    "status": "conflict_resolved",
+    "title": "feat(block): dispense experience bottles as projectiles",
+    "author": "AdmerPRO"
+  },
+  "3649": {
+    "status": "clean_merged",
+    "title": "fix(entity): use water-bound navigation for aquatic mobs \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3650": {
+    "status": "conflict_resolved",
+    "title": "fix(data): preserve filterable book text \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3655": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): drop a painting item when a painting breaks \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "CocofireHD"
+  },
+  "3656": {
+    "status": "conflict_resolved",
+    "title": "fix(block): emit container_open/container_close game events",
+    "author": "creeperkatze"
+  },
+  "3657": {
+    "status": "conflict_resolved",
+    "title": "feat(elytra): port vanilla gliding",
+    "author": "MegalithOfficial"
+  },
+  "3658": {
+    "status": "clean_merged",
+    "title": "fix(block): emit block_change game event on chiseled bookshelf book changes",
+    "author": "creeperkatze"
+  },
+  "3660": {
+    "status": "conflict_resolved",
+    "title": "fix(block): emit block_change game event on jukebox insert/eject",
+    "author": "creeperkatze"
+  },
+  "3661": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): register ender dragon hitbox parts for entity id lookup",
+    "author": "creeperkatze"
+  },
+  "3662": {
+    "status": "clean_merged",
+    "title": "chore(deps): bump crate-ci/typos from 1.50.1 to 1.50.2",
+    "author": "app/dependabot"
+  },
+  "3663": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): spawn lingering cloud for affected creepers \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3664": {
+    "status": "clean_merged",
+    "title": "fix(docker): build published images from matching release \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3665": {
+    "status": "clean_merged",
+    "title": "feat(block): allow pressure plates placement on fences and fence gates",
+    "author": "AdmerPRO"
+  },
+  "3666": {
+    "status": "clean_merged",
+    "title": "fix(item_stack): reject damaged items from stacking \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3669": {
+    "status": "clean_merged",
+    "title": "fix(block): notify clients when fire extinguishes \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3673": {
+    "status": "conflict_resolved",
+    "title": "fix(block): make bells reveal nearby raiders \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3681": {
+    "status": "clean_merged",
+    "title": "fix(entity): sync falling block positions each tick \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3682": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): restore swamp slime spawning \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3684": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): enable armor stand item interactions \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3686": {
+    "status": "conflict_resolved",
+    "title": "Emit game events on container open and close, fix",
+    "author": "cfsmi"
+  },
+  "3687": {
+    "status": "conflict_resolved",
+    "title": "fix(plugin): poll native methods on global runtime \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3689": {
+    "status": "conflict_resolved",
+    "title": "fix(item): keep writable books in edit mode \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3691": {
+    "status": "conflict_resolved",
+    "title": "fix(plugin-api): model GameProfile properties correctly \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3693": {
+    "status": "conflict_resolved",
+    "title": "fix(block): wake villagers from occupied beds \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3694": {
+    "status": "clean_merged",
+    "title": "fix: correct end crystal combat behavior \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3695": {
+    "status": "clean_merged",
+    "title": "fix: make dispensers apply bone meal \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Thijs226"
+  },
+  "3697": {
+    "status": "conflict_resolved",
+    "title": "feat(firework): port firework rocket flight, explosions and crossbow launching",
+    "author": "MegalithOfficial"
+  },
+  "3706": {
+    "status": "conflict_resolved",
+    "title": "fix(protocol): reject item stack wire values that do not fit",
+    "author": "wiflow"
+  },
+  "3707": {
+    "status": "conflict_resolved",
+    "title": "fix(world): keep the chunk tags this server does not model",
+    "author": "Lstarsky0"
+  },
+  "3708": {
+    "status": "conflict_resolved",
+    "title": "fix(join): send player info before entity tracking and preserve chunks when sends are cancelled",
+    "author": "zinedinp"
+  },
+  "3713": {
+    "status": "conflict_resolved",
+    "title": "feat(wit): add async v0.2 plugin ABI",
+    "author": "Phoenixxo"
+  },
+  "3715": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): implement phantom circle and swoop attack AI",
+    "author": "Kurenaiiiii"
+  },
+  "3717": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): show custom names loaded from NBT to Java clients",
+    "author": "gitKBDL"
+  },
+  "3718": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): swim fish and squid like vanilla instead of like land mobs",
+    "author": "gitKBDL",
+    "note": "Superseded by PR #4030 (commit 04d555deb)"
+  },
+  "3719": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin): read sections in bulk, and set and resend biomes",
+    "author": "gitKBDL"
+  },
+  "3720": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin): read, write and spawn entities from NBT",
+    "author": "gitKBDL"
+  },
+  "3721": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin): load chunks on demand",
+    "author": "gitKBDL"
+  },
+  "3725": {
+    "status": "conflict_resolved",
+    "title": "fix(loot): fix loot table conditions",
+    "author": "MidnightDoes",
+    "note": "superseded by #3418 and newer loot commits"
+  },
+  "3729": {
+    "status": "clean_merged",
+    "title": "fix(block): make shelf mushrooms work",
+    "author": "MidnightDoes"
+  },
+  "3739": {
+    "status": "conflict_resolved",
+    "title": "fix(world): scope sound events to players in range",
+    "author": "BryanFRD"
+  },
+  "3741": {
+    "status": "conflict_resolved",
+    "title": "feat(data): Add block bounce restitution and fall distance reduction.",
+    "author": "MidnightDoes"
+  },
+  "3744": {
+    "status": "clean_merged",
+    "title": "fix(entity): validate spectator camera targets like vanilla",
+    "author": "Q2297045667"
+  },
+  "3745": {
+    "status": "clean_merged",
+    "title": "fix(plugin-utils): allow wasm builds \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Rennex07"
+  },
+  "3755": {
+    "status": "conflict_resolved",
+    "title": "feat(plugin): add event registration w/ handler and unregistration",
+    "author": "Phoenixxo"
+  },
+  "3763": {
+    "status": "clean_merged",
+    "title": "fix(command): avoid sending tick sprint report before completion",
+    "author": "AdmerPRO"
+  },
+  "3764": {
+    "status": "conflict_resolved",
+    "title": "perf(startup): compute stronghold rings in the background and skip key fetch for unsigned plugins",
+    "author": "zinedinp"
+  },
+  "3765": {
+    "status": "clean_merged",
+    "title": "fix(villager): correct trade availability and prevent trading deadlock",
+    "author": "AdmerPRO"
+  },
+  "3771": {
+    "status": "conflict_resolved",
+    "title": "feat(server): decouple server lifecycle from the process for embedding",
+    "author": "zinedinp"
+  },
+  "3774": {
+    "status": "clean_merged",
+    "title": "fix(villager): stop sleeping villagers from walking",
+    "author": "salvoeed"
+  },
+  "3775": {
+    "status": "clean_merged",
+    "title": "fix(entity): send the painting variant as registry id plus one \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "xef5000"
+  },
+  "3776": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): validate item frame placement and support \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "xef5000",
+    "conflict_files": [
+      "crates/pumpkin-core/src/entity/decoration/item_frame.rs",
+      "crates/pumpkin-core/src/entity/decoration/painting.rs",
+      "crates/pumpkin-core/src/world/mod.rs"
+    ]
+  },
+  "3778": {
+    "status": "conflict_resolved",
+    "title": "feat: vanilla world types for new worlds, and decorated flat worlds",
+    "author": "GFoniX",
+    "conflict_files": [
+      "crates/pumpkin-core/src/server/mod.rs",
+      "crates/pumpkin-world/src/level.rs"
+    ]
+  },
+  "3788": {
+    "status": "conflict_resolved",
+    "title": "fix(server): stop the stdin console task when the server stops",
+    "author": "UMCEKO",
+    "conflict_files": [
+      "crates/pumpkin-core/src/lib.rs"
+    ]
+  },
+  "3790": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): let blazes ascend toward higher targets",
+    "author": "Volubles",
+    "conflict_files": [
+      "crates/pumpkin-core/src/entity/mob/blaze.rs"
+    ]
+  },
+  "3792": {
+    "status": "conflict_resolved",
+    "title": "fix(world): handle queued player packets before scheduled ticks",
+    "author": "4d1cksupmya55-source",
+    "conflict_files": [
+      "crates/pumpkin-core/src/entity/player.rs"
+    ]
+  },
+  "3793": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): vanilla player touch area and push velocity sync",
+    "author": "zinedinp"
+  },
+  "3794": {
+    "status": "already_merged",
+    "title": "fix(entity): velocity sync and vanilla minecart velocity transfer",
+    "author": "zinedinp"
+  },
+  "3795": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): sulfur cube AI and cube mob size sync",
+    "author": "treeot"
+  },
+  "3796": {
+    "status": "conflict_resolved",
+    "title": "feat(logo): add Pumpkin ANSI art",
+    "author": "xeidral"
+  },
+  "3800": {
+    "status": "clean_merged",
+    "title": "fix(entity): persist leashes and destroy a leash knot on hit",
+    "author": "meaningg"
+  },
+  "3804": {
+    "status": "conflict_resolved",
+    "title": "fix(hopper): pick up whole item stacks, including from the bowl",
+    "author": "4d1cksupmya55-source",
+    "conflict_files": [
+      "crates/pumpkin-core/src/block/entities/hopper.rs"
+    ]
+  },
+  "3807": {
+    "status": "clean_merged",
+    "title": "fix(command): apply /data block changes to the live block entity",
+    "author": "4d1cksupmya55-source"
+  },
+  "3808": {
+    "status": "clean_merged",
+    "title": "fix(entity): prevent mobs burning under opaque blocks",
+    "author": "Alerp40"
+  },
+  "3810": {
+    "status": "conflict_resolved",
+    "title": "feat(item): place scaffolding like vanilla",
+    "author": "tom-devv"
+  },
+  "3811": {
+    "status": "conflict_resolved",
+    "title": "fix(protocol): preserve custom item name formatting",
+    "author": "zynthic-au"
+  },
+  "3813": {
+    "status": "clean_merged",
+    "title": "fix(command): bound nested function chain depth to stop stack overflow",
+    "author": "Kurenaiiiii"
+  },
+  "3815": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): clear enderman aggression when its target dies",
+    "author": "AdmerPRO"
+  },
+  "3816": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): damage water-sensitive mobs with thrown water potions",
+    "author": "meaningg"
+  },
+  "3820": {
+    "status": "conflict_resolved",
+    "title": "fix(player): stop the Bedrock skin download from blocking the join",
+    "author": "BellionBastien"
+  },
+  "3821": {
+    "status": "conflict_resolved",
+    "title": "feat(entity): implement the fishing bobber",
+    "author": "towner-10"
+  },
+  "3826": {
+    "status": "clean_merged",
+    "title": "fix(block): keep ice from melting when broken in creative",
+    "author": "luisakrivonogih"
+  },
+  "3827": {
+    "status": "clean_merged",
+    "title": "fix(command): parse block state properties in /setblock",
+    "author": "luisakrivonogih"
+  },
+  "3829": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): add Shearable trait and fix shearing",
+    "author": "tom-devv"
+  },
+  "3832": {
+    "status": "clean_merged",
+    "title": "feat(config): support file-based Velocity forwarding secrets",
+    "author": "Mcxiaocaibug"
+  },
+  "3834": {
+    "status": "conflict_resolved",
+    "title": "fix(codegen): read vertical gradient seed as big endian",
+    "author": "oswaldsch",
+    "resolution": "deleted obsolete proto_chunk_test.rs and kept HEAD version with sulfur caves for material_rule.rs"
+  },
+  "3835": {
+    "status": "conflict_resolved",
+    "title": "fix(projectile): vanilla fireball flight, player collisions and leftOwner state machine",
+    "author": "LukeKappa",
+    "resolution": "Integrated leftOwner state machine across projectiles, preserved channeling/advancements in trident and fire ticks logic"
+  },
+  "3843": {
+    "status": "clean_merged",
+    "title": "fix(block): avoid double press sound on buttons",
+    "author": "meaningg"
+  },
+  "3845": {
+    "status": "conflict_resolved",
+    "title": "fix: entity motion, forced chunks, attributes and combat knockback",
+    "author": "rraattrruuee",
+    "resolution": "Merged entity motion on chunk load, forced chunks entity loading, weapon attribute modifier ids and sweep attack knockback"
+  },
+  "3846": {
+    "status": "clean_merged",
+    "title": "Slovenian translation",
+    "author": "Mihec708"
+  },
+  "3848": "conflict_resolved",
+  "3849": {
+    "status": "conflict_resolved",
+    "title": "fix(protocol): keep item changes from block interactions",
+    "author": "Kron5620"
+  },
+  "3853": {
+    "status": "clean_merged",
+    "title": "fix(entity): apply hurt cooldown to void damage",
+    "author": "Kron5620"
+  },
+  "3854": {
+    "status": "clean_merged",
+    "title": "fix(util): stop extra %s placeholders repeating the last arg",
+    "author": "Zack-XS"
+  },
+  "3859": {
+    "status": "conflict_resolved",
+    "title": "fix(world): remove block entity NBT when the block is removed",
+    "author": "ydw1904"
+  },
+  "3860": {
+    "status": "conflict_resolved",
+    "title": "feat(beacon): port vanilla beacon behaviour",
+    "author": "ydw1904"
+  },
+  "3861": {
+    "status": "conflict_resolved",
+    "title": "fix(spawn): use correct vanilla spawn weights for spawn entries",
+    "author": "ydw1904"
+  },
+  "3863": {
+    "status": "conflict_resolved",
+    "title": "fix(redstone): observers actually match vanilla now",
+    "author": "ydw1904"
+  },
+  "3865": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): drop nether star only on death",
+    "author": "ydw1904"
+  },
+  "3868": {
+    "status": "clean_merged",
+    "title": "fix(block): remove unsupported snow during neighbor updates",
+    "author": "Kron5620"
+  },
+  "3869": {
+    "status": "clean_merged",
+    "title": "fix(block): preserve fire age on neighbor updates",
+    "author": "Kron5620"
+  },
+  "3871": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): correct cushion placement and support removal",
+    "author": "Kron5620"
+  },
+  "3875": {
+    "status": "conflict_resolved",
+    "title": "fix(block): preserve block entity data when placing items",
+    "author": "Kron5620"
+  },
+  "3876": {
+    "status": "conflict_resolved",
+    "title": "fix(item): correct mace smash damage and effects",
+    "author": "Kron5620"
+  },
+  "3886": {
+    "status": "conflict_resolved",
+    "note": "Merged and resolved silverfish sound/pre_damage"
+  },
+  "3887": {
+    "status": "already_merged",
+    "title": "feat: support dynamically adding registries",
+    "author": "EricApostal"
+  },
+  "3890": {
+    "status": "conflict_resolved",
+    "note": "Superseded by generalized wall loot table resolver in master"
+  },
+  "3891": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with f64::from"
+  },
+  "3894": {
+    "status": "clean_merged",
+    "title": "fix(data): parse SNBT custom model data numbers",
+    "author": "ToffyMTA"
+  },
+  "3895": {
+    "status": "clean_merged",
+    "title": "fix(plugin): point block ignite events at the ignited block and carry\u2026",
+    "author": "meaningg"
+  },
+  "3896": {
+    "status": "clean_merged",
+    "title": "fix(item): give bundles vanilla's click, use and sync behaviour",
+    "author": "turntabl3"
+  },
+  "3897": {
+    "status": "conflict_resolved",
+    "note": "Merged charged projectiles improvements and resolved item stack serialization conflicts"
+  },
+  "3901": {
+    "status": "clean_merged",
+    "title": "fix(worldgen): cache template pool max size like vanilla",
+    "author": "SepehrRajabi"
+  },
+  "3903": {
+    "status": "conflict_resolved",
+    "note": "Already generated and present in master"
+  },
+  "3904": {
+    "status": "clean_merged",
+    "title": "fix(player): wake sleeping players before applying damage \ud83e\udd16\ud83e\udd16\ud83e\udd16",
+    "author": "Szabolcs05"
+  },
+  "3905": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with full fire/burst explosion support"
+  },
+  "3906": {
+    "status": "conflict_resolved",
+    "note": "Merged resource tag suggestions and preserved filter_and_suggest_matching"
+  },
+  "3911": {
+    "status": "clean_merged",
+    "title": "fix(protocol): bound serverbound collection lengths before allocating",
+    "author": "WhiteProject1"
+  },
+  "3913": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with stop_token"
+  },
+  "3914": {
+    "status": "clean_merged",
+    "title": "fix(wasm): verify plugin signatures against the trusted key only",
+    "author": "WhiteProject1"
+  },
+  "3915": {
+    "status": "clean_merged",
+    "title": "fix(proxy): compare the forwarding secret in constant time and gate forwarding on proxy.enabled",
+    "author": "WhiteProject1"
+  },
+  "3919": {
+    "status": "clean_merged",
+    "title": "fix(gametest): Update GameTest structure version handling",
+    "author": "KairuDeibisu"
+  },
+  "3920": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with replaceable block break support"
+  },
+  "3922": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with full tests"
+  },
+  "3925": {
+    "status": "clean_merged",
+    "title": "fix(plugin): correct BlockFromTo positions and fluid type",
+    "author": "meaningg"
+  },
+  "3927": {
+    "status": "clean_merged",
+    "title": "feat(api): add leash APIs to Wasm host v0.2",
+    "author": "illyrius666"
+  },
+  "3931": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with maintains_farmland and fence_gates"
+  },
+  "3936": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with full wit/bindings/world implementation"
+  },
+  "3940": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with dual-hand and use_remainder support"
+  },
+  "3951": {
+    "status": "conflict_resolved",
+    "note": "Already generalized in master loot_table_name and collect_loot"
+  },
+  "3955": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with adopt_path and clear_path refactoring"
+  },
+  "3961": {
+    "status": "clean_merged",
+    "title": "feat(entity): implement chest boat inventory",
+    "author": "xlash123"
+  },
+  "3962": {
+    "status": "already_merged",
+    "title": "feat(plugin): add async v0.2 guest bindings",
+    "author": "Phoenixxo"
+  },
+  "3964": {
+    "status": "conflict_resolved",
+    "note": "Merged placed callbacks for /fill and resolved doc comment conflict on break_block"
+  },
+  "3965": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with double chest support and parallel hopper extraction"
+  },
+  "3975": {
+    "status": "conflict_resolved",
+    "note": "Merged jukebox disc removal and preserved GameEvent and Item imports"
+  },
+  "3976": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with get_empty_success_item"
+  },
+  "3977": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with finish_using and UseRemainderImpl"
+  },
+  "3978": {
+    "status": "clean_merged",
+    "title": "fix(entity): cap fall distance while gliding",
+    "author": "SplashGG"
+  },
+  "3979": {
+    "status": "clean_merged",
+    "title": "fix(plugin): load healthy plugins when one has an unresolvable depend\u2026",
+    "author": "Rennex07"
+  },
+  "3982": {
+    "status": "clean_merged",
+    "title": "fix(codegen): generate block transformer rules",
+    "author": "SplashGG"
+  },
+  "3984": {
+    "status": "conflict_resolved",
+    "note": "Merged feline goals and preserved sit/lie on block and custom sounds"
+  },
+  "3986": {
+    "status": "clean_merged",
+    "title": "fix(block): fixed powder snow only being visible after rejoin when placed by dispenser",
+    "author": "Mirkrog"
+  },
+  "3987": {
+    "status": "clean_merged",
+    "title": "fix(command): support execute store score",
+    "author": "afalinx"
+  },
+  "3988": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with Shearable trait and entity collision improvements"
+  },
+  "3990": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with replaceable block break"
+  },
+  "3991": {
+    "status": "clean_merged",
+    "title": "fix(auth): escape the username in authentication URLs",
+    "author": "WhiteProject1"
+  },
+  "3992": {
+    "status": "clean_merged",
+    "title": "fix(protocol): grow the payload buffer as bytes arrive instead of reserving the declared length",
+    "author": "WhiteProject1"
+  },
+  "3993": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with MAX_DECOMPRESSED_CHUNK_SIZE across all formats"
+  },
+  "3995": {
+    "status": "clean_merged",
+    "title": "fix(server): keep a Rayon worker panic from aborting the process",
+    "author": "WhiteProject1"
+  },
+  "3996": {
+    "status": "conflict_resolved",
+    "note": "Already present in master with movement lock and sleeping player checks"
+  },
+  "3997": {
+    "status": "conflict_resolved",
+    "title": "fix(loot): replace `format!(\"minecraft:blocks/{}\")` with a new property `Block.loot_table`",
+    "author": "W9pi3cZ1",
+    "note": "Merged Block.loot_table into blocks.json and generated block.rs, preserved all HEAD block metadata and dynamic properties"
+  },
+  "3999": {
+    "status": "clean_merged",
+    "title": "fix(protocol): bound how deeply item stack templates may nest",
+    "author": "WhiteProject1"
+  },
+  "4000": {
+    "status": "clean_merged",
+    "title": "fix(command): cut the error context on character boundaries",
+    "author": "WhiteProject1"
+  },
+  "4001": {
+    "status": "clean_merged",
+    "title": "fix(bedrock): cap a reassembled NetherNet packet at the maximum packet size",
+    "author": "WhiteProject1"
+  },
+  "4002": {
+    "status": "clean_merged",
+    "title": "fix(block): use vault properties when placing a vault",
+    "author": "RealKai295"
+  },
+  "4003": {
+    "status": "clean_merged",
+    "title": "fix(command): bound how deeply SNBT may nest",
+    "author": "WhiteProject1"
+  },
+  "4007": {
+    "status": "clean_merged",
+    "title": "fix(block): pistons facing down now don't extend when powered from below",
+    "author": "Mirkrog"
+  },
+  "4010": {
+    "status": "conflict_resolved",
+    "title": "feat(world): support scheduled tick delays longer than 255 ticks",
+    "author": "alastairWH",
+    "note": "Partially in master at 712dd2590; completed remaining scheduler far_ticks integration with remove_tick and clear_area"
+  },
+  "4015": {
+    "status": "conflict_resolved",
+    "title": "fix(block): allow double chest extension from diagonal placement",
+    "author": "ethantena",
+    "note": "Already superseded by vanilla parity getStateForPlacement implementation in chests.rs and robust elytra fall_flying handling in entity/mod.rs"
+  },
+  "4019": {
+    "status": "conflict_resolved",
+    "title": "fix(block): breaking piston heads now functions correctly",
+    "author": "Mirkrog",
+    "note": "Piston base logic already integrated in piston.rs; preserved comprehensive vanilla parity can_survive/broken logic in piston_head.rs"
+  },
+  "4022": {
+    "status": "clean_merged",
+    "title": "fix(block): bubble columns",
+    "author": "George7231"
+  },
+  "4025": {
+    "status": "conflict_resolved",
+    "title": "fix(block): allow placing blocks against redstone ore",
+    "author": "SplashGG",
+    "note": "placement_target already present in HEAD registry.rs; integrated redstone_ore use_with_item with updated VarInt imports"
+  },
+  "4026": {
+    "status": "conflict_resolved",
+    "title": "fix(piston): make sticky piston retracts match vanilla",
+    "author": "TheDarkSword",
+    "note": "Already merged at 2b486f634 and further refined in 51ff608eb (#4047); resolved clean without duplicate methods"
+  },
+  "4029": {
+    "status": "clean_merged",
+    "title": "fix(world): compute located structure starts the way chunk generation does",
+    "author": "WhiteProject1"
+  },
+  "4030": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): let fish swim in water instead of walking like land mobs",
+    "author": "WhiteProject1",
+    "note": "Already merged at 04d555deb; merged additional follow-up commits while preserving CustomSound and ambient sound features in HEAD"
+  },
+  "4031": {
+    "status": "conflict_resolved",
+    "title": "fix(world): keep in-place region writes from overwriting the next chunk",
+    "author": "WhiteProject1",
+    "note": "Superseded by 7cff7e851 AnvilRegion free SectorBitmap allocator which replaced in-place leapfrog swapping"
+  },
+  "4037": {
+    "status": "conflict_resolved",
+    "title": "fix(worldgen): count each structure once in the beardifier",
+    "author": "The-Hypnos",
+    "note": "Clean merged proto_chunk seen_collectors; preserved deadlock-free OnceLock caching in placement.rs"
+  },
+  "4038": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): wither skeleton parity",
+    "author": "MegalithOfficial",
+    "note": "Clean merged living.rs can_be_affected and bow_attack.rs get_arrow; preserved rich wither skeleton sounds and equipment in wither.rs"
+  },
+  "4039": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): give drowned their vanilla swimming AI",
+    "author": "WhiteProject1",
+    "note": "Already merged at 52e6ce51f and further enriched with drowned sound, trident advancement and equipment logic in HEAD"
+  },
+  "4042": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): keep the air supply of a dead player from draining before respawn",
+    "author": "WhiteProject1",
+    "note": "Already present in HEAD breath.rs in generalized LivingEntity tick method"
+  },
+  "4047": {
+    "status": "conflict_resolved",
+    "title": "fix(piston): stop moving pistons from desyncing clients and losing blocks",
+    "author": "TheDarkSword",
+    "note": "Already merged at 51ff608eb in modern codebase"
+  },
+  "4050": {
+    "status": "conflict_resolved",
+    "title": "fix(entity): add pufferfish puff and sting behavior",
+    "author": "ultard",
+    "note": "Already merged at afbe7754f"
+  },
+  "4053": {
+    "status": "clean_merged",
+    "title": "perf(entity): stop preallocating every mob's pathfinding heap",
+    "author": "Conman1533"
+  },
+  "4054": {
+    "status": "conflict_resolved",
+    "title": "fix(dropped-items): stack items on contact and hopper race condition and pre-merge explosion drops",
+    "author": "zinedinp",
+    "note": "Already merged at 054e9787a in modern codebase"
+  },
+  "4055": {
+    "status": "already_merged",
+    "title": "fix(protocol): bound how deeply block predicates may nest",
+    "note": "Merged in 2280a4c65"
+  },
+  "4058": {
+    "status": "already_merged",
+    "title": "fix(net): validate finished digging before breaking the block",
+    "note": "Merged in 2280a4c65"
+  },
+  "4060": {
+    "status": "already_merged",
+    "title": "fix(server): make duplicate-login and max-players checks atomic with join",
+    "note": "Merged in 2280a4c65"
+  },
+  "4061": {
+    "status": "already_merged",
+    "title": "fix(bedrock): check bans and whitelist on Bedrock login",
+    "note": "Merged in 2280a4c65"
+  },
+  "4062": {
+    "status": "already_merged",
+    "title": "perf(world): keep region files open and write only changed chunks",
+    "note": "Merged at a8731af49"
+  },
+  "4067": {
+    "status": "already_merged",
+    "title": "fix(bedrock): spawn player only on first completed pack response",
+    "note": "Merged in 2280a4c65"
+  },
+  "4080": {
+    "status": "already_merged",
+    "title": "fix(entity): enforce team friendly fire in combat",
+    "note": "Merged at b3a3f045f"
+  },
+  "4056": {
+    "status": "clean_merged",
+    "title": "fix(bedrock): bounds-check hotbar slot ids in item stack requests",
+    "author": "WhiteProject1"
+  },
+  "4057": {
+    "status": "clean_merged",
+    "title": "fix(inventory): refill the crafting result when it is taken",
+    "author": "WhiteProject1"
+  },
+  "4059": {
+    "status": "conflict_resolved",
+    "title": "fix(item): write the bucket result back to the hand that used it",
+    "author": "WhiteProject1",
+    "conflict_files": [
+      "crates/pumpkin-core/src/item/items/bucket.rs"
+    ],
+    "resolution": "Preserved HEAD create_filled_result with hand parameter and #3977 use_remainder"
+  },
+  "4066": {
+    "status": "conflict_resolved",
+    "title": "fix(command): cap /give at 100 stacks like vanilla",
+    "author": "WhiteProject1",
+    "conflict_files": [
+      "crates/pumpkin-core/src/command/commands/give.rs"
+    ],
+    "resolution": "Preserved HEAD implementation with modern create_without_context signature"
+  },
+  "4068": {
+    "status": "conflict_resolved",
+    "title": "fix(inventory): close block containers that are no longer in reach",
+    "author": "WhiteProject1",
+    "conflict_files": [
+      "crates/pumpkin-core/src/entity/player.rs"
+    ],
+    "resolution": "HEAD already incorporates is_open_container_in_reach and generalized can_use check"
+  },
+  "4069": {
+    "status": "clean_merged",
+    "title": "fix(command): require permission level 2 for entity selectors",
+    "author": "WhiteProject1"
+  },
+  "4071": {
+    "status": "conflict_resolved",
+    "title": "fix(block): play copper chest sounds for each oxidation stage",
+    "author": "sluhtie",
+    "conflict_files": [
+      "crates/pumpkin-core/src/block/blocks/chests.rs",
+      "crates/pumpkin-core/src/block/entities/chest_like_block_entity.rs"
+    ],
+    "resolution": "HEAD already incorporates get_hinge_sound with oxidation stages and game events"
+  },
+  "4072": {
+    "status": "conflict_resolved",
+    "title": "feat(profiler): add memory and CPU profiler",
+    "author": "MegalithOfficial",
+    "conflict_files": [
+      "Cargo.toml",
+      "crates/pumpkin-core/src/server/mod.rs",
+      "crates/pumpkin-core/src/world/mod.rs",
+      "crates/pumpkin-world/src/chunk/io/file_manager.rs",
+      "crates/pumpkin-world/src/lighting/engine.rs",
+      "crates/pumpkin-world/src/lighting/runtime.rs",
+      "crates/pumpkin/Cargo.toml",
+      "crates/pumpkin/src/main.rs"
+    ],
+    "resolution": "Successfully integrated pumpkin-profiler, CPU & memory profiling while preserving HEAD modern region manager and lighting engine"
+  },
+  "4073": {
+    "status": "conflict_resolved",
+    "title": "Feat/boat water physics 26.3",
+    "author": "BoredHF",
+    "conflict_files": [
+      "crates/pumpkin-core/src/block/blocks/plant/lily_pad.rs",
+      "crates/pumpkin-core/src/entity/mod.rs",
+      "crates/pumpkin-core/src/entity/player.rs",
+      "crates/pumpkin-core/src/entity/vehicle/boat.rs",
+      "crates/pumpkin-core/src/net/java/play/confirm_teleport.rs",
+      "crates/pumpkin-core/src/net/java/play/move_vehicle.rs",
+      "crates/pumpkin-core/src/net/java/play/player_position.rs",
+      "crates/pumpkin-core/src/world/mod.rs"
+    ],
+    "resolution": "Integrated boat water physics, fluid raycasts, block effects while preserving chest boats and awaiting teleports"
+  },
+  "4083": {
+    "status": "clean_merged",
+    "title": "feat(plugin): add bukkit-style config file helpers",
+    "author": "asimplestray"
   }
 }
