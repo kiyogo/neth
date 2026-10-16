@@ -168,9 +168,62 @@ impl BlockBehaviour for CampfireBlock {
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {
         false
     }
-
 }
 
 fn is_signal_fire_base_block(block: &Block) -> bool {
     block == &Block::HAY_BLOCK
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pumpkin_data::block_properties::HorizontalFacing;
+
+    fn campfire_state(block: &Block, lit: bool, waterlogged: bool) -> BlockStateId {
+        let mut props = CampfireLikeProperties::default(block);
+        props.lit = lit;
+        props.waterlogged = waterlogged;
+        props.to_state_id(block)
+    }
+
+    #[test]
+    fn burning_projectile_relights_unlit_campfire() {
+        for block in [&Block::CAMPFIRE, &Block::SOUL_CAMPFIRE] {
+            let state_id = campfire_state(block, false, false);
+            let new_state_id =
+                relit_state_id(block, state_id, true).expect("campfire should relight");
+
+            assert!(CampfireLikeProperties::from_state_id(new_state_id).lit);
+            assert_eq!(Block::from_state_id(new_state_id), block);
+        }
+    }
+
+    #[test]
+    fn relighting_keeps_facing_and_signal_fire() {
+        let mut props = CampfireLikeProperties::default(&Block::CAMPFIRE);
+        props.lit = false;
+        props.signal_fire = true;
+        props.facing = HorizontalFacing::West;
+        let state_id = props.to_state_id(&Block::CAMPFIRE);
+
+        let new_state_id =
+            relit_state_id(&Block::CAMPFIRE, state_id, true).expect("campfire should relight");
+        let new_props = CampfireLikeProperties::from_state_id(new_state_id);
+
+        assert!(new_props.lit);
+        assert!(new_props.signal_fire);
+        assert_eq!(new_props.facing, HorizontalFacing::West);
+    }
+
+    #[test]
+    fn campfire_does_not_relight_unless_unlit_and_dry() {
+        let waterlogged = campfire_state(&Block::CAMPFIRE, false, true);
+        assert!(relit_state_id(&Block::CAMPFIRE, waterlogged, true).is_none());
+
+        let lit = campfire_state(&Block::CAMPFIRE, true, false);
+        assert!(relit_state_id(&Block::CAMPFIRE, lit, true).is_none());
+
+        let unlit = campfire_state(&Block::CAMPFIRE, false, false);
+        assert!(relit_state_id(&Block::CAMPFIRE, unlit, false).is_none());
+    }
 }
