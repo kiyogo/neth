@@ -19,6 +19,7 @@ pub struct BinaryHeap {
 impl BinaryHeap {
     #[must_use]
     pub fn new() -> Self {
+        // Not preallocated: every mob owns one, most rarely search, and `insert` grows it.
         Self {
             heap: vec![None],
             position_map: FxHashMap::default(),
