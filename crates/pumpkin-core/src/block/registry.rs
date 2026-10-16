@@ -1213,6 +1213,7 @@ impl BlockRegistry {
         &self,
         block: &Block,
         world: &Arc<World>,
+        position: &BlockPos,
         fall_distance: f32,
         entity: &dyn EntityBase,
     ) {
@@ -1220,6 +1221,7 @@ impl BlockRegistry {
         if let Some(pumpkin_block) = pumpkin_block {
             pumpkin_block.on_landed_upon(OnLandedUponArgs {
                 world,
+                position,
                 fall_distance,
                 entity,
             });
