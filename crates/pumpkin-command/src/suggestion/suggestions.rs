@@ -214,7 +214,6 @@ impl SuggestionsBuilder {
         }
         self
     }
-
     fn matches_substr(pattern: &str, input: &str) -> bool {
         let mut current_str = input;
         while !current_str.starts_with(pattern) {
