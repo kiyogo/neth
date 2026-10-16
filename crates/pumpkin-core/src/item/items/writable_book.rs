@@ -28,7 +28,7 @@ impl ItemBehaviour for WritableBookItem {
         // again and it lands in the read-only view, where nothing can be
         // written. A signed book is not opened by the client, so the server has
         // to send the packet for that one.
-        if item.id == Item::WRITTEN_BOOK.id {
+        if should_send_open_book(item) {
             player.open_book(hand);
         }
         player.world().play_sound(
@@ -42,3 +42,20 @@ impl ItemBehaviour for WritableBookItem {
         self
     }
 }
+
+const fn should_send_open_book(item: &Item) -> bool {
+    item.id == Item::WRITTEN_BOOK.id
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_send_open_book;
+    use pumpkin_data::item::Item;
+
+    #[test]
+    fn only_written_books_request_the_open_book_packet() {
+        assert!(!should_send_open_book(&Item::WRITABLE_BOOK));
+        assert!(should_send_open_book(&Item::WRITTEN_BOOK));
+    }
+}
+
