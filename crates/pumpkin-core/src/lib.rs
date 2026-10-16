@@ -846,7 +846,6 @@ fn setup_stdin_console(server: &Arc<Server>) {
             let Some(command) = command else {
                 break;
             };
-
             let mut event = ServerCommandEvent::new(command.clone());
             server_clone
                 .plugin_manager
