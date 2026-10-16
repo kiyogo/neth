@@ -130,6 +130,15 @@ const fn get_fill_sound(item: &Item) -> Sound {
     }
 }
 
+/// Mirrors vanilla's `BucketItem.getEmptySuccessItem`.
+pub(crate) fn get_empty_success_item(item: ItemStack, player: &Player) -> ItemStack {
+    if player.gamemode.load() == GameMode::Creative {
+        item
+    } else {
+        ItemStack::new(1, &Item::BUCKET)
+    }
+}
+
 /// Mirrors vanilla `ItemUtils.createFilledResult`.
 pub(crate) fn create_filled_result(
     item: &mut ItemStack,
