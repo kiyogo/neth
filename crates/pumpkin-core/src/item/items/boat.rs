@@ -103,7 +103,6 @@ impl ItemBehaviour for BoatItem {
         }
 
         let hit_vec = hit.location;
-
         // Vanilla: Check for entities in the path that would block placement
         // Get player's rotation vector stretched by 5.0 and expanded by 1.0
         let (yaw, pitch) = player.rotation();
