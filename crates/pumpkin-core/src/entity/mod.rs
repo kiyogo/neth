@@ -212,10 +212,8 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         let is_baby = entity.age.load(Ordering::Relaxed) < 0;
 
         if is_baby {
-            let mut bedrock_meta = SyncedActorDataList::new();
-            bedrock_meta.set_flag(entity_data_key::FLAGS, entity_data_flag::BABY as u8, true);
             entity.set_synced_data(tracked_data::ageable_mob::DATA_BABY_ID, true);
-            entity.send_bedrock_actor_data(&bedrock_meta);
+            entity.set_bedrock_baby(true);
         }
     }
     fn set_variant_name(&self, _name: &str) {}
@@ -251,8 +249,7 @@ pub trait EntityBase: Send + Sync + std::any::Any {
 
     fn bedrock_pos(&self) -> Vector3<f64> {
         self.get_entity()
-            .pos
-            .load()
+            .bedrock_render_pos()
             .add_raw(0.0, self.bedrock_y_offset(), 0.0)
     }
 
@@ -986,6 +983,9 @@ pub struct Entity {
     pub bedrock_flags: std::sync::atomic::AtomicI64,
     /// Stores more Bedrock-specific entity boolean flags (bit 0-63)
     pub bedrock_flags_two: std::sync::atomic::AtomicI64,
+    /// Shifts where Bedrock draws this entity without moving it server-side, for the
+    /// cases where Bedrock lays a model out differently to Java.
+    pub bedrock_render_offset: AtomicCell<Vector3<f64>>,
     /// If true, the entity bypasses physics, collisions, and block effects (e.g. spectator, markers, display entities)
     pub no_physics: AtomicBool,
     pub synched_data: synched_entity_data::SynchedEntityData,
@@ -1101,8 +1101,16 @@ impl Entity {
             damage_immunities: std::sync::Mutex::new(Vec::new()),
             data: AtomicI32::new(0),
             flags: std::sync::atomic::AtomicI8::new(0),
-            bedrock_flags: std::sync::atomic::AtomicI64::new(0),
+            // Bedrock expects these on for an ordinary entity. They are set up front so
+            // a flag changed before the entity is spawned cannot drop them.
+            bedrock_flags: std::sync::atomic::AtomicI64::new(
+                (1i64 << entity_data_flag::HAS_GRAVITY)
+                    | (1i64 << entity_data_flag::CLIMB)
+                    | (1i64 << entity_data_flag::HAS_COLLISION)
+                    | (1i64 << entity_data_flag::BREATHING),
+            ),
             bedrock_flags_two: std::sync::atomic::AtomicI64::new(0),
+            bedrock_render_offset: AtomicCell::new(Vector3::new(0.0, 0.0, 0.0)),
             fire_immune: AtomicBool::new(false),
             fire_ticks: AtomicI32::new(-1),
             has_visual_fire: AtomicBool::new(false),
@@ -1164,17 +1172,13 @@ impl Entity {
         self.world.store(world);
     }
 
-    pub fn bedrock_metadata(&self) -> SyncedActorDataList {
-        if self.bedrock_flags.load(Ordering::Relaxed) == 0 {
-            self.bedrock_flags.fetch_or(
-                (1i64 << entity_data_flag::HAS_GRAVITY)
-                    | (1i64 << entity_data_flag::CLIMB)
-                    | (1i64 << entity_data_flag::HAS_COLLISION)
-                    | (1i64 << entity_data_flag::BREATHING),
-                Ordering::Relaxed,
-            );
-        }
+    /// The position Bedrock should draw this entity at: its real position, unless a
+    /// render offset has been set for it.
+    pub fn bedrock_render_pos(&self) -> Vector3<f64> {
+        self.pos.load() + self.bedrock_render_offset.load()
+    }
 
+    pub fn bedrock_metadata(&self) -> SyncedActorDataList {
         let mut metadata = SyncedActorDataList::new();
         metadata.set(
             entity_data_key::WIDTH,
@@ -1184,7 +1188,10 @@ impl Entity {
             entity_data_key::HEIGHT,
             MetadataValue::Float(self.entity_type.dimension[1]),
         );
-        metadata.set(entity_data_key::SCALE, MetadataValue::Float(1.0));
+        metadata.set(
+            entity_data_key::SCALE,
+            MetadataValue::Float(self.bedrock_baby_scale()),
+        );
         metadata.set(
             entity_data_key::FLAGS,
             MetadataValue::Int64(self.bedrock_flags.load(Ordering::Relaxed)),
@@ -1263,6 +1270,7 @@ impl Entity {
             MetadataValue::String(name.clone().get_text()),
         );
         let visible = self.custom_name_visible.load(Ordering::Relaxed);
+        self.put_bedrock_flags(&mut bedrock_meta);
         bedrock_meta.set_flag(
             entity_data_key::FLAGS,
             entity_data_flag::SHOW_NAME as u8,
@@ -1286,6 +1294,7 @@ impl Entity {
                 MetadataValue::String(name.clone().get_text()),
             );
         }
+        self.put_bedrock_flags(&mut bedrock_meta);
         bedrock_meta.set_flag(
             entity_data_key::FLAGS,
             entity_data_flag::SHOW_NAME as u8,
@@ -1783,6 +1792,7 @@ impl Entity {
 
         suffocating && self.pose.load() != pumpkin_data::entity::EntityPose::Sleeping
     }
+    }
 
     pub fn update_last_pos(&self) -> Vector3<f64> {
         let pos = self.pos.load();
@@ -1791,6 +1801,7 @@ impl Entity {
         self.last_pos.store(pos);
         old
     }
+
 
     // updateWaterState() in yarn
 
@@ -2960,6 +2971,54 @@ impl Entity {
             };
             world.broadcast_to_chunk_bedrock(chunk_pos, &packet);
         }
+    }
+
+    fn bedrock_baby_scale(&self) -> f32 {
+        if self.age.load(Ordering::Relaxed) < 0 {
+            0.5
+        } else {
+            1.0
+        }
+    }
+
+    /// Marks the entity as a baby for Bedrock clients. The flag gives the baby its
+    /// model, the scale gives it its size, so both have to be sent.
+    pub fn set_bedrock_baby(&self, is_baby: bool) {
+        self.store_bedrock_flag(entity_data_flag::BABY, is_baby);
+        let mut metadata = SyncedActorDataList::new();
+        metadata.set(
+            entity_data_key::SCALE,
+            MetadataValue::Float(self.bedrock_baby_scale()),
+        );
+        self.put_bedrock_flags(&mut metadata);
+        self.send_bedrock_actor_data(&metadata);
+    }
+
+    pub fn store_bedrock_flag(&self, bedrock_flag: u32, value: bool) {
+        let flags = if bedrock_flag >= 64 {
+            &self.bedrock_flags_two
+        } else {
+            &self.bedrock_flags
+        };
+        let mask = 1i64 << (bedrock_flag % 64);
+        if value {
+            flags.fetch_or(mask, Ordering::Relaxed);
+        } else {
+            flags.fetch_and(!mask, Ordering::Relaxed);
+        }
+    }
+
+    /// Adds the entity's current Bedrock flags to `metadata`, so a flag change can ride
+    /// along with whatever else is being sent instead of costing a packet of its own.
+    pub fn put_bedrock_flags(&self, metadata: &mut SyncedActorDataList) {
+        metadata.set(
+            entity_data_key::FLAGS,
+            MetadataValue::Int64(self.bedrock_flags.load(Ordering::Relaxed)),
+        );
+        metadata.set(
+            entity_data_key::FLAGS_TWO,
+            MetadataValue::Int64(self.bedrock_flags_two.load(Ordering::Relaxed)),
+        );
     }
 
     /// Plays sound at this entity's position with the entity's sound category

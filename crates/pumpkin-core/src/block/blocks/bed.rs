@@ -7,6 +7,7 @@ use pumpkin_data::translation;
 use pumpkin_data::{Block, BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_util::GameMode;
+use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
@@ -384,6 +385,27 @@ impl BedBlock {
 }
 
 impl BedBlock {
+    fn wake_villager(world: &Arc<World>, bed_head_pos: &BlockPos, bed_foot_pos: &BlockPos) -> bool {
+        let bed_box = BoundingBox::from_block(bed_head_pos)
+            .stretch(bed_foot_pos.0.sub(&bed_head_pos.0).to_f64());
+
+        for entity in world.get_entities_at_box(&bed_box) {
+            if entity.get_entity().entity_type != &EntityType::VILLAGER {
+                continue;
+            }
+            let Some(mob) = entity.get_mob() else {
+                continue;
+            };
+            if !mob.is_sleeping() {
+                continue;
+            }
+            mob.wake_up();
+            return true;
+        }
+
+        false
+    }
+
     pub fn set_occupied(
         occupied: bool,
         world: &Arc<World>,
