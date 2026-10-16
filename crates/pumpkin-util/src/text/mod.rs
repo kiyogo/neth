@@ -2196,13 +2196,24 @@ mod test {
         assert!(click.get_string("value").is_none());
     }
 
+    /// Checks that true and false NBT decoration bytes preserve the component's text and colour.
     #[test]
     fn styled_components_parse_from_nbt() {
         let mut styled = pumpkin_nbt::compound::NbtCompound::new();
         styled.put_string("text", "hi".to_string());
         styled.put_string("color", "red".to_string());
+        styled.put_byte("bold", 1);
+        styled.put_byte("italic", 0);
+        styled.put_byte("underlined", 1);
+        styled.put_byte("strikethrough", 0);
+        styled.put_byte("obfuscated", 1);
         let component = TextComponent::from_nbt(&pumpkin_nbt::tag::NbtTag::Compound(styled));
         assert_eq!(component.0.style.color, Some(Color::Named(NamedColor::Red)));
+        assert_eq!(component.0.style.bold, Some(true));
+        assert_eq!(component.0.style.italic, Some(false));
+        assert_eq!(component.0.style.underlined, Some(true));
+        assert_eq!(component.0.style.strikethrough, Some(false));
+        assert_eq!(component.0.style.obfuscated, Some(true));
         assert_eq!(component.get_text(), "hi");
     }
 }
