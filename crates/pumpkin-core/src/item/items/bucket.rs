@@ -534,19 +534,6 @@ impl ItemBehaviour for MilkBucketItem {
         player.living_entity.set_active_hand(hand, stack, 32);
     }
 
-    fn on_stopped_using(&self, _stack: &ItemStack, player: &Player) {
-        let hand = player
-            .living_entity
-            .active_hand
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .unwrap_or(Hand::Right);
-        player.living_entity.reset_effects_and_attributes();
-        let mut held = player.inventory.get_stack_in_hand(hand);
-        create_filled_result(&mut held, player, &Item::BUCKET, true);
-        player.inventory.set_stack_in_hand(hand, held);
-    }
-
     fn get_use_duration(&self) -> i32 {
         32
     }
