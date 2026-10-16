@@ -116,6 +116,14 @@ impl JavaClient {
             EquipmentSlot::OFF_HAND
         };
 
+        let slot_index = if matches!(hand, Hand::Right) {
+            inventory.get_selected_slot() as usize
+        } else {
+            PlayerInventory::OFF_HAND_SLOT
+        };
+
+        let before = item.clone();
+
         let sneaking = player.get_entity().is_sneaking();
 
         // Code based on the java class ServerPlayerInteractionManager
@@ -133,6 +141,25 @@ impl JavaClient {
             );
             if result.consumes_action() {
                 // TODO: Trigger ANY_BLOCK_USE Criteria
+                let after = item.clone();
+                if before.is_damageable() && after.is_empty() {
+                    let slot = if slot_index == player.inventory.get_selected_slot() as usize {
+                        &EquipmentSlot::MAIN_HAND
+                    } else {
+                        &EquipmentSlot::OFF_HAND
+                    };
+                    player.increment_stat(StatisticCategory::Broken, before.item.id as i32, 1);
+                    player.world().send_entity_status(
+                        player.get_entity(),
+                        equipment_break_status(slot),
+                        None,
+                    );
+                }
+
+                if !after.are_equal(&before) {
+                    player.sync_hand_slot(slot_index, after.clone());
+                    inventory.set_stack_in_hand(hand, after);
+                }
 
                 if matches!(result, BlockActionResult::SuccessServer) {
                     player.swing_hand(hand, true);
@@ -140,12 +167,6 @@ impl JavaClient {
                 return Ok(());
             }
         }
-
-        let slot_index = if matches!(hand, Hand::Right) {
-            inventory.get_selected_slot() as usize
-        } else {
-            PlayerInventory::OFF_HAND_SLOT
-        };
 
         if item.is_empty() {
             // TODO item cool down
