@@ -69,6 +69,7 @@ pub struct ArrowEntity {
     pub last_block_pos: Arc<std::sync::RwLock<Option<BlockPos>>>,
     pub pierced_entities: Arc<RwLock<Vec<i32>>>,
     pub weapon: RwLock<Option<ItemStack>>,
+    pub has_left_owner: AtomicBool,
 }
 
 impl ArrowEntity {
@@ -108,6 +109,7 @@ impl ArrowEntity {
             last_block_pos: Arc::new(std::sync::RwLock::new(None)),
             pierced_entities: Arc::new(RwLock::new(Vec::new())),
             weapon: RwLock::new(None),
+            has_left_owner: AtomicBool::new(owner_id.is_none()),
         }
     }
 
@@ -150,6 +152,7 @@ impl ArrowEntity {
             last_block_pos: Arc::new(std::sync::RwLock::new(None)),
             pierced_entities: Arc::new(RwLock::new(Vec::new())),
             weapon: RwLock::new(None),
+            has_left_owner: AtomicBool::new(false),
         }
     }
 
@@ -644,6 +647,11 @@ impl EntityBase for ArrowEntity {
             velocity.y.atan2(len) as f32 * 57.295_776,
         );
 
+        if !self.has_left_owner.load(Ordering::Relaxed) && self.check_left_owner(entity, &velocity)
+        {
+            self.has_left_owner.store(true, Ordering::Relaxed);
+        }
+
         // Move arrow
         let new_pos = start_pos.add(&velocity);
         entity.set_pos(new_pos);
@@ -751,7 +759,7 @@ impl EntityBase for ArrowEntity {
         // Entity collisions
         let candidates = world.get_all_at_box(&search_box);
         for cand in candidates {
-            if self.should_skip_collision(entity, &cand) {
+            if cand.is_spectator() || self.should_skip_collision(entity, &cand) {
                 continue;
             }
             // Vanilla `AbstractArrow.canHitEntity`: the arrow passes through a player its owner can't harm.
@@ -915,8 +923,10 @@ impl EntityBase for ArrowEntity {
                 let is_enderman =
                     target.get_entity().entity_type == &pumpkin_data::entity::EntityType::ENDERMAN;
                 let is_on_fire = entity.is_on_fire() || self.is_flame.load(Ordering::Relaxed);
+                let target_ent = target.get_entity();
+                let prior_fire_ticks = target_ent.fire_ticks.load(Ordering::Relaxed);
                 if is_on_fire && !is_enderman {
-                    target.get_entity().set_on_fire_for(5.0);
+                    target_ent.set_on_fire_for(5.0);
                 }
 
                 let punch = self.punch_level.load(Ordering::Relaxed);
@@ -935,8 +945,14 @@ impl EntityBase for ArrowEntity {
                     None,
                 );
 
+                if !damage_succeeded && is_on_fire && !is_enderman {
+                    target_ent
+                        .fire_ticks
+                        .store(prior_fire_ticks, Ordering::Relaxed);
+                }
+
                 if let Some(living) = target.get_living_entity() {
-                    if punch > 0 {
+                    if punch > 0 && damage_succeeded {
                         let norm = Vector3::new(velocity.x, 0.0, velocity.z).normalize();
                         let push_scale = f64::from(punch) * 0.6;
                         target.get_entity().velocity.store(
@@ -1059,6 +1075,34 @@ impl EntityBase for ArrowEntity {
 }
 
 impl ArrowEntity {
+    /// Checks whether the arrow has cleared its owner's bounding box,
+    /// matching vanilla `Projectile.checkLeftOwner()`.
+    fn check_left_owner(&self, entity: &Entity, velocity: &Vector3<f64>) -> bool {
+        let Some(owner_id) = self.owner_id else {
+            return true;
+        };
+        let world = entity.world.load();
+        let Some(owner) = world.get_entity_by_id(owner_id) else {
+            return true;
+        };
+        let box_to_check = entity
+            .bounding_box
+            .load()
+            .expand_towards(velocity.x, velocity.y, velocity.z)
+            .expand_all(1.0);
+        let owner_ent = owner.get_entity();
+        if box_to_check.intersects(&owner_ent.bounding_box.load()) {
+            return false;
+        }
+        if let Some(vehicle) = owner_ent.get_vehicle()
+            && box_to_check.intersects(&vehicle.get_entity().bounding_box.load())
+        {
+            return false;
+        }
+        true
+    }
+
+    /// Determines if collision with another entity should be skipped.
     fn should_skip_collision(&self, self_ent: &Entity, other: &Arc<dyn EntityBase>) -> bool {
         let other_ent = other.get_entity();
 
@@ -1067,13 +1111,22 @@ impl ArrowEntity {
             return true;
         }
 
-        if other_ent.is_spectator() {
+        if other.is_spectator() {
             return true;
         }
 
-        // Skip owner for initial frames (5 ticks)
-        if Some(other_ent.entity_id) == self.owner_id && self_ent.age.load(Ordering::Relaxed) < 5 {
-            return true;
+        // Skip owner and fellow passengers until arrow has left the owner's bounding box
+        if !self.has_left_owner.load(Ordering::Relaxed)
+            && let Some(owner_id) = self.owner_id
+        {
+            if other_ent.entity_id == owner_id {
+                return true;
+            }
+            if let Some(owner) = self_ent.world.load().get_entity_by_id(owner_id)
+                && super::is_passenger_of_same_vehicle(owner.get_entity(), other_ent)
+            {
+                return true;
+            }
         }
 
         // Skip already pierced entities

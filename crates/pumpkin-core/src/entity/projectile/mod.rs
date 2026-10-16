@@ -1,7 +1,6 @@
 use super::{Entity, EntityBase, living::LivingEntity};
 use pumpkin_data::BlockDirection;
 use pumpkin_data::entity::EntityType;
-use pumpkin_protocol::java::client::play::CEntityVelocity;
 use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::{position::BlockPos, vector3::Vector3};
 use std::{
@@ -33,12 +32,14 @@ use pumpkin_data::item_stack::ItemStack;
 #[must_use]
 pub fn is_projectile(entity_type: &EntityType) -> bool {
     *entity_type == EntityType::ARROW
+        || *entity_type == EntityType::SPECTRAL_ARROW
         || *entity_type == EntityType::TRIDENT
         || *entity_type == EntityType::EGG
         || *entity_type == EntityType::EXPERIENCE_BOTTLE
         || *entity_type == EntityType::SNOWBALL
         || *entity_type == EntityType::FIREWORK_ROCKET
         || *entity_type == EntityType::WIND_CHARGE
+        || *entity_type == EntityType::BREEZE_WIND_CHARGE
         || *entity_type == EntityType::SPLASH_POTION
         || *entity_type == EntityType::LINGERING_POTION
         || *entity_type == EntityType::ENDER_PEARL
@@ -50,6 +51,31 @@ pub fn is_projectile(entity_type: &EntityType) -> bool {
         || *entity_type == EntityType::FISHING_BOBBER
         || *entity_type == EntityType::WITHER_SKULL
         || *entity_type == EntityType::LLAMA_SPIT
+}
+
+/// Returns whether two entities ride the same vehicle or are in each other's passenger hierarchy,
+/// matching vanilla `Entity.isPassengerOfSameVehicle`.
+#[must_use]
+pub fn is_passenger_of_same_vehicle(owner: &Entity, other: &Entity) -> bool {
+    if owner.entity_id == other.entity_id {
+        return true;
+    }
+    if let Some(vehicle) = owner.get_vehicle() {
+        if vehicle.get_entity().entity_id == other.entity_id {
+            return true;
+        }
+        if let Some(other_vehicle) = other.get_vehicle()
+            && vehicle.get_entity().entity_id == other_vehicle.get_entity().entity_id
+        {
+            return true;
+        }
+    }
+    if let Some(other_vehicle) = other.get_vehicle()
+        && other_vehicle.get_entity().entity_id == owner.entity_id
+    {
+        return true;
+    }
+    owner.has_passenger(other.entity_id) || other.has_passenger(owner.entity_id)
 }
 
 /// Helper to apply projectile spawned enchantment effects matching vanilla `Projectile::applyOnProjectileSpawned`.
@@ -81,6 +107,7 @@ pub struct ThrownItemEntity {
     pub owner_id: Option<i32>,
     pub collides_with_projectiles: bool,
     pub has_hit: AtomicBool,
+    pub has_left_owner: AtomicBool,
     pub gravity: f64,
 }
 
@@ -94,6 +121,7 @@ impl ThrownItemEntity {
             owner_id: Some(owner.entity_id),
             collides_with_projectiles: false,
             has_hit: AtomicBool::new(false),
+            has_left_owner: AtomicBool::new(false),
             gravity,
         }
     }
@@ -136,45 +164,74 @@ impl ThrownItemEntity {
             velocity.y.atan2(len) as f32 * 57.295_776,
         );
     }
+    /// Checks whether the projectile has cleared its owner's bounding box,
+    /// matching vanilla Projectile.checkLeftOwner().
+    #[must_use]
+    pub fn check_left_owner(&self, entity: &Entity, velocity: &Vector3<f64>) -> bool {
+        self.check_left_owner_with_id(entity, velocity, self.owner_id)
+    }
+
+    #[must_use]
+    pub fn check_left_owner_with_id(
+        &self,
+        entity: &Entity,
+        velocity: &Vector3<f64>,
+        owner_id: Option<i32>,
+    ) -> bool {
+        let Some(owner_id) = owner_id else {
+            return true;
+        };
+        let world = entity.world.load();
+        let Some(owner) = world.get_entity_by_id(owner_id) else {
+            return true;
+        };
+        let box_to_check = entity
+            .bounding_box
+            .load()
+            .expand_towards(velocity.x, velocity.y, velocity.z)
+            .expand_all(1.0);
+        let owner_ent = owner.get_entity();
+        if box_to_check.intersects(&owner_ent.bounding_box.load()) {
+            return false;
+        }
+        if let Some(vehicle) = owner_ent.get_vehicle()
+            && box_to_check.intersects(&vehicle.get_entity().bounding_box.load())
+        {
+            return false;
+        }
+        true
+    }
 }
 
 impl ThrownItemEntity {
-    /// Process a tick for projectile movement and collisions
-    pub fn process_tick(&self, caller: &dyn EntityBase) {
-        self.process_tick_with_owner(caller, self.owner_id);
+    /// Move projectile by its current velocity and check for collisions
+    pub fn process_move_and_collision(&self, caller: &dyn EntityBase) {
+        self.process_move_and_collision_with_owner(caller, self.owner_id);
     }
 
-    pub fn process_tick_with_owner(&self, caller: &dyn EntityBase, owner_id: Option<i32>) {
+    pub fn process_move_and_collision_with_owner(
+        &self,
+        caller: &dyn EntityBase,
+        owner_id: Option<i32>,
+    ) {
         let entity = self.get_entity();
         let world = entity.world.load();
 
         entity.update_last_pos();
 
-        // Apply gravity and inertia
-        let mut velocity = entity.velocity.load();
-        velocity.y -= self.get_gravity();
-
-        let inertia = if entity.touching_water.load(Ordering::Relaxed) {
-            0.8
-        } else {
-            0.99
-        };
-        velocity = velocity.multiply(inertia, inertia, inertia);
-
-        // Store velocity
-        entity.velocity.store(velocity);
-
+        let velocity = entity.velocity.load();
         let start_pos = entity.pos.load();
         let delta = velocity;
+
+        if !self.has_left_owner.load(Ordering::Relaxed)
+            && self.check_left_owner_with_id(entity, &delta, owner_id)
+        {
+            self.has_left_owner.store(true, Ordering::Relaxed);
+        }
 
         // Update position
         let new_pos = start_pos.add(&delta);
         entity.set_pos(new_pos);
-
-        // Send updated velocity to clients
-        let packet = CEntityVelocity::new(entity.entity_id.into(), velocity);
-        let chunk_pos = entity.chunk_pos.load();
-        world.broadcast_to_chunk(chunk_pos, &packet);
 
         // Calculate search box for collisions
         let search_box = BoundingBox::new(
@@ -189,29 +246,39 @@ impl ThrownItemEntity {
                 start_pos.z.max(new_pos.z),
             ),
         )
-        .expand(0.3, 0.3, 0.3);
+        .expand(1.0, 1.0, 1.0);
 
         let mut closest_t = 1.0f64;
         let mut hit = None;
 
         // Block collisions
-        let (block_cols, block_positions) = world.get_block_collisions(search_box, caller);
-        for (idx, bb) in block_cols.iter().enumerate() {
-            if let Some(t) = calculate_ray_intersection(&start_pos, &delta, bb)
-                && t < closest_t
-            {
-                closest_t = t;
-                // Map back to block pos
-                let mut curr = 0;
-                for (len, pos) in &block_positions {
-                    curr += len;
-                    if idx < curr {
+        let block_box = BoundingBox::new(
+            Vector3::new(
+                start_pos.x.min(new_pos.x).floor(),
+                start_pos.y.min(new_pos.y).floor(),
+                start_pos.z.min(new_pos.z).floor(),
+            ),
+            Vector3::new(
+                start_pos.x.max(new_pos.x).ceil(),
+                start_pos.y.max(new_pos.y).ceil(),
+                start_pos.z.max(new_pos.z).ceil(),
+            ),
+        );
+
+        let block_colliders = world.get_block_colliders(&block_box);
+        for collider in block_colliders {
+            for shape in collider.shapes {
+                let absolute_shape = shape.add_vector(&collider.pos.to_f64_vector());
+                if let Some((t, normal)) =
+                    calculate_ray_box_intersection(&start_pos, &delta, &absolute_shape)
+                {
+                    if t < closest_t {
+                        closest_t = t;
                         let hit_pos = start_pos.add(&delta.multiply(t, t, t));
                         hit = Some(ProjectileHit::Block {
-                            pos: *pos,
-                            face: get_hit_face(hit_pos, *pos),
+                            pos: collider.pos,
                             hit_pos,
-                            normal: delta.normalize().multiply(-1.0, -1.0, -1.0),
+                            face: normal_to_face(&normal),
                         });
                         break;
                     }
@@ -222,7 +289,7 @@ impl ThrownItemEntity {
         // Entity collisions
         let candidates = world.get_all_at_box(&search_box);
         for cand in candidates {
-            if self.should_skip_collision(entity, &cand, owner_id) {
+            if cand.is_spectator() || self.should_skip_collision(entity, &cand, owner_id) {
                 continue;
             }
 
@@ -263,6 +330,31 @@ impl ThrownItemEntity {
         }
     }
 
+    /// Process a tick for ballistic projectile movement and collisions (gravity + drag)
+    pub fn process_tick(&self, caller: &dyn EntityBase) {
+        self.process_tick_with_owner(caller, self.owner_id);
+    }
+
+    pub fn process_tick_with_owner(&self, caller: &dyn EntityBase, owner_id: Option<i32>) {
+        let entity = self.get_entity();
+
+        // Apply gravity and inertia
+        let mut velocity = entity.velocity.load();
+        velocity.y -= self.get_gravity();
+
+        let inertia = if entity.touching_water.load(Ordering::Relaxed) {
+            0.8
+        } else {
+            0.99
+        };
+        velocity = velocity.multiply(inertia, inertia, inertia);
+
+        // Store velocity
+        entity.velocity.store(velocity);
+
+        self.process_move_and_collision_with_owner(caller, owner_id);
+    }
+
     /// Returns if collision should be skipped (e.g. owner or projectile vs projectile)
     fn should_skip_collision(
         &self,
@@ -275,9 +367,18 @@ impl ThrownItemEntity {
             return true;
         }
 
-        // Skip owner for initial frames
-        if Some(other_ent.entity_id) == owner_id && self_ent.age.load(Ordering::Relaxed) < 5 {
-            return true;
+        // Projectiles should not collide with their own shooter or fellow passengers until leaving the vehicle group
+        if !self.has_left_owner.load(Ordering::Relaxed)
+            && let Some(owner_id) = owner_id
+        {
+            if other_ent.entity_id == owner_id {
+                return true;
+            }
+            if let Some(owner) = self_ent.world.load().get_entity_by_id(owner_id)
+                && is_passenger_of_same_vehicle(owner.get_entity(), other_ent)
+            {
+                return true;
+            }
         }
 
         // Projectiles should pass through lingering clouds

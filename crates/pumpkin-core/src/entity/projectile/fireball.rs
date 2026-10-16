@@ -40,6 +40,7 @@ impl FireballEntity {
             owner_id: None,
             collides_with_projectiles: false,
             has_hit: AtomicBool::new(false),
+            has_left_owner: AtomicBool::new(true),
             gravity: 0.0,
         };
 
@@ -79,6 +80,7 @@ impl FireballEntity {
             owner_id: None,
             collides_with_projectiles: false,
             has_hit: AtomicBool::new(false),
+            has_left_owner: AtomicBool::new(true),
             gravity: 0.0,
         };
         let vel = direction.normalize().multiply(
@@ -242,8 +244,7 @@ impl EntityBase for FireballEntity {
             entity.velocity.store(velocity);
         }
 
-        self.thrown
-            .process_tick_with_owner(caller, self.get_owner_id());
+        self.thrown.process_move_and_collision_with_owner(caller, self.get_owner_id());
     }
 
     fn get_entity(&self) -> &Entity {

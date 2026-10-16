@@ -32,6 +32,8 @@ pub struct TridentEntity {
     pub loyalty: u8,
     pub has_channeling: bool,
     pub client_side_return_tick_count: AtomicU32,
+    pub has_left_owner: AtomicBool,
+    pub dealt_damage: AtomicBool,
 }
 
 impl TridentEntity {
@@ -56,6 +58,8 @@ impl TridentEntity {
             loyalty: 0,
             has_channeling: false,
             client_side_return_tick_count: AtomicU32::new(0),
+            has_left_owner: AtomicBool::new(owner_id.is_none()),
+            dealt_damage: AtomicBool::new(false),
         }
     }
 
@@ -101,6 +105,8 @@ impl TridentEntity {
             loyalty,
             has_channeling,
             client_side_return_tick_count: AtomicU32::new(0),
+            has_left_owner: AtomicBool::new(false),
+            dealt_damage: AtomicBool::new(false),
         }
     }
 
@@ -156,17 +162,59 @@ impl TridentEntity {
         );
     }
 
+    /// Checks whether the projectile has cleared its owner's bounding box,
+    /// matching vanilla `Projectile.checkLeftOwner()`.
+    fn check_left_owner(&self, entity: &Entity, velocity: &Vector3<f64>) -> bool {
+        let Some(owner_id) = self.owner_id else {
+            return true;
+        };
+        let world = entity.world.load();
+        let Some(owner) = world.get_entity_by_id(owner_id) else {
+            return true;
+        };
+        let box_to_check = entity
+            .bounding_box
+            .load()
+            .expand_towards(velocity.x, velocity.y, velocity.z)
+            .expand_all(1.0);
+        let owner_ent = owner.get_entity();
+        if box_to_check.intersects(&owner_ent.bounding_box.load()) {
+            return false;
+        }
+        if let Some(vehicle) = owner_ent.get_vehicle()
+            && box_to_check.intersects(&vehicle.get_entity().bounding_box.load())
+        {
+            return false;
+        }
+        true
+    }
+
+    /// Determines if collision with another entity should be skipped.
     fn should_skip_collision(&self, self_ent: &Entity, other: &Arc<dyn EntityBase>) -> bool {
         let other_ent = other.get_entity();
 
         // Don't collide with self
+        // If the trident has already dealt damage to an entity, it cannot hit entities again
+        if self.dealt_damage.load(Ordering::Relaxed) {
+            return true;
+        }
+
         if other_ent.entity_id == self_ent.entity_id {
             return true;
         }
 
-        // Skip owner for initial frames (5 ticks)
-        if Some(other_ent.entity_id) == self.owner_id && self_ent.age.load(Ordering::Relaxed) < 5 {
-            return true;
+        // Skip owner and fellow passengers until trident has left the owner's bounding box
+        if !self.has_left_owner.load(Ordering::Relaxed)
+            && let Some(owner_id) = self.owner_id
+        {
+            if other_ent.entity_id == owner_id {
+                return true;
+            }
+            if let Some(owner) = self_ent.world.load().get_entity_by_id(owner_id)
+                && super::is_passenger_of_same_vehicle(owner.get_entity(), other_ent)
+            {
+                return true;
+            }
         }
 
         // Spectators can't be hit
@@ -176,6 +224,7 @@ impl TridentEntity {
 
         // Skip other projectiles and item entities
         if other_ent.entity_type == &pumpkin_data::entity::EntityType::ARROW
+            || other_ent.entity_type == &pumpkin_data::entity::EntityType::SPECTRAL_ARROW
             || other_ent.entity_type == &pumpkin_data::entity::EntityType::TRIDENT
             || other_ent.entity_type == &pumpkin_data::entity::EntityType::ITEM
             || other_ent.entity_type == &pumpkin_data::entity::EntityType::FALLING_BLOCK
@@ -325,6 +374,11 @@ impl EntityBase for TridentEntity {
             velocity.y.atan2(len) as f32 * 57.295_776,
         );
 
+        if !self.has_left_owner.load(Ordering::Relaxed) && self.check_left_owner(entity, &velocity)
+        {
+            self.has_left_owner.store(true, Ordering::Relaxed);
+        }
+
         // Move trident
         let new_pos = start_pos.add(&velocity);
         entity.set_pos(new_pos);
@@ -382,7 +436,7 @@ impl EntityBase for TridentEntity {
         // Entity collisions, players included
         let candidates = world.get_all_at_box(&search_box);
         for cand in candidates {
-            if self.should_skip_collision(entity, &cand) {
+            if cand.is_spectator() || self.should_skip_collision(entity, &cand) {
                 continue;
             }
 
@@ -490,14 +544,13 @@ impl EntityBase for TridentEntity {
                 let owner = self
                     .owner_id
                     .and_then(|id| world.get_entity_by_id(id));
-                let attacker_ref: &dyn EntityBase = owner.as_deref().unwrap_or(self);
                 target.damage_with_context(
-                    attacker_ref,
+                    target.as_ref(),
                     damage_val,
                     DamageType::TRIDENT,
                     Some(hit_pos),
-                    Some(&self.entity),
-                    owner.as_deref(),
+                    Some(self),
+                    owner.as_deref().or(Some(self)),
                 );
 
                 // Trigger Throw Trident advancement if thrown by player
@@ -532,7 +585,6 @@ impl EntityBase for TridentEntity {
                         }
                     }
                 }
-
                 // Play hit sound
                 let sound_packet = CSoundEffect::new(
                     IdOr::Id(Sound::ItemTridentHit as u16),
@@ -545,6 +597,10 @@ impl EntityBase for TridentEntity {
                 let chunk_pos = entity.chunk_pos.load();
                 world.broadcast_to_chunk(chunk_pos, &sound_packet);
 
+                // Re-anchor trident at the exact hit point on the entity
+                // Mark that the trident has dealt damage to an entity, preventing repeated hits
+                self.dealt_damage.store(true, Ordering::Relaxed);
+                entity.set_pos(hit_pos);
                 // Standard bounce/fall-back behavior
                 entity.velocity.store(Vector3::new(0.0, -0.1, 0.0));
                 if self.loyalty == 0 {
