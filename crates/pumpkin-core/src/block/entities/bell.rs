@@ -87,7 +87,7 @@ impl BellBlockEntity {
                 if let Some(living) = entity_base.get_living_entity() {
                     living.add_effect(Effect {
                         effect_type: &StatusEffect::GLOWING,
-                        duration: 60,
+                        duration: 180,
                         amplifier: 0,
                         ambient: false,
                         show_particles: true,
