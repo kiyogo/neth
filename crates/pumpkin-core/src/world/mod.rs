@@ -5135,7 +5135,7 @@ impl World {
     /// It performs the following actions:
     ///
     /// 1. Removes the player from the `current_players` map using their UUID.
-    /// 2. Broadcasts a `CRemovePlayerInfo` packet to all connected players to inform them about the player leaving.
+    /// 2. On disconnect, broadcasts a `CRemovePlayerInfo` packet to players in all worlds.
     /// 3. Removes the player's entity from the world using its entity ID.
     /// 4. Optionally sends a disconnect message to all other players notifying them about the player leaving.
     ///

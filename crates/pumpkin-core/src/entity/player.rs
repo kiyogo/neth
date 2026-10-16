@@ -4608,6 +4608,11 @@ impl Player {
                 new_world.send_world_info(&player);
                 new_world.send_center_chunk(&player).await;
 
+                new_world
+                    .entity_tracker
+                    .add_entity(&(player.clone() as Arc<dyn EntityBase>), &new_world);
+                new_world.pair_new_player_with_tracked_entities(&player);
+
                 player.request_teleport(position, yaw, pitch);
 
                 let mut changed_world_event = crate::plugin::api::events::player::player_changed_world::PlayerChangedWorldEvent {
