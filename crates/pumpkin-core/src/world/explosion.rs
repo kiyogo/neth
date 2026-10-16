@@ -1,4 +1,5 @@
 use rand::RngExt;
+use rand::seq::SliceRandom;
 use std::sync::Arc;
 
 use pumpkin_data::{
@@ -6,6 +7,7 @@ use pumpkin_data::{
     damage::DamageType,
     entity::EntityType,
     fluid::Fluid,
+    item_stack::ItemStack,
     particle::Particle,
     sound::Sound,
     tag::{Tag, Taggable},
@@ -15,8 +17,8 @@ use pumpkin_world::chunk::ChunkData;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    block::{ExplodeArgs, drop_loot},
-    entity::{Entity, EntityBase},
+    block::{ExplodeArgs, collect_loot},
+    entity::{Entity, EntityBase, item::ItemEntity},
     net::ClientPlatform,
     world::loot::LootContextParameters,
 };
@@ -637,9 +639,12 @@ impl Explosion {
                     return 0;
                 }
 
-                let blocks = self.get_blocks_to_destroy(world);
+                let mut blocks: Vec<_> = self.get_blocks_to_destroy(world).into_iter().collect();
+                // TODO: vanilla shuffles with `level.random`; same odds, not seed-reproducible.
+                blocks.shuffle(&mut rand::rng());
                 let decay_drops = self.block_interaction == BlockInteraction::DestroyWithDecay;
                 let explosion_radius = decay_drops.then_some(self.power);
+                let mut drops: Vec<(BlockPos, ItemStack)> = Vec::new();
 
                 for (pos, (block, state)) in &blocks {
                     let pumpkin_block = world.block_registry.get_pumpkin_block(block.id);
@@ -660,7 +665,9 @@ impl Explosion {
                             is_thundering: Some(is_thundering),
                             ..Default::default()
                         };
-                        drop_loot(world, block, pos, false, &params);
+                        for stack in collect_loot(world, block, pos, &params) {
+                            add_or_append_stack(&mut drops, stack, *pos);
+                        }
                     }
 
                     world.set_block_state(pos, BlockStateId::AIR, BlockFlags::NOTIFY_ALL);
@@ -674,8 +681,11 @@ impl Explosion {
                         });
                     }
                 }
+                for (pos, stack) in drops {
+                    world.drop_stack(&pos, stack);
+                }
                 if self.create_fire {
-                    for pos in blocks.keys() {
+                    for (pos, _) in &blocks {
                         if rand::rng().random_range(0..3) == 0
                             && world.get_block_state(pos).is_air()
                             && world
@@ -696,10 +706,30 @@ impl Explosion {
     }
 }
 
+/// Vanilla `ServerExplosion.addOrAppendStack`: explosion drops merge into piles of up to 16
+/// before they spawn, each pile at the first block that dropped it.
+fn add_or_append_stack(
+    drops: &mut Vec<(BlockPos, ItemStack)>,
+    mut stack: ItemStack,
+    pos: BlockPos,
+) {
+    for (_, pile) in drops.iter_mut() {
+        if ItemEntity::are_mergeable(pile, &stack) {
+            ItemEntity::merge(pile, &mut stack, 16);
+        }
+        if stack.is_empty() {
+            return;
+        }
+    }
+    drops.push((pos, stack));
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Explosion, World};
+    use super::{Explosion, World, add_or_append_stack};
     use pumpkin_data::Block;
+    use pumpkin_data::item::Item;
+    use pumpkin_data::item_stack::ItemStack;
     use pumpkin_util::math::{position::BlockPos, vector3::Vector3};
 
     #[test]
@@ -770,5 +800,73 @@ mod tests {
             assert!(Explosion::is_rail(rail));
         }
         assert!(!Explosion::is_rail(&Block::STONE));
+    }
+
+    #[test]
+    fn explosion_drops_merge_into_piles_of_16() {
+        let mut drops = Vec::new();
+        for x in 0..20 {
+            add_or_append_stack(
+                &mut drops,
+                ItemStack::new(1, &Item::COBBLESTONE),
+                BlockPos::new(x, 0, 0),
+            );
+        }
+        add_or_append_stack(
+            &mut drops,
+            ItemStack::new(1, &Item::DIRT),
+            BlockPos::new(0, 1, 0),
+        );
+
+        let counts: Vec<_> = drops
+            .iter()
+            .map(|(pos, stack)| (pos.0.x, stack.item.id, stack.item_count))
+            .collect();
+        assert_eq!(
+            counts,
+            [
+                (0, Item::COBBLESTONE.id, 16),
+                (16, Item::COBBLESTONE.id, 4),
+                (0, Item::DIRT.id, 1),
+            ]
+        );
+    }
+
+    /// a multi-item stack tops up a pile to 16 and the
+    /// rest becomes one pile of any size.
+    #[test]
+    fn multi_item_drop_tops_up_then_stays_one_pile() {
+        let mut drops = vec![(
+            BlockPos::new(0, 0, 0),
+            ItemStack::new(10, &Item::COBBLESTONE),
+        )];
+
+        add_or_append_stack(
+            &mut drops,
+            ItemStack::new(32, &Item::COBBLESTONE),
+            BlockPos::new(1, 0, 0),
+        );
+
+        let counts: Vec<_> = drops.iter().map(|(_, stack)| stack.item_count).collect();
+        assert_eq!(counts, [16, 26]);
+    }
+
+    /// Vanilla `areMergable` checks the whole incoming count: 10 + 60 > 64, so the pile is
+    /// skipped although it still has room for 6.
+    #[test]
+    fn pile_with_room_is_skipped_when_both_exceed_the_max_stack() {
+        let mut drops = vec![(
+            BlockPos::new(0, 0, 0),
+            ItemStack::new(10, &Item::COBBLESTONE),
+        )];
+
+        add_or_append_stack(
+            &mut drops,
+            ItemStack::new(60, &Item::COBBLESTONE),
+            BlockPos::new(1, 0, 0),
+        );
+
+        let counts: Vec<_> = drops.iter().map(|(_, stack)| stack.item_count).collect();
+        assert_eq!(counts, [10, 60]);
     }
 }
