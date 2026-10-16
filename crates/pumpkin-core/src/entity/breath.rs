@@ -50,6 +50,10 @@ impl BreathManager {
 
     /// One tick of air change and suffocation damage.
     pub fn tick(&self, living: &LivingEntity, caller: &dyn EntityBase) {
+        if living.health.load() <= 0.0 {
+            return;
+        }
+
         let entity = &living.entity;
         let mob = caller.get_mob();
         let max_air = Self::max_air_supply(caller);
