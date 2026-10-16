@@ -27,7 +27,7 @@ use pumpkin_protocol::{
 };
 use pumpkin_util::{Hand, text::TextComponent, version::JavaMinecraftVersion};
 use tokio::{
-    io::{BufReader, BufWriter},
+    io::BufReader,
     net::{
         TcpStream,
         tcp::{OwnedReadHalf, OwnedWriteHalf},
@@ -68,7 +68,7 @@ pub struct PendingConnection {
     pub version: AtomicCell<JavaMinecraftVersion>,
     pub connection_state: AtomicCell<ConnectionState>,
     pub close_token: CancellationToken,
-    pub network_writer: TCPNetworkEncoder<BufWriter<OwnedWriteHalf>>,
+    pub network_writer: TCPNetworkEncoder<OwnedWriteHalf>,
     pub network_reader: TCPNetworkDecoder<BufReader<OwnedReadHalf>>,
     pub gameprofile: Option<GameProfile>,
     pub config: Option<PlayerConfig>,
@@ -104,7 +104,7 @@ impl PendingConnection {
             version: AtomicCell::new(CURRENT_MC_VERSION),
             connection_state: AtomicCell::new(ConnectionState::HandShake),
             close_token: CancellationToken::new(),
-            network_writer: TCPNetworkEncoder::new(BufWriter::new(write)),
+            network_writer: TCPNetworkEncoder::new_buffered(write),
             network_reader: TCPNetworkDecoder::new(BufReader::new(read)),
             gameprofile: None,
             config: None,
@@ -134,6 +134,8 @@ impl PendingConnection {
         let crypt_key: [u8; 16] = shared_secret
             .try_into()
             .map_err(|_| EncryptionError::SharedWrongLength)?;
+        // Validate and switch the writer first: it may reject a transition while
+        // unencrypted bytes are still buffered. The reader must remain untouched.
         self.network_writer
             .set_encryption(&crypt_key)
             .map_err(|error| match error {

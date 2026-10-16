@@ -497,6 +497,8 @@ mod tests {
             .write_packet(packet_buf.into())
             .await
             .map_err(|e| e.to_string())?;
+        // Ciphertext and unencrypted bytes may both be buffered until flush.
+        encoder.flush().await.map_err(|e| e.to_string())?;
 
         Ok(buf.into_boxed_slice())
     }
