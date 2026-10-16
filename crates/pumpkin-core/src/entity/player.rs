@@ -260,6 +260,7 @@ use pumpkin_macros::send_cancellable;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_nbt::tag::NbtTag;
 use pumpkin_protocol::IdOr;
+use pumpkin_protocol::PositionFlag;
 use pumpkin_protocol::SoundEvent;
 use pumpkin_protocol::bedrock::client::container_open::CContainerOpen;
 use pumpkin_protocol::bedrock::server::actor_event::{ActorEventID, SActorEvent};
@@ -4553,8 +4554,6 @@ impl Player {
     /// the taller dirt block under a player), where an absolute teleport would
     /// reset the client's momentum and cause a visible rubber-band.
     pub fn request_relative_teleport(&self, delta: Vector3<f64>) {
-        use pumpkin_protocol::PositionFlag;
-
         let entity = &self.living_entity.entity;
         let position = entity.pos.load() + delta;
         entity.set_pos(position);
