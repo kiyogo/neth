@@ -956,7 +956,7 @@ impl SkyLightPropagator {
                             from_rel_y,
                             fill_end,
                         );
-                        let map = c.flat_block_map.as_slice();
+                        let sections = c.sections.as_ref();
                         descend_sky_column(
                             &mut c.light.sky_light,
                             local_x,
@@ -964,12 +964,12 @@ impl SkyLightPropagator {
                             bottom_y,
                             descend_top,
                             |y| {
-                                ProtoChunk::block_in(
-                                    map,
-                                    local_x as i32,
-                                    y - bottom_y,
-                                    local_z as i32,
-                                )
+                                let local_y = (y - bottom_y) as usize;
+                                sections
+                                    .get(local_y >> 4)
+                                    .map_or(pumpkin_data::BlockStateId::AIR, |s| {
+                                        s.get(local_x, local_y & 15, local_z)
+                                    })
                             },
                         );
                     }
@@ -1049,6 +1049,9 @@ impl LightEngine {
         // After carvers/features. Empty(0) already covers below-cut.
         let center = cache.get_center_chunk_mut();
         center.sky_light_height = crate::lighting::SkyLightHeight::compute_from_proto(center).raw();
+        // Converting wrote 15 column by column into every section above the surface, which
+        // left them as full arrays of one value.
+        center.light.compact();
     }
 
     /// Whether this state's occlusion shape is empty. Vanilla `LightEngine.isEmptyShape`.

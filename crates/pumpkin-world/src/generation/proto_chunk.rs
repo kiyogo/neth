@@ -146,7 +146,8 @@ pub struct ProtoChunk {
     pub z: i32,
     pub default_block: &'static BlockState,
     biome_mixer_seed: i64,
-    pub(crate) flat_block_map: Vec<BlockStateId>,
+    /// One paletted section per 16 blocks of height, like vanilla's `LevelChunkSection[]`.
+    pub(crate) sections: Box<[BlockPalette]>,
     /// Sections holding a light emitting block. Set as blocks are written and never cleared, so
     /// it can name a section that no longer emits, but never miss one that does.
     pub(crate) emitter_sections: SectionMask,
@@ -260,7 +261,9 @@ impl ProtoChunk {
             z,
             default_block,
             biome_mixer_seed,
-            flat_block_map: Vec::new(),
+            sections: (0..section_count)
+                .map(|_| BlockPalette::Homogeneous(BlockStateId::AIR))
+                .collect(),
             emitter_sections: SectionMask::default(),
             flat_biome_map: vec![
                 Biome::PLAINS.id;
@@ -646,10 +649,10 @@ impl ProtoChunk {
                 self.flat_motion_blocking_no_leaves_height_map[index] = default_y;
 
                 for y in (bottom_y..=top_y).rev() {
-                    let block_index = Self::local_pos_to_block_index(lx, y - bottom_y, lz);
-                    let Some(&state_id) = self.flat_block_map.get(block_index) else {
+                    let state_id = self.get_block_state_raw(lx, y - bottom_y, lz);
+                    if state_id == BlockStateId::AIR {
                         continue;
-                    };
+                    }
                     let state = state_id.to_state();
                     if !state.is_air() {
                         if !surface_found {
@@ -739,14 +742,6 @@ impl ProtoChunk {
     }
 
     #[inline]
-    const fn local_pos_to_block_index(x: i32, y: i32, z: i32) -> usize {
-        ((y as usize) >> 4) * BlockPalette::VOLUME
-            + (x as usize) * CHUNK_AREA
-            + ((y as usize) & 15) * CHUNK_DIM as usize
-            + z as usize
-    }
-
-    #[inline]
     #[must_use]
     pub const fn local_biome_pos_to_biome_index(&self, x: i32, y: i32, z: i32) -> usize {
         let biome_height = self.height() as usize >> 2;
@@ -765,16 +760,16 @@ impl ProtoChunk {
     #[must_use]
     pub fn get_block_state_raw(&self, x: i32, y: i32, z: i32) -> BlockStateId {
         debug_assert!((0..i32::from(self.height())).contains(&y));
-        Self::block_in(&self.flat_block_map, x, y, z)
+        self.sections
+            .get(y as usize >> 4)
+            .map_or(BlockStateId::AIR, |section| {
+                section.get(x as usize, y as usize & 15, z as usize)
+            })
     }
 
-    /// Reads a detached `flat_block_map`, so callers can hold other fields mutably meanwhile.
-    #[inline]
-    #[must_use]
-    pub(crate) fn block_in(map: &[BlockStateId], x: i32, y: i32, z: i32) -> BlockStateId {
-        map.get(Self::local_pos_to_block_index(x, y, z))
-            .copied()
-            .unwrap_or(BlockStateId::AIR)
+    /// Moves the block sections out, leaving empty ones behind.
+    pub(crate) fn take_sections(&mut self) -> Box<[BlockPalette]> {
+        std::mem::take(&mut self.sections)
     }
 
     #[inline]
@@ -833,17 +828,12 @@ impl ProtoChunk {
             }
         }
 
-        let index = Self::local_pos_to_block_index(local_x, local_y, local_z);
-        if index >= self.flat_block_map.len() {
-            if block_state.id == BlockStateId::AIR {
-                return;
-            }
-            let section_end = ((local_y as usize >> 4) + 1) * BlockPalette::VOLUME;
-            self.flat_block_map
-                .reserve_exact(section_end - self.flat_block_map.len());
-            self.flat_block_map.resize(section_end, BlockStateId::AIR);
-        }
-        self.flat_block_map[index] = block_state.id;
+        self.sections[local_y as usize >> 4].set(
+            local_x as usize,
+            local_y as usize & 15,
+            local_z as usize,
+            block_state.id,
+        );
     }
 
     #[inline]
@@ -2168,7 +2158,7 @@ mod direct_block_write_tests {
                         );
                     }
                 }
-                assert_eq!(normal.flat_block_map, direct.flat_block_map);
+                assert_eq!(normal.sections, direct.sections);
                 assert_eq!(
                     normal.flat_surface_height_map,
                     direct.flat_surface_height_map
