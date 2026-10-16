@@ -20,7 +20,7 @@ use uuid::Uuid;
 pub(crate) const DEFAULT_RANDOM_INTERVAL: i32 = 10;
 
 /// Extra gate on top of the target predicate, for mobs that pick targets conditionally.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub enum TargetCondition {
     #[default]
     Always,
@@ -32,6 +32,8 @@ pub enum TargetCondition {
     Adult,
     /// Only when the animal is NOT tamed. (Wild wolves hunting sheep/rabbits, wild cats hunting rabbits)
     NonTamed,
+    /// Only candidates at most this many blocks above or below the mob. Slimes.
+    MaxHeightDifference(f64),
 }
 
 impl TargetCondition {
@@ -45,7 +47,7 @@ impl TargetCondition {
             }),
             Self::Adult => !mob.as_ageable().is_some_and(AgeableMob::is_baby),
             Self::NonTamed => mob.as_tamable().is_none_or(|tamable| !tamable.is_tame()),
-            Self::Always => true,
+            Self::Always | Self::MaxHeightDifference(_) => true,
         }
     }
 
@@ -56,7 +58,7 @@ impl TargetCondition {
             Self::AngryAt => mob
                 .as_neutral()
                 .and_then(NeutralMob::get_persistent_anger_target),
-            Self::Always | Self::NoDaylight | Self::Adult | Self::NonTamed => None,
+            Self::Always | Self::NoDaylight | Self::Adult | Self::NonTamed | Self::MaxHeightDifference(_) => None,
         }
     }
 
@@ -68,6 +70,9 @@ impl TargetCondition {
                 .as_neutral()
                 .is_some_and(|neutral| neutral.is_angry_at(target, world)),
             Self::NonTamed => mob.as_tamable().is_none_or(|tamable| !tamable.is_tame()),
+            Self::MaxHeightDifference(max) => {
+                (target.get_entity().pos.load().y - mob.get_entity().pos.load().y).abs() <= max
+            }
             Self::Always | Self::NoDaylight | Self::Adult => true,
         }
     }
