@@ -1,5 +1,6 @@
-use pumpkin_data::BlockStateId;
+use pumpkin_data::fluid::Fluid;
 use pumpkin_data::tag::{self, Taggable};
+use pumpkin_data::{BlockId, BlockStateId};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
@@ -42,13 +43,25 @@ impl BlockBehaviour for LilyPadBlock {
 impl PlantBlockBase for LilyPadBlock {
     fn can_plant_on_top(&self, block_accessor: &dyn BlockAccessor, pos: &BlockPos) -> bool {
         let (block, state) = block_accessor.get_block_and_state(pos);
-        let has_fluid = pumpkin_data::fluid::Fluid::from_state_id(state.id)
-            .is_some_and(|f| f.has_tag(&tag::Fluid::MINECRAFT_SUPPORTS_LILY_PAD))
-            || state.is_waterlogged();
+        let supports_water = state.is_waterlogged()
+            || Fluid::from_state_id(state.id)
+                .is_some_and(|fluid| fluid.has_tag(&tag::Fluid::MINECRAFT_SUPPORTS_LILY_PAD));
         let above_state = block_accessor.get_block_state(&pos.up());
-        let above_fluid_empty = pumpkin_data::fluid::Fluid::from_state_id(above_state.id).is_none()
-            && !above_state.is_waterlogged();
-        (has_fluid || block.has_tag(&tag::Block::MINECRAFT_SUPPORTS_LILY_PAD))
+        let above_fluid_empty = Fluid::from_state_id(above_state.id).map_or_else(
+            || {
+                !above_state.is_waterlogged()
+                    && !matches!(
+                        above_state.id.to_block_id(),
+                        BlockId::KELP
+                            | BlockId::KELP_PLANT
+                            | BlockId::SEAGRASS
+                            | BlockId::TALL_SEAGRASS
+                            | BlockId::BUBBLE_COLUMN
+                    )
+            },
+            |fluid| fluid.id == Fluid::EMPTY.id,
+        );
+        (supports_water || block.has_tag(&tag::Block::MINECRAFT_SUPPORTS_LILY_PAD))
             && above_fluid_empty
     }
 }
