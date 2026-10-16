@@ -138,6 +138,10 @@ impl Mob for SnowGolemEntity {
         Some(self)
     }
 
+    fn is_sensitive_to_water(&self) -> bool {
+        true
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {

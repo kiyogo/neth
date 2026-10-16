@@ -122,6 +122,10 @@ impl Mob for BlazeEntity {
         Some(self)
     }
 
+    fn is_sensitive_to_water(&self) -> bool {
+        true
+    }
+
     fn mob_tick(&self, caller: &dyn EntityBase) {
         let base_entity = &self.entity.living_entity.entity;
         if !base_entity.is_alive() {
