@@ -600,6 +600,8 @@ fn is_spawn_rules_ok_cache(
     }
 }
 
+/// Spawns the initial passive creatures for a newly generated chunk, like vanilla
+/// `NaturalSpawner::spawnMobsForChunkGeneration`.
 pub fn spawn_mobs_for_chunk_generation(
     world: &Arc<World>,
     cache: &mut dyn GenerationCache,
@@ -1065,6 +1067,15 @@ pub fn get_random_spawn_mob_at(
         };
         choose_spawner(spawners, &mut rng())
     }
+}
+
+/// Picks a spawner in proportion to its weight, like vanilla `WeightedList::getRandom`.
+/// Returns `None` for an empty list or when every weight is zero.
+fn choose_spawner<'a, R: rand::Rng + ?Sized>(
+    spawners: &'a [Spawner],
+    rng: &mut R,
+) -> Option<&'a Spawner> {
+    spawners.choose_weighted(rng, |s| s.weight).ok()
 }
 
 #[must_use]
