@@ -103,6 +103,7 @@ impl BlockBehaviour for TripwireBlock {
                 props.to_state_id(args.block),
                 BlockFlags::empty(),
             );
+
             args.player.damage_held_item(1);
         }
     }
