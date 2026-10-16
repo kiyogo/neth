@@ -35,6 +35,7 @@ pub fn is_projectile(entity_type: &EntityType) -> bool {
     *entity_type == EntityType::ARROW
         || *entity_type == EntityType::TRIDENT
         || *entity_type == EntityType::EGG
+        || *entity_type == EntityType::EXPERIENCE_BOTTLE
         || *entity_type == EntityType::SNOWBALL
         || *entity_type == EntityType::FIREWORK_ROCKET
         || *entity_type == EntityType::WIND_CHARGE

@@ -1,101 +1,109 @@
+use std::sync::RwLock;
 use std::sync::atomic::AtomicBool;
 
-use crate::{
-    entity::{
-        Entity, EntityBase, experience_orb::ExperienceOrbEntity, projectile::ThrownItemEntity,
-    },
-    server::Server,
-};
-use pumpkin_protocol::java::client::play::CWorldEvent;
-use pumpkin_util::math::{
-    position::BlockPos,
-    vector2::{Vector2, to_chunk_pos},
-    vector3::Vector3,
-};
+use pumpkin_data::item::Item;
+use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::world::WorldEvent;
+use pumpkin_protocol::codec::item_stack_seralizer::ItemStackSerializer;
+use pumpkin_util::math::vector3::Vector3;
+use rand::RngExt;
+
+use crate::entity::experience_orb::ExperienceOrbEntity;
+use crate::entity::projectile::{ProjectileHit, ThrownItemEntity};
+use crate::entity::{Entity, EntityBase};
+use crate::server::Server;
 
 const GRAVITY: f64 = 0.07;
-const POTION_SPLASH_EVENT: i32 = 2002;
-const POTION_SPLASH_SOUND_EVENT: i32 = 1053;
-const EXP_BOTTLE_POTION_COLOR: i32 = -13_083_194;
+const SPLASH_COLOR: i32 = -13_083_194;
 
 pub struct ExperienceBottleEntity {
     pub thrown: ThrownItemEntity,
+    item_stack: RwLock<ItemStack>,
 }
 
 impl ExperienceBottleEntity {
-    #[must_use]
     pub fn new(entity: Entity) -> Self {
         entity.set_velocity(Vector3::new(0.0, 0.1, 0.0));
-        let thrown = ThrownItemEntity {
-            entity,
-            owner_id: None,
-            collides_with_projectiles: false,
-            has_hit: AtomicBool::new(false),
-            gravity: GRAVITY,
-        };
-
-        Self { thrown }
+        Self {
+            thrown: ThrownItemEntity {
+                entity,
+                owner_id: None,
+                collides_with_projectiles: false,
+                has_hit: AtomicBool::new(false),
+                gravity: GRAVITY,
+            },
+            item_stack: RwLock::new(ItemStack::new(1, &Item::EXPERIENCE_BOTTLE)),
+        }
     }
 
-    #[must_use]
     pub fn new_shot(entity: Entity, shooter: &Entity) -> Self {
         let thrown = ThrownItemEntity::new(entity, shooter, GRAVITY);
         thrown.entity.set_velocity(Vector3::new(0.0, 0.1, 0.0));
-        Self { thrown }
+        Self {
+            thrown,
+            item_stack: RwLock::new(ItemStack::new(1, &Item::EXPERIENCE_BOTTLE)),
+        }
+    }
+
+    pub fn set_item_stack(&self, stack: ItemStack) {
+        *self
+            .item_stack
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = stack;
     }
 }
 
 impl EntityBase for ExperienceBottleEntity {
-    fn get_owner_id(&self) -> Option<i32> {
-        self.thrown.owner_id
-    }
-
-    fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
-        self.thrown.process_tick(caller);
-    }
-
     fn get_entity(&self) -> &Entity {
-        self.thrown.get_entity()
+        &self.thrown.entity
     }
 
     fn get_living_entity(&self) -> Option<&crate::entity::living::LivingEntity> {
         None
     }
 
-    fn cast_any(&self) -> &dyn std::any::Any {
-        self
+    fn get_owner_id(&self) -> Option<i32> {
+        self.thrown.owner_id
     }
 
-    fn on_hit(&self, hit: crate::entity::projectile::ProjectileHit) {
-        let world = self.get_entity().world.load();
-        let hit_pos = hit.hit_pos();
-
-        let block_pos = BlockPos(Vector3::new(
-            hit_pos.x.floor() as i32,
-            hit_pos.y.floor() as i32,
-            hit_pos.z.floor() as i32,
-        ));
-        let chunk_pos = to_chunk_pos(&Vector2::new(block_pos.0.x, block_pos.0.z));
-
-        // Vanilla ThrownExperienceBottle.java: levelEvent 2002 with color -13083194
-        world.broadcast_to_chunk(
-            chunk_pos,
-            &CWorldEvent::new(POTION_SPLASH_EVENT, block_pos, EXP_BOTTLE_POTION_COLOR, false),
+    fn init_data_tracker(&self) {
+        let stack = self
+            .item_stack
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::experience_bottle::ITEM_STACK,
+            ItemStackSerializer::from(stack.clone()),
         );
+    }
 
-        // Vanilla: levelEvent 1053 (potion splash sound) if not silent
-        if !self.get_entity().is_silent() {
-            world.broadcast_to_chunk(
-                chunk_pos,
-                &CWorldEvent::new(POTION_SPLASH_SOUND_EVENT, block_pos, 0, false),
-            );
+    fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
+        self.thrown.process_tick(caller);
+    }
+
+    fn on_hit(&self, hit: ProjectileHit) {
+        let entity = self.get_entity();
+        entity.set_pos(hit.hit_pos());
+        let world = entity.world.load();
+        let position = entity.block_pos.load();
+        world.sync_world_event(
+            WorldEvent::ParticlesSpellPotionSplash,
+            position,
+            SPLASH_COLOR,
+        );
+        if !entity.is_silent() {
+            world.sync_world_event(WorldEvent::SoundSpellPotionSplash, position, 0);
         }
+        let mut random = rand::rng();
+        let amount = 3 + random.random_range(0..5) + random.random_range(0..5);
+        let direction = match &hit {
+            ProjectileHit::Block { face, .. } => face.to_offset().to_f64(),
+            ProjectileHit::Entity { .. } => entity.velocity.load().multiply(-1.0, -1.0, -1.0),
+        };
+        ExperienceOrbEntity::spawn_with_direction(&world, hit.hit_pos(), direction, amount);
+    }
 
-        // Vanilla ThrownExperienceBottle.java: 3 + random.nextInt(5) + random.nextInt(5)
-        let r1 = rand::random::<u32>() % 5;
-        let r2 = rand::random::<u32>() % 5;
-        let xp_amount = 3 + r1 + r2;
-
-        ExperienceOrbEntity::spawn(&world, hit_pos, xp_amount);
+    fn cast_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

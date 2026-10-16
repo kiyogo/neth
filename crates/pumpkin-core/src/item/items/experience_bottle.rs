@@ -1,9 +1,10 @@
+use rand::RngExt;
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::entity::{Entity, EntityBase};
 use crate::entity::player::Player;
 use crate::entity::projectile::experience_bottle::ExperienceBottleEntity;
+use crate::entity::{Entity, EntityBase};
 use crate::item::{ItemBehaviour, ItemMetadata};
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -20,45 +21,32 @@ impl ItemMetadata for ExperienceBottleItem {
 
 impl ItemBehaviour for ExperienceBottleItem {
     fn normal_use(&self, _item: &Item, player: &Player) {
-        let position = player.position();
+        let pos = player.position();
         let world = player.world();
-
-        let rand_val = rand::random::<f32>() * 0.4 + 0.8;
-        let pitch = 0.4 / rand_val;
         world.play_sound_fine(
             Sound::EntityExperienceBottleThrow,
-            SoundCategory::Players,
-            &position,
+            SoundCategory::Neutral,
+            &pos,
             0.5,
-            pitch,
+            0.4 / (rand::rng().random::<f32>() * 0.4 + 0.8),
         );
 
-        let entity = Entity::new(world.clone(), position, &EntityType::EXPERIENCE_BOTTLE);
+        let inventory = player.inventory();
+        let mut held = inventory.held_item();
+        let hand = if !held.is_empty() && held.item == &Item::EXPERIENCE_BOTTLE {
+            pumpkin_util::Hand::Right
+        } else {
+            held = inventory.off_hand_item();
+            pumpkin_util::Hand::Left
+        };
+        let entity = Entity::new(world.clone(), pos, &EntityType::EXPERIENCE_BOTTLE);
         let bottle = ExperienceBottleEntity::new_shot(entity, player.get_entity());
-
-        let (yaw, player_pitch) = player.rotation();
-        // Vanilla: spawnProjectileFromRotation(..., roll: -20.0F, speed: 0.7F, uncertainty: 1.0F)
-        bottle
-            .thrown
-            .set_velocity_from(player_pitch, yaw, -20.0, 0.7, 1.0);
+        bottle.set_item_stack(held.split_unless_creative(player.gamemode.load(), 1));
+        let (yaw, pitch) = player.rotation();
+        bottle.thrown.set_velocity_from(pitch, yaw, -20.0, 0.7, 1.0);
         world.spawn_entity(Arc::new(bottle));
 
-        let mut main_hand = player.inventory.held_item();
-        let consumed = if !main_hand.is_empty() && Self::ids().contains(&main_hand.item.id) {
-            main_hand.decrement_unless_creative(player.gamemode.load(), 1);
-            player.inventory.set_held_item(main_hand);
-            true
-        } else {
-            false
-        };
-
-        if !consumed {
-            let mut off_hand = player.inventory.off_hand_item();
-            if !off_hand.is_empty() && Self::ids().contains(&off_hand.item.id) {
-                off_hand.decrement_unless_creative(player.gamemode.load(), 1);
-                player.inventory.set_stack_in_hand(Hand::Left, off_hand);
-            }
-        }
+        inventory.set_stack_in_hand(hand, held);
     }
 
     fn as_any(&self) -> &dyn Any {

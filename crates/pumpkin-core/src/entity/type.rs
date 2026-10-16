@@ -328,6 +328,9 @@ pub fn from_type(
         id if id == EntityType::INTERACTION.id => InteractionEntity::new(entity),
         id if id == EntityType::FIREWORK_ROCKET.id => Arc::new(FireworkRocketEntity::new(entity)),
         id if id == EntityType::SPLASH_POTION.id => Arc::new(SplashPotionEntity::new(entity)),
+        id if id == EntityType::EXPERIENCE_BOTTLE.id => {
+            Arc::new(ExperienceBottleEntity::new(entity))
+        }
         id if id == EntityType::LINGERING_POTION.id => Arc::new(LingeringPotionEntity::new(entity)),
         id if id == EntityType::EXPERIENCE_BOTTLE.id => {
             Arc::new(ExperienceBottleEntity::new(entity))
