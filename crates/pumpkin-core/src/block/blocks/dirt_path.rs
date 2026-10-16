@@ -2,9 +2,8 @@ use crate::block::{
     BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, PathComputationType,
 };
-use pumpkin_data::tag;
 use pumpkin_data::tag::Taggable;
-use pumpkin_data::{Block, BlockDirection, BlockState, BlockStateId};
+use pumpkin_data::{Block, BlockDirection, BlockState, BlockStateId, tag};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
@@ -54,6 +53,7 @@ impl BlockBehaviour for DirtPathBlock {
     }
 }
 
+/// Vanilla `DirtPathBlock.canSurvive`: determines if dirt path can remain without reverting to dirt.
 fn can_place_at(world: &dyn BlockAccessor, block_pos: &BlockPos) -> bool {
     let (block, state) = world.get_block_and_state(&block_pos.up());
     !state.is_solid() || block.has_tag(&tag::Block::MINECRAFT_FENCE_GATES)
