@@ -12,6 +12,7 @@ use crate::entity::experience_orb::ExperienceOrbEntity;
 use crate::entity::player::Player;
 use crate::world::World;
 use crate::world::loot::LootContextParameters;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 pub mod blocks;
@@ -487,10 +488,28 @@ pub struct BlockEvent {
     pub data: u8,
 }
 
+/// Returns the block name whose loot table should be used.
+/// Wall variants (e.g. wall torches, wall signs, wall banners, wall heads, wall fans)
+/// share the loot table of their non-wall counterpart but do not have their own loot table file.
+#[must_use]
+pub fn loot_table_name(block: &Block) -> Cow<'_, str> {
+    if let Some(rest) = block.name.strip_prefix("wall_") {
+        Cow::Borrowed(rest)
+    } else if block.name.contains("_wall_") {
+        Cow::Owned(block.name.replacen("_wall_", "_", 1))
+    } else {
+        Cow::Borrowed(block.name)
+    }
+}
+
 /// The items a block drops: its loot table, or what the registration of a custom block says.
 fn block_loot(world: &Arc<World>, block: &Block, params: &LootContextParameters) -> Vec<ItemStack> {
     let Some(info) = block.dynamic_info() else {
-        return loot_table_items(world, &format!("minecraft:blocks/{}", block.name), params);
+        return loot_table_items(
+            world,
+            &format!("minecraft:blocks/{}", loot_table_name(block)),
+            params,
+        );
     };
     match &info.registration.drops {
         BlockDrops::Nothing => Vec::new(),
@@ -651,4 +670,28 @@ pub fn calculate_comparator_output(inventory: &dyn pumpkin_inventory::Inventory)
     let percentage = fill_sum / (size as f32);
     let output = 1.0 + percentage * 14.0;
     output.floor() as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_loot_table_name_wall_variants() {
+        assert_eq!(loot_table_name(&Block::WALL_TORCH), "torch");
+        assert_eq!(loot_table_name(&Block::SOUL_WALL_TORCH), "soul_torch");
+        assert_eq!(loot_table_name(&Block::REDSTONE_WALL_TORCH), "redstone_torch");
+        assert_eq!(loot_table_name(&Block::COPPER_WALL_TORCH), "copper_torch");
+
+        assert_eq!(loot_table_name(&Block::OAK_WALL_SIGN), "oak_sign");
+        assert_eq!(loot_table_name(&Block::OAK_WALL_HANGING_SIGN), "oak_hanging_sign");
+        assert_eq!(loot_table_name(&Block::WHITE_WALL_BANNER), "white_banner");
+        assert_eq!(loot_table_name(&Block::ZOMBIE_WALL_HEAD), "zombie_head");
+        assert_eq!(loot_table_name(&Block::SKELETON_WALL_SKULL), "skeleton_skull");
+        assert_eq!(loot_table_name(&Block::TUBE_CORAL_WALL_FAN), "tube_coral_fan");
+
+        // Non-wall-variants with "wall" in their name must remain unchanged
+        assert_eq!(loot_table_name(&Block::COBBLESTONE_WALL), "cobblestone_wall");
+        assert_eq!(loot_table_name(&Block::STONE), "stone");
+    }
 }
