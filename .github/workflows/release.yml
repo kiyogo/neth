@@ -109,7 +109,7 @@ jobs:
           echo "Determined release tag: ${TAG}"
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist/
           merge-multiple: true
