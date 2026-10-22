@@ -1,0 +1,3 @@
+# GitHub Linguist language overrides
+# Prevent GitHub from misclassifying .rs files with large lookup tables as RenderScript
+*.rs linguist-language=Rust
