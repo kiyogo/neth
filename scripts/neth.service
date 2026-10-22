@@ -1,0 +1,26 @@
+[Unit]
+Description=Neth Minecraft Server Engine (Rust)
+Documentation=https://kiyomc.com
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=neth
+Group=neth
+WorkingDirectory=/opt/neth
+ExecStart=/usr/local/bin/neth
+Restart=on-failure
+RestartSec=5s
+
+# Security Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+# Resource Limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

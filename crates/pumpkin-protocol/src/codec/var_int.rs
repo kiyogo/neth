@@ -112,18 +112,20 @@ impl VarInt {
         &self,
         write: &mut (impl AsyncWrite + Unpin),
     ) -> Result<(), WritingError> {
-        let mut val = self.0;
-        for _ in 0..Self::MAX_SIZE.get() {
-            let b: u8 = val as u8 & 0b0111_1111;
-            val >>= 7;
+        let mut val = self.0 as u32;
+
+        while val > 0x7F {
             write
-                .write_u8(if val == 0 { b } else { b | 0b1000_0000 })
+                .write_u8((val as u8) | 0x80)
                 .await
                 .map_err(WritingError::IoError)?;
-            if val == 0 {
-                break;
-            }
+            val >>= 7;
         }
+
+        write
+            .write_u8(val as u8)
+            .await
+            .map_err(WritingError::IoError)?;
         Ok(())
     }
 }
@@ -260,6 +262,20 @@ mod tests {
                 .await
                 .is_err()
         );
+    }
+
+    #[tokio::test]
+    async fn encode_async_roundtrip_negative_numbers() {
+        for val in [-1, -2, -128, i32::MIN, 0, 1, 127, i32::MAX] {
+            let mut buf = Vec::new();
+            VarInt(val).encode_async(&mut buf).await.unwrap();
+            let mut sync_buf = Vec::new();
+            VarInt(val).encode(&mut sync_buf).unwrap();
+            assert_eq!(buf, sync_buf, "mismatch for value {val}");
+            let decoded = VarInt::decode_async(&mut buf.as_slice()).await.unwrap();
+            assert_eq!(decoded, VarInt(val));
+        }
+    }
 }
 
 #[cfg(test)]

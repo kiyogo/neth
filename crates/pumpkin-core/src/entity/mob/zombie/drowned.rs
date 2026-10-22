@@ -292,6 +292,14 @@ impl RangedAttackMob for DrownedEntity {
 }
 
 impl Mob for DrownedEntity {
+    fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.entity.mob_entity
     }
@@ -407,6 +415,11 @@ struct DrownedMoveControl {
     inner: MoveControl,
     /// Vanilla `Mob.speed`, which the swim stroke eases towards the navigator's speed.
     speed: f64,
+    wanted_x: f64,
+    wanted_y: f64,
+    wanted_z: f64,
+    speed_modifier: f64,
+    has_wanted: bool,
 }
 
 impl DrownedMoveControl {
@@ -415,6 +428,11 @@ impl DrownedMoveControl {
             drowned,
             inner: MoveControl::default(),
             speed: 0.0,
+            wanted_x: 0.0,
+            wanted_y: 0.0,
+            wanted_z: 0.0,
+            speed_modifier: 1.0,
+            has_wanted: false,
         }
     }
 }
@@ -450,14 +468,16 @@ impl MoveControlTrait for DrownedMoveControl {
             velocity.y += 0.002;
         }
 
-        // Pumpkin's navigator steers by itself, so take the spot vanilla's `followThePath` would
-        // have handed to `setWantedPosition`.
-        let wanted = mob_entity
-            .navigator
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get_path()
-            .and_then(|path| path.get_next_entity_pos(entity.width()));
+        let wanted = if self.has_wanted {
+            Some(Vector3::new(self.wanted_x, self.wanted_y, self.wanted_z))
+        } else {
+            mob_entity
+                .navigator
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .get_path()
+                .and_then(|path| path.get_next_entity_pos(entity.width()))
+        };
         let Some(wanted) = wanted else {
             self.speed = 0.0;
             living.movement_input.store(Vector3::default());
@@ -467,14 +487,23 @@ impl MoveControlTrait for DrownedMoveControl {
 
         let delta = wanted - pos;
         let distance = delta.length();
-        // Pumpkin's navigator can leave the mob right on that spot; don't divide by zero.
-        let dy = if distance > 0.0 {
-            delta.y / distance
-        } else {
-            0.0
-        };
-        // This tick the navigator put `speedModifier * MOVEMENT_SPEED` in the forward input.
-        let speed = lerp(0.125, self.speed, living.movement_input.load().z);
+        if distance < 1e-4 {
+            self.speed = 0.0;
+            living.movement_input.store(Vector3::default());
+            entity.velocity.store(velocity);
+            return;
+        }
+
+        let dy = delta.y / distance;
+
+        let y_rot_d = (delta.z.atan2(delta.x).to_degrees() as f32) - 90.0;
+        let current_yaw = entity.yaw.load();
+        let new_yaw = MoveControl::rotlerp(current_yaw, y_rot_d, 90.0);
+        entity.yaw.store(new_yaw);
+        entity.body_yaw.store(new_yaw);
+        entity.head_yaw.store(new_yaw);
+
+        let speed = lerp(0.125, self.speed, (self.speed_modifier * 0.25).max(living.movement_input.load().z));
         self.speed = speed;
         living.movement_input.store(Vector3::new(0.0, 0.0, speed));
         entity.velocity.store(
@@ -488,6 +517,11 @@ impl MoveControlTrait for DrownedMoveControl {
     }
 
     fn set_wanted_position(&mut self, x: f64, y: f64, z: f64, speed_modifier: f64) {
+        self.wanted_x = x;
+        self.wanted_y = y;
+        self.wanted_z = z;
+        self.speed_modifier = speed_modifier;
+        self.has_wanted = true;
         MoveControlTrait::set_wanted_position(&mut self.inner, x, y, z, speed_modifier);
     }
 
@@ -496,7 +530,7 @@ impl MoveControlTrait for DrownedMoveControl {
     }
 
     fn has_wanted(&self) -> bool {
-        MoveControlTrait::has_wanted(&self.inner)
+        self.has_wanted || MoveControlTrait::has_wanted(&self.inner)
     }
 }
 

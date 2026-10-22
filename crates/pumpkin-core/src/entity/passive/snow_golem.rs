@@ -1,12 +1,18 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::Block;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::environment_attribute::EnvironmentAttribute;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
+use pumpkin_world::world::BlockFlags;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -176,20 +182,72 @@ impl Mob for SnowGolemEntity {
         true
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
+    fn mob_tick(&self, caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
         }
 
+        let world = entity.world.load_full();
+        let feet_pos = entity.block_pos.load();
+
+        // Water/rain sensitivity (vanilla LivingEntity#aiStep)
+        let raining_at_feet = world.is_raining_at(&feet_pos);
+        let raining_at_head = world.is_raining_at(&entity.bounding_box.load().max_block_pos());
+        if entity.touching_water.load(Ordering::Relaxed) || raining_at_feet || raining_at_head {
+            caller.damage(caller, 1.0, DamageType::DROWN);
+        }
+
+        // Snow golem melts in warm biomes or dimensions (vanilla SnowGolem#aiStep)
+        let melts = world.environment_attributes().get_value_bool(
+            EnvironmentAttribute::GameplaySnowGolemMelts,
+            &feet_pos,
+        ) || {
+            let biome = world.get_biome(&feet_pos);
+            biome.weather.base_temperature() > 1.0
+        };
+        if melts {
+            caller.damage(caller, 1.0, DamageType::ON_FIRE);
+        }
+
+        if !entity.is_alive() {
+            return;
+        }
+
+        // Ambient sound
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
-            entity.world.load().play_sound_fine(
+            world.play_sound_fine(
                 Sound::EntitySnowGolemAmbient,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
                 1.0,
                 1.0,
             );
+        }
+
+        // Vanilla SnowGolem#aiStep: check mob griefing before placing snow trail
+        if !world.level_info.load().game_rules.mob_griefing {
+            return;
+        }
+
+        let pos = entity.pos.load();
+        let snow_state_id = Block::SNOW.default_state.id;
+
+        // In vanilla, SnowGolem places snow under 4 quadrant points around its base
+        for i in 0..4 {
+            let offset_x = ((i % 2 * 2) as f64 - 1.0) * 0.25;
+            let offset_z = ((i / 2 % 2 * 2) as f64 - 1.0) * 0.25;
+            let xx = (pos.x + offset_x).floor() as i32;
+            let yy = pos.y.floor() as i32;
+            let zz = (pos.z + offset_z).floor() as i32;
+            let snow_pos = BlockPos::new(xx, yy, zz);
+
+            if world.get_block_state(&snow_pos).is_air()
+                && crate::block::blocks::snow::can_place_at(world.as_ref(), &snow_pos)
+            {
+                world.set_block_state(&snow_pos, snow_state_id, BlockFlags::NOTIFY_ALL);
+                world.emit_game_event(GameEvent::BlockPlace.name(), snow_pos.to_centered_f64());
+            }
         }
     }
 

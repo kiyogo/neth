@@ -131,8 +131,17 @@ impl StructureGenerator for IglooGenerator {
         let mut collector = StructurePiecesCollector::default();
         add_pieces(&mut collector, block_pos, rotation, &mut context.random);
 
+        let center_x = start_block_x(context.chunk_x) + 8;
+        let center_z = start_block_z(context.chunk_z) + 8;
+        let center_y = context
+            .height_sampler
+            .as_deref_mut()
+            .map_or(GENERATION_HEIGHT, |sampler| {
+                sampler.estimate_height(center_x, center_z)
+            });
+
         Some(StructurePosition {
-            start_pos: BlockPos::new(block_pos.x, block_pos.y, block_pos.z),
+            start_pos: BlockPos::new(center_x, center_y, center_z),
             collector: Arc::new(collector.into()),
         })
     }

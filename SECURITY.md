@@ -2,11 +2,9 @@
 
 ## Reporting a Vulnerability
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**Please do not report security vulnerabilities through public issues.**
 
-Instead, please send email to lilalexmed@proton.me
-
-You should receive a response within 48 hours.
+Instead, please report security issues privately to the maintainer (KIYOVN).
 
 Please include the requested information listed below (as much as you can provide) to help us better understand the nature and scope of the possible issue:
 - Type of issue (e.g. buffer overflow, SQL injection, cross-site scripting, etc.)

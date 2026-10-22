@@ -1194,6 +1194,9 @@ fn derive_state_data(reg: &BlockRegistration) -> (u16, u8, u8) {
     if reg.can_occlude && has_collision {
         state_flags |= flags::CAN_OCCLUDE;
     }
+    if reg.suffocating && full_cube {
+        state_flags |= flags::IS_SUFFOCATING;
+    }
     if !reg.suffocating {
         state_flags |= flags::NEVER_SUFFOCATES;
     }
@@ -1205,6 +1208,7 @@ fn derive_state_data(reg: &BlockRegistration) -> (u16, u8, u8) {
 /// Append only block table. The global instance backs `Block::from_id` and friends.
 #[derive(Clone)]
 pub struct DynamicBlockRegistry {
+    is_global: bool,
     frozen: bool,
     blocks: Vec<&'static Block>,
     infos: Vec<&'static DynamicBlockInfo>,
@@ -1223,6 +1227,7 @@ impl DynamicBlockRegistry {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            is_global: false,
             frozen: false,
             blocks: Vec::new(),
             infos: Vec::new(),
@@ -1232,6 +1237,12 @@ impl DynamicBlockRegistry {
             item_blocks: HashMap::new(),
             shapes: Vec::new(),
         }
+    }
+
+    pub(crate) fn new_global() -> Self {
+        let mut reg = Self::new();
+        reg.is_global = true;
+        reg
     }
 
     pub fn freeze(&mut self) {
@@ -1346,11 +1357,17 @@ impl DynamicBlockRegistry {
             slipperiness: DEFAULT_SLIPPERINESS,
             velocity_multiplier: 1.0,
             jump_velocity_multiplier: 1.0,
+            bounce_restitution: 0.0,
+            fall_distance_reduction: 0.0,
             item_id: 0,
             default_state,
             states,
             flammable: None,
             experience: None,
+            loot_table: match &info.registration.drops {
+                BlockDrops::LootTable(table) => Some(Box::leak(table.clone().into_boxed_str())),
+                _ => None,
+            },
         }));
         let info: &'static DynamicBlockInfo = Box::leak(Box::new(info));
 
@@ -1361,8 +1378,10 @@ impl DynamicBlockRegistry {
             self.states.push(state);
             self.state_owners.push(index);
         }
-        DYNAMIC_BLOCK_COUNT.store(self.blocks.len() as u32, Ordering::Release);
-        DYNAMIC_STATE_COUNT.store(self.states.len() as u32, Ordering::Release);
+        if self.is_global {
+            DYNAMIC_BLOCK_COUNT.store(self.blocks.len() as u32, Ordering::Release);
+            DYNAMIC_STATE_COUNT.store(self.states.len() as u32, Ordering::Release);
+        }
         Ok(block)
     }
 
@@ -1492,7 +1511,7 @@ impl Default for DynamicBlockRegistry {
 }
 
 static REGISTRY: LazyLock<RwLock<DynamicBlockRegistry>> =
-    LazyLock::new(|| RwLock::new(DynamicBlockRegistry::new()));
+    LazyLock::new(|| RwLock::new(DynamicBlockRegistry::new_global()));
 /// A copy of the registry taken when it was closed, read without taking a lock.
 static FROZEN: OnceLock<DynamicBlockRegistry> = OnceLock::new();
 /// Lets the id checks skip the lock. Updated after the registry changed.

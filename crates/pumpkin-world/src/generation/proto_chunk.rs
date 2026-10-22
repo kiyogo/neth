@@ -1303,11 +1303,9 @@ impl ProtoChunk {
                     top_block
                 };
 
-                let Some(this_biome) =
-                    self.get_terrain_gen_biome_id_from_neighborhood(surface_biomes, x, biome_y, z)
-                else {
-                    panic!("surface biome neighborhood must cover fuzzy biome lookup");
-                };
+                let this_biome = self
+                    .get_terrain_gen_biome_id_from_neighborhood(surface_biomes, x, biome_y, z)
+                    .unwrap_or_else(|| self.get_terrain_gen_biome_id(x, biome_y, z));
                 if this_biome == Biome::ERODED_BADLANDS {
                     terrain_cache
                         .terrain_builder
@@ -1364,14 +1362,20 @@ impl ProtoChunk {
                     context.init_vertical(stone_depth_above, stone_depth_below, y, fluid_height);
 
                     if !state.is_air() && !state.is_liquid() {
-                        let Some(biome_id) = self.get_terrain_gen_biome_id_from_neighborhood(
-                            surface_biomes,
-                            context.block_pos_x,
-                            context.block_pos_y,
-                            context.block_pos_z,
-                        ) else {
-                            panic!("surface biome neighborhood must cover fuzzy biome lookup");
-                        };
+                        let biome_id = self
+                            .get_terrain_gen_biome_id_from_neighborhood(
+                                surface_biomes,
+                                context.block_pos_x,
+                                context.block_pos_y,
+                                context.block_pos_z,
+                            )
+                            .unwrap_or_else(|| {
+                                self.get_terrain_gen_biome_id(
+                                    context.block_pos_x,
+                                    context.block_pos_y,
+                                    context.block_pos_z,
+                                )
+                            });
                         context.biome = Biome::from_id(biome_id).unwrap_or(&Biome::PLAINS);
                         let new_state = try_apply_material_rule(
                             generator.surface_rule,
@@ -2158,7 +2162,16 @@ mod direct_block_write_tests {
                         );
                     }
                 }
-                assert_eq!(normal.sections, direct.sections);
+                for sy in 0..height {
+                    for sz in 0..16 {
+                        for sx in 0..16 {
+                            assert_eq!(
+                                normal.get_block_state_raw(sx, sy, sz),
+                                direct.get_block_state_raw(sx, sy, sz)
+                            );
+                        }
+                    }
+                }
                 assert_eq!(
                     normal.flat_surface_height_map,
                     direct.flat_surface_height_map

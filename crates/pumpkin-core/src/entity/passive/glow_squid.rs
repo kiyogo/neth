@@ -6,6 +6,7 @@ use std::sync::Arc;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
+use pumpkin_util::math::wrap_degrees;
 use rand::RngExt;
 
 use crate::entity::{
@@ -96,7 +97,8 @@ impl Mob for GlowSquidEntity {
             return;
         }
 
-        let in_water = entity.touching_water.load(Ordering::Relaxed);
+        let in_water =
+            entity.touching_water.load(Ordering::Relaxed) || entity.is_in_water();
 
 
 
@@ -163,7 +165,7 @@ impl Mob for GlowSquidEntity {
             if horizontal_dist > 1e-4 {
                 let target_yaw = (-vel.x.atan2(vel.z).to_degrees()) as f32;
                 let cur_yaw = entity.yaw.load();
-                let new_yaw = cur_yaw + (target_yaw - cur_yaw) * 0.1;
+                let new_yaw = cur_yaw + wrap_degrees(target_yaw - cur_yaw) * 0.1;
                 entity.yaw.store(new_yaw);
                 entity.body_yaw.store(new_yaw);
                 entity.head_yaw.store(new_yaw);

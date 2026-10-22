@@ -66,15 +66,26 @@ impl ItemBehaviour for FireworkRocketItem {
         BlockActionResult::Success
     }
 
-    fn normal_use(&self, _item: &Item, player: &Player) {
-        let mut held = player.inventory().held_item();
-        let mut is_main = true;
+    fn normal_use(&self, item: &Item, player: &Player) {
+        let (yaw, pitch) = player.rotation();
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
+        let mut held = player.inventory().get_stack_in_hand(hand);
         if held.is_empty() || held.item.id != Item::FIREWORK_ROCKET.id {
-            held = player.inventory().off_hand_item();
-            is_main = false;
-            if held.is_empty() || held.item.id != Item::FIREWORK_ROCKET.id {
-                return;
-            }
+            return;
         }
 
         let world = player.world();
@@ -88,13 +99,7 @@ impl ItemBehaviour for FireworkRocketItem {
         world.spawn_entity(Arc::new(entity));
 
         held.decrement_unless_creative(player.gamemode.load(), 1);
-        if is_main {
-            player.inventory().set_held_item(held);
-        } else {
-            player
-                .inventory()
-                .set_stack_in_hand(pumpkin_util::Hand::Left, held);
-        }
+        player.inventory().set_stack_in_hand(hand, held);
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

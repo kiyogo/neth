@@ -21,6 +21,7 @@ pub enum RecvChunk {
         pos: ChunkPos,
         stage: StagedChunkEnum,
         error: String,
+        cache: Option<Box<Cache>>,
     },
 }
 
@@ -150,6 +151,7 @@ pub async fn io_read_work(
                             pos,
                             stage: StagedChunkEnum::Empty,
                             error: err.to_string(),
+                            cache: None,
                         },
                     };
                     if send.send((pos, received)).is_err() {
@@ -270,7 +272,7 @@ pub async fn io_write_work(
 
 pub fn run_generation(
     pos: ChunkPos,
-    mut cache: Cache,
+    cache: Cache,
     stage: StagedChunkEnum,
     level: &Level,
 ) -> RecvChunk {
@@ -283,9 +285,11 @@ pub fn run_generation(
             pos,
             stage,
             error: "World portal is not initialized".to_string(),
+            cache: Some(Box::new(cache)),
         };
     };
     // Run generation with panic catching
+    let mut cache = cache;
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         cache.advance(
             stage,
@@ -293,11 +297,10 @@ pub fn run_generation(
             portal_ref,
             &level.lighting_config,
         );
-        cache // Return cache on success
     }));
 
     match result {
-        Ok(cache) => RecvChunk::Generation(cache),
+        Ok(()) => RecvChunk::Generation(cache),
         Err(payload) => {
             let msg = payload
                 .downcast_ref::<&str>()
@@ -315,6 +318,7 @@ pub fn run_generation(
                 pos,
                 stage,
                 error: msg.to_string(),
+                cache: Some(Box::new(cache)),
             }
         }
     }

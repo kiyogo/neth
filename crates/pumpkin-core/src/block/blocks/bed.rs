@@ -249,34 +249,7 @@ impl BedBlock {
 
         // Make sure the bed is not occupied
         if bed_props.occupied {
-            let aabb = pumpkin_util::math::boundingbox::BoundingBox::new(
-                pumpkin_util::math::vector3::Vector3::new(
-                    bed_head_pos.0.x as f64 - 1.0,
-                    bed_head_pos.0.y as f64 - 0.5,
-                    bed_head_pos.0.z as f64 - 1.0,
-                ),
-                pumpkin_util::math::vector3::Vector3::new(
-                    bed_head_pos.0.x as f64 + 2.0,
-                    bed_head_pos.0.y as f64 + 1.5,
-                    bed_head_pos.0.z as f64 + 2.0,
-                ),
-            );
-            let mut woke_up = false;
-            for entity in world.get_entities_at_box(&aabb) {
-                if entity.get_entity().entity_type == &EntityType::VILLAGER
-                    && let Some(villager) = entity
-                        .cast_any()
-                        .downcast_ref::<crate::entity::passive::villager::VillagerEntity>()
-                {
-                    if villager.get_entity().pose.load()
-                        == pumpkin_data::entity::EntityPose::Sleeping
-                    {
-                        villager.wake_up(world);
-                        woke_up = true;
-                        break;
-                    }
-                }
-            }
+            let woke_up = Self::wake_villager(world, &bed_head_pos, &bed_foot_pos);
 
             if !woke_up {
                 player.send_system_message_raw(

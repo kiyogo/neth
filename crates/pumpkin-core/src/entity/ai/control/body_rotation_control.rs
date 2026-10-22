@@ -1,6 +1,6 @@
 use crate::entity::ai::control::Control;
 use crate::entity::mob::Mob;
-use pumpkin_util::math::rotate_if_necessary;
+use pumpkin_util::math::{rotate_if_necessary, wrap_degrees};
 
 pub struct BodyRotationControl {
     head_stable_time: i32,
@@ -31,7 +31,7 @@ impl BodyRotationControl {
             Self::rotate_head_if_necessary(mob);
             self.last_stable_y_head_rot = entity.head_yaw.load();
             self.head_stable_time = 0;
-        } else if (entity.head_yaw.load() - self.last_stable_y_head_rot).abs() > 15.0 {
+        } else if wrap_degrees(entity.head_yaw.load() - self.last_stable_y_head_rot).abs() > 15.0 {
             self.head_stable_time = 0;
             self.last_stable_y_head_rot = entity.head_yaw.load();
             Self::rotate_body_if_necessary(mob);

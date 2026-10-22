@@ -879,7 +879,7 @@ impl StructurePieceBase for PoolElementStructurePiece {
                 crate::generation::structure::template::place_template_entities(
                     chunk,
                     &template,
-                    placement_origin,
+                    origin,
                     self.rotation,
                     chunk_box,
                 );

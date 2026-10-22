@@ -34,6 +34,9 @@ pub mod tripwire_hook;
 pub mod abstract_redstone_gate;
 pub mod dispenser;
 
+#[cfg(test)]
+mod parity_tests;
+
 pub fn is_emitting_redstone_power(
     block: &Block,
     state: &BlockState,

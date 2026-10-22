@@ -41,6 +41,26 @@ impl StructureGenerator for DesertPyramidGenerator {
         let x = start_block_x(context.chunk_x);
         let z = start_block_z(context.chunk_z);
 
+        let center_x = x + 8;
+        let center_z = z + 8;
+        let (lowest_y, center_y) =
+            context
+                .height_sampler
+                .as_deref_mut()
+                .map_or((64, 64), |sampler| {
+                    let y1 = sampler.estimate_height(x, z);
+                    let y2 = sampler.estimate_height(x, z + DEPTH);
+                    let y3 = sampler.estimate_height(x + WIDTH, z);
+                    let y4 = sampler.estimate_height(x + WIDTH, z + DEPTH);
+                    let lowest = y1.min(y2).min(y3).min(y4);
+                    let center = sampler.estimate_height(center_x, center_z);
+                    (lowest, center)
+                });
+
+        if lowest_y < context.sea_level {
+            return None;
+        }
+
         let facing = BlockDirection::get_random_horizontal_direction(&mut context.random);
 
         let mut piece = StructurePiece::new(
@@ -58,7 +78,7 @@ impl StructureGenerator for DesertPyramidGenerator {
         }));
 
         Some(StructurePosition {
-            start_pos: BlockPos::new(x + (WIDTH / 2), 64, z + (DEPTH / 2)),
+            start_pos: BlockPos::new(center_x, center_y, center_z),
             collector: Arc::new(collector.into()),
         })
     }
@@ -865,5 +885,104 @@ impl StructurePieceBase for DesertPyramidPiece {
         }
 
         self.add_cellar(chunk, bb, &mut level_random);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generation::structure::structures::HeightSampler;
+
+    struct MockHeightSampler {
+        heights: std::collections::HashMap<(i32, i32), i32>,
+        default_height: i32,
+    }
+
+    impl HeightSampler for MockHeightSampler {
+        fn estimate_height(&mut self, block_x: i32, block_z: i32) -> i32 {
+            self.heights
+                .get(&(block_x, block_z))
+                .copied()
+                .unwrap_or(self.default_height)
+        }
+    }
+
+    #[test]
+    fn rejects_generation_below_sea_level() {
+        let mut heights = std::collections::HashMap::new();
+        let chunk_x = 5;
+        let chunk_z = -3;
+        let x = start_block_x(chunk_x);
+        let z = start_block_z(chunk_z);
+
+        // One corner dips below sea level 63 (e.g. 62)
+        heights.insert((x, z), 70);
+        heights.insert((x, z + DEPTH), 68);
+        heights.insert((x + WIDTH, z), 62);
+        heights.insert((x + WIDTH, z + DEPTH), 65);
+
+        let mut sampler = MockHeightSampler {
+            heights,
+            default_height: 70,
+        };
+
+        let result = DesertPyramidGenerator.get_structure_position(StructureGeneratorContext {
+            seed: 12345,
+            chunk_x,
+            chunk_z,
+            random: RandomGenerator::Legacy(LegacyRand::from_seed(12345)),
+            sea_level: 63,
+            min_y: -64,
+            height: 384,
+            height_sampler: Some(&mut sampler),
+            structure_key: None,
+        });
+
+        assert!(
+            result.is_none(),
+            "Desert pyramid should not generate if any corner is below sea level"
+        );
+    }
+
+    #[test]
+    fn generates_with_chunk_center_start_pos_when_above_sea_level() {
+        let chunk_x = 2;
+        let chunk_z = 4;
+        let x = start_block_x(chunk_x);
+        let z = start_block_z(chunk_z);
+
+        let mut heights = std::collections::HashMap::new();
+        heights.insert((x, z), 72);
+        heights.insert((x, z + DEPTH), 74);
+        heights.insert((x + WIDTH, z), 71);
+        heights.insert((x + WIDTH, z + DEPTH), 73);
+        heights.insert((x + 8, z + 8), 75);
+
+        let mut sampler = MockHeightSampler {
+            heights,
+            default_height: 70,
+        };
+
+        let result = DesertPyramidGenerator.get_structure_position(StructureGeneratorContext {
+            seed: 99999,
+            chunk_x,
+            chunk_z,
+            random: RandomGenerator::Legacy(LegacyRand::from_seed(99999)),
+            sea_level: 63,
+            min_y: -64,
+            height: 384,
+            height_sampler: Some(&mut sampler),
+            structure_key: None,
+        });
+
+        assert!(result.is_some(), "Desert pyramid should generate above sea level");
+        let pos = result.unwrap();
+        assert_eq!(pos.start_pos, BlockPos::new(x + 8, 75, z + 8));
+
+        let collector = pos.collector.lock().unwrap();
+        assert_eq!(collector.pieces.len(), 1);
+        let bb = collector.pieces[0].bounding_box();
+        assert_eq!(bb.min.x, x);
+        assert_eq!(bb.min.z, z);
     }
 }

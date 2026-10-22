@@ -252,33 +252,23 @@ impl ThrownItemEntity {
         let mut hit = None;
 
         // Block collisions
-        let block_box = BoundingBox::new(
-            Vector3::new(
-                start_pos.x.min(new_pos.x).floor(),
-                start_pos.y.min(new_pos.y).floor(),
-                start_pos.z.min(new_pos.z).floor(),
-            ),
-            Vector3::new(
-                start_pos.x.max(new_pos.x).ceil(),
-                start_pos.y.max(new_pos.y).ceil(),
-                start_pos.z.max(new_pos.z).ceil(),
-            ),
-        );
-
-        let block_colliders = world.get_block_colliders(&block_box);
-        for collider in block_colliders {
-            for shape in collider.shapes {
-                let absolute_shape = shape.add_vector(&collider.pos.to_f64_vector());
-                if let Some((t, normal)) =
-                    calculate_ray_box_intersection(&start_pos, &delta, &absolute_shape)
-                {
-                    if t < closest_t {
-                        closest_t = t;
+        let (block_cols, block_positions) = world.get_block_collisions(search_box, caller);
+        for (idx, bb) in block_cols.iter().enumerate() {
+            if let Some(t) = calculate_ray_intersection(&start_pos, &delta, bb)
+                && t < closest_t
+            {
+                closest_t = t;
+                // Map back to block pos
+                let mut curr = 0;
+                for (len, pos) in &block_positions {
+                    curr += len;
+                    if idx < curr {
                         let hit_pos = start_pos.add(&delta.multiply(t, t, t));
                         hit = Some(ProjectileHit::Block {
-                            pos: collider.pos,
+                            pos: *pos,
+                            face: get_hit_face(hit_pos, *pos),
                             hit_pos,
-                            face: normal_to_face(&normal),
+                            normal: delta.normalize().multiply(-1.0, -1.0, -1.0),
                         });
                         break;
                     }

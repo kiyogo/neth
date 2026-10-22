@@ -16,7 +16,7 @@ env:
 jobs:
   check:
     name: Check for new commits
-    if: github.repository == 'Pumpkin-MC/Pumpkin'
+    if: !github.event.repository.fork
     runs-on: ubuntu-slim
     outputs:
       changed: ${{ steps.check.outputs.changed }}

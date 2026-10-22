@@ -320,11 +320,11 @@ impl EntityBase for CushionEntity {
             return false;
         }
         // Do not replace an unacknowledged teleport with another seat switch.
-        if player
-            .awaiting_teleport
+        if !player
+            .awaiting_teleports
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some()
+            .is_empty()
         {
             return false;
         }
@@ -382,17 +382,17 @@ impl EntityBase for CushionEntity {
                 f64::from(self.entity.entity_type.dimension[1]) - 0.6,
                 0.0,
             );
-        let mut awaiting_teleport = player
-            .awaiting_teleport
+        let mut awaiting_teleports = player
+            .awaiting_teleports
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         player.get_entity().set_pos(position);
         // The dismount teleport precedes the mount packet. Its acknowledgement
         // must preserve the new riding position, not restore the old seat.
-        if let Some((_, target)) = awaiting_teleport.as_mut() {
+        if let Some((_, target)) = awaiting_teleports.back_mut() {
             *target = position;
         }
-        drop(awaiting_teleport);
+        drop(awaiting_teleports);
 
         world.play_sound(
             Sound::EntityCushionSit,

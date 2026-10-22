@@ -742,8 +742,10 @@ impl BlockPalette {
                     for y in 0..Self::SIZE {
                         for z in 0..Self::SIZE {
                             let palette_index = match &data.storage {
-                                PaletteStorage::Indexed(indices) => usize::from(indices[z][y][x]),
-                                PaletteStorage::Dense(cube) => key_to_index[&cube[z][y][x]],
+                                PaletteStorage::Indexed(indices) => {
+                                    indices.get(flat_index::<{ Self::SIZE }>(x, y, z)) as usize
+                                }
+                                PaletteStorage::Dense(cube) => key_to_index[&cube[y][z][x]],
                             };
                             if water_states[palette_index] {
                                 packed_data[output_index / u32::BITS as usize] |=
@@ -853,9 +855,11 @@ impl BlockPalette {
                             // Java has it in y, z, x order, so we need to convert it back to x, y, z
                             // Please test your code on bedrock before merging
                             let key_index = match &data.storage {
-                                PaletteStorage::Indexed(indices) => usize::from(indices[z][y][x]),
+                                PaletteStorage::Indexed(indices) => {
+                                    indices.get(flat_index::<16>(x, y, z)) as usize
+                                }
                                 PaletteStorage::Dense(cube) => {
-                                    key_to_index_map.get(&cube[z][y][x]).copied().unwrap_or(0)
+                                    key_to_index_map.get(&cube[y][z][x]).copied().unwrap_or(0)
                                 }
                             };
                             debug_assert!((1 << bits_per_entry) > key_index);

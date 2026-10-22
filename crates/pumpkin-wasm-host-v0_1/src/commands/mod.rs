@@ -1,9 +1,7 @@
 use wasmtime::component::{Access, HasSelf, Resource};
 
 use crate::{
-    commands::executor::{
-        WasmCommandExecutor, WasmCommandRequirement, WasmCommandSuggestionProvider,
-    },
+    commands::executor::{WasmCommandExecutor, WasmCommandSuggestionProvider},
     pumpkin::{
         self,
         plugin::{
@@ -637,31 +635,12 @@ impl pumpkin::plugin::command::HostCommandNode for PluginHostState {
 
     fn require_with_handler_id(
         &mut self,
-        node: Resource<CommandNode>,
-        handler_id: u32,
+        _node: Resource<CommandNode>,
+        _handler_id: u32,
     ) -> wasmtime::Result<()> {
-        let plugin = self
-            .plugin
-            .as_ref()
-            .and_then(std::sync::Weak::upgrade)
-            .ok_or_else(|| wasmtime::Error::msg("Plugin dropped"))?;
-        let server = self
-            .server
-            .clone()
-            .ok_or_else(|| wasmtime::Error::msg("Server not initialized"))?;
-
-        let requirement = WasmCommandRequirement {
-            handler_id,
-            plugin,
-            server,
-        };
-        let resource = self.get_node_mut(&node)?;
-        let builder = std::mem::replace(
-            &mut resource.provider,
-            WasmCommandNode::Literal(literal("")),
-        );
-        resource.provider = builder.requires(move |source| requirement.evaluate(source));
-        Ok(())
+        Err(wasmtime::Error::msg(
+            "require_with_handler_id not implemented",
+        ))
     }
 
     fn drop(&mut self, rep: Resource<CommandNode>) -> wasmtime::Result<()> {

@@ -54,16 +54,31 @@ fn get_archaeology_loot(is_sand: bool, location: BlockPos, world: &World) -> Ite
 }
 
 impl ItemBehaviour for BrushItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         player.world().play_sound(
             Sound::ItemBrushBrushingGeneric,
             SoundCategory::Players,
             &player.position(),
         );
-        let stack = player.inventory().held_item();
+        let stack = player.inventory().get_stack_in_hand(hand);
         player
             .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, Self::USE_DURATION);
+            .set_active_hand(hand, stack, Self::USE_DURATION);
     }
 
     fn use_on_block(
@@ -170,7 +185,7 @@ impl ItemBehaviour for BrushItem {
         BlockActionResult::Success
     }
 
-    fn use_on_entity(&self, _item: &mut ItemStack, player: &Player, entity: Arc<dyn EntityBase>) {
+    fn use_on_entity(&self, item: &mut ItemStack, player: &Player, entity: Arc<dyn EntityBase>) {
         let ent = entity.get_entity();
         if ent.entity_type == &EntityType::ARMADILLO {
             let world = player.world();
@@ -186,7 +201,7 @@ impl ItemBehaviour for BrushItem {
             ));
             world.spawn_entity(item_entity);
 
-            player.damage_held_item(16);
+            let _ = item.damage_item(16);
         } else {
             let world = player.world();
             world.play_sound(
@@ -195,11 +210,6 @@ impl ItemBehaviour for BrushItem {
                 &ent.pos.load(),
             );
         }
-
-        let stack = player.inventory().held_item();
-        player
-            .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, Self::USE_DURATION);
     }
 
     fn get_use_duration(&self) -> i32 {

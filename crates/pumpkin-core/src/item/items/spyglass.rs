@@ -15,16 +15,31 @@ impl ItemMetadata for SpyglassItem {
 }
 
 impl ItemBehaviour for SpyglassItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         player.world().play_sound(
             Sound::ItemSpyglassUse,
             SoundCategory::Players,
             &player.position(),
         );
-        let stack = player.inventory().held_item();
+        let stack = player.inventory().get_stack_in_hand(hand);
         player
             .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, Self::USE_DURATION);
+            .set_active_hand(hand, stack, Self::USE_DURATION);
     }
 
     fn on_stopped_using(&self, _stack: &pumpkin_data::item_stack::ItemStack, player: &Player) {

@@ -165,8 +165,8 @@ fn expected_path_blocks(
 ) -> Vec<(Vector3<i32>, BlockId, i32)> {
     let mut expected = Vec::new();
     path.element.for_each_template(|_, _, _, template| {
-        for block in &template.blocks {
-            let expected_block = match template.palette[block.state as usize].name.as_str() {
+        for block in template.blocks() {
+            let expected_block = match block.state.name.as_str() {
                 "minecraft:dirt_path" => BlockId::DIRT_PATH,
                 "minecraft:smooth_sandstone" => BlockId::SMOOTH_SANDSTONE,
                 "minecraft:terracotta" => BlockId::TERRACOTTA,

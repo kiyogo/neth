@@ -168,6 +168,9 @@ pub struct Server {
     // world stuff which maybe should be put into a struct
     pub level_info: Arc<ArcSwap<LevelData>>,
     world_info_writer: Arc<dyn WorldInfoWriter>,
+    /// Lock held on the world directory (`session.lock`), preventing concurrent instances
+    /// from corrupting world files, mirroring Vanilla's `DirectoryLock.java`.
+    pub session_lock: std::sync::Mutex<Option<pumpkin_world::session_lock::DirectoryLock>>,
 }
 
 impl Server {
@@ -194,9 +197,11 @@ impl Server {
 
         let world_path = basic_config.get_world_path();
 
+        let session_lock = pumpkin_world::session_lock::DirectoryLock::create(&world_path)?;
+
         let block_registry = super::block::registry::default_registry();
 
-        let mut level_info = match AnvilLevelInfo.read_world_info(&world_path) {
+        let level_info = match AnvilLevelInfo.read_world_info(&world_path) {
             Ok(level_info) => {
                 let dat_path = world_path.join(LEVEL_DAT_FILE_NAME);
                 if dat_path.exists() {
@@ -360,6 +365,7 @@ impl Server {
             world_info_writer: Arc::new(AnvilLevelInfo),
             level_info,
             management_hub,
+            session_lock: std::sync::Mutex::new(Some(session_lock)),
         };
         let server = Arc::new(server);
 
@@ -875,6 +881,10 @@ impl Server {
     pub async fn shutdown(&self) {
         self.management_hub.broadcast_server_stopping();
 
+        if let Err(e) = self.player_data_storage.save_all_players(self) {
+            error!("Error saving players during server shutdown: {e}");
+        }
+
         self.tasks.close();
         debug!("Awaiting tasks for server");
         self.tasks.wait().await;
@@ -894,6 +904,15 @@ impl Server {
             error!("Failed to save level.dat: {err}");
         }
         info!("Completed worlds");
+
+        // Release the session lock after all world and player data has been flushed
+        if let Ok(mut lock_guard) = self.session_lock.lock() {
+            if let Some(mut lock) = lock_guard.take() {
+                if let Err(e) = lock.close() {
+                    warn!("Error closing session.lock: {e}");
+                }
+            }
+        }
         #[cfg(profiler)]
         {
             let counters = profiler::counters(self);

@@ -1,3 +1,4 @@
+use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{
     Block, BlockDirection, BlockId, BlockStateId, FacingExt,
     block_properties::AmethystClusterLikeProperties,
@@ -8,7 +9,7 @@ use rand::RngExt;
 
 use crate::block::{
     BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    RandomTickArgs, blocks::abstract_wall_mounting::WallMountedBlock,
+    OnProjectileHitArgs, RandomTickArgs, blocks::abstract_wall_mounting::WallMountedBlock,
 };
 
 const ALL_DIRECTIONS: [BlockDirection; 6] = [
@@ -20,9 +21,25 @@ const ALL_DIRECTIONS: [BlockDirection; 6] = [
     BlockDirection::East,
 ];
 
+#[pumpkin_block("minecraft:amethyst_block")]
 pub struct AmethystBlock;
 
-impl BlockMetadata for AmethystBlock {
+impl BlockBehaviour for AmethystBlock {
+    fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
+        let pitch = 0.5 + rand::rng().random::<f32>() * 1.2;
+        args.world.play_sound_fine(
+            Sound::BlockAmethystBlockChime,
+            SoundCategory::Blocks,
+            args.hit_pos,
+            1.0,
+            pitch,
+        );
+    }
+}
+
+pub struct AmethystClusterBlock;
+
+impl BlockMetadata for AmethystClusterBlock {
     fn ids() -> Box<[BlockId]> {
         [
             BlockId::SMALL_AMETHYST_BUD,
@@ -34,7 +51,18 @@ impl BlockMetadata for AmethystBlock {
     }
 }
 
-impl BlockBehaviour for AmethystBlock {
+impl BlockBehaviour for AmethystClusterBlock {
+    fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
+        let pitch = 0.5 + rand::rng().random::<f32>() * 1.2;
+        args.world.play_sound_fine(
+            Sound::BlockAmethystBlockChime,
+            SoundCategory::Blocks,
+            args.hit_pos,
+            1.0,
+            pitch,
+        );
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = AmethystClusterLikeProperties::from_state_id(args.block.default_state.id);
         props.facing = args.direction.to_facing();
@@ -59,7 +87,7 @@ impl BlockBehaviour for AmethystBlock {
     }
 }
 
-impl WallMountedBlock for AmethystBlock {
+impl WallMountedBlock for AmethystClusterBlock {
     fn get_direction(&self, state_id: BlockStateId, _block: &Block) -> BlockDirection {
         let props = AmethystClusterLikeProperties::from_state_id(state_id);
         props.facing.to_block_direction().opposite()

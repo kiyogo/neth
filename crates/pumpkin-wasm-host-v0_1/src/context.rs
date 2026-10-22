@@ -1428,7 +1428,19 @@ fn next_event_registration_id() -> wasmtime::Result<u64> {
         .map_err(|_| wasmtime::Error::msg("Event registration IDs exhausted"))
 }
 
-impl PluginHostState {
+trait PluginHostStateExt {
+    fn register_wasm_event(
+        &self,
+        context: &Resource<WitContext>,
+        handler_id: u32,
+        event_type: EventType,
+        event_priority: EventPriority,
+        blocking: bool,
+        registration_id: Option<u64>,
+    ) -> wasmtime::Result<()>;
+}
+
+impl PluginHostStateExt for PluginHostState {
     #[allow(clippy::too_many_lines)]
     fn register_wasm_event(
         &self,

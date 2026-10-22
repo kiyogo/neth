@@ -761,6 +761,7 @@ fn map_team_settings(
                 pumpkin_core::world::scoreboard::NameTagVisibility::HideForOwnTeam
             }
         },
+        death_message_visibility: pumpkin_core::world::scoreboard::NameTagVisibility::Always,
         collision_rule: match settings.collision_rule {
             CollisionRule::Always => pumpkin_core::world::scoreboard::CollisionRule::Always,
             CollisionRule::Never => pumpkin_core::world::scoreboard::CollisionRule::Never,

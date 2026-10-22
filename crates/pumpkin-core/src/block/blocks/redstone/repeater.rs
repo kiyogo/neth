@@ -37,6 +37,20 @@ impl BlockBehaviour for RepeaterBlock {
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
+        if args.world.get_block(args.position) != args.block {
+            return;
+        }
+        let state_id = args.world.get_block_state_id(args.position);
+        let mut props = RepeaterProperties::from_state_id(state_id);
+        let is_locked = self.is_locked(args.world, *args.position, state_id, args.block);
+        if props.locked != is_locked {
+            props.locked = is_locked;
+            args.world.set_block_state(
+                args.position,
+                props.to_state_id(args.block),
+                BlockFlags::NOTIFY_LISTENERS,
+            );
+        }
         RedstoneGateBlock::on_neighbor_update(self, args);
     }
 

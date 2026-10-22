@@ -56,7 +56,10 @@ pub fn init(mob: &MobEntity) {
 pub fn tick(mob: &dyn Mob, caller: &dyn EntityBase, air: &FishAir, flop: Sound) {
     let living = &mob.get_mob_entity().living_entity;
     let entity = &living.entity;
-    if entity.touching_water.load(Ordering::Relaxed) || living.health.load() <= 0.0 {
+    if entity.touching_water.load(Ordering::Relaxed)
+        || entity.is_in_water_or_bubble()
+        || living.health.load() <= 0.0
+    {
         air.0.store(MAX_AIR, Ordering::Relaxed);
         return;
     }

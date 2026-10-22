@@ -1,0 +1,43 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-10-18T00:00:00+00:00",
+    "name": "Neth",
+    "author": "KIYOVN",
+    "description": "Neth is a high-performance Minecraft Java Edition server built in Rust.",
+    "features": null,
+    "docker_images": {
+        "Alpine": "ghcr.io\/pterodactyl\/yolks:alpine",
+        "Debian": "ghcr.io\/pterodactyl\/yolks:debian"
+    },
+    "file_denylist": [],
+    "startup": "NETH_JAVA_ADDRESS=0.0.0.0:{{SERVER_PORT}} .\/neth",
+    "config": {
+        "files": "{\r\n    \"neth.toml\": {\r\n        \"parser\": \"file\",\r\n        \"find\": {\r\n            \"address = \\\"0.0.0.0:25565\\\"\": \"address = \\\"0.0.0.0:{{server.build.default.port}}\\\"\"\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \"Server is now running.\"\r\n}",
+        "logs": "{}",
+        "stop": "stop"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/bin\/ash\r\nset -eux\r\n\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\nif [ ! -f neth.toml ]; then\r\n    printf '[networking.java]\\naddress = \"0.0.0.0:25565\"\\n' > neth.toml\r\nfi",
+            "container": "ghcr.io\/pterodactyl\/installers:alpine",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Rust backtrace",
+            "description": "\"0\" -> No backtrace is generated.\r\n\"1\" -> Generates a minimal backtrace.\r\n\"full\" -> Generates a detailed backtrace.",
+            "env_variable": "RUST_BACKTRACE",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|in:1,0,full",
+            "field_type": "text"
+        }
+    ]
+}

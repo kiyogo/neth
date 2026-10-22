@@ -1,5 +1,5 @@
 use pumpkin_data::{
-    BlockDirection, BlockId, BlockStateId, block_properties::MangroveRootsLikeProperties, tag,
+    BlockDirection, BlockId, BlockStateId, block_properties::MangroveRootsLikeProperties,
 };
 use pumpkin_world::world::BlockFlags;
 
@@ -11,14 +11,18 @@ use crate::block::{
 pub struct CoralPlantBlock;
 impl BlockMetadata for CoralPlantBlock {
     fn ids() -> Box<[BlockId]> {
-        let alive_plants = tag::Block::MINECRAFT_CORAL_PLANTS.1;
-        let mut plants = Vec::new();
-        for alive_plant_id in alive_plants {
-            let block_id = BlockId::new_or_air(*alive_plant_id);
-            plants.push(block_id);
-            plants.push(get_dead_type(block_id).unwrap_or_default());
-        }
-        plants.into()
+        Box::new([
+            BlockId::BRAIN_CORAL,
+            BlockId::BUBBLE_CORAL,
+            BlockId::FIRE_CORAL,
+            BlockId::HORN_CORAL,
+            BlockId::TUBE_CORAL,
+            BlockId::DEAD_BRAIN_CORAL,
+            BlockId::DEAD_BUBBLE_CORAL,
+            BlockId::DEAD_FIRE_CORAL,
+            BlockId::DEAD_HORN_CORAL,
+            BlockId::DEAD_TUBE_CORAL,
+        ])
     }
 }
 pub type CoralPlantLikeProperties = MangroveRootsLikeProperties;

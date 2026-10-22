@@ -8,18 +8,20 @@ use pumpkin_util::text::{
 use crate::pumpkin::plugin::command::{CommandError as CommandErrorWit, SuggestionRequest};
 use pumpkin_core::{
     command::{
-        argument_builder::ArgumentBuilder,
         context::{command_context::CommandContext, command_source::CommandSource},
         errors::error_types::DISPATCHER_PARSE_EXCEPTION,
-        node::{CommandExecutor, CommandExecutorResult, Requirement},
+        node::{CommandExecutor, CommandExecutorResult},
         suggestion::{
             provider::SuggestionProvider,
             suggestions::{Suggestions, SuggestionsBuilder},
         },
+    },
     server::Server,
 };
 use pumpkin_wasm_host_common::{
-    args::build_consumed_args_from_context, plugin::WasmPlugin, state::PluginHostState,
+    args::build_consumed_args_from_context,
+    plugin::WasmPlugin,
+    state::PluginHostState,
 };
 
 fn map_command_result(
@@ -45,20 +47,6 @@ fn map_command_result(
     }
 }
 
-impl WasmCommandNode {
-    #[must_use]
-    pub fn requires<F>(self, requirement: F) -> Self
-    where
-        F: for<'a> Fn(&'a CommandSource) -> bool + Send + Sync + 'static,
-    {
-        let requirement = Requirement::from(requirement);
-        match self {
-            Self::Literal(builder) => Self::Literal(builder.requires(requirement)),
-            Self::Argument(builder) => Self::Argument(builder.requires(requirement)),
-        }
-    }
-}
-
 pub struct WasmCommandRequirement {
     pub handler_id: u32,
     pub plugin: Arc<WasmPlugin>,
@@ -71,8 +59,9 @@ impl WasmCommandRequirement {
         let sender = source.output.clone();
         let server = self.server.clone();
         let handler_id = self.handler_id;
-        let function = match self.plugin.plugin_instance.as_ref() {
-            PluginInstance::V0_1(plugin) => plugin.func_handle_command(),
+        let function = {
+            let plugin = self.plugin.instance::<crate::Plugin>();
+            plugin.func_handle_command()
         };
 
         tokio::task::block_in_place(|| {
@@ -82,46 +71,33 @@ impl WasmCommandRequirement {
                     .store
                     .call_guest(move |mut guest| {
                         Box::pin(async move {
-                            let (sender_resource, server_resource, args_resource, reps) = guest
+                            let (sender_resource, server_resource, args_resource) = guest
                                 .with(|mut store| {
                                     let sender_resource =
-                                        store.data_mut().add_command_sender(sender)?;
-                                    let sender_rep = sender_resource.rep();
-                                    let server_resource = match store.data_mut().add_server(server)
+                                        store.data_mut().add(sender)?;
+                                    let server_resource = match store.data_mut().add(server)
                                     {
                                         Ok(resource) => resource,
                                         Err(error) => {
-                                            remove_resource::<CommandSenderResource>(
-                                                store.data_mut(),
-                                                sender_rep,
-                                            );
+                                            store.data_mut().discard(sender_resource);
                                             return Err(error);
                                         }
                                     };
-                                    let server_rep = server_resource.rep();
                                     let args_resource = match store
                                         .data_mut()
-                                        .add_consumed_args(HashMap::default())
+                                        .add(HashMap::default())
                                     {
                                         Ok(resource) => resource,
                                         Err(error) => {
-                                            remove_resource::<ServerResource>(
-                                                store.data_mut(),
-                                                server_rep,
-                                            );
-                                            remove_resource::<CommandSenderResource>(
-                                                store.data_mut(),
-                                                sender_rep,
-                                            );
+                                            store.data_mut().discard(server_resource);
+                                            store.data_mut().discard(sender_resource);
                                             return Err(error);
                                         }
                                     };
-                                    let reps = (sender_rep, server_rep, args_resource.rep());
                                     Ok::<_, wasmtime::Error>((
                                         sender_resource,
                                         server_resource,
                                         args_resource,
-                                        reps,
                                     ))
                                 })?;
 
@@ -133,14 +109,10 @@ impl WasmCommandRequirement {
                                 .await;
 
                             guest.with(|mut store| {
-                                let allowed = response.map(|(result,)| {
+                                response.map(|(result,)| {
                                     map_command_result(store.data_mut(), result)
                                         .is_ok_and(|value| value != 0)
-                                });
-                                remove_resource::<CommandSenderResource>(store.data_mut(), reps.0);
-                                remove_resource::<ServerResource>(store.data_mut(), reps.1);
-                                remove_resource::<ConsumedArgsResource>(store.data_mut(), reps.2);
-                                allowed
+                                })
                             })
                         })
                     })

@@ -201,15 +201,15 @@ impl DecoratedPotBlockEntity {
     }
 
     pub fn take_loot_table(&self) -> Option<(String, i64)> {
-        let mut guard = self
-            .loot_table
+        self.pending_loot
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        guard.take().map(|key| (key, self.loot_table_seed))
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+            .map(|loot| (loot.loot_table, loot.seed))
     }
 
     pub fn has_loot_table(&self) -> bool {
-        self.loot_table
+        self.pending_loot
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .is_some()

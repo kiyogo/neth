@@ -36,15 +36,15 @@ impl Default for ServerLinksConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            bug_report: "https://github.com/Pumpkin-MC/Pumpkin/issues".to_string(),
-            support: String::new(),
-            status: String::new(),
-            feedback: String::new(),
-            community: String::new(),
-            website: String::new(),
-            forums: String::new(),
-            news: String::new(),
-            announcements: String::new(),
+            bug_report: "https://kiyomc.com".to_string(),
+            support: "https://kiyomc.com".to_string(),
+            status: "https://kiyomc.com".to_string(),
+            feedback: "https://kiyomc.com".to_string(),
+            community: "https://kiyomc.com".to_string(),
+            website: "https://kiyomc.com".to_string(),
+            forums: "https://kiyomc.com".to_string(),
+            news: "https://kiyomc.com".to_string(),
+            announcements: "https://kiyomc.com".to_string(),
             custom: HashMap::default(),
         }
     }

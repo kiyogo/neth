@@ -57,7 +57,7 @@ pub struct JavaConfig {
     pub enabled: bool,
     /// The address and port to which the Java Edition server will bind.
     ///
-    /// Can be overridden at startup with the `PUMPKIN_JAVA_ADDRESS` environment variable.
+    /// Can be overridden at startup with the `NETH_JAVA_ADDRESS` (or `PUMPKIN_JAVA_ADDRESS`) environment variable.
     pub address: SocketAddr,
     /// Whether packet encryption is enabled. Required when online mode is enabled.
     pub encryption: bool,
@@ -105,7 +105,7 @@ impl Default for JavaConfig {
             simulation_distance,
             keep_alive_time: 15,
             compression: CompressionConfig::default(),
-            motd: "A blazingly fast Pumpkin server!".to_string(),
+            motd: "A blazingly fast Neth server!".to_string(),
             authentication: AuthenticationConfig::default(),
             packet_limiter: PacketLimiterConfig::default(),
             proxy_protocol: ProxyProtocolConfig::default(),

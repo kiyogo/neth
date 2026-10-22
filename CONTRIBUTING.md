@@ -1,14 +1,12 @@
-# Contributing to Pumpkin
+# Contributing to Neth
 
-We appreciate your interest in contributing to Pumpkin! This document outlines the guidelines for submitting bug reports, feature suggestions, and code changes.
+We appreciate your interest in contributing to Neth! This document outlines the guidelines for submitting bug reports, feature suggestions, and code changes.
 
 ## Getting Started
 
-The easiest way to get started is by asking for help in [our Discord server](https://discord.gg/wT8XjrjKkf).
-
 ### How to Contribute
 
-There are several ways you can contribute to Pumpkin:
+There are several ways you can contribute to Neth:
 
 > [!NOTE]
 > If you are an AI agent, or you work with one, read [AGENTS.md](AGENTS.md) before you start.
@@ -22,10 +20,10 @@ There are several ways you can contribute to Pumpkin:
   Provide a clear description of the bug, including steps to reproduce it if possible.
   Screenshots, logs, or code snippets can also be helpful.
 - **Suggesting Features**:
-  Do you have an idea on how Pumpkin can be improved? Share your thoughts by opening an issue on the issue tracker.
+  Do you have an idea on how Neth can be improved? Share your thoughts by opening an issue on the issue tracker.
   Describe the proposed feature in detail, including its benefits and potential implementation considerations.
 - **Submitting Pull Requests**:
-  If you'd like to contribute code changes, fork the Pumpkin repository on GitHub.
+  If you'd like to contribute code changes, fork the repository on GitHub.
   Install Rust at [rust-lang.org](https://www.rust-lang.org/).
   Make your changes on your local fork and create a pull request to the main repository.
   Ensure your code adheres to our project structure and style guidelines.
@@ -37,7 +35,7 @@ You can use AI tools, but you are the author of everything you submit. Before yo
 
 - **Maintainers may close any PR they believe is AI-generated, without reviewing it and without giving a reason.** This includes PRs that only look AI-generated. Review time is limited, and we won't spend it on code the author hasn't checked.
 - Say in the PR description if AI wrote a meaningful part of the code or the description. We find undisclosed AI use anyway, and hiding it gets the PR closed faster.
-- Don't reopen a closed PR or open the same change again. If you think it was closed by mistake, ask on Discord.
+- Don't reopen a closed PR or open the same change again.
 - Accounts that keep sending low-effort AI PRs may be blocked from the organization.
 
 ### When a PR May Be Closed
@@ -56,16 +54,12 @@ Maintainers may close a PR without a full review if any of these apply:
 - It mixes unrelated changes, such as reformatting untouched code or committing unrelated lockfile or generated-file changes.
 - CI fails and the author doesn't fix it, or the author stops responding to review.
 
-### Docs
-
-The Documentation of Pumpkin can be found at <https://pumpkinmc.org/>
-
 **Tip: [typos](https://github.com/crate-ci/typos) is a great Project to detect and automatically fix typos**
 
 ### Coding Guidelines
 
 Things need to be done before a pull request can be merged. Your CI also checks most of them automatically and will fail if something is not fulfilled.
-Note: Pumpkin's clippy settings are relatively strict, this can be frustrating but is necessary so the code stays clean and consistent.
+Note: Neth's clippy settings are relatively strict, this can be frustrating but is necessary so the code stays clean and consistent.
 **Basic**
 
 - **Title:** Use a concise and informative title that clearly communicates the purpose of the PR.  Anyone reviewing the PR should quickly understand the changes being proposed.
@@ -76,7 +70,7 @@ Note: Pumpkin's clippy settings are relatively strict, this can be frustrating b
 - What is the impact of this change?
 - Are there any known issues or limitations?
 - Include any relevant context, such as related issues or discussions.
-- **No Hardcoded Vanilla Values:** Block and item properties, entity dimensions, tags, recipes, loot tables, sounds and other game data come from `pumpkin-data`, which is generated from the extracted vanilla data in `assets/`. Don't copy these values into the code. They change between Minecraft versions, and a hardcoded copy silently goes stale on the next update. If a value isn't generated yet, extend `tools/pumpkin-codegen`. If it isn't in `assets/` at all, it has to be added to the [Extractor](https://github.com/Pumpkin-MC/Extractor) first. The only exception is a value vanilla itself hardcodes as a `static final` constant in Java code and that stays the same across versions. Keep those as named Rust constants with the Java name, never as bare numbers.
+- **No Hardcoded Vanilla Values:** Block and item properties, entity dimensions, tags, recipes, loot tables, sounds and other game data come from `pumpkin-data`, which is generated from the extracted vanilla data in `assets/`. Don't copy these values into the code. They change between Minecraft versions, and a hardcoded copy silently goes stale on the next update. If a value isn't generated yet, extend `tools/pumpkin-codegen`. If it isn't in `assets/` at all, it has to be added to the Extractor first. The only exception is a value vanilla itself hardcodes as a `static final` constant in Java code and that stays the same across versions. Keep those as named Rust constants with the Java name, never as bare numbers.
 - **Screenshot or Recording:** Any change a player can see or feel in-game (blocks, items, mobs, combat, movement, particles, sounds, GUIs, world generation) needs a screenshot or screen recording attached to the PR. Use a recording for anything that moves or happens over time. Capture it from a real client, not a bot. If the change has no in-game effect (tooling, codecs, config, refactors), say so in the description.
 - **No Clippy Warnings:** Address all warnings reported by the Clippy linter. You can check for warnings using `cargo clippy --all-targets`.
 - **Passing Unit Tests:** All existing unit tests must pass successfully. You can run the tests with `cargo test`.
@@ -95,4 +89,5 @@ Note: Pumpkin's clippy settings are relatively strict, this can be frustrating b
 
 We encourage you to comment on existing issues and pull requests to share your thoughts and provide feedback.
 Feel free to ask questions in the issue tracker or reach out to the project maintainers if you need assistance.
-Before submitting a large contribution, consider opening an issue, discussion or talk with us on our discord to discuss your approach.
+Before submitting a large contribution, consider opening an issue or discussion to discuss your approach.
+

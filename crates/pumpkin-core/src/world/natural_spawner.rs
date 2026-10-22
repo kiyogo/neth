@@ -14,6 +14,7 @@ use pumpkin_data::tag::Block::MINECRAFT_PREVENT_MOB_SPAWNING_INSIDE;
 use pumpkin_data::tag::Fluid::{MINECRAFT_LAVA, MINECRAFT_WATER};
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::tag::WorldgenBiome::MINECRAFT_REDUCE_WATER_AMBIENT_SPAWNS;
+use pumpkin_data::fluid::Fluid;
 use pumpkin_data::{Block, BlockDirection, BlockState, SpawnFloorPredicate};
 use pumpkin_util::GameMode;
 use pumpkin_util::math::get_section_cord;
@@ -256,24 +257,13 @@ impl PotentialCalculator {
     }
 }
 
+#[derive(Clone)]
 pub struct SpawnState {
     spawnable_chunk_count: i32,
-    pub mob_category_counts: MobCounts,
-    spawn_potential: PotentialCalculator,
-    local_mob_cap_calculator: LocalMobCapCalculator,
-    last_checked: AtomicCell<Option<(BlockPos, &'static EntityType, f64)>>,
-}
-
-impl Clone for SpawnState {
-    fn clone(&self) -> Self {
-        Self {
-            spawnable_chunk_count: self.spawnable_chunk_count,
-            mob_category_counts: self.mob_category_counts.clone(),
-            spawn_potential: self.spawn_potential.clone(),
-            local_mob_cap_calculator: self.local_mob_cap_calculator.clone(),
-            last_checked: AtomicCell::new(self.last_checked.load()),
-        }
-    }
+    pub mob_category_counts: Arc<MobCounts>,
+    spawn_potential: Arc<PotentialCalculator>,
+    local_mob_cap_calculator: Arc<LocalMobCapCalculator>,
+    last_checked: Arc<AtomicCell<Option<(BlockPos, &'static EntityType, f64)>>>,
 }
 
 impl fmt::Debug for SpawnState {
@@ -293,10 +283,10 @@ impl SpawnState {
     pub fn empty() -> Self {
         Self {
             spawnable_chunk_count: 0,
-            mob_category_counts: MobCounts::default(),
-            spawn_potential: PotentialCalculator::default(),
-            local_mob_cap_calculator: LocalMobCapCalculator::default(),
-            last_checked: AtomicCell::new(None),
+            mob_category_counts: Arc::new(MobCounts::default()),
+            spawn_potential: Arc::new(PotentialCalculator::default()),
+            local_mob_cap_calculator: Arc::new(LocalMobCapCalculator::default()),
+            last_checked: Arc::new(AtomicCell::new(None)),
         }
     }
 
@@ -398,10 +388,10 @@ impl SpawnState {
         }
         Self {
             spawnable_chunk_count: chunk_count,
-            mob_category_counts: counter,
-            spawn_potential: potential,
-            local_mob_cap_calculator: local_mob_cap,
-            last_checked: AtomicCell::new(None),
+            mob_category_counts: Arc::new(counter),
+            spawn_potential: Arc::new(potential),
+            local_mob_cap_calculator: Arc::new(local_mob_cap),
+            last_checked: Arc::new(AtomicCell::new(None)),
         }
     }
 
@@ -519,7 +509,9 @@ pub fn spawn_for_chunk(
 ) -> Vec<Arc<dyn EntityBase>> {
     let mut entities = Vec::new();
     for category in spawn_list {
-        if spawn_state.can_spawn_for_category_local(world, category, chunk_pos) {
+        if spawn_state.can_spawn_for_category_global(category)
+            && spawn_state.can_spawn_for_category_local(world, category, chunk_pos)
+        {
             let random_pos = get_random_pos_within(world.min_y, &chunk_pos, chunk);
             if random_pos.0.y > world.min_y {
                 entities.extend(spawn_category_for_position(
@@ -596,7 +588,6 @@ fn is_spawn_rules_ok_cache(
             || below_block.id == Block::FROSTED_ICE.id
     } else {
         below_block.has_tag(&pumpkin_data::tag::Block::MINECRAFT_ANIMALS_SPAWNABLE_ON)
-            || below_state.is_side_solid(BlockDirection::Up)
     }
 }
 
@@ -845,6 +836,14 @@ pub fn spawn_category_for_position(
                     break;
                 };
 
+                let check_pos = adjust_spawn_position(world, check_pos, entity_type);
+
+                if !spawn_state.can_spawn_for_category_global(category)
+                    || !spawn_state.can_spawn_for_category_local(world, category, *chunk_pos)
+                {
+                    return batch_buffer;
+                }
+
                 if is_valid_spawn_position_for_type(
                     world,
                     &check_pos,
@@ -855,7 +854,7 @@ pub fn spawn_category_for_position(
                     is_thundering,
                 ) && spawn_state.can_spawn(entity_type, &check_pos, world)
                 {
-                    let spawn_pos_f64 = Vector3::new(xx, f64::from(y_start), zz);
+                    let spawn_pos_f64 = Vector3::new(xx, f64::from(check_pos.0.y), zz);
                     let entity = from_type(entity_type, spawn_pos_f64, world, Uuid::new_v4());
                     entity
                         .get_entity()
@@ -873,7 +872,12 @@ pub fn spawn_category_for_position(
                         group_size += 1;
                         batch_buffer.push(entity);
                         spawn_state.after_spawn(entity_type, &check_pos, world);
-                        if cluster_size >= entity_type.limit_per_chunk {
+                        let max_cluster_size = if entity_type.limit_per_chunk > 0 {
+                            entity_type.limit_per_chunk
+                        } else {
+                            4
+                        };
+                        if cluster_size >= max_cluster_size {
                             return batch_buffer;
                         }
 
@@ -927,17 +931,7 @@ pub fn is_right_distance_to_player_and_spawn_point(
     let chunk_x = get_section_cord(pos.0.x);
     let chunk_z = get_section_cord(pos.0.z);
     let target_chunk = Vector2::new(chunk_x, chunk_z);
-    target_chunk == *chunk_pos
-        || (world
-            .active_chunks
-            .read()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .contains(&target_chunk)
-            && world
-                .worldborder
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .contains_block(pos.0.x, pos.0.z))
+    target_chunk == *chunk_pos || world.can_spawn_entities_in_chunk(target_chunk)
 }
 
 pub const FORTRESS_ENEMIES: &[Spawner] = &[
@@ -1069,14 +1063,6 @@ pub fn get_random_spawn_mob_at(
     }
 }
 
-/// Picks a spawner in proportion to its weight, like vanilla `WeightedList::getRandom`.
-/// Returns `None` for an empty list or when every weight is zero.
-fn choose_spawner<'a, R: rand::Rng + ?Sized>(
-    spawners: &'a [Spawner],
-    rng: &mut R,
-) -> Option<&'a Spawner> {
-    spawners.choose_weighted(rng, |s| s.weight).ok()
-}
 
 #[must_use]
 pub fn is_valid_spawn_position_for_type(
@@ -1138,10 +1124,17 @@ pub fn is_spawn_position_ok(
                 return false;
             }
             let above_state = world.get_block_state(&block_pos.up());
-            world.get_fluid(block_pos).has_tag(&MINECRAFT_WATER) && !above_state.is_full_cube()
+            world.get_fluid(block_pos).has_tag(&MINECRAFT_WATER)
+                && !above_state.is_solid_block()
+                && !above_state.is_full_cube()
         }
         SpawnLocation::OnGround => {
             if !within_bounds {
+                return false;
+            }
+            if world.get_fluid(block_pos).id != Fluid::EMPTY.id
+                || world.get_fluid(&block_pos.up()).id != Fluid::EMPTY.id
+            {
                 return false;
             }
             let down = world.get_block_state(&block_pos.down());
@@ -1179,6 +1172,7 @@ pub fn is_spawn_position_ok_cache(
 
             state.is_liquid()
                 && Block::from_state_id(state.id).has_tag(&MINECRAFT_WATER)
+                && !above_state.is_solid_block()
                 && !above_state.is_full_cube()
         }
         SpawnLocation::OnGround => {
@@ -1201,18 +1195,58 @@ pub fn is_spawn_position_ok_cache(
     }
 }
 
+/// Vanilla `blockState.isSignalSource()`:
+/// Checks if the block emits or conducts redstone signals, which prevents mobs from spawning inside it.
+#[must_use]
+pub fn is_signal_source(block: &Block) -> bool {
+    block.has_tag(&pumpkin_data::tag::Block::MINECRAFT_BUTTONS)
+        || block.has_tag(&pumpkin_data::tag::Block::MINECRAFT_PRESSURE_PLATES)
+        || block.id == Block::REDSTONE_WIRE.id
+        || block.id == Block::REDSTONE_TORCH.id
+        || block.id == Block::REDSTONE_WALL_TORCH.id
+        || block.id == Block::REPEATER.id
+        || block.id == Block::COMPARATOR.id
+        || block.id == Block::LEVER.id
+        || block.id == Block::DAYLIGHT_DETECTOR.id
+        || block.id == Block::OBSERVER.id
+        || block.id == Block::REDSTONE_BLOCK.id
+        || block.id == Block::TARGET.id
+        || block.id == Block::SCULK_SENSOR.id
+        || block.id == Block::CALIBRATED_SCULK_SENSOR.id
+        || block.id == Block::TRIPWIRE_HOOK.id
+        || block.id == Block::LIGHTNING_ROD.id
+        || block.id == Block::LECTERN.id
+        || block.id == Block::JUKEBOX.id
+        || block.id == Block::TRAPPED_CHEST.id
+        || block.id == Block::CRAFTER.id
+        || block.id == Block::COPPER_BULB.id
+        || block.id == Block::EXPOSED_COPPER_BULB.id
+        || block.id == Block::WEATHERED_COPPER_BULB.id
+        || block.id == Block::OXIDIZED_COPPER_BULB.id
+        || block.id == Block::WAXED_COPPER_BULB.id
+        || block.id == Block::WAXED_EXPOSED_COPPER_BULB.id
+        || block.id == Block::WAXED_WEATHERED_COPPER_BULB.id
+        || block.id == Block::WAXED_OXIDIZED_COPPER_BULB.id
+        || block.id == Block::DETECTOR_RAIL.id
+        || block.id == Block::ACTIVATOR_RAIL.id
+}
+
 #[must_use]
 pub fn is_valid_empty_spawn_block(
     state: &'static BlockState,
     entity_type: &'static EntityType,
 ) -> bool {
-    if state.is_full_cube() {
+    if state.is_full_cube() || state.is_solid_block() {
+        return false;
+    }
+    let block = Block::from_state_id(state.id);
+    if is_signal_source(block) {
         return false;
     }
     if state.is_liquid() {
         return false;
     }
-    if Block::from_state_id(state.id).has_tag(&MINECRAFT_PREVENT_MOB_SPAWNING_INSIDE) {
+    if block.has_tag(&MINECRAFT_PREVENT_MOB_SPAWNING_INSIDE) {
         return false;
     }
     !is_block_dangerous(entity_type, state)
@@ -1239,10 +1273,22 @@ fn is_block_dangerous(entity_type: &'static EntityType, state: &'static BlockSta
     if !entity_type.fire_immune && is_burning_block(block) {
         return true;
     }
-    block.id == Block::WITHER_ROSE.id
-        || block.id == Block::SWEET_BERRY_BUSH.id
-        || block.id == Block::CACTUS.id
-        || block.id == Block::POWDER_SNOW.id
+    if block.id == Block::WITHER_ROSE.id {
+        return entity_type != &EntityType::WITHER
+            && entity_type != &EntityType::WITHER_SKELETON;
+    }
+    if block.id == Block::SWEET_BERRY_BUSH.id {
+        return entity_type != &EntityType::FOX;
+    }
+    if block.id == Block::CACTUS.id {
+        return entity_type != &EntityType::CAMEL;
+    }
+    if block.id == Block::POWDER_SNOW.id {
+        return entity_type != &EntityType::POLAR_BEAR
+            && entity_type != &EntityType::STRAY
+            && entity_type != &EntityType::SNOW_GOLEM;
+    }
+    false
 }
 
 fn is_burning_block(block: &Block) -> bool {
@@ -1431,6 +1477,222 @@ mod tests {
         }
         assert!(choose_spawner(&spawners[..1], &mut rng).is_none());
         assert!(choose_spawner(&[], &mut rng).is_none());
+    }
+
+    #[test]
+    fn test_signal_source_parity() {
+        assert!(is_signal_source(&Block::REDSTONE_WIRE));
+        assert!(is_signal_source(&Block::REDSTONE_TORCH));
+        assert!(is_signal_source(&Block::REDSTONE_WALL_TORCH));
+        assert!(is_signal_source(&Block::REPEATER));
+        assert!(is_signal_source(&Block::COMPARATOR));
+        assert!(is_signal_source(&Block::LEVER));
+        assert!(is_signal_source(&Block::DAYLIGHT_DETECTOR));
+        assert!(is_signal_source(&Block::OBSERVER));
+        assert!(is_signal_source(&Block::REDSTONE_BLOCK));
+        assert!(is_signal_source(&Block::TARGET));
+        assert!(is_signal_source(&Block::SCULK_SENSOR));
+        assert!(is_signal_source(&Block::CALIBRATED_SCULK_SENSOR));
+        assert!(is_signal_source(&Block::TRIPWIRE_HOOK));
+        assert!(is_signal_source(&Block::LIGHTNING_ROD));
+        assert!(is_signal_source(&Block::STONE_BUTTON));
+        assert!(is_signal_source(&Block::OAK_BUTTON));
+        assert!(is_signal_source(&Block::STONE_PRESSURE_PLATE));
+        assert!(is_signal_source(&Block::OAK_PRESSURE_PLATE));
+        assert!(is_signal_source(&Block::LIGHT_WEIGHTED_PRESSURE_PLATE));
+        assert!(is_signal_source(&Block::HEAVY_WEIGHTED_PRESSURE_PLATE));
+
+        assert!(!is_signal_source(&Block::AIR));
+        assert!(!is_signal_source(&Block::STONE));
+        assert!(!is_signal_source(&Block::GRASS_BLOCK));
+        assert!(!is_signal_source(&Block::GLASS));
+        assert!(!is_signal_source(&Block::OAK_PLANKS));
+    }
+
+    #[test]
+    fn test_empty_spawn_block_rejects_signal_sources_and_solid_blocks() {
+        assert!(is_valid_empty_spawn_block(Block::AIR.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::STONE.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::REDSTONE_WIRE.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::REDSTONE_TORCH.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::OAK_BUTTON.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::STONE_PRESSURE_PLATE.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::LEVER.default_state, &EntityType::CREEPER));
+        assert!(!is_valid_empty_spawn_block(Block::WATER.default_state, &EntityType::CREEPER));
+    }
+
+    #[test]
+    fn test_block_danger_immunities() {
+        // Fox is immune to sweet berry bushes
+        assert!(!is_block_dangerous(&EntityType::FOX, Block::SWEET_BERRY_BUSH.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::SWEET_BERRY_BUSH.default_state));
+        assert!(is_block_dangerous(&EntityType::ZOMBIE, Block::SWEET_BERRY_BUSH.default_state));
+
+        // Polar bear, Stray, Snow Golem are immune to powder snow
+        assert!(!is_block_dangerous(&EntityType::POLAR_BEAR, Block::POWDER_SNOW.default_state));
+        assert!(!is_block_dangerous(&EntityType::STRAY, Block::POWDER_SNOW.default_state));
+        assert!(!is_block_dangerous(&EntityType::SNOW_GOLEM, Block::POWDER_SNOW.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::POWDER_SNOW.default_state));
+
+        // Wither skeleton and Wither are immune to wither rose
+        assert!(!is_block_dangerous(&EntityType::WITHER_SKELETON, Block::WITHER_ROSE.default_state));
+        assert!(!is_block_dangerous(&EntityType::WITHER, Block::WITHER_ROSE.default_state));
+        assert!(is_block_dangerous(&EntityType::SKELETON, Block::WITHER_ROSE.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::WITHER_ROSE.default_state));
+
+        // Camel is immune to cactus
+        assert!(!is_block_dangerous(&EntityType::CAMEL, Block::CACTUS.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::CACTUS.default_state));
+
+        // Fire immune entities
+        assert!(!is_block_dangerous(&EntityType::BLAZE, Block::LAVA.default_state));
+        assert!(!is_block_dangerous(&EntityType::BLAZE, Block::MAGMA_BLOCK.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::LAVA.default_state));
+        assert!(is_block_dangerous(&EntityType::CREEPER, Block::MAGMA_BLOCK.default_state));
+    }
+
+    #[test]
+    fn test_local_mob_cap_calculation_parity() {
+        let local_calc = LocalMobCapCalculator::default();
+        let chunk_pos = Vector2::new(0, 0);
+
+        // Pre-populate players near chunk (player 100 and player 200)
+        let player_ids: Arc<[i32]> = Arc::new([100, 200]);
+        local_calc.players_near_chunk.insert(chunk_pos, player_ids);
+
+        // Initial state: both players have 0 mobs, can_spawn should be true
+        {
+            let counts_100 = local_calc.player_mob_counts.entry(100).or_default();
+            assert!(counts_100.can_spawn(&MobCategory::MONSTER));
+        }
+
+        // Saturate player 100 to monster cap (70)
+        {
+            let counts_100 = local_calc.player_mob_counts.entry(100).or_default();
+            for _ in 0..70 {
+                counts_100.add(&MobCategory::MONSTER);
+            }
+            assert!(!counts_100.can_spawn(&MobCategory::MONSTER));
+        }
+
+        // Player 200 is still under cap (0 < 70)
+        {
+            let counts_200 = local_calc.player_mob_counts.entry(200).or_default();
+            assert!(counts_200.can_spawn(&MobCategory::MONSTER));
+        }
+
+        // Java rule: if ANY player near chunk is under cap, chunk can spawn
+        let mut can_spawn = false;
+        for &pid in &[100, 200] {
+            if let Some(count) = local_calc.player_mob_counts.get(&pid) {
+                if count.can_spawn(&MobCategory::MONSTER) {
+                    can_spawn = true;
+                    break;
+                }
+            } else {
+                can_spawn = true;
+                break;
+            }
+        }
+        assert!(can_spawn, "Chunk must allow spawning when at least one player is under cap");
+
+        // Saturate player 200 as well
+        {
+            let counts_200 = local_calc.player_mob_counts.entry(200).or_default();
+            for _ in 0..70 {
+                counts_200.add(&MobCategory::MONSTER);
+            }
+            assert!(!counts_200.can_spawn(&MobCategory::MONSTER));
+        }
+
+        // Now both players are saturated: chunk must deny spawning
+        let mut both_saturated_can_spawn = false;
+        for &pid in &[100, 200] {
+            if let Some(count) = local_calc.player_mob_counts.get(&pid) {
+                if count.can_spawn(&MobCategory::MONSTER) {
+                    both_saturated_can_spawn = true;
+                    break;
+                }
+            } else {
+                both_saturated_can_spawn = true;
+                break;
+            }
+        }
+        assert!(!both_saturated_can_spawn, "Chunk must deny spawning when all nearby players are saturated");
+
+        // Decrement player 100: can_spawn becomes true again
+        {
+            let counts_100 = local_calc.player_mob_counts.entry(100).or_default();
+            counts_100.remove(&MobCategory::MONSTER);
+            assert!(counts_100.can_spawn(&MobCategory::MONSTER));
+        }
+    }
+
+    #[test]
+    fn test_global_mob_cap_scaling_parity() {
+        // 1 player with full 17x17 chunk window (289 spawnable chunks)
+        let state_1p = SpawnState {
+            spawnable_chunk_count: 289,
+            mob_category_counts: Arc::new(MobCounts::default()),
+            spawn_potential: Arc::new(PotentialCalculator::default()),
+            local_mob_cap_calculator: Arc::new(LocalMobCapCalculator::default()),
+            last_checked: Arc::new(AtomicCell::new(None)),
+        };
+
+        // Monster cap for 289 chunks = 70 * 289 / 289 = 70
+        assert!(state_1p.can_spawn_for_category_global(&MobCategory::MONSTER));
+        for _ in 0..69 {
+            state_1p.mob_category_counts.add(&MobCategory::MONSTER);
+        }
+        assert!(state_1p.can_spawn_for_category_global(&MobCategory::MONSTER));
+        state_1p.mob_category_counts.add(&MobCategory::MONSTER);
+        // At 70 mobs, cap is reached
+        assert!(!state_1p.can_spawn_for_category_global(&MobCategory::MONSTER));
+
+        // 2 players far apart (578 spawnable chunks)
+        let state_2p = SpawnState {
+            spawnable_chunk_count: 578,
+            mob_category_counts: Arc::new(MobCounts::default()),
+            spawn_potential: Arc::new(PotentialCalculator::default()),
+            local_mob_cap_calculator: Arc::new(LocalMobCapCalculator::default()),
+            last_checked: Arc::new(AtomicCell::new(None)),
+        };
+        // Monster cap for 578 chunks = 70 * 578 / 289 = 140
+        for _ in 0..139 {
+            state_2p.mob_category_counts.add(&MobCategory::MONSTER);
+        }
+        assert!(state_2p.can_spawn_for_category_global(&MobCategory::MONSTER));
+        state_2p.mob_category_counts.add(&MobCategory::MONSTER);
+        assert!(!state_2p.can_spawn_for_category_global(&MobCategory::MONSTER));
+    }
+
+    #[test]
+    fn test_filtered_spawning_categories_filtering() {
+        let mut state = SpawnState::empty();
+        state.set_spawnable_chunk_count(289);
+
+        // Standard hostile + friendly night spawning (spawn_passives = false)
+        let categories = get_filtered_spawning_categories(&state, true, true, false);
+        let names: Vec<usize> = categories.iter().map(|c| c.id).collect();
+        assert!(names.contains(&MobCategory::MONSTER.id));
+        assert!(names.contains(&MobCategory::AMBIENT.id));
+        assert!(names.contains(&MobCategory::WATER_CREATURE.id));
+        // CREATURE is persistent, so it is filtered out when spawn_passives = false
+        assert!(!names.contains(&MobCategory::CREATURE.id));
+
+        // Passive 400-tick spawn cycle (spawn_passives = true)
+        let categories_passive = get_filtered_spawning_categories(&state, true, true, true);
+        let names_passive: Vec<usize> = categories_passive.iter().map(|c| c.id).collect();
+        assert!(names_passive.contains(&MobCategory::CREATURE.id));
+
+        // Peaceful (spawn_enemies = false)
+        let categories_peaceful = get_filtered_spawning_categories(&state, true, false, false);
+        let names_peaceful: Vec<usize> = categories_peaceful.iter().map(|c| c.id).collect();
+        assert!(!names_peaceful.contains(&MobCategory::MONSTER.id));
+
+        // Mob spawning disabled (spawn_friendlies = false, spawn_enemies = false)
+        let categories_disabled = get_filtered_spawning_categories(&state, false, false, false);
+        assert!(categories_disabled.is_empty());
     }
 }
 

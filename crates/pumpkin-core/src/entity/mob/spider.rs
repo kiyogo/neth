@@ -6,7 +6,6 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::difficulty::Difficulty;
-use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 use uuid::Uuid;
 
@@ -177,18 +176,28 @@ impl Mob for SpiderEntity {
         Some(self)
     }
 
+    fn mob_on_climbable(&self, _caller: &dyn EntityBase) -> bool {
+        self.is_climbing()
+            && self
+                .mob_entity
+                .living_entity
+                .entity
+                .horizontal_collision
+                .load(Ordering::SeqCst)
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
         }
 
-        let vel = entity.velocity.load();
-        let is_colliding_horizontally = vel.x.abs() < 1e-4 && vel.z.abs() < 1e-4;
+        let is_colliding_horizontally = entity.horizontal_collision.load(Ordering::SeqCst);
         self.set_climbing(is_colliding_horizontally);
-        if is_colliding_horizontally && vel.y < 0.2 {
-            entity.set_velocity(Vector3::new(vel.x, 0.2, vel.z));
-        }
+        self.mob_entity
+            .living_entity
+            .climbing
+            .store(is_colliding_horizontally, Ordering::Relaxed);
 
         // Ambient sound
         if rand::random_range(0..100) == 0 && !entity.silent.load(Ordering::Relaxed) {

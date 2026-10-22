@@ -358,6 +358,64 @@ fn existing_level_dat_root(path: &Path) -> Result<NbtCompound, WorldInfoError> {
     }
 }
 
+fn load_level_data_from_file(
+    path: &Path,
+    level_folder: &Path,
+) -> Result<LevelData, WorldInfoError> {
+    let file = match File::open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Err(WorldInfoError::InfoNotFound);
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let root = read_gzip_compound_tag(file)
+        .map_err(|e| WorldInfoError::DeserializationError(e.to_string()))?;
+    let Some(data) = root.get_compound(LEVEL_DATA_TAG) else {
+        error!(
+            "The level data file {} has no {LEVEL_DATA_TAG} compound and is therefore corrupt",
+            path.display()
+        );
+        return Err(WorldInfoError::DeserializationError("Missing Data".into()));
+    };
+
+    check_data_version(data)?;
+    check_level_version(data)?;
+
+    let Some(seed) = stored_world_seed(level_folder, data) else {
+        return Err(WorldInfoError::MissingWorldSeed);
+    };
+
+    let mut level_data = level_data_from_nbt(data, seed);
+
+    if let Some(wgs) = read_world_gen_settings(level_folder) {
+        level_data.world_gen_settings = wgs;
+    }
+
+    // game_rules.dat – prefer the new file; fall back to level.dat values
+    if find_overworld_data_file(level_folder, "game_rules.dat").is_some() {
+        level_data.game_rules = read_game_rules(level_folder);
+    }
+
+    if minecraft_data_dir(level_folder)
+        .join("world_clocks.dat")
+        .exists()
+    {
+        let clocks = read_world_clocks(level_folder);
+        if let Some(overworld) = clocks.clocks.get("minecraft:overworld") {
+            level_data.day_time = overworld.total_ticks;
+        }
+    }
+
+    // weather.dat
+    if find_overworld_data_file(level_folder, "weather.dat").is_some() {
+        let weather = read_weather(level_folder);
+        level_data.clear_weather_time = weather.clear_weather_time;
+    }
+
+    Ok(level_data)
+}
+
 impl WorldInfoReader for AnvilLevelInfo {
     /// Loads level metadata and overlays separate settings files, including Paper overworld data.
     ///
@@ -368,56 +426,60 @@ impl WorldInfoReader for AnvilLevelInfo {
     /// or a missing world seed. Optional settings readers retain their defaulting behavior.
     fn read_world_info(&self, level_folder: &Path) -> Result<LevelData, WorldInfoError> {
         let path = level_folder.join(LEVEL_DAT_FILE_NAME);
+        let path_old = level_folder.join(LEVEL_DAT_BACKUP_FILE_NAME);
 
-        let file = match File::open(path) {
-            Ok(file) => file,
-            Err(error) if error.kind() == ErrorKind::NotFound => {
-                return Err(WorldInfoError::InfoNotFound);
+        match load_level_data_from_file(&path, level_folder) {
+            Ok(level_data) => Ok(level_data),
+            Err(WorldInfoError::InfoNotFound) => {
+                if path_old.exists() {
+                    tracing::warn!(
+                        "{} not found, attempting to recover from {}",
+                        path.display(),
+                        path_old.display()
+                    );
+                    let recovered = load_level_data_from_file(&path_old, level_folder)?;
+                    let _ = crate::fs_util::safe_replace_or_move_file(
+                        &path, &path_old, &path_old, true,
+                    );
+                    Ok(recovered)
+                } else {
+                    Err(WorldInfoError::InfoNotFound)
+                }
             }
-            Err(error) => return Err(error.into()),
-        };
-        let root = read_gzip_compound_tag(file)
-            .map_err(|e| WorldInfoError::DeserializationError(e.to_string()))?;
-        let Some(data) = root.get_compound(LEVEL_DATA_TAG) else {
-            error!("The level.dat file has no {LEVEL_DATA_TAG} compound and is therefore corrupt");
-            return Err(WorldInfoError::DeserializationError("Missing Data".into()));
-        };
+            Err(primary_err) => {
+                tracing::warn!(
+                    "Failed to load world data from {}: {primary_err}. Attempting to use fallback {}",
+                    path.display(),
+                    path_old.display()
+                );
+                let _ = crate::fs_util::backup_corrupted_file(&path, "");
 
-        check_data_version(data)?;
-        check_level_version(data)?;
-
-        let Some(seed) = stored_world_seed(level_folder, data) else {
-            return Err(WorldInfoError::MissingWorldSeed);
-        };
-
-        let mut level_data = level_data_from_nbt(data, seed);
-
-        if let Some(wgs) = read_world_gen_settings(level_folder) {
-            level_data.world_gen_settings = wgs;
-        }
-
-        // game_rules.dat – prefer the new file; fall back to level.dat values
-        if find_overworld_data_file(level_folder, "game_rules.dat").is_some() {
-            level_data.game_rules = read_game_rules(level_folder);
-        }
-
-        if minecraft_data_dir(level_folder)
-            .join("world_clocks.dat")
-            .exists()
-        {
-            let clocks = read_world_clocks(level_folder);
-            if let Some(overworld) = clocks.clocks.get("minecraft:overworld") {
-                level_data.day_time = overworld.total_ticks;
+                if path_old.exists() {
+                    match load_level_data_from_file(&path_old, level_folder) {
+                        Ok(recovered) => {
+                            tracing::info!(
+                                "Successfully restored world data from fallback {}. Restoring {}",
+                                path_old.display(),
+                                path.display()
+                            );
+                            let _ = crate::fs_util::safe_replace_or_move_file(
+                                &path, &path_old, &path_old, true,
+                            );
+                            Ok(recovered)
+                        }
+                        Err(fallback_err) => {
+                            tracing::error!(
+                                "Fallback to {} also failed: {fallback_err}",
+                                path_old.display()
+                            );
+                            Err(primary_err)
+                        }
+                    }
+                } else {
+                    Err(primary_err)
+                }
             }
         }
-
-        // weather.dat
-        if find_overworld_data_file(level_folder, "weather.dat").is_some() {
-            let weather = read_weather(level_folder);
-            level_data.clear_weather_time = weather.clear_weather_time;
-        }
-
-        Ok(level_data)
     }
 }
 
@@ -453,12 +515,7 @@ impl WorldInfoWriter for AnvilLevelInfo {
         write_gzip_compound_tag(root, File::create(&path_new)?)
             .map_err(|e| WorldInfoError::SerializationError(e.to_string()))?;
 
-        if path.exists()
-            && let Err(e) = fs::copy(&path, &path_old)
-        {
-            error!("Failed to back up level.dat to {}: {e}", path_old.display());
-        }
-        fs::rename(&path_new, &path)?;
+        crate::fs_util::safe_replace_file(&path, &path_new, &path_old)?;
 
         let data_version = level_data.data_version;
 
@@ -1265,5 +1322,43 @@ mod test {
         let loaded_wt = crate::world_info::data_files::read_wandering_trader(temp_dir.path());
         assert_eq!(loaded_wt.spawn_delay, 24000);
         assert_eq!(loaded_wt.spawn_chance, 25);
+    }
+
+    #[test]
+    fn level_dat_corrupted_falls_back_to_level_dat_old() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut level_data = LEVEL_DAT.data.clone();
+        level_data.data_version = 4903;
+        level_data.spawn_x = 12345;
+
+        // Write first version
+        AnvilLevelInfo
+            .write_world_info(&level_data, temp_dir.path())
+            .unwrap();
+
+        // Write second version to populate level.dat_old
+        level_data.spawn_x = 54321;
+        AnvilLevelInfo
+            .write_world_info(&level_data, temp_dir.path())
+            .unwrap();
+
+        let path = temp_dir.path().join(LEVEL_DAT_FILE_NAME);
+        let path_old = temp_dir.path().join(super::LEVEL_DAT_BACKUP_FILE_NAME);
+        assert!(path.exists());
+        assert!(path_old.exists());
+
+        // Corrupt level.dat
+        std::fs::write(&path, b"corrupted garbage bytes").unwrap();
+
+        // Reading should automatically fall back to level.dat_old
+        let reloaded = AnvilLevelInfo.read_world_info(temp_dir.path()).unwrap();
+        assert_eq!(reloaded.spawn_x, 12345);
+
+        // Verify corrupted file was backed up
+        let has_corrupted_backup = std::fs::read_dir(temp_dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|e| e.file_name().to_string_lossy().contains("level.dat_corrupted_"));
+        assert!(has_corrupted_backup, "Corrupted level.dat should be backed up");
     }
 }

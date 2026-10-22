@@ -78,9 +78,12 @@ impl MoveControlTrait for MoveControl {
                 .movement_input
                 .store(Vector3::new(0.0, 0.0, speed));
 
-            // TODO: Jump if needed (based on collision and height difference)
+            // Jump if needed on ground (based on collision and height difference)
+            let in_fluid = entity.touching_water.load(Ordering::Relaxed)
+                || entity.touching_lava.load(Ordering::Relaxed);
             let step_height = living_entity.get_attribute_value(&Attributes::STEP_HEIGHT);
-            if yd > step_height
+            if !in_fluid
+                && yd > step_height
                 && xd * xd + zd * zd < 1.0f64.max(entity.entity_dimension.load().width as f64)
             {
                 living_entity.jumping.store(true, Ordering::SeqCst);
@@ -93,7 +96,9 @@ impl MoveControlTrait for MoveControl {
                 .movement_input
                 .store(Vector3::new(0.0, 0.0, speed));
 
-            if entity.on_ground.load(Ordering::Relaxed) {
+            let in_fluid = entity.touching_water.load(Ordering::Relaxed)
+                || entity.touching_lava.load(Ordering::Relaxed);
+            if entity.on_ground.load(Ordering::Relaxed) || in_fluid {
                 self.operation = Operation::Wait;
             }
         }
@@ -149,5 +154,12 @@ impl MoveControl {
         self.strafe_forwards = forwards;
         self.strafe_right = right;
         self.speed_modifier = 0.25;
+    }
+
+    #[must_use]
+    pub fn rotlerp(start: f32, end: f32, max_change: f32) -> f32 {
+        let diff = pumpkin_util::math::subtract_angles(start, end);
+        let clamped = diff.clamp(-max_change, max_change);
+        start + clamped
     }
 }

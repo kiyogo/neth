@@ -1,4 +1,3 @@
-use pumpkin_data::data_component_impl::ContainerImpl;
 use pumpkin_data::game_event::GameEvent;
 use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use pumpkin_data::item_stack::ItemStack;

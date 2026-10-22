@@ -41,7 +41,7 @@ impl DolphinEntity {
             .move_control
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) =
-            Box::new(SmoothSwimmingMoveControl::new(85, 10, 1.0, 0.1, true));
+            Box::new(SmoothSwimmingMoveControl::new(85, 10, 0.02, 0.1, true));
 
         *mob_entity
             .navigator

@@ -149,13 +149,40 @@ impl<'a> ChunkCursor<'a> {
                 y_in_section,
                 local_x,
                 local_z,
-            } => chunk
-                .light_engine
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .sky_light
-                .get(section_index)
-                .map_or(15, |s| s.get(local_x, y_in_section, local_z)),
+            } => {
+                let world_y =
+                    chunk.section.min_y + (section_index as i32 * 16) + y_in_section as i32;
+                let mb_y = {
+                    let mut heightmaps_guard = chunk
+                        .heightmap
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    if heightmaps_guard.motion_blocking.is_none() {
+                        *heightmaps_guard = chunk.calculate_heightmap();
+                    }
+                    heightmaps_guard.get(
+                        crate::chunk::ChunkHeightmapType::MotionBlocking,
+                        local_x as i32,
+                        local_z as i32,
+                        chunk.section.min_y,
+                    )
+                };
+
+                if world_y > mb_y {
+                    15
+                } else if chunk.light_populated.load(std::sync::atomic::Ordering::Relaxed) {
+                    chunk
+                        .light_engine
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .sky_light
+                        .get(section_index)
+                        .map(|s| s.get(local_x, y_in_section, local_z))
+                        .unwrap_or(0)
+                } else {
+                    0
+                }
+            }
         }
     }
 

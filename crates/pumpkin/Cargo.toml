@@ -1,16 +1,23 @@
 [package]
-name = "pumpkin"
+name = "neth"
 version.workspace = true
-description = "Empowering everyone to host fast and efficient Minecraft servers."
+authors.workspace = true
+description = "High-performance Minecraft Java Edition server in Rust."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+homepage = "https://kiyomc.com"
+repository = "https://kiyomc.com"
 
 [package.metadata.tauri-winres]
 # FileDescription is handled as the Program name by Windows!
-FileDescription = "Pumpkin"
-OriginalFilename = "pumpkin.exe"
-LegalCopyright = "Copyright © 2026 Aleksander Medvedev"
+FileDescription = "Neth"
+OriginalFilename = "neth.exe"
+LegalCopyright = "Copyright © 2026 KIYOVN. Portions Copyright © 2024-2026 Aleksander Medvedev and Pumpkin contributors."
+
+[[bin]]
+name = "neth"
+path = "src/main.rs"
 
 [dependencies]
 pumpkin-core.workspace = true
@@ -39,5 +46,9 @@ console-subscriber = ["dep:console-subscriber"]
 # Load plugins built against the v0.2 API. Off until the v0.2 ABI is finished.
 plugin-v0_2 = ["pumpkin-wasm-host/v0_2"]
 
+[dev-dependencies]
+pumpkin-wasm-host-common.workspace = true
+
 [lints]
 workspace = true
+

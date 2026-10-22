@@ -8,7 +8,6 @@ use crate::entity::projectile::egg::EggEntity;
 use crate::item::{ItemBehaviour, ItemMetadata};
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
-use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::Sound;
 
 pub struct EggItem;
@@ -22,7 +21,23 @@ impl ItemMetadata for EggItem {
 const POWER: f32 = 1.5;
 
 impl ItemBehaviour for EggItem {
-    fn normal_use(&self, _block: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        let (yaw, pitch) = player.rotation();
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        block: &Item,
+        player: &Player,
+        yaw: f32,
+        pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         let position = player.position();
         let world = player.world();
         world.play_sound_fine(
@@ -33,42 +48,24 @@ impl ItemBehaviour for EggItem {
             0.4 / (rng().random::<f32>() * 0.4 + 0.8),
         );
 
-        // Capture the held item stack and pass it to the thrown egg entity
-        let item_stack: ItemStack = player.inventory.held_item();
+        let mut stack = player.inventory.get_stack_in_hand(hand);
 
         let entity = Entity::new(world.clone(), position, &EntityType::EGG);
         let egg = EggEntity::new_shot(entity, player.get_entity());
 
-        // Propagate the item stack so clients show correct variant
-        egg.set_item_stack(item_stack);
+        egg.set_item_stack(stack.clone());
 
-        let (yaw, pitch) = player.rotation();
         egg.thrown.set_velocity_from(pitch, yaw, 0.0, POWER, 1.0);
         world.spawn_entity(Arc::new(egg));
 
-        // Consume item
-        let mut main_hand = player.inventory.held_item();
-        let consumed = if !main_hand.is_empty() && Self::ids().contains(&main_hand.item.id) {
-            main_hand.decrement_unless_creative(player.gamemode.load(), 1);
-            player.inventory.set_held_item(main_hand);
-            true
-        } else {
-            false
-        };
-
-        if !consumed {
-            let mut off_hand = player.inventory.off_hand_item();
-            if !off_hand.is_empty() && Self::ids().contains(&off_hand.item.id) {
-                off_hand.decrement_unless_creative(player.gamemode.load(), 1);
-                player
-                    .inventory
-                    .set_stack_in_hand(pumpkin_util::Hand::Left, off_hand);
-            }
+        if !stack.is_empty() && Self::ids().contains(&stack.item.id) {
+            stack.decrement_unless_creative(player.gamemode.load(), 1);
+            player.inventory.set_stack_in_hand(hand, stack);
         }
 
         player.increment_stat(
             pumpkin_data::statistic::StatisticCategory::Used,
-            _block.id as i32,
+            block.id as i32,
             1,
         );
     }

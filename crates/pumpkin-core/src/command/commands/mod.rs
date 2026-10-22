@@ -98,6 +98,7 @@ mod transfer;
 mod trigger;
 mod waypoint;
 mod weather;
+mod version;
 mod whitelist;
 pub(crate) use whitelist::kick_non_whitelisted_players;
 mod warden_spawn_tracker;
@@ -219,12 +220,12 @@ pub fn default_dispatcher(
     warden_spawn_tracker::register(&mut dispatcher, registry);
     publish::register(&mut dispatcher, registry);
     unpublish::register(&mut dispatcher, registry);
-    perf::register(&mut dispatcher, registry);
     jfr::register(&mut dispatcher, registry);
     chase::register(&mut dispatcher, registry);
     debugmobspawning::register(&mut dispatcher, registry);
     debugpath::register(&mut dispatcher, registry);
     debugconfig::register(&mut dispatcher, registry);
+    version::register(&mut dispatcher, registry);
 
     apply_command_overrides(&mut dispatcher, registry, commands_config);
 
@@ -492,12 +493,12 @@ mod override_tests {
     }
 
     #[test]
-    fn version_is_an_alias_of_pumpkin() {
+    fn version_is_an_alias_of_neth() {
         let manager = PermissionManager::new();
         let dispatcher = default_dispatcher(&manager, &CommandsConfig::default());
 
         assert!(dispatcher.has_command("version"));
-        assert_eq!(dispatcher.primary_command_name("version"), "pumpkin");
+        assert_eq!(dispatcher.primary_command_name("version"), "neth");
         assert!(!dispatcher.has_command("ver"));
     }
 }

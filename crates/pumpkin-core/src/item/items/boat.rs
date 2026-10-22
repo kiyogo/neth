@@ -76,8 +76,24 @@ impl ItemMetadata for BoatItem {
 }
 
 impl ItemBehaviour for BoatItem {
-    /// Vanilla: `BoatItem.use()` - raycasts to find placement position
     fn normal_use(&self, item: &Item, player: &Player) {
+        let (yaw, pitch) = player.rotation();
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    /// Vanilla: `BoatItem.use()` - raycasts to find placement position
+    fn normal_use_with_hand(
+        &self,
+        item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         let world = player.world();
         let start_pos = player.eye_position();
         let view_vector = player.get_looking_vector();
@@ -139,23 +155,10 @@ impl ItemBehaviour for BoatItem {
         }
         world.spawn_entity(boat_entity);
 
-        let mut main_hand = player.inventory.held_item();
-        let consumed = if !main_hand.is_empty() && main_hand.item.id == item.id {
-            main_hand.decrement_unless_creative(player.gamemode.load(), 1);
-            player.inventory.set_held_item(main_hand);
-            true
-        } else {
-            false
-        };
-
-        if !consumed {
-            let mut off_hand = player.inventory.off_hand_item();
-            if !off_hand.is_empty() && off_hand.item.id == item.id {
-                off_hand.decrement_unless_creative(player.gamemode.load(), 1);
-                player
-                    .inventory
-                    .set_stack_in_hand(pumpkin_util::Hand::Left, off_hand);
-            }
+        let mut stack = player.inventory.get_stack_in_hand(hand);
+        if !stack.is_empty() && stack.item.id == item.id {
+            stack.decrement_unless_creative(player.gamemode.load(), 1);
+            player.inventory.set_stack_in_hand(hand, stack);
         }
     }
 

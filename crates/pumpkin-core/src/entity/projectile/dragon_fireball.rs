@@ -34,6 +34,7 @@ impl DragonFireballEntity {
             owner_id: None,
             collides_with_projectiles: false,
             has_hit: AtomicBool::new(false),
+            has_left_owner: AtomicBool::new(false),
             gravity: GRAVITY,
         };
 

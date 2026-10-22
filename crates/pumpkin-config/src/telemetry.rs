@@ -19,8 +19,8 @@ pub struct TelemetryConfig {
 impl Default for TelemetryConfig {
     fn default() -> Self {
         Self {
-            enabled: true,
-            endpoint: "https://market.pumpkinmc.org/api/v1/rest/telemetry/heartbeat".to_string(),
+            enabled: false,
+            endpoint: String::new(),
             interval_secs: 300,
             public: false,
             server_name: None,
@@ -40,11 +40,8 @@ mod tests {
     #[test]
     fn telemetry_default() {
         let default_config = TelemetryConfig::default();
-        assert!(default_config.enabled);
-        assert_eq!(
-            default_config.endpoint,
-            "https://market.pumpkinmc.org/api/v1/rest/telemetry/heartbeat"
-        );
+        assert!(!default_config.enabled);
+        assert_eq!(default_config.endpoint, "");
         assert_eq!(default_config.interval_secs, 300);
         assert!(!default_config.public);
         assert_eq!(default_config.server_name, None);

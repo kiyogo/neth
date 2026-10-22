@@ -109,6 +109,13 @@ impl Goal for WanderAroundGoal {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .set_progress(NavigatorGoal::new(pos, target, self.speed));
+
+            let mut move_control = mob
+                .get_mob_entity()
+                .move_control
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            move_control.set_wanted_position(target.x, target.y, target.z, self.speed);
         }
     }
 

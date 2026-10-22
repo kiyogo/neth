@@ -1,13 +1,14 @@
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::{
-    Block, BlockState, BlockStateId, block_properties::SnowLikeProperties, item::Item, tag,
+    Block, BlockDirection, BlockState, BlockStateId, block_properties::SnowLikeProperties,
+    item::Item, tag,
 };
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
     RandomTickArgs, UseWithItemArgs, registry::BlockActionResult,
 };
 
@@ -15,6 +16,10 @@ use crate::block::{
 pub struct LayeredSnowBlock;
 
 impl BlockBehaviour for LayeredSnowBlock {
+    fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
+        can_place_at(args.block_accessor, args.position)
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if !can_place_at(args.world, args.position) {
             return Block::AIR.default_state.id;
@@ -88,7 +93,7 @@ impl BlockBehaviour for LayeredSnowBlock {
     }
 }
 
-fn can_place_at(block_accessor: &dyn BlockAccessor, position: &BlockPos) -> bool {
+pub fn can_place_at(block_accessor: &dyn BlockAccessor, position: &BlockPos) -> bool {
     let below_pos = position.down();
     let (below_block, state) = block_accessor.get_block_and_state(&below_pos);
 
@@ -99,13 +104,13 @@ fn can_place_at(block_accessor: &dyn BlockAccessor, position: &BlockPos) -> bool
         return true;
     }
 
-    // Block.isFaceFullSquare(collisionShape, Direction.UP): the collision shape must fully cover
-    // the top face, e.g. leaves are not "side solid" but do support snow layers.
-    state.get_block_collision_shapes().any(|shape| {
-        shape.max.y >= 1.0
-            && shape.min.x <= 0.0
-            && shape.max.x >= 1.0
-            && shape.min.z <= 0.0
-            && shape.max.z >= 1.0
-    }) || (below_block == &Block::SNOW && SnowLikeProperties::from_state_id(state.id).layers == 8)
+    state.is_side_solid(BlockDirection::Up)
+        || state.get_block_collision_shapes().any(|shape| {
+            shape.max.y >= 1.0
+                && shape.min.x <= 0.0
+                && shape.max.x >= 1.0
+                && shape.min.z <= 0.0
+                && shape.max.z >= 1.0
+        })
+        || (below_block == &Block::SNOW && SnowLikeProperties::from_state_id(state.id).layers == 8)
 }

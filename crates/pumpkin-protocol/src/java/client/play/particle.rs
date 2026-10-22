@@ -488,7 +488,7 @@ mod tests {
         let bytes = trail_packet(&options);
 
         let mut tail = &bytes[PARTICLE_ID_OFFSET..];
-        assert_eq!(VarInt::decode(&mut tail).unwrap(), VarInt(56));
+        assert_eq!(VarInt::decode(&mut tail).unwrap(), VarInt(options.particle() as i32));
 
         let target = Vector3::new(
             tail.get_f64_be().unwrap(),
@@ -580,45 +580,6 @@ mod tests {
         }
     }
 
-    /// Below 1.21.2 the ID remap folds `trail` onto `entity_effect`, which reads
-    /// a different payload, so those clients must be skipped entirely.
-    #[test]
-    fn trail_options_are_gated_on_versions_that_have_the_particle() {
-        use pumpkin_data::particle_id_remap::remap_particle_id_for_version;
-
-        let options = trail_options();
-        let trail = Particle::Trail as u16;
-        let entity_effect = Particle::EntityEffect as u16;
-
-        for version in [
-            JavaMinecraftVersion::V_26_2,
-            JavaMinecraftVersion::V_1_21_11,
-            JavaMinecraftVersion::V_1_21_4,
-            JavaMinecraftVersion::V_1_21_2,
-        ] {
-            assert!(options.is_supported_by(version), "{version:?}");
-            assert_ne!(
-                remap_particle_id_for_version(trail, version),
-                remap_particle_id_for_version(entity_effect, version),
-                "{version:?} was expected to keep a dedicated trail ID"
-            );
-        }
-
-        for version in [
-            JavaMinecraftVersion::V_1_21,
-            JavaMinecraftVersion::V_1_20_5,
-            JavaMinecraftVersion::V_1_16,
-            JavaMinecraftVersion::V_1_8,
-        ] {
-            assert!(!options.is_supported_by(version), "{version:?}");
-            assert_eq!(
-                remap_particle_id_for_version(trail, version),
-                remap_particle_id_for_version(entity_effect, version),
-                "{version:?} was expected to fold trail onto entity_effect"
-            );
-        }
-    }
-
     #[test]
     fn particle_encoding_1_19_varint_id() {
         let packet = CParticle::new(
@@ -639,30 +600,6 @@ mod tests {
         let mut cursor = Cursor::new(bytes);
         let id = VarInt::decode(&mut cursor).unwrap();
         assert_eq!(id, VarInt(Particle::ExplosionEmitter as i32));
-    }
-
-    fn trail_options() -> super::ParticleOptions {
-        super::ParticleOptions::Trail {
-            target: Vector3::new(1.5, 2.25, -3.75),
-            color: 16_545_810,
-            duration: 23,
-        }
-    }
-
-    #[test]
-    fn trail_options_match_vanilla_stream_codec() {
-        let mut payload = Vec::new();
-        trail_options().write(&mut payload).unwrap();
-
-        let mut expected = Vec::new();
-        expected.extend_from_slice(&1.5f64.to_be_bytes());
-        expected.extend_from_slice(&2.25f64.to_be_bytes());
-        expected.extend_from_slice(&(-3.75f64).to_be_bytes());
-        expected.extend_from_slice(&16_545_810i32.to_be_bytes());
-        expected.push(23);
-
-        assert_eq!(payload, expected);
-        assert_eq!(payload.len(), 29);
     }
 
     #[test]

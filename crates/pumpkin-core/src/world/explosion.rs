@@ -14,7 +14,6 @@ use pumpkin_data::{
 };
 use pumpkin_util::math::{boundingbox::BoundingBox, position::BlockPos, vector3::Vector3};
 use pumpkin_world::chunk::ChunkData;
-use rand::RngExt;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
@@ -498,9 +497,20 @@ impl Explosion {
             } else {
                 entity.get_eye_pos()
             };
-            let direction = (dir_pos - self.pos).normalize();
+            let diff = dir_pos - self.pos;
+            let direction = if diff.length_squared() < 1.0e-5 {
+                Vector3::new(0.0, 1.0, 0.0)
+            } else {
+                diff.normalize()
+            };
 
-            let knockback_power = (1.0 - distance) * exposure * knockback_multiplier;
+            let knockback_resistance = if let Some(living) = entity_base.get_living_entity() {
+                living.get_attribute_value(&pumpkin_data::attributes::Attributes::EXPLOSION_KNOCKBACK_RESISTANCE)
+            } else {
+                0.0
+            };
+
+            let knockback_power = (1.0 - distance) * exposure * knockback_multiplier * (1.0 - knockback_resistance);
             let knockback = direction * knockback_power;
             // Vanilla `ServerExplosion.hurtEntities`: creative flyers get no knockback.
             if entity_base
@@ -518,6 +528,7 @@ impl Explosion {
                 player_knockback.insert(entity.entity_id, knockback);
             } else {
                 entity.add_velocity(knockback);
+                entity.velocity_dirty.store(true, std::sync::atomic::Ordering::SeqCst);
             }
         }
         player_knockback

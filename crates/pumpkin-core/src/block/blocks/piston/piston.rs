@@ -355,7 +355,7 @@ impl PistonBlock {
     }
 }
 
-fn should_extend(world: &World, block_pos: &BlockPos, piston_dir: BlockDirection) -> bool {
+pub(crate) fn should_extend(world: &World, block_pos: &BlockPos, piston_dir: BlockDirection) -> bool {
     for dir in BlockDirection::all() {
         let neighbor_pos = block_pos.offset(dir.to_offset());
         let (block, state) = world.get_block_and_state(&neighbor_pos);

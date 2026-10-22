@@ -7,8 +7,7 @@ use wasmparser::{Parser, Payload};
 
 pub const WASM_SIGNATURE_SECTION: &str = "wasm_signature";
 pub const PUMPKIN_METADATA_SECTION: &str = "pumpkin.metadata";
-pub const PUMPKIN_MARKET_PUBLIC_KEY_URL: &str =
-    "https://market.pumpkinmc.org/api/v1/rest/public-key";
+pub const PUMPKIN_MARKET_PUBLIC_KEY_URL: &str = "";
 
 static MARKET_PUBLIC_KEY_CACHE: Mutex<Option<String>> = Mutex::new(None);
 
@@ -182,11 +181,15 @@ pub fn fetch_market_public_key() -> Result<String, String> {
         return Ok(cached_key.clone());
     }
 
+    if PUMPKIN_MARKET_PUBLIC_KEY_URL.is_empty() {
+        return Err("Marketplace public key URL is disabled".into());
+    }
+
     let body = if let Ok(handle) = tokio::runtime::Handle::try_current() {
         tokio::task::block_in_place(|| {
             handle.block_on(async {
                 let client = pumpkin_auth::client_builder()
-                    .user_agent("Pumpkin-MC")
+                    .user_agent("Neth")
                     .build()
                     .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
                 let response = client
@@ -205,7 +208,7 @@ pub fn fetch_market_public_key() -> Result<String, String> {
             .map_err(|e| format!("Failed to create runtime: {e}"))?
             .block_on(async {
                 let client = pumpkin_auth::client_builder()
-                    .user_agent("Pumpkin-MC")
+                    .user_agent("Neth")
                     .build()
                     .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
                 let response = client

@@ -873,7 +873,7 @@ fn shuffle_and_split_items(
 }
 
 #[cfg(test)]
-mod tests {
+mod loot_tests {
     use pumpkin_data::entity::EntityType;
     use pumpkin_data::item::Item;
     use pumpkin_data::{Block, BlockState};

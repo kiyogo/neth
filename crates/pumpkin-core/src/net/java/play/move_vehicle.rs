@@ -20,11 +20,11 @@ impl JavaClient {
             return;
         }
         if !player.has_client_loaded()
-            || player
-                .awaiting_teleport
+            || !player
+                .awaiting_teleports
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .is_some()
+                .is_empty()
         {
             return;
         }

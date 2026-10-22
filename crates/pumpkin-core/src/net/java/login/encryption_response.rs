@@ -162,6 +162,10 @@ impl PendingConnection {
             return Some(PacketHandlerResult::Stop);
         }
 
+        if server.advanced_config.networking.java.compression.enabled {
+            self.enable_compression(server).await;
+        }
+
         let props = profile.properties.load();
         let packet = CLoginSuccess::new(
             &profile.id,

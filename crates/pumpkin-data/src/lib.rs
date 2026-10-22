@@ -485,6 +485,30 @@ pub mod carver;
 #[path = "generated/villager.rs"]
 pub mod villager;
 
+#[cfg(feature = "villager")]
+impl villager::VillagerType {
+    #[must_use]
+    pub fn from_biome_name(name: &str) -> Self {
+        let clean = match name.strip_prefix("minecraft:") {
+            Some(stripped) => stripped,
+            None => name,
+        };
+        match clean {
+            "badlands" | "desert" | "eroded_badlands" | "wooded_badlands" => Self::Desert,
+            "bamboo_jungle" | "jungle" | "sparse_jungle" => Self::Jungle,
+            "savanna_plateau" | "savanna" | "windswept_savanna" => Self::Savanna,
+            "deep_frozen_ocean" | "frozen_ocean" | "frozen_river" | "ice_spikes"
+            | "snowy_beach" | "snowy_taiga" | "snowy_plains" | "grove" | "snowy_slopes"
+            | "frozen_peaks" | "jagged_peaks" => Self::Snow,
+            "swamp" | "mangrove_swamp" => Self::Swamp,
+            "old_growth_spruce_taiga" | "old_growth_pine_taiga" | "windswept_gravelly_hills"
+            | "windswept_hills" | "taiga" | "windswept_forest" => Self::Taiga,
+            _ => Self::Plains,
+        }
+    }
+}
+
+
 #[cfg(feature = "slot_ranges")]
 #[rustfmt::skip]
 #[path = "generated/slot_ranges.rs"]

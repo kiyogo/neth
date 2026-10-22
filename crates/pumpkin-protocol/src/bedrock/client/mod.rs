@@ -79,6 +79,7 @@ pub use chunk_radius_updated::*;
 pub use client_cache_miss_response::*;
 pub use common::*;
 pub use container_open::*;
+pub use container_close::*;
 pub use correct_player_move_prediction::*;
 pub use crafting_data::*;
 pub use creative_content::*;

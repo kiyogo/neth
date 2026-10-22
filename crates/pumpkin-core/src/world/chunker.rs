@@ -114,14 +114,8 @@ pub fn update_position(player: &Arc<Player>) {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-        if let Some(view) = new_view_level {
-            lock.add_ticket(new_chunk_center, view);
-        }
-        if let Some(sim) = new_sim_level {
-            lock.add_ticket(new_chunk_center, sim);
-        }
-
-        if let Some((held_view, held_sim)) = held_tickets.replace((new_view_level, new_sim_level)) {
+        // Vanilla `ChunkMap.move`: remove old player tickets first, then add new player tickets
+        if let Some((held_view, held_sim)) = held_tickets.take() {
             if let Some(view) = held_view {
                 lock.remove_ticket(old_cylindrical.center, view);
             }
@@ -129,6 +123,15 @@ pub fn update_position(player: &Arc<Player>) {
                 lock.remove_ticket(old_cylindrical.center, sim);
             }
         }
+
+        if let Some(view) = new_view_level {
+            lock.add_ticket(new_chunk_center, view);
+        }
+        if let Some(sim) = new_sim_level {
+            lock.add_ticket(new_chunk_center, sim);
+        }
+
+        *held_tickets = Some((new_view_level, new_sim_level));
         lock.send_change();
     };
     drop(held_tickets);

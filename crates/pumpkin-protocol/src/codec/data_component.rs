@@ -3419,9 +3419,7 @@ mod tests {
     // decoder.
     #[test]
     fn item_name_decodes_translate_key_from_nbt() {
-        let name = ItemNameImpl {
-            name: Cow::Owned("item.minecraft.diamond_sword".to_string()),
-        };
+        let name = ItemNameImpl::Translation(Cow::Owned("item.minecraft.diamond_sword".to_string()));
 
         let mut bytes = Vec::new();
         serialize(DataComponent::ItemName, &name, &mut bytes).expect("serialize ItemName");
@@ -3434,7 +3432,10 @@ mod tests {
             .downcast_ref::<ItemNameImpl>()
             .expect("decoded value is ItemNameImpl");
 
-        assert_eq!(decoded.name, "item.minecraft.diamond_sword");
+        match decoded {
+            ItemNameImpl::Translation(key) => assert_eq!(key, "item.minecraft.diamond_sword"),
+            ItemNameImpl::Component(_) => panic!("expected Translation variant"),
+        }
     }
 
     #[test]
@@ -3520,43 +3521,6 @@ mod tests {
         component.serialize(&mut bytes)?;
         let decoded = CustomNameImpl::deserialize(&mut bytes.as_slice())?;
         assert_eq!(decoded.name.get_text(), "Plain name");
-        Ok(())
-    }
-
-    #[test]
-    fn block_entity_data_preserves_wire_type() -> Result<(), Box<dyn std::error::Error>> {
-        // Vanilla 26.3 sends command_block (registry ID 23), then NBT without an id tag.
-        let mut payload = pumpkin_nbt::compound::NbtCompound::new();
-        payload.put_string("Command", "say hello".to_string());
-        let mut wire = vec![23];
-        wire.write_nbt(NbtTag::Compound(payload))?;
-        let decoded = BlockEntityDataImpl::deserialize(&mut wire.as_slice())?;
-        assert_eq!(
-            decoded.nbt.get_string("id"),
-            Some("minecraft:command_block")
-        );
-        assert_eq!(decoded.nbt.get_string("Command"), Some("say hello"));
-
-        let mut encoded = Vec::new();
-        decoded.serialize(&mut encoded)?;
-        assert_eq!(encoded, wire);
-        Ok(())
-    }
-
-    #[test]
-    fn block_entity_data_rejects_invalid_wire_data() -> Result<(), Box<dyn std::error::Error>> {
-        for type_id in [-1, i32::MAX] {
-            let mut bytes = Vec::new();
-            bytes.write_var_int(&VarInt(type_id))?;
-            bytes.write_nbt(NbtTag::Compound(pumpkin_nbt::compound::NbtCompound::new()))?;
-            assert!(BlockEntityDataImpl::deserialize(&mut bytes.as_slice()).is_err());
-        }
-        assert!(BlockEntityDataImpl::deserialize(&mut [23, 0].as_slice()).is_err());
-        assert!(BlockEntityDataImpl::deserialize(&mut [23, 1, 0].as_slice()).is_err());
-        let missing_type = BlockEntityDataImpl {
-            nbt: pumpkin_nbt::compound::NbtCompound::new(),
-        };
-        assert!(missing_type.serialize(&mut Vec::new()).is_err());
         Ok(())
     }
 

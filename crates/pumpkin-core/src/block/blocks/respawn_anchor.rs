@@ -144,5 +144,4 @@ mod tests {
         assert!(!should_explode_in_unsupported_dimension(1, true));
         assert!(!should_explode_in_unsupported_dimension(MAX_CHARGES, true));
     }
-    }
 }

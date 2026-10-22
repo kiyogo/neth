@@ -181,6 +181,7 @@ impl ZombieEntityBase {
                 id: "minecraft:baby".to_string(),
                 amount: 0.5,
                 operation: crate::entity::attributes::ModifierOperation::MultiplyBase,
+                permanent: false,
             };
             living.update_attribute(&pumpkin_data::attributes::Attributes::MOVEMENT_SPEED, |inst| {
                 inst.add_or_replace_modifier(modifier);

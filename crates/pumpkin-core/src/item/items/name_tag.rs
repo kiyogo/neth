@@ -20,9 +20,10 @@ impl ItemBehaviour for NameTagItem {
     fn use_on_entity(&self, item: &mut ItemStack, player: &Player, target: Arc<dyn EntityBase>) {
         let entity = target.get_entity();
         // Vanilla NameTagItem.java: customName != null && target.getType().canSerialize() && target.isAlive() && !(target instanceof Player)
-        if entity.entity_type.saveable
-            && entity.is_alive()
+        if target.get_living_entity().is_some()
             && target.get_player().is_none()
+            && entity.entity_type.saveable
+            && entity.is_alive()
             && let Some(name) = item.get_data_component::<CustomNameImpl>()
         {
             entity.set_custom_name(name.name.clone());

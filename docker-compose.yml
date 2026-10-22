@@ -1,24 +1,18 @@
 services:
-  pumpkin:
-    # Make sure to change the tag to the pumpkin version you want to use.
-    # https://github.com/Pumpkin-MC/Pumpkin/pkgs/container/pumpkin/versions?filters%5Bversion_type%5D=tagged
-    #image: ghcr.io/pumpkin-mc/pumpkin:master
+  neth:
     build: .
     ports:
       - "25565:25565"
       - "19132:19132/udp"
     volumes:
-      # Pumpkin runs as UID/GID 2613. On Linux hosts, make sure the data
+      # Neth runs as UID/GID 2613. On Linux hosts, make sure the data
       # directory has the correct ownership before starting the server:
       #   mkdir -p ./data
       #   sudo chown -R 2613:2613 ./data
-      - ./data:/pumpkin
-      # As an alternative, Docker can manage the storage volume. Existing
-      # installations must migrate ./data before switching to avoid creating
-      # a new, empty world:
-      # - pumpkin-data:/pumpkin
-      # Use the following mount if you want to make your config immutable.
-      # - ./pumpkin.toml:/pumpkin/pumpkin.toml:ro
+      - ./data:/neth
+      # As an alternative, Docker can manage the storage volume:
+      # - neth-data:/neth
+      # - ./neth.toml:/neth/neth.toml:ro
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
@@ -27,7 +21,3 @@ services:
     cap_drop:
       - ALL
     read_only: true
-
-# Uncomment this section when using the pumpkin-data volume above.
-# volumes:
-#   pumpkin-data:

@@ -20,25 +20,28 @@ pub struct CoralFanBlock;
 
 impl BlockMetadata for CoralFanBlock {
     fn ids() -> Box<[BlockId]> {
-        let alive_wall_fans: Vec<BlockId> = tag::Block::MINECRAFT_WALL_CORALS
-            .1
-            .iter()
-            .map(|v| BlockId::new_or_air(*v))
-            .collect();
-        let alive_coral_fans: &[BlockId] = &[
+        Box::new([
             BlockId::BRAIN_CORAL_FAN,
             BlockId::BUBBLE_CORAL_FAN,
             BlockId::FIRE_CORAL_FAN,
             BlockId::HORN_CORAL_FAN,
             BlockId::TUBE_CORAL_FAN,
-        ];
-        let alive_fans = [alive_wall_fans.as_slice(), alive_coral_fans].concat();
-        let mut plants = Vec::new();
-        for alive_fan_id in alive_fans {
-            plants.push(alive_fan_id);
-            plants.push(get_dead_type(alive_fan_id).map_or(BlockId::AIR, |b| b.id));
-        }
-        plants.into()
+            BlockId::DEAD_BRAIN_CORAL_FAN,
+            BlockId::DEAD_BUBBLE_CORAL_FAN,
+            BlockId::DEAD_FIRE_CORAL_FAN,
+            BlockId::DEAD_HORN_CORAL_FAN,
+            BlockId::DEAD_TUBE_CORAL_FAN,
+            BlockId::BRAIN_CORAL_WALL_FAN,
+            BlockId::BUBBLE_CORAL_WALL_FAN,
+            BlockId::FIRE_CORAL_WALL_FAN,
+            BlockId::HORN_CORAL_WALL_FAN,
+            BlockId::TUBE_CORAL_WALL_FAN,
+            BlockId::DEAD_BRAIN_CORAL_WALL_FAN,
+            BlockId::DEAD_BUBBLE_CORAL_WALL_FAN,
+            BlockId::DEAD_FIRE_CORAL_WALL_FAN,
+            BlockId::DEAD_HORN_CORAL_WALL_FAN,
+            BlockId::DEAD_TUBE_CORAL_WALL_FAN,
+        ])
     }
 }
 

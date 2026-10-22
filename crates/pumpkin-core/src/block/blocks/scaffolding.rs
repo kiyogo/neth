@@ -14,7 +14,7 @@ use crate::block::{
 use crate::entity::EntityBase;
 use crate::entity::falling::FallingEntity;
 
-const TICK_DELAY: u8 = 1;
+const TICK_DELAY: u32 = 1;
 pub const STABILITY_MAX_DISTANCE: u8 = 7;
 const SHAPE_UNSTABLE_BOTTOM: BoundingBox =
     BoundingBox::new_array([0.0, 0.0, 0.0], [1.0, 0.125, 1.0]);

@@ -122,6 +122,23 @@ impl BlockBehaviour for DropperBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let dropper_block_entity = DropperBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(dropper_block_entity));
+
+        let powered = block_receives_redstone_power(args.world, args.position)
+            || block_receives_redstone_power(args.world, &args.position.up());
+        if powered {
+            let mut props =
+                DispenserLikeProperties::from_state_id(args.world.get_block_state(args.position).id);
+            if !props.triggered {
+                args.world
+                    .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                props.triggered = true;
+                args.world.set_block_state(
+                    args.position,
+                    props.to_state_id(args.block),
+                    BlockFlags::NOTIFY_LISTENERS,
+                );
+            }
+        }
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

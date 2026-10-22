@@ -271,44 +271,49 @@ pub(crate) fn place_template_entities(
     chunk_box: &pumpkin_util::math::block_box::BlockBox,
 ) {
     for entity in &template.entities {
-        let block_pos = rotation.transform_pos(entity.block_pos, template.size);
-        let world_block_pos = Vector3::new(
-            origin.x + block_pos.x,
-            origin.y + block_pos.y,
-            origin.z + block_pos.z,
-        );
-        if !chunk_box.contains_pos(&world_block_pos) {
+        let block_pos = StructureTemplate::transform_block_pos(
+            entity.block_pos,
+            Mirror::None,
+            rotation,
+            Vector3::new(0, 0, 0),
+        ) + origin;
+
+        if !chunk_box.contains_pos(&block_pos) {
             continue;
         }
 
-        let pos = match rotation {
-            Rotation::None => entity.pos,
-            Rotation::Clockwise90 => Vector3::new(
-                f64::from(template.size.z) - entity.pos.z,
-                entity.pos.y,
-                entity.pos.x,
-            ),
-            Rotation::Rotate180 => Vector3::new(
-                f64::from(template.size.x) - entity.pos.x,
-                entity.pos.y,
-                f64::from(template.size.z) - entity.pos.z,
-            ),
-            Rotation::CounterClockwise90 => Vector3::new(
-                entity.pos.z,
-                entity.pos.y,
-                f64::from(template.size.x) - entity.pos.x,
-            ),
-        };
+        let relative_pos = StructureTemplate::transform_vec3(
+            entity.pos,
+            Mirror::None,
+            rotation,
+            Vector3::new(0, 0, 0),
+        );
+        let world_pos = Vector3::new(
+            f64::from(origin.x) + relative_pos.x,
+            f64::from(origin.y) + relative_pos.y,
+            f64::from(origin.z) + relative_pos.z,
+        );
+
         let mut nbt = entity.nbt.clone();
         nbt.put(
             "Pos",
             NbtTag::List(vec![
-                (f64::from(origin.x) + pos.x).into(),
-                (f64::from(origin.y) + pos.y).into(),
-                (f64::from(origin.z) + pos.z).into(),
+                world_pos.x.into(),
+                world_pos.y.into(),
+                world_pos.z.into(),
             ]),
         );
         nbt.child_tags.remove("UUID");
+        if nbt.get_list("block_pos").is_some() {
+            nbt.put(
+                "block_pos",
+                NbtTag::List(vec![
+                    NbtTag::Int(block_pos.x),
+                    NbtTag::Int(block_pos.y),
+                    NbtTag::Int(block_pos.z),
+                ]),
+            );
+        }
 
         if let Some(rotation_nbt) = nbt.get_list("Rotation")
             && rotation_nbt.len() == 2

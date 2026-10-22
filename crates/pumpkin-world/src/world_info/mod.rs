@@ -691,6 +691,8 @@ pub enum WorldInfoError {
     UnsupportedDataVersion(i32),
     #[error("Unsupported world level version: {0}")]
     UnsupportedLevelVersion(i32),
+    #[error("Directory lock error: {0}")]
+    DirectoryLock(#[from] crate::session_lock::DirectoryLockError),
 }
 
 #[cfg(test)]

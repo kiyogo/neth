@@ -624,8 +624,8 @@ pub(crate) fn map_bedrock_container_slot(
                 None
             }
         }
-        ContainerName::Armor => (slot_id < 4).then(|| 5 + slot_id as usize),
-        ContainerName::Offhand => (slot_id == 0).then_some(45),
+        ContainerName::Armor => (is_player_screen && slot_id < 4).then(|| 5 + slot_id as usize),
+        ContainerName::Offhand => (is_player_screen && slot_id == 0).then_some(45),
         ContainerName::Cursor => None,
         ContainerName::CraftingInput => {
             if is_player_screen {
@@ -840,7 +840,7 @@ pub(crate) fn map_bedrock_container_slot(
             Some(pumpkin_data::screen::WindowType::Merchant)
         )
         .then_some(2),
-        _ => ((slot_id as usize) < container_slots).then_some(slot_id as usize),
+        _ => (!is_player_screen && (slot_id as usize) < container_slots).then_some(slot_id as usize),
     }
 }
 
@@ -974,7 +974,7 @@ mod tests {
     use pumpkin_data::item::Item;
     use pumpkin_inventory::{
         build_equipment_slots, crafting::crafting_screen_handler::CraftingTableScreenHandler,
-        entity_equipment::EntityEquipment,
+        entity_equipment::EntityEquipment, player::player_screen_handler::PlayerScreenHandler,
     };
     use std::sync::Mutex;
 
@@ -1022,6 +1022,77 @@ mod tests {
         );
         assert_eq!(
             map_bedrock_container_slot(&handler, ContainerName::HotBar, 200),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn armor_and_offhand_slots_are_rejected_in_container_screens() {
+        let inventory = Arc::new(PlayerInventory::new(
+            Arc::new(Mutex::new(EntityEquipment::new())),
+            Arc::new(build_equipment_slots()),
+        ));
+        let handler = CraftingTableScreenHandler::new(1, &inventory, None);
+
+        // Armor container should be rejected when a container screen is open
+        for slot in 0..4 {
+            assert_eq!(
+                map_bedrock_container_slot(&handler, ContainerName::Armor, slot),
+                None
+            );
+        }
+        // Offhand container should be rejected when a container screen is open
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Offhand, 0),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn armor_and_offhand_slots_bounds_in_player_screen() {
+        let inventory = Arc::new(PlayerInventory::new(
+            Arc::new(Mutex::new(EntityEquipment::new())),
+            Arc::new(build_equipment_slots()),
+        ));
+        let handler = PlayerScreenHandler::new(&inventory, None, 0, None);
+
+        // Armor slots 0..3 map to 5..8
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Armor, 0),
+            Some(5)
+        );
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Armor, 1),
+            Some(6)
+        );
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Armor, 2),
+            Some(7)
+        );
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Armor, 3),
+            Some(8)
+        );
+        // Past armor slots rejected
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Armor, 4),
+            None
+        );
+
+        // Offhand slot 0 maps to 45
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Offhand, 0),
+            Some(45)
+        );
+        // Past offhand slot rejected
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::Offhand, 1),
+            None
+        );
+
+        // Generic / unknown container name should be rejected on player screen
+        assert_eq!(
+            map_bedrock_container_slot(&handler, ContainerName::LevelEntity, 0),
             None
         );
     }

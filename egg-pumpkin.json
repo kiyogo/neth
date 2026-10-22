@@ -6,7 +6,7 @@
     },
     "exported_at": "2026-09-10T00:00:00+00:00",
     "name": "Pumpkin",
-    "author": "lilalexmed@proton.me",
+    "author": "KIYOVN",
     "description": "Pumpkin is a Minecraft server built entirely in Rust, offering a fast, efficient, and customizable experience. It prioritizes performance and player enjoyment while adhering to the core mechanics of the game.",
     "features": null,
     "docker_images": {
@@ -23,7 +23,7 @@
     },
     "scripts": {
         "installation": {
-            "script": "#!\/bin\/ash\r\nset -eux\r\n\r\napk add --no-cache curl\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\nARCH=$(uname -m)\r\ncase \"$ARCH\" in\r\n    x86_64|amd64)\r\n        PUMPKIN_ARCH=\"X64\"\r\n        ;;\r\n    aarch64|arm64)\r\n        PUMPKIN_ARCH=\"ARM64\"\r\n        ;;\r\n    *)\r\n        echo \"Unsupported architecture: $ARCH\"\r\n        exit 1\r\n        ;;\r\nesac\r\n\r\nBINARY_NAME=\"pumpkin-${PUMPKIN_ARCH}-Linux-musl\"\r\nREPO=\"${GITHUB_PACKAGE:-Pumpkin-MC\/Pumpkin}\"\r\n\r\nif [ -n \"${DOWNLOAD_URL:-}\" ]; then\r\n    URL=\"$DOWNLOAD_URL\"\r\nelif [ \"${VERSION:-nightly}\" = \"nightly\" ]; then\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/download\/nightly\/${BINARY_NAME}\"\r\nelif [ \"$VERSION\" = \"latest\" ]; then\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/latest\/download\/${BINARY_NAME}\"\r\nelse\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/download\/${VERSION}\/${BINARY_NAME}\"\r\nfi\r\n\r\necho \"Downloading Pumpkin from: $URL\"\r\n# Download to a temporary file so a failed download never replaces a working binary.\r\ncurl -fsSL --retry 3 \"$URL\" -o pumpkin.download\r\nmv -f pumpkin.download pumpkin\r\nchmod +x pumpkin\r\n\r\n# Seed a minimal config so the panel can write the allocated port on the first start.\r\n# Pumpkin fills in every other setting with its defaults when it starts.\r\nif [ ! -f pumpkin.toml ]; then\r\n    printf '[networking.java]\\naddress = \"0.0.0.0:25565\"\\n' > pumpkin.toml\r\nfi",
+            "script": "#!\/bin\/ash\r\nset -eux\r\n\r\napk add --no-cache curl\r\nmkdir -p \/mnt\/server\r\ncd \/mnt\/server\r\n\r\nARCH=$(uname -m)\r\ncase \"$ARCH\" in\r\n    x86_64|amd64)\r\n        PUMPKIN_ARCH=\"X64\"\r\n        ;;\r\n    aarch64|arm64)\r\n        PUMPKIN_ARCH=\"ARM64\"\r\n        ;;\r\n    *)\r\n        echo \"Unsupported architecture: $ARCH\"\r\n        exit 1\r\n        ;;\r\nesac\r\n\r\nBINARY_NAME=\"pumpkin-${PUMPKIN_ARCH}-Linux-musl\"\r\nREPO=\"${GITHUB_PACKAGE:-KIYOVN\/Neth}\"\r\n\r\nif [ -n \"${DOWNLOAD_URL:-}\" ]; then\r\n    URL=\"$DOWNLOAD_URL\"\r\nelif [ \"${VERSION:-nightly}\" = \"nightly\" ]; then\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/download\/nightly\/${BINARY_NAME}\"\r\nelif [ \"$VERSION\" = \"latest\" ]; then\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/latest\/download\/${BINARY_NAME}\"\r\nelse\r\n    URL=\"https:\/\/github.com\/${REPO}\/releases\/download\/${VERSION}\/${BINARY_NAME}\"\r\nfi\r\n\r\necho \"Downloading Pumpkin from: $URL\"\r\n# Download to a temporary file so a failed download never replaces a working binary.\r\ncurl -fsSL --retry 3 \"$URL\" -o pumpkin.download\r\nmv -f pumpkin.download pumpkin\r\nchmod +x pumpkin\r\n\r\n# Seed a minimal config so the panel can write the allocated port on the first start.\r\n# Pumpkin fills in every other setting with its defaults when it starts.\r\nif [ ! -f pumpkin.toml ]; then\r\n    printf '[networking.java]\\naddress = \"0.0.0.0:25565\"\\n' > pumpkin.toml\r\nfi",
             "container": "ghcr.io\/pterodactyl\/installers:alpine",
             "entrypoint": "ash"
         }
@@ -53,7 +53,7 @@
             "name": "GitHub Repository",
             "description": "GitHub repository in 'owner\/repo' format to download releases from. Useful if you are using a fork.\r\nScope: installation",
             "env_variable": "GITHUB_PACKAGE",
-            "default_value": "Pumpkin-MC\/Pumpkin",
+            "default_value": "KIYOVN\/Neth",
             "user_viewable": true,
             "user_editable": true,
             "rules": "required|string|max:128",

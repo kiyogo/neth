@@ -65,10 +65,11 @@ impl SmoothSwimmingLookControl {
             if is_idle {
                 entity.set_pitch(self.change_angle(entity.pitch.load(), 0.0, 5.0));
             }
+            let rot_speed = if self.max_yaw_change > 0.0 { self.max_yaw_change } else { 10.0 };
             entity.head_yaw.store(self.change_angle(
                 entity.head_yaw.load(),
                 entity.body_yaw.load(),
-                self.max_yaw_change,
+                rot_speed,
             ));
         }
 

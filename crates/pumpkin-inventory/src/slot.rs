@@ -448,6 +448,7 @@ impl Slot for ArmorSlot {
     }
 }
 
+#[allow(dead_code)]
 fn binding_curse_locks_take(stack: &ItemStack, is_creative: bool) -> bool {
     !can_take_armor_stack(stack, is_creative)
 }

@@ -2818,7 +2818,7 @@ impl pumpkin::plugin::player::HostPlayerWithStore<PluginHostState> for HasSelf<P
         let player = accessor.get_res(&player)?;
 
         run_blocking(accessor, move || {
-            player.open_ender_chest();
+            player.open_ender_chest(None);
         })
         .await
     }

@@ -22,7 +22,7 @@ use tokio::signal::ctrl_c;
 use tokio::signal::unix::{SignalKind, signal};
 
 use pumpkin_core::{
-    CRASH_REPORT, GIT_HASH, GIT_HASH_FULL, SERVER_EXIT_CODE, SERVER_IS_STOPPING,
+    CRASH_REPORT, GIT_HASH, SERVER_EXIT_CODE, SERVER_IS_STOPPING,
     crash::{CrashReport, FullBacktrace},
     data::VanillaData,
     stop_or_exit_server,
@@ -33,7 +33,6 @@ use pumpkin_config::{LoadConfiguration, PumpkinConfig};
 use pumpkin_core::plugin::loader::PluginLoader;
 use pumpkin_util::text::{
     TextComponent,
-    click::ClickEvent,
     color::{Color, NamedColor},
 };
 use pumpkin_wasm_host::WasmPluginLoader;
@@ -98,7 +97,6 @@ async fn main() {
     pumpkin_core::init_logger(&config.advanced);
     config.apply_env_overrides();
 
-
     let vanilla_data = VanillaData::load();
 
     let show_banner = config.advanced.logging.show_banner
@@ -115,7 +113,7 @@ async fn main() {
         "{}",
         TextComponent::text(format!(
             "Starting {} {} Java Minecraft (Protocol {}) | {} Bedrock (Protocol {})",
-            TextComponent::text("Pumpkin")
+            TextComponent::text("Neth")
                 .color_named(NamedColor::Gold)
                 .to_pretty_console(),
             TextComponent::text(CARGO_PKG_VERSION.to_string())
@@ -147,7 +145,7 @@ async fn main() {
     );
     if cfg!(debug_assertions) {
         warn!(
-            "Pumpkin is running an unoptimized debug build. Do not use this build for performance testing; run `cargo run --release` or use a release binary."
+            "Neth is running an unoptimized debug build. Do not use this build for performance testing; run `cargo run --release` or use a release binary."
         );
     }
     if !show_banner {
@@ -269,15 +267,11 @@ fn print_banner() {
     let info = [
         // Use true color ANSI to preserve #fa8213 without colored's palette fallback.
         format!(
-            "\x1b[38;2;250;130;19mPumpkin\x1b[0m v{} ({})",
+            "\x1b[38;2;250;130;19mNeth\x1b[0m v{} ({})",
             colored(CARGO_PKG_VERSION, NamedColor::Green),
             TextComponent::text(GIT_HASH)
                 .color_named(NamedColor::Blue)
                 .underlined()
-                .click_event(ClickEvent::OpenUrl {
-                    url: format!("https://github.com/Pumpkin-MC/Pumpkin/commit/{GIT_HASH_FULL}")
-                        .into(),
-                })
                 .to_pretty_console(),
         ),
         String::new(),
@@ -304,25 +298,14 @@ fn print_banner() {
             ),
         ),
         String::new(),
+        format!(
+            "{} {}",
+            colored("Developed by", NamedColor::DarkAqua),
+            colored("KIYOVN", NamedColor::Gold),
+        ),
         colored(
-            "Pumpkin is currently under heavy development!",
+            "Neth is currently under active development!",
             NamedColor::DarkRed,
-        ),
-        String::new(),
-        format!(
-            "{}   {}",
-            colored("Issues", NamedColor::DarkAqua),
-            "https://github.com/Pumpkin-MC/Pumpkin/issues"
-        ),
-        format!(
-            "{}  {}",
-            colored("Discord", NamedColor::DarkBlue),
-            "https://discord.gg/wT8XjrjKkf"
-        ),
-        format!(
-            "{}   {}",
-            colored("Donate", NamedColor::DarkPurple),
-            "https://pumpkinmc.org/donate/"
         ),
     ];
 
@@ -345,32 +328,20 @@ fn print_banner() {
 fn print_support_links_and_warning() {
     warn!(
         "{}",
-        TextComponent::text("Pumpkin is currently under heavy development!")
+        TextComponent::text("Neth is currently under active development!")
             .color_named(NamedColor::DarkRed)
             .to_pretty_console(),
     );
     info!(
-        "Report issues on {}",
-        TextComponent::text("https://github.com/Pumpkin-MC/Pumpkin/issues")
-            .color_named(NamedColor::DarkAqua)
-            .to_pretty_console()
-    );
-    info!(
-        "Join our {} for community support: {}",
-        TextComponent::text("Discord")
-            .color_named(NamedColor::DarkBlue)
-            .to_pretty_console(),
-        TextComponent::text("https://discord.gg/wT8XjrjKkf")
-            .color_named(NamedColor::Aqua)
-            .to_pretty_console()
-    );
-    info!(
-        "Consider {} to {}",
-        TextComponent::text("Donating")
-            .color_named(NamedColor::DarkPurple)
-            .to_pretty_console(),
-        TextComponent::text("https://pumpkinmc.org/donate/")
+        "Developed and maintained by {}",
+        TextComponent::text("KIYOVN")
             .color_named(NamedColor::Gold)
+            .to_pretty_console()
+    );
+    info!(
+        "Website: {}",
+        TextComponent::text("https://kiyomc.com")
+            .color_named(NamedColor::Aqua)
             .to_pretty_console()
     );
 }

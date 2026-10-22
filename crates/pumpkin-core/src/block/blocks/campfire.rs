@@ -21,7 +21,6 @@ use crate::{
     },
     entity::EntityBase,
 };
-use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
 
 #[pumpkin_block_from_tag("minecraft:campfires")]
@@ -184,6 +183,20 @@ mod tests {
         props.lit = lit;
         props.waterlogged = waterlogged;
         props.to_state_id(block)
+    }
+
+    fn relit_state_id(
+        block: &Block,
+        state_id: BlockStateId,
+        is_on_fire: bool,
+    ) -> Option<BlockStateId> {
+        let props = CampfireLikeProperties::from_state_id(state_id);
+        if !is_on_fire || props.lit || props.waterlogged {
+            return None;
+        }
+        let mut lit_props = props;
+        lit_props.lit = true;
+        Some(lit_props.to_state_id(block))
     }
 
     #[test]

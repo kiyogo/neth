@@ -10,6 +10,7 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::Sound;
+use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_util::GameMode;
 use pumpkin_util::math::vector3::Vector3;
 
@@ -22,13 +23,28 @@ impl ItemMetadata for TridentItem {
 }
 
 impl ItemBehaviour for TridentItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         let inventory = player.inventory();
-        let stack = inventory.held_item();
+        let stack = inventory.get_stack_in_hand(hand);
 
         player
             .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, 72000);
+            .set_active_hand(hand, stack, 72000);
     }
 
     fn on_stopped_using(&self, _stack: &ItemStack, player: &Player) {
@@ -42,8 +58,14 @@ impl ItemBehaviour for TridentItem {
             return;
         }
 
+        let active_hand = player
+            .living_entity
+            .active_hand
+            .lock()
+            .unwrap()
+            .unwrap_or(pumpkin_util::Hand::Right);
         let world = player.world();
-        let stack_guard = player.inventory().held_item();
+        let stack_guard = player.inventory().get_stack_in_hand(active_hand);
 
         // Check Riptide level
         let mut riptide_level = 0u32;
@@ -100,7 +122,8 @@ impl ItemBehaviour for TridentItem {
                 ));
             }
 
-            player.damage_held_item(1);
+            let slot = EquipmentSlot::from_hand(active_hand);
+            player.damage_item_in_slot(&slot, 1);
             player.living_entity.clear_active_hand();
             return;
         }
@@ -126,21 +149,14 @@ impl ItemBehaviour for TridentItem {
 
         if player.gamemode.load() != GameMode::Creative {
             let inventory = player.inventory();
-            let selected_slot = inventory.get_selected_slot() as usize;
-
-            let main_hand_item = inventory.get_slot(selected_slot);
-            if main_hand_item.item.id == Item::TRIDENT.id {
-                inventory.set_slot(selected_slot, ItemStack::EMPTY.clone());
-                player.sync_hand_slot(selected_slot, ItemStack::EMPTY.clone());
-            } else {
-                let off_hand_slot =
-                    pumpkin_inventory::player::player_inventory::PlayerInventory::OFF_HAND_SLOT;
-                let off_hand_item = inventory.get_slot(off_hand_slot);
-                if off_hand_item.item.id == Item::TRIDENT.id {
-                    inventory.set_slot(off_hand_slot, ItemStack::EMPTY.clone());
-                    player.sync_hand_slot(off_hand_slot, ItemStack::EMPTY.clone());
+            let slot = match active_hand {
+                pumpkin_util::Hand::Right => inventory.get_selected_slot() as usize,
+                pumpkin_util::Hand::Left => {
+                    pumpkin_inventory::player::player_inventory::PlayerInventory::OFF_HAND_SLOT
                 }
-            }
+            };
+            inventory.set_slot(slot, ItemStack::EMPTY.clone());
+            player.sync_hand_slot(slot, ItemStack::EMPTY.clone());
         }
 
         player.living_entity.clear_active_hand();

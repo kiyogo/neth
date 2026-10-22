@@ -58,8 +58,15 @@ impl StructureGenerator for SwampHutGenerator {
             spawned_cat: false,
         }));
 
+        let center_x = x + 8;
+        let center_z = z + 8;
+        let center_y = context
+            .height_sampler
+            .as_deref_mut()
+            .map_or(64, |sampler| sampler.estimate_height(center_x, center_z));
+
         Some(StructurePosition {
-            start_pos: BlockPos::new(x, 64, z),
+            start_pos: BlockPos::new(center_x, center_y, center_z),
             collector: Arc::new(collector.into()),
         })
     }

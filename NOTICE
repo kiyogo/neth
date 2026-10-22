@@ -1,0 +1,22 @@
+# NOTICE
+
+## Project Neth
+
+Copyright (C) 2026 KIYOVN. All rights reserved.
+
+Neth is a high-performance Minecraft Java Edition server engine written in Rust, developed and maintained by KIYOVN.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+---
+
+## Original Work & Attribution
+
+Neth is derived from and based upon the Pumpkin project:
+- Original Project: Pumpkin (https://github.com/Pumpkin-MC/Pumpkin)
+- Original Author: Aleksander Medvedev and Pumpkin contributors
+- Portions Copyright (C) 2024-2026 Aleksander Medvedev and Pumpkin contributors.
+
+All original code and assets retain their respective copyrights. The original code remains licensed under the GNU General Public License version 3 (GPL-3.0).
+
+KIYOVN asserts copyright only over changes, refactorings, parity enhancements, bug fixes, and new features added to the Neth project.

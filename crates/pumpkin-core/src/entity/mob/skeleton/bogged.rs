@@ -169,21 +169,3 @@ impl Mob for BoggedSkeletonEntity {
             .populate_default_equipment_enchantments(difficulty);
     }
 }
-
-impl EntityBase for BoggedSkeletonEntity {
-    fn get_entity(&self) -> &Entity {
-        &self.entity.mob_entity.living_entity.entity
-    }
-
-    fn get_living_entity(&self) -> Option<&LivingEntity> {
-        Some(&self.entity.mob_entity.living_entity)
-    }
-
-    fn get_mob(&self) -> Option<&dyn Mob> {
-        Some(self)
-    }
-
-    fn cast_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}

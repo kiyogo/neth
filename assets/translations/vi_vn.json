@@ -1,6 +1,6 @@
 {
-    "commands.pumpkin.version": "Pumpkin %s\n",
-    "commands.pumpkin.description": "Giúp bất cứ ai có thể host một server Minecraft nhanh và mượt.\n",
+    "commands.pumpkin.version": "Neth %s\n",
+    "commands.pumpkin.description": "Máy chủ Minecraft Java Edition hiệu năng cao viết bằng Rust.\n",
     "commands.pumpkin.minecraft_version": "(Minecraft %1$s, Giao thức %2$s)\n",
     "commands.pumpkin.github": "[Repositorys GitHub]",
     "commands.pumpkin.website": "[Trang web]",

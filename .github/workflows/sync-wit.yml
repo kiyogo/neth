@@ -30,12 +30,12 @@ jobs:
         with:
           client-id: ${{ vars.BOT_APP_CLIENT_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
-          owner: Pumpkin-MC
+          owner: ${{ github.repository_owner }}
           repositories: pumpkin-plugin-wit
 
       - name: Push changes to mirror
         run: |
           git subtree push \
             --prefix=crates/pumpkin-plugin-wit \
-            https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/Pumpkin-MC/pumpkin-plugin-wit.git \
+            https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository_owner }}/pumpkin-plugin-wit.git \
             master

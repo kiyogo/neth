@@ -1021,7 +1021,7 @@
 | #626 | KnockbackSync, custom Knockback, legacy PVP | OPEN | enhancement, api, combat, config | 2025-03-12 | N/A | Feature/Enhancement |
 | #625 | SpacetimeDB support | CLOSED | enhancement | 2025-03-12 | 2026-02-23 | Feature/Enhancement |
 | #617 | Explosion not in every direction | CLOSED | bug | 2025-03-09 | 2025-03-16 | Bug report (CLOSED) |
-| #596 | My username is pumpkinmc and I've been using this username for a long time | CLOSED | none | 2025-02-26 | 2025-02-26 | Upstream issue |
+| #596 | Username query | CLOSED | none | 2025-02-26 | 2025-02-26 | Upstream issue |
 | #595 | TNT Currently does not interact with other TNT blocks nor does it drop destroyed blocks | CLOSED | enhancement | 2025-02-25 | 2025-03-12 | Feature/Enhancement |
 | #594 | Division by zero | CLOSED | bug | 2025-02-25 | 2025-04-25 | Bug report (CLOSED) |
 | #592 | Resource leak | CLOSED | bug | 2025-02-25 | 2025-02-25 | Bug report (CLOSED) |

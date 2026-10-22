@@ -6,7 +6,7 @@
 
 use std::any::Any;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use pumpkin_data::Block;
 use pumpkin_data::advancement::Advancement;

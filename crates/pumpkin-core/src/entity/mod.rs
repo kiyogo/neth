@@ -240,6 +240,10 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         true
     }
 
+    fn on_climbable(&self) -> bool {
+        false
+    }
+
     /// Whether the entity is immune from explosion knockback and damage
     fn is_immune_to_explosion(&self) -> bool {
         false
@@ -417,11 +421,6 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         None
     }
 
-    /// Moves the entity through water itself instead of the shared water movement, and says
-    /// whether it did. Fish do, so they neither sink like walkers nor hop out at the shore.
-    fn travel_in_water(&self) -> bool {
-        false
-    }
 
     fn java_spawn_metadata(&self, version: JavaMinecraftVersion) -> Option<Box<[u8]>> {
         if version < JavaMinecraftVersion::V_1_9 {
@@ -1273,43 +1272,7 @@ impl Entity {
         self.set_synced_data(tracked_data::entity::DATA_NO_GRAVITY, no_gravity);
     }
 
-    /// Vanilla `hurtMarked` path: immediate, to watchers and self.
-    pub fn send_velocity(&self) {
-        let (je_packet, be_packet) = self.velocity_packets();
-        self.world
-            .load()
-            .send_to_tracking_players_and_self_editioned(self, &je_packet, &be_packet);
-    }
 
-    /// Vanilla `hasImpulse` path: to watchers only.
-    ///
-    /// Vanilla `ServerEntity` never sends an entity its own motion on this path:
-    /// `EntityType.trackDeltas()` is false for players and the recipient set
-    /// excludes the entity itself. Neither may we — a player pressed against a mob
-    /// has `velocity_dirty` set every tick, and echoing that motion back to it keeps
-    /// re-applying whatever stale `y` the server holds for it, lifting it off the
-    /// ground.
-    pub fn send_velocity_to_watchers(&self) {
-        let (je_packet, be_packet) = self.velocity_packets();
-        self.world
-            .load()
-            .send_to_tracking_players_editioned(self, &je_packet, &be_packet);
-    }
-
-    /// Builds the Java and Bedrock velocity-sync packets for the current velocity,
-    /// and records it as the last velocity sent.
-    fn velocity_packets(&self) -> (CEntityVelocity, CSetActorMotion) {
-        let velocity = self.velocity.load();
-        self.last_sent_velocity.store(velocity);
-        (
-            CEntityVelocity::new(self.entity_id.into(), velocity),
-            CSetActorMotion {
-                target_runtime_id: VarULong(self.entity_id as u64),
-                motion: Vector3::new(velocity.x as f32, velocity.y as f32, velocity.z as f32),
-                tick: VarULong(0),
-            },
-        )
-    }
 
     #[must_use]
     pub fn get_dimensions(&self, pose: EntityPose) -> EntityDimensions {
@@ -1442,6 +1405,7 @@ impl Entity {
         caller: &dyn EntityBase,
     ) -> Vector3<f64> {
         if movement.length_squared() == 0.0 {
+            self.horizontal_collision.store(false, Ordering::SeqCst);
             return movement;
         }
 
@@ -1515,6 +1479,7 @@ impl Entity {
         }
 
         adjusted_movement
+    }
 
     pub(crate) fn get_boat_collisions(
         &self,
@@ -1608,29 +1573,22 @@ impl Entity {
         let axes = if movement.x.abs() < movement.z.abs() {
             [Axis::Y, Axis::Z, Axis::X]
         } else {
-            Axis::all()
+            [Axis::Y, Axis::X, Axis::Z]
         };
         let mut resolved = Vector3::default();
         let mut vertical_collision = None;
         for axis in axes {
-            if movement.get_axis(axis) == 0.0 {
+            let wanted = movement.get_axis(axis);
+            if wanted == 0.0 {
                 continue;
             }
-            let mut axis_movement = Vector3::default();
-            axis_movement.set_axis(axis, movement.get_axis(axis));
-            let moved_box = bounding_box.shift(resolved);
-            let mut max_time = 1.0;
-            for (index, shape) in shapes.iter().enumerate() {
-                if let Some(time) =
-                    moved_box.calculate_collision_time(shape, axis_movement, axis, max_time)
-                {
-                    max_time = time;
-                    if axis == Axis::Y {
-                        vertical_collision = Some(index);
-                    }
-                }
+            let (allowed, blocker) = bounding_box
+                .shift(resolved)
+                .collide_along(axis, shapes, wanted);
+            if axis == Axis::Y {
+                vertical_collision = blocker;
             }
-            resolved.set_axis(axis, movement.get_axis(axis) * max_time);
+            resolved.set_axis(axis, allowed);
         }
         let on_ground = movement.y < 0.0 && vertical_collision.is_some();
         let supporting_block = vertical_collision.filter(|_| on_ground).and_then(|index| {
@@ -1834,7 +1792,6 @@ impl Entity {
         }
 
         suffocating && self.pose.load() != pumpkin_data::entity::EntityPose::Sleeping
-    }
     }
 
     pub fn update_last_pos(&self) -> Vector3<f64> {
@@ -2307,39 +2264,54 @@ impl Entity {
                 let src_portal = portal_processor.source_portal.clone();
                 let entity_id = self.entity_id;
                 let yaw = self.yaw.load();
+                should_remove = true;
 
-                let rt_handle = world_clone.server.upgrade().map(|s| s.runtime.clone());
-                rayon::spawn(move || {
-                    let _guard = rt_handle.as_ref().map(tokio::runtime::Handle::enter);
-                    let Some(entity_arc) = world_clone.get_entity_by_id(entity_id) else {
-                        return;
-                    };
-                    let transition = portal_type.get_portal_destination(
-                        &world_clone,
-                        dest_world_opt,
-                        entity_arc.as_ref(),
-                        src_portal.as_ref(),
-                    );
+                if let Some(handle) = world_clone.server.upgrade().map(|s| s.runtime.clone()) {
+                    handle.spawn(async move {
+                        let Some(entity_arc) = world_clone.get_entity_by_id(entity_id) else {
+                            return;
+                        };
+                        let transition = portal_type
+                            .get_portal_destination(
+                                &world_clone,
+                                dest_world_opt,
+                                entity_arc.as_ref(),
+                                src_portal.as_ref(),
+                            )
+                            .await;
 
-                    if let Some(transition) = transition {
-                        let dest_world = transition.new_world.clone();
-                        let yaw_val = transition.yaw;
-                        let pitch = transition.pitch;
-                        let teleport_pos = transition.position;
+                        if let Some(transition) = transition {
+                            let dest_world = transition.new_world.clone();
+                            let yaw_val = transition.yaw;
+                            let pitch = transition.pitch;
+                            let teleport_pos = transition.position;
 
-                        // Teleport the main entity
-                        entity_arc.teleport(teleport_pos, yaw_val, pitch, dest_world.clone());
+                            if entity_arc.get_player().is_some() {
+                                // Teleport the player
+                                entity_arc.teleport(teleport_pos, yaw_val, pitch, dest_world.clone());
+                            } else {
+                                // Teleport non-player entity across dimensions
+                                Self::teleport_entity_cross_world(
+                                    &entity_arc,
+                                    &world_clone,
+                                    &dest_world,
+                                    teleport_pos,
+                                    yaw_val,
+                                    pitch,
+                                );
+                            }
 
-                        // Teleport all passengers recursively along with the vehicle
-                        let yaw_delta = yaw_val.map(|y| y - yaw);
-                        Self::teleport_passengers_recursive(
-                            entity_arc.get_entity(),
-                            teleport_pos,
-                            yaw_delta,
-                            &dest_world,
-                        );
-                    }
-                });
+                            // Teleport all passengers recursively along with the vehicle
+                            let yaw_delta = yaw_val.map(|y| y - yaw);
+                            Self::teleport_passengers_recursive(
+                                entity_arc.get_entity(),
+                                teleport_pos,
+                                yaw_delta,
+                                &dest_world,
+                            );
+                        }
+                    });
+                }
             } else if portal_processor.portal_time == 0 {
                 should_remove = true;
             }
@@ -2376,7 +2348,21 @@ impl Entity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .clone();
 
-            passenger.teleport(position, passenger_yaw, None, dest_world.clone());
+            let cur_world = passenger_entity.world.load_full();
+            if passenger.get_player().is_some() {
+                passenger.teleport(position, passenger_yaw, None, dest_world.clone());
+            } else if !Arc::ptr_eq(&cur_world, dest_world) {
+                Self::teleport_entity_cross_world(
+                    &passenger,
+                    &cur_world,
+                    dest_world,
+                    position,
+                    passenger_yaw,
+                    None,
+                );
+            } else {
+                passenger.teleport(position, passenger_yaw, None, dest_world.clone());
+            }
 
             // Recursively teleport nested passengers
             for nested in nested_passengers {
@@ -2384,6 +2370,29 @@ impl Entity {
                 Self::teleport_passengers_recursive(nested_entity, position, yaw_delta, dest_world);
             }
         }
+    }
+
+    /// Migrates a non-player entity from `old_world` to `dest_world`.
+    pub fn teleport_entity_cross_world(
+        entity_arc: &Arc<dyn EntityBase>,
+        old_world: &Arc<World>,
+        dest_world: &Arc<World>,
+        position: Vector3<f64>,
+        yaw: Option<f32>,
+        pitch: Option<f32>,
+    ) {
+        if Arc::ptr_eq(old_world, dest_world) {
+            entity_arc.get_entity().teleport(position, yaw, pitch, dest_world);
+            return;
+        }
+
+        old_world.remove_entity_for_dimension_travel(entity_arc.as_ref());
+        let base = entity_arc.get_entity();
+        base.world.store(dest_world.clone());
+        base.removal_reason.store(None);
+        base.removed.store(false, Ordering::Release);
+        base.teleport(position, yaw, pitch, dest_world);
+        dest_world.add_entity_silent(entity_arc.clone());
     }
 
     pub fn try_use_portal(&self, portal_world: Arc<World>, pos: BlockPos) {

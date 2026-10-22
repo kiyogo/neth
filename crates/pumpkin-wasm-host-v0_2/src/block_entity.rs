@@ -1,6 +1,7 @@
 use super::AccessorExt;
 use crate::LockIgnorePoison;
 use crate::pumpkin::plugin::block_entity::HostContainerBlockEntityWithStore;
+use pumpkin_data::data_component_impl::{BeesImpl, CustomNameImpl, NoteBlockSoundImpl};
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -838,10 +839,8 @@ impl HostBannerBlockEntity for PluginHostState {
     ) -> wasmtime::Result<Option<String>> {
         Ok(self
             .get(&res)?
-            .custom_name
-            .try_lock()
-            .ok()
-            .and_then(|g| g.clone()))
+            .components
+            .with_component::<CustomNameImpl, _>(|name| name.name.clone().get_text()))
     }
 
     fn drop(&mut self, rep: Resource<BannerBlockEntity>) -> wasmtime::Result<()> {
@@ -922,10 +921,8 @@ impl HostBeehiveBlockEntity for PluginHostState {
     fn get_bee_count(&mut self, res: Resource<BeehiveBlockEntity>) -> wasmtime::Result<u32> {
         Ok(self
             .get(&res)?
-            .bees
-            .try_lock()
-            .ok()
-            .and_then(|g| g.as_ref().map(|v| v.len() as u32))
+            .components
+            .with_component::<BeesImpl, _>(|bees| bees.bees.len() as u32)
             .unwrap_or(0))
     }
 
@@ -1316,10 +1313,8 @@ impl HostSkullBlockEntity for PluginHostState {
     ) -> wasmtime::Result<Option<String>> {
         Ok(self
             .get(&res)?
-            .note_block_sound
-            .try_lock()
-            .ok()
-            .and_then(|g| g.clone()))
+            .components
+            .with_component::<NoteBlockSoundImpl, _>(|sound| sound.sound.clone()))
     }
 
     fn drop(&mut self, rep: Resource<SkullBlockEntity>) -> wasmtime::Result<()> {

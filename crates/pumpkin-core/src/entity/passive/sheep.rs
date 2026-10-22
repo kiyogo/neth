@@ -27,7 +27,6 @@ use crate::entity::{
     shearable::{Shearable, shear_by_player, shearing_loot},
 };
 
-use pumpkin_data::dye_color::DyeColor;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::loot_table::{LootEntityPropertyValue, LootEntityTarget};
@@ -125,6 +124,11 @@ impl SheepEntity {
             self.color_and_sheared
                 .fetch_and(!SHEARED_BIT, Ordering::Relaxed);
         }
+        self.sync_packed_byte();
+    }
+
+    pub fn set_packed_and_sync(&self, byte: u8) {
+        self.color_and_sheared.store(byte, Ordering::Relaxed);
         self.sync_packed_byte();
     }
 }
@@ -384,13 +388,23 @@ mod tests {
         assert_eq!(wool_entries.len(), COLORS.len());
 
         for (index, entry) in wool_entries.iter().enumerate() {
-            let LootCondition::EntityProperties { target, predicate } = entry.condition else {
-                panic!("sheep wool entry must have an entity-properties condition");
+            let (target, predicate) = match &entry.condition {
+                LootCondition::EntityProperties { target, predicate } => (*target, predicate),
+                LootCondition::AllOf(conditions) => conditions
+                    .iter()
+                    .find_map(|c| match c {
+                        LootCondition::EntityProperties { target, predicate } => {
+                            Some((*target, predicate))
+                        }
+                        _ => None,
+                    })
+                    .expect("sheep wool entry must have an entity-properties condition"),
+                _ => panic!("sheep wool entry must have an entity-properties condition"),
             };
             assert_eq!(target, LootEntityTarget::This);
-            assert!(properties(COLORS[index], false).matches(predicate));
-            assert!(!properties(COLORS[(index + 1) % COLORS.len()], false).matches(predicate));
-            assert!(!properties(COLORS[index], true).matches(predicate));
+            assert!(properties(COLORS[index], false).matches(*predicate));
+            assert!(!properties(COLORS[(index + 1) % COLORS.len()], false).matches(*predicate));
+            assert!(!properties(COLORS[index], true).matches(*predicate));
         }
     }
 }

@@ -275,6 +275,7 @@ impl MobEntity {
 
     /// Vanilla `Mob.serverAiStep`: sensing, goals, navigation and controls.
     pub fn server_ai_step(&self, mob: &dyn Mob, caller: &dyn EntityBase) {
+        self.living_entity.jumping.store(false, Ordering::SeqCst);
         self.no_action_time.fetch_add(1, Relaxed);
         let age = self.living_entity.entity.age.load(Relaxed);
         let entity_id = self.living_entity.entity.entity_id;
@@ -332,12 +333,25 @@ impl MobEntity {
 
         navigator.tick(&self.living_entity);
 
+        let wanted_target = navigator
+            .get_path()
+            .and_then(|p| p.get_next_entity_pos(self.living_entity.entity.width()));
+        let nav_speed = navigator.get_speed();
+
         {
             *self
                 .navigator
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner) = navigator;
         };
+
+        if let Some(target) = wanted_target {
+            let mut move_control = self
+                .move_control
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            move_control.set_wanted_position(target.x, target.y, target.z, nav_speed);
+        }
 
         mob.custom_server_ai_step(caller);
 
@@ -738,7 +752,7 @@ impl MobEntity {
     }
 
     pub fn is_bright_enough_to_spawn(world: &World, pos: &BlockPos) -> bool {
-        world.get_max_local_raw_brightness(pos) > 8
+        world.get_raw_brightness(pos, 0) > 8
     }
 
     pub fn check_surface_water_animal_spawn_rules(world: &World, pos: &BlockPos) -> bool {
@@ -1038,7 +1052,7 @@ pub trait Mob: EntityBase + Send + Sync {
 
     /// `LivingEntity.canBreatheUnderwater`: no air is lost while submerged.
     fn can_breathe_underwater(&self) -> bool {
-        false
+        self.can_breathe_under_water()
     }
 
     /// `WaterAnimal.handleAirSupply`: lose air out of water.
@@ -1592,7 +1606,7 @@ pub trait Mob: EntityBase + Send + Sync {
 
     fn is_sitting(&self) -> bool {
         self.as_tamable()
-            .is_some_and(crate::entity::passive::tamable::TamableAnimal::is_in_sitting_pose)
+            .is_some_and(crate::entity::passive::tamable::TamableAnimal::is_ordered_to_sit)
     }
 
     fn is_tamed(&self) -> bool {
@@ -1630,6 +1644,10 @@ pub trait Mob: EntityBase + Send + Sync {
         true
     }
 
+    fn is_pushable(&self) -> bool {
+        self.get_mob_entity().living_entity.is_pushable()
+    }
+
     fn mob_travel_in_water(&self, _caller: &dyn EntityBase) -> bool {
         false
     }
@@ -1639,10 +1657,18 @@ pub trait Mob: EntityBase + Send + Sync {
     fn custom_travel(&self, _caller: &dyn EntityBase) -> bool {
         false
     }
+
+    fn mob_on_climbable(&self, _caller: &dyn EntityBase) -> bool {
+        false
+    }
 }
 impl<T: Mob + Send + 'static> EntityBase for T {
     fn get_mob(&self) -> Option<&dyn Mob> {
         Some(self)
+    }
+
+    fn on_climbable(&self) -> bool {
+        self.mob_on_climbable(self)
     }
 
     fn travel_in_water(&self) -> bool {
@@ -1654,7 +1680,7 @@ impl<T: Mob + Send + 'static> EntityBase for T {
     }
 
     fn is_pushable(&self) -> bool {
-        self.get_mob_entity().living_entity.is_pushable()
+        Mob::is_pushable(self)
     }
 
     fn on_lightning_strike(
@@ -1916,13 +1942,6 @@ impl<T: Mob + Send + 'static> EntityBase for T {
         self.get_mob_y_velocity_drag()
     }
 
-    fn travel_in_water(&self) -> bool {
-        self.mob_travel_in_water(self)
-    }
-
-    fn is_pushed_by_fluids(&self) -> bool {
-        self.mob_is_pushed_by_fluids()
-    }
 
     fn get_experience_reward(&self, _killer: Option<&dyn EntityBase>) -> u32 {
         if self

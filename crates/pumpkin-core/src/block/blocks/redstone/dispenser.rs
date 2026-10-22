@@ -13,6 +13,7 @@ use crate::block::{
     BlockBehaviour, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
     OnNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
 };
+use crate::entity::ageable::AgeableMob;
 use crate::entity::decoration::armor_stand::ArmorStandEntity;
 use crate::entity::item::ItemEntity;
 use crate::entity::mob::Mob;
@@ -226,6 +227,23 @@ impl BlockBehaviour for DispenserBlock {
         let dispenser_block_entity = DispenserBlockEntity::new(*args.position);
         args.world
             .add_block_entity(Arc::new(dispenser_block_entity));
+
+        let powered = block_receives_redstone_power(args.world, args.position)
+            || block_receives_redstone_power(args.world, &args.position.up());
+        if powered {
+            let mut props =
+                DispenserLikeProperties::from_state_id(args.world.get_block_state(args.position).id);
+            if !props.triggered {
+                args.world
+                    .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                props.triggered = true;
+                args.world.set_block_state(
+                    args.position,
+                    props.to_state_id(args.block),
+                    BlockFlags::NOTIFY_LISTENERS,
+                );
+            }
+        }
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -919,7 +937,7 @@ impl DispenserBlock {
         }
     }
 
-    fn dispense_bone_meal(ctx: &DispenseContext<'_>, item: &mut ItemStack) {
+    fn dispense_bone_meal(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
         let target = Self::target_position(ctx);
         let (block, state_id) = ctx.world.get_block_and_state_id(&target);
         let applied = ctx
@@ -928,12 +946,12 @@ impl DispenserBlock {
             .bone_meal(block, ctx.world, &target, state_id);
 
         if applied {
-            item.decrement(1);
+            let _ = item.split(1);
             ctx.world
                 .sync_world_event(WorldEvent::ParticlesAndSoundPlantGrowth, target, 15);
-            Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserDispense);
+            true
         } else {
-            Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserFail);
+            false
         }
     }
 
@@ -1135,24 +1153,6 @@ impl DispenserBlock {
             .set_block_state(&target, Block::MUD.default_state.id, BlockFlags::NOTIFY_ALL);
 
         *item = ItemStack::new(1, &Item::GLASS_BOTTLE);
-        Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserDispense);
-        true
-    }
-
-    fn dispense_bone_meal(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
-        let target = Self::target_position(ctx);
-        let (block, state) = ctx.world.get_block_and_state(&target);
-        if !ctx
-            .world
-            .block_registry
-            .bone_meal(block, ctx.world, &target, state.id)
-        {
-            return false;
-        }
-
-        ctx.world
-            .sync_world_event(WorldEvent::ParticlesAndSoundPlantGrowth, target, 15);
-        let _ = item.split(1);
         Self::play_dispense_effects(ctx, WorldEvent::SoundDispenserDispense);
         true
     }
@@ -1378,23 +1378,6 @@ impl DispenserBlock {
 
         let item_entity = Arc::new(ItemEntity::new_with_velocity(entity, stack, velocity, 40));
         ctx.world.spawn_entity(item_entity);
-    }
-
-    fn dispense_bone_meal(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
-        let target = Self::target_position(ctx);
-        let (target_block, target_state_id) = ctx.world.get_block_and_state_id(&target);
-        if let Some(server) = ctx.world.server.upgrade() {
-            if server
-                .block_registry
-                .bone_meal(target_block, ctx.world, &target, target_state_id)
-            {
-                let _ = item.split(1);
-                ctx.world
-                    .sync_world_event(WorldEvent::ParticlesAndSoundPlantGrowth, target, 15);
-                return true;
-            }
-        }
-        false
     }
 
     fn dispense_chest(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {

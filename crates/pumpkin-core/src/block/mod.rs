@@ -649,6 +649,46 @@ pub fn drop_loot(
     }
 }
 
+/// Drops the block's item with all collected components for a filled creative container.
+/// Logs and skips an invalid block item; plugin cancellation and item edits remain authoritative.
+pub fn drop_block_entity_item(
+    world: &Arc<World>,
+    block: &Block,
+    pos: &BlockPos,
+    block_entity: &dyn entities::BlockEntity,
+) {
+    let Some(item) = pumpkin_data::item::Item::from_id(block.item_id) else {
+        tracing::warn!(
+            "Cannot drop block {} with unknown item ID {}",
+            block.name,
+            block.item_id
+        );
+        return;
+    };
+    let mut stack = ItemStack::new(1, item);
+    stack.patch = block_entity
+        .collect_components()
+        .into_iter()
+        .map(|(kind, value)| (kind, Some(value)))
+        .collect();
+
+    let mut event = crate::plugin::block::block_drop_item::BlockDropItemEvent {
+        block_pos: *pos,
+        world: world.clone(),
+        player: None,
+        items: vec![stack],
+        cancelled: false,
+    };
+    if let Some(server) = world.server.upgrade() {
+        server.plugin_manager.fire_blocking(&server, &mut event);
+    }
+    if !event.cancelled {
+        for stack in event.items {
+            world.drop_stack(pos, stack);
+        }
+    }
+}
+
 pub fn calc_block_breaking(player: &Player, state: &BlockState, block: &'static Block) -> f32 {
     let hardness = state.hardness;
     #[expect(clippy::float_cmp)]
@@ -771,5 +811,120 @@ mod tests {
         // Non-wall-variants with "wall" in their name must remain unchanged
         assert_eq!(loot_table_name(&Block::COBBLESTONE_WALL), "cobblestone_wall");
         assert_eq!(loot_table_name(&Block::STONE), "stone");
+    }
+
+    #[test]
+    fn test_rotated_pillar_axis_placement() {
+        use pumpkin_data::block_properties::{Axis, PaleOakWoodLikeProperties};
+        for block in [
+            &Block::DEEPSLATE,
+            &Block::BASALT,
+            &Block::POLISHED_BASALT,
+            &Block::QUARTZ_PILLAR,
+            &Block::PURPUR_PILLAR,
+            &Block::BONE_BLOCK,
+            &Block::OCHRE_FROGLIGHT,
+            &Block::BAMBOO_BLOCK,
+        ] {
+            let mut props = PaleOakWoodLikeProperties::default(block);
+            props.axis = BlockDirection::East.to_axis();
+            let state_id = props.to_state_id(block);
+            let read_back = PaleOakWoodLikeProperties::from_state_id(state_id);
+            assert_eq!(read_back.axis, Axis::X);
+
+            let mut props_y = PaleOakWoodLikeProperties::default(block);
+            props_y.axis = BlockDirection::Up.to_axis();
+            let state_id_y = props_y.to_state_id(block);
+            let read_back_y = PaleOakWoodLikeProperties::from_state_id(state_id_y);
+            assert_eq!(read_back_y.axis, Axis::Y);
+
+            let mut props_z = PaleOakWoodLikeProperties::default(block);
+            props_z.axis = BlockDirection::North.to_axis();
+            let state_id_z = props_z.to_state_id(block);
+            let read_back_z = PaleOakWoodLikeProperties::from_state_id(state_id_z);
+            assert_eq!(read_back_z.axis, Axis::Z);
+        }
+    }
+
+    #[test]
+    fn test_skull_wall_variants_metadata() {
+        use crate::block::blocks::skull_block::SkullBlock;
+        use crate::block::blocks::wither_skull::WitherSkeletonSkullBlock;
+        let skull_ids = SkullBlock::ids();
+        assert!(skull_ids.contains(&BlockId::SKELETON_WALL_SKULL));
+        assert!(skull_ids.contains(&BlockId::PLAYER_WALL_HEAD));
+        assert!(skull_ids.contains(&BlockId::ZOMBIE_WALL_HEAD));
+        assert!(skull_ids.contains(&BlockId::CREEPER_WALL_HEAD));
+        assert!(skull_ids.contains(&BlockId::PIGLIN_WALL_HEAD));
+        assert!(skull_ids.contains(&BlockId::DRAGON_WALL_HEAD));
+
+        let wither_ids = WitherSkeletonSkullBlock::ids();
+        assert!(wither_ids.contains(&BlockId::WITHER_SKELETON_SKULL));
+        assert!(wither_ids.contains(&BlockId::WITHER_SKELETON_WALL_SKULL));
+    }
+
+    #[test]
+    fn test_huge_mushroom_properties() {
+        use pumpkin_data::block_properties::BrownMushroomBlockLikeProperties;
+        for block in [
+            &Block::BROWN_MUSHROOM_BLOCK,
+            &Block::RED_MUSHROOM_BLOCK,
+            &Block::MUSHROOM_STEM,
+        ] {
+            let mut props = BrownMushroomBlockLikeProperties::default(block);
+            assert!(props.up && props.down && props.north && props.south && props.east && props.west);
+
+            // Connect on down
+            props.down = false;
+            let state_id = props.to_state_id(block);
+            let read_back = BrownMushroomBlockLikeProperties::from_state_id(state_id);
+            assert!(!read_back.down);
+            assert!(read_back.up);
+        }
+    }
+
+    #[test]
+    fn test_copper_golem_statue_cycle() {
+        use pumpkin_data::block_properties::{
+            CopperGolemPose, CopperGolemStatueLikeProperties, EnumVariants,
+        };
+        for block in [
+            &Block::COPPER_GOLEM_STATUE,
+            &Block::WAXED_COPPER_GOLEM_STATUE,
+            &Block::OXIDIZED_COPPER_GOLEM_STATUE,
+            &Block::WAXED_OXIDIZED_COPPER_GOLEM_STATUE,
+        ] {
+            let mut props = CopperGolemStatueLikeProperties::default(block);
+            assert_eq!(props.copper_golem_pose, CopperGolemPose::Standing);
+
+            // Cycle through all 4 poses
+            let next_idx = (props.copper_golem_pose.to_index() + 1) % 4;
+            props.copper_golem_pose = CopperGolemPose::from_index(next_idx);
+            assert_eq!(props.copper_golem_pose, CopperGolemPose::Sitting);
+
+            let next_idx = (props.copper_golem_pose.to_index() + 1) % 4;
+            props.copper_golem_pose = CopperGolemPose::from_index(next_idx);
+            assert_eq!(props.copper_golem_pose, CopperGolemPose::Running);
+
+            let next_idx = (props.copper_golem_pose.to_index() + 1) % 4;
+            props.copper_golem_pose = CopperGolemPose::from_index(next_idx);
+            assert_eq!(props.copper_golem_pose, CopperGolemPose::Star);
+
+            let next_idx = (props.copper_golem_pose.to_index() + 1) % 4;
+            props.copper_golem_pose = CopperGolemPose::from_index(next_idx);
+            assert_eq!(props.copper_golem_pose, CopperGolemPose::Standing);
+        }
+    }
+
+    #[test]
+    fn test_heavy_core_properties() {
+        use pumpkin_data::block_properties::MangroveRootsLikeProperties;
+        let block = &Block::HEAVY_CORE;
+        let mut props = MangroveRootsLikeProperties::default(block);
+        assert!(!props.waterlogged);
+        props.waterlogged = true;
+        let state_id = props.to_state_id(block);
+        let read_back = MangroveRootsLikeProperties::from_state_id(state_id);
+        assert!(read_back.waterlogged);
     }
 }

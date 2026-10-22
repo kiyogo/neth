@@ -274,7 +274,7 @@ use pumpkin_protocol::codec::var_ulong::VarULong;
 use pumpkin_protocol::java::client::play::{
     Animation, CAcknowledgeBlockChange, CActionBar, CAwardStats, CBlockUpdate, CChangeDifficulty,
     CCloseContainer, CCombatDeath, CCustomPayload, CDisguisedChatMessage, CEntityAnimation,
-    CEntityPositionSync, CEntityVelocity, CGameEvent, CHurtAnimation, CItemCooldown, CMapItemData,
+    CEntityPositionSync, CGameEvent, CHurtAnimation, CItemCooldown, CMapItemData,
     COpenBook, COpenScreen, COpenSignEditor, CParticle, CPlayServerLinks, CPlayerAbilities,
     CPlayerInfoUpdate, CPlayerPosition, CPlayerSpawnPosition, CRespawn, CSetCamera,
     CSetContainerContent, CSetContainerProperty, CSetContainerSlot, CSetCursorItem, CSetExperience,
@@ -1508,6 +1508,11 @@ impl Player {
                         let boost_y = 0.5 + 0.25 * (*level as f64);
                         let vel = self.living_entity.entity.velocity.load();
                         self.set_velocity(Vector3::new(vel.x, boost_y, vel.z));
+                        world.play_sound(
+                            Sound::EntityWindChargeWindBurst,
+                            SoundCategory::Players,
+                            &self.living_entity.entity.pos.load(),
+                        );
                     }
                 }
             }
@@ -1576,9 +1581,6 @@ impl Player {
                     let knockback_x = yaw.sin();
                     let knockback_z = -yaw.cos();
                     let victims = world.get_all_at_box(&search_box);
-                    let attacker_yaw = (self.living_entity.entity.yaw.load() as f64).to_radians();
-                    let sin_yaw = attacker_yaw.sin();
-                    let cos_yaw = -attacker_yaw.cos();
 
                     for other_victim in victims {
                         let other_ent = other_victim.get_entity();
@@ -1819,6 +1821,7 @@ impl Player {
                                     id: modifier.id.to_string(),
                                     amount: modifier.amount,
                                     operation,
+                                    permanent: false,
                                 });
                             });
                         Self::touch_attribute(&mut touched_attributes, modifier.r#type);
@@ -3045,7 +3048,7 @@ impl Player {
         if let Some(player_arc) = self.world().get_player_by_uuid(self.gameprofile.id)
             && let Some(server) = self.world().server.upgrade()
         {
-            let link_strings = links.iter().map(|l| l.url.clone()).collect();
+            let link_strings = links.iter().map(|l| l.url.to_string()).collect();
             let mut event =
                 crate::plugin::api::events::player::player_links_send::PlayerLinksSendEvent::new(
                     player_arc,
@@ -3233,9 +3236,15 @@ impl Player {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .tick();
-        if let Ok(listener) = self.chunk_listener.try_lock()
-            && let Ok(mut sender) = self.chunk_sender.try_lock()
         {
+            let listener = self
+                .chunk_listener
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut sender = self
+                .chunk_sender
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let watched = self.watched_section.load();
             while let Ok((pos, _)) = listener.try_recv() {
                 if watched.is_within_distance(pos.x, pos.y) {
@@ -3253,15 +3262,20 @@ impl Player {
         };
 
         let view_distance = self.watched_section.load().view_distance;
-        let prepared_batch = self.chunk_sender.try_lock().ok().and_then(|mut sender| {
+        let prepared_batch = {
+            let mut sender = self
+                .chunk_sender
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             sender.prepare_batch(&world.level, player_chunk, view_distance, epoch, version)
-        });
+        };
 
         let total_sent_chunks = prepared_batch.map_or_else(
             || {
                 self.chunk_sender
-                    .try_lock()
-                    .map_or(0, |s| s.sent_chunks_count())
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .sent_chunks_count()
             },
             |batch| match self.client.as_ref() {
                 ClientPlatform::Java(_) => {
@@ -3276,28 +3290,27 @@ impl Player {
                     let encoded =
                         crate::net::ChunkSender::encode_batch(&batch, &mut per_player_cache);
                     let current_epoch = self.chunk_send_epoch.load(Ordering::Relaxed);
-                    let (sent, total_sent_chunks) = self.chunk_sender.try_lock().map_or_else(
-                        |_| (Vec::new(), 0),
-                        |mut sender| {
-                            sender.cancel_pending(&batch, current_epoch, &cancelled);
-                            let sent =
-                                sender.commit_batch(&batch, &encoded, &self.client, current_epoch);
-                            (sent, sender.sent_chunks_count())
-                        },
-                    );
+                    let mut sender = self
+                        .chunk_sender
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    sender.cancel_pending(&batch, current_epoch, &cancelled);
+                    let sent =
+                        sender.commit_batch(&batch, &encoded, &self.client, current_epoch);
+                    let total_sent = sender.sent_chunks_count();
+                    drop(sender);
                     self.pair_entities_in_chunks(&world, &sent);
-                    total_sent_chunks
+                    total_sent
                 }
                 ClientPlatform::Bedrock(_) => {
                     let current_epoch = self.chunk_send_epoch.load(Ordering::Relaxed);
-                    let (chunks, total_sent_chunks) = self.chunk_sender.try_lock().map_or_else(
-                        |_| (Vec::new(), 0),
-                        |mut sender| {
-                            let chunks = sender.commit_bedrock_batch(&batch, current_epoch);
-                            let total_sent_chunks = sender.sent_chunks_count();
-                            (chunks, total_sent_chunks)
-                        },
-                    );
+                    let mut sender = self
+                        .chunk_sender
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    let chunks = sender.commit_bedrock_batch(&batch, current_epoch);
+                    let total_sent_chunks = sender.sent_chunks_count();
+                    drop(sender);
                     if !chunks.is_empty() {
                         let client = self.client.clone();
                         let world = world.clone();

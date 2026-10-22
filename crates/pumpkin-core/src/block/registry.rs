@@ -1,4 +1,6 @@
-use crate::block::blocks::amethyst::{AmethystBlock, BuddingAmethystBlock};
+use crate::block::blocks::amethyst::{
+    AmethystBlock, AmethystClusterBlock, BuddingAmethystBlock,
+};
 use crate::block::blocks::anvil::AnvilBlock;
 use crate::block::blocks::banners::BannerBlock;
 use crate::block::blocks::barrel::BarrelBlock;
@@ -49,6 +51,7 @@ use crate::block::blocks::grass_block::GrassBlock;
 use crate::block::blocks::grindstone::GrindstoneBlock;
 use crate::block::blocks::hay::HayBlock;
 use crate::block::blocks::honey::HoneyBlock;
+use crate::block::blocks::huge_mushroom::HugeMushroomBlock;
 use crate::block::blocks::ice::{FrostedIceBlock, IceBlock};
 use crate::block::blocks::infested::InfestedBlock;
 use crate::block::blocks::iron_bars::IronBarsBlock;
@@ -112,6 +115,7 @@ use crate::block::blocks::plant::tall_seagrass::TallSeaGrassBlock;
 use crate::block::blocks::plant::twisting_vines::TwistingVinesBlock;
 use crate::block::blocks::plant::weeping_vines::WeepingVinesBlock;
 use crate::block::blocks::plant::wither_rose::WitherRoseBlock;
+use crate::block::blocks::potent_sulfur::PotentSulfurBlock;
 use crate::block::blocks::powder_snow::PowderSnowBlock;
 use crate::block::blocks::pumpkin::PumpkinBlock;
 use crate::block::blocks::redstone::bell::BellBlock;
@@ -142,9 +146,14 @@ use crate::block::blocks::redstone::target_block::TargetBlock;
 use crate::block::blocks::redstone::tripwire::TripwireBlock;
 use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
 use crate::block::blocks::scaffolding::ScaffoldingBlock;
+use crate::block::blocks::sculk::sculk_block::SculkBlock;
 use crate::block::blocks::sculk::sculk_catalyst::SculkCatalystBlock;
 use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;
 use crate::block::blocks::sculk::sculk_vein::MultifaceBlock;
+use crate::block::blocks::dried_ghast::DriedGhastBlock;
+use crate::block::blocks::frogspawn::FrogspawnBlock;
+use crate::block::blocks::hanging_moss::HangingMossBlock;
+use crate::block::blocks::heavy_core::HeavyCoreBlock;
 use crate::block::blocks::shelf::ShelfBlock;
 use crate::block::blocks::signs::SignBlock;
 use crate::block::blocks::slabs::SlabBlock;
@@ -237,6 +246,7 @@ use crate::block::blocks::weathering_copper::{
     WeatheringCopperGrateBlock, WeatheringCopperSlabBlock, WeatheringCopperStairBlock,
     WeatheringCopperTrapDoorBlock,
 };
+use crate::block::blocks::copper_golem_statue::CopperGolemStatueBlock;
 
 #[must_use]
 #[expect(clippy::too_many_lines)]
@@ -279,6 +289,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(GlassPaneBlock);
     manager.register(GlazedTerracottaBlock);
     manager.register(HayBlock);
+    manager.register(HugeMushroomBlock);
     manager.register(GrindstoneBlock);
     manager.register(IceBlock);
     manager.register(FrostedIceBlock);
@@ -351,6 +362,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(TallPlantBlock);
     manager.register(NoteBlock);
     manager.register(PowderSnowBlock);
+    manager.register(PotentSulfurBlock);
     manager.register(SpongeBlock);
     manager.register(PumpkinBlock);
     manager.register(WetSpongeBlock);
@@ -363,6 +375,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(WeatheringCopperSlabBlock);
     manager.register(WeatheringCopperStairBlock);
     manager.register(WeatheringCopperTrapDoorBlock);
+    manager.register(CopperGolemStatueBlock);
     manager.register(CommandBlock);
     manager.register(TestBlock);
     manager.register(JigsawBlock);
@@ -410,6 +423,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(CoralPlantBlock);
     manager.register(CoralBlock);
     manager.register(AmethystBlock);
+    manager.register(AmethystClusterBlock);
     manager.register(BuddingAmethystBlock);
     manager.register(GrassBlock);
     manager.register(MyceliumBlock);
@@ -433,8 +447,13 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(LightningRodBlock);
     manager.register(SculkSensorBlock);
     manager.register(MultifaceBlock);
+    manager.register(SculkBlock);
     manager.register(SculkCatalystBlock);
     manager.register(SculkShriekerBlock);
+    manager.register(HeavyCoreBlock);
+    manager.register(DriedGhastBlock);
+    manager.register(FrogspawnBlock);
+    manager.register(HangingMossBlock);
     manager.register(ObserverBlock);
     manager.register(TripwireBlock);
     manager.register(TripwireHookBlock);

@@ -79,8 +79,9 @@ impl BreathManager {
             return;
         }
 
-        let breathes_underwater =
-            mob.is_some_and(Mob::can_breathe_underwater) || Self::has_water_breathing(living);
+        let breathes_underwater = living.can_breathe_under_water()
+            || mob.is_some_and(|m| m.can_breathe_underwater() || m.can_breathe_under_water())
+            || Self::has_water_breathing(living);
         let drowning = !breathes_underwater
             && Self::is_eye_in_water(entity)
             && !Self::is_eye_in_bubble_column(entity);

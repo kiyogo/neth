@@ -11,7 +11,8 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_protocol::IdOr;
 use pumpkin_protocol::java::client::play::CSoundEffect;
-use pumpkin_util::GameMode;
+use pumpkin_data::data_component_impl::EquipmentSlot;
+use pumpkin_util::{GameMode, Hand};
 
 pub struct BowItem;
 
@@ -22,7 +23,22 @@ impl ItemMetadata for BowItem {
 }
 
 impl ItemBehaviour for BowItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: Hand,
+    ) {
         // Check if player has arrows (or is in creative mode)
         let has_arrows = Self::has_arrows(player);
         let gamemode = player.gamemode.load();
@@ -31,14 +47,14 @@ impl ItemBehaviour for BowItem {
             return;
         }
 
-        // Get the held item stack
+        // Get the held item stack in used hand
         let inventory = player.inventory();
-        let stack = inventory.held_item();
+        let stack = inventory.get_stack_in_hand(hand);
 
         // Start the bow drawing animation
         player
             .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, Self::USE_DURATION);
+            .set_active_hand(hand, stack, Self::USE_DURATION);
     }
 
     fn on_stopped_using(&self, stack: &ItemStack, player: &Player) {
@@ -120,7 +136,14 @@ impl BowItem {
         }
 
         // Damage bow
-        player.damage_held_item(1);
+        let active_hand = player
+            .living_entity
+            .active_hand
+            .lock()
+            .unwrap()
+            .unwrap_or(Hand::Right);
+        let slot = EquipmentSlot::from_hand(active_hand);
+        player.damage_item_in_slot(&slot, 1);
     }
 
     /// Check if player has arrows in their inventory

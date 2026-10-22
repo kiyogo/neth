@@ -120,7 +120,7 @@ fn spawn_trims(context: &CommandContext, patterns: &[TrimPattern]) -> CommandExe
                 stack.set_data_component(trim.clone());
 
                 let armor_stand = Arc::new(ArmorStandEntity::new(entity));
-                armor_stand.set_item_slot(slot.clone(), stack);
+                armor_stand.set_item_slot(&slot, stack);
 
                 if item_index == 0 {
                     let label = format!("{} & {}", pattern.to_name(), material.to_name());

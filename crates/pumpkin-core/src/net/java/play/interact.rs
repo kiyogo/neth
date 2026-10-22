@@ -98,7 +98,11 @@ impl JavaClient {
                                     return;
                                 }
                             }
-                            let mut stack = player.inventory().held_item();
+                            let hand = match interact.hand.map(|h| h.0) {
+                                Some(1) => Hand::Left,
+                                _ => Hand::Right,
+                            };
+                            let mut stack = player.inventory().get_stack_in_hand(hand);
 
                             let item_id = stack.item.id;
                             let before = stack.clone();
@@ -128,15 +132,19 @@ impl JavaClient {
                                             item_id as i32,
                                             1,
                                         );
+                                        let slot = match hand {
+                                            Hand::Left => EquipmentSlot::OFF_HAND,
+                                            Hand::Right => EquipmentSlot::MAIN_HAND,
+                                        };
                                         player.world().send_entity_status(
                                             player.get_entity(),
-                                            equipment_break_status(&EquipmentSlot::MAIN_HAND),
+                                            equipment_break_status(&slot),
                                             None,
                                         );
                                     }
                                 }
                             }
-                            player.inventory().set_held_item(stack);
+                            player.inventory().set_stack_in_hand(hand, stack);
                         }
                     }
                 }

@@ -3,6 +3,11 @@ package pumpkin:plugin@0.2.0;
 interface java-packets {
   use uuid.{ uuid };
   use common.{ nbt-tree };
+  record profile-property {
+    name: string,
+    value: string,
+    signature: option<string>,
+  }
   /// Sent by the client to inform the server about its local settings
   record config-s-client-information-config {
     /// The language code used by the client (e.g., "`en_us`")
@@ -668,7 +673,7 @@ interface java-packets {
     username: string,
     /// A list of properties for the player's profile, such as skin data and signatures.
     /// This is typically retrieved from the Mojang authentication servers.
-    properties: list<property>,
+    properties: list<profile-property>,
     /// (<1.21.2) Whether strict error handling should be enabled.
     strict-error-handling: bool,
     /// Added in 26.2
@@ -1631,6 +1636,26 @@ interface java-packets {
     /// `block` particles or RGB values for `dust`).
     data: list<u8>,
   }
+  /// `minecraft:trail`, vanilla's `TrailParticleOption`.
+  record particle-options-trail {
+    /// The position the trail travels towards.
+    target: tuple<f64, f64, f64>,
+    /// The trail color, encoded as `0xRRGGBB`. The top bits are ignored.
+    color: s32,
+    /// Life time in ticks.
+    duration: s32,
+  }
+  /// The payload that follows the particle ID for particle types whose vanilla
+  /// `ParticleOptions` is not a plain `SimpleParticleType`.
+  /// 
+  /// The particle ID is taken from [`Self::particle`] rather than passed
+  /// alongside, so a payload can never be paired with the wrong particle.
+  /// Particles that take no options are spawned through [`CParticle`] directly
+  /// with an empty `data`.
+  variant particle-options {
+    /// `minecraft:trail`, vanilla's `TrailParticleOption`.
+    trail(particle-options-trail),
+  }
   record c-play-ping {
     id: s32,
   }
@@ -1640,9 +1665,17 @@ interface java-packets {
     /// The server must return this exact value.
     payload: s64,
   }
+  /// The crafting-recipe display sent to the client as a ghost recipe.
+  variant ghost-recipe {
+    vanilla(string),
+    dynamic(string),
+  }
+  /// Shows a recipe in a container without moving real ingredients into its grid.
   record c-place-ghost-recipe {
     window-id: u8,
     recipe-id: string,
+    container-id: s32,
+    recipe: option<ghost-recipe>,
   }
   /// Updates the player's movement and interaction abilities.
   /// 
@@ -1665,7 +1698,7 @@ interface java-packets {
   }
   record player-action-add-player {
     name: string,
-    properties: list<property>,
+    properties: list<profile-property>,
   }
   variant player-action {
     add-player(player-action-add-player),
@@ -2108,9 +2141,9 @@ interface java-packets {
   }
   record c-update-attributes {
     entity-id: s32,
-    properties: list<property>,
+    properties: list<attribute-property>,
   }
-  record property {
+  record attribute-property {
     id: s32,
     value: f64,
     modifiers: list<attribute-modifier>,
@@ -2686,6 +2719,7 @@ interface java-packets {
     c-play-ping(c-play-ping),
     /// Responds to a client-initiated ping request to synchronize game state.
     c-ping-response(c-ping-response),
+    /// Shows a recipe in a container without moving real ingredients into its grid.
     c-place-ghost-recipe(c-place-ghost-recipe),
     /// Updates the player's movement and interaction abilities.
     /// 
@@ -2818,6 +2852,7 @@ interface java-packets {
     /// This packet provides the client with the information required to display the
     /// server in the multiplayer menu, including the MOTD, player count, and icon
     status-c-status-response(status-c-status-response),
+    c-login-success(c-login-success),
     unknown,
   }
 }

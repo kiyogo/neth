@@ -97,9 +97,7 @@ fn format_auth_url(url_template: &str, username: &str, server_hash: &str, ip: &I
 ///
 /// 1. A client with a premium account sends a login request to the session server.
 /// 2. Session servers verify the client's credentials and add the player to their server session list.
-/// 3. Pumpkin attempts to authenticate the player against the primary auth server, falling back to secondary auth servers if the primary is down.
-///
-/// See <https://pumpkinmc.org/developer/networking/authentication>
+/// 3. Neth attempts to authenticate the player against the primary auth server, falling back to secondary auth servers if the primary is down.
 pub async fn authenticate(
     username: &str,
     server_hash: &str,

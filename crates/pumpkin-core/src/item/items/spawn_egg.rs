@@ -157,6 +157,22 @@ pub(crate) fn prepare_egg_mob(
 
 impl ItemBehaviour for SpawnEggItem {
     fn normal_use(&self, item: &Item, player: &Player) {
+        let (yaw, pitch) = player.rotation();
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
         if let Some(entity_type) = entity_from_egg(item.id) {
             let world = player.world();
             let (start_pos, end_pos) = self.get_start_and_end_pos(player);
@@ -182,12 +198,7 @@ impl ItemBehaviour for SpawnEggItem {
             let mob = from_type(entity_type, pos, &world, Uuid::new_v4());
             mob.get_entity().set_rotation(yaw, 0.0);
 
-            let held = player.inventory.held_item();
-            let stack = if !held.is_empty() && held.item.id == item.id {
-                held
-            } else {
-                player.inventory.off_hand_item()
-            };
+            let mut stack = player.inventory.get_stack_in_hand(hand);
             prepare_egg_mob(&stack, &mob, &world, Some(player));
             if !world.spawn_creature(
                 mob,
@@ -197,23 +208,9 @@ impl ItemBehaviour for SpawnEggItem {
                 return;
             }
 
-            let mut main_hand = player.inventory.held_item();
-            let consumed = if !main_hand.is_empty() && main_hand.item.id == item.id {
-                main_hand.decrement_unless_creative(player.gamemode.load(), 1);
-                player.inventory.set_held_item(main_hand);
-                true
-            } else {
-                false
-            };
-
-            if !consumed {
-                let mut off_hand = player.inventory.off_hand_item();
-                if !off_hand.is_empty() && off_hand.item.id == item.id {
-                    off_hand.decrement_unless_creative(player.gamemode.load(), 1);
-                    player
-                        .inventory
-                        .set_stack_in_hand(pumpkin_util::Hand::Left, off_hand);
-                }
+            if !stack.is_empty() && stack.item.id == item.id {
+                stack.decrement_unless_creative(player.gamemode.load(), 1);
+                player.inventory.set_stack_in_hand(hand, stack);
             }
         }
     }

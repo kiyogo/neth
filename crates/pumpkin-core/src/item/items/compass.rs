@@ -56,9 +56,9 @@ impl ItemBehaviour for CompassItem {
             lodestone_compass.patch.push((
                 DataComponent::ItemName,
                 Some(
-                    pumpkin_data::data_component_impl::ItemNameImpl {
-                        name: std::borrow::Cow::Borrowed("item.minecraft.lodestone_compass"),
-                    }
+                    pumpkin_data::data_component_impl::ItemNameImpl::Translation(
+                        std::borrow::Cow::Borrowed("item.minecraft.lodestone_compass"),
+                    )
                     .to_dyn(),
                 ),
             ));

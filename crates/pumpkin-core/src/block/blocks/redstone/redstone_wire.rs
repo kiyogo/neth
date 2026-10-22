@@ -201,18 +201,10 @@ impl BlockBehaviour for RedstoneWireBlock {
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let wire = RedstoneWireProperties::from_state_id(args.state.id);
-        if wire.power == 0 || args.direction == BlockDirection::Down {
+        if wire.power == 0 || args.direction != BlockDirection::Up {
             return 0;
         }
-        if args.direction == BlockDirection::Up {
-            return wire.power;
-        }
-        if let Some(horizontal) = args.direction.opposite().to_horizontal_facing()
-            && is_side_connected_prop(wire, horizontal)
-        {
-            return wire.power;
-        }
-        0
+        wire.power
     }
 
     fn rotate(

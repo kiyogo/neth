@@ -521,12 +521,12 @@ pub enum Label {
 pub struct Link<'a> {
     pub is_built_in: bool,
     pub label: Label,
-    pub url: &'a String,
+    pub url: &'a str,
 }
 
 impl<'a> Link<'a> {
     #[must_use]
-    pub const fn new(label: Label, url: &'a String) -> Self {
+    pub const fn new(label: Label, url: &'a str) -> Self {
         Self {
             is_built_in: match label {
                 Label::BuiltIn(_) => true,

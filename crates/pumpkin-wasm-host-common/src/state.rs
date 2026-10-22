@@ -50,6 +50,22 @@ pub enum WasmCommandNode {
 
 impl WasmCommandNode {
     #[must_use]
+    pub fn requires<F>(self, requirement: F) -> Self
+    where
+        F: for<'a> Fn(&'a pumpkin_core::command::context::command_source::CommandSource) -> bool
+            + Send
+            + Sync
+            + 'static,
+    {
+        use pumpkin_core::command::argument_builder::ArgumentBuilder;
+        let requirement = pumpkin_core::command::node::Requirement::from(requirement);
+        match self {
+            Self::Literal(builder) => Self::Literal(builder.requires(requirement)),
+            Self::Argument(builder) => Self::Argument(builder.requires(requirement)),
+        }
+    }
+
+    #[must_use]
     pub fn then(self, child: Self) -> Self {
         use pumpkin_core::command::argument_builder::ArgumentBuilder;
         match self {

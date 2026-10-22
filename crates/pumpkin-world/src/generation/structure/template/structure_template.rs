@@ -508,6 +508,11 @@ impl Palette {
         &self.blocks
     }
 
+    pub fn blocks_mut(&mut self) -> &mut Vec<StructureBlockInfo> {
+        self.cached_jigsaws = None;
+        &mut self.blocks
+    }
+
     #[must_use]
     pub fn blocks_by_name(&self, filter: &str) -> Vec<StructureBlockInfo> {
         self.blocks
@@ -1495,7 +1500,8 @@ mod tests {
         );
         let template = StructureTemplate::from_nbt_bytes(bytes).expect("failed to load template");
 
-        for entry in &template.palette {
+        for block in template.blocks() {
+            let entry = &*block.state;
             let state = BlockStateResolver::resolve_simple(entry)
                 .expect("vanilla palette entries must resolve");
             let mut expected = entry.clone();

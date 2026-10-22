@@ -7,16 +7,13 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
 
-use crate::entity::ai::util::RandomExt;
 use crate::entity::custom_sound::CustomSound;
+use crate::entity::util::RandomExt;
 use crate::entity::{
     Entity, EntityBase,
-    ai::{
-        goal::{
-            active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-            look_at_entity::LookAtEntityGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
-        },
-        util::RandomExt,
+    ai::goal::{
+        active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
+        look_at_entity::LookAtEntityGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
     },
     mob::{Mob, MobEntity},
 };

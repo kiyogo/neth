@@ -1,8 +1,10 @@
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -86,6 +88,12 @@ impl Mob for BreezeEntity {
                         1.0,
                         1.0,
                     );
+                    let proj = src.get_entity();
+                    let velo = proj.velocity.load();
+                    proj.velocity.store(Vector3::new(-velo.x * 0.5, -velo.y * 0.5, -velo.z * 0.5));
+                    let rotation = 170.0 + rand::random::<f32>() * 20.0;
+                    proj.yaw.store(proj.yaw.load() + rotation);
+                    proj.velocity_dirty.store(true, Ordering::Relaxed);
                     return false;
                 }
             }

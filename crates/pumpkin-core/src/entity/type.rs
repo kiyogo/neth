@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use pumpkin_data::entity::EntityType;
-use pumpkin_data::item::Item;
-use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::entity::{EntityType, MobCategory};
 use pumpkin_data::tag::Taggable;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
@@ -16,7 +14,6 @@ use crate::entity::decoration::{
     display::{BlockDisplayEntity, ItemDisplayEntity, TextDisplayEntity},
     end_crystal::EndCrystalEntity,
     item_frame::ItemFrameEntity,
-    leash_knot::LeashKnotEntity,
     mannequin::MannequinEntity,
     painting::PaintingEntity,
 };
@@ -72,6 +69,7 @@ use crate::entity::passive::armadillo::ArmadilloEntity;
 use crate::entity::passive::axolotl::AxolotlEntity;
 use crate::entity::passive::bee::BeeEntity;
 use crate::entity::passive::camel::CamelEntity;
+use crate::entity::passive::camel_husk::CamelHuskEntity;
 use crate::entity::passive::cat::CatEntity;
 use crate::entity::passive::chicken::ChickenEntity;
 use crate::entity::passive::cod::CodEntity;
@@ -90,6 +88,7 @@ use crate::entity::passive::llama::LlamaEntity;
 use crate::entity::passive::mooshroom::MooshroomEntity;
 use crate::entity::passive::mule::MuleEntity;
 use crate::entity::passive::nautilus::NautilusEntity;
+use crate::entity::passive::zombie_nautilus::ZombieNautilusEntity;
 use crate::entity::passive::ocelot::OcelotEntity;
 use crate::entity::passive::panda::PandaEntity;
 use crate::entity::passive::parrot::ParrotEntity;
@@ -156,7 +155,7 @@ pub fn from_type(
         id if id == EntityType::HUSK.id => HuskEntity::new(entity),
         id if id == EntityType::ZOMBIE_VILLAGER.id => ZombieVillagerEntity::new(entity),
         id if id == EntityType::ZOMBIFIED_PIGLIN.id => ZombifiedPiglinEntity::new(entity),
-        id if id == EntityType::ZOMBIE_NAUTILUS.id => DrownedEntity::new(entity),
+        id if id == EntityType::ZOMBIE_NAUTILUS.id => ZombieNautilusEntity::new(entity),
 
         // Skeleton
         id if id == EntityType::SKELETON.id => SkeletonEntity::new(entity),
@@ -219,6 +218,7 @@ pub fn from_type(
         id if id == EntityType::AXOLOTL.id => AxolotlEntity::new(entity),
         id if id == EntityType::BEE.id => BeeEntity::new(entity),
         id if id == EntityType::CAMEL.id => CamelEntity::new(entity),
+        id if id == EntityType::CAMEL_HUSK.id => CamelHuskEntity::new(entity),
         id if id == EntityType::COPPER_GOLEM.id => CopperGolemEntity::new(entity),
         id if id == EntityType::FROG.id => FrogEntity::new(entity),
         id if id == EntityType::GOAT.id => GoatEntity::new(entity),
@@ -256,10 +256,6 @@ pub fn from_type(
         id if id == EntityType::PAINTING.id => Arc::new(PaintingEntity::new(entity)),
         id if id == EntityType::ITEM_FRAME.id || id == EntityType::GLOW_ITEM_FRAME.id => {
             Arc::new(ItemFrameEntity::new(entity))
-        }
-        id if id == EntityType::LEASH_KNOT.id => {
-            let block_pos = entity.block_pos.load();
-            Arc::new(LeashKnotEntity::new(entity, block_pos))
         }
         id if id == EntityType::MANNEQUIN.id => Arc::new(MannequinEntity::new(entity)),
         id if id == EntityType::OMINOUS_ITEM_SPAWNER.id => {
@@ -336,11 +332,9 @@ pub fn from_type(
             crate::entity::decoration::leash_knot::LeashKnotEntity::new(entity),
         ),
         id if id == EntityType::INTERACTION.id => InteractionEntity::new(entity),
-        id if id == EntityType::FIREWORK_ROCKET.id => Arc::new(FireworkRocketEntity::new(
-            entity,
-            None,
-            ItemStack::new(1, &Item::FIREWORK_ROCKET),
-        )),
+        id if id == EntityType::FIREWORK_ROCKET.id => {
+            Arc::new(FireworkRocketEntity::new(entity))
+        }
         id if id == EntityType::SPLASH_POTION.id => Arc::new(SplashPotionEntity::new(entity)),
         id if id == EntityType::EXPERIENCE_BOTTLE.id => {
             Arc::new(ExperienceBottleEntity::new(entity))
@@ -451,10 +445,13 @@ pub fn check_spawn_rules(
             return false;
         }
         let mut check_sky_pos = *pos;
-        while world.get_block(&check_sky_pos) == &pumpkin_data::Block::POWDER_SNOW {
+        loop {
             check_sky_pos = check_sky_pos.up();
+            if world.get_block(&check_sky_pos) != &pumpkin_data::Block::POWDER_SNOW {
+                break;
+            }
         }
-        return world.can_see_sky(&check_sky_pos.down());
+        return world.can_see_sky(&check_sky_pos.down()) || world.can_see_sky(&check_sky_pos);
     }
 
     // Pillager (Patrolling Monster)
@@ -692,7 +689,7 @@ pub fn check_spawn_rules(
                     .get_fluid(pos)
                     .has_tag(&pumpkin_data::tag::Fluid::MINECRAFT_WATER));
     }
-    if id == EntityType::NAUTILUS.id {
+    if id == EntityType::NAUTILUS.id || id == EntityType::ZOMBIE_NAUTILUS.id {
         let sea_level = world.sea_level;
         let min_spawn_level = sea_level - 25;
         return pos.0.y >= min_spawn_level
@@ -704,6 +701,9 @@ pub fn check_spawn_rules(
                 || world
                     .get_fluid(&pos.up())
                     .has_tag(&pumpkin_data::tag::Fluid::MINECRAFT_WATER));
+    }
+    if id == EntityType::CAMEL_HUSK.id {
+        return mob::MobEntity::check_surface_monsters_spawn_rules(world, pos, is_thundering);
     }
     if id == EntityType::DROWNED.id {
         if world.level_info.load().difficulty == pumpkin_util::Difficulty::Peaceful {
@@ -745,10 +745,147 @@ pub fn check_spawn_rules(
         return rand::random_range(0..20) == 0 || !world.can_see_sky(pos);
     }
 
+    // Any remaining Monster entities require standard monster spawn rules
+    if entity_type.category == &MobCategory::MONSTER {
+        return mob::MobEntity::check_monster_spawn_rules(world, pos, is_thundering);
+    }
+
     // Generic mob spawn rules (Iron Golem, Snow Golem, Villager, Phantom, Shulker, Wandering Trader, Ender Dragon, etc.)
     if entity_type.mob {
         return mob::MobEntity::check_mob_spawn_rules(world, pos);
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arc_swap::ArcSwap;
+    use pumpkin_config::world::LevelConfig;
+    use pumpkin_data::attributes::Attributes;
+    use pumpkin_data::damage::DamageType;
+    use pumpkin_data::data_component_impl::{EquipmentSlot, PotionContentsImpl};
+    use pumpkin_data::dimension::Dimension;
+    use pumpkin_data::sound::Sound;
+    use pumpkin_data::zombie_nautilus_variant::ZombieNautilusVariant;
+    use pumpkin_world::{level::Level, world_info::LevelData};
+    use std::sync::Weak;
+
+    fn create_test_world() -> (Arc<World>, tempfile::TempDir) {
+        let directory = tempfile::tempdir().unwrap();
+        let level = Level::from_root_folder(
+            &LevelConfig::default(),
+            directory.path().to_path_buf(),
+            0,
+            Dimension::OVERWORLD,
+        );
+        let world = Arc::new(World::load(
+            level,
+            Arc::new(ArcSwap::from_pointee(LevelData::default(
+                pumpkin_util::world_seed::Seed(0),
+            ))),
+            Dimension::OVERWORLD,
+            crate::block::registry::default_registry(),
+            Weak::new(),
+        ));
+        (world, directory)
+    }
+
+    #[tokio::test]
+    async fn all_entity_types_from_type_constructible() {
+        let (world, _dir) = create_test_world();
+        let pos = Vector3::new(0.0, 64.0, 0.0);
+
+        let mut tested = 0;
+        for id in 0u16..161 {
+            if let Some(entity_type) = EntityType::from_raw(id) {
+                if entity_type == &EntityType::PLAYER {
+                    continue;
+                }
+                let entity = from_type(entity_type, pos, &world, Uuid::new_v4());
+                assert_eq!(entity.get_entity().entity_type, entity_type);
+                tested += 1;
+            }
+        }
+        assert_eq!(tested, 160, "Expected all 160 non-player entity types to be constructible");
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn camel_husk_parity_properties() {
+        let (world, _dir) = create_test_world();
+        let entity = from_type(&EntityType::CAMEL_HUSK, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = entity.get_mob().expect("CamelHusk should be a Mob");
+        assert!(mob.remove_when_far_away(100.0), "CamelHusk should despawn like a monster");
+        let sounds = mob.as_custom_sound().expect("CamelHusk should implement CustomSound");
+        assert_eq!(sounds.death_sound(), Some(Sound::EntityCamelHuskDeath));
+        assert_eq!(sounds.hurt_sound(), Some(Sound::EntityCamelHuskHurt));
+        assert_eq!(mob.get_ambient_sound(), Some(Sound::EntityCamelHuskAmbient));
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn zombie_nautilus_parity_properties() {
+        let (world, _dir) = create_test_world();
+        let entity = from_type(&EntityType::ZOMBIE_NAUTILUS, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = entity.get_mob().expect("ZombieNautilus should be a Mob");
+        assert!(mob.remove_when_far_away(100.0), "ZombieNautilus should despawn like a monster");
+        assert!(matches!(mob.sun_protection_slot(), EquipmentSlot::Body(_)));
+        let living = entity.get_living_entity().expect("ZombieNautilus should be LivingEntity");
+        assert!((living.get_attribute_base(&Attributes::MOVEMENT_SPEED) - 1.1).abs() < 1e-4);
+        let zn = entity.cast_any().downcast_ref::<ZombieNautilusEntity>().expect("downcast to ZombieNautilusEntity");
+        assert_eq!(zn.get_variant(), ZombieNautilusVariant::Temperate);
+        zn.set_variant(ZombieNautilusVariant::Warm);
+        assert_eq!(zn.get_variant(), ZombieNautilusVariant::Warm);
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn parched_skeleton_parity_properties() {
+        let (world, _dir) = create_test_world();
+        let entity = from_type(&EntityType::PARCHED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = entity.get_mob().expect("Parched should be a Mob");
+        assert_eq!(mob.get_ambient_sound(), Some(Sound::EntityParchedAmbient));
+        let sounds = mob.as_custom_sound().expect("Parched should implement CustomSound");
+        assert_eq!(sounds.death_sound(), Some(Sound::EntityParchedDeath));
+        assert_eq!(sounds.hurt_sound(), Some(Sound::EntityParchedHurt));
+        let living = entity.get_living_entity().expect("Parched should be LivingEntity");
+        assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+        let arrow = mob.get_arrow_projectile().expect("Parched should shoot custom arrow");
+        let potion = arrow.get_data_component::<PotionContentsImpl>().expect("Arrow has PotionContentsImpl");
+        assert_eq!(potion.custom_effects[0].effect_id, "minecraft:weakness");
+        assert_eq!(potion.custom_effects[0].duration, 600);
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn breeze_projectile_deflection() {
+        let (world, _dir) = create_test_world();
+        let breeze = from_type(&EntityType::BREEZE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let arrow = from_type(&EntityType::ARROW, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        arrow.get_entity().velocity.store(Vector3::new(1.0, 0.0, 0.0));
+
+        let mob = breeze.get_mob().expect("Breeze should be a Mob");
+        let damaged = mob.pre_damage(DamageType::ARROW, Some(arrow.as_ref()));
+        assert!(!damaged, "Breeze should deflect projectile damage");
+
+        let velo = arrow.get_entity().velocity.load();
+        assert!((velo.x - (-0.5)).abs() < 1e-4, "Projectile velocity should be reversed by -0.5");
+        assert!(arrow.get_entity().velocity_dirty.load(std::sync::atomic::Ordering::Relaxed));
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn creaking_pushable_parity() {
+        let (world, _dir) = create_test_world();
+        let creaking = from_type(&EntityType::CREAKING, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        assert!(creaking.is_pushable());
+        let creaking_entity = creaking.cast_any().downcast_ref::<CreakingEntity>().expect("downcast to CreakingEntity");
+        creaking_entity.set_can_move(false);
+        assert!(!creaking.is_pushable());
+        creaking_entity.set_can_move(true);
+        assert!(creaking.is_pushable());
+        world.level.shutdown().await;
+    }
 }

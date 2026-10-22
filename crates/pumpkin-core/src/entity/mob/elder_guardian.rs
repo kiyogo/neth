@@ -8,12 +8,17 @@ use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_protocol::java::client::play::{CGameEvent, GameEvent};
 
+use pumpkin_util::math::vector3::Vector3;
+
+use crate::entity::ai::control::guardian_move_control::GuardianMoveControl;
+use crate::entity::ai::pathfinder::Navigator;
+use crate::entity::ai::pathfinder::node::PathType;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
         active_target::ActiveTargetGoal, guardian_attack::GuardianAttackGoal,
-        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
+        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         wander_around::WanderAroundGoal,
     },
     mob::{Mob, MobEntity},
@@ -27,6 +32,19 @@ pub struct ElderGuardianEntity {
 impl ElderGuardianEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        *mob_entity
+            .move_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Box::new(GuardianMoveControl::default());
+
+        let mut navigator = Navigator::water_bound(false);
+        navigator.set_pathfinding_malus(PathType::Water, 0.0);
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = navigator;
+
         let guardian = Self {
             mob_entity,
             tick_count: AtomicI32::new(0),
@@ -44,7 +62,6 @@ impl ElderGuardianEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(4, Box::new(GuardianAttackGoal::new(true)));
             goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
@@ -93,6 +110,27 @@ impl CustomSound for ElderGuardianEntity {
 impl Mob for ElderGuardianEntity {
     /// Elder guardians never drown.
     fn can_breathe_underwater(&self) -> bool {
+        true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
+        let living = &self.mob_entity.living_entity;
+        let entity = &living.entity;
+        if !entity.touching_water.load(Ordering::Relaxed) {
+            return false;
+        }
+        let input = living.movement_input.load();
+        entity.update_velocity_from_input(Vector3::new(input.x, input.y, input.z), 0.1);
+        entity.move_entity(caller, entity.velocity.load());
+        let mut vel = entity.velocity.load() * 0.9;
+        if self.mob_entity.get_target().is_none() {
+            vel.y -= 0.005;
+        }
+        entity.velocity.store(vel);
         true
     }
 

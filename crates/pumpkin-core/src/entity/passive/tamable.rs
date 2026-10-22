@@ -14,6 +14,7 @@ pub const TELEPORT_WHEN_DISTANCE_IS_SQ: f64 = 144.0;
 pub struct TamableData {
     pub is_tame: AtomicBool,
     pub ordered_to_sit: AtomicBool,
+    pub in_sitting_pose: AtomicBool,
     pub owner: AtomicCell<Option<Uuid>>,
 }
 
@@ -22,6 +23,7 @@ impl Default for TamableData {
         Self {
             is_tame: AtomicBool::new(false),
             ordered_to_sit: AtomicBool::new(false),
+            in_sitting_pose: AtomicBool::new(false),
             owner: AtomicCell::new(None),
         }
     }
@@ -53,14 +55,14 @@ pub trait TamableAnimal: Animal {
     }
 
     fn is_in_sitting_pose(&self) -> bool {
-        self.get_tamable_data().ordered_to_sit.load(Relaxed)
+        self.get_tamable_data().in_sitting_pose.load(Relaxed)
     }
 
     fn set_in_sitting_pose(&self, sitting: bool) {
         let mob_entity = self.get_mob_entity();
         let entity = &mob_entity.living_entity.entity;
         self.get_tamable_data()
-            .ordered_to_sit
+            .in_sitting_pose
             .store(sitting, Relaxed);
         let mut flags = if sitting { SITTING_FLAG } else { 0 };
         if self.is_tame() {
@@ -77,7 +79,14 @@ pub trait TamableAnimal: Animal {
     }
 
     fn set_ordered_to_sit(&self, ordered_to_sit: bool) {
+        self.get_tamable_data()
+            .ordered_to_sit
+            .store(ordered_to_sit, Relaxed);
         self.set_in_sitting_pose(ordered_to_sit);
+    }
+
+    fn is_unable_to_move_to_owner(&self) -> bool {
+        self.is_ordered_to_sit()
     }
 
     fn get_owner(&self) -> Option<Uuid> {

@@ -76,10 +76,6 @@ impl PendingConnection {
                 profile_actions: None,
             };
 
-            if server.advanced_config.networking.java.compression.enabled {
-                self.enable_compression(server).await;
-            }
-
             self.gameprofile = Some(profile.clone());
 
             if server.advanced_config.networking.java.encryption {

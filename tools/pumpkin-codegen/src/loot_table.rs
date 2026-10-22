@@ -2,9 +2,12 @@ use std::{collections::BTreeMap, fs, path::Path};
 
 use heck::ToShoutySnakeCase;
 use proc_macro2::{Ident, Span, TokenStream};
-use pumpkin_util::loot_table::{
-    LootBonusFormula, LootCondition, LootEntityPredicate, LootEntityProperty,
-    LootEntityPropertyValue, LootEntityTarget,
+use pumpkin_util::{
+    identifier::Identifier,
+    loot_table::{
+        LootBonusFormula, LootCondition, LootEntityPredicate, LootEntityProperty,
+        LootEntityPropertyValue, LootEntityTarget, LootFunction,
+    },
 };
 use quote::{format_ident, quote};
 use serde::Deserialize;
@@ -555,8 +558,37 @@ where
 }
 
 #[derive(Deserialize, Clone, Debug)]
-struct EntryFunctionStruct {
-    #[serde(rename = "type")]
+struct CopyComponentsStruct {
+    source: String,
+    #[serde(default, deserialize_with = "deserialize_component_filter")]
+    include: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "deserialize_component_filter")]
+    exclude: Option<Vec<String>>,
+    #[serde(default)]
+    condition: Option<ConditionValue>,
+    #[serde(default, deserialize_with = "one_or_many")]
+    conditions: Vec<ConditionValue>,
+}
+
+/// Decode an explicitly present filter and normalize registry names; null and malformed names are errors.
+fn deserialize_component_filter<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .into_iter()
+        .map(|name| {
+            Identifier::parse(&name)
+                .map(|identifier| identifier.to_string())
+                .map_err(serde::de::Error::custom)
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Some)
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct EntryFunctionJson {
+    #[serde(rename = "type", alias = "function")]
     function: String,
     #[serde(default)]
     formula: Option<String>,
@@ -567,6 +599,90 @@ struct EntryFunctionStruct {
     condition: Option<ConditionValue>,
     #[serde(default, deserialize_with = "one_or_many")]
     conditions: Vec<ConditionValue>,
+    #[serde(flatten)]
+    remaining: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(try_from = "EntryFunctionJson")]
+struct EntryFunctionStruct {
+    function: String,
+    formula: Option<String>,
+    parameters: Option<BonusParameterStruct>,
+    count: Option<CountStruct>,
+    condition: Option<ConditionValue>,
+    conditions: Vec<ConditionValue>,
+    copy_components: Option<CopyComponentsStruct>,
+}
+
+impl TryFrom<EntryFunctionJson> for EntryFunctionStruct {
+    type Error = String;
+
+    /// Validate supported component functions while retaining the existing count and bonus fields.
+    fn try_from(raw: EntryFunctionJson) -> Result<Self, Self::Error> {
+        let copy_components = if raw.function == "minecraft:copy_components" {
+            let mut copy: CopyComponentsStruct =
+                serde_json::from_value(serde_json::Value::Object(raw.remaining))
+                    .map_err(|error| format!("invalid copy_components function: {error}"))?;
+            if copy.source != "block_entity" {
+                return Err(format!(
+                    "unsupported copy_components source: {}",
+                    copy.source
+                ));
+            }
+            if copy.condition.is_none() {
+                copy.condition = raw.condition.clone();
+            }
+            if copy.conditions.is_empty() {
+                copy.conditions = raw.conditions.clone();
+            }
+            Some(copy)
+        } else {
+            None
+        };
+        Ok(Self {
+            function: raw.function,
+            formula: raw.formula,
+            parameters: raw.parameters,
+            count: raw.count,
+            condition: raw.condition,
+            conditions: raw.conditions,
+            copy_components,
+        })
+    }
+}
+
+/// Emit an optional registry-name filter without conflating omission and an empty list.
+fn component_filter_to_tokens(filter: Option<&[String]>) -> TokenStream {
+    match filter {
+        None => quote! { None },
+        Some(names) => {
+            let names = names
+                .iter()
+                .map(|name| LitStr::new(name, Span::call_site()));
+            quote! { Some(&[#(#names),*]) }
+        }
+    }
+}
+
+/// Emit the component source, filters, and conditions for one ordered function.
+fn function_to_tokens(function: &CopyComponentsStruct) -> TokenStream {
+    let source = LitStr::new(&function.source, Span::call_site());
+    let include = component_filter_to_tokens(function.include.as_deref());
+    let exclude = component_filter_to_tokens(function.exclude.as_deref());
+    let cond = combine_pair(
+        condition_of(function.condition.as_ref()),
+        combine_conditions(&function.conditions),
+    );
+    let condition = condition_to_tokens(cond);
+    quote! {
+        LootFunction::CopyComponents {
+            source: #source,
+            include: #include,
+            exclude: #exclude,
+            condition: #condition,
+        }
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -642,6 +758,7 @@ struct ParsedEntry {
     condition: LootCondition,
     bonus_formula: Option<LootBonusFormula>,
     furnace_smelt: Option<LootCondition>,
+    functions: Vec<CopyComponentsStruct>,
 }
 
 /// Require both conditions, dropping only a [`LootCondition::None`], which adds nothing.
@@ -667,6 +784,7 @@ fn push_count_variants(
     bonus_formula: Option<LootBonusFormula>,
     furnace_smelt: Option<LootCondition>,
     functions: &[&EntryFunctionStruct],
+    copy_components: &[CopyComponentsStruct],
     out: &mut Vec<ParsedEntry>,
 ) {
     let set_counts: Vec<(LootCondition, (i32, i32))> = functions
@@ -691,6 +809,7 @@ fn push_count_variants(
             condition,
             bonus_formula,
             furnace_smelt,
+            functions: copy_components.to_vec(),
         });
     };
 
@@ -823,6 +942,11 @@ fn extract_entries_with_depth(
                     }
                 });
 
+                let copy_components: Vec<CopyComponentsStruct> = functions
+                    .iter()
+                    .filter_map(|f| f.copy_components.clone())
+                    .collect();
+
                 push_count_variants(
                     name,
                     entry.weight,
@@ -830,6 +954,7 @@ fn extract_entries_with_depth(
                     bonus_formula,
                     furnace_smelt,
                     &functions,
+                    &copy_components,
                     out,
                 );
             }
@@ -854,6 +979,11 @@ fn extract_entries_with_depth(
                         values: Vec<String>,
                     }
                     if let Ok(tag_data) = serde_json::from_str::<TagJson>(&content) {
+                        let copy_components: Vec<CopyComponentsStruct> = entry
+                            .functions
+                            .iter()
+                            .filter_map(|f| f.copy_components.clone())
+                            .collect();
                         for item_name in tag_data.values {
                             out.push(ParsedEntry {
                                 item: item_name,
@@ -863,6 +993,7 @@ fn extract_entries_with_depth(
                                 condition: entry_cond,
                                 bonus_formula: None,
                                 furnace_smelt,
+                                functions: copy_components.clone(),
                             });
                         }
                     }
@@ -1174,6 +1305,8 @@ fn emit_table(
                     },
                 );
 
+                let functions = e.functions.iter().map(function_to_tokens);
+
                 quote! {
                     LootEntry {
                         item: #name_lit,
@@ -1183,6 +1316,7 @@ fn emit_table(
                         condition: #cond_tokens,
                         bonus_formula: #bonus_tokens,
                         furnace_smelt: #smelt_tokens,
+                        functions: &[#(#functions),*],
                     }
                 }
             })

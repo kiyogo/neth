@@ -161,6 +161,17 @@ pub trait BlockEntity: Any + Send + Sync {
         components
     }
 
+    /// Collects item components into the provided item stack.
+    fn collect_item_components(&self, stack: &mut ItemStack) {
+        for (kind, value) in self.collect_components() {
+            if let Some((_, current)) = stack.patch.iter_mut().find(|(id, _)| *id == kind) {
+                *current = Some(value);
+            } else {
+                stack.patch.push((kind, Some(value)));
+            }
+        }
+    }
+
     /// Copies current implicit components when picking the block with its data.
     fn collect_pick_item_components(&self, _stack: &mut ItemStack) {}
 
@@ -629,5 +640,117 @@ mod test {
             assert_eq!(stack.get_item().id, Item::DIAMOND.id);
             assert_eq!(stack.item_count, 5);
         }
+    }
+
+    #[test]
+    fn all_49_block_entities_can_be_created() {
+        let pos = BlockPos::new(10, 64, 20);
+        let count = pumpkin_data::block_properties::BLOCK_ENTITY_TYPES.len();
+        assert_eq!(count, 49, "Vanilla 26.3 must have exactly 49 block entity types");
+
+        for id in 0..count {
+            let entity = super::create_block_entity(id as u16, pos);
+            assert!(
+                entity.is_some(),
+                "Block entity ID {} ({}) failed to instantiate",
+                id,
+                pumpkin_data::block_properties::BLOCK_ENTITY_TYPES[id]
+            );
+            let entity = entity.unwrap();
+            assert_eq!(entity.get_position(), pos);
+        }
+    }
+
+    #[test]
+    fn all_49_block_entities_survive_nbt_round_trip() {
+        let pos = BlockPos::new(15, 70, -25);
+        let count = pumpkin_data::block_properties::BLOCK_ENTITY_TYPES.len();
+
+        for id in 0..count {
+            let name = pumpkin_data::block_properties::BLOCK_ENTITY_TYPES[id];
+            let original = super::create_block_entity(id as u16, pos)
+                .expect("Block entity should be created");
+
+            let mut nbt = NbtCompound::new();
+            original.write_internal(&mut nbt);
+
+            let res_loc = nbt.get_string("id").expect("NBT must contain id tag");
+            assert!(
+                res_loc.starts_with("minecraft:"),
+                "Identifier must be namespaced: {res_loc}"
+            );
+
+            let restored = block_entity_from_nbt(&nbt);
+            assert!(
+                restored.is_some(),
+                "Block entity {name} ({res_loc}) failed to restore from NBT"
+            );
+
+            let restored = restored.unwrap();
+            assert_eq!(restored.get_position(), pos);
+            assert_eq!(restored.resource_location(), original.resource_location());
+        }
+    }
+
+    #[test]
+    fn potent_sulfur_nbt_and_countdown_parity() {
+        let pos = BlockPos::new(1, 2, 3);
+        let entity = super::potent_sulfur::PotentSulfurBlockEntity::new(pos);
+        assert_eq!(entity.waiting_countdown.load(std::sync::atomic::Ordering::Relaxed), -1);
+
+        let mut nbt = NbtCompound::new();
+        entity.write_internal(&mut nbt);
+        assert_eq!(nbt.get_int("countdown"), Some(-1));
+
+        let mut custom_nbt = NbtCompound::new();
+        custom_nbt.put_string("id", "minecraft:potent_sulfur".to_string());
+        custom_nbt.put_int("x", pos.0.x);
+        custom_nbt.put_int("y", pos.0.y);
+        custom_nbt.put_int("z", pos.0.z);
+        custom_nbt.put_int("countdown", 15);
+
+        let loaded = block_entity_from_nbt(&custom_nbt)
+            .expect("potent sulfur should load from custom NBT");
+        let sulfur = loaded
+            .as_any()
+            .downcast_ref::<super::potent_sulfur::PotentSulfurBlockEntity>()
+            .expect("downcast to PotentSulfurBlockEntity");
+        assert_eq!(sulfur.waiting_countdown.load(std::sync::atomic::Ordering::Relaxed), 15);
+
+        let chunk_nbt = sulfur.chunk_data_nbt().expect("chunk data NBT");
+        assert_eq!(chunk_nbt.get_int("countdown"), Some(15));
+    }
+
+    #[test]
+    fn creaking_heart_nbt_and_state_tracking() {
+        let pos = BlockPos::new(5, 6, 7);
+        let entity = super::creaking_heart::CreakingHeartBlockEntity::new(pos);
+        let test_uuid = uuid::Uuid::new_v4();
+
+        // Default has no protector, any is_protector check succeeds
+        assert!(entity.is_protector(test_uuid));
+
+        // When protector assigned
+        entity.set_creaking_uuid(Some(test_uuid));
+        assert!(entity.is_protector(test_uuid));
+        assert!(!entity.is_protector(uuid::Uuid::new_v4()));
+
+        // NBT round-trip preserves creaking UUID
+        let mut nbt = NbtCompound::new();
+        entity.write_internal(&mut nbt);
+        assert_eq!(nbt.get_uuid("creaking"), Some(test_uuid));
+
+        let restored = block_entity_from_nbt(&nbt).expect("creaking heart restored");
+        let heart = restored
+            .as_any()
+            .downcast_ref::<super::creaking_heart::CreakingHeartBlockEntity>()
+            .expect("downcast to CreakingHeartBlockEntity");
+        assert_eq!(heart.creaking_uuid.load(), Some(test_uuid));
+
+        // Analog output signal tests
+        assert_eq!(heart.compute_analog_output_signal(None), 0);
+        assert_eq!(heart.compute_analog_output_signal(Some(0.0)), 15);
+        assert_eq!(heart.compute_analog_output_signal(Some(32.0)), 0);
+        assert_eq!(heart.compute_analog_output_signal(Some(16.0)), 8);
     }
 }

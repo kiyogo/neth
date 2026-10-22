@@ -41,6 +41,15 @@ pub const SLIME: CubeKind = CubeKind {
     register_goals: register_hostile_goals,
 };
 
+pub struct SlimeEntity;
+
+impl SlimeEntity {
+    #[must_use]
+    pub fn new(entity: crate::entity::Entity) -> std::sync::Arc<dyn crate::entity::EntityBase> {
+        crate::entity::mob::cube_mob::CubeMobEntity::new(entity, &SLIME)
+    }
+}
+
 #[must_use]
 fn surface_slime_spawn_succeeds(
     biome: &Biome,
@@ -61,16 +70,20 @@ pub fn check_slime_spawn_rules(world: &World, pos: &BlockPos) -> bool {
         return false;
     }
 
+    if !crate::entity::mob::MobEntity::check_mob_spawn_rules(world, pos) {
+        return false;
+    }
+
     let biome = world.get_biome(pos);
-    let brightness = world.get_light_level(pos);
+    let brightness = world.get_max_local_raw_brightness(pos);
     if surface_slime_spawn_succeeds(
         &biome,
         pos.0.y,
-        world.moon_phase().slime_spawn_chance(),
+        world.surface_slime_spawn_chance(pos),
         brightness,
         rand::random_range(0.0..1.0),
         rand::random_range(0..=7),
-    ) && rand::random_range(0.0..1.0) < 0.5 {
+    ) {
         return true;
     }
 

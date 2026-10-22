@@ -20,48 +20,57 @@ impl PendingConnection {
 
         if server.advanced_config.server_links.enabled {
             let mut links: Vec<Link> = Vec::new();
+            let kiyo_url = "https://kiyomc.com";
 
-            let bug_report = &server.advanced_config.server_links.bug_report;
+            fn sanitize_link<'a>(link: &'a str, fallback: &'a str) -> &'a str {
+                if link.to_ascii_lowercase().contains("pumpkin") {
+                    fallback
+                } else {
+                    link
+                }
+            }
+
+            let bug_report = sanitize_link(&server.advanced_config.server_links.bug_report, kiyo_url);
             if !bug_report.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::BugReport), bug_report));
             }
 
-            let support = &server.advanced_config.server_links.support;
+            let support = sanitize_link(&server.advanced_config.server_links.support, kiyo_url);
             if !support.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Support), support));
             }
 
-            let status = &server.advanced_config.server_links.status;
+            let status = sanitize_link(&server.advanced_config.server_links.status, kiyo_url);
             if !status.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Status), status));
             }
 
-            let feedback = &server.advanced_config.server_links.feedback;
+            let feedback = sanitize_link(&server.advanced_config.server_links.feedback, kiyo_url);
             if !feedback.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Feedback), feedback));
             }
 
-            let community = &server.advanced_config.server_links.community;
+            let community = sanitize_link(&server.advanced_config.server_links.community, kiyo_url);
             if !community.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Community), community));
             }
 
-            let website = &server.advanced_config.server_links.website;
+            let website = sanitize_link(&server.advanced_config.server_links.website, kiyo_url);
             if !website.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Website), website));
             }
 
-            let forums = &server.advanced_config.server_links.forums;
+            let forums = sanitize_link(&server.advanced_config.server_links.forums, kiyo_url);
             if !forums.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::Forums), forums));
             }
 
-            let news = &server.advanced_config.server_links.news;
+            let news = sanitize_link(&server.advanced_config.server_links.news, kiyo_url);
             if !news.is_empty() {
                 links.push(Link::new(Label::BuiltIn(LinkType::News), news));
             }
 
-            let announcements = &server.advanced_config.server_links.announcements;
+            let announcements = sanitize_link(&server.advanced_config.server_links.announcements, kiyo_url);
             if !announcements.is_empty() {
                 links.push(Link::new(
                     Label::BuiltIn(LinkType::Announcements),
@@ -72,7 +81,7 @@ impl PendingConnection {
             for (key, value) in &server.advanced_config.server_links.custom {
                 links.push(Link::new(
                     Label::TextComponent(TextComponent::text(key.clone()).into()),
-                    value,
+                    sanitize_link(value, kiyo_url),
                 ));
             }
 

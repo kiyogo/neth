@@ -12,7 +12,7 @@ concurrency:
 jobs:
   version:
     name: Compute version and tag
-    if: github.repository == 'Pumpkin-MC/Pumpkin'
+    if: !github.event.repository.fork
     runs-on: ubuntu-latest
     permissions:
       id-token: write

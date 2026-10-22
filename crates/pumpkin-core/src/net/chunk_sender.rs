@@ -13,13 +13,12 @@ use pumpkin_protocol::{ClientPacket, MultiVersionJavaPacket};
 use pumpkin_util::math::vector2::Vector2;
 use pumpkin_util::version::JavaMinecraftVersion;
 use pumpkin_world::chunk::ChunkData;
-use pumpkin_world::cylindrical_chunk_iterator::Cylindrical;
 use pumpkin_world::level::{Level, SyncChunk};
 
 use crate::net::ClientPlatform;
 
-const MIN_CHUNKS_PER_TICK: f32 = 0.1;
-const MAX_CHUNKS_PER_TICK: f32 = 500.0;
+const MIN_CHUNKS_PER_TICK: f32 = 0.01;
+const MAX_CHUNKS_PER_TICK: f32 = 64.0;
 const INITIAL_CHUNKS_PER_TICK: f32 = 9.0;
 const MAX_CONCURRENT_BATCHES: u16 = 10;
 
@@ -160,11 +159,7 @@ impl ChunkSender {
         self.sent_chunks.insert(pos);
     }
 
-    pub const fn on_batch_acknowledged(&mut self, client_requested_rate: f32) -> bool {
-        if self.in_flight_batches == 0 {
-            return false;
-        }
-
+    pub fn on_batch_acknowledged(&mut self, client_requested_rate: f32) -> bool {
         self.in_flight_batches = self.in_flight_batches.saturating_sub(1);
         self.desired_rate = if client_requested_rate.is_nan() {
             MIN_CHUNKS_PER_TICK
@@ -201,64 +196,31 @@ impl ChunkSender {
         &self,
         level: &Level,
         center: Vector2<i32>,
-        view_distance: NonZero<u8>,
+        _view_distance: NonZero<u8>,
     ) -> Vec<PreparedChunk> {
         let quota_limit = self.send_quota.floor() as usize;
+        if quota_limit == 0 || self.pending_chunks.is_empty() {
+            return Vec::new();
+        }
+
+        let mut sorted: Vec<Vector2<i32>> = self.pending_chunks.iter().copied().collect();
+        sorted.sort_unstable_by_key(|pos| {
+            let dx = (pos.x - center.x) as i64;
+            let dz = (pos.y - center.y) as i64;
+            dx * dx + dz * dz
+        });
+
         let mut ready = Vec::with_capacity(quota_limit);
-
-        // If pending_chunks is small, sorting it directly avoids scanning offsets.
-        if self.pending_chunks.len() <= 16 {
-            let mut sorted: Vec<Vector2<i32>> = self.pending_chunks.iter().copied().collect();
-            sorted.sort_unstable_by_key(|pos| {
-                let dx = (pos.x - center.x).unsigned_abs() as u64;
-                let dz = (pos.y - center.y).unsigned_abs() as u64;
-                dx * dx + dz * dz
-            });
-
-            for pos in sorted {
-                if ready.len() >= quota_limit {
-                    break;
-                }
-
-                if let Some(chunk) = level.loaded_chunks.get(&pos) {
-                    ready.push(PreparedChunk {
-                        position: pos,
-                        chunk: chunk.value().clone(),
-                    });
-                }
-            }
-        } else {
-            // Re-use precompiled cylindrical chunk view LUT which is already sorted center-outward.
-            let offsets = Cylindrical::get_offsets(view_distance.get());
-            for &(dx, dy) in offsets {
-                if ready.len() >= quota_limit {
-                    break;
-                }
-
-                let pos = Vector2::new(center.x + i32::from(dx), center.y + i32::from(dy));
-                if self.pending_chunks.contains(&pos)
-                    && let Some(chunk) = level.loaded_chunks.get(&pos)
-                {
-                    ready.push(PreparedChunk {
-                        position: pos,
-                        chunk: chunk.value().clone(),
-                    });
-                }
+        for pos in sorted {
+            if ready.len() >= quota_limit {
+                break;
             }
 
-            // Fallback for any pending chunks outside the precomputed table
-            if ready.is_empty() {
-                for &pos in &self.pending_chunks {
-                    if ready.len() >= quota_limit {
-                        break;
-                    }
-                    if let Some(chunk) = level.loaded_chunks.get(&pos) {
-                        ready.push(PreparedChunk {
-                            position: pos,
-                            chunk: chunk.value().clone(),
-                        });
-                    }
-                }
+            if let Some(chunk) = level.loaded_chunks.get(&pos) {
+                ready.push(PreparedChunk {
+                    position: pos,
+                    chunk: chunk.value().clone(),
+                });
             }
         }
 

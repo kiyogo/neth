@@ -25,14 +25,20 @@ Some directories have their own `AGENTS.md` with details for that area. Read it 
 
 ## Vanilla parity
 
+> [!IMPORTANT]
+> **BẮT BUỘC ĐỐI CHIẾU VỚI JVMC**: Từ giờ tất cả các tính năng, sửa lỗi (bug fixes, parity, generation, chunk system, block/item/entity/networking/tick logic...) đều **BẮT BUỘC** phải đối chiếu trực tiếp với mã nguồn Minecraft Java gốc tại `E:\DATA\source\svmc\ServerMiecraft\jvmc` để làm cho giống và đồng bộ 100% với tính năng, thứ tự thực thi, cấu trúc dữ liệu và hành vi của Minecraft gốc. Bất cứ khi nào viết code hay sửa lỗi, agent/AI đều phải đọc lại và tuân thủ nguyên tắc này.
+
 A gameplay change is correct when it behaves like the official server, not when it compiles and looks plausible. Reviewers compare PRs against the decompiled vanilla source, so work from that source too, not from memory or the wiki. Both are often wrong about the details that matter here: tick order, rounding, which side effects happen and when.
 
 ### Getting the source
 
-1. Get the version list from `https://piston-meta.mojang.com/mc/game/version_manifest_v2.json`, open the JSON for the target version, and download `downloads.server.url`.
-2. The download is a bundler. The real server jar is inside it under `META-INF/versions/<version>/`.
-3. Decompile the classes you need with [Vineflower](https://github.com/Vineflower/vineflower). The 26.x jars ship without obfuscation, so names are readable as-is. For older versions, apply Mojang's mappings from `downloads.server_mappings.url`.
-4. Decompile only the packages you need (Vineflower's `-only=<package>`). Keep all of this outside the repo.
+Mã nguồn Minecraft Java gốc đã được giải mã đầy đủ và sẵn sàng tại: `E:\DATA\source\svmc\ServerMiecraft\jvmc\src\net\minecraft`.
+Hãy tra cứu trực tiếp trong thư mục này thay vì phỏng đoán hay tải lại từ internet:
+- Chunk system & status: `jvmc/src/net/minecraft/world/level/chunk/status/`
+- World generation: `jvmc/src/net/minecraft/world/level/levelgen/`
+- Server level & chunk map: `jvmc/src/net/minecraft/server/level/`
+- Blocks, entities, items, physics, networking: tương ứng trong `net/minecraft/`
+
 
 ### Porting
 
@@ -47,9 +53,28 @@ A gameplay change is correct when it behaves like the official server, not when 
 
 If you couldn't check part of a port against vanilla, say which part in the PR.
 
+### Mob Spawning System Parity Rules
+- **Reference Classes:** `net.minecraft.world.level.NaturalSpawner`, `net.minecraft.world.level.LocalMobCapCalculator`, `net.minecraft.server.level.ServerChunkCache`, `net.minecraft.world.entity.SpawnPlacements`, `net.minecraft.world.entity.MobCategory`.
+- **Chunk Eligibility (`can_spawn_entities_in_chunk`):** Before ticking a chunk for mob spawning (`tick_spawning_chunk`), verify that the chunk is active and within the world border (`world.can_spawn_entities_in_chunk`).
+- **Signal Sources & Empty Spawn Block:** Blocks that act as redstone signal sources (wire, torches, repeaters, comparators, buttons, pressure plates, levers, observers, daylight detectors, copper bulbs, crafters) cannot be spawned inside (`is_signal_source` check in `is_valid_empty_spawn_block`).
+- **Fluids & Waterlogging:** Ground mob spawning requires both the spawn block and the block above to have `Fluid::EMPTY`. Ground mobs must never spawn inside waterlogged blocks.
+- **Mob Categories:** Only `CREATURE` (animals) and `MISC` are persistent (`is_persistent = true`). `WATER_CREATURE` (squids, dolphins) is NOT persistent (`is_persistent = false`) and must spawn during regular hostile/friendly cycles.
+- **Mob Danger Immunities:** Preserve vanilla `immuneTo` tags in `is_block_dangerous`: Foxes are immune to sweet berry bushes, Strays/Polar Bears/Snow Golems to powder snow, Wither Skeletons to wither roses, Camels to cactus.
+- **Slime Spawning:** Surface swamp slime spawns use the vanilla lunar phase probability table and require solid floor underneath (`check_mob_spawn_rules`). Do not apply arbitrary halved multipliers.
+- **DashMap Concurrency:** Never hold `Entry` or `RefMut` locks on `LocalMobCapCalculator::player_mob_counts` across lookups or iterations to prevent single-thread deadlock across shards.
+
+### Persistence & Storage System Parity Rules
+- **Reference Classes:** `net.minecraft.util.DirectoryLock`, `net.minecraft.util.Util` (`safeReplaceFile`), `net.minecraft.world.level.storage.LevelStorageSource`, `net.minecraft.world.level.storage.PlayerDataStorage`, `net.minecraft.world.level.chunk.storage.RegionFile`.
+- **World Directory Lock (`session.lock`):** Always acquire exclusive `DirectoryLock` using snowman byte sequence `\u2603` before reading/writing world directories. Refuse startup if already locked (`DirectoryLockError::AlreadyLocked`) to prevent catastrophic sector corruption.
+- **Safe File Replacement (`safe_replace_file`):** Never use direct unverified `rename` on critical files (`level.dat`, player `.dat`). Always rotate old target to `.dat_old`, delete target, rename new file to target, with up to 10 retries and rollback on failure.
+- **Level Info Recovery:** If `level.dat` is missing or corrupt, always attempt fallback to `level.dat_old`, back up the corrupted file to `level.dat_corrupted_<timestamp>`, and restore `level.dat`.
+- **Player Data Protection:** Maintain `<UUID>.dat_old` on every save. When loading fails due to corruption, back up to `<UUID>_corrupted_<timestamp>.dat` and fall back to `<UUID>.dat_old`.
+- **Anvil Region Standards:** Header is exactly 8,192 bytes (1,024 locations + 1,024 timestamps). Sector size is 4,096 bytes. Chunks requiring $\ge 256$ sectors ($> 1\text{ MiB}$) must be stored in external `c.<X>.<Z>.mcc` files with `EXTERNAL_STREAM_FLAG = 0x80` in the `.mca` stub.
+- **Server Shutdown Flushing:** Always save all online players (`player_data_storage.save_all_players`) and flush all dirty chunks before releasing `session.lock`.
+
 ## Game data and constants
 
-Block and item properties, entity dimensions, tags, recipes, loot tables, sounds and similar values come from `pumpkin-data`, which is generated from the JSON in `assets/`. That JSON is produced by the [Extractor](https://github.com/Pumpkin-MC/Extractor), a Fabric mod that dumps data from the running game. Hardcoded copies go stale on the next Minecraft update, which is why reviewers reject them.
+Block and item properties, entity dimensions, tags, recipes, loot tables, sounds and similar values come from `pumpkin-data`, which is generated from the JSON in `assets/`. That JSON is produced by the Extractor, a Fabric mod that dumps data from the running game. Hardcoded copies go stale on the next Minecraft update, which is why reviewers reject them.
 
 - If the value is in `assets/` but not generated yet, extend `tools/pumpkin-codegen` and regenerate.
 - If the value isn't in `assets/` at all, it belongs in the Extractor, so prepare a change there as well. The same pull request rules apply to it.

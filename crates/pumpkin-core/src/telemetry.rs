@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use crate::server::Server;
 
 /// Filename used to persist the telemetry identity key across restarts.
-pub const IDENTITY_KEY_PATH: &str = ".pumpkin/identity.key";
+pub const IDENTITY_KEY_PATH: &str = ".neth/identity.key";
+
+/// Legacy filename used to persist the telemetry identity key across restarts.
+pub const LEGACY_IDENTITY_KEY_PATH: &str = ".pumpkin/identity.key";
 
 /// Fallback filename used to persist the telemetry identity key across restarts.
 pub const FALLBACK_IDENTITY_KEY_PATH: &str = "telemetry_key.bin";
@@ -318,6 +321,13 @@ pub fn resolve_identity_key() -> SigningKey {
         return key;
     }
 
+    let legacy_primary = Path::new(LEGACY_IDENTITY_KEY_PATH);
+    if legacy_primary.exists()
+        && let Ok(key) = TelemetryClient::load_or_generate_key(legacy_primary)
+    {
+        return key;
+    }
+
     let fallback = Path::new(FALLBACK_IDENTITY_KEY_PATH);
     if fallback.exists()
         && let Ok(key) = TelemetryClient::load_or_generate_key(fallback)
@@ -421,7 +431,7 @@ pub fn build_heartbeat_payload(
     };
 
     HeartbeatPayload {
-        server_type: "pumpkin".to_string(),
+        server_type: "neth".to_string(),
         server_version: env!("CARGO_PKG_VERSION").to_string(),
         minecraft_version: pumpkin_data::packet::CURRENT_MC_VERSION.to_string(),
         protocol_version: pumpkin_data::packet::CURRENT_MC_VERSION.protocol_version(),
@@ -448,7 +458,7 @@ pub fn start_telemetry(server: Arc<Server>) {
 /// Starts the background telemetry reporting task with a specific configuration.
 #[allow(clippy::needless_pass_by_value)]
 pub fn start_telemetry_with_config(server: Arc<Server>, config: &TelemetryConfig) {
-    if !config.enabled {
+    if !config.enabled || config.endpoint.trim().is_empty() {
         tracing::trace!("Telemetry is disabled in configuration.");
         return;
     }
@@ -458,7 +468,7 @@ pub fn start_telemetry_with_config(server: Arc<Server>, config: &TelemetryConfig
         config.endpoint
     );
 
-    let user_agent = format!("Pumpkin-Server/{}", env!("CARGO_PKG_VERSION"));
+    let user_agent = format!("Neth-Server/{}", env!("CARGO_PKG_VERSION"));
     let http_client = match pumpkin_auth::client_builder()
         .timeout(Duration::from_secs(10))
         .user_agent(&user_agent)

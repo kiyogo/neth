@@ -16,8 +16,23 @@ impl ItemMetadata for GoatHornItem {
 }
 
 impl ItemBehaviour for GoatHornItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
-        let stack = player.inventory().held_item();
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, pumpkin_util::Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: pumpkin_util::Hand,
+    ) {
+        let stack = player.inventory().get_stack_in_hand(hand);
         let instrument = stack
             .get_data_component::<CustomDataImpl>()
             .and_then(|custom| {
@@ -35,7 +50,7 @@ impl ItemBehaviour for GoatHornItem {
             &player.position(),
         );
         player.living_entity.set_active_hand(
-            pumpkin_util::Hand::Right,
+            hand,
             stack,
             instrument.use_duration_ticks() as i32,
         );

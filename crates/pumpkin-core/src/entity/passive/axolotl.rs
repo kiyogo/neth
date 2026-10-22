@@ -27,6 +27,8 @@ use crate::entity::{
     passive::animal::Animal,
     player::Player,
 };
+use crate::entity::ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl;
+use crate::entity::ai::pathfinder::Navigator;
 use crate::item::items::bucket::create_filled_result;
 
 const TEMPT_ITEMS: &[&Item] = &[&Item::TROPICAL_FISH_BUCKET];
@@ -87,6 +89,17 @@ pub struct AxolotlEntity {
 impl AxolotlEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        *mob_entity
+            .move_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Box::new(SmoothSwimmingMoveControl::new(85, 10, 0.1, 0.5, false));
+
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::amphibious(false);
+
         let variant = AxolotlVariant::random_variant();
         let axolotl = Self {
             mob_entity,

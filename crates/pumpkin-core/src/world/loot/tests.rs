@@ -76,6 +76,7 @@ const fn entry(functions: &'static [LootFunction]) -> LootEntry {
         condition: LootCondition::None,
         bonus_formula: Some(LootBonusFormula::UniformBonusCount(2)),
         functions,
+        furnace_smelt: None,
     }
 }
 

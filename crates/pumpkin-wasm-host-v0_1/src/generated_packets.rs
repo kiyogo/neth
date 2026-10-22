@@ -591,16 +591,6 @@ pub fn serialize_java_packet(
                 .unwrap();
             Some(buf.into())
         }
-        ClientboundPacket::CPlaceGhostRecipe(data) => {
-            let p = pumpkin_protocol::java::client::play::CPlaceGhostRecipe::legacy(
-                data.window_id.try_into().unwrap(),
-                &data.recipe_id,
-            );
-            let mut buf = Vec::new();
-            pumpkin_core::net::java::JavaClient::write_packet_for_version(&p, version, &mut buf)
-                .unwrap();
-            Some(buf.into())
-        }
         ClientboundPacket::CPlayerAbilities(data) => {
             let p = pumpkin_protocol::java::client::play::CPlayerAbilities {
                 flags: data.flags.try_into().unwrap(),
@@ -2259,17 +2249,6 @@ impl ToWitClientboundJava for pumpkin_protocol::java::client::play::CPingRespons
     }
 }
 
-impl ToWitClientboundJava for pumpkin_protocol::java::client::play::CPlaceGhostRecipe<'_> {
-    fn to_wit(&self) -> ClientboundPacket {
-        ClientboundPacket::CPlaceGhostRecipe(
-            crate::pumpkin::plugin::java_packets::CPlaceGhostRecipe {
-                window_id: self.window_id.try_into().unwrap(),
-                recipe_id: self.recipe_id.to_string(),
-            },
-        )
-    }
-}
-
 impl ToWitClientboundJava for pumpkin_protocol::java::client::play::CPlayerAbilities {
     fn to_wit(&self) -> ClientboundPacket {
         ClientboundPacket::CPlayerAbilities(
@@ -2900,9 +2879,6 @@ pub fn clientbound_java_any_to_wit(any: &dyn Any) -> Option<ClientboundPacket> {
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::java::client::play::CPingResponse>() {
         return Some(p.to_wit());
     }
-    if let Some(p) = any.downcast_ref::<pumpkin_protocol::java::client::play::CPlaceGhostRecipe>() {
-        return Some(p.to_wit());
-    }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::java::client::play::CPlayerAbilities>() {
         return Some(p.to_wit());
     }
@@ -3087,6 +3063,16 @@ pub fn serialize_bedrock_packet(packet: &BClientboundPacket) -> Option<Bytes> {
         BClientboundPacket::CChunkRadiusUpdated(data) => {
             let p = pumpkin_protocol::bedrock::client::CChunkRadiusUpdated {
                 chunk_radius: VarInt(data.chunk_radius),
+            };
+            let mut buf = Vec::new();
+            pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
+            Some(buf.into())
+        }
+        BClientboundPacket::CContainerClose(data) => {
+            let p = pumpkin_protocol::bedrock::client::CContainerClose {
+                container_id: data.container_id.try_into().unwrap(),
+                container_type: data.container_type.try_into().unwrap(),
+                server_initiated_close: data.server_initiated_close.try_into().unwrap(),
             };
             let mut buf = Vec::new();
             pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
@@ -3284,6 +3270,17 @@ pub fn serialize_bedrock_packet(packet: &BClientboundPacket) -> Option<Bytes> {
             pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
             Some(buf.into())
         }
+        BClientboundPacket::CResourcePackChunkData(data) => {
+            let p = pumpkin_protocol::bedrock::client::CResourcePackChunkData {
+                resource_name: &data.resource_name,
+                chunk_id: data.chunk_id.try_into().unwrap(),
+                byte_offset: data.byte_offset.try_into().unwrap(),
+                chunk_data: &data.chunk_data,
+            };
+            let mut buf = Vec::new();
+            pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
+            Some(buf.into())
+        }
         BClientboundPacket::CSetActorMotion(data) => {
             let p = pumpkin_protocol::bedrock::client::CSetActorMotion {
                 target_runtime_id: pumpkin_protocol::codec::var_ulong::VarULong(
@@ -3357,6 +3354,15 @@ pub fn serialize_bedrock_packet(packet: &BClientboundPacket) -> Option<Bytes> {
                 actor_runtime_id: pumpkin_protocol::codec::var_ulong::VarULong(
                     data.actor_runtime_id.try_into().unwrap(),
                 ),
+            };
+            let mut buf = Vec::new();
+            pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
+            Some(buf.into())
+        }
+        BClientboundPacket::CToastRequest(data) => {
+            let p = pumpkin_protocol::bedrock::client::CToastRequest {
+                title: data.title.clone(),
+                content: data.content.clone(),
             };
             let mut buf = Vec::new();
             pumpkin_core::net::bedrock::BedrockClient::write_raw_packet(&p, &mut buf).unwrap();
@@ -3458,6 +3464,14 @@ pub fn deserialize_bedrock_serverbound_packet(
                 client_network_version: p.client_network_version.try_into().unwrap(),
             }))
         }
+        id if id == <pumpkin_protocol::bedrock::server::SResourcePackChunkRequest as pumpkin_protocol::Packet>::PACKET_ID as i32 => {
+            use pumpkin_protocol::BServerPacket;
+            let p = <pumpkin_protocol::bedrock::server::SResourcePackChunkRequest as pumpkin_protocol::BServerPacket>::read(&mut Cursor::new(payload)).ok()?;
+            Some(BServerboundPacket::SResourcePackChunkRequest(crate::pumpkin::plugin::bedrock_packets::SResourcePackChunkRequest {
+                resource_name: p.resource_name.into(),
+                chunk: p.chunk.try_into().unwrap(),
+            }))
+        }
         id if id == <pumpkin_protocol::bedrock::server::SSetLocalPlayerAsInitialized as pumpkin_protocol::Packet>::PACKET_ID as i32 => {
             use pumpkin_protocol::BServerPacket;
             let p = <pumpkin_protocol::bedrock::server::SSetLocalPlayerAsInitialized as pumpkin_protocol::BServerPacket>::read(&mut Cursor::new(payload)).ok()?;
@@ -3517,6 +3531,18 @@ impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CChunkRadius
         BClientboundPacket::CChunkRadiusUpdated(
             crate::pumpkin::plugin::bedrock_packets::CChunkRadiusUpdated {
                 chunk_radius: self.chunk_radius.0.try_into().unwrap(),
+            },
+        )
+    }
+}
+
+impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CContainerClose {
+    fn to_wit(&self) -> BClientboundPacket {
+        BClientboundPacket::CContainerClose(
+            crate::pumpkin::plugin::bedrock_packets::CContainerClose {
+                container_id: self.container_id.try_into().unwrap(),
+                container_type: self.container_type.try_into().unwrap(),
+                server_initiated_close: self.server_initiated_close.try_into().unwrap(),
             },
         )
     }
@@ -3724,6 +3750,19 @@ impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CRemoveObjec
     }
 }
 
+impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CResourcePackChunkData<'_> {
+    fn to_wit(&self) -> BClientboundPacket {
+        BClientboundPacket::CResourcePackChunkData(
+            crate::pumpkin::plugin::bedrock_packets::CResourcePackChunkData {
+                resource_name: self.resource_name.to_string(),
+                chunk_id: self.chunk_id.try_into().unwrap(),
+                byte_offset: self.byte_offset.try_into().unwrap(),
+                chunk_data: self.chunk_data.iter().map(|v| *v as _).collect(),
+            },
+        )
+    }
+}
+
 impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CSetActorMotion {
     fn to_wit(&self) -> BClientboundPacket {
         BClientboundPacket::CSetActorMotion(
@@ -3796,6 +3835,15 @@ impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CTakeItemAct
     }
 }
 
+impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CToastRequest {
+    fn to_wit(&self) -> BClientboundPacket {
+        BClientboundPacket::CToastRequest(crate::pumpkin::plugin::bedrock_packets::CToastRequest {
+            title: self.title.to_string(),
+            content: self.content.to_string(),
+        })
+    }
+}
+
 impl ToWitClientboundBedrock for pumpkin_protocol::bedrock::client::CTransfer {
     fn to_wit(&self) -> BClientboundPacket {
         BClientboundPacket::CTransfer(crate::pumpkin::plugin::bedrock_packets::CTransfer {
@@ -3830,6 +3878,9 @@ pub fn clientbound_bedrock_any_to_wit(any: &dyn Any) -> Option<BClientboundPacke
         return Some(p.to_wit());
     }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CChunkRadiusUpdated>() {
+        return Some(p.to_wit());
+    }
+    if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CContainerClose>() {
         return Some(p.to_wit());
     }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CContainerOpen>() {
@@ -3871,6 +3922,10 @@ pub fn clientbound_bedrock_any_to_wit(any: &dyn Any) -> Option<BClientboundPacke
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CRemoveObjective>() {
         return Some(p.to_wit());
     }
+    if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CResourcePackChunkData>()
+    {
+        return Some(p.to_wit());
+    }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CSetActorMotion>() {
         return Some(p.to_wit());
     }
@@ -3890,6 +3945,9 @@ pub fn clientbound_bedrock_any_to_wit(any: &dyn Any) -> Option<BClientboundPacke
         return Some(p.to_wit());
     }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CTakeItemActor>() {
+        return Some(p.to_wit());
+    }
+    if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CToastRequest>() {
         return Some(p.to_wit());
     }
     if let Some(p) = any.downcast_ref::<pumpkin_protocol::bedrock::client::CTransfer>() {

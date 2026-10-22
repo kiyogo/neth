@@ -1981,53 +1981,16 @@ impl PathNavigationTrait for WaterBoundPathNavigation {
 
         if self.is_done() && !search_denied {
             self.inner.finish_navigation(entity);
-        } else {
-            if let Some(path) = &mut self.inner.path
-                && PathNavigation::reached_next_node(
-                    path,
-                    entity.entity.pos.load(),
-                    mob_pos,
-                    self.inner.mob_width,
-                    |_| false,
-                )
-            {
-                path.advance();
-            }
-
-            if !self.is_done()
-                && let Some(path) = &self.inner.path
-                && let Some(next_block) = path.get_next_node_pos()
-            {
-                let target_pos = Vector3::new(
-                    f64::from(next_block.0.x) + 0.5,
-                    f64::from(next_block.0.y) + 0.5,
-                    f64::from(next_block.0.z) + 0.5,
-                );
-                let current_pos = entity.entity.pos.load();
-                let dx = target_pos.x - current_pos.x;
-                let dy = target_pos.y - current_pos.y;
-                let dz = target_pos.z - current_pos.z;
-                let sd = dx.hypot(dz);
-
-                let desired_yaw = wrap_degrees((dz.atan2(dx) as f32).to_degrees() - 90.0);
-                let desired_pitch = wrap_degrees(-(dy.atan2(sd) as f32).to_degrees());
-
-                entity.entity.yaw.store(desired_yaw);
-                entity.entity.head_yaw.store(desired_yaw);
-                entity.entity.body_yaw.store(desired_yaw);
-                entity.entity.pitch.store(desired_pitch);
-
-                let speed = self.inner.speed_modifier
-                    * entity.get_attribute_value(&Attributes::MOVEMENT_SPEED);
-                let y_input = if dy.abs() > 0.1 {
-                    if dy > 0.0 { speed } else { -speed }
-                } else {
-                    0.0
-                };
-                entity
-                    .movement_input
-                    .store(Vector3::new(0.0, y_input, speed));
-            }
+        } else if let Some(path) = &mut self.inner.path
+            && PathNavigation::reached_next_node(
+                path,
+                entity.entity.pos.load(),
+                mob_pos,
+                self.inner.mob_width,
+                |_| false,
+            )
+        {
+            path.advance();
         }
     }
 
@@ -2250,7 +2213,7 @@ impl PathNavigationTrait for WallClimberNavigation {
                 f64::from(target_pos.0.z) + 0.5,
             );
             let dx = target_center.x - current_pos.x;
-            let dy = target_center.y - current_pos.y;
+            let _dy = target_center.y - current_pos.y;
             let dz = target_center.z - current_pos.z;
             let dist_sq = dx * dx + dz * dz;
 
@@ -2270,11 +2233,7 @@ impl PathNavigationTrait for WallClimberNavigation {
                 let speed = self.inner.inner.speed_modifier
                     * entity.get_attribute_value(&Attributes::MOVEMENT_SPEED);
                 entity.movement_input.store(Vector3::new(0.0, 0.0, speed));
-                if dy > 0.0 {
-                    entity.jumping.store(true, Ordering::SeqCst);
-                } else {
-                    entity.jumping.store(false, Ordering::SeqCst);
-                }
+                entity.jumping.store(false, Ordering::SeqCst);
             }
         }
     }
@@ -2550,18 +2509,21 @@ impl PathNavigationTrait for AmphibiousPathNavigation {
                     let dz = target_pos.z - current_pos.z;
                     let sd = dx.hypot(dz);
 
-                    let desired_yaw = wrap_degrees((dz.atan2(dx) as f32).to_degrees() - 90.0);
-                    let desired_pitch = wrap_degrees(-(dy.atan2(sd) as f32).to_degrees());
-                    // Turn like vanilla's move control, at most 90 degrees a tick.
-                    let current_yaw = entity.entity.yaw.load();
-                    let yaw = current_yaw
-                        + wrap_degrees(desired_yaw - current_yaw)
-                            .clamp(-MAX_YAW_TURN_PER_TICK, MAX_YAW_TURN_PER_TICK);
+                    if sd > 0.1 {
+                        let desired_yaw = wrap_degrees((dz.atan2(dx) as f32).to_degrees() - 90.0);
+                        // Turn like vanilla's move control, at most 90 degrees a tick.
+                        let current_yaw = entity.entity.yaw.load();
+                        let yaw = current_yaw
+                            + wrap_degrees(desired_yaw - current_yaw)
+                                .clamp(-MAX_YAW_TURN_PER_TICK, MAX_YAW_TURN_PER_TICK);
 
-                    entity.entity.yaw.store(yaw);
-                    entity.entity.head_yaw.store(yaw);
-                    entity.entity.body_yaw.store(yaw);
+                        entity.entity.yaw.store(yaw);
+                        entity.entity.head_yaw.store(yaw);
+                        entity.entity.body_yaw.store(yaw);
+                    }
+                    let desired_pitch = wrap_degrees(-(dy.atan2(sd) as f32).to_degrees());
                     entity.entity.pitch.store(desired_pitch);
+                    entity.jumping.store(false, Ordering::SeqCst);
 
                     let speed = self.inner.speed_modifier
                         * entity.get_attribute_value(&Attributes::MOVEMENT_SPEED);

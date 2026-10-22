@@ -158,6 +158,7 @@ impl Goal for BreezeAttackGoal {
                         owner_id: Some(breeze_entity.entity_id),
                         collides_with_projectiles: false,
                         has_hit: AtomicBool::new(false),
+                        has_left_owner: AtomicBool::new(false),
                         gravity: WIND_CHARGE_GRAVITY,
                     };
                     let wind_charge = WindChargeEntity::new_breeze(thrown);

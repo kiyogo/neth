@@ -783,6 +783,10 @@ interface bedrock-packets {
     /// If unsupported by the server, the connection will be rejected.
     client-network-version: s32,
   }
+  record s-resource-pack-chunk-request {
+    resource-name: string,
+    chunk: s32,
+  }
   /// Sent by the client during resource pack negotiation to acknowledge packs or request downloads.
   record s-resource-pack-client-response {
     /// Pack response status (e.g. refused, send packs, have all packs, or completed).
@@ -1203,6 +1207,15 @@ interface bedrock-packets {
     rider-initiated: bool,
     /// Rotational velocity applied to the vehicle.
     vehicle-angular-velocity: f32,
+  }
+  /// Sent by the server to close an open container inventory window on the client.
+  record c-container-close {
+    /// Window ID of the container being closed.
+    container-id: u8,
+    /// Bedrock container type identifier.
+    container-type: u8,
+    /// True if the close was initiated by the server rather than the player.
+    server-initiated-close: bool,
   }
   /// Sent by the server to open an inventory container screen (chest, furnace, anvil) on the client.
   record c-container-open {
@@ -1658,6 +1671,13 @@ interface bedrock-packets {
     piece-type: string,
     colors: list<s32>,
   }
+  /// Tells a client that a player in its tab list changed their skin.
+  record c-player-skin {
+    uuid: uuid,
+    skin: skin,
+    new-skin-name: string,
+    old-skin-name: string,
+  }
   /// Sent by the server to despawn an entity from the client's world.
   record c-remove-actor {
     /// Unique entity ID of the entity to remove.
@@ -1667,6 +1687,21 @@ interface bedrock-packets {
   record c-remove-objective {
     /// Identifier of the active objective to remove.
     objective-name: string,
+  }
+  record c-resource-pack-chunk-data {
+    resource-name: string,
+    chunk-id: s32,
+    byte-offset: s64,
+    chunk-data: list<u8>,
+  }
+  record c-resource-pack-data-info {
+    resource-name: string,
+    chunk-size: s32,
+    number-of-chunks: s32,
+    file-size: s64,
+    file-hash: list<u8>,
+    is-premium-pack: bool,
+    pack-type: u8,
   }
   /// Identifies a specific pack instance and sub-pack layer in the active resource pack stack.
   record pack-instance-id {
@@ -2067,6 +2102,10 @@ interface bedrock-packets {
     /// Runtime entity ID of the collector entity that picked up the item.
     actor-runtime-id: s64,
   }
+  record c-toast-request {
+    title: string,
+    content: string,
+  }
   /// Instructs the client to disconnect and reconnect to another server address and port.
   record c-transfer {
     /// Destination server hostname or IP address.
@@ -2377,6 +2416,7 @@ interface bedrock-packets {
     s-request-chunk-radius(s-request-chunk-radius),
     /// Sent by the client to query network settings (such as compression algorithms and thresholds) from the server.
     s-request-network-settings(s-request-network-settings),
+    s-resource-pack-chunk-request(s-resource-pack-chunk-request),
     /// Sent by the client during resource pack negotiation to acknowledge packs or request downloads.
     s-resource-pack-client-response(s-resource-pack-client-response),
     /// Bidirectional packet managing player respawning and client spawn readiness.
@@ -2414,6 +2454,8 @@ interface bedrock-packets {
     c-chunk-radius-updated(c-chunk-radius-updated),
     /// Sent by the server in response to [`SClientCacheBlobStatus`](crate::bedrock::server::client_cache_blob_status::SClientCacheBlobStatus) with requested chunk blobs.
     c-client-cache-miss-response(c-client-cache-miss-response),
+    /// Sent by the server to close an open container inventory window on the client.
+    c-container-close(c-container-close),
     /// Sent by the server to open an inventory container screen (chest, furnace, anvil) on the client.
     c-container-open(c-container-open),
     /// Sent by the server to correct the client's predicted movement under server authoritative movement.
@@ -2462,10 +2504,14 @@ interface bedrock-packets {
     c-player-hotbar(c-player-hotbar),
     /// Sent by the server to add or remove players from the in-game pause screen player list.
     c-player-list(c-player-list),
+    /// Tells a client that a player in its tab list changed their skin.
+    c-player-skin(c-player-skin),
     /// Sent by the server to despawn an entity from the client's world.
     c-remove-actor(c-remove-actor),
     /// Removes a scoreboard objective, hiding it from the player's screen.
     c-remove-objective(c-remove-objective),
+    c-resource-pack-chunk-data(c-resource-pack-chunk-data),
+    c-resource-pack-data-info(c-resource-pack-data-info),
     /// Sent by the server to define the order in which resource and behavior packs are applied by the client.
     c-resource-pack-stack-packet(c-resource-pack-stack-packet),
     /// Sent by the server to list all resource and behavior packs required or available to download.
@@ -2498,6 +2544,7 @@ interface bedrock-packets {
     c-start-game(c-start-game),
     /// Sent by the server when an entity or player picks up a dropped item, playing the pickup animation.
     c-take-item-actor(c-take-item-actor),
+    c-toast-request(c-toast-request),
     /// Instructs the client to disconnect and reconnect to another server address and port.
     c-transfer(c-transfer),
     /// Updates player movement and interaction abilities such as flight and build permissions.

@@ -4,7 +4,7 @@ use super::{Goal, to_goal_ticks};
 use crate::entity::mob::Mob;
 use crate::entity::mob::enderman::EndermanEntity;
 use pumpkin_data::block_properties::is_air;
-use pumpkin_data::{Block, BlockState};
+use pumpkin_data::Block;
 use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;

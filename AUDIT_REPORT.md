@@ -60,13 +60,13 @@
 ## 3. Kết quả GitHub History Audit
 
 ### 3.1. Thống kê Chi tiết
-- **GitHub Issues:** 1,189 issues được rà soát và lưu trữ tại [github-issues.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-issues.md). Phân loại chính xác các bug report về Redstone, Chunk generation, Entity AI, World tick, Network protocol.
-- **Pull Requests:** 2,810 PRs được đánh giá và ghi nhận tại [github-pull-requests.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-pull-requests.md).
-- **Discussions:** 42 thảo luận kỹ thuật cộng đồng được tổng hợp tại [github-discussions.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-discussions.md).
-- **Commits Log:** Bảng theo dõi lịch sử commit được lập tại [github-commits.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-commits.md).
-- **Bug Inventory:** Danh mục lỗi, phân tích nguyên nhân và phương án sửa chữa tại [github-bug-inventory.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-bug-inventory.md).
-- **Audit Progress:** Trạng thái tiến độ định lượng JSON tại [github-audit-progress.json](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-audit-progress.json).
-- **Audit Executive Summary:** Báo cáo tóm tắt tại [github-audit-summary.md](file:///E:/DATA/source/svmc/ServerMiecraft/Pumpkin/audit/github-audit-summary.md).
+- **GitHub Issues:** 1,189 issues được rà soát và lưu trữ tại [github-issues.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-issues.md). Phân loại chính xác các bug report về Redstone, Chunk generation, Entity AI, World tick, Network protocol.
+- **Pull Requests:** 2,810 PRs được đánh giá và ghi nhận tại [github-pull-requests.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-pull-requests.md).
+- **Discussions:** 42 thảo luận kỹ thuật cộng đồng được tổng hợp tại [github-discussions.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-discussions.md).
+- **Commits Log:** Bảng theo dõi lịch sử commit được lập tại [github-commits.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-commits.md).
+- **Bug Inventory:** Danh mục lỗi, phân tích nguyên nhân và phương án sửa chữa tại [github-bug-inventory.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-bug-inventory.md).
+- **Audit Progress:** Trạng thái tiến độ định lượng JSON tại [github-audit-progress.json](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-audit-progress.json).
+- **Audit Executive Summary:** Báo cáo tóm tắt tại [github-audit-summary.md](file:///E:/DATA/source/svmc/ServerMiecraft/Neth/audit/github-audit-summary.md).
 
 ---
 

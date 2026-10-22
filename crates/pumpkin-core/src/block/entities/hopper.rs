@@ -2,7 +2,6 @@ use crate::block::blocks::chests::get_container;
 use super::components::{BlockEntityComponents, RANDOMIZABLE_CONTAINER_FIELDS};
 use crate::block::entities::BlockEntity;
 use crate::entity::experience_orb::ExperienceOrbEntity;
-use crate::entity::item::ItemEntity;
 use crate::plugin::api::events::inventory::hopper_inventory_search::HopperInventorySearchEvent;
 use crate::plugin::api::events::inventory::inventory_move_item::InventoryMoveItemEvent;
 use crate::plugin::api::events::inventory::inventory_pickup_item::InventoryPickupItemEvent;

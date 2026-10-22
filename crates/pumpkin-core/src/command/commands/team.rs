@@ -59,6 +59,11 @@ const NAMETAG_VISIBILITY_UNCHANGED_ERROR: CommandErrorType<0> = CommandErrorType
     translation::java::COMMANDS_TEAM_OPTION_NAMETAGVISIBILITY_UNCHANGED,
 );
 
+const DEATH_MESSAGE_VISIBILITY_UNCHANGED_ERROR: CommandErrorType<0> = CommandErrorType::new(
+    translation::java::COMMANDS_TEAM_OPTION_DEATHMESSAGEVISIBILITY_UNCHANGED,
+    translation::java::COMMANDS_TEAM_OPTION_DEATHMESSAGEVISIBILITY_UNCHANGED,
+);
+
 const COLLISION_RULE_UNCHANGED_ERROR: CommandErrorType<0> = CommandErrorType::new(
     translation::java::COMMANDS_TEAM_OPTION_COLLISIONRULE_UNCHANGED,
     translation::java::COMMANDS_TEAM_OPTION_COLLISIONRULE_UNCHANGED,
@@ -115,6 +120,7 @@ impl CommandExecutor for TeamAddExecutor {
             display_name: display_name_clone.clone(),
             options: 0,
             nametag_visibility: NameTagVisibility::Always,
+            death_message_visibility: NameTagVisibility::Always,
             collision_rule: CollisionRule::Always,
             color: NamedColor::White,
             player_prefix: TextComponent::empty(),
@@ -837,7 +843,7 @@ impl CommandExecutor for TeamModifyNametagVisibilityExecutor {
 }
 
 struct TeamModifyDeathMessageVisibilityExecutor {
-    value: &'static str,
+    value: NameTagVisibility,
 }
 
 impl CommandExecutor for TeamModifyDeathMessageVisibilityExecutor {
@@ -847,7 +853,7 @@ impl CommandExecutor for TeamModifyDeathMessageVisibilityExecutor {
         let team_name_owned = team_name.to_string();
         let value = self.value;
 
-        let scoreboard = world
+        let mut scoreboard = world
             .scoreboard
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -858,13 +864,20 @@ impl CommandExecutor for TeamModifyDeathMessageVisibilityExecutor {
             );
         };
 
+        if team.death_message_visibility == value {
+            return Err(DEATH_MESSAGE_VISIBILITY_UNCHANGED_ERROR.create_without_context());
+        }
+
+        let mut team = team.clone();
+        team.death_message_visibility = value;
         let team_display_name = team.display_name.clone();
+        scoreboard.update_team(&world, team);
 
         context.source.send_feedback(
             TextComponent::translate_cross(
                 translation::java::COMMANDS_TEAM_OPTION_DEATHMESSAGEVISIBILITY_SUCCESS,
                 translation::java::COMMANDS_TEAM_OPTION_DEATHMESSAGEVISIBILITY_SUCCESS,
-                [team_display_name, TextComponent::text(value.to_string())],
+                [team_display_name, TextComponent::text(value.to_str().to_string())],
             ),
             true,
         );
@@ -1049,20 +1062,24 @@ fn modify_branch() -> LiteralArgumentBuilder {
                 literal("deathMessageVisibility")
                     .then(
                         literal("always")
-                            .executes(TeamModifyDeathMessageVisibilityExecutor { value: "always" }),
+                            .executes(TeamModifyDeathMessageVisibilityExecutor {
+                                value: NameTagVisibility::Always,
+                            }),
                     )
                     .then(
                         literal("never")
-                            .executes(TeamModifyDeathMessageVisibilityExecutor { value: "never" }),
+                            .executes(TeamModifyDeathMessageVisibilityExecutor {
+                                value: NameTagVisibility::Never,
+                            }),
                     )
                     .then(literal("hideForOtherTeams").executes(
                         TeamModifyDeathMessageVisibilityExecutor {
-                            value: "hideForOtherTeams",
+                            value: NameTagVisibility::HideForOtherTeams,
                         },
                     ))
                     .then(literal("hideForOwnTeam").executes(
                         TeamModifyDeathMessageVisibilityExecutor {
-                            value: "hideForOwnTeam",
+                            value: NameTagVisibility::HideForOwnTeam,
                         },
                     )),
             )
@@ -1107,3 +1124,150 @@ pub fn register(dispatcher: &mut CommandDispatcher, registry: &PermissionRegistr
             .then(modify_branch()),
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::command::CommandSource;
+    use crate::world::scoreboard::{CollisionRule, NameTagVisibility, NoTarget, Scoreboard, Team};
+    use pumpkin_util::text::{TextComponent, color::NamedColor};
+    use std::sync::Arc;
+
+    #[test]
+    fn team_command_tree_parses_all_subcommands() {
+        let mut dispatcher = CommandDispatcher::new();
+        let registry = PermissionRegistry::default();
+        register(&mut dispatcher, &registry);
+        let source = Arc::new(CommandSource::dummy());
+
+        let valid_inputs = [
+            "team add red",
+            "team add red \"Red Team\"",
+            "team remove red",
+            "team empty red",
+            "team join red Player",
+            "team join red @a",
+            "team leave Player",
+            "team leave @a",
+            "team list",
+            "team list red",
+            "team modify red color red",
+            "team modify red color reset",
+            "team modify red friendlyFire true",
+            "team modify red friendlyFire false",
+            "team modify red seeFriendlyInvisibles true",
+            "team modify red seeFriendlyInvisibles false",
+            "team modify red nametagVisibility always",
+            "team modify red nametagVisibility never",
+            "team modify red nametagVisibility hideForOtherTeams",
+            "team modify red nametagVisibility hideForOwnTeam",
+            "team modify red deathMessageVisibility always",
+            "team modify red deathMessageVisibility never",
+            "team modify red deathMessageVisibility hideForOtherTeams",
+            "team modify red deathMessageVisibility hideForOwnTeam",
+            "team modify red collisionRule always",
+            "team modify red collisionRule never",
+            "team modify red collisionRule pushOtherTeams",
+            "team modify red collisionRule pushOwnTeam",
+            "team modify red prefix \"[Admin] \"",
+            "team modify red suffix \" [VIP]\"",
+            "team modify red displayName \"New Display Name\"",
+        ];
+
+        for input in valid_inputs {
+            let result = dispatcher.parse_input(input, &source);
+            assert!(
+                result.errors.is_empty(),
+                "Failed to parse '{input}': {:?}",
+                result.errors
+            );
+            assert_eq!(
+                result.reader.remaining_length(),
+                0,
+                "Unconsumed input for '{input}'"
+            );
+        }
+    }
+
+    #[test]
+    fn team_scoreboard_lifecycle_and_properties() {
+        let mut scoreboard = Scoreboard::new();
+
+        // 1. Add team
+        let team = Team {
+            name: "blue".to_string(),
+            display_name: TextComponent::text("Blue Team"),
+            options: 0,
+            nametag_visibility: NameTagVisibility::Always,
+            death_message_visibility: NameTagVisibility::Always,
+            collision_rule: CollisionRule::Always,
+            color: NamedColor::Blue,
+            player_prefix: TextComponent::text("[Blue] "),
+            player_suffix: TextComponent::empty(),
+            players: vec!["Alice".to_string()],
+        };
+
+        scoreboard.add_team(&NoTarget, team);
+        assert!(scoreboard.get_teams().contains_key("blue"));
+        let retrieved = scoreboard.get_team("blue").unwrap();
+        assert_eq!(retrieved.name, "blue");
+        assert_eq!(retrieved.color, NamedColor::Blue);
+        assert_eq!(retrieved.death_message_visibility, NameTagVisibility::Always);
+        assert_eq!(retrieved.nametag_visibility, NameTagVisibility::Always);
+        assert_eq!(retrieved.collision_rule, CollisionRule::Always);
+        assert_eq!(retrieved.players, vec!["Alice".to_string()]);
+
+        // 2. Add player to team
+        scoreboard.add_player_to_team(&NoTarget, "blue", "Bob".to_string());
+        let updated = scoreboard.get_team("blue").unwrap();
+        assert_eq!(updated.players.len(), 2);
+        assert!(updated.players.contains(&"Bob".to_string()));
+
+        // 3. Update team properties
+        let mut modified = updated.clone();
+        modified.death_message_visibility = NameTagVisibility::HideForOtherTeams;
+        modified.color = NamedColor::DarkBlue;
+        scoreboard.update_team(&NoTarget, modified);
+
+        let retrieved_mod = scoreboard.get_team("blue").unwrap();
+        assert_eq!(retrieved_mod.death_message_visibility, NameTagVisibility::HideForOtherTeams);
+        assert_eq!(retrieved_mod.color, NamedColor::DarkBlue);
+
+        // 4. Remove player from team
+        scoreboard.remove_player_from_team(&NoTarget, "blue", "Alice");
+        let retrieved_after_remove = scoreboard.get_team("blue").unwrap();
+        assert_eq!(retrieved_after_remove.players, vec!["Bob".to_string()]);
+
+        // 5. Remove team
+        scoreboard.remove_team(&NoTarget, "blue");
+        assert!(!scoreboard.get_teams().contains_key("blue"));
+    }
+
+    #[test]
+    fn team_modify_errors_when_unchanged() {
+        let err1 = DEATH_MESSAGE_VISIBILITY_UNCHANGED_ERROR.create_without_context();
+        assert_eq!(
+            serde_json::to_value(&err1.message).unwrap()["translate"],
+            translation::java::COMMANDS_TEAM_OPTION_DEATHMESSAGEVISIBILITY_UNCHANGED
+        );
+
+        let err2 = NAMETAG_VISIBILITY_UNCHANGED_ERROR.create_without_context();
+        assert_eq!(
+            serde_json::to_value(&err2.message).unwrap()["translate"],
+            translation::java::COMMANDS_TEAM_OPTION_NAMETAGVISIBILITY_UNCHANGED
+        );
+
+        let err3 = COLLISION_RULE_UNCHANGED_ERROR.create_without_context();
+        assert_eq!(
+            serde_json::to_value(&err3.message).unwrap()["translate"],
+            translation::java::COMMANDS_TEAM_OPTION_COLLISIONRULE_UNCHANGED
+        );
+
+        let err4 = DUPLICATE_TEAM_ERROR.create_without_context();
+        assert_eq!(
+            serde_json::to_value(&err4.message).unwrap()["translate"],
+            translation::java::COMMANDS_TEAM_ADD_DUPLICATE
+        );
+    }
+}
+

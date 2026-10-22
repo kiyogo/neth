@@ -19,7 +19,9 @@ use pumpkin_protocol::{
         packet_encoder::TCPNetworkEncoder,
         server::config::{
             SAcceptCodeOfConduct, SAcknowledgeFinishConfig, SClientInformationConfig,
-            SConfigCookieResponse, SConfigPong, SConfigResourcePack, SKnownPacks, SPluginMessage,
+            SConfigCookieResponse, SConfigPong, SConfigResourcePack,
+            SCustomClickAction as SConfigCustomClickAction, SKeepAlive as SConfigKeepAlive,
+            SKnownPacks, SPluginMessage,
         },
     },
     packet::MultiVersionJavaPacket,
@@ -574,6 +576,14 @@ impl PendingConnection {
             }
             id if id == SAcceptCodeOfConduct::to_id(version) => {
                 let _accept = SAcceptCodeOfConduct::read(&mut payload, &version)?;
+                Ok(None)
+            }
+            id if id == SConfigKeepAlive::to_id(version) => {
+                let _keep_alive = SConfigKeepAlive::read(&mut payload, &version)?;
+                Ok(None)
+            }
+            id if id == SConfigCustomClickAction::to_id(version) => {
+                let _packet = SConfigCustomClickAction::read(&mut payload, &version)?;
                 Ok(None)
             }
             _ => Err(ReadingError::Message(format!(

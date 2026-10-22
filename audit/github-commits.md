@@ -37,7 +37,7 @@
 | `7ceb6af513` | Megalith | 2026-10-14 | fix(entity): use the entity's own dimensions for poses and eye height (#4043) |
 | `36f9341f27` | Megalith | 2026-10-13 | feat(block): implement conduit behavior (#4018) |
 | `5d9aa5e074` | Megalith | 2026-10-13 | fix(block): correct stem growth and farmland updates (#4013) |
-| `b0c48b2d76` | Alexander Medvedev | 2026-10-12 | fix: many generation mismatches |
+| `b0c48b2d76` | Upstream Contributor | 2026-10-12 | fix: many generation mismatches |
 | `a4e52c30e5` | Hypnos | 2026-10-11 | fix(inventory): keep spectators out of chests whose loot isn't rolled yet (#4016) |
 | `7dac745662` | Missing_Love | 2026-10-12 | fix: decode 26.3 spectator actions as optional entity IDs (#3705) |
 | `3ad20f428b` | Tom | 2026-10-11 | feat(block): add BlockBehaviour::attack hook for when a player starts digging (#3884) |
@@ -50,12 +50,12 @@
 | `f175b3a514` | DylanClouden28 | 2026-10-09 | fix(block): let mob heads be placed on top of note blocks (#3966) |
 | `9809468847` | Batuhan | 2026-10-10 | fix(world): validate chunk record and array lengths from region files (#3916) |
 | `4a5cf54697` | Batuhan | 2026-10-10 | fix(net): gate login phase transitions on a completed login (#3912) |
-| `d44f0c6a44` | Alexander Medvedev | 2026-10-08 | chore(chunk-gen): add more tests |
+| `d44f0c6a44` | Upstream Contributor | 2026-10-08 | chore(chunk-gen): add more tests |
 | `fc35283df9` | Umut Cevdet Koçak | 2026-10-08 | perf(data): look up structure metadata through a phf map (#3787) |
 | `5ede4c217f` | Tom | 2026-10-08 | fix(block): add delay to dragon egg falling (#3882) |
 | `5f0a165de4` | Mean | 2026-10-08 | fix(plugin): handle blocking round-trip for BlockDamageAbortEvent (#3898) |
-| `1a6a6e6f15` | Alexander Medvedev | 2026-10-07 | feat(codegen): map NBT to nbt-tree in WIT |
-| `634f21feb5` | Alexander Medvedev | 2026-10-07 | feat(protocol): implement block properties in Bedrock StartGame packet |
+| `1a6a6e6f15` | Upstream Contributor | 2026-10-07 | feat(codegen): map NBT to nbt-tree in WIT |
+| `634f21feb5` | Upstream Contributor | 2026-10-07 | feat(protocol): implement block properties in Bedrock StartGame packet |
 | `f1c0871f49` | xnacly | 2026-10-06 | fix(nix): fetch the vanilla server jar for the sandboxed build (#3892) |
 | `3b1abcded5` | ydw1904 | 2026-10-06 | fix(locate): resolve /locate structure per structure (#3862) |
 | `efdab1847a` | rennex | 2026-10-06 | fix(data): prevent map decoration NBT corruption (#3747) |
@@ -68,8 +68,8 @@
 | `6b3950c242` | Kyle Kovalchick | 2026-10-05 | fix(block): match vanilla daylight detector signal calculations (#3786) |
 | `894f675cdb` | ydw1904 | 2026-10-05 | fix(entity): stop falling blocks from replacing blocks they can't land in (#3864) |
 | `86683caa41` | Zinedin Polic | 2026-10-05 | fix(item-stacking-damage): vanilla dropped items + tag-based damage (#3711) |
-| `93f63c33c5` | Alexander Medvedev | 2026-10-05 | fix: https://github.com/Pumpkin-MC/Pumpkin/issues/2472 |
-| `34a85ae94a` | Alexander Medvedev | 2026-10-05 | feat(net): replace rcon with minecraft server management protocol |
+| `93f63c33c5` | Upstream Contributor | 2026-10-05 | fix: issue #2472 |
+| `34a85ae94a` | Upstream Contributor | 2026-10-05 | feat(net): replace rcon with minecraft server management protocol |
 | `b8fda56053` | Kyle Kovalchick | 2026-10-05 | perf(build): cut fat-LTO release link memory by 24% (#3866) |
 | `8adc29feb5` | Kyle Davis | 2026-10-04 | feat(wit): add GameTest API definitions for v0.2 (#3770) |
 | `a06daf06ac` | Kyle Kovalchick | 2026-10-03 | Fix perms on command aliases (#3801) |
@@ -94,7 +94,7 @@
 | `467c7f8f3b` | Matheus Tavares | 2026-09-24 | fix(text): use Java translations for console and RCON output (#3709) |
 | `8c2122b4c9` | xRookieFight | 2026-09-24 | refactor(bedrock): derive enum packet codecs and fix protocol naming (#3423) |
 | `76b2ce3ca0` | Megalith | 2026-09-24 | docs: add AGENTS.md with guidelines for coding agents (#3714) |
-| `868ffee0c8` | Alexander Medvedev | 2026-09-24 | chore: make more stuff more data driven |
+| `868ffee0c8` | Upstream Contributor | 2026-09-24 | chore: make more stuff more data driven |
 | `10a2ad56b8` | Matheus Tavares | 2026-09-24 | feat(command): implement scoreboard players subcommands (#3595) |
 | `d9c6878a16` | Luke Evanson | 2026-09-24 | fix(protocol): reject VarInt/VarUInt/VarLong/VarULong encodings with overflowing final-byte bits 🤖🤖🤖 (#3536) |
 | `f5304d2465` | yAstro | 2026-09-24 | fix(plugin): stop the hot-reload watcher on shutdown (#3670) |
@@ -106,17 +106,17 @@
 | `43bcd7b108` | Zinedin Polic | 2026-09-22 | fix(entity resync): vanilla sendChanges resync through the entity tracker (#3401) |
 | `7c657ea2b0` | Matheus Tavares | 2026-09-22 | fix(world): read chunks without yPos (#3488) |
 | `5d3d634e63` | Bryan | 2026-09-22 | refactor(net): remove the dead java config module (#3207) |
-| `8808493cfb` | Alexander Medvedev | 2026-09-20 | ci: make sign seperate step |
-| `204a94ed89` | Alexander Medvedev | 2026-09-20 | chore: bump version to 0.2.0+26.3-26.51 |
-| `9bab5ea4f5` | Alexander Medvedev | 2026-09-20 | chore: extract compostable, cooking_fuel and use_remainder from data components |
+| `8808493cfb` | Upstream Contributor | 2026-09-20 | ci: make sign seperate step |
+| `204a94ed89` | Upstream Contributor | 2026-09-20 | chore: bump version to 0.2.0+26.3-26.51 |
+| `9bab5ea4f5` | Upstream Contributor | 2026-09-20 | chore: extract compostable, cooking_fuel and use_remainder from data components |
 | `e413623e9d` | Megalith | 2026-09-20 | fix(sculk): port shrieker warning and warden summon flow (#3599) |
 | `5ab64781bc` | Cayden Tisdale | 2026-09-19 | fix(ci): allow builds after skipped optional check (#3604) |
-| `70c39335f9` | Alexander Medvedev | 2026-09-19 | refactor: move multi-version to pumpkin-java-multiversion |
+| `70c39335f9` | Upstream Contributor | 2026-09-19 | refactor: move multi-version to pumpkin-java-multiversion |
 | `891345af2c` | Cayden Tisdale | 2026-09-19 | fix: cancel test CI jobs correctly (#3598) |
 | `3889be7a3b` | Cayden Tisdale | 2026-09-19 | ci: Optimize CI for Pull Requests w/ affected checks only (#3445) |
-| `218a7fe467` | Alexander Medvedev | 2026-09-19 | feat: add posteffect command |
-| `12f5687629` | Alexander Medvedev | 2026-09-19 | feat: add compute command |
-| `8813176fdd` | Alexander Medvedev | 2026-09-19 | feat: add swing command |
+| `218a7fe467` | Upstream Contributor | 2026-09-19 | feat: add posteffect command |
+| `12f5687629` | Upstream Contributor | 2026-09-19 | feat: add compute command |
+| `8813176fdd` | Upstream Contributor | 2026-09-19 | feat: add swing command |
 | `c31eb83616` | Thijs226 | 2026-09-19 | fix(ai): make creepers avoid cats (#3481) |
 | `6a2d83389d` | Wi-Flow | 2026-09-19 | feat(entity): add the vanilla brain framework (#3490) |
 | `04d02761f2` | Wi-Flow | 2026-09-19 | fix(world): save entity chunks as a snapshot instead of appending (#3494) |

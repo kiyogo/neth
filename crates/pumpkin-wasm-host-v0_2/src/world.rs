@@ -15,7 +15,6 @@ use crate::pumpkin::plugin::common::Position as WitPosition;
 use crate::pumpkin::plugin::game_rules::{
     GameRule as WitGameRule, GameRuleValue as WitGameRuleValue,
 };
-use crate::pumpkin::plugin::item_stack::ItemStack as WitHostItemStack;
 use crate::pumpkin::plugin::world::{
     Block as WitBlock, BlockDirection as WitBlockDirection, BlockEntityType,
     BlockFlags as WitBlockFlags, BlockPos as WitBlockPos, BlockState as WitBlockState,
@@ -1222,7 +1221,7 @@ impl pumpkin::plugin::world::HostWorldWithStore<PluginHostState> for HasSelf<Plu
     async fn drop_item(
         mut host: Access<'_, PluginHostState>,
         world: Resource<World>,
-        pos: WitPosition,
+        pos: pumpkin::plugin::common::Position,
         item: Resource<crate::pumpkin::plugin::item_stack::ItemStack>,
     ) -> wasmtime::Result<()> {
         let (world, stack_mutex) = {
@@ -1238,12 +1237,12 @@ impl pumpkin::plugin::world::HostWorldWithStore<PluginHostState> for HasSelf<Plu
     }
 
     async fn spawn_falling_block(
-        mut host: Access<'_, PluginHostState, Self>,
+        mut host: Access<'_, PluginHostState>,
         world: Resource<World>,
         pos: pumpkin::plugin::common::Position,
         block_state: u16,
     ) -> wasmtime::Result<Resource<pumpkin::plugin::world::Entity>> {
-        let (world, plugin) = world_and_plugin(host.get(), &world)?;
+        let world = host.get().get(&world)?.clone();
         let block_state = BlockStateId::new(block_state)
             .ok_or_else(|| wasmtime::Error::msg("invalid falling block state ID"))?;
         let pos = pumpkin_util::math::vector3::Vector3::new(pos.0, pos.1, pos.2);
@@ -1258,27 +1257,8 @@ impl pumpkin::plugin::world::HostWorldWithStore<PluginHostState> for HasSelf<Plu
         ));
         falling.set_block_state(block_state);
         let entity: Arc<dyn pumpkin_core::entity::EntityBase> = falling;
-        let spawned_entity = Arc::clone(&entity);
-        plugin
-            .store
-            .pump_blocking(&mut host, move || world.spawn_entity(spawned_entity))
-            .await?;
+        world.spawn_entity(Arc::clone(&entity));
         host.get().add(entity)
-    }
-
-    async fn drop_item(
-        mut host: Access<'_, PluginHostState, Self>,
-        world: Resource<World>,
-        pos: pumpkin::plugin::common::Position,
-        item: Resource<WitHostItemStack>,
-    ) -> wasmtime::Result<()> {
-        let (world, plugin) = world_and_plugin(host.get(), &world)?;
-        let stack = host.get().take(item)?.lock().await.clone();
-        let pos = pumpkin_util::math::vector3::Vector3::new(pos.0, pos.1, pos.2);
-        plugin
-            .store
-            .pump_blocking(&mut host, move || world.drop_stack_at(pos, stack))
-            .await
     }
 
     async fn strike_lightning(

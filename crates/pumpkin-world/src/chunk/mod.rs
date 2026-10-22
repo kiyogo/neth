@@ -106,6 +106,18 @@ pub struct ChunkEntityData {
     pub dirty: AtomicBool,
 }
 
+impl Default for ChunkEntityData {
+    fn default() -> Self {
+        Self {
+            x: 0,
+            z: 0,
+            data: std::sync::Mutex::new(Vec::new()),
+            live: AtomicBool::new(false),
+            dirty: AtomicBool::new(false),
+        }
+    }
+}
+
 /// Represents pure block data for a chunk.
 /// Subchunks are vertical portions of a chunk. They are 16 blocks tall.
 /// There are currently 24 subchunks per chunk.

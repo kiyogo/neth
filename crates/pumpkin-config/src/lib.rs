@@ -1,4 +1,4 @@
-//! Configuration management and serialization for the Pumpkin Minecraft server.
+//! Configuration management and serialization for the Neth Minecraft server.
 #![deny(missing_docs)]
 #![deny(clippy::unwrap_used)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
@@ -71,7 +71,7 @@ use player_data::PlayerDataConfig;
 use resource_pack::ResourcePackConfig;
 use world::LevelConfig;
 
-/// Root configuration container for Pumpkin server settings.
+/// Root configuration container for Neth server settings.
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct PumpkinConfig {
@@ -86,9 +86,12 @@ pub struct PumpkinConfig {
     pub telemetry: TelemetryConfig,
 }
 
+/// Type alias for `PumpkinConfig` under the `Neth` project name.
+pub type NethConfig = PumpkinConfig;
+
 impl LoadConfiguration for PumpkinConfig {
     fn get_path() -> &'static Path {
-        Path::new("pumpkin.toml")
+        Path::new("neth.toml")
     }
 
     #[expect(clippy::print_stdout, clippy::print_stderr)]
@@ -180,15 +183,19 @@ impl LoadConfiguration for PumpkinConfig {
 /// Environment variable that overrides `networking.java.address` at startup.
 ///
 /// Hosting panels such as Pterodactyl assign a port per server; this lets them pass
-/// the bind address on every start without having to rewrite `pumpkin.toml`.
-pub const JAVA_ADDRESS_ENV: &str = "PUMPKIN_JAVA_ADDRESS";
+/// the bind address on every start without having to rewrite `neth.toml`.
+pub const JAVA_ADDRESS_ENV: &str = "NETH_JAVA_ADDRESS";
+/// Legacy environment variable for backwards compatibility.
+pub const LEGACY_JAVA_ADDRESS_ENV: &str = "PUMPKIN_JAVA_ADDRESS";
 
 impl PumpkinConfig {
     /// Applies overrides from environment variables on top of the loaded configuration.
     ///
-    /// Overrides only affect the running server and are never written back to `pumpkin.toml`.
+    /// Overrides only affect the running server and are never written back to `neth.toml`.
     pub fn apply_env_overrides(&mut self) {
-        let Ok(value) = std::env::var(JAVA_ADDRESS_ENV) else {
+        let value =
+            std::env::var(JAVA_ADDRESS_ENV).or_else(|_| std::env::var(LEGACY_JAVA_ADDRESS_ENV));
+        let Ok(value) = value else {
             return;
         };
         let value = value.trim();
@@ -371,7 +378,10 @@ pub trait LoadConfiguration {
             let _ = fs::create_dir(config_dir);
         }
 
-        let path = config_dir.join(Self::get_path());
+        let mut path = config_dir.join(Self::get_path());
+        if !path.exists() && config_dir.join("pumpkin.toml").exists() {
+            path = config_dir.join("pumpkin.toml");
+        }
 
         let config = if path.exists() {
             let file_content = match fs::read_to_string(&path) {
@@ -429,9 +439,9 @@ pub trait LoadConfiguration {
 
             merged_config
         } else {
-            for legacy in ["config.toml", "configuration.toml"] {
+            for legacy in ["config.toml", "configuration.toml", "pumpkin.toml"] {
                 let legacy_path = config_dir.join(legacy);
-                if legacy_path.exists() {
+                if legacy_path.exists() && legacy_path != path {
                     eprintln!(
                         "Found a legacy configuration file at {}. This version reads {}. Rename it to keep using its values.",
                         legacy_path.display(),

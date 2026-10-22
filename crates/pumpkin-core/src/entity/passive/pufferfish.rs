@@ -281,15 +281,8 @@ impl Mob for PufferfishEntity {
         }
 
         let world = entity.world.load_full();
-        let in_water = entity.touching_water.load(Ordering::Relaxed);
-
-        // Flop on land (matching vanilla AbstractFish.aiStep)
-        if !in_water {
-            self.mob_entity
-                .living_entity
-                .movement_input
-                .store(Vector3::new(0.0, 0.0, 0.0));
-        }
+        let in_water =
+            entity.touching_water.load(Ordering::Relaxed) || entity.is_in_water();
 
         if !in_water && entity.on_ground.load(Ordering::Relaxed) {
             let mut rng = rand::rng();

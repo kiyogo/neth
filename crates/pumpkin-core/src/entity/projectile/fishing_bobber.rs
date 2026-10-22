@@ -8,7 +8,7 @@ use crate::entity::item::ItemEntity;
 use crate::entity::projectile::{calculate_ray_intersection, is_projectile};
 use crate::entity::util::RandomExt;
 use crate::world::World;
-use crate::world::loot::LootContextParameters;
+use crate::world::loot::{LootContextParameters, LootEntityPropertyValue, LootEntityTarget};
 use crate::{
     entity::{Entity, EntityBase, living::LivingEntity, player::Player},
     server::Server,
@@ -44,6 +44,14 @@ impl HookState {
     const MAX_OUT_OF_WATER_TIME: u8 = 10;
 }
 
+/// Vanilla `FishingHook.OpenWaterType`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum OpenWaterType {
+    AboveWater,
+    InsideWater,
+    Invalid,
+}
+
 pub struct FishingBobberEntity {
     pub entity: Entity,
     pub owner_id: i32,
@@ -57,11 +65,31 @@ pub struct FishingBobberEntity {
     pub fish_angle: AtomicCell<f32>,
     pub luck_bonus: i32,
     pub wait_time_reduction_ticks: i32,
+    pub open_water: AtomicBool,
 }
 
 impl FishingBobberEntity {
     const INERTIA: f64 = 0.92;
     const GRAVITY: f64 = 0.03;
+
+    #[must_use]
+    pub fn new_unowned(entity: Entity) -> Self {
+        Self {
+            entity,
+            owner_id: 0,
+            owner_uuid: uuid::Uuid::nil(),
+            state: AtomicCell::new(HookState::Flying),
+            left_owner: AtomicBool::new(true),
+            life: AtomicI32::new(0),
+            wait_countdown: AtomicI32::new(0),
+            bite_countdown: AtomicI32::new(0),
+            hook_countdown: AtomicI32::new(0),
+            fish_angle: AtomicCell::new(0.0),
+            luck_bonus: 0,
+            wait_time_reduction_ticks: 0,
+            open_water: AtomicBool::new(true),
+        }
+    }
 
     /// Creates a bobber owned by `owner`, thrown along the given `yaw` and `pitch`.
     pub fn new(
@@ -121,6 +149,7 @@ impl FishingBobberEntity {
             fish_angle: AtomicCell::new(0.0),
             luck_bonus,
             wait_time_reduction_ticks,
+            open_water: AtomicBool::new(true),
         }
     }
 
@@ -168,14 +197,20 @@ impl FishingBobberEntity {
             let bobber_pos = self.entity.pos.load();
             let player_luck = player.living_entity.get_attribute_value(&Attributes::LUCK) as f32;
             let total_luck = self.luck_bonus as f32 + player_luck;
+            let is_open_water = self.open_water.load(Ordering::Relaxed);
 
-            let params = LootContextParameters {
+            let mut params = LootContextParameters {
                 tool: Some(used_item.clone()),
                 position: Some(bobber_pos),
                 this_entity: Some(&EntityType::FISHING_BOBBER),
                 luck: total_luck,
                 ..Default::default()
             };
+            params.add_entity_property(
+                LootEntityTarget::This,
+                "minecraft:type_specific/fishing_hook/in_open_water",
+                LootEntityPropertyValue::Bool(is_open_water),
+            );
 
             let items = world
                 .get_loot_table("gameplay/fishing")
@@ -428,6 +463,17 @@ impl FishingBobberEntity {
                     if self.bite_countdown.load(Ordering::Relaxed) > 0 {
                         let mut synced = self.synced_random(&world);
                         velocity.y -= 0.1 * f64::from(synced.next_f32() * synced.next_f32());
+                    }
+                    if self.bite_countdown.load(Ordering::Relaxed) <= 0
+                        && self.hook_countdown.load(Ordering::Relaxed) <= 0
+                    {
+                        self.open_water.store(true, Ordering::Relaxed);
+                    } else {
+                        let prev_open = self.open_water.load(Ordering::Relaxed);
+                        let open = prev_open
+                            && out_of_water_time < HookState::MAX_OUT_OF_WATER_TIME
+                            && self.calculate_open_water(&world, &block_pos);
+                        self.open_water.store(open, Ordering::Relaxed);
                     }
                     self.catching_fish(
                         &world,
@@ -743,6 +789,77 @@ impl FishingBobberEntity {
             self.wait_countdown.store(wait, Ordering::Relaxed);
         }
     }
+
+    fn get_open_water_type_for_block(world: &World, pos: &BlockPos) -> OpenWaterType {
+        let block_state = world.get_block_state(pos);
+        let block = Block::from_state_id(block_state.id);
+        if !block_state.is_air() && block.id != Block::LILY_PAD.id {
+            let (fluid, fluid_state) = world.get_fluid_and_fluid_state(pos);
+            let has_no_collision = block_state.get_block_collision_shapes().next().is_none();
+            if fluid.matches_type(&Fluid::WATER) && fluid_state.is_source && has_no_collision {
+                OpenWaterType::InsideWater
+            } else {
+                OpenWaterType::Invalid
+            }
+        } else {
+            OpenWaterType::AboveWater
+        }
+    }
+
+    fn get_open_water_type_for_area(
+        world: &World,
+        from: &BlockPos,
+        to: &BlockPos,
+    ) -> OpenWaterType {
+        let mut area_type: Option<OpenWaterType> = None;
+        for x in from.0.x..=to.0.x {
+            for y in from.0.y..=to.0.y {
+                for z in from.0.z..=to.0.z {
+                    let block_type =
+                        Self::get_open_water_type_for_block(world, &BlockPos::new(x, y, z));
+                    match area_type {
+                        None => area_type = Some(block_type),
+                        Some(prev) => {
+                            if prev != block_type {
+                                return OpenWaterType::Invalid;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        area_type.unwrap_or(OpenWaterType::Invalid)
+    }
+
+    /// Vanilla `FishingHook.calculateOpenWater(BlockPos)`.
+    #[must_use]
+    pub fn calculate_open_water(&self, world: &World, block_pos: &BlockPos) -> bool {
+        let mut previous_layer = OpenWaterType::Invalid;
+
+        for y in -1..=2 {
+            let from = BlockPos::new(block_pos.0.x - 2, block_pos.0.y + y, block_pos.0.z - 2);
+            let to = BlockPos::new(block_pos.0.x + 2, block_pos.0.y + y, block_pos.0.z + 2);
+            let layer = Self::get_open_water_type_for_area(world, &from, &to);
+            match layer {
+                OpenWaterType::AboveWater => {
+                    if previous_layer == OpenWaterType::Invalid {
+                        return false;
+                    }
+                }
+                OpenWaterType::InsideWater => {
+                    if previous_layer == OpenWaterType::AboveWater {
+                        return false;
+                    }
+                }
+                OpenWaterType::Invalid => {
+                    return false;
+                }
+            }
+            previous_layer = layer;
+        }
+
+        true
+    }
 }
 
 /// Vanilla `Entity.getRootVehicle`: the UUID of the entity at the top of the vehicle chain.
@@ -869,6 +986,7 @@ mod tests {
             bite_countdown: AtomicI32::new(0),
             hook_countdown: AtomicI32::new(0),
             fish_angle: AtomicCell::new(0.0),
+            open_water: AtomicBool::new(false),
             luck_bonus: 0,
             wait_time_reduction_ticks: 0,
         }
@@ -1065,4 +1183,21 @@ mod tests {
             "the detached hook resumed its old flight"
         );
     }
+
+    #[tokio::test]
+    async fn open_water_initial_state_and_block_types() {
+        let world = test_world();
+        let owner = Arc::new(Entity::new(
+            world.clone(),
+            Vector3::new(0.0, 64.0, 0.0),
+            &EntityType::PLAYER,
+        ));
+        let bobber = bobber_for(&world, Vector3::new(0.0, 64.0, 0.0), &owner);
+        assert!(!bobber.open_water.load(Ordering::Relaxed));
+
+        let air_pos = BlockPos::new(0, 100, 0);
+        let air_type = FishingBobberEntity::get_open_water_type_for_block(&world, &air_pos);
+        assert_eq!(air_type, OpenWaterType::AboveWater);
+    }
 }
+

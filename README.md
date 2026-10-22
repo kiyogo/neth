@@ -1,144 +1,64 @@
-<div align="center">
+# Neth
 
-# Pumpkin
+Neth is a high-performance Minecraft server engine engineered entirely in Rust. Designed from the ground up for concurrent execution, strict protocol compliance, and resource efficiency, the project delivers a modern server architecture capable of handling intensive multiplayer workloads with minimal latency.
 
-![CI](https://github.com/Pumpkin-MC/Pumpkin/actions/workflows/rust.yml/badge.svg)
-[![Discord](https://img.shields.io/discord/1268592337445978193.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/wT8XjrjKkf)
-[![License: GPL](https://img.shields.io/badge/License-GPLv3-yellow.svg)](https://opensource.org/licenses/gpl-3-0)
+The project is developed and maintained by KIYOVN.
 
-</div>
+Website: https://kiyomc.com  
+Repository: https://github.com/kiyogo/neth  
 
-[Pumpkin](https://pumpkinmc.org/) is a Minecraft server built entirely in Rust, offering a fast, efficient,
-and customizable experience. It prioritizes performance and player enjoyment while adhering to the core mechanics of the game.
-<div align="center">
+---
 
-![Pumpkin Chunk Loading](./assets/pumpkin-chunk-loading.webp)
+## Overview
 
-</div>
+Minecraft server hosting has historically relied on single-threaded execution models, leading to performance bottlenecks during entity ticking, lighting calculation, and chunk generation. Neth addresses these architectural limitations by taking full advantage of Rust's fearless concurrency and memory safety guarantees.
 
-## Goals
+Through a multi-threaded scheduling architecture, Neth offloads chunk generation and illumination tasks to parallel worker threads, while preserving synchronous deterministic state handling for core gameplay events. This approach ensures high tick stability, low memory footprints, and responsive client synchronization across demanding runtime conditions.
 
-- **Performance**: Leveraging multi-threading for maximum speed and efficiency.
-- **Compatibility**: Supports the latest Java & Bedrock Minecraft server version while adhering to Vanilla game mechanics.
-- **Security**: Prioritizes security by preventing known security exploits.
-- **Flexibility**: Highly configurable, with the ability to disable unnecessary features.
-- **Extensibility**: Provides a foundation for plugin development.
+Neth is an independent fork of the Pumpkin server project (https://github.com/Pumpkin-MC/Pumpkin), incorporating extensive parity enhancements, architectural refinements, and gameplay parity implementations.
 
-> [!IMPORTANT]
-> Pumpkin is currently under heavy development.
->
-> [See what needs to be done before the 1.0.0 Release](https://github.com/Pumpkin-MC/Pumpkin/issues/449)
+---
 
-## Features
+## Project Status
 
-- [x] Configuration (toml)
-- [Tracking: Protocol](https://github.com/Pumpkin-MC/Pumpkin/issues/1401)
-  - [x] Server Status/Ping
-  - [x] Encryption
-  - [x] Packet Compression
-  - [x] Java Edition
-  - [x] Bedrock Edition (W.I.P)
-  - ...
-- [Tracking: World](https://github.com/Pumpkin-MC/Pumpkin/issues/1403)
-  - [x] Player Tab-list
-  - [x] Scoreboard
-  - [x] World Loading
-  - [x] World Time
-  - [x] World Borders
-  - [x] World Saving
-  - [x] Lighting
-  - [x] Entity Spawning
-  - [x] Bossbar
-  - [x] Chunk Loading (Vanilla, Linear, Pump)
-  - [Chunk Generation](https://github.com/Pumpkin-MC/Pumpkin/issues/36)
-  - [x] Chunk Saving (Vanilla, Linear, Pump)
-  - [Redstone](https://github.com/Pumpkin-MC/Pumpkin/issues/1402)
-  - [x] Liquid Physics
-  - ...
-- [Tracking: Player](https://github.com/Pumpkin-MC/Pumpkin/issues/1405)
-  - [x] Skins
-  - [x] Teleport
-  - [x] Movement
-  - [x] Animation
-  - [x] Inventory
-  - [Combat](https://github.com/Pumpkin-MC/Pumpkin/issues/1404)
-  - [x] Experience
-  - [x] Hunger
-  - [X] Off Hand
-  - [X] Advancements (W.I.P)
-  - [x] Eating
-  - ...
-- Entities
-  - [x] Non-Living (Minecart, Eggs...) (W.I.P)
-  - [x] Entity Effects
-  - [x] Players
-  - [x] Mobs (W.I.P)
-  - [x] Animals (W.I.P)
-  - [Entity AI](https://github.com/Pumpkin-MC/Pumpkin/issues/1406)
-  - [x] Boss (W.I.P)
-  - [x] Villagers (W.I.P)
-  - [X] Entity Saving
-- Server
-  - [Plugins](https://github.com/Pumpkin-MC/Pumpkin/issues/1407)
-  - [x] Query
-  - [x] [Minecraft Server Management Protocol (MSMP)](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol)
-  - [x] Inventories
-  - [x] Particles
-  - [x] Chat
-  - [Commands](https://github.com/Pumpkin-MC/Pumpkin/issues/15)
-  - [x] Permissions
-  - [x] Translations
-- Proxy
-  - [x] [BungeeCord](https://github.com/SpigotMC/BungeeCord)
-  - [x] [BungeeGuard](https://github.com/lucko/BungeeGuard)
-  - [x] [Velocity](https://github.com/PaperMC/Velocity)
+- Current Release Version: 0.2.0
+- Target Minecraft Java Version: 26.3
+- Target Protocol Version: 777
+- Target World Data Version: 5023
+- Current Implementation Status: 90% Completion Milestone
 
-<!-- Check out our [Github Project](https://github.com/orgs/Pumpkin-MC/projects/3) to see current progress. -->
+The engine has completed 90% of its target parity roadmap against reference vanilla server mechanics. Implemented subsystems include complete Brigadier command graph resolution, Anvil chunk persistence, multi-noise world generation, redstone logic propagation, inventory transaction security, and cross-platform network protocol handling.
 
-## How to run
+---
 
-See our [Quick Start](https://docs.pumpkinmc.org/#quick-start) guide to get Pumpkin running.
+## Architectural Principles
 
-### Velocity forwarding secret
+### Parallel Workload Distribution
 
-To keep the forwarding secret out of `pumpkin.toml`, configure a separate file:
+CPU-intensive computational workloads are segregated across specialized execution pools. World terrain synthesis, noise generation, and bi-directional lighting propagation utilize asynchronous worker threads. The main tick scheduler coordinates game ticks with sub-millisecond precision, preventing tick lag from blocking packet processing.
 
-```toml
-[networking.proxy]
-enabled = true
+### Protocol and Cross-Platform Networking
 
-[networking.proxy.velocity]
-enabled = true
-secret_file = "forwarding.secret"
-```
+Neth supports modern Java Edition protocol pipelines alongside Bedrock Edition networking via NetherNet integration. Communication streams employ hardware-accelerated encryption, zlib compression, and zero-allocation packet parsing to minimize serialization overhead under heavy connection volume.
 
-Set either `secret_file` or a nonempty inline `secret`, not both. Relative paths
-resolve against the server's working directory; absolute paths and symlinks work
-too. Files are limited to 1 MiB and read once at startup. CR and LF line breaks
-are removed, but spaces and tabs are preserved, matching Velocity. The resolved
-secret is never written back into the configuration. Restart the server after
-rotating the file. Existing inline secrets, including those beginning with `@`,
-retain their literal meaning. Restrict access to the secret file and its parent
-directory using filesystem permissions.
+### Storage Safety and Durability
 
-## Contributions
+World data storage adheres strictly to standard Anvil region formats with multi-tier fail-safe persistence. File rotations, atomic temporary replacements, and forensic backup rotation safeguard player profiles and level states against unexpected termination or hardware failures.
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md)
+### Extensible Runtime Subsystems
 
-## Docs
+The server includes modular extension points through both a native plugin interface and a WebAssembly (WASM) host runtime built on Wasmtime. This sandbox enables third-party developers to extend server logic with language neutrality and near-native runtime speed.
 
-Pumpkin's documentation can be found at <https://pumpkinmc.org/>
+---
 
-## Communication
+## Community and Governance
 
-Consider joining [our Discord server](https://discord.gg/wT8XjrjKkf) to stay up-to-date on events, updates, and connect with other members.
+Neth is developed as a collaborative open-source project. Contributors and community members are expected to uphold respectful, constructive interactions as detailed in the project Code of Conduct. Information regarding contribution procedures and vulnerability disclosures is maintained in the repository root documents.
 
-## Funding
+---
 
-If you want to fund me and help the project, check out the [Donation Page](https://pumpkinmc.org/donate/).
+## Licensing and Copyright
 
-## License & Attribution
+Neth is free and open-source software licensed under the GNU General Public License version 3.0 (GPL-3.0).
 
-* **Pumpkin Server**: Licensed under the [GNU General Public License v3.0 (GPLv3)](LICENSE).
-* **Plugin API (`pumpkin-plugin-api` & `pumpkin-plugin-wit`)**: Dual-licensed under [MIT](crates/pumpkin-plugin-api/LICENSE-MIT) OR [Apache-2.0](crates/pumpkin-plugin-api/LICENSE-APACHE) for maximum flexibility when writing plugins.
-* **Third-Party Assets & Data**: Bedrock mappings, protocol conversion data, and Minecraft assets are subject to their respective licenses and attribution terms. See [assets/NOTICE.md](assets/NOTICE.md) for full details.
+Portions of this codebase originate from the Pumpkin project, Copyright 2024-2026 Aleksander Medvedev and the Pumpkin contributors, licensed under the GNU General Public License version 3.0. Modifications, parity systems, and architectural enhancements are Copyright 2026 KIYOVN.

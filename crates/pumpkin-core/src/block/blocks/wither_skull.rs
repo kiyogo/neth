@@ -1,7 +1,6 @@
 use pumpkin_data::{
     Block, BlockDirection, BlockState, BlockStateId, entity::EntityType, world::WorldEvent,
 };
-use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
@@ -24,8 +23,11 @@ pub struct WitherPattern {
 #[must_use]
 pub fn find_wither_pattern(world: &Arc<World>, skull_pos: &BlockPos) -> Option<WitherPattern> {
     let is_soul_block = |block: &Block| block == &Block::SOUL_SAND || block == &Block::SOUL_SOIL;
-    let is_skull =
-        |pos: &BlockPos| pos == skull_pos || world.get_block(pos) == &Block::WITHER_SKELETON_SKULL;
+    let is_skull = |pos: &BlockPos| {
+        pos == skull_pos
+            || world.get_block(pos) == &Block::WITHER_SKELETON_SKULL
+            || world.get_block(pos) == &Block::WITHER_SKELETON_WALL_SKULL
+    };
 
     for dir in [BlockDirection::North, BlockDirection::West] {
         let opposite = dir.opposite();
@@ -92,12 +94,21 @@ fn spawn_wither(world: &Arc<World>, pattern: &WitherPattern) {
     }
 }
 
-#[pumpkin_block("wither_skeleton_skull")]
 pub struct WitherSkeletonSkullBlock;
+
+impl crate::block::BlockMetadata for WitherSkeletonSkullBlock {
+    fn ids() -> Box<[pumpkin_data::BlockId]> {
+        [
+            pumpkin_data::BlockId::WITHER_SKELETON_SKULL,
+            pumpkin_data::BlockId::WITHER_SKELETON_WALL_SKULL,
+        ]
+        .into()
+    }
+}
 
 impl BlockBehaviour for WitherSkeletonSkullBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
-        SkullBlock::on_place(&SkullBlock, args)
+        SkullBlock.on_place(args)
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
@@ -107,6 +118,10 @@ impl BlockBehaviour for WitherSkeletonSkullBlock {
         if let Some(pattern) = find_wither_pattern(args.world, args.position) {
             spawn_wither(args.world, &pattern);
         }
+    }
+
+    fn on_neighbor_update(&self, args: crate::block::OnNeighborUpdateArgs<'_>) {
+        SkullBlock.on_neighbor_update(args);
     }
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {

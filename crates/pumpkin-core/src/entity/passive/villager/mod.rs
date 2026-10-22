@@ -1168,6 +1168,74 @@ impl VillagerEntity {
         }
     }
 
+    pub const GOSSIP_COOLDOWN: i64 = 1_200;
+
+    /// Shares gossip with another villager, matching vanilla `Villager.java:gossip()`.
+    pub fn share_gossip_with(&self, target: &Self, game_time: i64) {
+        let my_last_share = self.last_gossip_share_time.load(Ordering::Relaxed);
+        let target_last_share = target.last_gossip_share_time.load(Ordering::Relaxed);
+
+        let can_self_share = my_last_share == 0 || game_time < my_last_share || game_time >= my_last_share + Self::GOSSIP_COOLDOWN;
+        let can_target_share = target_last_share == 0 || game_time < target_last_share || game_time >= target_last_share + Self::GOSSIP_COOLDOWN;
+
+        if !can_self_share || !can_target_share {
+            return;
+        }
+
+        let mut new_gossips_for_self = 0;
+        {
+            let target_gossips = target
+                .gossips
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut self_gossips = self
+                .gossips
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            let mut candidate_entries = Vec::new();
+            for (uuid, kinds) in target_gossips.iter() {
+                for (kind, val) in kinds.iter() {
+                    candidate_entries.push((*uuid, *kind, *val));
+                }
+            }
+
+            use rand::seq::SliceRandom;
+            let mut rng = rand::rng();
+            candidate_entries.shuffle(&mut rng);
+
+            for (uuid, kind, val) in candidate_entries.into_iter().take(10) {
+                let decayed = val - kind.decay_per_transfer();
+                if decayed >= 2 {
+                    let entry = self_gossips.entry(uuid).or_default();
+                    let current = entry.entry(kind).or_insert(0);
+                    let merged = (*current).max(decayed).min(kind.max_value());
+                    if merged != *current {
+                        *current = merged;
+                        new_gossips_for_self += 1;
+                    }
+                }
+            }
+        }
+
+        self.last_gossip_share_time.store(game_time, Ordering::Relaxed);
+        target.last_gossip_share_time.store(game_time, Ordering::Relaxed);
+
+        if new_gossips_for_self > 0 {
+            let trading_player = *self
+                .trading_player
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some((player_uuid, _)) = trading_player {
+                let world = self.get_entity().world.load();
+                if let Some(player) = world.get_player_by_uuid(player_uuid) {
+                    self.update_special_prices(&player);
+                    self.notify_trading_player_offers_updated();
+                }
+            }
+        }
+    }
+
     pub const RESTOCK_COOLDOWN: i64 = 2_400;
     pub const MAX_RESTOCKS_PER_DAY: i32 = 2;
     pub const HALF_DAY_TICKS: i64 = 12_000;
@@ -1779,7 +1847,7 @@ impl VillagerEntity {
         }
     }
 
-    pub fn wake_up(&self, _world: &Arc<World>) {
+    pub fn wake_up(&self) {
         <Self as Mob>::wake_up(self);
     }
 

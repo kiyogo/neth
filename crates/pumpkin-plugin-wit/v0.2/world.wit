@@ -494,15 +494,6 @@ interface %world {
         /// Returns all entities currently leashed to this entity.
         get-leashed-entities: func() -> list<entity>;
 
-        /// Returns whether this entity is currently leashed to another entity.
-        is-leashed: func() -> bool;
-
-        /// Returns the entity this entity is leashed to, if any.
-        get-leash-holder: func() -> option<entity>;
-
-        /// Returns all entities currently leashed to this entity.
-        get-leashed-entities: func() -> list<entity>;
-
         get-bounding-box: func() -> bounding-box;
 
         is-in-water: func() -> bool;
@@ -936,10 +927,6 @@ interface %world {
         /// Obtain a state ID with `resolve-block-state`; resolving
         /// `minecraft:glass` with no properties produces a falling glass block.
         spawn-falling-block: func(pos: position, block-state: u16) -> entity;
-
-        /// Attempts to drop an item stack at the given position.
-        /// No entity is spawned if the stack is empty or the item-spawn event is cancelled.
-        drop-item: func(pos: position, item: item-stack);
 
         /// Returns a list of all entities in this world.
         get-entities: func() -> list<entity>;

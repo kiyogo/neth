@@ -523,13 +523,32 @@ impl Goal for SocializeAtBellGoal {
         };
 
         let position = mob.get_entity().pos.load();
+        let target_pos = target.get_entity().pos.load();
+
+        if position.squared_distance_to_vec(&target_pos) <= 4.0 {
+            // Close enough to talk & share gossip
+            if let Some(self_villager) = mob.cast_any().downcast_ref::<super::VillagerEntity>()
+                && let Some(target_villager) = target.cast_any().downcast_ref::<super::VillagerEntity>()
+            {
+                let game_time = mob
+                    .get_entity()
+                    .world
+                    .load()
+                    .level_time
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .world_age;
+                self_villager.share_gossip_with(target_villager, game_time);
+            }
+        }
+
         mob_entity
             .navigator
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .set_progress(NavigatorGoal::new(
                 position,
-                target.get_entity().pos.load(),
+                target_pos,
                 self.speed,
             ));
     }

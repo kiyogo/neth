@@ -183,16 +183,6 @@ impl ArmorStandEntity {
         self.get_entity().invisible.load(Ordering::Relaxed)
     }
 
-    pub fn set_item_slot(&self, slot: EquipmentSlot, stack: ItemStack) {
-        self.living_entity
-            .entity_equipment
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .equipment
-            .insert(slot.clone(), stack.clone());
-        self.living_entity.send_equipment_changes(&[(slot, stack)]);
-    }
-
     pub fn pack_rotation(&self) -> PackedRotation {
         self.rotation.load()
     }
@@ -273,7 +263,7 @@ impl ArmorStandEntity {
             .get(slot)
     }
 
-    fn set_item_slot(&self, slot: &EquipmentSlot, stack: &ItemStack) {
+    pub fn set_item_slot(&self, slot: &EquipmentSlot, stack: ItemStack) {
         let previous = self
             .living_entity
             .entity_equipment
@@ -281,9 +271,9 @@ impl ArmorStandEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .put(slot, stack.clone());
 
-        self.living_entity.on_equip_item(slot, &previous, stack);
+        self.living_entity.on_equip_item(slot, &previous, &stack);
         self.living_entity
-            .send_equipment_changes(&[(slot.clone(), stack.clone())]);
+            .send_equipment_changes(&[(slot.clone(), stack)]);
     }
 
     fn get_clicked_slot(&self, position: Vector3<f64>) -> EquipmentSlot {
@@ -311,7 +301,7 @@ impl ArmorStandEntity {
             return false;
         };
 
-        self.set_item_slot(slot, &new_stand_stack);
+        self.set_item_slot(slot, new_stand_stack);
         true
     }
 

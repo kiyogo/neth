@@ -414,6 +414,10 @@ impl Mob for CreakingEntity {
         Some(self)
     }
 
+    fn is_pushable(&self) -> bool {
+        self.can_move.load(Ordering::Relaxed) && self.get_mob_entity().living_entity.is_pushable()
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {

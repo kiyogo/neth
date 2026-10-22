@@ -92,6 +92,15 @@ impl GossipType {
             Self::Trading => 2,
         }
     }
+
+    #[must_use]
+    pub const fn decay_per_transfer(self) -> i32 {
+        match self {
+            Self::MajorNegative => 10,
+            Self::MinorNegative | Self::MajorPositive | Self::Trading => 20,
+            Self::MinorPositive => 5,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -101,21 +110,34 @@ mod tests {
     #[test]
     fn gossip_types_use_vanilla_names_and_values() {
         let types = [
-            (GossipType::MajorNegative, "major_negative", -5, 100, 10),
-            (GossipType::MinorNegative, "minor_negative", -1, 200, 20),
-            (GossipType::MinorPositive, "minor_positive", 1, 25, 1),
-            (GossipType::MajorPositive, "major_positive", 5, 20, 0),
-            (GossipType::Trading, "trading", 1, 25, 2),
+            (GossipType::MajorNegative, "major_negative", -5, 100, 10, 10),
+            (GossipType::MinorNegative, "minor_negative", -1, 200, 20, 20),
+            (GossipType::MinorPositive, "minor_positive", 1, 25, 1, 5),
+            (GossipType::MajorPositive, "major_positive", 5, 20, 0, 20),
+            (GossipType::Trading, "trading", 1, 25, 2, 20),
         ];
 
-        for (index, (gossip_type, name, weight, max, decay)) in types.into_iter().enumerate() {
+        for (index, (gossip_type, name, weight, max, decay, transfer_decay)) in types.into_iter().enumerate() {
             assert_eq!(gossip_type.name(), name);
             assert_eq!(GossipType::from_name(name), Some(gossip_type));
             assert_eq!(GossipType::from_legacy_id(index as i32), Some(gossip_type));
             assert_eq!(gossip_type.weight(), weight);
             assert_eq!(gossip_type.max_value(), max);
             assert_eq!(gossip_type.daily_decay(), decay);
+            assert_eq!(gossip_type.decay_per_transfer(), transfer_decay);
         }
+    }
+
+    #[test]
+    fn gossip_transfer_decay_and_discard_threshold() {
+        let val = 25;
+        let decayed = val - GossipType::Trading.decay_per_transfer();
+        assert_eq!(decayed, 5);
+        assert!(decayed >= 2);
+
+        let small_val = 20;
+        let decayed_small = small_val - GossipType::Trading.decay_per_transfer();
+        assert!(decayed_small < 2);
     }
 }
 

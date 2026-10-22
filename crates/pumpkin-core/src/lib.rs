@@ -701,7 +701,7 @@ impl PumpkinServer {
                             let packet_limiter = PacketRateLimiter::from_config(
                                 &server_clone.advanced_config.networking.java.packet_limiter,
                             );
-                            let pending = PendingConnection::new(
+                            let mut pending = PendingConnection::new(
                                 connection,
                                 client_addr,
                                 client_id,

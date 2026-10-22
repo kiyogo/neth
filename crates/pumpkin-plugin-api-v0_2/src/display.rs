@@ -67,22 +67,22 @@ pub trait EntityDisplayExt: Sized {
 
 impl EntityDisplayExt for Entity {
     fn into_display_entity(self) -> Result<DisplayEntity, Entity> {
-        DisplayEntity::from_entity(self)
+        DisplayEntity::from_entity(&self).ok_or(self)
     }
 
     fn into_block_display_entity(self) -> Result<BlockDisplayEntity, Entity> {
-        BlockDisplayEntity::from_entity(self)
+        BlockDisplayEntity::from_entity(&self).ok_or(self)
     }
 
     fn into_item_display_entity(self) -> Result<ItemDisplayEntity, Entity> {
-        ItemDisplayEntity::from_entity(self)
+        ItemDisplayEntity::from_entity(&self).ok_or(self)
     }
 
     fn into_text_display_entity(self) -> Result<TextDisplayEntity, Entity> {
-        TextDisplayEntity::from_entity(self)
+        TextDisplayEntity::from_entity(&self).ok_or(self)
     }
 
     fn into_interaction_entity(self) -> Result<InteractionEntity, Entity> {
-        InteractionEntity::from_entity(self)
+        InteractionEntity::from_entity(&self).ok_or(self)
     }
 }

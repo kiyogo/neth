@@ -98,4 +98,19 @@ impl BeehiveBlockEntity {
             flower_pos: Mutex::new(None),
         }
     }
+
+    #[must_use]
+    pub fn get_bee_count(&self) -> usize {
+        for (comp_type, comp_data) in self.components.collect() {
+            if comp_type == DataComponent::Bees {
+                if let Some(bees) = comp_data
+                    .as_any()
+                    .downcast_ref::<pumpkin_data::data_component_impl::BeesImpl>()
+                {
+                    return bees.bees.len();
+                }
+            }
+        }
+        0
+    }
 }

@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -10,7 +11,6 @@ use pumpkin_util::GameMode;
 use pumpkin_util::text::TextComponent;
 
 use crate::entity::player::Player;
-use crate::entity::vehicle::boat::chest::ChestBoat;
 use crate::entity::{Entity, EntityBase, living::LivingEntity};
 use crate::server::Server;
 
@@ -22,7 +22,16 @@ use pumpkin_protocol::java::client::play::Metadata;
 use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::vehicle::vehicle::VehicleEntity;
+
+pub mod block_effects;
+pub mod chest;
+pub mod container;
+pub mod dismount;
+pub mod passengers;
+pub mod physics;
+
 use block_effects::BoatMovement;
+use chest::ChestBoat;
 use physics::BoatStatus;
 
 const TIME_TO_EJECT: f32 = 60.0;
@@ -154,6 +163,9 @@ impl BoatEntity {
                 translation::java::ENTITY_MINECRAFT_CHEST_BOAT,
                 translation::bedrock::ENTITY_CHEST_BOAT_NAME,
             ),
+        }
+    }
+
     fn tick_underwater(&self, status: BoatStatus) {
         let ticks = if status.is_underwater() {
             self.ticks_underwater.load() + 1.0

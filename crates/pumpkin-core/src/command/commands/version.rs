@@ -107,8 +107,12 @@ pub fn register(dispatcher: &mut CommandDispatcher, registry: &PermissionRegistr
     registry.register_permission_or_panic(Permission::new(
         PERMISSION,
         DESCRIPTION,
-        PermissionDefault::AllowAll,
+        PermissionDefault::Allow,
     ));
 
-    dispatcher.register(command("version").execute(&VersionCommandExecutor));
+    dispatcher.register(
+        command("version", DESCRIPTION)
+            .requires(PERMISSION)
+            .executes(VersionCommandExecutor),
+    );
 }

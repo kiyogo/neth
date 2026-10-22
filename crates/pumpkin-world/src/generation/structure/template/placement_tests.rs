@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use pumpkin_data::{Block, BlockState, BlockStateId, dimension::Dimension};
 use pumpkin_util::{math::position::BlockPos, random::RandomGenerator, world_seed::Seed};
@@ -93,19 +94,17 @@ fn empty_terrain() -> RecordingPlacer {
 fn template(blocks: &[(i32, i32, i32, &str)]) -> StructureTemplate {
     let mut template = StructureTemplate::default();
     template.size = Vector3::new(16, 8, 16);
-    template.palette = blocks
+    let block_infos: Vec<StructureBlockInfo> = blocks
         .iter()
-        .map(|(_, _, _, name)| PaletteEntry::from_string(name))
-        .collect();
-    template.blocks = blocks
-        .iter()
-        .enumerate()
-        .map(|(i, &(x, y, z, _))| TemplateBlock {
-            pos: Vector3::new(x, y, z),
-            state: i as u32,
-            nbt: None,
+        .map(|&(x, y, z, name)| {
+            StructureBlockInfo::new(
+                Vector3::new(x, y, z),
+                Arc::new(PaletteEntry::from_string(name)),
+                None,
+            )
         })
         .collect();
+    template.palettes = vec![Palette::new(block_infos)];
     template
 }
 
@@ -140,7 +139,7 @@ fn gravity_uses_a_stable_surface_and_preserves_local_heights() {
             .set_block_state(1, 60, 1, Block::STONE.default_state);
         let mut blocks = template(&[(1, 0, 1, "minecraft:stone"), (1, 2, 1, "minecraft:chest")]);
         if reverse {
-            blocks.blocks.reverse();
+            blocks.palettes[0].blocks_mut().reverse();
         }
         place(
             &mut terrain,
@@ -421,6 +420,23 @@ fn projected_jigsaws_respect_keep_jigsaws_and_legacy_air() {
     }
 }
 
+fn assert_chunk_blocks_eq(a: &ProtoChunk, b: &ProtoChunk, msg: &str) {
+    let min_y = a.bottom_y() as i32;
+    let max_y = min_y + a.height() as i32;
+    for y in min_y..max_y {
+        for z in 0..16 {
+            for x in 0..16 {
+                let pos = Vector3::new(x, y as i32, z);
+                assert_eq!(
+                    a.get_block_state(&pos),
+                    b.get_block_state(&pos),
+                    "{msg} at ({x}, {y}, {z})"
+                );
+            }
+        }
+    }
+}
+
 #[test]
 #[allow(clippy::too_many_lines, clippy::print_stdout)]
 fn village_path_projection_1024_cases() {
@@ -483,11 +499,11 @@ fn village_path_projection_1024_cases() {
                 };
                 let mut natural = build_terrain();
                 let anchor = template
-                    .blocks
+                    .blocks()
                     .iter()
                     .find(|block| {
                         !matches!(
-                            template.palette[block.state as usize].name.as_str(),
+                            block.state.name.as_str(),
                             "minecraft:air"
                                 | "minecraft:structure_void"
                                 | "minecraft:jigsaw"
@@ -536,8 +552,8 @@ fn village_path_projection_1024_cases() {
                     writes: Vec::new(),
                 };
                 let mut expected = HashSet::new();
-                for block in &template.blocks {
-                    let entry = &template.palette[block.state as usize];
+                for block in template.blocks() {
+                    let entry = &block.state;
                     let replacement;
                     let name = if entry.name == "minecraft:jigsaw" {
                         replacement = PaletteEntry::from_string(
@@ -627,9 +643,10 @@ fn village_path_projection_1024_cases() {
                     seed as i64,
                     &bounds,
                 );
-                assert_eq!(
-                    natural.flat_block_map, projected.chunk.flat_block_map,
-                    "worldgen/helper disagree in case {case}"
+                assert_chunk_blocks_eq(
+                    &natural,
+                    &projected.chunk,
+                    &format!("worldgen/helper disagree in case {case}"),
                 );
                 place_pool_element_templates(
                     &make_piece(JigsawProjection::Rigid),
@@ -643,9 +660,10 @@ fn village_path_projection_1024_cases() {
                     .filter(|(p, _)| !expected.contains(&(p.x, p.y, p.z)))
                     .count();
                 if profile == 0 {
-                    assert_eq!(
-                        original.chunk.flat_block_map, projected.chunk.flat_block_map,
-                        "flat terrain changed in case {case}"
+                    assert_chunk_blocks_eq(
+                        &original.chunk,
+                        &projected.chunk,
+                        &format!("flat terrain changed in case {case}"),
                     );
                     flat_cases += 1;
                 }

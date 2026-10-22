@@ -116,11 +116,6 @@ impl BlockState {
         self.state_flags & IS_FULL_CUBE != 0
     }
 
-    /// Static suffocation predicate extracted from vanilla; block entities may override it.
-    #[must_use]
-    pub const fn is_suffocating(&self) -> bool {
-        self.state_flags & IS_SUFFOCATING != 0
-    }
 
     /// Returns whether the block is solid.
     /// Solid blocks conduct redstone and block redstone wire.

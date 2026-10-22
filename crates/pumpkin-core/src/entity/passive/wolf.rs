@@ -1,8 +1,10 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU8, Ordering},
 };
 
+use crossbeam::atomic::AtomicCell;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -23,10 +25,12 @@ use crate::entity::{
     ai::goal::{
         active_target::{ActiveTargetGoal, TargetCondition}, avoid_entity::AvoidEntityGoal, beg::BegGoal,
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_owner::FollowOwnerGoal,
-        follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal,
-        owner_hurt_by_target::OwnerHurtByTargetGoal, owner_hurt_target::OwnerHurtTargetGoal,
-        revenge::RevengeGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
+        follow_parent::FollowParentGoal, leap_at_target::LeapAtTargetGoal,
+        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
+        melee_attack::MeleeAttackGoal, owner_hurt_by_target::OwnerHurtByTargetGoal,
+        owner_hurt_target::OwnerHurtTargetGoal, revenge::RevengeGoal,
+        sit_when_ordered_to::SitWhenOrderedToGoal, swim::SwimGoal,
+        wander_around::WanderAroundGoal,
     },
     mob::{
         Mob, MobEntity,
@@ -47,6 +51,10 @@ pub struct WolfEntity {
     pub tamable_data: TamableData,
     pub ageable_data: crate::entity::ageable::AgeableData,
     pub neutral_data: NeutralData,
+    pub is_wet: AtomicBool,
+    pub is_shaking: AtomicBool,
+    pub shake_anim: AtomicCell<f32>,
+    pub shake_anim_o: AtomicCell<f32>,
 }
 
 impl WolfEntity {
@@ -60,6 +68,10 @@ impl WolfEntity {
             tamable_data: TamableData::default(),
             ageable_data: crate::entity::ageable::AgeableData::default(),
             neutral_data: NeutralData::default(),
+            is_wet: AtomicBool::new(false),
+            is_shaking: AtomicBool::new(false),
+            shake_anim: AtomicCell::new(0.0),
+            shake_anim_o: AtomicCell::new(0.0),
         };
         let mob_arc = Arc::new(wolf);
         let mob_weak: Weak<dyn Mob> = {
@@ -79,11 +91,15 @@ impl WolfEntity {
             goal_selector.add_goal(1, Box::new(SwimGoal::default()));
             // 1: EscapeDangerGoal (TamableAnimalPanicGoal) — only environmental damage causes panic
             goal_selector.add_goal(1, EscapeDangerGoal::new_environmental(1.5));
+            // 2: SitWhenOrderedToGoal
+            goal_selector.add_goal(2, Box::new(SitWhenOrderedToGoal::new()));
             // 3: Avoid Llama
             goal_selector.add_goal(
                 3,
                 Box::new(AvoidEntityGoal::new(&EntityType::LLAMA, 24.0, 1.5, 1.5)),
             );
+            // 4: LeapAtTargetGoal
+            goal_selector.add_goal(4, Box::new(LeapAtTargetGoal::new(0.4)));
             // 5: MeleeAttackGoal
             goal_selector.add_goal(5, Box::new(MeleeAttackGoal::new(1.0, true)));
             // 6: FollowOwnerGoal
@@ -198,6 +214,10 @@ impl TamableAnimal for WolfEntity {
     fn get_tamable_data(&self) -> &TamableData {
         &self.tamable_data
     }
+
+    fn is_unable_to_move_to_owner(&self) -> bool {
+        self.is_ordered_to_sit() || self.is_shaking()
+    }
 }
 
 impl NeutralMob for WolfEntity {
@@ -225,6 +245,92 @@ impl Mob for WolfEntity {
 
     fn as_neutral(&self) -> Option<&dyn NeutralMob> {
         Some(self)
+    }
+
+    fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        self.set_ordered_to_sit(false);
+    }
+
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
+        let entity = self.get_entity();
+        if !entity.is_alive() {
+            self.is_wet.store(false, Ordering::Relaxed);
+            self.cancel_shake();
+            return;
+        }
+
+        let world = entity.world.load();
+
+        if entity.is_in_water_or_rain() {
+            self.is_wet.store(true, Ordering::Relaxed);
+            if self.is_shaking.load(Ordering::Relaxed) {
+                world.broadcast_entity_event(
+                    entity,
+                    pumpkin_data::entity_status::EntityStatus::CancelShakeWetness,
+                    Some(pumpkin_protocol::bedrock::server::actor_event::ActorEventID::ShakeWetnessStop),
+                );
+                self.cancel_shake();
+            }
+        } else if self.is_wet.load(Ordering::Relaxed)
+            && !self.is_shaking.load(Ordering::Relaxed)
+            && (self.is_navigator_idle()
+                || self
+                    .get_mob_entity()
+                    .navigator
+                    .lock()
+                    .map_or(true, |n| n.is_done()))
+            && entity.on_ground.load(Ordering::Relaxed)
+        {
+            self.is_shaking.store(true, Ordering::Relaxed);
+            self.shake_anim.store(0.0);
+            self.shake_anim_o.store(0.0);
+            if let Ok(mut nav) = self.get_mob_entity().navigator.lock() {
+                nav.stop();
+            }
+            world.broadcast_entity_event(
+                entity,
+                pumpkin_data::entity_status::EntityStatus::ShakeWetness,
+                Some(pumpkin_protocol::bedrock::server::actor_event::ActorEventID::ShakeWetness),
+            );
+        } else if self.is_shaking.load(Ordering::Relaxed) {
+            let pos = entity.pos.load();
+            let anim = self.shake_anim.load();
+            if anim == 0.0 {
+                world.play_sound(
+                    pumpkin_data::sound::Sound::EntityWolfShake,
+                    pumpkin_data::sound::SoundCategory::Neutral,
+                    &pos,
+                );
+            }
+
+            self.shake_anim_o.store(anim);
+            let next_anim = anim + 0.05;
+            self.shake_anim.store(next_anim);
+            if self.shake_anim_o.load() >= 2.0 {
+                self.is_wet.store(false, Ordering::Relaxed);
+                self.is_shaking.store(false, Ordering::Relaxed);
+                self.shake_anim_o.store(0.0);
+                self.shake_anim.store(0.0);
+            }
+
+            if next_anim > 0.4 {
+                let shake_count = (((next_anim - 0.4) * std::f32::consts::PI).sin() * 7.0) as i32;
+                let vel = entity.velocity.load();
+                let width = f64::from(entity.width());
+                let mut rng = rand::rng();
+                for _ in 0..shake_count {
+                    let xo = (rng.random::<f64>() * 2.0 - 1.0) * width * 0.5;
+                    let zo = (rng.random::<f64>() * 2.0 - 1.0) * width * 0.5;
+                    world.spawn_particle(
+                        pumpkin_util::math::vector3::Vector3::new(pos.x + xo, pos.y + 0.8, pos.z + zo),
+                        pumpkin_util::math::vector3::Vector3::new(vel.x as f32, vel.y as f32, vel.z as f32),
+                        1.0,
+                        0,
+                        pumpkin_data::particle::Particle::Splash,
+                    );
+                }
+            }
+        }
     }
 
     fn can_attack_with_owner(&self, target: &dyn EntityBase, owner: &dyn EntityBase) -> bool {
@@ -563,5 +669,19 @@ impl WolfEntity {
             pumpkin_data::tracked_data::wolf::DATA_SOUND_VARIANT_ID,
             VarInt(sound_variant as u8 as i32),
         );
+    }
+
+    pub fn is_wet(&self) -> bool {
+        self.is_wet.load(Ordering::Relaxed)
+    }
+
+    pub fn is_shaking(&self) -> bool {
+        self.is_shaking.load(Ordering::Relaxed)
+    }
+
+    pub fn cancel_shake(&self) {
+        self.is_shaking.store(false, Ordering::Relaxed);
+        self.shake_anim.store(0.0);
+        self.shake_anim_o.store(0.0);
     }
 }

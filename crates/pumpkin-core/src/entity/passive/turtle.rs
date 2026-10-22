@@ -24,6 +24,7 @@ use crate::entity::{
     passive::animal::Animal,
     player::Player,
 };
+use crate::entity::ai::pathfinder::Navigator;
 use crate::world::World;
 
 const TEMPT_ITEMS: &[&Item] = &[&Item::SEAGRASS];
@@ -45,6 +46,11 @@ pub struct TurtleEntity {
 impl TurtleEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::amphibious(false);
+
         let turtle = Self {
             mob_entity,
             ageable_data: AgeableData::default(),

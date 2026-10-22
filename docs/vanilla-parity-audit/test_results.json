@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "total_suites": 7,
+    "passed_suites": 6,
+    "failed_suites": 1,
+    "notes": "pumpkin-core failing compile due to E0308 type mismatch in login_acknowledged.rs. Other isolated crates compile and pass tests."
+  },
+  "suites": [
+    {
+      "suite": "pumpkin-command::unit_and_doctests",
+      "cases": 91,
+      "status": "PASS",
+      "duration_sec": 3.10
+    },
+    {
+      "suite": "pumpkin-world::placement_tests",
+      "cases": 9,
+      "status": "PASS",
+      "duration_sec": 23.52
+    },
+    {
+      "suite": "pumpkin-world::village_path_projection",
+      "cases": 1024,
+      "status": "PASS",
+      "duration_sec": 23.56
+    },
+    {
+      "suite": "pumpkin-world::village_path_tests",
+      "cases": 1,
+      "status": "PASS",
+      "duration_sec": 20.06
+    },
+    {
+      "suite": "pumpkin-world::test_village_plains",
+      "cases": 1,
+      "status": "PASS",
+      "duration_sec": 1.80
+    },
+    {
+      "suite": "pumpkin-data::recipe_matching",
+      "cases": 3,
+      "status": "PASS",
+      "duration_sec": 0.45
+    },
+    {
+      "suite": "pumpkin-core::cargo_check",
+      "cases": 1,
+      "status": "FAIL",
+      "error": "error[E0308]: mismatched types in login_acknowledged.rs"
+    }
+  ]
+}

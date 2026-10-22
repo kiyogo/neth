@@ -10,7 +10,8 @@ use pumpkin_data::data_component_impl::ChargedProjectilesImpl;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
-use pumpkin_util::GameMode;
+use pumpkin_data::data_component_impl::EquipmentSlot;
+use pumpkin_util::{GameMode, Hand};
 
 pub struct CrossbowItem;
 
@@ -21,9 +22,24 @@ impl ItemMetadata for CrossbowItem {
 }
 
 impl ItemBehaviour for CrossbowItem {
-    fn normal_use(&self, _item: &Item, player: &Player) {
+    fn normal_use(&self, item: &Item, player: &Player) {
+        self.normal_use_with_hand(item, player, 0.0, 0.0, Hand::Right);
+    }
+
+    fn normal_use_with_rotation(&self, item: &Item, player: &Player, yaw: f32, pitch: f32) {
+        self.normal_use_with_hand(item, player, yaw, pitch, Hand::Right);
+    }
+
+    fn normal_use_with_hand(
+        &self,
+        _item: &Item,
+        player: &Player,
+        _yaw: f32,
+        _pitch: f32,
+        hand: Hand,
+    ) {
         let inventory = player.inventory();
-        let stack = inventory.held_item();
+        let stack = inventory.get_stack_in_hand(hand);
 
         // Every crossbow carries a ChargedProjectiles component by default, so its mere
         // presence does not mean the crossbow is loaded. Vanilla checks the list is also
@@ -32,7 +48,7 @@ impl ItemBehaviour for CrossbowItem {
             .get_data_component::<ChargedProjectilesImpl>()
             .is_some_and(|charged| !charged.projectiles.is_empty())
         {
-            Self::fire_projectiles(player);
+            Self::fire_projectiles(player, hand);
             return;
         }
 
@@ -43,14 +59,20 @@ impl ItemBehaviour for CrossbowItem {
 
         player
             .living_entity
-            .set_active_hand(pumpkin_util::Hand::Right, stack, 72000);
+            .set_active_hand(hand, stack, 72000);
     }
 
     fn on_stopped_using(&self, _stack: &ItemStack, player: &Player) {
         let use_ticks = player.living_entity.item_use_time.load(Ordering::Relaxed);
         let use_ticks = 72000 - use_ticks;
 
-        let mut stack = player.inventory().held_item();
+        let active_hand = player
+            .living_entity
+            .active_hand
+            .lock()
+            .unwrap()
+            .unwrap_or(Hand::Right);
+        let mut stack = player.inventory().get_stack_in_hand(active_hand);
         let charge_time =
             crate::enchantment::EnchantmentHelper::modify_crossbow_charge_time(&stack, 25);
 
@@ -83,7 +105,7 @@ impl ItemBehaviour for CrossbowItem {
                             projectiles: charged_nbts,
                         })),
                     ));
-                    player.inventory().set_held_item(stack);
+                    player.inventory().set_stack_in_hand(active_hand, stack);
 
                     if let Some(slot) = ammo_slot
                         && !is_creative
@@ -115,8 +137,8 @@ impl CrossbowItem {
     pub const ARROW_POWER: f32 = 3.15;
     pub const FIREWORK_POWER: f32 = 1.6;
 
-    fn fire_projectiles(player: &Player) {
-        let mut held = player.inventory().held_item();
+    fn fire_projectiles(player: &Player, hand: Hand) {
+        let mut held = player.inventory().get_stack_in_hand(hand);
         let charged_opt = held.get_data_component::<ChargedProjectilesImpl>().cloned();
 
         if let Some(charged) = charged_opt {
@@ -158,10 +180,11 @@ impl CrossbowItem {
 
                 held.patch
                     .retain(|(id, _)| *id != DataComponent::ChargedProjectiles);
-                player.inventory().set_held_item(held);
+                player.inventory().set_stack_in_hand(hand, held);
 
                 let durability_use = if is_firework { 3 } else { 1 };
-                player.damage_held_item(durability_use);
+                let slot = EquipmentSlot::from_hand(hand);
+                player.damage_item_in_slot(&slot, durability_use);
 
                 player.increment_stat(
                     pumpkin_data::statistic::StatisticCategory::Used,

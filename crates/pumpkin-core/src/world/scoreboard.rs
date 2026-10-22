@@ -832,6 +832,7 @@ pub struct Team {
     pub display_name: TextComponent,
     pub options: i8,
     pub nametag_visibility: NameTagVisibility,
+    pub death_message_visibility: NameTagVisibility,
     pub collision_rule: CollisionRule,
     pub color: NamedColor,
     pub player_prefix: TextComponent,

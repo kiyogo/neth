@@ -264,9 +264,10 @@ fn with_default_components(
     if !has(&components, DataComponent::ItemName) {
         components.push((
             DataComponent::ItemName,
-            ItemNameImpl {
-                name: Cow::Owned(format!("item.{namespace}.{}", path.replace('/', "."))),
-            }
+            ItemNameImpl::Translation(Cow::Owned(format!(
+                "item.{namespace}.{}",
+                path.replace('/', ".")
+            )))
             .to_dyn(),
         ));
     }
@@ -530,8 +531,8 @@ mod tests {
         let stack = ItemStack::new(1, plain);
         assert_eq!(stack.get_max_stack_size(), 64);
         assert_eq!(
-            stack.get_data_component::<ItemNameImpl>().unwrap().name,
-            "item.test_comp.plain"
+            stack.get_data_component::<ItemNameImpl>().unwrap(),
+            &ItemNameImpl::Translation(Cow::Borrowed("item.test_comp.plain"))
         );
 
         let mut sword = registration("test_comp:sword");

@@ -397,6 +397,7 @@ async fn plugin_test_server(
             ..TelemetryConfig::default()
         },
         data,
+        vec![],
     )
     .await?)
 }
