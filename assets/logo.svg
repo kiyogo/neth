@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="nethGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="nethGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="topFace" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4338ca"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="leftFace" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="rightFace" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2e1065"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect width="256" height="256" rx="56" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Subtle ambient glow aura -->
+  <circle cx="128" cy="128" r="64" fill="url(#nethGrad1)" opacity="0.12" filter="url(#glow)"/>
+
+  <!-- Isometric Voxel Cube Outline -->
+  <polygon points="128,46 198,86 128,126 58,86" fill="url(#topFace)" opacity="0.9"/>
+  <polygon points="58,86 128,126 128,210 58,170" fill="url(#leftFace)" opacity="0.95"/>
+  <polygon points="128,126 198,86 198,170 128,210" fill="url(#rightFace)" opacity="0.95"/>
+
+  <!-- Grid detail lines on top face -->
+  <line x1="93" y1="66" x2="163" y2="106" stroke="#6366f1" stroke-width="1" opacity="0.3"/>
+  <line x1="163" y1="66" x2="93" y2="106" stroke="#6366f1" stroke-width="1" opacity="0.3"/>
+
+  <!-- Isometric "N" Monogram -->
+  <!-- Left column of N -->
+  <polygon points="76,96 94,106 94,186 76,176" fill="#38bdf8" opacity="0.95"/>
+  <polygon points="76,96 85,91 103,101 94,106" fill="#7dd3fc" opacity="0.9"/>
+
+  <!-- Right column of N -->
+  <polygon points="162,106 180,96 180,176 162,186" fill="#f43f5e" opacity="0.95"/>
+  <polygon points="162,106 171,101 189,111 180,116" fill="#fb7185" opacity="0.9"/>
+
+  <!-- Diagonal bar of N -->
+  <polygon points="94,106 112,116 162,186 144,176" fill="url(#nethGrad2)"/>
+  <polygon points="94,106 144,176 130,168 80,98" fill="url(#nethGrad1)" opacity="0.5"/>
+
+  <!-- Glowing core particle -->
+  <circle cx="128" cy="141" r="3" fill="#ffffff" filter="url(#glow)"/>
+
+  <!-- Outer Cube Wireframe Accents -->
+  <polyline points="128,46 198,86 198,170 128,210 58,170 58,86 128,46" fill="none" stroke="#475569" stroke-width="1.5" opacity="0.6"/>
+  <line x1="128" y1="126" x2="128" y2="210" stroke="#475569" stroke-width="1.5" opacity="0.6"/>
+  <line x1="128" y1="126" x2="58" y2="86" stroke="#475569" stroke-width="1.5" opacity="0.6"/>
+  <line x1="128" y1="126" x2="198" y2="86" stroke="#475569" stroke-width="1.5" opacity="0.6"/>
+</svg>
