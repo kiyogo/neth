@@ -165,4 +165,4 @@ patchbukkit/
 minecraft-sources*/
 __pycache__/
 *.pyc
-
+dist/
