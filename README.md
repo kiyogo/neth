@@ -33,22 +33,6 @@ Neth is maintained by KIYOVN as an open-source initiative, developed as an indep
 
 ---
 
-## System Status and Specifications
-
-| Specification Metric | Target Value | Verification State |
-|---|---|---|
-| Release Version | 0.2.0 | Stable Tag |
-| Minecraft Target Version | 26.3 Java Edition | Verified |
-| Protocol Version Number | 777 | Verified |
-| World Data Version | 5023 | Verified |
-| Bedrock Client Compatibility | 1.26.51 (Protocol 2193) | NetherNet Integrated |
-| Implementation Roadmap | 90% Completion Milestone | 2,300+ Verified Parity Tests |
-| Memory Baseline at Idle | Approximately 42 MB | Monitored |
-| Target Tick Rate | 20.00 TPS (Sub-millisecond MSPT) | Verified |
-
-The engine has achieved its 90% parity milestone across reference vanilla mechanics. Supported subsystems include full Brigadier command resolution, Anvil chunk persistence with session locking, Redstone diode delay cascades, Villager gossip decay cycles, cross-dimension portal transitions, and multi-tier explosion physics.
-
----
 
 ## Core Engineering Architecture
 
