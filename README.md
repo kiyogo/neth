@@ -1,16 +1,24 @@
-<p align="center">
-  <img src="assets/banner.svg" alt="Neth Server Banner" width="100%">
-</p>
+<div align="center">
 
-<p align="center">
-  <a href="https://github.com/kiyogo/neth/releases"><img src="https://img.shields.io/github/v/release/kiyogo/neth?color=38bdf8&label=Release" alt="GitHub Release"></a>
-  <a href="https://github.com/kiyogo/neth/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/Minecraft%20Java-26.3-green.svg" alt="Minecraft Java">
-  <img src="https://img.shields.io/badge/Protocol-777-brightgreen.svg" alt="Protocol 777">
-  <img src="https://img.shields.io/badge/Bedrock%20NetherNet-1.26.51-purple.svg" alt="Bedrock Support">
-  <img src="https://img.shields.io/badge/Rust-2024%20Edition-orange.svg" alt="Rust 2024">
-  <img src="https://img.shields.io/badge/Roadmap%20Parity-90%25%20Milestone-emerald.svg" alt="Parity Status">
-</p>
+<img src="./assets/logo.svg" alt="Neth Logo" width="140" height="140">
+
+# Neth
+
+**High-Performance Minecraft Server Engine in Rust**
+
+[![Release](https://img.shields.io/github/v/release/kiyogo/neth?color=38bdf8&label=Release&style=flat-square)](https://github.com/kiyogo/neth/releases)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=flat-square)](https://github.com/kiyogo/neth/blob/main/LICENSE)
+[![Minecraft Java](https://img.shields.io/badge/Minecraft%20Java-26.3-green.svg?style=flat-square)](https://github.com/kiyogo/neth)
+[![Protocol](https://img.shields.io/badge/Protocol-777-brightgreen.svg?style=flat-square)](https://github.com/kiyogo/neth)
+[![Bedrock](https://img.shields.io/badge/Bedrock%20NetherNet-1.26.51-purple.svg?style=flat-square)](https://github.com/kiyogo/neth)
+[![Rust](https://img.shields.io/badge/Rust-2024%20Edition-orange.svg?style=flat-square)](https://www.rust-lang.org/)
+[![Status](https://img.shields.io/badge/Roadmap%20Parity-90%25%20Milestone-emerald.svg?style=flat-square)](https://github.com/kiyogo/neth)
+
+<br/>
+
+![Neth Server Running Console](./assets/neth-server-running.png)
+
+</div>
 
 ---
 
@@ -22,13 +30,6 @@ The server runtime coordinates world simulation, multi-noise procedural terrain 
 
 Neth is maintained by KIYOVN as an open-source initiative, developed as an independent fork of the Pumpkin server project.
 
----
-
-## Live Engine Runtime
-
-<p align="center">
-  <img src="assets/neth-server-running.png" alt="Neth Server Running Console" width="100%">
-</p>
 
 ---
 
