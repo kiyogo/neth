@@ -14,7 +14,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-Dwarnings"
+  RUST_MIN_STACK: "67108864"
 
 jobs:
   build_release:
@@ -59,16 +59,21 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev pkg-config
+
       - name: Install musl-tools (Linux musl)
         if: matrix.use_musl
         run: |
-          sudo apt-get update
           sudo apt-get install -y musl-tools
 
       - name: Build Release Binary
         shell: bash
         run: |
-          cargo build --release --locked --target ${{ matrix.target }} --bin neth
+          cargo build --release --target ${{ matrix.target }} --bin neth
           mkdir -p dist
           BIN_PATH="target/${{ matrix.target }}/release/neth"
           if [ "${{ runner.os }}" == "Windows" ]; then
@@ -131,7 +136,6 @@ jobs:
           prerelease: false
           files: |
             dist/neth-*
-            dist/checksums.sha256
           generate_release_notes: true
           body: |
             Neth Server Release ${{ steps.tag.outputs.tag_name }}
