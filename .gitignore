@@ -166,3 +166,4 @@ minecraft-sources*/
 __pycache__/
 *.pyc
 dist/
+downloaded_artifacts/
