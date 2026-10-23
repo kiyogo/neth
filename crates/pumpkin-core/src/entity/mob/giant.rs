@@ -97,6 +97,10 @@ impl Mob for GiantEntity {
         &self.mob_entity
     }
 
+    fn as_giant(&self) -> Option<&GiantEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

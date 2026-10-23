@@ -487,6 +487,42 @@ impl WardenEntity {
             touch_cooldown: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(warden);
+
+        // Vanilla Warden: MAX_HEALTH = 500.0, MOVEMENT_SPEED = 0.3, KNOCKBACK_RESISTANCE = 1.0, ATTACK_KNOCKBACK = 1.5, ATTACK_DAMAGE = 30.0, FOLLOW_RANGE = 24.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 500.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(kb_res) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
+                kb_res.base_value = 1.0;
+                kb_res.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(atk_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
+                atk_kb.base_value = 1.5;
+                atk_kb.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 30.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                follow.base_value = 24.0;
+                follow.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(500.0);
+
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -750,6 +786,10 @@ impl CustomSound for WardenEntity {
 impl Mob for WardenEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
+    }
+
+    fn as_warden(&self) -> Option<&WardenEntity> {
+        Some(self)
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

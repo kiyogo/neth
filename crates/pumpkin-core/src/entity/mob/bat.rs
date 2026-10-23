@@ -235,6 +235,10 @@ impl Mob for BatEntity {
         &self.mob_entity
     }
 
+    fn as_bat(&self) -> Option<&BatEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

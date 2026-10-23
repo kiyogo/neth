@@ -171,6 +171,10 @@ impl Mob for GuardianEntity {
         &self.mob_entity
     }
 
+    fn as_guardian(&self) -> Option<&GuardianEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

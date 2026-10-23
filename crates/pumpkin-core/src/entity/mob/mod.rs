@@ -1572,6 +1572,30 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_guardian(&self) -> Option<&crate::entity::mob::guardian::GuardianEntity> {
+        None
+    }
+
+    fn as_elder_guardian(&self) -> Option<&crate::entity::mob::elder_guardian::ElderGuardianEntity> {
+        None
+    }
+
+    fn as_breeze(&self) -> Option<&crate::entity::mob::breeze::BreezeEntity> {
+        None
+    }
+
+    fn as_warden(&self) -> Option<&crate::entity::mob::warden::WardenEntity> {
+        None
+    }
+
+    fn as_giant(&self) -> Option<&crate::entity::mob::giant::GiantEntity> {
+        None
+    }
+
+    fn as_bat(&self) -> Option<&crate::entity::mob::bat::BatEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

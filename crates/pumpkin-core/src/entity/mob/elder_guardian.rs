@@ -174,6 +174,10 @@ impl Mob for ElderGuardianEntity {
         &self.mob_entity
     }
 
+    fn as_elder_guardian(&self) -> Option<&ElderGuardianEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

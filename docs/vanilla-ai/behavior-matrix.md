@@ -173,5 +173,12 @@
 | **Evoker** | `Evoker.java` | `mob/evoker.rs` | GoalSelector | HEALTH = 24.0, SPEED = 0.5, FOLLOW = 12.0, Fangs attack spell, Vex summoning spell, Wololo blue sheep conversion | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
 | **Illusioner** | `Illusioner.java` | `mob/illusioner.rs` | GoalSelector | HEALTH = 32.0, SPEED = 0.5, FOLLOW = 18.0, Bow attack, Invisibility spell, Blindness spell, Decoys | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
 | **Ravager** | `Ravager.java` | `mob/ravager.rs` | GoalSelector | HEALTH = 100.0, SPEED = 0.3, ATTACK = 12.0, ATTACK_KB = 1.5, KNOCKBACK_RES = 0.75, FOLLOW = 32.0, STEP = 1.0, Roar stun & leaf trample | Revenge(1), NearestAttackable(Player)(3), Villager(4), IronGolem(4) | Ground (Beast) | Complete |
+| **Guardian** | `Guardian.java` | `mob/guardian.rs` | GoalSelector | HEALTH = 30.0, SPEED = 0.5, ATTACK = 6.0, Laser beam attack, Thorns retraction | NearestAttackable(LivingEntity)(1) | Water / Flop | Complete |
+| **Elder Guardian** | `ElderGuardian.java` | `mob/elder_guardian.rs` | GoalSelector | HEALTH = 80.0, SPEED = 0.3, ATTACK = 8.0, Mining fatigue pulse (1200t), Laser beam attack | NearestAttackable(LivingEntity)(1) | Water | Complete |
+| **Breeze** | `Breeze.java` | `mob/breeze.rs` | GoalSelector | HEALTH = 30.0, SPEED = 0.63, FOLLOW = 24.0, ATTACK = 3.0, Wind charge burst, Projectile deflection, Jump leap | Revenge(1), NearestAttackable(Player)(2), IronGolem(3) | Agile / Leap | Complete |
+| **Warden** | `Warden.java` | `mob/warden.rs` | GoalSelector / Brain | HEALTH = 500.0, SPEED = 0.3, ATTACK = 30.0, ATTACK_KB = 1.5, KNOCKBACK_RES = 1.0, FOLLOW = 24.0, Sonic Boom, Vibration sniffing, Darkness pulse | AngerManagement (Players, Mobs) | Ground (Apex) | Complete |
+| **Giant** | `Giant.java` | `mob/giant.rs` | GoalSelector | HEALTH = 100.0, SPEED = 0.5, ATTACK = 50.0, CAMERA = 16.0, Colossal melee | NearestAttackable(Player)(1) | Ground (Colossal) | Complete |
+| **Bat** | `Bat.java` | `mob/bat.rs` | GoalSelector | HEALTH = 6.0, Roosting hang (ceiling), Erratic flight, Ambient squeaks | None | Flying / Roost | Complete |
+
 
 
