@@ -1421,7 +1421,6 @@ impl Player {
         // `base_damage` already carries them, like vanilla `Player.attack`.
         damage = damage.max(0.0);
 
-        let pos = victim_entity.pos.load();
         let attack_type = AttackType::new(self, victim.as_ref(), attack_cooldown_progress as f32);
 
         let is_mace_smash = item_stack.item.id == pumpkin_data::item::Item::MACE.id
@@ -1518,7 +1517,8 @@ impl Player {
             }
         }
 
-        player_attack_sound(&pos, &world, attack_type);
+        // Vanilla playServerSideSound plays at attacker location (this.getX(), this.getY(), this.getZ())
+        player_attack_sound(&attacker_entity.pos.load(), &world, attack_type);
 
         if matches!(attack_type, AttackType::Critical) {
             let je_packet =
@@ -1557,94 +1557,119 @@ impl Player {
             std::sync::atomic::Ordering::Relaxed,
         );
 
-        if victim.get_living_entity().is_some() {
-            // Vanilla `LivingEntity.getKnockback` starts from the ATTACK_KNOCKBACK
-            // attribute and applies the weapon's enchantments, then halves:
-            // `(attribute + enchantment) / 2`. A sprint attack adds 0.5.
-            // `handle_knockback` halves its `strength`, so these are twice the
-            // vanilla amount.
-            let mut knockback_strength = self
+        // Vanilla Player.doSweepAttack: triggers when sweepAttack is true (after target was hurt)
+        if matches!(attack_type, AttackType::Sweeping) {
+            combat::spawn_sweep_particle(attacker_entity, &world);
+
+            let mut sweeping_ratio = self
                 .living_entity
-                .get_attribute_value(&Attributes::ATTACK_KNOCKBACK)
-                + enchantment_knockback;
-            match attack_type {
-                AttackType::Knockback => knockback_strength += 1.0,
-                AttackType::Sweeping => {
-                    combat::spawn_sweep_particle(attacker_entity, &world, &pos);
-
-                    let mut sweeping_ratio = self
-                        .living_entity
-                        .get_attribute_value(&Attributes::SWEEPING_DAMAGE_RATIO)
-                        as f32;
-                    if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>()
-                    {
-                        for (enchantment, level) in enchantments.enchantment.iter() {
-                            if **enchantment == Enchantment::SWEEPING_EDGE {
-                                sweeping_ratio += *level as f32 / (*level as f32 + 1.0);
-                            }
-                        }
+                .get_attribute_value(&Attributes::SWEEPING_DAMAGE_RATIO)
+                as f32;
+            if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>() {
+                for (enchantment, level) in enchantments.enchantment.iter() {
+                    if **enchantment == Enchantment::SWEEPING_EDGE {
+                        sweeping_ratio += *level as f32 / (*level as f32 + 1.0);
                     }
-                    let sweep_damage =
-                        combat::calculate_sweeping_damage(damage as f32, sweeping_ratio);
+                }
+            }
+            sweeping_ratio = sweeping_ratio.clamp(0.0, 1.0);
+            let base_damage = (self
+                .living_entity
+                .get_attribute_value(&Attributes::ATTACK_DAMAGE)
+                * damage_multiplier)
+                .max(0.0) as f32;
+            let sweep_damage =
+                combat::calculate_sweeping_damage(base_damage, sweeping_ratio);
 
-                    let search_box = BoundingBox::new(
-                        Vector3::new(pos.x - 1.0, pos.y - 0.25, pos.z - 1.0),
-                        Vector3::new(pos.x + 1.0, pos.y + 0.25, pos.z + 1.0),
-                    );
-                    let yaw = f64::from(attacker_entity.yaw.load().to_radians());
-                    let knockback_x = yaw.sin();
-                    let knockback_z = -yaw.cos();
-                    let victims = world.get_all_at_box(&search_box);
+            // Vanilla: entity.getBoundingBox().inflate(1.0, 0.25, 1.0)
+            let search_box = victim_entity.bounding_box.load().expand(1.0, 0.25, 1.0);
+            let yaw = f64::from(attacker_entity.yaw.load().to_radians());
+            let knockback_x = yaw.sin();
+            let knockback_z = -yaw.cos();
+            let victims = world.get_all_at_box(&search_box);
 
-                    for other_victim in victims {
-                        let other_ent = other_victim.get_entity();
-                        if other_ent.entity_id != victim_entity.entity_id
-                            && other_ent.entity_id != attacker_entity.entity_id
-                            && !(self as &dyn EntityBase).is_allied_to(other_victim.as_ref())
-                            && !other_victim
-                                .cast_any()
-                                .downcast_ref::<crate::entity::decoration::armor_stand::ArmorStandEntity>()
-                                .is_some_and(crate::entity::decoration::armor_stand::ArmorStandEntity::is_marker)
-                            && other_victim.get_living_entity().is_some()
-                        {
-                            let dist_sq = (other_ent.pos.load()
-                                - self.living_entity.entity.pos.load())
-                            .length_squared();
-                            if dist_sq < 9.0 {
-                                let hurt = other_victim.damage_with_context(
-                                    other_victim.as_ref(),
-                                    sweep_damage,
-                                    DamageType::PLAYER_ATTACK,
-                                    Some(attacker_entity.pos.load()),
-                                    Some(self),
-                                    Some(self),
+            for other_victim in victims {
+                let other_ent = other_victim.get_entity();
+                if other_ent.entity_id != victim_entity.entity_id
+                    && other_ent.entity_id != attacker_entity.entity_id
+                    && !(self as &dyn EntityBase).is_allied_to(other_victim.as_ref())
+                    && !other_victim
+                        .cast_any()
+                        .downcast_ref::<crate::entity::decoration::armor_stand::ArmorStandEntity>()
+                        .is_some_and(crate::entity::decoration::armor_stand::ArmorStandEntity::is_marker)
+                    && other_victim.get_living_entity().is_some()
+                {
+                    let dist_sq = (other_ent.pos.load()
+                        - self.living_entity.entity.pos.load())
+                    .length_squared();
+                    if dist_sq < 9.0 {
+                        let hurt = other_victim.damage_with_context(
+                            other_victim.as_ref(),
+                            sweep_damage,
+                            DamageType::PLAYER_ATTACK,
+                            Some(attacker_entity.pos.load()),
+                            Some(self),
+                            Some(self),
+                        );
+                        // Vanilla Player.doSweepAttack knocks every hurt victim
+                        // back by 0.4 along the attacker's facing.
+                        if hurt {
+                            if let Some(living) = other_victim.get_living_entity() {
+                                let resistance =
+                                    living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
+                                other_victim.get_entity().apply_knockback(
+                                    combat::knockback_after_resistance(0.4, resistance),
+                                    knockback_x,
+                                    knockback_z,
+                                    Some(attacker_entity),
                                 );
-                                // Vanilla Player.doSweepAttack knocks every hurt victim
-                                // back by 0.4 along the attacker's facing.
-                                if hurt && let Some(living) = other_victim.get_living_entity() {
-                                    let resistance =
-                                        living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
-                                    other_victim.get_entity().apply_knockback(
-                                        combat::knockback_after_resistance(0.4, resistance),
-                                        knockback_x,
-                                        knockback_z,
-                                        Some(attacker_entity),
-                                    );
+                            }
+                            // Vanilla EnchantmentHelper.doPostAttackEffects(serverLevel, nearby, damageSource)
+                            if let Some(enchantments) =
+                                item_stack.get_data_component::<EnchantmentsImpl>()
+                            {
+                                for (enchantment, level) in enchantments.enchantment.iter() {
+                                    for post_effect in enchantment.get_post_attack_effects() {
+                                        if post_effect.affected
+                                            == Some(pumpkin_data::enchantment::EnchantmentTarget::Victim)
+                                            && let pumpkin_data::enchantment::EnchantmentEntityEffect::Ignite {
+                                                duration,
+                                            } = &post_effect.effect
+                                        {
+                                            let duration_seconds = duration.calculate(*level);
+                                            other_ent.set_on_fire_for_ticks(
+                                                (duration_seconds * 20.0) as u32,
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                _ => {}
             }
-            // Vanilla only pushes the victim when the extra knockback is non-zero;
-            // `Entity::knockback` halves the current velocity, so calling it with 0.0
-            // would still slow the victim down.
-            if config.knockback && knockback_strength > 0.0 {
-                combat::handle_knockback(attacker_entity, victim.as_ref(), knockback_strength);
-                // Vanilla `Player.causeExtraKnockback` ends the sprint.
-                self.living_entity.set_sprinting(false);
-            }
+        }
+
+        // Vanilla `LivingEntity.getKnockback` starts from the ATTACK_KNOCKBACK
+        // attribute and applies the weapon's enchantments, then halves:
+        // `(attribute + enchantment) / 2`. A sprint attack adds 0.5.
+        // `handle_knockback` halves its `strength`, so these are twice the
+        // vanilla amount.
+        let mut knockback_strength = self
+            .living_entity
+            .get_attribute_value(&Attributes::ATTACK_KNOCKBACK)
+            + enchantment_knockback;
+        if matches!(attack_type, AttackType::Knockback) {
+            knockback_strength += 1.0;
+        }
+
+        // Vanilla only pushes the victim when the extra knockback is non-zero;
+        // `Entity::knockback` halves the current velocity, so calling it with 0.0
+        // would still slow the victim down.
+        if config.knockback && knockback_strength > 0.0 {
+            combat::handle_knockback(attacker_entity, victim.as_ref(), knockback_strength);
+            // Vanilla `Player.causeExtraKnockback` ends the sprint.
+            self.living_entity.set_sprinting(false);
         }
 
         // NOTE: TOCTOU race condition in single-player context.

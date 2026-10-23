@@ -49,17 +49,24 @@ impl AttackType {
             return Self::Critical;
         }
 
+        let speed = player
+            .living_entity
+            .get_attribute_value(&Attributes::MOVEMENT_SPEED);
+        let vel = entity.velocity.load();
+        let horizontal_speed_sq = vel.x * vel.x + vel.z * vel.z;
+
         // Vanilla Player.isSweepAttack: fullStrengthAttack && !criticalAttack && !knockbackAttack && this.onGround()
-        if sword && is_strong && on_ground && !is_bedrock {
-            let speed = player
-                .living_entity
-                .get_attribute_value(&Attributes::MOVEMENT_SPEED);
-            let max_speed = speed * 2.5;
-            let vel = entity.velocity.load();
-            let horizontal_speed_sq = vel.x * vel.x + vel.z * vel.z;
-            if horizontal_speed_sq < max_speed * max_speed {
-                return Self::Sweeping;
-            }
+        if can_sweep_attack_raw(
+            sword,
+            is_strong,
+            false,
+            false,
+            on_ground,
+            horizontal_speed_sq,
+            speed,
+            is_bedrock,
+        ) {
+            return Self::Sweeping;
         }
 
         if is_strong { Self::Strong } else { Self::Weak }
@@ -111,6 +118,31 @@ pub fn can_critical_attack(
         victim.get_living_entity().is_some(),
         attack_cooldown_progress,
     )
+}
+
+/// Checks sweep attack eligibility based on raw physics and status flags,
+/// mirroring vanilla `Player.isSweepAttack(boolean, boolean, boolean)`.
+#[must_use]
+pub fn can_sweep_attack_raw(
+    is_sword: bool,
+    is_strong: bool,
+    is_critical: bool,
+    is_knockback: bool,
+    on_ground: bool,
+    horizontal_speed_sq: f64,
+    movement_speed: f64,
+    is_bedrock: bool,
+) -> bool {
+    if is_bedrock {
+        return false;
+    }
+    let max_speed = movement_speed * 2.5;
+    is_sword
+        && is_strong
+        && !is_critical
+        && !is_knockback
+        && on_ground
+        && horizontal_speed_sq < max_speed * max_speed
 }
 
 /// Checks smash eligibility, rejecting stale fall distance after a ground-only packet.
@@ -258,17 +290,18 @@ pub fn calculate_sweeping_damage(base_damage: f32, sweeping_ratio: f32) -> f32 {
     1.0 + sweeping_ratio * base_damage
 }
 
-pub fn spawn_sweep_particle(attacker_entity: &Entity, world: &World, pos: &Vector3<f64>) {
+pub fn spawn_sweep_particle(attacker_entity: &Entity, world: &World) {
     let yaw = attacker_entity.yaw.load();
-    let d = -f64::from((yaw.to_radians()).sin());
-    let e = f64::from((yaw.to_radians()).cos());
+    let dx = -f64::from((yaw.to_radians()).sin());
+    let dz = f64::from((yaw.to_radians()).cos());
+    let attacker_pos = attacker_entity.pos.load();
 
     let scale = 0.5;
-    let body_y = f64::from(attacker_entity.height()).mul_add(scale, pos.y);
+    let body_y = f64::from(attacker_entity.height()).mul_add(scale, attacker_pos.y);
 
     world.spawn_particle(
-        Vector3::new(pos.x + d, body_y, pos.z + e),
-        Vector3::new(0.0, 0.0, 0.0),
+        Vector3::new(attacker_pos.x + dx, body_y, attacker_pos.z + dz),
+        Vector3::new(dx as f32, 0.0, dz as f32),
         0.0,
         0,
         Particle::SweepAttack,
@@ -885,4 +918,48 @@ mod tests {
         assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, false, true, 0.9));
         assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, false, true, 0.5));
     }
+
+    #[test]
+    fn test_sweep_attack_conditions_parity() {
+        // Standard valid sweep attack condition (Player.isSweepAttack):
+        // sword, strong (> 0.9 cooldown), not critical, not knockback (not sprinting),
+        // on ground, horizontal speed < speed * 2.5, Java edition (!is_bedrock).
+        let normal_speed = 0.1; // default movement speed
+        let max_speed = normal_speed * 2.5;
+        let valid_vel_sq = (max_speed * 0.5) * (max_speed * 0.5);
+
+        assert!(can_sweep_attack_raw(
+            true,         // is_sword
+            true,         // is_strong
+            false,        // is_critical
+            false,        // is_knockback
+            true,         // on_ground
+            valid_vel_sq, // horizontal_speed_sq
+            normal_speed, // movement_speed
+            false,        // is_bedrock
+        ));
+
+        // 1. Not a sword cannot sweep
+        assert!(!can_sweep_attack_raw(false, true, false, false, true, valid_vel_sq, normal_speed, false));
+
+        // 2. Attack cooldown not ready (progress <= 0.9) cannot sweep
+        assert!(!can_sweep_attack_raw(true, false, false, false, true, valid_vel_sq, normal_speed, false));
+
+        // 3. Critical attack takes precedence, cannot sweep
+        assert!(!can_sweep_attack_raw(true, true, true, false, true, valid_vel_sq, normal_speed, false));
+
+        // 4. Knockback attack (sprinting) takes precedence, cannot sweep
+        assert!(!can_sweep_attack_raw(true, true, false, true, true, valid_vel_sq, normal_speed, false));
+
+        // 5. Airborne (!on_ground) cannot sweep
+        assert!(!can_sweep_attack_raw(true, true, false, false, false, valid_vel_sq, normal_speed, false));
+
+        // 6. Moving too fast (horizontal_speed_sq >= (speed * 2.5)^2) cannot sweep
+        let too_fast_vel_sq = (max_speed + 0.01) * (max_speed + 0.01);
+        assert!(!can_sweep_attack_raw(true, true, false, false, true, too_fast_vel_sq, normal_speed, false));
+
+        // 7. Bedrock edition clients do not have sweeping attacks
+        assert!(!can_sweep_attack_raw(true, true, false, false, true, valid_vel_sq, normal_speed, true));
+    }
 }
+

@@ -1375,3 +1375,35 @@
   - Implemented `can_critical_attack_raw` and `can_critical_attack` enforcing all 7 vanilla conditions (`fall_distance > 0`, `!on_ground`, `!on_climbable`, `!in_water`, `!blindness`, `!passenger`, `!sprinting`, and `victim is living entity`).
   - Added broadcast of `Animation::MagicCriticaleffect` in `Player::attack` when weapon has `extra_ench_damage > 0.0`.
   - Verified in unit test `test_critical_attack_conditions_parity`.
+
+## Gap 121: Sweep Attack Mechanics, Particle Origin, Search Box & Post-Attack Effects Parity
+- **Vanilla Reference**: `Player.java:1032-1042, 1153-1182, 976-981, 989`, `sweeping_edge.json`, `EnchantmentHelper.java:209-215`:
+  - `Player.isSweepAttack`:
+    - Enforces conditions: `fullStrengthAttack` (`attack_cooldown_progress > 0.9`), `!criticalAttack`, `!knockbackAttack`, `this.onGround()`, `horizontalSpeedSq < (getSpeed() * 2.5)^2`, and held weapon in main hand is `#minecraft:swords`. Excluded on Bedrock edition.
+  - Sweep Particle Position & Direction:
+    - In `Player.java:1178-1180`:
+      ```java
+      double dx = -Mth.sin(this.getYRot() * (float) (Math.PI / 180.0));
+      double dz = Mth.cos(this.getYRot() * (float) (Math.PI / 180.0));
+      serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK, this.getX() + dx, this.getY(0.5), this.getZ() + dz, 0, dx, 0.0, dz, 0.0);
+      ```
+    - Previously in Neth, particles were spawned relative to the victim's position with zero directional offset, causing the sweep animation to appear on the victim rather than sweeping from the attacker's weapon swing.
+  - Search Box Inflate:
+    - In `Player.java:1158`: `entity.getBoundingBox().inflate(1.0, 0.25, 1.0)`.
+    - Previously in Neth, a static box with fixed height `[-0.25, 0.25]` around the victim's feet was used, missing taller entities in range.
+  - Base Damage Scaling:
+    - In vanilla `1.0F + (float)this.getAttributeValue(Attributes.SWEEPING_DAMAGE_RATIO) * baseDamage`, `baseDamage` is physical weapon damage without Sharpness/Smite enchantment bonus.
+  - Post-Attack Effects on Swept Victims:
+    - In `Player.java:1173`, `EnchantmentHelper.doPostAttackEffects(serverLevel, nearby, damageSource)` applies post-attack effects (e.g. Fire Aspect ignite) to all hurt swept entities.
+  - Attack Sounds Location:
+    - All attack sounds (`playServerSideSound`) play at the attacker's position (`this.getX(), this.getY(), this.getZ()`).
+  - Non-Living Primary Target Knockback:
+    - In `Player.java:976-981` and `causeExtraKnockback`, non-living primary targets receive extra knockback, dampening attacker velocity and resetting sprint.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `can_sweep_attack_raw` implementing all vanilla `Player.isSweepAttack` physics checks.
+  - Corrected `spawn_sweep_particle` to spawn at attacker coordinates `(x + dx, y(0.5), z + dz)` with directional vector `(dx, 0, dz)`.
+  - Replaced hardcoded search box with `victim_entity.bounding_box.load().expand(1.0, 0.25, 1.0)`.
+  - Scaled sweeping damage using pure `base_damage` without enchantment extra damage.
+  - Applied post-attack weapon effects (Fire Aspect ignition) to hurt swept entities.
+  - Synchronized attack sound playback to the attacker's location.
+  - Verified in unit tests `test_sweep_attack_conditions_parity` and `test_sweeping_damage_calculation_parity`.
