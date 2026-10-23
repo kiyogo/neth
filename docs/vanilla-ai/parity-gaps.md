@@ -1325,3 +1325,22 @@
   - Updated `LivingEntity::check_totem_death_protection` to synchronize consumed totem item back into `player.inventory` and broadcast equipment changes via `send_equipment_changes`.
   - Added emission of `GameEvent::ItemInteractFinish` at entity location on totem activation.
   - Verified in unit test `test_totem_of_undying_consumption_and_resurrection_parity`.
+
+## Gap 119: Fall Damage Block Modifiers, Sneak-Slime & HitGround Parity
+- **Vanilla Reference**: `Entity.java:1603-1615`, `LivingEntity.java:1792-1818`, `SlimeBlock.java:15-18`, `PointedDripstoneBlock.java:54-60`, `HoneyBlock.java:44-52`, `GameEvent.java:31`:
+  - Slime Block Sneaking Fall Damage:
+    - In `SlimeBlock.java:16-18`: `if (!entity.isSuppressingBounce()) { entity.causeFallDamage(fallDistance, 0.0F, level.damageSources().fall()); } else { super.fallOn(level, state, pos, entity, fallDistance); }`.
+    - When an entity is sneaking / crouching (`entity.is_sneaking()`), landing on a slime block deals full fall damage (`damage_modifier = 1.0F`). Previously Neth always passed `0.0` damage modifier regardless of sneak state.
+  - Pointed Dripstone Tip Fall Distance:
+    - In `PointedDripstoneBlock.java:56`: landing on an upward-pointing stalagmite tip deals damage with `fallDistance + 2.5` and multiplier `2.0F` with damage type `stalagmite`.
+    - Previously Neth used `args.fall_distance + 2.0` (missing 0.5 distance).
+  - Honey Block Landed Upon Sound & Particles:
+    - In `HoneyBlock.java:45-52`: landing on honey plays `SoundEvents.HONEY_BLOCK_SLIDE` and broadcasts entity status event 54 (`HONEY_JUMP`) for particle effects.
+  - HitGround Game Event:
+    - In `Entity.java:1606-1611`: when landing on ground with `fallDistance > 0.0`, the world emits `GameEvent.HIT_GROUND` at the entity landing position.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `SlimeBlock::on_landed_upon` to check `args.entity.get_entity().is_sneaking()`, applying damage modifier `1.0` if sneaking, `0.0` otherwise.
+  - Corrected `DripstoneBlock::on_landed_upon` tip distance modifier to `args.fall_distance + 2.5`.
+  - Added honey slide sound and `EntityStatus::HoneyJump` broadcast to `HoneyBlock::on_landed_upon`.
+  - Added `GameEvent::HitGround` emission in `LivingEntity::fall` when landing on ground.
+  - Verified in unit test `test_fall_damage_block_modifiers_and_sneak_parity`.

@@ -4003,6 +4003,106 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_fall_damage_block_modifiers_and_sneak_parity() {
+        use crate::block::BlockBehaviour;
+        use crate::block::OnLandedUponArgs;
+        use crate::block::blocks::{dripstone::DripstoneBlock, hay::HayBlock, honey::HoneyBlock, slime::SlimeBlock};
+
+        let (world, _temp_dir) = create_test_world();
+        let pos = BlockPos::new(0, 64, 0);
+
+        // 1. Slime block: non-sneaking -> no fall damage; sneaking -> full fall damage
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+            living.set_health(20.0);
+            living.entity.set_sneaking(false);
+
+            SlimeBlock.on_landed_upon(OnLandedUponArgs {
+                world: &world,
+                position: &pos,
+                fall_distance: 10.0,
+                entity: ent.as_ref(),
+            });
+            assert_eq!(living.health.load(), 20.0, "Non-sneaking entity landing on slime block takes 0 damage");
+
+            // Sneaking entity on slime block takes full fall damage
+            living.entity.set_sneaking(true);
+            living.hurt_cooldown.store(0, std::sync::atomic::Ordering::Relaxed);
+            living.last_damage_taken.store(0.0);
+            SlimeBlock.on_landed_upon(OnLandedUponArgs {
+                world: &world,
+                position: &pos,
+                fall_distance: 10.0,
+                entity: ent.as_ref(),
+            });
+            // 10 blocks fall: base = (10 - 3) = 7 damage
+            assert_eq!(living.health.load(), 13.0, "Sneaking entity landing on slime block takes full fall damage (7)");
+        }
+
+        // 2. Hay block: 0.2 damage modifier (80% reduction)
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+            living.set_health(20.0);
+
+            // 13 blocks fall: base = (13 - 3) = 10 power. Multiplier = 0.2 -> 10 * 0.2 = 2 damage.
+            HayBlock.on_landed_upon(OnLandedUponArgs {
+                world: &world,
+                position: &pos,
+                fall_distance: 13.0,
+                entity: ent.as_ref(),
+            });
+            assert_eq!(living.health.load(), 18.0, "Hay block reduces fall damage to 20% (takes 2 damage from 13 blocks)");
+        }
+
+        // 3. Honey block: 0.2 damage modifier
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+            living.set_health(20.0);
+
+            HoneyBlock.on_landed_upon(OnLandedUponArgs {
+                world: &world,
+                position: &pos,
+                fall_distance: 13.0,
+                entity: ent.as_ref(),
+            });
+            assert_eq!(living.health.load(), 18.0, "Honey block reduces fall damage to 20%");
+        }
+
+        // 4. Pointed Dripstone (stalagmite tip): fall_distance + 2.5, multiplier 2.0
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+            living.set_health(20.0);
+
+            // Insert empty chunk at (0, 0) so the block state persists in loaded_chunks
+            world.level.loaded_chunks.insert(
+                pumpkin_util::math::vector2::Vector2::new(0, 0),
+                pumpkin_world::chunk::ChunkData::empty_sync(0, 0),
+            );
+
+            // Set block state at pos to pointed dripstone with UP direction and TIP thickness
+            let mut props = pumpkin_data::block_properties::PointedDripstoneLikeProperties::default(&pumpkin_data::Block::POINTED_DRIPSTONE);
+            props.vertical_direction = pumpkin_data::block_properties::VerticalDirection::Up;
+            props.thickness = pumpkin_data::block_properties::SpeleothemThickness::Tip;
+            world.set_block_state(&pos, props.to_state_id(&pumpkin_data::Block::POINTED_DRIPSTONE), pumpkin_world::world::BlockFlags::empty());
+
+            // 5 blocks fall: distance + 2.5 = 7.5. Safe fall = 3.0 -> power = 4.5. Multiplier = 2.0 -> floor(4.5 * 2.0) = 9 damage.
+            DripstoneBlock.on_landed_upon(OnLandedUponArgs {
+                world: &world,
+                position: &pos,
+                fall_distance: 5.0,
+                entity: ent.as_ref(),
+            });
+            assert_eq!(living.health.load(), 11.0, "Stalagmite tip deals (5 + 2.5 - 3) * 2.0 = 9 stalagmite damage");
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

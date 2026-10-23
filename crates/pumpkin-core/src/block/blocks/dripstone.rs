@@ -28,13 +28,13 @@ impl BlockBehaviour for DripstoneBlock {
         let props = PointedDripstoneLikeProperties::from_state_id(
             args.world.get_block_state_id(args.position),
         );
-        // Like vanilla, landing on the tip of a stalagmite deals extra stalagmite damage.
+        // Vanilla PointedDripstoneBlock.java:56: landing on the upward tip deals stalagmite damage with fallDistance + 2.5 and multiplier 2.0.
         if props.vertical_direction == VerticalDirection::Up
             && props.thickness == SpeleothemThickness::Tip
         {
             living.handle_fall_damage_from(
                 args.entity,
-                args.fall_distance + 2.0,
+                args.fall_distance + 2.5,
                 2.0,
                 DamageType::STALAGMITE,
             );

@@ -10,7 +10,14 @@ pub struct SlimeBlock;
 impl BlockBehaviour for SlimeBlock {
     fn on_landed_upon(&self, args: OnLandedUponArgs<'_>) {
         if let Some(living) = args.entity.get_living_entity() {
-            living.handle_fall_damage(args.entity, args.fall_distance, 0.0);
+            // Vanilla `SlimeBlock.fallOn`: if entity is suppressing bounce (sneaking),
+            // it takes full fall damage (damage modifier 1.0). Otherwise, damage is negated (0.0).
+            let damage_multiplier = if args.entity.get_entity().is_sneaking() {
+                1.0
+            } else {
+                0.0
+            };
+            living.handle_fall_damage(args.entity, args.fall_distance, damage_multiplier);
         }
     }
 

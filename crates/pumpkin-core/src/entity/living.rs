@@ -2171,6 +2171,10 @@ impl LivingEntity {
             } else {
                 self.handle_fall_damage(caller, fall_distance, 1.0);
             }
+            world.emit_game_event(
+                GameEvent::HitGround.name(),
+                self.entity.pos.load(),
+            );
         } else if height_difference < 0.0 {
             let new_fall_distance = if !self.should_prevent_fall_damage()
                 && !self.should_prevent_fall_damage_in_area()

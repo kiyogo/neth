@@ -10,6 +10,18 @@ pub struct HoneyBlock;
 
 impl BlockBehaviour for HoneyBlock {
     fn on_landed_upon(&self, args: OnLandedUponArgs<'_>) {
+        let entity = args.entity.get_entity();
+        let entity_pos = entity.pos.load();
+        args.world.play_sound(
+            pumpkin_data::sound::Sound::BlockHoneyBlockSlide,
+            pumpkin_data::sound::SoundCategory::Blocks,
+            &entity_pos,
+        );
+        args.world.broadcast_entity_event(
+            entity,
+            pumpkin_data::entity::EntityStatus::HoneyJump,
+            None,
+        );
         if let Some(living) = args.entity.get_living_entity() {
             living.handle_fall_damage(args.entity, args.fall_distance, 0.2);
         }
