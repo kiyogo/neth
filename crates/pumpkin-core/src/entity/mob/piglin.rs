@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::Block;
 use pumpkin_data::Enchantment;
 use pumpkin_data::data_component_impl::EquipmentSlot;
@@ -73,6 +74,30 @@ impl PiglinEntity {
             ambient_sound_time: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(piglin);
+
+        // Vanilla Piglin: MAX_HEALTH = 16.0, MOVEMENT_SPEED = 0.35, ATTACK_DAMAGE = 5.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 16.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.35;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 5.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(16.0);
+
         mob_arc.mob_entity.set_can_pick_up_loot(true);
         mob_arc.mob_entity.init_brain(mob_arc.as_ref());
         // Vanilla does this in finalizeSpawn; a loaded mob rebuilds its brain after
@@ -518,6 +543,14 @@ impl Mob for PiglinEntity {
 
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
+    }
+
+    fn as_piglin(&self) -> Option<&PiglinEntity> {
+        Some(self)
+    }
+
+    fn as_abstract_piglin(&self) -> Option<&dyn abstract_piglin::AbstractPiglin> {
+        Some(self)
     }
 
     fn populate_default_equipment_slots(

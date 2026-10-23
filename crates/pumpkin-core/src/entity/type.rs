@@ -2713,6 +2713,68 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_piglin_family_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Piglin
+        {
+            let piglin_ent = from_type(&EntityType::PIGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = piglin_ent.get_mob().expect("Piglin is mob");
+            let living = piglin_ent.get_living_entity().expect("Piglin is living");
+            assert!(mob.as_piglin().is_some(), "Piglin downcast");
+            assert!(mob.as_abstract_piglin().is_some(), "Piglin abstract piglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.35);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 5.0);
+            assert_eq!(living.health.load(), 16.0);
+        }
+
+        // 2. Piglin Brute
+        {
+            let brute_ent = from_type(&EntityType::PIGLIN_BRUTE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = brute_ent.get_mob().expect("Piglin Brute is mob");
+            let living = brute_ent.get_living_entity().expect("Piglin Brute is living");
+            assert!(mob.as_piglin_brute().is_some(), "Piglin Brute downcast");
+            assert!(mob.as_abstract_piglin().is_some(), "Piglin Brute abstract piglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 50.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.35);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 7.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 12.0);
+            assert_eq!(living.health.load(), 50.0);
+        }
+
+        // 3. Hoglin
+        {
+            let hoglin_ent = from_type(&EntityType::HOGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = hoglin_ent.get_mob().expect("Hoglin is mob");
+            let living = hoglin_ent.get_living_entity().expect("Hoglin is living");
+            assert!(mob.as_hoglin().is_some(), "Hoglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.0);
+            assert_eq!(living.health.load(), 40.0);
+        }
+
+        // 4. Zoglin
+        {
+            let zoglin_ent = from_type(&EntityType::ZOGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zoglin_ent.get_mob().expect("Zoglin is mob");
+            let living = zoglin_ent.get_living_entity().expect("Zoglin is living");
+            assert!(mob.as_zoglin().is_some(), "Zoglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.0);
+            assert_eq!(living.health.load(), 40.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

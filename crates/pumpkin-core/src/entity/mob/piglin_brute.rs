@@ -221,6 +221,14 @@ impl Mob for PiglinBruteEntity {
         &self.mob_entity
     }
 
+    fn as_piglin_brute(&self) -> Option<&PiglinBruteEntity> {
+        Some(self)
+    }
+
+    fn as_abstract_piglin(&self) -> Option<&dyn abstract_piglin::AbstractPiglin> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

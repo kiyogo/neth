@@ -1540,6 +1540,18 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_piglin(&self) -> Option<&crate::entity::mob::piglin::PiglinEntity> {
+        None
+    }
+
+    fn as_piglin_brute(&self) -> Option<&crate::entity::mob::piglin_brute::PiglinBruteEntity> {
+        None
+    }
+
+    fn as_abstract_piglin(&self) -> Option<&dyn crate::entity::mob::abstract_piglin::AbstractPiglin> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

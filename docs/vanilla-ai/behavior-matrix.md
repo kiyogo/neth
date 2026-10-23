@@ -164,3 +164,8 @@
 | **Stray** | `Stray.java` | `mob/skeleton/stray.rs` | GoalSelector | HEALTH = 20.0, SPEED = 0.25, Slowness tipped arrows, Sun burning | NearestAttackable(Player)(2), Revenge(1) | Ground | Complete |
 | **Bogged** | `Bogged.java` | `mob/skeleton/bogged.rs` | GoalSelector | HEALTH = 16.0, SPEED = 0.25, Poison tipped arrows, Shearable mushrooms | NearestAttackable(Player)(2), Revenge(1) | Ground | Complete |
 | **Parched** | `Parched.java` | `mob/skeleton/parched.rs` | GoalSelector | HEALTH = 16.0, SPEED = 0.25, Fire immune, High attack cadence | NearestAttackable(Player)(2), Revenge(1) | Ground | Complete |
+| **Piglin** | `Piglin.java` | `mob/piglin.rs` | Brain | HEALTH = 16.0, SPEED = 0.35, ATTACK = 5.0, Bartering, Zombification (300t in Overworld), Crossbow charge | Brain Sensors (Players, Items, NearestLiving) | Ground | Complete |
+| **Piglin Brute** | `PiglinBrute.java` | `mob/piglin_brute.rs` | Brain | HEALTH = 50.0, SPEED = 0.35, ATTACK = 7.0, FOLLOW = 12.0, Golden Axe, Zombification (300t in Overworld) | Brain Sensors (Players, NearestLiving) | Ground | Complete |
+| **Hoglin** | `Hoglin.java` | `mob/hoglin.rs` | GoalSelector / Brain | HEALTH = 40.0, SPEED = 0.3, ATTACK = 6.0, KNOCKBACK_RES = 0.6, ATTACK_KB = 1.0, Upward fling attack, Zombification (300t) | Revenge(1), NearestAttackable(Player)(2) | Ground | Complete |
+| **Zoglin** | `Zoglin.java` | `mob/zoglin.rs` | GoalSelector / Brain | HEALTH = 40.0, SPEED = 0.3, ATTACK = 6.0, KNOCKBACK_RES = 0.6, ATTACK_KB = 1.0, Upward fling attack, Undead | Revenge(1), NearestAttackable(Player)(2) | Ground | Complete |
+
