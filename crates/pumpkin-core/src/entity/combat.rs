@@ -523,8 +523,8 @@ impl CombatTracker {
         damage: f32,
         source: Option<&dyn EntityBase>,
         cause: Option<&dyn EntityBase>,
-    ) {
-        self.recheck_status(current_tick, is_alive);
+    ) -> (Option<i64>, bool) {
+        let left_combat_duration = self.recheck_status(current_tick, is_alive);
 
         let attacker = cause.or(source);
         let attacker_id = attacker.map(|e| e.get_entity().entity_id);
@@ -583,25 +583,38 @@ impl CombatTracker {
         self.last_damage_time = current_tick;
         self.taking_damage = true;
 
-        if !self.in_combat && is_alive && attacker_is_living {
+        let entered_combat = if !self.in_combat && is_alive && attacker_is_living {
             self.in_combat = true;
             self.combat_start_time = current_tick;
             self.combat_end_time = self.combat_start_time;
-        }
+            true
+        } else {
+            false
+        };
+
+        (left_combat_duration, entered_combat)
     }
 
-    pub fn recheck_status(&mut self, current_tick: i64, is_alive: bool) {
+    /// Rechecks combat status based on timeout (100 ticks for damage, 300 ticks for combat)
+    /// or death. Returns `Some(combat_duration)` if the entity left combat, `None` otherwise.
+    pub fn recheck_status(&mut self, current_tick: i64, is_alive: bool) -> Option<i64> {
         let reset = if self.in_combat {
             RESET_COMBAT_STATUS_TIME
         } else {
             RESET_DAMAGE_STATUS_TIME
         };
         if self.taking_damage && (!is_alive || current_tick - self.last_damage_time > reset) {
+            let was_in_combat = self.in_combat;
+            let duration = self.get_combat_duration(current_tick);
             self.taking_damage = false;
             self.in_combat = false;
             self.combat_end_time = current_tick;
             self.entries.clear();
+            if was_in_combat {
+                return Some(duration);
+            }
         }
+        None
     }
 
     #[must_use]
@@ -1070,6 +1083,91 @@ mod tests {
             Some((4.0, false))
         );
     }
+
+    #[test]
+    fn test_combat_tracker_lifecycle_and_death_message_parity() {
+        use pumpkin_data::damage::DamageType;
+        use pumpkin_util::text::TextComponent;
+
+        let mut tracker = CombatTracker::new();
+        let victim_name = TextComponent::text("Player1");
+
+        // 1. Empty tracker gives generic death message
+        let msg = tracker.get_death_message(victim_name.clone(), None);
+        assert_eq!(msg.to_pretty_console(), "Player1 died");
+
+        // 2. Non-living damage (e.g. fire/drowning without attacker)
+        // Taking damage outside combat: resets after 100 ticks
+        let (left_combat, entered_combat) = tracker.record_damage(
+            100,
+            true,
+            0.0,
+            FallLocation::Generic,
+            DamageType::DROWN,
+            2.0,
+            None,
+            None,
+        );
+        assert_eq!(left_combat, None);
+        assert!(!entered_combat);
+        assert!(!tracker.is_in_combat());
+        assert_eq!(tracker.entries.len(), 1);
+
+        // Before 100 ticks: still taking damage, entries kept
+        assert_eq!(tracker.recheck_status(150, true), None);
+        assert_eq!(tracker.entries.len(), 1);
+
+        // After 100 ticks (e.g. tick 201): resets taking_damage and clears entries
+        assert_eq!(tracker.recheck_status(201, true), None);
+        assert_eq!(tracker.entries.len(), 0);
+
+        // 3. Combat entry and timeout (300 ticks)
+        // Simulate an entry directly with a living attacker
+        let combat_entry = CombatEntry {
+            damage_type: DamageType::GENERIC,
+            damage: 4.0,
+            fall_location: None,
+            fall_distance: 0.0,
+            timestamp: 300,
+            source_id: Some(10),
+            attacker_id: Some(10),
+            attacker_name: Some(TextComponent::text("Zombie")),
+            attacker_item_name: None,
+            attacker_is_living: true,
+            attacker_is_player: false,
+        };
+        tracker.entries.push(combat_entry);
+        tracker.in_combat = true;
+        tracker.combat_start_time = 300;
+        tracker.combat_end_time = 300;
+        tracker.last_damage_time = 300;
+        tracker.taking_damage = true;
+
+        assert!(tracker.is_in_combat());
+        assert_eq!(tracker.get_combat_duration(400), 100);
+
+        // Before 300 ticks in combat: no leave
+        assert_eq!(tracker.recheck_status(599, true), None);
+        assert!(tracker.is_in_combat());
+
+        // At tick 601 (301 ticks since last damage): leaves combat, returns duration (301 ticks)
+        let duration = tracker.recheck_status(601, true);
+        assert_eq!(duration, Some(301));
+        assert!(!tracker.is_in_combat());
+        assert_eq!(tracker.entries.len(), 0);
+
+        // 4. Death (is_alive == false) immediately ends combat and returns duration
+        tracker.in_combat = true;
+        tracker.combat_start_time = 700;
+        tracker.combat_end_time = 700;
+        tracker.last_damage_time = 700;
+        tracker.taking_damage = true;
+        let death_duration = tracker.recheck_status(750, false);
+        assert_eq!(death_duration, Some(50));
+        assert!(!tracker.is_in_combat());
+        assert_eq!(tracker.entries.len(), 0);
+    }
 }
+
 
 

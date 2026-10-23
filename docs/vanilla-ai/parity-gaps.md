@@ -1485,3 +1485,41 @@
     - Guards hurt animations, knockback velocity, damage event broadcasting, and hurt sound playback behind `took_full_damage`.
   - Verified in unit test `test_damage_cooldown_and_partial_hit_parity`.
 
+## Gap 124: Combat Tracker Lifecycle, Timestamps, Periodic Recheck & Combat Packets Parity
+- **Vanilla Reference**: `CombatTracker.java:37-54, 147-160`, `ServerPlayer.java:565-574, 895-924, 950`, `LivingEntity.java:730, 2780-2782`, `ClientboundPlayerCombatEnterPacket.java`, `ClientboundPlayerCombatEndPacket.java`:
+  - `CombatTracker.recordDamage & recheckStatus`:
+    - Tracks damage history and combat state transitions.
+    - When taking damage from a `LivingEntity` while not currently in combat:
+      - Transitions `inCombat` to `true`, records `combatStartTime`.
+      - Calls `mob.onEnterCombat()`.
+      - For players (`ServerPlayer.onEnterCombat`), sends `ClientboundPlayerCombatEnterPacket` (`CCombatEnter`).
+    - Periodic recheck: In Vanilla `LivingEntity.java:2780-2782`:
+      ```java
+      if (this.tickCount % 20 == 0) {
+         this.getCombatTracker().recheckStatus();
+      }
+      ```
+    - Status recheck timeout:
+      - If in combat: resets after 300 ticks (15s) of no damage.
+      - If outside combat (taking non-mob damage like drowning/suffocation): resets after 100 ticks (5s).
+      - On reset or on death (`!mob.isAlive()`):
+        - If previously `inCombat`: calls `mob.onLeaveCombat()`.
+        - For players (`ServerPlayer.onLeaveCombat`), sends `ClientboundPlayerCombatEndPacket` (`CCombatEnd`) with `duration = tickCount - combatStartTime`.
+        - Clears combat entries list.
+  - Death handling & `showDeathMessages` game rule:
+    - In `ServerPlayer.java:895-923`:
+      - If `showDeathMessages` is `false`, the server sends `ClientboundPlayerCombatKillPacket` (`CCombatDeath`) with empty text (`CommonComponents.EMPTY`).
+      - Only if `showDeathMessages` is `true` does the server send the formatted death message to the dead player and broadcast to chat.
+    - `this.getCombatTracker().recheckStatus()` is executed upon death, cleanly terminating combat and clearing entries.
+  - Combat Timestamps:
+    - Vanilla tracks entity age ticks (`this.mob.tickCount`). Previously in Neth, `damage_with_context` incorrectly read `world.level_info.load().day_time`, which breaks combat tracking whenever the time of day changes or players sleep in beds.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `CombatTracker::record_damage` to return `(Option<i64>, bool)` indicating whether combat was exited and/or entered.
+  - Updated `CombatTracker::recheck_status` to return `Option<i64>` (duration of combat when leaving combat).
+  - Added `on_enter_combat` and `on_leave_combat` to `LivingEntity` and `Player`, dispatching `CCombatEnter` and `CCombatEnd` packets.
+  - Added periodic 20-tick recheck to `LivingEntity::tick` (mirroring `LivingEntity.java:2780`).
+  - Switched combat timestamps from `day_time` to monotonic `self.entity.age.load(Relaxed) as i64`.
+  - Added death cleanup recheck in `broadcast_death_message` and sent empty text in `CCombatDeath` when `show_death_messages` game rule is false.
+  - Verified in unit test `test_combat_tracker_lifecycle_and_death_message_parity`.
+
+

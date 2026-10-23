@@ -2419,6 +2419,20 @@ impl LivingEntity {
         }
     }
 
+    /// Vanilla `LivingEntity.onEnterCombat`
+    pub fn on_enter_combat(&self, caller: &dyn EntityBase) {
+        if let Some(player) = caller.get_player() {
+            player.on_enter_combat();
+        }
+    }
+
+    /// Vanilla `LivingEntity.onLeaveCombat`
+    pub fn on_leave_combat(&self, caller: &dyn EntityBase, duration_ticks: i64) {
+        if let Some(player) = caller.get_player() {
+            player.on_leave_combat(duration_ticks);
+        }
+    }
+
     #[allow(clippy::redundant_closure_for_method_calls)]
     /// Builds the chat death message for this entity: picks the
     /// `death.attack.<id>` (or the `.player` variant when a killer entity is
@@ -2719,6 +2733,19 @@ impl LivingEntity {
         let show_death_messages = { world.level_info.load().game_rules.show_death_messages };
         if self.entity.entity_type == &EntityType::PLAYER {
             let death_message = Self::get_death_message(dyn_self, damage_type, source, cause);
+
+            // Vanilla `ServerPlayer.die`: recheck combat status after death message is retrieved
+            let left_combat_duration = {
+                let mut tracker = self
+                    .combat_tracker
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                tracker.recheck_status(self.entity.age.load(Relaxed) as i64, false)
+            };
+            if let Some(duration) = left_combat_duration {
+                self.on_leave_combat(dyn_self, duration);
+            }
+
             let mut final_death_message = death_message;
             if let Some(player) = dyn_self.get_player() {
                 if let Some(player_arc) = world.get_player_by_uuid(player.gameprofile.id)
@@ -2737,7 +2764,14 @@ impl LivingEntity {
                     final_death_message = event.death_message;
                 }
 
-                player.handle_killed(&final_death_message);
+                // Vanilla ServerPlayer.die: if showDeathMessages is false, send empty message in combat kill packet
+                let empty_message = pumpkin_util::text::TextComponent::empty();
+                let client_death_message = if show_death_messages {
+                    &final_death_message
+                } else {
+                    &empty_message
+                };
+                player.handle_killed(client_death_message);
             }
 
             if show_death_messages && let Some(server) = world.server.upgrade() {
@@ -4045,7 +4079,7 @@ impl LivingEntity {
                 self.last_attacked_time
                     .store(self.entity.age.load(Relaxed), Relaxed);
 
-                let current_tick = world.level_info.load().day_time;
+                let current_tick = self.entity.age.load(Relaxed) as i64;
                 if attacker.get_player().is_some() {
                     self.last_hurt_by_player_id.store(attacker_id, Relaxed);
                     self.last_hurt_by_player_time.store(current_tick, Relaxed);
@@ -4065,11 +4099,11 @@ impl LivingEntity {
                     self.apply_thorns_reflection(caller, attacker);
                 }
             }
-            let current_tick = world.level_info.load().day_time;
+            let current_tick = self.entity.age.load(Relaxed) as i64;
             let fall_location = FallLocation::get_current_fall_location(self, &world);
             let fall_distance = self.fall_distance.load();
 
-            {
+            let (left_combat_duration, entered_combat) = {
                 let mut tracker = self
                     .combat_tracker
                     .lock()
@@ -4083,7 +4117,14 @@ impl LivingEntity {
                     effective_amount,
                     source,
                     cause,
-                );
+                )
+            };
+
+            if let Some(duration) = left_combat_duration {
+                self.on_leave_combat(caller, duration);
+            }
+            if entered_combat {
+                self.on_enter_combat(caller);
             }
         }
 
@@ -4152,6 +4193,22 @@ impl EntityBase for LivingEntity {
         let is_alive = !self.dead.load(Relaxed) && self.health.load() > 0.0;
         let in_death_animation = self.health.load() <= 0.0 && self.death_time.load(Relaxed) < 20;
         let is_player = self.entity.entity_type == &EntityType::PLAYER;
+
+        // Vanilla `LivingEntity.tick` (LivingEntity.java:2780): every 20 ticks (1s), recheck combat status
+        let tick_count = self.entity.age.load(Relaxed);
+        if tick_count % 20 == 0 {
+            let left_combat_duration = {
+                let mut tracker = self
+                    .combat_tracker
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                tracker.recheck_status(tick_count as i64, is_alive)
+            };
+            if let Some(duration) = left_combat_duration {
+                self.on_leave_combat(caller, duration);
+            }
+        }
+
         // Vanilla `ServerEntity.sendChanges` runs before the player's `aiStep`.
         if is_player {
             self.entity.flush_velocity(caller.get_player());

@@ -273,7 +273,7 @@ use pumpkin_protocol::codec::var_long::VarLong;
 use pumpkin_protocol::codec::var_ulong::VarULong;
 use pumpkin_protocol::java::client::play::{
     Animation, CAcknowledgeBlockChange, CActionBar, CAwardStats, CBlockUpdate, CChangeDifficulty,
-    CCloseContainer, CCombatDeath, CCustomPayload, CDisguisedChatMessage, CEntityAnimation,
+    CCloseContainer, CCombatDeath, CCombatEnd, CCombatEnter, CCustomPayload, CDisguisedChatMessage, CEntityAnimation,
     CEntityPositionSync, CGameEvent, CHurtAnimation, CItemCooldown, CMapItemData,
     COpenBook, COpenScreen, COpenSignEditor, CParticle, CPlayServerLinks, CPlayerAbilities,
     CPlayerInfoUpdate, CPlayerPosition, CPlayerSpawnPosition, CRespawn, CSetCamera,
@@ -5534,6 +5534,24 @@ impl Player {
                 fire_at_position: None,
             },
         );
+    }
+
+    /// Vanilla `ServerPlayer.onEnterCombat`: sends `ClientboundPlayerCombatEnterPacket`.
+    pub fn on_enter_combat(&self) {
+        if let ClientPlatform::Java(client) = self.client.as_ref()
+            && let Ok(data) = client.serialize_packet(&CCombatEnter)
+        {
+            client.try_enqueue_packet(data);
+        }
+    }
+
+    /// Vanilla `ServerPlayer.onLeaveCombat`: sends `ClientboundPlayerCombatEndPacket`.
+    pub fn on_leave_combat(&self, duration_ticks: i64) {
+        if let ClientPlatform::Java(client) = self.client.as_ref()
+            && let Ok(data) = client.serialize_packet(&CCombatEnd::new(VarInt(duration_ticks as i32)))
+        {
+            client.try_enqueue_packet(data);
+        }
     }
 
     /// Handles player death.
