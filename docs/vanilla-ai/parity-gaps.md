@@ -1593,8 +1593,47 @@
 - **Neth Status**: **RESOLVED & VERIFIED**
   - Implemented `calculate_knockback_direction(target_pos, source_pos, is_projectile, projectile_velocity, damage_position) -> (f64, f64)` in `crates/pumpkin-core/src/entity/combat.rs`.
   - Implemented `calculate_hurt_direction_yaw(xd, zd, entity_yaw) -> f32` mirroring Vanilla `ServerPlayer.indicateDamage`: `(float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI - this.getYRot())`.
-  - Added `#minecraft:no_knockback` and `#minecraft:no_impact` checks to `LivingEntity::damage_with_context`.
   - Verified in unit tests `test_knockback_direction_and_hurt_indication_parity`.
+
+## Gap 127: Attack Strength Ticker Reset & Main Hand Item Swap Interruption Parity
+- **Vanilla Reference**: `Player.java:270-279, 1799-1830`, `ServerGamePacketListenerImpl.java:1551-1559, 1773-1779`, `ServerPlayer.java:2120-2130`:
+  - `Player.java:273-276` (`Player.tick`):
+    ```java
+    ItemStack mainHandItemStack = this.getMainHandItem();
+    if (!ItemStack.matches(this.lastItemInMainHand, mainHandItemStack)) {
+       if (!ItemStack.isSameItem(this.lastItemInMainHand, mainHandItemStack)) {
+          this.resetAttackStrengthTicker();
+       }
+       this.lastItemInMainHand = mainHandItemStack.copy();
+    }
+    ```
+  - `ServerGamePacketListenerImpl.handlePunch`:
+    ```java
+    this.player.swing(InteractionHand.MAIN_HAND, swingAnimation, false);
+    this.player.resetAttackStrengthTicker();
+    ```
+  - `ServerGamePacketListenerImpl.handleSetCarriedItem`:
+    ```java
+    if (this.player.getInventory().getSelectedSlot() != packet.getSlot() && this.player.getUsedItemHand() == InteractionHand.MAIN_HAND) {
+       this.player.stopUsingItem();
+    }
+    this.player.getInventory().setSelectedSlot(packet.getSlot());
+    ```
+  - `ServerPlayer.drop`:
+    ```java
+    this.drop(removed, true, Prediction.PREDICTED);
+    this.resetAttackStrengthTicker();
+    ```
+  - Previously in Neth:
+    - `last_attacked_ticks` was ONLY reset when a melee attack landed.
+    - Swinging in the air (missed hit), switching hotbar slot, swapping hands with F key, or dropping the held item did NOT reset the attack cooldown ticker. Players could swap from an empty hand to an axe and hit instantly at full strength without cooldown penalty.
+    - Switching the active carried slot while eating or drawing a bow with main hand did not stop item usage.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `Player::reset_attack_cooldown()` and pure helpers `calculate_attack_cooldown_progress` and `calculate_base_damage_scale_factor`.
+  - Added attack cooldown ticker reset on main hand arm swing (`handle_swing_arm`).
+  - Added item use interruption (`player.stop_using_item()`) and attack cooldown reset on carried slot change (`handle_set_held_item`).
+  - Added attack cooldown reset on item drop (`drop_held_item`) and hand swap (`swap_item`).
+  - Verified in unit tests `test_attack_cooldown_progress_and_base_damage_scale_parity`.
 
 
 

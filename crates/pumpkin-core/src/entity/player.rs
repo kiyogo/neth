@@ -1424,7 +1424,7 @@ impl Player {
         // Only reduce attack damage if in cooldown
         // TODO: Enchantments are reduced in the same way, just without the square.
         if attack_cooldown_progress < 1.0 {
-            damage_multiplier = attack_cooldown_progress.powi(2).mul_add(0.8, 0.2);
+            damage_multiplier = combat::calculate_base_damage_scale_factor(attack_cooldown_progress);
         }
 
         // Modify the added damage based on the multiplier.
@@ -3686,11 +3686,17 @@ impl Player {
     }
 
     pub fn get_attack_cooldown_progress(&self, tps: f64, base_time: f64, attack_speed: f64) -> f64 {
-        let x = f64::from(self.last_attacked_ticks.load(Ordering::Acquire)) + base_time;
+        crate::entity::combat::calculate_attack_cooldown_progress(
+            self.last_attacked_ticks.load(Ordering::Acquire),
+            base_time,
+            tps,
+            attack_speed,
+        )
+    }
 
-        let progress_per_tick = tps / attack_speed;
-        let progress = x / progress_per_tick;
-        progress.clamp(0.0, 1.0)
+    /// Resets the attack cooldown progress ticker, mirroring Vanilla `Player.resetAttackStrengthTicker()`.
+    pub fn reset_attack_cooldown(&self) {
+        self.last_attacked_ticks.store(0, Ordering::Relaxed);
     }
 
     pub async fn fire_packet_sent<P: Send + Sync + std::any::Any>(
@@ -5901,6 +5907,7 @@ impl Player {
         self.inventory().set_held_item(updated_stack.clone());
 
         self.drop_item(dropped_stack);
+        self.reset_attack_cooldown();
 
         let inv: Arc<dyn Inventory> = self.inventory.clone();
         let screen_binding = self
@@ -5934,6 +5941,7 @@ impl Player {
         ];
         self.living_entity.send_equipment_changes(equipment);
         self.stop_using_item();
+        self.reset_attack_cooldown();
     }
 
     #[must_use]

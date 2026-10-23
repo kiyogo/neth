@@ -53,6 +53,9 @@ impl JavaClient {
             event;
             'after: {
                 player.swing_hand(hand, false);
+                if hand == Hand::Right {
+                    player.reset_attack_cooldown();
+                }
             }
         }}
     }

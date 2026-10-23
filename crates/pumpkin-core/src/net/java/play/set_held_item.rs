@@ -22,6 +22,12 @@ impl JavaClient {
         }
 
         let inv = player.inventory();
+        if previous_slot != slot {
+            if player.using_hand.load() == Some(Hand::Right) {
+                player.stop_using_item();
+            }
+            player.reset_attack_cooldown();
+        }
         inv.set_selected_slot(slot);
         let stack = inv.held_item();
         let equipment = &[(EquipmentSlot::MAIN_HAND, stack)];

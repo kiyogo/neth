@@ -301,6 +301,28 @@ pub fn calculate_hurt_direction_yaw(xd: f64, zd: f64, entity_yaw: f32) -> f32 {
     }
 }
 
+/// Calculates the attack strength scale, mirroring Vanilla `Player.getAttackStrengthScale`:
+/// `Mth.clamp((this.attackStrengthTicker + a) / this.getCurrentItemAttackStrengthDelay(), 0.0F, 1.0F)`.
+#[must_use]
+pub fn calculate_attack_cooldown_progress(
+    attack_ticks: u32,
+    base_time: f64,
+    tps: f64,
+    attack_speed: f64,
+) -> f64 {
+    let x = f64::from(attack_ticks) + base_time;
+    let progress_per_tick = tps / attack_speed;
+    (x / progress_per_tick).clamp(0.0, 1.0)
+}
+
+/// Calculates the base damage scale factor from attack strength scale,
+/// mirroring Vanilla `Player.baseDamageScaleFactor()`:
+/// `0.2F + attackStrengthScale * attackStrengthScale * 0.8F`.
+#[must_use]
+pub fn calculate_base_damage_scale_factor(attack_strength_scale: f64) -> f64 {
+    attack_strength_scale.powi(2).mul_add(0.8, 0.2)
+}
+
 pub fn handle_knockback(attacker: &Entity, victim: &dyn EntityBase, strength: f64) {
     let resistance = victim.get_living_entity().map_or(0.0, |living| {
         living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE)
@@ -1372,6 +1394,41 @@ mod tests {
 
         assert!(DamageType::DROWN.has_tag(&tag::DamageType::MINECRAFT_NO_IMPACT));
         assert!(!DamageType::PLAYER_ATTACK.has_tag(&tag::DamageType::MINECRAFT_NO_IMPACT));
+    }
+
+    #[test]
+    fn test_attack_cooldown_progress_and_base_damage_scale_parity() {
+        // Vanilla Player.java:1799-1811:
+        // delay = 1.0 / attackSpeed * 20.0 (progress_per_tick = 20.0 / attack_speed)
+        // scale = clamp((ticker + 0.5) / delay, 0.0, 1.0)
+        // baseDamageScaleFactor = 0.2 + scale * scale * 0.8
+
+        // 1. Bare hand (attack_speed = 4.0): delay is 5.0 ticks
+        // At tick 0 (just reset/swapped/swung): (0 + 0.5) / 5.0 = 0.1
+        let p0 = calculate_attack_cooldown_progress(0, 0.5, 20.0, 4.0);
+        assert!((p0 - 0.1).abs() < 1e-4);
+        let dmg0 = calculate_base_damage_scale_factor(p0);
+        assert!((dmg0 - (0.2 + 0.01 * 0.8)).abs() < 1e-4);
+
+        // At tick 2: (2 + 0.5) / 5.0 = 0.5 (half-charged)
+        let p2 = calculate_attack_cooldown_progress(2, 0.5, 20.0, 4.0);
+        assert!((p2 - 0.5).abs() < 1e-4);
+        let dmg2 = calculate_base_damage_scale_factor(p2);
+        assert!((dmg2 - (0.2 + 0.25 * 0.8)).abs() < 1e-4); // 0.4 (40% damage)
+
+        // At tick 5: (5 + 0.5) / 5.0 = 1.1 -> clamped to 1.0 (fully charged)
+        let p5 = calculate_attack_cooldown_progress(5, 0.5, 20.0, 4.0);
+        assert_eq!(p5, 1.0);
+        let dmg5 = calculate_base_damage_scale_factor(p5);
+        assert_eq!(dmg5, 1.0);
+
+        // 2. Iron Axe (attack_speed = 0.9): delay is 22.22 ticks
+        let p_axe_0 = calculate_attack_cooldown_progress(0, 0.5, 20.0, 0.9);
+        assert!((p_axe_0 - 0.0225).abs() < 1e-4);
+
+        // At tick 23: fully charged (1.0)
+        let p_axe_full = calculate_attack_cooldown_progress(23, 0.5, 20.0, 0.9);
+        assert_eq!(p_axe_full, 1.0);
     }
 }
 
