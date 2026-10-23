@@ -1446,3 +1446,42 @@
   - Added `get_health` getter to `LivingEntity`.
   - Added `damage_indicator_particle_count` helper and spawned `Particle::DamageIndicator` when player deals `actual_damage > 2.0` to living victims.
   - Verified in unit tests `test_damage_indicator_and_redirectable_projectile_parity`.
+
+## Gap 123: Living Entity Damage Invulnerability Cooldown & Partial Damage Calculation Parity
+- **Vanilla Reference**: `LivingEntity.java:1218-1268` (`hurtServer`), `LivingEntity.java:1960-1979` (`actuallyHurt`):
+  - In vanilla Minecraft:
+    ```java
+    boolean tookFullDamage = true;
+    if (this.damageCooldownTime > 10.0F && !source.is(DamageTypeTags.BYPASSES_COOLDOWN)) {
+       if (damage <= this.lastHurt) {
+          return false;
+       }
+
+       this.actuallyHurt(level, source, damage - this.lastHurt);
+       this.lastHurt = damage;
+       tookFullDamage = false;
+    } else {
+       this.lastHurt = damage;
+       this.damageCooldownTime = 20;
+       this.actuallyHurt(level, source, damage);
+       this.hurtDuration = 10;
+       this.hurtTime = this.hurtDuration;
+    }
+    ```
+  - `this.lastHurt` tracks raw incoming damage before armor absorption and enchantments.
+  - If a hit arrives within the 10-tick invulnerability cooldown (`damageCooldownTime > 10`):
+    - If `damage <= this.lastHurt`: the hit is completely discarded (`return false`). No armor damage, no sound, no knockback, no animation.
+    - If `damage > this.lastHurt`: the entity receives the difference `damage - this.lastHurt` passed to `actuallyHurt` (which then applies armor/magic absorption). `tookFullDamage` is `false`, so knockback, hurt animations, hurt sounds, and hurt event packets are NOT replayed.
+  - In previous Neth implementation:
+    - Armor reduction and magic reduction were calculated before the cooldown check, and then compared `effective_amount <= last_damage` (comparing post-armor damage against pre-armor damage). This caused subsequent stronger hits during the invulnerability window to be rejected incorrectly or severely under-damaged (`effective_amount - last_damage` resulted in subtracting raw damage from post-armor damage).
+    - Armor durability was damaged before the cooldown check, wasting durability even on discarded hits.
+    - Even for partial hits (`tookFullDamage == false`), hurt animation packets, broadcast events, knockback, and hurt sounds were erroneously triggered.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_cooldown_damage(raw_damage, last_damage, hurt_cooldown, bypasses_cooldown) -> Option<(f32, bool)>` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Refactored `LivingEntity::damage_with_context`:
+    - Checks cooldown and computes `damage_to_apply` and `took_full_damage` upfront.
+    - Calculates armor damage and absorption on `damage_to_apply` inside the `actuallyHurt` sequence.
+    - Updates `last_damage_taken` to the raw incoming damage.
+    - Guards hurt animations, knockback velocity, damage event broadcasting, and hurt sound playback behind `took_full_damage`.
+  - Verified in unit test `test_damage_cooldown_and_partial_hit_parity`.
+

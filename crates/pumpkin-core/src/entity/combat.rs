@@ -327,6 +327,30 @@ pub fn damage_indicator_particle_count(actual_damage: f32) -> Option<i32> {
     }
 }
 
+/// Vanilla `LivingEntity.hurtServer` damage cooldown logic:
+/// If within hurt immunity cooldown (`damageCooldownTime > 10.0F` and not bypassing cooldown):
+/// - Incoming damage <= last_damage: rejected (`None`).
+/// - Incoming damage > last_damage: difference `(damage - last_damage)` dealt, without replaying
+///   hurt animations, sounds, or knockback (`Some((diff, false))`).
+/// Outside cooldown: full damage applied with full animations, sound, and knockback (`Some((damage, true))`).
+#[must_use]
+pub fn calculate_cooldown_damage(
+    raw_damage: f32,
+    last_damage: f32,
+    hurt_cooldown: i32,
+    bypasses_cooldown: bool,
+) -> Option<(f32, bool)> {
+    if hurt_cooldown > 10 && !bypasses_cooldown {
+        if raw_damage <= last_damage {
+            None
+        } else {
+            Some((raw_damage - last_damage, false))
+        }
+    } else {
+        Some((raw_damage, true))
+    }
+}
+
 pub fn player_attack_sound(pos: &Vector3<f64>, world: &World, attack_type: AttackType) {
     match attack_type {
         AttackType::Knockback => {
@@ -1008,5 +1032,44 @@ mod tests {
         assert!(!is_redirectable_projectile(&EntityType::SNOWBALL));
         assert!(!is_redirectable_projectile(&EntityType::ZOMBIE));
     }
+
+    #[test]
+    fn test_damage_cooldown_and_partial_hit_parity() {
+        // Vanilla LivingEntity.hurtServer:
+        // When outside cooldown (hurt_cooldown <= 10): full hit applied
+        assert_eq!(
+            calculate_cooldown_damage(10.0, 5.0, 10, false),
+            Some((10.0, true))
+        );
+        assert_eq!(
+            calculate_cooldown_damage(4.0, 8.0, 0, false),
+            Some((4.0, true))
+        );
+
+        // When damage type bypasses cooldown (#minecraft:bypasses_cooldown): full hit applied regardless of cooldown
+        assert_eq!(
+            calculate_cooldown_damage(5.0, 10.0, 20, true),
+            Some((5.0, true))
+        );
+
+        // When in cooldown (hurt_cooldown > 10) and does not bypass cooldown:
+        // 1. Weaker hit: completely discarded (None)
+        assert_eq!(
+            calculate_cooldown_damage(4.0, 8.0, 15, false),
+            None
+        );
+        // 2. Equal hit: completely discarded (None)
+        assert_eq!(
+            calculate_cooldown_damage(8.0, 8.0, 20, false),
+            None
+        );
+        // 3. Stronger hit: only the difference is applied, and took_full_damage is false
+        // (no knockback, no hurt animation, no damage sound replay)
+        assert_eq!(
+            calculate_cooldown_damage(12.0, 8.0, 18, false),
+            Some((4.0, false))
+        );
+    }
 }
+
 

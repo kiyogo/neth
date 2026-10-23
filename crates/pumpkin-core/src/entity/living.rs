@@ -3831,12 +3831,33 @@ impl LivingEntity {
             }
         }
 
-        // Vanilla parity: 1. Armor damage & absorb
+        // Vanilla parity: Damage cooldown check (damageCooldownTime > 10.0F && !bypasses_cooldown)
+        let bypasses_cooldown_protection =
+            damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_COOLDOWN);
+        let last_damage = self.last_damage_taken.load();
+        let hurt_cd = self.hurt_cooldown.load(Relaxed);
+
+        let Some((damage_to_apply, took_full_damage)) = crate::entity::combat::calculate_cooldown_damage(
+            amount,
+            last_damage,
+            hurt_cd,
+            bypasses_cooldown_protection,
+        ) else {
+            return false;
+        };
+
+        self.last_damage_taken.store(amount);
+        if took_full_damage {
+            self.hurt_cooldown.store(20, Relaxed);
+        }
+
+        // Vanilla parity: actuallyHurt
+        // 1. Armor damage & absorb on damage_to_apply
         if !is_damages_helmet {
-            self.damage_armor_items(caller, amount, &damage_type);
+            self.damage_armor_items(caller, damage_to_apply, &damage_type);
         }
         let damage_after_armor =
-            self.get_damage_after_armor_absorb(amount, &damage_type, cause.or(source));
+            self.get_damage_after_armor_absorb(damage_to_apply, &damage_type, cause.or(source));
 
         let effective_amount = self.get_damage_after_magic_absorb(
             damage_after_armor,
@@ -3845,25 +3866,7 @@ impl LivingEntity {
             cause.or(source),
         );
 
-        let bypasses_cooldown_protection =
-            damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_COOLDOWN);
-
-        // Apply hurt cooldown logic
-        let last_damage = self.last_damage_taken.load();
-        let (damage_amount, play_sound) =
-            if self.hurt_cooldown.load(Relaxed) > 10 && !bypasses_cooldown_protection {
-                if effective_amount <= last_damage {
-                    return false;
-                }
-                (effective_amount - last_damage, false)
-            } else {
-                self.hurt_cooldown.store(20, Relaxed);
-                (effective_amount, self.health.load() > effective_amount)
-            };
-
-        // Finalize state
-        self.last_damage_taken.store(amount);
-        let damage_amount = damage_amount.max(0.0);
+        let damage_amount = effective_amount.max(0.0);
 
         // Record the source once the hit is confirmed.
         *self
@@ -3872,40 +3875,40 @@ impl LivingEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(damage_type);
         self.last_damage_stamp.store(world.get_world_age(), Relaxed);
 
-        if let Some(server) = world.server.upgrade() {
-            let config = &server.advanced_config.pvp;
+        if took_full_damage {
+            if let Some(server) = world.server.upgrade() {
+                let config = &server.advanced_config.pvp;
 
-            if config.hurt_animation {
-                let entity_id = self.entity.entity_id;
-                let hurt_yaw = source.map_or(0.0, |source| {
-                    let src = source.get_entity().pos.load();
-                    let tgt = self.entity.pos.load();
-                    (src.z - tgt.z).atan2(src.x - tgt.x).to_degrees() as f32 - self.entity.yaw.load()
-                });
-                let hurt_event = SActorEvent {
-                    target_runtime_id: VarULong(entity_id as u64),
-                    event_id: ActorEventID::Hurt,
-                    data: VarInt(0),
-                    fire_at_position: None,
-                };
-                let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
-                world.send_to_tracking_players_and_self_editioned(
-                    &self.entity,
-                    &hurt_animation,
-                    &hurt_event,
-                );
+                if config.hurt_animation {
+                    let entity_id = self.entity.entity_id;
+                    let hurt_yaw = source.map_or(0.0, |source| {
+                        let src = source.get_entity().pos.load();
+                        let tgt = self.entity.pos.load();
+                        (src.z - tgt.z).atan2(src.x - tgt.x).to_degrees() as f32 - self.entity.yaw.load()
+                    });
+                    let hurt_event = SActorEvent {
+                        target_runtime_id: VarULong(entity_id as u64),
+                        event_id: ActorEventID::Hurt,
+                        data: VarInt(0),
+                        fire_at_position: None,
+                    };
+                    let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
+                    world.send_to_tracking_players_and_self_editioned(
+                        &self.entity,
+                        &hurt_animation,
+                        &hurt_event,
+                    );
+                }
             }
-        }
 
-        world.broadcast_damage_event(
-            &self.entity,
-            i32::from(damage_type.id),
-            source.map(|e| e.get_entity().entity_id),
-            cause.map(|e| e.get_entity().entity_id),
-            position,
-        );
+            world.broadcast_damage_event(
+                &self.entity,
+                i32::from(damage_type.id),
+                source.map(|e| e.get_entity().entity_id),
+                cause.map(|e| e.get_entity().entity_id),
+                position,
+            );
 
-        if play_sound {
             if let Some(source) = source {
                 let source_ent = source.get_entity();
                 let source_vel = source_ent.velocity.load();
@@ -3933,15 +3936,10 @@ impl LivingEntity {
                 self.entity.mark_hurt();
             }
 
-            // Vanilla parity: `LivingEntity.hurtServer` calls `markHurt()` for every hit
-            // that lands in full, which is the case `play_sound` encodes here (the other
-            // branch is the reduced hit the hurt cooldown produces). Vanilla's
-            // `ServerEntity` then sends the entity its own motion once, on that entity's
-            // next tick. This must stay in the same block as the knockback: the per-tick
-            // velocity flush no longer reaches the entity itself, so a knocked-back player
-            // would otherwise never be told about its own knockback.
             self.entity.hurt_marked.store(true, Ordering::SeqCst);
         }
+
+        let play_sound = took_full_damage;
 
         // Vanilla parity: actuallyHurt
         let original_damage = damage_amount;
