@@ -1124,6 +1124,11 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.get_knockback()
     }
 
+    /// `LivingEntity.has_helmet`.
+    fn has_helmet(&self) -> bool {
+        self.get_mob_entity().living_entity.has_helmet()
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false

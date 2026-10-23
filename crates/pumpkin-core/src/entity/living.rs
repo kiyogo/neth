@@ -2315,6 +2315,17 @@ impl LivingEntity {
         knockback / 2.0
     }
 
+    /// Whether this entity has an item equipped in its head slot,
+    /// mirroring vanilla `!this.getItemBySlot(EquipmentSlot.HEAD).isEmpty()`.
+    #[must_use]
+    pub fn has_helmet(&self) -> bool {
+        let equipment = self
+            .entity_equipment
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        !equipment.get(&EquipmentSlot::HEAD).is_empty()
+    }
+
     #[allow(clippy::redundant_closure_for_method_calls)]
     /// Builds the chat death message for this entity: picks the
     /// `death.attack.<id>` (or the `.player` variant when a killer entity is
@@ -3006,6 +3017,15 @@ impl LivingEntity {
         }
 
         if !equipment_updates.is_empty() {
+            let mut equipment_lock = self
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            for (slot, stack) in &equipment_updates {
+                equipment_lock.equipment.insert(slot.clone(), stack.clone());
+            }
+            drop(equipment_lock);
+
             self.send_equipment_changes(&equipment_updates);
         }
     }
@@ -3601,6 +3621,13 @@ impl LivingEntity {
             amount *= 5.0;
         }
 
+        // Vanilla parity: DAMAGES_HELMET (falling anvil/block/stalactite) damages helmet and reduces damage by 25%.
+        let is_damages_helmet = damage_type.has_tag(&tag::DamageType::MINECRAFT_DAMAGES_HELMET);
+        if is_damages_helmet && self.has_helmet() {
+            self.damage_armor_items(caller, amount, &damage_type);
+            amount *= 0.75;
+        }
+
         // Check for shield blocking before armor/magic/cooldown
         let damage_pos = position.or_else(|| source.map(|s| s.get_entity().pos.load()));
         if self.is_blocking()
@@ -3710,7 +3737,9 @@ impl LivingEntity {
         }
 
         // Vanilla parity: 1. Armor damage & absorb
-        self.damage_armor_items(caller, amount, &damage_type);
+        if !is_damages_helmet {
+            self.damage_armor_items(caller, amount, &damage_type);
+        }
         let damage_after_armor =
             self.get_damage_after_armor_absorb(amount, &damage_type, cause.or(source));
 
@@ -4526,6 +4555,7 @@ mod consumable_effect_tests {
 }
 /// Returns `true` if `damage_type` is in `#minecraft:bypasses_armor` (1.21.11).
 /// These sources bypass armor entirely (fall, drown, freeze, etc.).
+#[allow(dead_code)]
 pub(crate) const fn bypasses_armor_durability(damage_type: &DamageType) -> bool {
     // Bitmask lookup: O(1) with two instructions (shift + AND), no array scan.
     // DamageType IDs can exceed 31; use u64 for sufficient range.

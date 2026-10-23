@@ -3627,6 +3627,71 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_damages_helmet_reduction_and_durability_parity() {
+        use pumpkin_data::data_component_impl::EquipmentSlot;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::item_stack::ItemStack;
+
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Target without helmet
+        let zombie_no_helmet = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob_no_helmet = zombie_no_helmet.get_mob().expect("Zombie is mob");
+        let living_no_helmet = &mob_no_helmet.get_mob_entity().living_entity;
+        assert!(!living_no_helmet.has_helmet());
+        assert!(!mob_no_helmet.has_helmet());
+
+        // Without helmet: full 20.0 damage taken, last_damage_taken == 20.0
+        living_no_helmet.damage_with_context(
+            zombie_no_helmet.as_ref(),
+            20.0,
+            pumpkin_data::damage::DamageType::FALLING_ANVIL,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(living_no_helmet.last_damage_taken.load(), 20.0);
+
+        // 2. Target with helmet
+        let zombie_with_helmet = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob_with_helmet = zombie_with_helmet.get_mob().expect("Zombie is mob");
+        let living_with_helmet = &mob_with_helmet.get_mob_entity().living_entity;
+
+        let helmet = ItemStack::new(1, &Item::IRON_HELMET);
+        living_with_helmet
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .put(&EquipmentSlot::HEAD, helmet);
+
+        assert!(living_with_helmet.has_helmet());
+        assert!(mob_with_helmet.has_helmet());
+
+        // With helmet: damage reduced by 25% (20.0 * 0.75 = 15.0), helmet takes durability damage (max(1, 20/4) = 5)
+        living_with_helmet.damage_with_context(
+            zombie_with_helmet.as_ref(),
+            20.0,
+            pumpkin_data::damage::DamageType::FALLING_ANVIL,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(living_with_helmet.last_damage_taken.load(), 15.0);
+
+        let helmet_after = living_with_helmet
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .equipment
+            .get(&EquipmentSlot::HEAD)
+            .cloned()
+            .expect("Helmet still exists");
+        assert_eq!(helmet_after.get_damage(), 5);
+
+        world.level.shutdown().await;
+    }
 }
 
 

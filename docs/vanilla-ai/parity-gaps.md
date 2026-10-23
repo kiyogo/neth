@@ -1214,6 +1214,22 @@
   - Allowed core damage and knockback processing to execute cleanly without aborting when server reference is not present.
   - Verified in `test_attack_knockback_attribute_and_strength_parity`.
 
+## Gap 112: Falling Anvil / DAMAGES_HELMET 25% Reduction & Helmet Durability Parity
+- **Vanilla Reference**: `LivingEntity.java:1209-1212, 1894-1906`, `Player.java:732-734`:
+  - When damaged by any source with `#minecraft:damages_helmet` (falling anvil, falling block, falling stalactite):
+    - If the target entity has a helmet equipped (`!this.getItemBySlot(EquipmentSlot.HEAD).isEmpty()`):
+      - `hurtHelmet(source, damage)` is invoked, reducing the helmet's durability by `max(1, floor(damage / 4))`.
+      - Incoming damage is reduced by 25% (`damage *= 0.75F`) BEFORE applying damage cooldown, armor calculation, or magic absorbs.
+    - If target has no helmet equipped, full damage is sustained without the 25% damage mitigation.
+  - Armor durability update persistence: ensure equipment state changes to damaged armor pieces in `damage_armor_items` are persisted back into `entity_equipment`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `has_helmet(&self) -> bool` to `LivingEntity` and `Mob` trait.
+  - Integrated vanilla 25% reduction and helmet damage trigger before damage cooldown check in `LivingEntity::damage_with_context`.
+  - Guarded subsequent `damage_armor_items` invocation against redundant duplicate helmet wear for `damages_helmet` sources.
+  - Persisted updated damaged item stacks back into `self.entity_equipment` in `LivingEntity::damage_armor_items`.
+  - Verified in unit test `test_damages_helmet_reduction_and_durability_parity`.
+
+
 
 
 
