@@ -2014,8 +2014,78 @@ pub trait Mob: EntityBase + Send + Sync {
             .is_some_and(crate::entity::passive::tamable::TamableAnimal::is_tame)
     }
 
+    /// Calculates experience with equipment bonuses from a base reward, mirroring vanilla `Mob.getBaseExperienceReward`.
+    fn calculate_equipment_experience_reward(&self, mut base_xp: u32) -> u32 {
+        if base_xp > 0 {
+            let equipment_lock = self
+                .get_mob_entity()
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            for (slot, stack) in &equipment_lock.equipment {
+                if !stack.is_empty() && slot.can_increase_experience() {
+                    base_xp += rand::random_range(1..=3);
+                }
+            }
+        }
+        base_xp
+    }
+
+    /// Whether this mob is currently a baby.
+    fn is_baby_mob(&self) -> bool {
+        if let Some(ageable) = self.as_ageable() {
+            return ageable.is_baby();
+        }
+        self.get_entity().age.load(std::sync::atomic::Ordering::Relaxed) < 0
+    }
+
+    /// Whether this mob drops experience upon death, mirroring vanilla `LivingEntity.shouldDropExperience` and `Monster.shouldDropExperience`.
+    fn should_drop_experience(&self) -> bool {
+        let is_baby = self.is_baby_mob();
+
+        if self.get_entity().entity_type.category == &pumpkin_data::entity::MobCategory::MONSTER {
+            // In vanilla Monster.java:123, monsters return true (even baby zombies drop XP).
+            // Hoglin (which is a monster) overrides to !is_baby.
+            if self.get_entity().entity_type == &pumpkin_data::entity::EntityType::HOGLIN {
+                return !is_baby;
+            }
+            return true;
+        }
+
+        // Tadpoles don't drop XP
+        if self.get_entity().entity_type == &pumpkin_data::entity::EntityType::TADPOLE {
+            return false;
+        }
+
+        !is_baby
+    }
+
+    /// Calculates base experience reward, mirroring vanilla `Mob.getBaseExperienceReward`.
     fn get_base_experience_reward(&self) -> u32 {
-        self.get_entity().entity_type.experience_reward
+        if self.as_animal().is_some()
+            || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::DOLPHIN
+            || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::SQUID
+            || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::GLOW_SQUID
+            || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::TURTLE
+        {
+            return rand::random_range(1..=3);
+        }
+
+        if let Some(cube) = self.as_cube_mob() {
+            return cube.get_size().max(1) as u32;
+        }
+
+        let base_xp = self.get_entity().entity_type.experience_reward;
+
+        // Piglin and Hoglin do not add equipment bonuses in vanilla
+        if self.get_entity().entity_type == &pumpkin_data::entity::EntityType::PIGLIN
+            || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::HOGLIN
+        {
+            return base_xp;
+        }
+
+        self.calculate_equipment_experience_reward(base_xp)
     }
 
     fn mob_init_data_tracker(&self) {
@@ -2344,20 +2414,10 @@ impl<T: Mob + Send + 'static> EntityBase for T {
 
 
     fn get_experience_reward(&self, _killer: Option<&dyn EntityBase>) -> u32 {
-        if self
-            .get_entity()
-            .age
-            .load(std::sync::atomic::Ordering::Relaxed)
-            < 0
-        {
+        if !self.should_drop_experience() {
             return 0;
         }
-        // TODO: apply enchantment processing like in vanilla
-        Mob::get_base_experience_reward(self)
-    }
-
-    fn get_base_experience_reward(&self) -> u32 {
-        Mob::get_base_experience_reward(self)
+        self.get_base_experience_reward()
     }
 }
 

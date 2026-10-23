@@ -1160,6 +1160,27 @@
   - Added `is_dead_or_dying(&self) -> bool` on `LivingEntity` and `Mob` trait.
   - Verified in `test_heal_and_death_checks_parity`.
 
+## Gap 109: Mob Experience Drop & Base XP Reward Parity
+- **Vanilla Reference**: `Mob.java:307-324`, `LivingEntity.java:583-585, 607-613, 1530-1535`, `Monster.java:123`, `Animal.java:134`, `Slime.java:123`, `Zombie.java:191`, `EquipmentSlot.java:canIncreaseExperience`:
+  - `shouldDropExperience()`:
+    - Base living entities return `!this.isBaby()`.
+    - `Monster` overrides to `true` (monsters drop experience even if babies).
+    - `Hoglin` overrides to `!this.isBaby()`.
+    - `Tadpole` returns `false`.
+  - `getBaseExperienceReward()`:
+    - Animals & water creatures drop `1..=3` XP.
+    - Cube mobs (Slimes, Magma Cubes) drop `size` XP.
+    - Standard mobs drop base `xpReward` + equipment bonuses (`1..=3` XP per equipped item slot where `slot.canIncreaseExperience()`, which includes all equipment slots except saddle).
+    - Zombie mobs drop 2.5x base XP when babies (`12` XP) and retain equipment bonuses.
+    - Piglins and Hoglins drop base XP without equipment inflation.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `EquipmentSlot::can_increase_experience()` in `pumpkin-data`.
+  - Implemented `calculate_equipment_experience_reward`, `is_baby_mob`, `should_drop_experience`, and `get_base_experience_reward` on `Mob` trait.
+  - Aligned `ZombieEntityBase` (2.5x baby multiplier + equipment bonus) and `ZombifiedPiglinEntity`.
+  - Updated `EntityBase for T where T: Mob` to guard `get_experience_reward` with `should_drop_experience`.
+  - Verified in `test_mob_experience_reward_parity`.
+
+
 
 
 

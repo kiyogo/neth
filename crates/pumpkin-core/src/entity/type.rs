@@ -3439,6 +3439,79 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_mob_experience_reward_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Adult Cow (Animal): drops 1..=3 XP
+        {
+            let ent = from_type(&EntityType::COW, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Cow is mob");
+            let xp = mob.get_base_experience_reward();
+            assert!((1..=3).contains(&xp), "Adult cow drops 1..=3 XP, got {xp}");
+            assert!((1..=3).contains(&ent.get_experience_reward(None)));
+        }
+
+        // 2. Baby Cow: drops 0 XP
+        {
+            let ent = from_type(&EntityType::COW, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Cow is mob");
+            mob.get_entity().age.store(-24000, std::sync::atomic::Ordering::Relaxed);
+            assert!(!mob.should_drop_experience(), "Baby cow should not drop experience");
+            assert_eq!(ent.get_experience_reward(None), 0, "Baby cow drops 0 XP");
+        }
+
+        // 3. Monster (Zombie): base 5 XP, plus bonus for equipped items
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Zombie is mob");
+            assert_eq!(mob.get_base_experience_reward(), 5, "Unarmed zombie drops 5 XP");
+
+            // Equip sword
+            let sword = pumpkin_data::item_stack::ItemStack::new(1, &pumpkin_data::item::Item::IRON_SWORD);
+            mob.get_mob_entity()
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap()
+                .put(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND, sword);
+
+            let armed_xp = mob.get_base_experience_reward();
+            assert!((6..=8).contains(&armed_xp), "Zombie with sword drops 6..=8 XP, got {armed_xp}");
+        }
+
+        // 4. Boss (Wither): drops 50 XP
+        {
+            let ent = from_type(&EntityType::WITHER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Wither is mob");
+            assert_eq!(mob.get_base_experience_reward(), 50, "Wither drops 50 XP");
+        }
+
+        // 5. Slime: size-dependent XP
+        {
+            let ent = from_type(&EntityType::SLIME, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Slime is mob");
+            let cube = mob.as_cube_mob().expect("Slime is cube mob");
+
+            cube.set_size(1, true);
+            assert_eq!(mob.get_base_experience_reward(), 1, "Size 1 slime drops 1 XP");
+
+            cube.set_size(4, true);
+            assert_eq!(mob.get_base_experience_reward(), 4, "Size 4 slime drops 4 XP");
+        }
+
+        // 6. Baby Zombie: drops 12 XP (2.5x base 5)
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Zombie is mob");
+            mob.spawn_as_baby();
+            assert!(mob.should_drop_experience(), "Baby zombie drops experience in vanilla");
+            assert_eq!(ent.get_experience_reward(None), 12, "Baby zombie drops 12 XP");
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

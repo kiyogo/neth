@@ -247,11 +247,12 @@ impl Mob for ZombieEntityBase {
             .entity
             .entity_type
             .experience_reward;
-        if self.is_baby() {
+        let base = if self.is_baby() {
             (base as f32 * 2.5) as u32
         } else {
             base
-        }
+        };
+        self.calculate_equipment_experience_reward(base)
     }
 
     fn populate_default_equipment_slots(

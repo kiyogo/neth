@@ -482,6 +482,12 @@ impl EquipmentSlot {
         self.get_entity_slot_id() + offset
     }
 
+    /// Vanilla `EquipmentSlot.canIncreaseExperience`: any equipment slot except saddle.
+    #[must_use]
+    pub const fn can_increase_experience(&self) -> bool {
+        !matches!(self, Self::Saddle(_))
+    }
+
     #[must_use]
     pub const fn slot_type(&self) -> EquipmentType {
         match self {

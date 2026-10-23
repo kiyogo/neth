@@ -244,6 +244,11 @@ impl Mob for ZombifiedPiglinEntity {
     }
 
     fn get_base_experience_reward(&self) -> u32 {
-        Self::XP_REWARD
+        let base = if self.is_baby_mob() {
+            (Self::XP_REWARD as f32 * 2.5) as u32
+        } else {
+            Self::XP_REWARD
+        };
+        self.calculate_equipment_experience_reward(base)
     }
 }
