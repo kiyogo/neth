@@ -1134,6 +1134,20 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.apply_thorns_reflection(caller, attacker);
     }
 
+    /// Vanilla `LivingEntity.blockedByItem`.
+    fn on_blocked_by_shield(&self, defender: &dyn EntityBase, fully_blocked: bool) {
+        if !fully_blocked {
+            let my_pos = self.get_entity().pos.load();
+            let def_pos = defender.get_entity().pos.load();
+            defender.get_entity().apply_knockback(
+                0.5,
+                def_pos.x - my_pos.x,
+                def_pos.z - my_pos.z,
+                Some(self.get_entity()),
+            );
+        }
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false

@@ -3750,6 +3750,53 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_shield_blocking_hoglin_throw_and_ravager_parity() {
+        use pumpkin_util::math::vector3::Vector3;
+        use pumpkin_data::entity::EntityType;
+        use std::sync::atomic::Ordering;
+
+        let (world, _temp_dir) = create_test_world();
+
+        let defender = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let defender_ent = defender.get_entity();
+
+        // 1. Adult Hoglin: on_blocked_by_shield throws defender upwards (vel.y = 0.5)
+        let hoglin = from_type(&EntityType::HOGLIN, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
+        defender_ent.velocity.store(Vector3::new(0.0, 0.0, 0.0));
+        hoglin.on_blocked_by_shield(defender.as_ref(), true);
+        assert!(
+            (defender_ent.velocity.load().y - 0.5).abs() < 1e-4,
+            "Adult Hoglin should throw target upwards even when blocked by shield"
+        );
+
+        // 2. Baby Hoglin: on_blocked_by_shield does NOT throw target
+        let baby_hoglin = from_type(&EntityType::HOGLIN, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
+        if let Some(h) = baby_hoglin.cast_any().downcast_ref::<crate::entity::mob::hoglin::HoglinEntity>() {
+            h.is_baby.store(true, Ordering::Relaxed);
+        }
+        defender_ent.velocity.store(Vector3::new(0.0, 0.0, 0.0));
+        baby_hoglin.on_blocked_by_shield(defender.as_ref(), true);
+        assert_eq!(
+            defender_ent.velocity.load().y,
+            0.0,
+            "Baby Hoglin should not throw target when blocked by shield"
+        );
+
+        // 3. Ravager: stun method sets stunned_tick to 40 and marks immobile
+        let ravager = from_type(&EntityType::RAVAGER, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let ravager_mob = ravager.get_mob().expect("Ravager is mob");
+        if let Some(r) = ravager_mob.as_ravager() {
+            assert!(!r.is_immobile());
+            r.stun();
+            assert!(r.is_immobile());
+        } else {
+            panic!("Ravager downcast failed");
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

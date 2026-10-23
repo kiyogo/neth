@@ -3774,11 +3774,7 @@ impl LivingEntity {
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if let Some(hand) = *active_hand {
-                    let slot = if hand == Hand::Left {
-                        EquipmentSlot::MAIN_HAND
-                    } else {
-                        EquipmentSlot::OFF_HAND
-                    };
+                    let slot = EquipmentSlot::from_hand(hand);
 
                     let durability_damage = (amount / 1.0).floor().max(1.0) as i32;
                     if let Some(player) = caller.get_player() {
@@ -3813,6 +3809,13 @@ impl LivingEntity {
                             self.send_equipment_changes(&[(slot, broken_stack)]);
                             self.clear_active_hand();
                         }
+                    }
+                }
+
+                // Vanilla parity: blockUsingItem -> attacker.blockedByItem callback
+                if !damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_PROJECTILE) {
+                    if let Some(direct_attacker) = source.or(cause) {
+                        direct_attacker.on_blocked_by_shield(caller, !disable_blocking);
                     }
                 }
 

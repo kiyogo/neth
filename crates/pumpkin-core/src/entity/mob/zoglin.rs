@@ -222,4 +222,10 @@ impl Mob for ZoglinEntity {
         }
         throw_target(&self.mob_entity.living_entity.entity, target);
     }
+
+    fn on_blocked_by_shield(&self, defender: &dyn EntityBase, _fully_blocked: bool) {
+        if !self.is_baby() {
+            throw_target(&self.mob_entity.living_entity.entity, defender);
+        }
+    }
 }

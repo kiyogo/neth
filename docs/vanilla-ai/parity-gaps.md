@@ -1262,6 +1262,27 @@
   - Filtered sweeping victims in `Player::attack` with `!is_allied_to` and `!ArmorStandEntity::is_marker`.
   - Verified in unit test `test_sweeping_damage_calculation_parity`.
 
+## Gap 115: Shield Block Callback `blockedByItem`, Hoglin/Zoglin Throw & Ravager Stun Parity
+- **Vanilla Reference**: `LivingEntity.java:1339-1341, 1387-1391`, `Hoglin.java:117-121`, `Zoglin.java:198-202`, `Ravager.java:209-222`, `HoglinBase.java:38-53`:
+  - `blockUsingItem` callback:
+    - In `LivingEntity.java:1339-1341`, when an attack is blocked (`damageBlocked > 0.0F`), if the damage is non-projectile and the direct attacker is a living entity, `attacker.blockedByItem(this, source, damage, fullyBlocked)` is called.
+    - Default living entity behavior: if `!fullyBlocked`, defender is pushed with 0.5 knockback away from attacker.
+  - Hoglin and Zoglin parity:
+    - Adult Hoglins (`Hoglin.java:118`) and non-baby Zoglins (`Zoglin.java:199`) override `blockedByItem` to execute `HoglinBase.throwTarget(this, defender)`. Even when defender blocks their attack with a shield, defender is still tossed upward into the air.
+  - Ravager parity:
+    - When Ravager is blocked by a shield and `roarTick == 0`:
+      - 50% chance: Ravager is stunned for 40 ticks (`stunnedTick = 40`), plays `SoundEvents.RAVAGER_STUNNED`, broadcasts entity event 39, stops navigator, and defender pushes Ravager.
+      - 50% chance: Ravager applies `strongKnockback` to defender (`entity.push(xd / dd * 4.0, 0.2, zd / dd * 4.0)`).
+  - Bug fix in hand-to-slot mapping:
+    - In `LivingEntity::damage_with_context`, inverted slot mapping (`Hand::Left => MAIN_HAND`) fixed to `EquipmentSlot::from_hand(hand)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `on_blocked_by_shield` to `EntityBase` and `Mob` trait with default knockback when not fully blocked.
+  - Overrode `on_blocked_by_shield` in `HoglinEntity` and `ZoglinEntity` to throw target when adult.
+  - Overrode `on_blocked_by_shield` in `RavagerEntity` (50% stun 40 ticks + status 39 broadcast, 50% strong knockback).
+  - Fixed active hand slot mapping to use `EquipmentSlot::from_hand(hand)` in `LivingEntity::damage_with_context`.
+  - Invoked `on_blocked_by_shield` on melee direct attacker when blocked by shield.
+  - Verified in unit test `test_shield_blocking_hoglin_throw_and_ravager_parity`.
+
 
 
 

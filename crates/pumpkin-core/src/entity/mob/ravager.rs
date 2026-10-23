@@ -8,6 +8,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag;
 use pumpkin_data::tag::Taggable;
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::java::client::play::CEntityStatus;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
@@ -154,18 +155,35 @@ impl RavagerEntity {
 
     pub fn stun(&self) {
         self.stunned_tick.store(40, Ordering::Relaxed);
-        let pos = self.mob_entity.living_entity.entity.pos.load();
-        self.mob_entity
-            .living_entity
-            .entity
-            .world
-            .load()
-            .play_sound(Sound::EntityRavagerStunned, SoundCategory::Hostile, &pos);
+        let entity = &self.mob_entity.living_entity.entity;
+        let pos = entity.pos.load();
+        let world = entity.world.load();
+        world.play_sound(Sound::EntityRavagerStunned, SoundCategory::Hostile, &pos);
+        let status_packet = CEntityStatus::new(entity.entity_id, 39);
+        world.send_to_tracking_players_and_self(entity, &status_packet);
         self.mob_entity
             .navigator
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .stop();
+    }
+
+    /// Vanilla `Ravager.strongKnockback`.
+    pub fn strong_knockback(&self, target: &dyn EntityBase) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let my_pos = entity.pos.load();
+        let target_entity = target.get_entity();
+        let t_pos = target_entity.pos.load();
+        let xd = t_pos.x - my_pos.x;
+        let zd = t_pos.z - my_pos.z;
+        let dd = (xd * xd + zd * zd).max(0.001);
+        let push_x = (xd / dd) * 4.0;
+        let push_z = (zd / dd) * 4.0;
+        let mut vel = target_entity.velocity.load();
+        vel.x += push_x.clamp(-2.0, 2.0);
+        vel.y += 0.2;
+        vel.z += push_z.clamp(-2.0, 2.0);
+        target_entity.set_velocity(vel);
     }
 
     pub fn roar(&self) {
@@ -341,30 +359,15 @@ impl Mob for RavagerEntity {
         }
     }
 
-    fn on_attack(&self, target: &dyn EntityBase) {
-        if self.roar_tick.load(Ordering::Relaxed) > 0 {
-            return;
-        }
-        if let Some(living) = target.get_living_entity()
-            && living.is_blocking()
-        {
+    fn on_attack(&self, _target: &dyn EntityBase) {}
+
+    fn on_blocked_by_shield(&self, defender: &dyn EntityBase, _fully_blocked: bool) {
+        if self.roar_tick.load(Ordering::Relaxed) == 0 {
             if rand::random::<f32>() < 0.5 {
                 self.stun();
+                defender.push(&self.mob_entity.living_entity.entity);
             } else {
-                let entity = &self.mob_entity.living_entity.entity;
-                let my_pos = entity.pos.load();
-                let target_entity = target.get_entity();
-                let t_pos = target_entity.pos.load();
-                let xd = t_pos.x - my_pos.x;
-                let zd = t_pos.z - my_pos.z;
-                let dd = (xd * xd + zd * zd).max(0.001);
-                let push_x = (xd / dd) * 4.0;
-                let push_z = (zd / dd) * 4.0;
-                let mut vel = target_entity.velocity.load();
-                vel.x += push_x.clamp(-2.0, 2.0);
-                vel.y += 0.2;
-                vel.z += push_z.clamp(-2.0, 2.0);
-                target_entity.set_velocity(vel);
+                self.strong_knockback(defender);
             }
         }
     }

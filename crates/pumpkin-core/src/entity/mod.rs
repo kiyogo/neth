@@ -525,6 +525,22 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         false
     }
 
+    /// Vanilla `LivingEntity.blockedByItem`: callback when an attack by this entity was blocked by a shield.
+    fn on_blocked_by_shield(&self, defender: &dyn EntityBase, fully_blocked: bool) {
+        if let Some(mob) = self.get_mob() {
+            mob::Mob::on_blocked_by_shield(mob, defender, fully_blocked);
+        } else if !fully_blocked {
+            let my_pos = self.get_entity().pos.load();
+            let def_pos = defender.get_entity().pos.load();
+            defender.get_entity().apply_knockback(
+                0.5,
+                def_pos.x - my_pos.x,
+                def_pos.z - my_pos.z,
+                Some(self.get_entity()),
+            );
+        }
+    }
+
     /// Called when a player right-clicks this entity with an item.
     /// Called when a player right-clicks this entity with an item.
     /// Returns true if the interaction was handled.
