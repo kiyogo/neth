@@ -902,6 +902,11 @@ impl LivingEntity {
         self.set_health(current_health + additional_health);
     }
 
+    #[must_use]
+    pub fn get_health(&self) -> f32 {
+        self.health.load()
+    }
+
     pub fn set_health(&self, health: f32) {
         // Clamp to [0, max_health]
         let max_health = self.get_max_health();

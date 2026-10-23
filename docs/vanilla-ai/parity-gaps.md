@@ -1407,3 +1407,42 @@
   - Applied post-attack weapon effects (Fire Aspect ignition) to hurt swept entities.
   - Synchronized attack sound playback to the attacker's location.
   - Verified in unit tests `test_sweep_attack_conditions_parity` and `test_sweeping_damage_calculation_parity`.
+
+## Gap 122: Player Attack Deflect Redirectable Projectiles & Damage Indicator Particles Parity
+- **Vanilla Reference**: `Player.java:948-949, 1010-1018, 1066-1076`, `redirectable_projectile.json`, `ProjectileDeflection.java:18-24`:
+  - `Player.deflectProjectile`:
+    - In vanilla `Player.java:1010-1018`:
+      ```java
+      private boolean deflectProjectile(final Entity entity) {
+         if (entity.is(EntityTypeTags.REDIRECTABLE_PROJECTILE)
+            && entity instanceof Projectile projectile
+            && projectile.deflect(ProjectileDeflection.AIM_DEFLECT, this, EntityReference.of(this), true, 1.0)) {
+            this.level().playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.PLAYER_ATTACK_NODAMAGE, this.getSoundSource());
+            return true;
+         } else {
+            return false;
+         }
+      }
+      ```
+    - When a player attacks an entity belonging to `#minecraft:redirectable_projectile` (`fireball`, `wind_charge`, `breeze_wind_charge`):
+      - Projectile is redirected along the player's look vector (`rotation().to_f64()`).
+      - Projectile owner is transferred to the player.
+      - Acceleration power is updated (`INITIAL_ACCELERATION_POWER` / `DEFLECTED_ACCELERATION_POWER`).
+      - Plays `SoundEvents.PLAYER_ATTACK_NODAMAGE` at the player and returns early without dealing melee weapon damage or spending attack cooldown.
+  - `Player.damageStatsAndHearts`:
+    - In vanilla `Player.java:1066-1076`:
+      ```java
+      if (this.level() instanceof ServerLevel && actualDamage > 2.0F) {
+         int count = (int)(actualDamage * 0.5);
+         ((ServerLevel)this.level())
+            .sendParticles(ParticleTypes.DAMAGE_INDICATOR, entity.getX(), entity.getY(0.5), entity.getZ(), count, 0.1, 0.0, 0.1, 0.2);
+      }
+      ```
+    - When a player attack deals more than 2.0 actual damage (> 1 heart) to a living entity, the server emits `ParticleTypes.DAMAGE_INDICATOR` (cracked heart particles) with count `(actualDamage * 0.5) as i32` centered at the victim entity's mid-height `y(0.5)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `deflect_projectile(&self, deflector: &dyn EntityBase) -> bool` to `EntityBase` and implemented it on `FireballEntity` and `WindChargeEntity`.
+  - Added `is_redirectable_projectile` helper verifying `#minecraft:redirectable_projectile`.
+  - Added redirectable projectile deflection check at the start of `Player::attack`, playing `EntityPlayerAttackNodamage` and returning early.
+  - Added `get_health` getter to `LivingEntity`.
+  - Added `damage_indicator_particle_count` helper and spawned `Particle::DamageIndicator` when player deals `actual_damage > 2.0` to living victims.
+  - Verified in unit tests `test_damage_indicator_and_redirectable_projectile_parity`.

@@ -193,6 +193,11 @@ impl EntityBase for FireballEntity {
         self.owner_id.load()
     }
 
+    fn deflect_projectile(&self, deflector: &dyn EntityBase) -> bool {
+        self.redirect(Some(deflector));
+        true
+    }
+
     fn write_custom_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_double("acceleration_power", self.get_acceleration_power());
         nbt.put_float("ExplosionPower", self.get_explosion_power());

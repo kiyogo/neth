@@ -253,6 +253,12 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         false
     }
 
+    /// Deflects a redirectable projectile (such as a Ghast fireball or wind charge)
+    /// when attacked by a player, mirroring vanilla `Player.deflectProjectile`.
+    fn deflect_projectile(&self, _deflector: &dyn EntityBase) -> bool {
+        false
+    }
+
     fn get_gravity(&self) -> f64 {
         0.0
     }

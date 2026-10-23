@@ -161,6 +161,11 @@ impl EntityBase for WindChargeEntity {
         self.owner_id.load()
     }
 
+    fn deflect_projectile(&self, deflector: &dyn EntityBase) -> bool {
+        self.redirect(Some(deflector));
+        true
+    }
+
     fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
         let entity = self.get_entity();
         let velocity = entity.velocity.load();

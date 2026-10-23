@@ -308,6 +308,25 @@ pub fn spawn_sweep_particle(attacker_entity: &Entity, world: &World) {
     );
 }
 
+/// Vanilla `Player.deflectProjectile`: checks whether an entity is a redirectable projectile
+/// (`#minecraft:redirectable_projectile`).
+#[must_use]
+pub fn is_redirectable_projectile(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    entity_type.has_tag(&pumpkin_data::tag::EntityType::MINECRAFT_REDIRECTABLE_PROJECTILE)
+}
+
+/// Vanilla `Player.damageStatsAndHearts`:
+/// When actual damage dealt to an entity exceeds 2.0 (more than 1 heart),
+/// server spawns `(actual_damage * 0.5) as i32` cracked heart indicator particles.
+#[must_use]
+pub fn damage_indicator_particle_count(actual_damage: f32) -> Option<i32> {
+    if actual_damage > 2.0 {
+        Some((actual_damage * 0.5) as i32)
+    } else {
+        None
+    }
+}
+
 pub fn player_attack_sound(pos: &Vector3<f64>, world: &World, attack_type: AttackType) {
     match attack_type {
         AttackType::Knockback => {
@@ -960,6 +979,34 @@ mod tests {
 
         // 7. Bedrock edition clients do not have sweeping attacks
         assert!(!can_sweep_attack_raw(true, true, false, false, true, valid_vel_sq, normal_speed, true));
+    }
+
+    #[test]
+    fn test_damage_indicator_and_redirectable_projectile_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // Damage indicator particles: only when actual damage > 2.0 (more than 1 heart)
+        assert_eq!(damage_indicator_particle_count(0.0), None);
+        assert_eq!(damage_indicator_particle_count(1.0), None);
+        assert_eq!(damage_indicator_particle_count(2.0), None);
+        assert_eq!(damage_indicator_particle_count(2.1), Some(1));
+        assert_eq!(damage_indicator_particle_count(4.0), Some(2));
+        assert_eq!(damage_indicator_particle_count(6.5), Some(3));
+        assert_eq!(damage_indicator_particle_count(10.0), Some(5));
+
+        // Redirectable projectiles tag (#minecraft:redirectable_projectile):
+        // Only fireball, wind_charge, and breeze_wind_charge can be deflected by player attack
+        assert!(is_redirectable_projectile(&EntityType::FIREBALL));
+        assert!(is_redirectable_projectile(&EntityType::WIND_CHARGE));
+        assert!(is_redirectable_projectile(&EntityType::BREEZE_WIND_CHARGE));
+
+        // Non-redirectable projectiles/entities take normal attack damage instead
+        assert!(!is_redirectable_projectile(&EntityType::ARROW));
+        assert!(!is_redirectable_projectile(&EntityType::DRAGON_FIREBALL));
+        assert!(!is_redirectable_projectile(&EntityType::SMALL_FIREBALL));
+        assert!(!is_redirectable_projectile(&EntityType::WITHER_SKULL));
+        assert!(!is_redirectable_projectile(&EntityType::SNOWBALL));
+        assert!(!is_redirectable_projectile(&EntityType::ZOMBIE));
     }
 }
 

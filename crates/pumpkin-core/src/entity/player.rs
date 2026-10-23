@@ -1362,6 +1362,19 @@ impl Player {
         let attacker_entity = &self.living_entity.entity;
         let config = &server.advanced_config.pvp;
 
+        // Vanilla Player.deflectProjectile: redirectable projectiles (fireballs, wind charges)
+        // are redirected on attack instead of taking melee damage.
+        if combat::is_redirectable_projectile(victim_entity.entity_type)
+            && victim.deflect_projectile(self)
+        {
+            world.play_sound(
+                Sound::EntityPlayerAttackNodamage,
+                SoundCategory::Players,
+                &attacker_entity.pos.load(),
+            );
+            return;
+        }
+
         let inventory = self.inventory();
         let item_stack = inventory.held_item();
         if !item_stack.is_empty() {
@@ -1442,6 +1455,8 @@ impl Player {
             damage *= 1.5;
         }
 
+        let old_living_health = victim.get_living_entity().map(|l| l.get_health());
+
         if !victim.damage_with_context(
             victim.as_ref(),
             damage as f32,
@@ -1462,6 +1477,24 @@ impl Player {
                 &self.living_entity.entity.pos.load(),
             );
             return;
+        }
+
+        // Vanilla Player.damageStatsAndHearts: actual damage > 2.0 spawns DamageIndicator particles
+        if let Some(old_health) = old_living_health
+            && let Some(living) = victim.get_living_entity()
+        {
+            let actual_damage = old_health - living.get_health();
+            if let Some(count) = combat::damage_indicator_particle_count(actual_damage) {
+                let victim_pos = victim_entity.pos.load();
+                let center_y = victim_pos.y + f64::from(victim_entity.height()) * 0.5;
+                world.spawn_particle(
+                    Vector3::new(victim_pos.x, center_y, victim_pos.z),
+                    Vector3::new(0.1, 0.0, 0.1),
+                    0.2,
+                    count,
+                    Particle::DamageIndicator,
+                );
+            }
         }
 
         if is_mace_smash && damage >= 100.0 {
