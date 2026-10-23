@@ -3512,6 +3512,60 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_air_supply_and_drowning_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = ent.get_mob().expect("Zombie is mob");
+        let living = &mob.get_mob_entity().living_entity;
+
+        // 1. Without Respiration (OXYGEN_BONUS = 0.0), decrease_air_supply decreases by 1
+        assert_eq!(living.decrease_air_supply(300), 299);
+        assert_eq!(living.decrease_air_supply(0), -1);
+        assert_eq!(living.decrease_air_supply(-19), -20);
+
+        // 2. With Respiration III (OXYGEN_BONUS = 3.0), air decrease is retained with 75% probability
+        living.set_attribute_base(&pumpkin_data::attributes::Attributes::OXYGEN_BONUS, 3.0);
+        let mut unchanged_count = 0;
+        for _ in 0..1000 {
+            if living.decrease_air_supply(100) == 100 {
+                unchanged_count += 1;
+            }
+        }
+        // Respiration III chance: 1.0 - 1.0/(3.0 + 1.0) = 0.75 (75%)
+        assert!(
+            (650..=850).contains(&unchanged_count),
+            "Respiration III expected ~750 unchanged ticks, got {unchanged_count}"
+        );
+
+        // 3. increase_air_supply replenishes by 4 up to max
+        assert_eq!(living.increase_air_supply(100, 300), 104);
+        assert_eq!(living.increase_air_supply(298, 300), 300);
+
+        // 4. should_take_drowning_damage triggers at <= -20 (vanilla LivingEntity.java:510)
+        assert!(!living.should_take_drowning_damage(0));
+        assert!(!living.should_take_drowning_damage(-19));
+        assert!(living.should_take_drowning_damage(-20));
+        assert!(living.should_take_drowning_damage(-25));
+
+        // 5. NBT round-trip supports negative air values down to -20
+        let breath = &living.breath;
+        breath.set_air_supply(ent.as_ref(), -15);
+        assert_eq!(breath.air_supply.load(std::sync::atomic::Ordering::Relaxed), -15);
+
+        let mut nbt = pumpkin_nbt::compound::NbtCompound::new();
+        breath.write_nbt(&mut nbt);
+        assert_eq!(nbt.get_short("Air"), Some(-15));
+        assert_eq!(nbt.get_int("AirSupply"), Some(-15));
+
+        breath.air_supply.store(300, std::sync::atomic::Ordering::Relaxed);
+        breath.read_nbt(&nbt, 300);
+        assert_eq!(breath.air_supply.load(std::sync::atomic::Ordering::Relaxed), -15);
+
+        world.level.shutdown().await;
+    }
 }
 
 

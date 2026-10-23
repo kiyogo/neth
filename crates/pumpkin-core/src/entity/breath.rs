@@ -105,7 +105,7 @@ impl BreathManager {
                 max_air
             } else {
                 mob.map_or_else(
-                    || (prev + AIR_RECOVERY_RATE).min(max_air),
+                    || living.increase_air_supply(prev, max_air),
                     |mob| mob.increase_air_supply(prev),
                 )
                 .clamp(0, max_air)
@@ -118,17 +118,26 @@ impl BreathManager {
         }
 
         let prev = self.air_supply.load(Ordering::Relaxed);
-        let new_air = (prev - AIR_DEPLETION_RATE).max(0);
+        let new_air = mob.map_or_else(
+            || living.decrease_air_supply(prev),
+            |mob| mob.decrease_air_supply(prev),
+        );
         if new_air != prev {
             self.set_air(entity, new_air, max_air);
         }
 
-        if self.air_supply.load(Ordering::Relaxed) <= 0 {
-            let t = self.drowning_tick.fetch_add(1, Ordering::Relaxed) + 1;
-            if t >= DROWNING_INTERVAL {
-                self.drowning_tick.store(0, Ordering::Relaxed);
-                living.damage(caller, DROWNING_DAMAGE, damage_type);
-            }
+        let current_air = self.air_supply.load(Ordering::Relaxed);
+        if mob.map_or_else(
+            || living.should_take_drowning_damage(current_air),
+            |mob| mob.should_take_drowning_damage(current_air),
+        ) {
+            self.set_air(entity, 0, max_air);
+            entity.world.load().broadcast_entity_event(
+                entity,
+                pumpkin_data::entity::EntityStatus::DrownParticles,
+                None,
+            );
+            living.damage(caller, DROWNING_DAMAGE, damage_type);
         }
     }
 
@@ -145,7 +154,7 @@ impl BreathManager {
             if event.cancelled {
                 return;
             }
-            new_air = event.amount.clamp(0, max_air);
+            new_air = event.amount.clamp(-20, max_air);
         }
         self.air_supply.store(new_air, Ordering::Relaxed);
         self.send_air_supply(entity);
@@ -154,14 +163,14 @@ impl BreathManager {
     /// Sets the air supply, clamped, through `EntityAirChangeEvent`.
     pub fn set_air_supply(&self, caller: &dyn EntityBase, air: i32) {
         let max_air = Self::max_air_supply(caller);
-        self.set_air(caller.get_entity(), air.clamp(0, max_air), max_air);
+        self.set_air(caller.get_entity(), air.clamp(-20, max_air), max_air);
     }
 
     /// Writes `Air`, `AirSupply` and `DrowningTick`.
     pub fn write_nbt(&self, nbt: &mut NbtCompound) {
         let air = self.air_supply.load(Ordering::Relaxed);
-        nbt.put_short("Air", air.clamp(0, i32::from(i16::MAX)) as i16);
-        nbt.put_int("AirSupply", air.max(0));
+        nbt.put_short("Air", air as i16);
+        nbt.put_int("AirSupply", air);
         nbt.put_int(
             "DrowningTick",
             self.drowning_tick
@@ -178,7 +187,7 @@ impl BreathManager {
             .or_else(|| nbt.get_int("AirSupply"))
         {
             self.air_supply
-                .store(air.clamp(0, max_air), Ordering::Relaxed);
+                .store(air.clamp(-20, max_air), Ordering::Relaxed);
         }
         if let Some(tick) = nbt.get_int("DrowningTick") {
             self.drowning_tick

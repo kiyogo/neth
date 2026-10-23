@@ -1180,6 +1180,25 @@
   - Updated `EntityBase for T where T: Mob` to guard `get_experience_reward` with `should_drop_experience`.
   - Verified in `test_mob_experience_reward_parity`.
 
+## Gap 110: Air Supply, Respiration Oxygen Bonus & Drowning Damage Parity
+- **Vanilla Reference**: `LivingEntity.java:448-453, 509-511, 591-605`, `Entity.java:2136, 2220, 2903`:
+  - `decreaseAirSupply(currentSupply)`:
+    - Checks `Attributes.OXYGEN_BONUS` (Respiration enchantment).
+    - If `oxygenBonus > 0.0`, each tick has a `1.0 - (1.0 / (oxygenBonus + 1.0))` chance to retain the current air supply instead of depleting.
+    - Otherwise decreases air by 1.
+  - Negative Air Supply & Drowning:
+    - Air supply decreases below 0 down to `-20` (20 ticks = 1 second of suffocation).
+    - `shouldTakeDrowningDamage()` checks `getAirSupply() <= -20`.
+    - When taking drowning damage: air supply resets to `0`, broadcasts entity event `67` (`EntityStatus::DrownParticles`), and deals `2.0F` damage.
+  - `increaseAirSupply(currentSupply)`: replenishes `Math.min(currentSupply + 4, getMaxAirSupply())`.
+  - NBT serialization: writes `Air` as short, preserving negative values down to -20 without clamping to 0 prematurely.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `decrease_air_supply`, `increase_air_supply`, and `should_take_drowning_damage` to `LivingEntity` and `Mob` trait factoring in `Attributes::OXYGEN_BONUS`.
+  - Updated `BreathManager::tick` to use vanilla negative air timing (`air <= -20`), reset to 0, broadcast `EntityStatus::DrownParticles` (67), and deal drowning damage.
+  - Aligned NBT read/write and `set_air_supply` to preserve negative air down to `-20`.
+  - Verified in `test_air_supply_and_drowning_parity`.
+
+
 
 
 

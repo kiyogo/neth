@@ -2283,6 +2283,30 @@ impl LivingEntity {
         }
     }
 
+    /// Calculates decreased air supply taking `Attributes::OXYGEN_BONUS` into account,
+    /// mirroring vanilla `LivingEntity.decreaseAirSupply`.
+    #[must_use]
+    pub fn decrease_air_supply(&self, current_supply: i32) -> i32 {
+        let oxygen_bonus = self.get_attribute_value(&Attributes::OXYGEN_BONUS);
+        if oxygen_bonus > 0.0 && rand::random::<f64>() >= 1.0 / (oxygen_bonus + 1.0) {
+            current_supply
+        } else {
+            current_supply - 1
+        }
+    }
+
+    /// Calculates increased air supply, mirroring vanilla `LivingEntity.increaseAirSupply`.
+    #[must_use]
+    pub fn increase_air_supply(&self, current_supply: i32, max_air: i32) -> i32 {
+        (current_supply + 4).min(max_air)
+    }
+
+    /// Whether this entity should take drowning damage, mirroring vanilla `LivingEntity.shouldTakeDrowningDamage`.
+    #[must_use]
+    pub fn should_take_drowning_damage(&self, current_supply: i32) -> bool {
+        current_supply <= -20
+    }
+
     #[allow(clippy::redundant_closure_for_method_calls)]
     /// Builds the chat death message for this entity: picks the
     /// `death.attack.<id>` (or the `.player` variant when a killer entity is

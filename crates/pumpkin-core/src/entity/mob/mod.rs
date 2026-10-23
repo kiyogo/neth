@@ -1109,6 +1109,16 @@ pub trait Mob: EntityBase + Send + Sync {
         (current + crate::entity::breath::AIR_RECOVERY_RATE).min(self.max_air_supply())
     }
 
+    /// `LivingEntity.decreaseAirSupply`.
+    fn decrease_air_supply(&self, current: i32) -> i32 {
+        self.get_mob_entity().living_entity.decrease_air_supply(current)
+    }
+
+    /// `LivingEntity.shouldTakeDrowningDamage`.
+    fn should_take_drowning_damage(&self, current: i32) -> bool {
+        self.get_mob_entity().living_entity.should_take_drowning_damage(current)
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false
