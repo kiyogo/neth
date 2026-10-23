@@ -3390,6 +3390,55 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_heal_and_death_checks_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = ent.get_mob().expect("Zombie is mob");
+        let living = ent.get_living_entity().expect("Zombie is living");
+
+        // 1. Initial full health (20.0)
+        assert_eq!(living.health.load(), 20.0);
+        assert!(living.is_alive());
+        assert!(!living.is_dead_or_dying());
+        assert!(!mob.is_dead_or_dying());
+
+        // 2. Reduce health to 10.0
+        living.set_health(10.0);
+        assert_eq!(living.health.load(), 10.0);
+        assert!(living.is_alive());
+        assert!(!living.is_dead_or_dying());
+
+        // 3. Heal 5.0 -> 15.0
+        living.heal(5.0);
+        assert_eq!(living.health.load(), 15.0);
+
+        // 4. Heal beyond max health (20.0) -> clamps to 20.0
+        living.heal(10.0);
+        assert_eq!(living.health.load(), 20.0);
+
+        // 5. Non-positive heal amounts do not panic and do not change health
+        living.set_health(10.0);
+        living.heal(0.0);
+        assert_eq!(living.health.load(), 10.0);
+        living.heal(-5.0);
+        assert_eq!(living.health.load(), 10.0);
+
+        // 6. When dead (health = 0.0), heal has no effect (cannot revive without respawn)
+        living.set_health(0.0);
+        assert_eq!(living.health.load(), 0.0);
+        assert!(!living.is_alive());
+        assert!(living.is_dead_or_dying());
+        assert!(mob.is_dead_or_dying());
+
+        living.heal(10.0);
+        assert_eq!(living.health.load(), 0.0, "Dead entity cannot be healed per vanilla LivingEntity.heal");
+        assert!(living.is_dead_or_dying());
+
+        world.level.shutdown().await;
+    }
 }
 
 

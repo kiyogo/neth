@@ -1010,6 +1010,11 @@ pub trait Mob: EntityBase + Send + Sync {
             .calculate_fall_damage(fall_distance, damage_modifier)
     }
 
+    /// Returns true if the mob is dead or dying, mirroring vanilla `LivingEntity.isDeadOrDying`.
+    fn is_dead_or_dying(&self) -> bool {
+        self.get_mob_entity().living_entity.is_dead_or_dying()
+    }
+
     /// Takes the navigation lock, so callers must not already hold it.
     fn is_navigator_idle(&self) -> bool {
         self.get_mob_entity()

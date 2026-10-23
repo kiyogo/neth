@@ -1148,6 +1148,20 @@
   - Updated `LivingEntity::handle_fall_damage_from` to call `calculate_fall_damage` and select sound based on damage dealt.
   - Verified in `test_fall_damage_calculation_and_overrides_parity`.
 
+## Gap 108: LivingEntity Heal & Death Checks Parity
+- **Vanilla Reference**: `LivingEntity.java:1154-1171`:
+  - `heal(float heal)`:
+    - If `getHealth() > 0.0F`, sets health to `getHealth() + heal` (clamped to max health).
+    - Does not panic or crash when heal amount is <= 0 or invalid.
+    - Never restores health to dead/dying entities (`health <= 0.0F`), preventing unintended revivals without respawn.
+  - `isDeadOrDying()`: returns `getHealth() <= 0.0F`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Removed panic assertion in `LivingEntity::heal`, ignored non-positive amounts, and guarded against healing dead entities (`current_health <= 0.0`).
+  - Added `is_dead_or_dying(&self) -> bool` on `LivingEntity` and `Mob` trait.
+  - Verified in `test_heal_and_death_checks_parity`.
+
+
+
 
 
 

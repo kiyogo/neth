@@ -879,8 +879,15 @@ impl LivingEntity {
         percent
     }
 
+    /// Heals the entity by `additional_health`, mirroring vanilla `LivingEntity.heal`.
     pub fn heal(&self, additional_health: f32) {
-        assert!(additional_health > 0.0);
+        if additional_health <= 0.0 {
+            return;
+        }
+        let current_health = self.health.load();
+        if current_health <= 0.0 {
+            return;
+        }
         let mut event =
             crate::plugin::api::events::entity::entity_regain_health::EntityRegainHealthEvent::new(
                 self.entity.entity_id,
@@ -892,7 +899,7 @@ impl LivingEntity {
                 return;
             }
         }
-        self.set_health(self.health.load() + additional_health);
+        self.set_health(current_health + additional_health);
     }
 
     pub fn set_health(&self, health: f32) {
@@ -3049,6 +3056,11 @@ impl LivingEntity {
 
     pub fn is_alive(&self) -> bool {
         self.entity.is_alive() && self.health.load() > 0.0
+    }
+
+    /// Returns true if the entity is dead or dying, mirroring vanilla `LivingEntity.isDeadOrDying`.
+    pub fn is_dead_or_dying(&self) -> bool {
+        self.health.load() <= 0.0
     }
 
     pub fn can_attack(&self, target: &dyn EntityBase) -> bool {
