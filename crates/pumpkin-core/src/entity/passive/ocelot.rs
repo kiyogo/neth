@@ -247,6 +247,10 @@ impl Mob for OcelotEntity {
         Some(self)
     }
 
+    fn as_ocelot(&self) -> Option<&OcelotEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_bool("Trusting", self.is_trusting.load(Ordering::Relaxed));
     }

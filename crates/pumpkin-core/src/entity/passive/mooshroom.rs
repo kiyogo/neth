@@ -369,6 +369,10 @@ impl Mob for MooshroomEntity {
         Some(self)
     }
 
+    fn as_mooshroom(&self) -> Option<&MooshroomEntity> {
+        Some(self)
+    }
+
     fn as_shearable(&self) -> Option<&dyn Shearable> {
         Some(self)
     }

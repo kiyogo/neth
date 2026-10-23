@@ -165,6 +165,10 @@ impl Mob for CowEntity {
         Some(self)
     }
 
+    fn as_cow(&self) -> Option<&CowEntity> {
+        Some(self)
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }

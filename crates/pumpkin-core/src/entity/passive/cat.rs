@@ -461,6 +461,10 @@ impl Mob for CatEntity {
         Some(self)
     }
 
+    fn as_cat(&self) -> Option<&CatEntity> {
+        Some(self)
+    }
+
     fn get_ambient_sound(&self) -> Option<pumpkin_data::sound::Sound> {
         let is_baby = self.get_entity().age.load(Ordering::Relaxed) < 0;
         let sound_variant = CatSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))

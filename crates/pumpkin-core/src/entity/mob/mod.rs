@@ -1604,6 +1604,42 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_cow(&self) -> Option<&crate::entity::passive::cow::CowEntity> {
+        None
+    }
+
+    fn as_mooshroom(&self) -> Option<&crate::entity::passive::mooshroom::MooshroomEntity> {
+        None
+    }
+
+    fn as_sheep(&self) -> Option<&crate::entity::passive::sheep::SheepEntity> {
+        None
+    }
+
+    fn as_pig(&self) -> Option<&crate::entity::passive::pig::PigEntity> {
+        None
+    }
+
+    fn as_chicken(&self) -> Option<&crate::entity::passive::chicken::ChickenEntity> {
+        None
+    }
+
+    fn as_cat(&self) -> Option<&crate::entity::passive::cat::CatEntity> {
+        None
+    }
+
+    fn as_ocelot(&self) -> Option<&crate::entity::passive::ocelot::OcelotEntity> {
+        None
+    }
+
+    fn as_parrot(&self) -> Option<&crate::entity::passive::parrot::ParrotEntity> {
+        None
+    }
+
+    fn as_wolf(&self) -> Option<&crate::entity::passive::wolf::WolfEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

@@ -142,6 +142,10 @@ impl Mob for ParrotEntity {
         Some(self)
     }
 
+    fn as_parrot(&self) -> Option<&ParrotEntity> {
+        Some(self)
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {

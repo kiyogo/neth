@@ -175,6 +175,10 @@ impl Mob for PigEntity {
         Some(self)
     }
 
+    fn as_pig(&self) -> Option<&PigEntity> {
+        Some(self)
+    }
+
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
         let is_baby = self.is_baby();

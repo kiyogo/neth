@@ -177,6 +177,10 @@ impl Mob for ChickenEntity {
         Some(self)
     }
 
+    fn as_chicken(&self) -> Option<&ChickenEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_int("EggLayTime", self.egg_lay_time.load(Ordering::Relaxed));
         let variant =

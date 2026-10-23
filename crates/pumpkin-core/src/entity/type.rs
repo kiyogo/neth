@@ -2977,6 +2977,127 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_farm_and_domestic_animals_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Cow
+        {
+            let ent = from_type(&EntityType::COW, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Cow is mob");
+            let living = ent.get_living_entity().expect("Cow is living");
+            assert!(mob.as_cow().is_some(), "Cow downcast");
+            assert!(mob.as_animal().is_some(), "Cow animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 2. Mooshroom
+        {
+            let ent = from_type(&EntityType::MOOSHROOM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Mooshroom is mob");
+            let living = ent.get_living_entity().expect("Mooshroom is living");
+            assert!(mob.as_mooshroom().is_some(), "Mooshroom downcast");
+            assert!(mob.as_animal().is_some(), "Mooshroom animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 3. Sheep
+        {
+            let ent = from_type(&EntityType::SHEEP, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Sheep is mob");
+            let living = ent.get_living_entity().expect("Sheep is living");
+            assert!(mob.as_sheep().is_some(), "Sheep downcast");
+            assert!(mob.as_animal().is_some(), "Sheep animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.health.load(), 8.0);
+        }
+
+        // 4. Pig
+        {
+            let ent = from_type(&EntityType::PIG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Pig is mob");
+            let living = ent.get_living_entity().expect("Pig is living");
+            assert!(mob.as_pig().is_some(), "Pig downcast");
+            assert!(mob.as_animal().is_some(), "Pig animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 5. Chicken
+        {
+            let ent = from_type(&EntityType::CHICKEN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Chicken is mob");
+            let living = ent.get_living_entity().expect("Chicken is living");
+            assert!(mob.as_chicken().is_some(), "Chicken downcast");
+            assert!(mob.as_animal().is_some(), "Chicken animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 4.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 4.0);
+        }
+
+        // 6. Cat
+        {
+            let ent = from_type(&EntityType::CAT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Cat is mob");
+            let living = ent.get_living_entity().expect("Cat is living");
+            assert!(mob.as_cat().is_some(), "Cat downcast");
+            assert!(mob.as_animal().is_some(), "Cat animal downcast");
+            assert!(mob.as_tamable().is_some(), "Cat tamable downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 7. Ocelot
+        {
+            let ent = from_type(&EntityType::OCELOT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Ocelot is mob");
+            let living = ent.get_living_entity().expect("Ocelot is living");
+            assert!(mob.as_ocelot().is_some(), "Ocelot downcast");
+            assert!(mob.as_animal().is_some(), "Ocelot animal downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 8. Parrot
+        {
+            let ent = from_type(&EntityType::PARROT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Parrot is mob");
+            let living = ent.get_living_entity().expect("Parrot is living");
+            assert!(mob.as_parrot().is_some(), "Parrot downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.4);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 6.0);
+        }
+
+        // 9. Wolf
+        {
+            let ent = from_type(&EntityType::WOLF, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Wolf is mob");
+            let living = ent.get_living_entity().expect("Wolf is living");
+            assert!(mob.as_wolf().is_some(), "Wolf downcast");
+            assert!(mob.as_animal().is_some(), "Wolf animal downcast");
+            assert!(mob.as_tamable().is_some(), "Wolf tamable downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+            assert_eq!(living.health.load(), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

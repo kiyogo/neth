@@ -248,6 +248,10 @@ impl Mob for SheepEntity {
         Some(self)
     }
 
+    fn as_sheep(&self) -> Option<&SheepEntity> {
+        Some(self)
+    }
+
     fn as_shearable(&self) -> Option<&dyn Shearable> {
         Some(self)
     }
