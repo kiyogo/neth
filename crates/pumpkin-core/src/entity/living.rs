@@ -2236,21 +2236,40 @@ impl LivingEntity {
             );
         }
 
-        let safe_fall_distance = self.get_attribute_value(&Attributes::SAFE_FALL_DISTANCE) as f32;
-        let unsafe_fall_distance = fall_distance + 1.0E-6 - safe_fall_distance;
+        let damage = caller.get_mob().map_or_else(
+            || self.calculate_fall_damage(f64::from(fall_distance), damage_per_distance),
+            |mob| mob.calculate_fall_damage(f64::from(fall_distance), damage_per_distance),
+        ) as f32;
 
-        let damage = (unsafe_fall_distance * damage_per_distance).floor();
         if damage > 0.0 {
             let check_damage = self.damage(caller, damage, damage_type);
             if check_damage {
                 self.entity
-                    .play_sound(Self::get_fall_sound(fall_distance as i32));
+                    .play_sound(Self::get_fall_sound(damage as i32));
             }
         }
     }
 
-    const fn get_fall_sound(distance: i32) -> Sound {
-        if distance > 4 {
+    /// Calculates fall power based on distance and safe fall distance attribute,
+    /// mirroring vanilla `LivingEntity.calculateFallPower`.
+    pub fn calculate_fall_power(&self, fall_distance: f64) -> f64 {
+        fall_distance + 1.0E-6 - self.get_attribute_value(&Attributes::SAFE_FALL_DISTANCE)
+    }
+
+    /// Calculates fall damage based on distance, damage modifier, and fall damage multiplier attribute,
+    /// mirroring vanilla `LivingEntity.calculateFallDamage`.
+    pub fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
+        if self.is_immune_to_fall_damage() {
+            return 0;
+        }
+
+        let base_damage = self.calculate_fall_power(fall_distance);
+        let multiplier = self.get_attribute_value(&Attributes::FALL_DAMAGE_MULTIPLIER) as f32;
+        (base_damage as f32 * damage_modifier * multiplier).floor().max(0.0) as i32
+    }
+
+    const fn get_fall_sound(damage: i32) -> Sound {
+        if damage > 4 {
             Sound::EntityGenericBigFall
         } else {
             Sound::EntityGenericSmallFall

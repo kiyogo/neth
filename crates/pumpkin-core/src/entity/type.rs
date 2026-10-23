@@ -3342,6 +3342,54 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_fall_damage_calculation_and_overrides_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Standard LivingEntity (Zombie: safe fall = 3.0, multiplier = 1.0)
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+
+            assert_eq!(living.calculate_fall_damage(3.0, 1.0), 0);
+            assert_eq!(living.calculate_fall_damage(4.0, 1.0), 1);
+            assert_eq!(living.calculate_fall_damage(5.0, 1.0), 2);
+            assert_eq!(living.calculate_fall_damage(10.0, 1.0), 7);
+        }
+
+        // 2. Fall-damage immune mob (Iron Golem)
+        {
+            let ent = from_type(&EntityType::IRON_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Iron Golem is living");
+            assert!(living.is_immune_to_fall_damage());
+            assert_eq!(living.calculate_fall_damage(50.0, 1.0), 0);
+        }
+
+        // 3. Frog fall damage reduction by 5
+        {
+            let ent = from_type(&EntityType::FROG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Frog is mob");
+
+            // 8 blocks fall: base damage = (8 - 3) = 5; reduction by 5 gives 0
+            assert_eq!(mob.calculate_fall_damage(8.0, 1.0), 0);
+            // 10 blocks fall: base damage = (10 - 3) = 7; reduction by 5 gives 2
+            assert_eq!(mob.calculate_fall_damage(10.0, 1.0), 2);
+        }
+
+        // 4. Goat fall damage reduction by 10
+        {
+            let ent = from_type(&EntityType::GOAT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Goat is mob");
+
+            // 10 blocks fall: base damage = (10 - 3) = 7; reduction by 10 gives 0
+            assert_eq!(mob.calculate_fall_damage(10.0, 1.0), 0);
+            // 15 blocks fall: base damage = (15 - 3) = 12; reduction by 10 gives 2
+            assert_eq!(mob.calculate_fall_damage(15.0, 1.0), 2);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

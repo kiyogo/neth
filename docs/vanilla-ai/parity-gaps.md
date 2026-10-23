@@ -1131,6 +1131,24 @@
   - Aligned `ShulkerEntity` to dynamically update base armor to 20.0 when closed (`peek_amount == 0`) and 0.0 when open.
   - Verified in `test_combat_rules_armor_and_toughness_parity`.
 
+## Gap 107: Fall Damage Calculation, Multiplier & Mob Overrides Parity
+- **Vanilla Reference**: `LivingEntity.java:1811, 1852-1863`, `Frog.java:304-306`, `Goat.java:124-126`:
+  - `calculateFallDamage(fallDistance, damageModifier) -> int`:
+    - Checks `is(FALL_DAMAGE_IMMUNE)`.
+    - `calculateFallPower(fallDistance) = fallDistance + 1.0E-6 - getAttributeValue(SAFE_FALL_DISTANCE)`.
+    - Formula: `floor(baseDamage * damageModifier * getAttributeValue(FALL_DAMAGE_MULTIPLIER))`.
+  - Specific mob overrides:
+    - `Frog.calculateFallDamage`: reduced by 5 (`super.calculateFallDamage(...) - 5`).
+    - `Goat.calculateFallDamage`: reduced by 10 (`super.calculateFallDamage(...) - 10`).
+  - Fall Damage Sound: `getFallDamageSound(int dmg)` plays `GENERIC_BIG_FALL` if `dmg > 4` else `GENERIC_SMALL_FALL` (based on damage dealt rather than raw distance).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_fall_power` and `calculate_fall_damage` on `LivingEntity` factoring in `Attributes::FALL_DAMAGE_MULTIPLIER`.
+  - Added `calculate_fall_damage` to `Mob` trait with default delegation.
+  - Overrode `calculate_fall_damage` in `FrogEntity` (reducing fall damage by 5) and `GoatEntity` (reducing fall damage by 10).
+  - Updated `LivingEntity::handle_fall_damage_from` to call `calculate_fall_damage` and select sound based on damage dealt.
+  - Verified in `test_fall_damage_calculation_and_overrides_parity`.
+
+
 
 
 

@@ -248,6 +248,11 @@ impl Mob for FrogEntity {
         true
     }
 
+    /// Vanilla `Frog.calculateFallDamage`: fall damage is reduced by 5.
+    fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
+        (self.mob_entity.living_entity.calculate_fall_damage(fall_distance, damage_modifier) - 5).max(0)
+    }
+
     fn adjust_damage_amount(&self, amount: f32, damage_type: &DamageType) -> f32 {
         if *damage_type == DamageType::FALL {
             (amount - 5.0).max(0.0)

@@ -175,6 +175,11 @@ impl Mob for GoatEntity {
     }
 
     /// Vanilla `Goat.calculateFallDamage`: fall damage is reduced by 10.
+    fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
+        (self.mob_entity.living_entity.calculate_fall_damage(fall_distance, damage_modifier) - 10).max(0)
+    }
+
+    /// Vanilla `Goat.calculateFallDamage`: fall damage is reduced by 10.
     fn adjust_damage_amount(&self, amount: f32, damage_type: &DamageType) -> f32 {
         if *damage_type == DamageType::FALL {
             (amount - 10.0).max(0.0)

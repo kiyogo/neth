@@ -1002,6 +1002,14 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.get_armor_value()
     }
 
+    /// Calculates fall damage based on distance and damage modifier,
+    /// mirroring vanilla `LivingEntity.calculateFallDamage`.
+    fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
+        self.get_mob_entity()
+            .living_entity
+            .calculate_fall_damage(fall_distance, damage_modifier)
+    }
+
     /// Takes the navigation lock, so callers must not already hold it.
     fn is_navigator_idle(&self) -> bool {
         self.get_mob_entity()
