@@ -168,6 +168,10 @@ impl Mob for CamelHuskEntity {
         Some(self)
     }
 
+    fn as_camel_husk(&self) -> Option<&CamelHuskEntity> {
+        Some(self)
+    }
+
     /// Vanilla `CamelHusk.removeWhenFarAway(distSqr)`: true (despawns like a monster).
     fn remove_when_far_away(&self, _distance_sq: f64) -> bool {
         true

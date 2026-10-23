@@ -328,6 +328,14 @@ impl Mob for CubeMobEntity {
         }
     }
 
+    fn as_sulfur_cube(&self) -> Option<&CubeMobEntity> {
+        if self.mob_entity.living_entity.entity.entity_type == &EntityType::SULFUR_CUBE {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

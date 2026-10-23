@@ -3240,6 +3240,47 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_camel_husk_and_sulfur_cube_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Camel Husk
+        {
+            let ent = from_type(&EntityType::CAMEL_HUSK, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Camel Husk is mob");
+            let living = ent.get_living_entity().expect("Camel Husk is living");
+            assert!(mob.as_camel_husk().is_some(), "Camel Husk downcast");
+            assert!(mob.as_animal().is_some(), "Camel Husk animal downcast");
+            assert!(mob.remove_when_far_away(100.0), "Camel Husk despawns like monster");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.09);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.42);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.5);
+            assert_eq!(living.health.load(), 32.0);
+        }
+
+        // 2. Sulfur Cube
+        {
+            let ent = from_type(&EntityType::SULFUR_CUBE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Sulfur cube is mob");
+            let living = ent.get_living_entity().expect("Sulfur cube is living");
+            assert!(mob.as_cube_mob().is_some(), "CubeMob downcast");
+            let cube = mob.as_sulfur_cube().expect("Sulfur cube downcast");
+            assert!(mob.as_slime().is_none(), "Sulfur cube is not slime");
+            assert!(mob.as_magma_cube().is_none(), "Sulfur cube is not magma cube");
+
+            cube.set_size(1, true);
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 4.0);
+            assert_eq!(living.health.load(), 4.0);
+
+            cube.set_size(2, true);
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.health.load(), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

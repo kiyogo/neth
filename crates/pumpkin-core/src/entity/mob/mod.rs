@@ -1680,6 +1680,14 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_camel_husk(&self) -> Option<&crate::entity::passive::camel_husk::CamelHuskEntity> {
+        None
+    }
+
+    fn as_sulfur_cube(&self) -> Option<&crate::entity::mob::cube_mob::CubeMobEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

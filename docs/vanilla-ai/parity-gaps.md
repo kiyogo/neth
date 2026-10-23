@@ -1109,3 +1109,14 @@
   - Implemented downcasts `as_frog`, `as_tadpole`, `as_allay`, `as_bee`, `as_camel`, `as_wandering_trader`, `as_cod`, `as_salmon`, `as_pufferfish`, `as_tropical_fish` on `Mob` trait and concrete structs.
   - Verified in `test_misc_passive_and_aquatic_parity`.
 
+## Gap 105: Camel Husk & Sulfur Cube Parity & Downcasts
+- **Vanilla Reference**: `Camel.java:120-126`, `Slime.java:138-140`:
+  - `Camel Husk`: `MAX_HEALTH = 32.0`, `MOVEMENT_SPEED = 0.09`, `JUMP_STRENGTH = 0.42`, `STEP_HEIGHT = 1.5`, despawns like a monster when far away.
+  - `Sulfur Cube`: Cube mob kind with size-dependent health (`4 * size`), `contact_damage: ContactDamage::Never`, split count 2, max size 2.
+  - Trait downcasts on `Mob`: `as_camel_husk`, `as_sulfur_cube`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `as_camel_husk` on `Mob` trait and `CamelHuskEntity`.
+  - Implemented `as_sulfur_cube` on `Mob` trait and `CubeMobEntity`.
+  - Verified in `test_camel_husk_and_sulfur_cube_parity`.
+
+
