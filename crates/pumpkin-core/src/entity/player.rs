@@ -1571,7 +1571,8 @@ impl Player {
                             }
                         }
                     }
-                    let sweep_damage = 1.0 + sweeping_ratio * (damage as f32);
+                    let sweep_damage =
+                        combat::calculate_sweeping_damage(damage as f32, sweeping_ratio);
 
                     let search_box = BoundingBox::new(
                         Vector3::new(pos.x - 1.0, pos.y - 0.25, pos.z - 1.0),
@@ -1586,6 +1587,11 @@ impl Player {
                         let other_ent = other_victim.get_entity();
                         if other_ent.entity_id != victim_entity.entity_id
                             && other_ent.entity_id != attacker_entity.entity_id
+                            && !(self as &dyn EntityBase).is_allied_to(other_victim.as_ref())
+                            && !other_victim
+                                .cast_any()
+                                .downcast_ref::<crate::entity::decoration::armor_stand::ArmorStandEntity>()
+                                .is_some_and(crate::entity::decoration::armor_stand::ArmorStandEntity::is_marker)
                             && other_victim.get_living_entity().is_some()
                         {
                             let dist_sq = (other_ent.pos.load()

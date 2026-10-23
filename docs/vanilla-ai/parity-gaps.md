@@ -1246,6 +1246,23 @@
   - Implemented vanilla secondary sound playback (`Sound::EnchantThornsHit`) for `DamageType::THORNS`.
   - Verified in unit test `test_thorns_reflection_and_durability_penalty_parity`.
 
+## Gap 114: Sweeping Attack Prerequisites, Target Filtering & Damage Calculation Parity
+- **Vanilla Reference**: `Player.java:1032-1042, 1153-1182`, `sweeping_edge.json`:
+  - `isSweepAttack`:
+    - Requires `fullStrengthAttack` (`attack_cooldown_progress > 0.9`), `!criticalAttack`, `!knockbackAttack`, and `this.onGround()`.
+    - Horizontal speed must be less than `getSpeed() * 2.5` (`velocity.horizontalDistanceSqr() < (speed * 2.5)^2`).
+    - Main hand item must be a sword (`ItemTags.SWORDS`).
+  - `doSweepAttack`:
+    - Formula: `sweepDamage = 1.0F + (float)this.getAttributeValue(Attributes.SWEEPING_DAMAGE_RATIO) * baseDamage`.
+    - Target filtering: checks `nearby != this && nearby != entity && !this.isAlliedTo(nearby) && !(nearby instanceof ArmorStand armorStand && armorStand.isMarker()) && this.distanceToSqr(nearby) < 9.0`.
+    - Knockback on each swept victim: `0.4F` along the attacker's facing yaw.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `AttackType::new` in `combat.rs` to enforce `on_ground` and `horizontal_speed_sq < (speed * 2.5)^2` matching vanilla `Player.isSweepAttack`.
+  - Added `calculate_sweeping_damage` helper function implementing vanilla `1.0 + sweeping_ratio * base_damage`.
+  - Filtered sweeping victims in `Player::attack` with `!is_allied_to` and `!ArmorStandEntity::is_marker`.
+  - Verified in unit test `test_sweeping_damage_calculation_parity`.
+
+
 
 
 

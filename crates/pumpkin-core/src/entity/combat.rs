@@ -50,8 +50,17 @@ impl AttackType {
             return Self::Critical;
         }
 
-        if sword && is_strong && !is_bedrock {
-            return Self::Sweeping;
+        // Vanilla Player.isSweepAttack: fullStrengthAttack && !criticalAttack && !knockbackAttack && this.onGround()
+        if sword && is_strong && on_ground && !is_bedrock {
+            let speed = player
+                .living_entity
+                .get_attribute_value(&Attributes::MOVEMENT_SPEED);
+            let max_speed = speed * 2.5;
+            let vel = entity.velocity.load();
+            let horizontal_speed_sq = vel.x * vel.x + vel.z * vel.z;
+            if horizontal_speed_sq < max_speed * max_speed {
+                return Self::Sweeping;
+            }
         }
 
         if is_strong { Self::Strong } else { Self::Weak }
@@ -194,6 +203,13 @@ pub fn handle_knockback(attacker: &Entity, victim: &dyn EntityBase, strength: f6
 
     let velocity = attacker.velocity.load();
     attacker.velocity.store(velocity.multiply(0.6, 1.0, 0.6));
+}
+
+/// Vanilla `Player.doSweepAttack` damage calculation:
+/// `1.0F + (float)this.getAttributeValue(Attributes.SWEEPING_DAMAGE_RATIO) * baseDamage`.
+#[must_use]
+pub fn calculate_sweeping_damage(base_damage: f32, sweeping_ratio: f32) -> f32 {
+    1.0 + sweeping_ratio * base_damage
 }
 
 pub fn spawn_sweep_particle(attacker_entity: &Entity, world: &World, pos: &Vector3<f64>) {
@@ -759,5 +775,22 @@ mod tests {
         // Stacked armour modifiers can push resistance above 1.0; the result is
         // negative and callers guard on `strength > 0.0`.
         assert!(knockback_after_resistance(0.4, 1.2) < 0.0);
+    }
+
+    #[test]
+    fn test_sweeping_damage_calculation_parity() {
+        // Without Sweeping Edge enchantment (ratio = 0.0), sweep damage is always 1.0 (0.5 hearts)
+        assert_eq!(calculate_sweeping_damage(9.0, 0.0), 1.0);
+        assert_eq!(calculate_sweeping_damage(15.0, 0.0), 1.0);
+
+        // Sweeping Edge I (ratio = 0.5): 1.0 + 0.5 * 9.0 = 5.5
+        assert_eq!(calculate_sweeping_damage(9.0, 0.5), 5.5);
+
+        // Sweeping Edge II (ratio = 2.0 / 3.0): 1.0 + (2.0/3.0) * 9.0 = 7.0
+        let se2_ratio = 2.0 / 3.0;
+        assert!((calculate_sweeping_damage(9.0, se2_ratio) - 7.0).abs() < 1e-6);
+
+        // Sweeping Edge III (ratio = 0.75): 1.0 + 0.75 * 9.0 = 7.75
+        assert_eq!(calculate_sweeping_damage(9.0, 0.75), 7.75);
     }
 }
