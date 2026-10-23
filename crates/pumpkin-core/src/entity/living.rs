@@ -3724,32 +3724,20 @@ impl LivingEntity {
             source_to_player.y = 0.0;
 
             if source_to_player.dot(&look_vec) < 0.0 {
-                let mut disable_blocking = false;
-                if let Some(attacker) = source.or(cause) {
-                    if let Some(attacker_player) = attacker
-                        .cast_any()
-                        .downcast_ref::<crate::entity::player::Player>()
-                    {
-                        if attacker_player.inventory().held_item().is_axe() {
-                            disable_blocking = true;
-                        }
-                    } else if let Some(attacker_living) = attacker.get_living_entity() {
-                        let equipment = attacker_living
-                            .entity_equipment
-                            .lock()
-                            .unwrap_or_else(std::sync::PoisonError::into_inner);
-                        if equipment.get(&EquipmentSlot::MAIN_HAND).is_axe() {
-                            disable_blocking = true;
-                        }
-                    }
-                }
+                let disable_seconds = if let Some(attacker) = source.or(cause) {
+                    attacker.get_seconds_to_disable_blocking()
+                } else {
+                    0.0
+                };
+                let disable_blocking = disable_seconds > 0.0;
 
                 if disable_blocking {
                     world.play_sound(Sound::ItemShieldBreak, SoundCategory::Players, &player_pos);
                     let status_packet = CEntityStatus::new(self.entity.entity_id, 30);
                     world.send_to_tracking_players_and_self(&self.entity, &status_packet);
                     if let Some(player) = caller.get_player() {
-                        player.set_item_cooldown("minecraft:shield", 100);
+                        let cooldown_ticks = (disable_seconds * 20.0).round() as i32;
+                        player.set_item_cooldown("minecraft:shield", cooldown_ticks);
                     }
                     self.clear_active_hand();
                 } else {

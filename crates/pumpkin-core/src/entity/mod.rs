@@ -541,6 +541,30 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         }
     }
 
+    /// Vanilla `LivingEntity.getSecondsToDisableBlocking`: seconds to disable defender's shield blocking.
+    fn get_seconds_to_disable_blocking(&self) -> f32 {
+        if let Some(mob) = self.get_mob() {
+            let mob_seconds = mob::Mob::get_seconds_to_disable_blocking(mob);
+            if mob_seconds > 0.0 {
+                return mob_seconds;
+            }
+        }
+        if let Some(player) = self.cast_any().downcast_ref::<crate::entity::player::Player>() {
+            if player.inventory().held_item().is_axe() {
+                return 5.0;
+            }
+        } else if let Some(living) = self.get_living_entity() {
+            let equipment = living
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if equipment.get(&EquipmentSlot::MAIN_HAND).is_axe() {
+                return 5.0;
+            }
+        }
+        0.0
+    }
+
     /// Called when a player right-clicks this entity with an item.
     /// Called when a player right-clicks this entity with an item.
     /// Returns true if the interaction was handled.

@@ -1283,6 +1283,21 @@
   - Invoked `on_blocked_by_shield` on melee direct attacker when blocked by shield.
   - Verified in unit test `test_shield_blocking_hoglin_throw_and_ravager_parity`.
 
+## Gap 116: Shield Disabling Duration, Warden & Weapon Parity
+- **Vanilla Reference**: `LivingEntity.java:4020-4024`, `Warden.java:176-178`, `Player.java:705-715`, `BlocksAttacks.java:81-103, 118-121`, `Item.java:484-486, 493-496`:
+  - `LivingEntity.getSecondsToDisableBlocking`:
+    - In vanilla, weapons like axes define `disable_blocking_for_seconds = 5.0F`. When an axe strikes a blocking shield, `getSecondsToDisableBlocking()` returns `5.0F`.
+    - In `Warden.java:176-178`, Warden overrides `getSecondsToDisableBlocking()` to return `5.0F` even without holding any weapon.
+  - `BlocksAttacks.disable`:
+    - Cooldown ticks applied to the player's shield: `Math.round(seconds * 20.0F)` (5.0s -> 100 ticks).
+    - Plays `SoundEvents.SHIELD_BREAK`, broadcasts entity status 30 (`EntityStatus::ShieldBreak`), clears active blocking hand, and applies cooldown.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `get_seconds_to_disable_blocking(&self) -> f32` to `EntityBase` and `Mob` trait.
+  - Overrode `get_seconds_to_disable_blocking` in `WardenEntity` to return `5.0`.
+  - Implemented weapon axe check (`5.0` seconds) on Player held item and LivingEntity `MAIN_HAND`.
+  - Replaced hardcoded axe checks in `LivingEntity::damage_with_context` with dynamic `attacker.get_seconds_to_disable_blocking()`, applying proportional cooldown ticks `(disable_seconds * 20.0).round()`.
+  - Verified in unit test `test_seconds_to_disable_blocking_parity`.
+
 
 
 

@@ -1148,6 +1148,11 @@ pub trait Mob: EntityBase + Send + Sync {
         }
     }
 
+    /// Vanilla `LivingEntity.getSecondsToDisableBlocking`.
+    fn get_seconds_to_disable_blocking(&self) -> f32 {
+        0.0
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false

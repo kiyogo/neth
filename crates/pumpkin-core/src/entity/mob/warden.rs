@@ -792,6 +792,10 @@ impl Mob for WardenEntity {
         Some(self)
     }
 
+    fn get_seconds_to_disable_blocking(&self) -> f32 {
+        5.0
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

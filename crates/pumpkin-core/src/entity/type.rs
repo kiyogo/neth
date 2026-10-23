@@ -3797,6 +3797,50 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_seconds_to_disable_blocking_parity() {
+        use pumpkin_util::math::vector3::Vector3;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item_stack::ItemStack;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::data_component_impl::EquipmentSlot;
+
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Warden disables blocking for 5.0 seconds
+        let warden = from_type(&EntityType::WARDEN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        assert_eq!(
+            warden.get_seconds_to_disable_blocking(),
+            5.0,
+            "Warden should disable shield blocking for 5.0 seconds"
+        );
+
+        // 2. Unarmed zombie: 0.0 seconds
+        let zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        assert_eq!(
+            zombie.get_seconds_to_disable_blocking(),
+            0.0,
+            "Unarmed zombie should not disable shield"
+        );
+
+        // 3. Zombie with Diamond Axe in MAIN_HAND: 5.0 seconds
+        let axe_zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let living = axe_zombie.get_living_entity().expect("Zombie is living");
+        let axe = ItemStack::new(1, &Item::DIAMOND_AXE);
+        living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .put(&EquipmentSlot::MAIN_HAND, axe);
+        assert_eq!(
+            axe_zombie.get_seconds_to_disable_blocking(),
+            5.0,
+            "Axe wielding entity should disable shield for 5.0 seconds"
+        );
+
+        world.level.shutdown().await;
+    }
 }
 
 
