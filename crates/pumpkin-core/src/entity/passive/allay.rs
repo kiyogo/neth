@@ -182,6 +182,10 @@ impl Mob for AllayEntity {
         Some(self)
     }
 
+    fn as_allay(&self) -> Option<&AllayEntity> {
+        Some(self)
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }

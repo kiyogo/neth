@@ -93,6 +93,10 @@ impl Mob for SalmonEntity {
         Some(self)
     }
 
+    fn as_salmon(&self) -> Option<&SalmonEntity> {
+        Some(self)
+    }
+
     fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
         fish::travel_in_water(self, caller)
     }

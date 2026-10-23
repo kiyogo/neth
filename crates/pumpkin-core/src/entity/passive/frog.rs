@@ -148,6 +148,10 @@ impl Mob for FrogEntity {
         Some(self)
     }
 
+    fn as_frog(&self) -> Option<&FrogEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_string("variant", self.get_variant().asset_id().to_string());
     }

@@ -669,6 +669,10 @@ impl Mob for WanderingTraderEntity {
         &self.mob_entity
     }
 
+    fn as_wandering_trader(&self) -> Option<&WanderingTraderEntity> {
+        Some(self)
+    }
+
     fn clear_trading_player(&self) {
         *self
             .trading_player

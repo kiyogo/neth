@@ -3098,6 +3098,148 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_misc_passive_and_aquatic_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Frog
+        {
+            let ent = from_type(&EntityType::FROG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Frog is mob");
+            let living = ent.get_living_entity().expect("Frog is living");
+            assert!(mob.as_frog().is_some(), "Frog downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 2. Tadpole
+        {
+            let ent = from_type(&EntityType::TADPOLE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Tadpole is mob");
+            let living = ent.get_living_entity().expect("Tadpole is living");
+            assert!(mob.as_tadpole().is_some(), "Tadpole downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.health.load(), 6.0);
+        }
+
+        // 3. Allay
+        {
+            let ent = from_type(&EntityType::ALLAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Allay is mob");
+            let living = ent.get_living_entity().expect("Allay is living");
+            assert!(mob.as_allay().is_some(), "Allay downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 4. Bee
+        {
+            let ent = from_type(&EntityType::BEE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Bee is mob");
+            let living = ent.get_living_entity().expect("Bee is living");
+            assert!(mob.as_bee().is_some(), "Bee downcast");
+            assert!(mob.as_neutral().is_some(), "Bee neutral downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 5. Camel
+        {
+            let ent = from_type(&EntityType::CAMEL, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Camel is mob");
+            let living = ent.get_living_entity().expect("Camel is living");
+            assert!(mob.as_camel().is_some(), "Camel downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.09);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.42);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.5);
+            assert_eq!(living.health.load(), 32.0);
+        }
+
+        // 6. Wandering Trader
+        {
+            let ent = from_type(&EntityType::WANDERING_TRADER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Wandering Trader is mob");
+            let living = ent.get_living_entity().expect("Wandering Trader is living");
+            assert!(mob.as_wandering_trader().is_some(), "Wandering Trader downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 7. Squid & Glow Squid
+        {
+            let squid_ent = from_type(&EntityType::SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = squid_ent.get_mob().expect("Squid is mob");
+            let living = squid_ent.get_living_entity().expect("Squid is living");
+            assert!(mob.as_squid().is_some(), "Squid downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+
+            let glow_ent = from_type(&EntityType::GLOW_SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = glow_ent.get_mob().expect("Glow Squid is mob");
+            let living = glow_ent.get_living_entity().expect("Glow Squid is living");
+            assert!(mob.as_glow_squid().is_some(), "Glow Squid downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 8. Dolphin
+        {
+            let ent = from_type(&EntityType::DOLPHIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Dolphin is mob");
+            let living = ent.get_living_entity().expect("Dolphin is living");
+            assert!(mob.as_dolphin().is_some(), "Dolphin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 9. Fish (Cod, Salmon, Pufferfish, Tropical Fish)
+        {
+            let cod_ent = from_type(&EntityType::COD, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = cod_ent.get_mob().expect("Cod is mob");
+            let living = cod_ent.get_living_entity().expect("Cod is living");
+            assert!(mob.as_cod().is_some(), "Cod downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+
+            let salmon_ent = from_type(&EntityType::SALMON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = salmon_ent.get_mob().expect("Salmon is mob");
+            let living = salmon_ent.get_living_entity().expect("Salmon is living");
+            assert!(mob.as_salmon().is_some(), "Salmon downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+
+            let puffer_ent = from_type(&EntityType::PUFFERFISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = puffer_ent.get_mob().expect("Pufferfish is mob");
+            let living = puffer_ent.get_living_entity().expect("Pufferfish is living");
+            assert!(mob.as_pufferfish().is_some(), "Pufferfish downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+
+            let trop_ent = from_type(&EntityType::TROPICAL_FISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = trop_ent.get_mob().expect("Tropical Fish is mob");
+            let living = trop_ent.get_living_entity().expect("Tropical Fish is living");
+            assert!(mob.as_tropical_fish().is_some(), "Tropical Fish downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

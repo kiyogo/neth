@@ -274,6 +274,10 @@ impl Mob for PufferfishEntity {
         Some(self)
     }
 
+    fn as_pufferfish(&self) -> Option<&PufferfishEntity> {
+        Some(self)
+    }
+
     fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
         fish::travel_in_water(self, caller)
     }

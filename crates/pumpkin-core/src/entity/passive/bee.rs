@@ -279,6 +279,10 @@ impl Mob for BeeEntity {
         Some(self)
     }
 
+    fn as_bee(&self) -> Option<&BeeEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
         nbt.put_bool("HasNectar", self.has_nectar());

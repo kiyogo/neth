@@ -147,6 +147,10 @@ impl Mob for TadpoleEntity {
         Some(self)
     }
 
+    fn as_tadpole(&self) -> Option<&TadpoleEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
     }

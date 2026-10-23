@@ -170,6 +170,10 @@ impl Mob for CamelEntity {
         Some(self)
     }
 
+    fn as_camel(&self) -> Option<&CamelEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
         nbt.put_bool("Saddle", self.is_saddled());

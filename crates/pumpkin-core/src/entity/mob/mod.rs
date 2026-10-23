@@ -1640,6 +1640,46 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_frog(&self) -> Option<&crate::entity::passive::frog::FrogEntity> {
+        None
+    }
+
+    fn as_tadpole(&self) -> Option<&crate::entity::passive::tadpole::TadpoleEntity> {
+        None
+    }
+
+    fn as_allay(&self) -> Option<&crate::entity::passive::allay::AllayEntity> {
+        None
+    }
+
+    fn as_bee(&self) -> Option<&crate::entity::passive::bee::BeeEntity> {
+        None
+    }
+
+    fn as_camel(&self) -> Option<&crate::entity::passive::camel::CamelEntity> {
+        None
+    }
+
+    fn as_wandering_trader(&self) -> Option<&crate::entity::passive::wandering_trader::WanderingTraderEntity> {
+        None
+    }
+
+    fn as_cod(&self) -> Option<&crate::entity::passive::cod::CodEntity> {
+        None
+    }
+
+    fn as_salmon(&self) -> Option<&crate::entity::passive::salmon::SalmonEntity> {
+        None
+    }
+
+    fn as_pufferfish(&self) -> Option<&crate::entity::passive::pufferfish::PufferfishEntity> {
+        None
+    }
+
+    fn as_tropical_fish(&self) -> Option<&crate::entity::passive::tropical_fish::TropicalFishEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

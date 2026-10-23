@@ -96,6 +96,10 @@ impl Mob for CodEntity {
         Some(self)
     }
 
+    fn as_cod(&self) -> Option<&CodEntity> {
+        Some(self)
+    }
+
     fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
         fish::travel_in_water(self, caller)
     }
