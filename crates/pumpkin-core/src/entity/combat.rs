@@ -351,6 +351,57 @@ pub fn calculate_cooldown_damage(
     }
 }
 
+/// Vanilla `LivingEntity.applyItemBlocking`:
+/// Determines if an incoming attack from `damage_pos` can be blocked by the defender's shield.
+/// Horizontal blocking angle is 90 degrees (`PI / 2`).
+/// The vector to the damage source is projected onto the horizontal plane (`y = 0.0`)
+/// and normalized, then dotted with the defender's look vector (`calculateViewVector(0.0, head_yaw)`).
+/// If `dot >= 0.0` (i.e. angle <= 90 degrees), the hit is within the shield arc.
+#[must_use]
+pub fn can_block_damage_source(
+    entity_pos: Vector3<f64>,
+    head_yaw: f32,
+    damage_pos: Option<Vector3<f64>>,
+) -> bool {
+    let Some(source_pos) = damage_pos else {
+        return false;
+    };
+    let dx = source_pos.x - entity_pos.x;
+    let dz = source_pos.z - entity_pos.z;
+    let horizontal_dist_sq = dx * dx + dz * dz;
+    if horizontal_dist_sq <= 1e-12 {
+        // Source directly at or above/below the defender
+        return true;
+    }
+    let inv_dist = 1.0 / horizontal_dist_sq.sqrt();
+    let norm_dx = dx * inv_dist;
+    let norm_dz = dz * inv_dist;
+
+    // Vanilla calculateViewVector(0.0F, getYHeadRot()):
+    // realYRot = -yRot * PI / 180.0
+    // vx = sin(-yRot) = -sin(yRot)
+    // vz = cos(-yRot) = cos(yRot)
+    let rad = f64::from(head_yaw).to_radians();
+    let view_x = -rad.sin();
+    let view_z = rad.cos();
+
+    // dot product between horizontal direction to source and defender view vector
+    let dot = norm_dx * view_x + norm_dz * view_z;
+    dot >= 0.0
+}
+
+/// Vanilla `BlocksAttacks.ItemDamageFunction(3.0F, 1.0F, 1.0F)`:
+/// Shield takes 0 durability damage for attacks below 3.0 damage (< 1.5 hearts).
+/// For attacks of 3.0 or greater, shield durability damage is `floor(1.0 + dealt_damage)`.
+#[must_use]
+pub fn calculate_shield_durability_damage(dealt_damage: f32) -> i32 {
+    if dealt_damage < 3.0 {
+        0
+    } else {
+        (1.0 + dealt_damage).floor() as i32
+    }
+}
+
 pub fn player_attack_sound(pos: &Vector3<f64>, world: &World, attack_type: AttackType) {
     match attack_type {
         AttackType::Knockback => {
@@ -1167,7 +1218,57 @@ mod tests {
         assert!(!tracker.is_in_combat());
         assert_eq!(tracker.entries.len(), 0);
     }
+
+    #[test]
+    fn test_shield_blocking_angle_and_durability_parity() {
+        // 1. Durability function parity (BlocksAttacks.ItemDamageFunction(3.0F, 1.0F, 1.0F)):
+        // Hits < 3.0 take 0 damage
+        assert_eq!(calculate_shield_durability_damage(0.0), 0);
+        assert_eq!(calculate_shield_durability_damage(1.0), 0);
+        assert_eq!(calculate_shield_durability_damage(2.9), 0);
+
+        // Hits >= 3.0 take floor(1.0 + damage)
+        assert_eq!(calculate_shield_durability_damage(3.0), 4);
+        assert_eq!(calculate_shield_durability_damage(4.5), 5);
+        assert_eq!(calculate_shield_durability_damage(5.0), 6);
+        assert_eq!(calculate_shield_durability_damage(10.0), 11);
+
+        // 2. Shield blocking angle parity (horizontal angle <= 90 deg, dot >= 0):
+        let defender_pos = Vector3::new(0.0, 64.0, 0.0);
+        // Yaw 0 faces south (towards +Z in Minecraft coordinate system)
+        // With head_yaw = 0.0, view_vector is (0, 0, 1)
+
+        // None damage pos cannot be blocked
+        assert!(!can_block_damage_source(defender_pos, 0.0, None));
+
+        // Directly in front (+Z) is blocked
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 64.0, 5.0))));
+
+        // Directly behind (-Z) is NOT blocked
+        assert!(!can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 64.0, -5.0))));
+
+        // 45 degrees to the right (+X, +Z) is blocked
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(5.0, 64.0, 5.0))));
+
+        // Exactly 90 degrees (+X, 0) is blocked (dot == 0.0)
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(5.0, 64.0, 0.0))));
+
+        // Behind 90 degrees (+X, -Z) is NOT blocked
+        assert!(!can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(5.0, 64.0, -1.0))));
+
+        // Elevation difference does NOT compromise horizontal angle check:
+        // Attacker is 10 blocks above, but in front -> blocked
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 74.0, 5.0))));
+        // Attacker is 10 blocks below, but in front -> blocked
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 54.0, 5.0))));
+        // Attacker is 10 blocks above, but behind -> NOT blocked
+        assert!(!can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 74.0, -5.0))));
+
+        // Directly above (dx = 0, dz = 0) -> blocked
+        assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 70.0, 0.0))));
+    }
 }
+
 
 
 

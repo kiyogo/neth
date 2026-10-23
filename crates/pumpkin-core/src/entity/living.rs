@@ -3770,55 +3770,56 @@ impl LivingEntity {
         if self.is_blocking()
             && !is_piercing_arrow
             && !damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_SHIELD)
-            && let Some(pos) = damage_pos
+            && crate::entity::combat::can_block_damage_source(
+                self.entity.pos.load(),
+                self.entity.head_yaw.load(),
+                damage_pos,
+            )
         {
             let player_pos = self.entity.pos.load();
-            let look_vec = Vector3::rotation_vector(0.0, self.entity.head_yaw.load() as f64);
-            let mut vector_to_source = (pos - player_pos).normalize();
-            vector_to_source.y = 0.0;
+            let disable_seconds = if let Some(attacker) = source.or(cause) {
+                attacker.get_seconds_to_disable_blocking()
+            } else {
+                0.0
+            };
+            let disable_blocking = disable_seconds > 0.0;
 
-            if vector_to_source.dot(&look_vec) > 0.0 {
-                let disable_seconds = if let Some(attacker) = source.or(cause) {
-                    attacker.get_seconds_to_disable_blocking()
-                } else {
-                    0.0
-                };
-                let disable_blocking = disable_seconds > 0.0;
-
-                if disable_blocking {
-                    world.play_sound(Sound::ItemShieldBreak, SoundCategory::Players, &player_pos);
-                    let status_packet = CEntityStatus::new(self.entity.entity_id, 30);
-                    world.send_to_tracking_players_and_self(&self.entity, &status_packet);
-                    if let Some(player) = caller.get_player() {
-                        let cooldown_ticks = (disable_seconds * 20.0).round() as i32;
-                        player.set_item_cooldown("minecraft:shield", cooldown_ticks);
-                    }
-                    self.clear_active_hand();
-                } else {
-                    world.play_sound(Sound::ItemShieldBlock, SoundCategory::Players, &player_pos);
-                }
-
+            if disable_blocking {
+                world.play_sound(Sound::ItemShieldBreak, SoundCategory::Players, &player_pos);
+                let status_packet = CEntityStatus::new(self.entity.entity_id, 30);
+                world.send_to_tracking_players_and_self(&self.entity, &status_packet);
                 if let Some(player) = caller.get_player() {
-                    player.increment_stat(
-                        StatisticCategory::Custom,
-                        CustomStatistic::DamageBlockedByShield as i32,
-                        (amount * 10.0).round() as i32,
-                    );
-                    if damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_PROJECTILE) {
-                        player.trigger_advancement(
-                            crate::entity::player::advancement::trigger::AdvancementTrigger::DeflectedDamage,
-                        );
-                    }
+                    let cooldown_ticks = (disable_seconds * 20.0).round() as i32;
+                    player.set_item_cooldown("minecraft:shield", cooldown_ticks);
                 }
+                self.clear_active_hand();
+            } else {
+                world.play_sound(Sound::ItemShieldBlock, SoundCategory::Players, &player_pos);
+            }
 
-                let active_hand = self
-                    .active_hand
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner);
-                if let Some(hand) = *active_hand {
-                    let slot = EquipmentSlot::from_hand(hand);
+            if let Some(player) = caller.get_player() {
+                player.increment_stat(
+                    StatisticCategory::Custom,
+                    CustomStatistic::DamageBlockedByShield as i32,
+                    (amount * 10.0).round() as i32,
+                );
+                if damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_PROJECTILE) {
+                    player.trigger_advancement(
+                        crate::entity::player::advancement::trigger::AdvancementTrigger::DeflectedDamage,
+                    );
+                }
+            }
 
-                    let durability_damage = (amount / 1.0).floor().max(1.0) as i32;
+            let active_hand = self
+                .active_hand
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(hand) = *active_hand {
+                let slot = EquipmentSlot::from_hand(hand);
+
+                let durability_damage =
+                    crate::entity::combat::calculate_shield_durability_damage(amount);
+                if durability_damage > 0 {
                     if let Some(player) = caller.get_player() {
                         let broke = player.damage_item_in_slot(&slot, durability_damage);
                         let empty = player
@@ -3853,16 +3854,16 @@ impl LivingEntity {
                         }
                     }
                 }
-
-                // Vanilla parity: blockUsingItem -> attacker.blockedByItem callback
-                if !damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_PROJECTILE) {
-                    if let Some(direct_attacker) = source.or(cause) {
-                        direct_attacker.on_blocked_by_shield(caller, !disable_blocking);
-                    }
-                }
-
-                return false;
             }
+
+            // Vanilla parity: blockUsingItem -> attacker.blockedByItem callback
+            if !damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_PROJECTILE) {
+                if let Some(direct_attacker) = source.or(cause) {
+                    direct_attacker.on_blocked_by_shield(caller, !disable_blocking);
+                }
+            }
+
+            return false;
         }
 
         // Vanilla parity: Damage cooldown check (damageCooldownTime > 10.0F && !bypasses_cooldown)

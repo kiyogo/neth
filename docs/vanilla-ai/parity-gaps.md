@@ -1522,4 +1522,43 @@
   - Added death cleanup recheck in `broadcast_death_message` and sent empty text in `CCombatDeath` when `show_death_messages` game rule is false.
   - Verified in unit test `test_combat_tracker_lifecycle_and_death_message_parity`.
 
+## Gap 125: Shield Blocking Angle Projection, Durability Function & Axe Disable Parity
+- **Vanilla Reference**: `LivingEntity.java:1311-1348` (`applyItemBlocking`), `BlocksAttacks.java:105-116, 127-135, 159-167, 188-193`, `Items.java:2428-2439`, `Item.java:493-495`, `Warden.java:176`:
+  - `LivingEntity.applyItemBlocking`:
+    - Angle Calculation:
+      ```java
+      Vec3 sourcePosition = source.getSourcePosition();
+      double angle;
+      if (sourcePosition != null) {
+         Vec3 viewVector = calculateViewVector(0.0F, this.getYHeadRot());
+         Vec3 vectorTo = sourcePosition.subtract(this.position());
+         vectorTo = new Vec3(vectorTo.x, 0.0, vectorTo.z).normalize();
+         angle = Math.acos(vectorTo.dot(viewVector));
+      } else {
+         angle = (float) Math.PI;
+      }
+      ```
+    - Previously in Neth, `(pos - player_pos)` was normalized BEFORE setting `y = 0.0`. When the attacker and defender were on different elevations (jumping, stairs, slabs, hill terrain), the pre-normalized vector had reduced horizontal length (`< 1.0`), distorting the dot product angle calculation and causing blocks to fail erroneously even when facing directly at the attacker.
+    - Zeroing `y` before normalization preserves accurate horizontal direction regardless of elevation.
+  - Shield Durability Damage Function:
+    - In vanilla Minecraft `DataComponents.BLOCKS_ATTACKS` for shields uses `ItemDamageFunction(3.0F, 1.0F, 1.0F)`:
+      ```java
+      public int apply(final float dealtDamage) {
+         return dealtDamage < this.threshold ? 0 : Mth.floor(this.base + this.factor * dealtDamage);
+      }
+      ```
+    - Hits `< 3.0F` (punch, snowball, weak attack) deal **0** durability damage to the shield.
+    - Hits `>= 3.0F` deal `floor(1.0 + damage)` durability damage (e.g. 5.0 damage deals 6 durability damage).
+    - Previously in Neth, all hits took `(amount).floor().max(1.0)` durability damage, inappropriately damaging the shield on trivial hits and under-damaging on strong hits.
+  - Weapon Disabling:
+    - Axes have `disableBlockingForSeconds = 5.0F` (100 ticks cooldown).
+    - Warden melee has `getSecondsToDisableBlocking = 5.0F`.
+    - Projectiles (`#minecraft:is_projectile`) cannot trigger shield disable or attacker pushback.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `can_block_damage_source(entity_pos, head_yaw, damage_pos) -> bool` with proper `y = 0.0` projection before normalization.
+  - Implemented `calculate_shield_durability_damage(dealt_damage) -> i32` mirroring `BlocksAttacks.ItemDamageFunction(3.0F, 1.0F, 1.0F)`.
+  - Refactored `damage_with_context` in `crates/pumpkin-core/src/entity/living.rs` to use these helpers.
+  - Verified in unit tests `test_shield_blocking_angle_and_durability_parity`.
+
+
 
