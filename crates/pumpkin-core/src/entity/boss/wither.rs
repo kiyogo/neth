@@ -632,6 +632,10 @@ impl Mob for WitherEntity {
         &self.mob_entity
     }
 
+    fn as_wither(&self) -> Option<&WitherEntity> {
+        Some(self)
+    }
+
     fn mob_init_data_tracker(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         entity.set_synced_data(

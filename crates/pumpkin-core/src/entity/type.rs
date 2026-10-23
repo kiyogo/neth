@@ -1227,15 +1227,20 @@ mod tests {
             assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.6);
             assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 40.0);
             assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 4.0);
-            let targets = wither.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            let mob = wither.get_mob().expect("Wither is mob");
+            assert!(mob.as_wither().is_some(), "Wither downcast");
+            let targets = mob.get_mob_entity().target_selector.lock().unwrap();
             assert!(targets.get_available_goals().len() >= 2, "Wither must have revenge and living entity target goals");
         }
 
-        // 8. EnderDragon: MAX_HEALTH = 200.0
+        // 8. EnderDragon: MAX_HEALTH = 200.0, CAMERA_DISTANCE = 16.0
         {
             let dragon = from_type(&EntityType::ENDER_DRAGON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
             let living = dragon.get_living_entity().expect("EnderDragon is living entity");
             assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 200.0);
+            assert_eq!(living.get_attribute_base(&Attributes::CAMERA_DISTANCE), 16.0);
+            let mob = dragon.get_mob().expect("EnderDragon is mob");
+            assert!(mob.as_ender_dragon().is_some(), "EnderDragon downcast");
         }
 
         world.level.shutdown().await;
@@ -2936,6 +2941,38 @@ mod tests {
             assert!(mob.as_bat().is_some(), "Bat downcast");
             assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
             assert_eq!(living.health.load(), 6.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_boss_entities_downcasts_and_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Wither
+        {
+            let wither_ent = from_type(&EntityType::WITHER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = wither_ent.get_mob().expect("Wither is mob");
+            let living = wither_ent.get_living_entity().expect("Wither is living");
+            assert!(mob.as_wither().is_some(), "Wither downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 300.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 4.0);
+            assert_eq!(living.health.load(), 300.0);
+        }
+
+        // 2. Ender Dragon
+        {
+            let dragon_ent = from_type(&EntityType::ENDER_DRAGON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = dragon_ent.get_mob().expect("Ender Dragon is mob");
+            let living = dragon_ent.get_living_entity().expect("Ender Dragon is living");
+            assert!(mob.as_ender_dragon().is_some(), "Ender Dragon downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 200.0);
+            assert_eq!(living.get_attribute_base(&Attributes::CAMERA_DISTANCE), 16.0);
+            assert_eq!(living.health.load(), 200.0);
         }
 
         world.level.shutdown().await;

@@ -311,6 +311,10 @@ impl EnderDragonEntity {
                 health.base_value = 200.0;
                 health.dirty.store(true, Ordering::Relaxed);
             }
+            if let Some(camera) = attributes.get_mut(&Attributes::CAMERA_DISTANCE.id) {
+                camera.base_value = 16.0;
+                camera.dirty.store(true, Ordering::Relaxed);
+            }
         }
         mob_entity.living_entity.set_health(200.0);
 
@@ -1077,6 +1081,10 @@ impl crate::entity::custom_sound::CustomSound for EnderDragonEntity {
 impl Mob for EnderDragonEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
+    }
+
+    fn as_ender_dragon(&self) -> Option<&EnderDragonEntity> {
+        Some(self)
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {

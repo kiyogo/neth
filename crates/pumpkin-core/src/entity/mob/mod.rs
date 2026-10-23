@@ -1596,6 +1596,14 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_wither(&self) -> Option<&crate::entity::boss::wither::WitherEntity> {
+        None
+    }
+
+    fn as_ender_dragon(&self) -> Option<&crate::entity::boss::ender_dragon::EnderDragonEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

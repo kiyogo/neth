@@ -1066,5 +1066,13 @@
   - Implemented downcasts `as_guardian`, `as_elder_guardian`, `as_breeze`, `as_warden`, `as_giant`, `as_bat` on `Mob` trait and concrete structs.
   - Verified in `test_guardian_breeze_warden_giant_bat_parity`.
 
-
+## Gap 102: Boss Entities (Wither, Ender Dragon) Parity & Downcasts
+- **Vanilla Reference**: `WitherBoss.java:510-517`, `EnderDragon.java:119-121`:
+  - `Wither`: `MAX_HEALTH = 300.0`, `MOVEMENT_SPEED = 0.6`, `FLYING_SPEED = 0.6`, `FOLLOW_RANGE = 40.0`, `ARMOR = 4.0`.
+  - `Ender Dragon`: `MAX_HEALTH = 200.0`, `CAMERA_DISTANCE = 16.0`.
+  - Trait downcasts on `Mob`: `as_wither`, `as_ender_dragon`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Aligned `EnderDragonEntity::new` to initialize base `CAMERA_DISTANCE = 16.0` per `EnderDragon.java:120`.
+  - Implemented downcasts `as_wither`, `as_ender_dragon` on `Mob` trait and concrete structs.
+  - Verified in `test_boss_entities_downcasts_and_parity`.
 
