@@ -193,6 +193,10 @@ impl CustomSound for CreeperEntity {
 }
 
 impl Mob for CreeperEntity {
+    fn as_creeper(&self) -> Option<&CreeperEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

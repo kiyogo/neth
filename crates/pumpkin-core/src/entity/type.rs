@@ -2504,6 +2504,114 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_hostile_mobs_downcasts_and_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Creeper
+        {
+            let ent = from_type(&EntityType::CREEPER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Creeper is mob");
+            let living = ent.get_living_entity().expect("Creeper is living");
+            assert!(mob.as_creeper().is_some(), "Creeper downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 2. Spider & Cave Spider
+        {
+            let spider_ent = from_type(&EntityType::SPIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = spider_ent.get_mob().expect("Spider is mob");
+            let living = spider_ent.get_living_entity().expect("Spider is living");
+            assert!(mob.as_spider().is_some(), "Spider downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 16.0);
+
+            let cave_ent = from_type(&EntityType::CAVE_SPIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = cave_ent.get_mob().expect("Cave spider is mob");
+            let living = cave_ent.get_living_entity().expect("Cave spider is living");
+            assert!(mob.as_cave_spider().is_some(), "Cave spider downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 12.0);
+        }
+
+        // 3. Enderman
+        {
+            let enderman_ent = from_type(&EntityType::ENDERMAN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = enderman_ent.get_mob().expect("Enderman is mob");
+            let living = enderman_ent.get_living_entity().expect("Enderman is living");
+            assert!(mob.as_enderman().is_some(), "Enderman downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 7.0);
+            assert_eq!(living.health.load(), 40.0);
+            assert!(mob.is_sensitive_to_water(), "Enderman is water sensitive");
+        }
+
+        // 4. Witch
+        {
+            let witch_ent = from_type(&EntityType::WITCH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = witch_ent.get_mob().expect("Witch is mob");
+            let living = witch_ent.get_living_entity().expect("Witch is living");
+            assert!(mob.as_witch().is_some(), "Witch downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 26.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 26.0);
+        }
+
+        // 5. Blaze
+        {
+            let blaze_ent = from_type(&EntityType::BLAZE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = blaze_ent.get_mob().expect("Blaze is mob");
+            let living = blaze_ent.get_living_entity().expect("Blaze is living");
+            assert!(mob.as_blaze().is_some(), "Blaze downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.health.load(), 20.0);
+            assert!(mob.is_sensitive_to_water(), "Blaze is water sensitive");
+        }
+
+        // 6. Ghast
+        {
+            let ghast_ent = from_type(&EntityType::GHAST, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ghast_ent.get_mob().expect("Ghast is mob");
+            let living = ghast_ent.get_living_entity().expect("Ghast is living");
+            assert!(mob.as_ghast().is_some(), "Ghast downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 100.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 7. Shulker
+        {
+            let shulker_ent = from_type(&EntityType::SHULKER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = shulker_ent.get_mob().expect("Shulker is mob");
+            let living = shulker_ent.get_living_entity().expect("Shulker is living");
+            assert!(mob.as_shulker().is_some(), "Shulker downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.health.load(), 30.0);
+        }
+
+        // 8. Phantom
+        {
+            let phantom_ent = from_type(&EntityType::PHANTOM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = phantom_ent.get_mob().expect("Phantom is mob");
+            let living = phantom_ent.get_living_entity().expect("Phantom is living");
+            assert!(mob.as_phantom().is_some(), "Phantom downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

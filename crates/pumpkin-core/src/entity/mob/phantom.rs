@@ -486,6 +486,10 @@ impl Mob for PhantomEntity {
         &self.mob_entity
     }
 
+    fn as_phantom(&self) -> Option<&PhantomEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

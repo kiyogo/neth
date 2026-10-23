@@ -156,6 +156,10 @@ impl Mob for CaveSpiderEntity {
         &self.mob_entity
     }
 
+    fn as_cave_spider(&self) -> Option<&CaveSpiderEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

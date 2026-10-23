@@ -231,6 +231,10 @@ impl Mob for WitchEntity {
         &self.mob_entity
     }
 
+    fn as_witch(&self) -> Option<&WitchEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

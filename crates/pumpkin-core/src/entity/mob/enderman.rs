@@ -431,6 +431,10 @@ impl CustomSound for EndermanEntity {
 }
 
 impl Mob for EndermanEntity {
+    fn as_enderman(&self) -> Option<&EndermanEntity> {
+        Some(self)
+    }
+
     fn as_neutral(&self) -> Option<&dyn NeutralMob> {
         Some(self)
     }

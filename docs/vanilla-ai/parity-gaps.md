@@ -990,7 +990,18 @@
   - Trait downcasts on `Mob`: `as_silverfish`, `as_endermite`.
 - **Neth Status**: **RESOLVED & VERIFIED**
   - Verified attributes and behavioral goals for `SilverfishEntity` and `EndermiteEntity`.
-  - Added downcast methods `as_silverfish` and `as_endermite` to `Mob` trait.
-
-
-
+## Gap 97: Classic Hostile Monsters Attributes, Water Sensitivity & Downcasts Parity
+- **Vanilla Reference**: `Creeper.java:82-85`, `Spider.java:89-92`, `CaveSpider.java:25-27`, `Enderman.java:60-63, 375-377`, `Witch.java:48-51`, `Blaze.java:45-52`, `Ghast.java:55-58`, `Shulker.java:110-113`, `Phantom.java:85-88`:
+  - `Creeper`: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.25`, fuse/charge states.
+  - `Spider`: `MAX_HEALTH = 16.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 2.0`, wall climbing.
+  - `CaveSpider`: `MAX_HEALTH = 12.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 2.0`, poison attack.
+  - `Enderman`: `MAX_HEALTH = 40.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 7.0`, `isSensitiveToWater() = true`.
+  - `Witch`: `MAX_HEALTH = 26.0`, `MOVEMENT_SPEED = 0.25`, potion usage and drinking speed modifier.
+  - `Blaze`: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 6.0`, `isSensitiveToWater() = true`.
+  - `Ghast`: `MAX_HEALTH = 10.0`, `FOLLOW_RANGE = 100.0`.
+  - `Shulker`: `MAX_HEALTH = 30.0`.
+  - `Phantom`: `MAX_HEALTH = 20.0`, `ATTACK_DAMAGE = 6.0`.
+  - Trait downcasts on `Mob`: `as_creeper`, `as_spider`, `as_cave_spider`, `as_enderman`, `as_witch`, `as_blaze`, `as_ghast`, `as_shulker`, `as_phantom`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented all 9 downcasts across `Mob` trait and their respective entity structures.
+  - Verified base attributes, health, and water sensitivity parity.

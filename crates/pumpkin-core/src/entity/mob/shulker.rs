@@ -362,6 +362,10 @@ impl Mob for ShulkerEntity {
         &self.mob_entity
     }
 
+    fn as_shulker(&self) -> Option<&ShulkerEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

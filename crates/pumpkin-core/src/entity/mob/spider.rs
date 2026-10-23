@@ -200,6 +200,10 @@ impl Mob for SpiderEntity {
         &self.mob_entity
     }
 
+    fn as_spider(&self) -> Option<&SpiderEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

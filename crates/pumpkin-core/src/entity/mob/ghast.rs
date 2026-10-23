@@ -159,6 +159,10 @@ impl Mob for GhastEntity {
         &self.mob_entity
     }
 
+    fn as_ghast(&self) -> Option<&GhastEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

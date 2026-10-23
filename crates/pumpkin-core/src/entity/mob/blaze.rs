@@ -135,6 +135,10 @@ impl Mob for BlazeEntity {
         &self.entity
     }
 
+    fn as_blaze(&self) -> Option<&BlazeEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

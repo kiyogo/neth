@@ -1464,6 +1464,42 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_creeper(&self) -> Option<&crate::entity::mob::creeper::CreeperEntity> {
+        None
+    }
+
+    fn as_spider(&self) -> Option<&crate::entity::mob::spider::SpiderEntity> {
+        None
+    }
+
+    fn as_cave_spider(&self) -> Option<&crate::entity::mob::cave_spider::CaveSpiderEntity> {
+        None
+    }
+
+    fn as_enderman(&self) -> Option<&crate::entity::mob::enderman::EndermanEntity> {
+        None
+    }
+
+    fn as_witch(&self) -> Option<&crate::entity::mob::witch::WitchEntity> {
+        None
+    }
+
+    fn as_blaze(&self) -> Option<&crate::entity::mob::blaze::BlazeEntity> {
+        None
+    }
+
+    fn as_ghast(&self) -> Option<&crate::entity::mob::ghast::GhastEntity> {
+        None
+    }
+
+    fn as_shulker(&self) -> Option<&crate::entity::mob::shulker::ShulkerEntity> {
+        None
+    }
+
+    fn as_phantom(&self) -> Option<&crate::entity::mob::phantom::PhantomEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.
