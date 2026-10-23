@@ -1552,6 +1552,26 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_pillager(&self) -> Option<&crate::entity::mob::pillager::PillagerEntity> {
+        None
+    }
+
+    fn as_vindicator(&self) -> Option<&crate::entity::mob::vindicator::VindicatorEntity> {
+        None
+    }
+
+    fn as_evoker(&self) -> Option<&crate::entity::mob::evoker::EvokerEntity> {
+        None
+    }
+
+    fn as_illusioner(&self) -> Option<&crate::entity::mob::illusioner::IllusionerEntity> {
+        None
+    }
+
+    fn as_ravager(&self) -> Option<&crate::entity::mob::ravager::RavagerEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

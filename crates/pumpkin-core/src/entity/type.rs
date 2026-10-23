@@ -2775,6 +2775,89 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_illagers_and_raiders_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Pillager
+        {
+            let pillager_ent = from_type(&EntityType::PILLAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = pillager_ent.get_mob().expect("Pillager is mob");
+            let living = pillager_ent.get_living_entity().expect("Pillager is living");
+            assert!(mob.as_pillager().is_some(), "Pillager downcast");
+            assert!(mob.as_raider().is_some(), "Pillager is raider");
+            assert!(mob.as_patrolling_monster().is_some(), "Pillager is patrolling monster");
+            assert!(mob.as_crossbow_attack_mob().is_some(), "Pillager is crossbow attack mob");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 24.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.35);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 5.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 32.0);
+            assert_eq!(living.health.load(), 24.0);
+        }
+
+        // 2. Vindicator
+        {
+            let vindicator_ent = from_type(&EntityType::VINDICATOR, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = vindicator_ent.get_mob().expect("Vindicator is mob");
+            let living = vindicator_ent.get_living_entity().expect("Vindicator is living");
+            assert!(mob.as_vindicator().is_some(), "Vindicator downcast");
+            assert!(mob.as_raider().is_some(), "Vindicator is raider");
+            assert!(mob.as_patrolling_monster().is_some(), "Vindicator is patrolling monster");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 24.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.35);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 5.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 12.0);
+            assert_eq!(living.health.load(), 24.0);
+        }
+
+        // 3. Evoker
+        {
+            let evoker_ent = from_type(&EntityType::EVOKER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = evoker_ent.get_mob().expect("Evoker is mob");
+            let living = evoker_ent.get_living_entity().expect("Evoker is living");
+            assert!(mob.as_evoker().is_some(), "Evoker downcast");
+            assert!(mob.as_raider().is_some(), "Evoker is raider");
+            assert!(mob.as_patrolling_monster().is_some(), "Evoker is patrolling monster");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 24.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 12.0);
+            assert_eq!(living.health.load(), 24.0);
+        }
+
+        // 4. Illusioner
+        {
+            let illusioner_ent = from_type(&EntityType::ILLUSIONER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = illusioner_ent.get_mob().expect("Illusioner is mob");
+            let living = illusioner_ent.get_living_entity().expect("Illusioner is living");
+            assert!(mob.as_illusioner().is_some(), "Illusioner downcast");
+            assert!(mob.as_raider().is_some(), "Illusioner is raider");
+            assert!(mob.as_patrolling_monster().is_some(), "Illusioner is patrolling monster");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 18.0);
+            assert_eq!(living.health.load(), 32.0);
+        }
+
+        // 5. Ravager
+        {
+            let ravager_ent = from_type(&EntityType::RAVAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ravager_ent.get_mob().expect("Ravager is mob");
+            let living = ravager_ent.get_living_entity().expect("Ravager is living");
+            assert!(mob.as_ravager().is_some(), "Ravager downcast");
+            assert!(mob.as_raider().is_some(), "Ravager is raider");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 100.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.75);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.5);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 100.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

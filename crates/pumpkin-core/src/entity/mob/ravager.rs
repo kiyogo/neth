@@ -230,6 +230,10 @@ impl Mob for RavagerEntity {
         &self.mob_entity
     }
 
+    fn as_ravager(&self) -> Option<&RavagerEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

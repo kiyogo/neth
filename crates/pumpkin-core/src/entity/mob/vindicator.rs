@@ -1,6 +1,7 @@
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
@@ -38,6 +39,34 @@ impl VindicatorEntity {
             raider_data: RaiderData::default(),
         };
         let mob_arc = Arc::new(vindicator);
+
+        // Vanilla Vindicator: MOVEMENT_SPEED = 0.35, FOLLOW_RANGE = 12.0, MAX_HEALTH = 24.0, ATTACK_DAMAGE = 5.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 24.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.35;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 5.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                follow.base_value = 12.0;
+                follow.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(24.0);
+
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -105,6 +134,10 @@ impl VindicatorEntity {
 impl Mob for VindicatorEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
+    }
+
+    fn as_vindicator(&self) -> Option<&VindicatorEntity> {
+        Some(self)
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

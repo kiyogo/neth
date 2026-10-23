@@ -168,4 +168,10 @@
 | **Piglin Brute** | `PiglinBrute.java` | `mob/piglin_brute.rs` | Brain | HEALTH = 50.0, SPEED = 0.35, ATTACK = 7.0, FOLLOW = 12.0, Golden Axe, Zombification (300t in Overworld) | Brain Sensors (Players, NearestLiving) | Ground | Complete |
 | **Hoglin** | `Hoglin.java` | `mob/hoglin.rs` | GoalSelector / Brain | HEALTH = 40.0, SPEED = 0.3, ATTACK = 6.0, KNOCKBACK_RES = 0.6, ATTACK_KB = 1.0, Upward fling attack, Zombification (300t) | Revenge(1), NearestAttackable(Player)(2) | Ground | Complete |
 | **Zoglin** | `Zoglin.java` | `mob/zoglin.rs` | GoalSelector / Brain | HEALTH = 40.0, SPEED = 0.3, ATTACK = 6.0, KNOCKBACK_RES = 0.6, ATTACK_KB = 1.0, Upward fling attack, Undead | Revenge(1), NearestAttackable(Player)(2) | Ground | Complete |
+| **Pillager** | `Pillager.java` | `mob/pillager.rs` | GoalSelector | HEALTH = 24.0, SPEED = 0.35, ATTACK = 5.0, FOLLOW = 32.0, Crossbow ranged attack, Patrol leader, Raid celebration | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
+| **Vindicator** | `Vindicator.java` | `mob/vindicator.rs` | GoalSelector | HEALTH = 24.0, SPEED = 0.35, ATTACK = 5.0, FOLLOW = 12.0, Iron Axe melee, Door breaking, Johnny mode | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
+| **Evoker** | `Evoker.java` | `mob/evoker.rs` | GoalSelector | HEALTH = 24.0, SPEED = 0.5, FOLLOW = 12.0, Fangs attack spell, Vex summoning spell, Wololo blue sheep conversion | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
+| **Illusioner** | `Illusioner.java` | `mob/illusioner.rs` | GoalSelector | HEALTH = 32.0, SPEED = 0.5, FOLLOW = 18.0, Bow attack, Invisibility spell, Blindness spell, Decoys | Revenge(1), NearestAttackable(Player)(2), Villager(3), IronGolem(3) | Ground | Complete |
+| **Ravager** | `Ravager.java` | `mob/ravager.rs` | GoalSelector | HEALTH = 100.0, SPEED = 0.3, ATTACK = 12.0, ATTACK_KB = 1.5, KNOCKBACK_RES = 0.75, FOLLOW = 32.0, STEP = 1.0, Roar stun & leaf trample | Revenge(1), NearestAttackable(Player)(3), Villager(4), IronGolem(4) | Ground (Beast) | Complete |
+
 
