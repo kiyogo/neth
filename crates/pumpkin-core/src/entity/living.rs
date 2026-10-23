@@ -2326,6 +2326,90 @@ impl LivingEntity {
         !equipment.get(&EquipmentSlot::HEAD).is_empty()
     }
 
+    /// Vanilla parity: Thorns reflection from victim's armor.
+    /// In vanilla `EnchantmentHelper.doPostAttackEffects`, when damaged by an attacker,
+    /// each equipped armor item with `Thorns` has a `0.15 * level` chance to deal
+    /// `1 + rand(4)` (or `level - 10` if level > 10) thorns damage to the attacker
+    /// and consume 2 durability from the armor piece.
+    pub fn apply_thorns_reflection(
+        &self,
+        caller: &dyn EntityBase,
+        attacker: &dyn EntityBase,
+    ) {
+        use pumpkin_util::random::{RandomGenerator, RandomImpl, get_seed, xoroshiro128::Xoroshiro};
+
+        let mut equipment_updates = Vec::new();
+        let mut thorns_attacks = Vec::new();
+        let mut rng = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()));
+
+        {
+            let mut equipment_lock = self
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            for slot in [
+                EquipmentSlot::HEAD,
+                EquipmentSlot::CHEST,
+                EquipmentSlot::LEGS,
+                EquipmentSlot::FEET,
+            ] {
+                if let Some(stack) = equipment_lock.equipment.get_mut(&slot)
+                    && !stack.is_empty()
+                {
+                    let thorns_level = stack.get_enchantment_level(&Enchantment::THORNS);
+                    if thorns_level > 0 {
+                        let chance = 0.15 * (thorns_level as f32);
+                        if rng.next_f32() < chance {
+                            let thorns_damage = if thorns_level > 10 {
+                                (thorns_level - 10) as f32
+                            } else {
+                                1.0 + rng.next_bounded_i32(4) as f32
+                            };
+                            thorns_attacks.push(thorns_damage);
+
+                            let item_id = stack.item.id;
+                            let slot_result = stack.damage_item(2);
+                            if slot_result != pumpkin_data::item_stack::DamageResult::Untouched {
+                                if slot_result == pumpkin_data::item_stack::DamageResult::Broken {
+                                    if let Some(player) = caller.get_player() {
+                                        player.increment_stat(
+                                            pumpkin_data::statistic::StatisticCategory::Broken,
+                                            item_id as i32,
+                                            1,
+                                        );
+                                    }
+                                    let world = self.entity.world.load();
+                                    world.send_entity_status(
+                                        &self.entity,
+                                        super::equipment_break_status(&slot),
+                                        None,
+                                    );
+                                }
+                                equipment_updates.push((slot.clone(), stack.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for thorns_damage in thorns_attacks {
+            attacker.damage_with_context(
+                attacker,
+                thorns_damage,
+                DamageType::THORNS,
+                None,
+                Some(caller),
+                Some(caller),
+            );
+        }
+
+        if !equipment_updates.is_empty() {
+            self.send_equipment_changes(&equipment_updates);
+        }
+    }
+
     #[allow(clippy::redundant_closure_for_method_calls)]
     /// Builds the chat death message for this entity: picks the
     /// `death.attack.<id>` (or the `.player` variant when a killer entity is
@@ -3900,6 +3984,22 @@ impl LivingEntity {
                 self.get_pitch(),
             );
 
+            // Vanilla parity: playSecondaryHurtSound for thorns hit
+            if damage_type == DamageType::THORNS {
+                let category = if caller.get_player().is_some() {
+                    SoundCategory::Players
+                } else {
+                    SoundCategory::Hostile
+                };
+                world.play_sound_fine(
+                    Sound::EnchantThornsHit,
+                    category,
+                    &self.entity.pos.load(),
+                    1.0,
+                    self.get_pitch(),
+                );
+            }
+
             if let Some(mob) = caller.get_mob() {
                 let interval = mob.get_ambient_sound_interval();
                 mob.get_mob_entity()
@@ -3948,6 +4048,14 @@ impl LivingEntity {
         }
 
         if dmg_to_health > 0.0 || absorbed_damage > 0.0 {
+            if let Some(attacker) = cause.or(source) {
+                // Vanilla parity: Thorns reflection (doPostAttack with EnchantmentTarget.VICTIM)
+                if damage_type != DamageType::THORNS
+                    && !damage_type.has_tag(&tag::DamageType::MINECRAFT_AVOIDS_GUARDIAN_THORNS)
+                {
+                    self.apply_thorns_reflection(caller, attacker);
+                }
+            }
             let current_tick = world.level_info.load().day_time;
             let fall_location = FallLocation::get_current_fall_location(self, &world);
             let fall_distance = self.fall_distance.load();

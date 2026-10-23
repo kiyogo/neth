@@ -3692,6 +3692,64 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_thorns_reflection_and_durability_penalty_parity() {
+        use pumpkin_data::data_component_impl::EquipmentSlot;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::item_stack::ItemStack;
+
+        let (world, _temp_dir) = create_test_world();
+
+        let attacker = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let attacker_mob = attacker.get_mob().expect("Attacker is mob");
+        let attacker_living = &attacker_mob.get_mob_entity().living_entity;
+
+        let victim = from_type(&EntityType::ZOMBIE, Vector3::new(1.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let victim_mob = victim.get_mob().expect("Victim is mob");
+        let victim_living = &victim_mob.get_mob_entity().living_entity;
+
+        // Equip chestplate with Thorns level 10 (100% trigger probability: 10 * 0.15 >= 1.0)
+        let mut chestplate = ItemStack::new(1, &Item::DIAMOND_CHESTPLATE);
+        chestplate.add_enchantment(&pumpkin_data::Enchantment::THORNS, 10);
+        victim_living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .put(&EquipmentSlot::CHEST, chestplate);
+
+        assert_eq!(attacker_living.health.load(), 20.0);
+
+        // Attacker damages victim with MOB_ATTACK
+        victim_living.damage_with_context(
+            victim.as_ref(),
+            4.0,
+            pumpkin_data::damage::DamageType::MOB_ATTACK,
+            None,
+            Some(attacker.as_ref()),
+            Some(attacker.as_ref()),
+        );
+
+        // 1. Attacker should have received reflected thorns damage (health reduced below 20.0)
+        let attacker_health = attacker_living.health.load();
+        assert!(
+            attacker_health < 20.0,
+            "Attacker health should decrease due to thorns reflection, got {attacker_health}"
+        );
+
+        // 2. Victim chestplate took 1 (incoming hit armor absorb) + 2 (thorns penalty) = 3 durability
+        let chestplate_after = victim_living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .equipment
+            .get(&EquipmentSlot::CHEST)
+            .cloned()
+            .expect("Chestplate still exists");
+        assert_eq!(chestplate_after.get_damage(), 3);
+
+        world.level.shutdown().await;
+    }
 }
 
 

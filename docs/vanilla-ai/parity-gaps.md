@@ -1229,6 +1229,24 @@
   - Persisted updated damaged item stacks back into `self.entity_equipment` in `LivingEntity::damage_armor_items`.
   - Verified in unit test `test_damages_helmet_reduction_and_durability_parity`.
 
+## Gap 113: Thorns Reflection, Armor Durability Penalty & Sound Parity
+- **Vanilla Reference**: `LivingEntity.java:1266, 1350-1355, 2918`, `EnchantmentHelper.java:232-244`, `thorns.json`:
+  - Thorns reflection trigger:
+    - In vanilla `EnchantmentHelper.doPostAttackEffects`, when an entity lands a hit on a living victim, `runIterationOnEquipment` evaluates all equipment on the victim matching `EnchantmentTarget.VICTIM`.
+    - For each equipped armor piece with `Enchantment::THORNS` (level `L`):
+      - Probability of reflection is `0.15 * L` (Level 1: 15%, Level 2: 30%, Level 3: 45%).
+      - When triggered, deals thorns damage to the attacker (`DamageType::THORNS`, amount `1.0 + rand(4)` or `L - 10` if `L > 10`).
+      - The triggered armor piece incurs a 2-durability damage penalty (`change_item_damage = 2.0`).
+      - Infinite recursion is guarded by checking `damage_type != DamageType::THORNS && !damage_type.has_tag(#minecraft:avoids_guardian_thorns)`.
+  - Secondary hurt sound:
+    - In `LivingEntity.java:1350-1355` (`playSecondaryHurtSound`), when taking `DamageTypes.THORNS`, `SoundEvents.THORNS_HIT` (`Sound::EnchantThornsHit`) is played alongside the entity's normal hurt sound.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `apply_thorns_reflection` to `LivingEntity` and `Mob` trait, executing thread-safely without holding equipment mutex across external damage calls.
+  - Hooked `apply_thorns_reflection` into `LivingEntity::damage_with_context` when damage is dealt by an attacker.
+  - Implemented vanilla secondary sound playback (`Sound::EnchantThornsHit`) for `DamageType::THORNS`.
+  - Verified in unit test `test_thorns_reflection_and_durability_penalty_parity`.
+
+
 
 
 

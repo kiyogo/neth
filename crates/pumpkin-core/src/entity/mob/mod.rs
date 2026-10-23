@@ -1129,6 +1129,11 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.has_helmet()
     }
 
+    /// `LivingEntity.apply_thorns_reflection`.
+    fn apply_thorns_reflection(&self, caller: &dyn EntityBase, attacker: &dyn EntityBase) {
+        self.get_mob_entity().living_entity.apply_thorns_reflection(caller, attacker);
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false
