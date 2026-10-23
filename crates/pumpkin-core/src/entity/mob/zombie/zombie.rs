@@ -131,6 +131,10 @@ impl Mob for ZombieEntity {
         &self.entity.mob_entity
     }
 
+    fn as_zombie(&self) -> Option<&ZombieEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

@@ -312,6 +312,10 @@ impl Mob for DrownedEntity {
         &self.entity.mob_entity
     }
 
+    fn as_drowned(&self) -> Option<&DrownedEntity> {
+        Some(self)
+    }
+
     fn spawn_as_baby(&self) -> bool {
         self.entity.spawn_as_baby()
     }

@@ -106,6 +106,10 @@ impl Mob for BoggedSkeletonEntity {
         &self.entity.mob_entity
     }
 
+    fn as_bogged(&self) -> Option<&BoggedSkeletonEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

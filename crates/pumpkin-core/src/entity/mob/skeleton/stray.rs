@@ -40,6 +40,10 @@ impl Mob for StraySkeletonEntity {
         &self.entity.mob_entity
     }
 
+    fn as_stray(&self) -> Option<&StraySkeletonEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

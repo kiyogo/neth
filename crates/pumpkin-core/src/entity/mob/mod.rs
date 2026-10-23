@@ -1500,6 +1500,46 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_zombie(&self) -> Option<&crate::entity::mob::zombie::zombie::ZombieEntity> {
+        None
+    }
+
+    fn as_drowned(&self) -> Option<&crate::entity::mob::zombie::drowned::DrownedEntity> {
+        None
+    }
+
+    fn as_husk(&self) -> Option<&crate::entity::mob::zombie::husk::HuskEntity> {
+        None
+    }
+
+    fn as_zombie_villager(&self) -> Option<&crate::entity::mob::zombie::zombie_villager::ZombieVillagerEntity> {
+        None
+    }
+
+    fn as_zombified_piglin(&self) -> Option<&crate::entity::mob::zombified_piglin::ZombifiedPiglinEntity> {
+        None
+    }
+
+    fn as_skeleton(&self) -> Option<&crate::entity::mob::skeleton::skeleton::SkeletonEntity> {
+        None
+    }
+
+    fn as_wither_skeleton(&self) -> Option<&crate::entity::mob::skeleton::wither::WitherSkeletonEntity> {
+        None
+    }
+
+    fn as_stray(&self) -> Option<&crate::entity::mob::skeleton::stray::StraySkeletonEntity> {
+        None
+    }
+
+    fn as_bogged(&self) -> Option<&crate::entity::mob::skeleton::bogged::BoggedSkeletonEntity> {
+        None
+    }
+
+    fn as_parched(&self) -> Option<&crate::entity::mob::skeleton::parched::ParchedSkeletonEntity> {
+        None
+    }
+
     /// Vanilla `Mob.finalizeSpawn`, run before the mob enters the world on spawns that
     /// vanilla finalizes. Overrides call `finalize_spawn_base` first. Riders queued with
     /// `add_pending_rider` are added by the world together with the mob.

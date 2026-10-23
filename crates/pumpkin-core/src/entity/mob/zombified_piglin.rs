@@ -145,6 +145,10 @@ impl Mob for ZombifiedPiglinEntity {
         &self.mob_entity
     }
 
+    fn as_zombified_piglin(&self) -> Option<&ZombifiedPiglinEntity> {
+        Some(self)
+    }
+
     fn can_breathe_underwater(&self) -> bool {
         true
     }

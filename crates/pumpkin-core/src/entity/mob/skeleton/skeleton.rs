@@ -116,6 +116,10 @@ impl Mob for SkeletonEntity {
         &self.entity.mob_entity
     }
 
+    fn as_skeleton(&self) -> Option<&SkeletonEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

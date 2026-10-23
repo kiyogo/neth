@@ -43,6 +43,10 @@ impl Mob for WitherSkeletonEntity {
         &self.entity.mob_entity
     }
 
+    fn as_wither_skeleton(&self) -> Option<&WitherSkeletonEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

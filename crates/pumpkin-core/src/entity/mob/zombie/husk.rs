@@ -135,6 +135,10 @@ impl Mob for HuskEntity {
         &self.entity.mob_entity
     }
 
+    fn as_husk(&self) -> Option<&HuskEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

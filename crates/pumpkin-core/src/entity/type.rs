@@ -2612,6 +2612,107 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_zombie_and_skeleton_variants_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Zombie Variants (Zombie, Drowned, Husk, Zombie Villager, Zombified Piglin)
+        {
+            let zombie_ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zombie_ent.get_mob().expect("Zombie is mob");
+            let living = zombie_ent.get_living_entity().expect("Zombie is living");
+            assert!(mob.as_zombie().is_some(), "Zombie downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+            assert_eq!(living.health.load(), 20.0);
+
+            let drowned_ent = from_type(&EntityType::DROWNED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = drowned_ent.get_mob().expect("Drowned is mob");
+            let living = drowned_ent.get_living_entity().expect("Drowned is living");
+            assert!(mob.as_drowned().is_some(), "Drowned downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+            assert!(mob.can_breathe_under_water());
+
+            let husk_ent = from_type(&EntityType::HUSK, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = husk_ent.get_mob().expect("Husk is mob");
+            let living = husk_ent.get_living_entity().expect("Husk is living");
+            assert!(mob.as_husk().is_some(), "Husk downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+
+            let zv_ent = from_type(&EntityType::ZOMBIE_VILLAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zv_ent.get_mob().expect("Zombie villager is mob");
+            let living = zv_ent.get_living_entity().expect("Zombie villager is living");
+            assert!(mob.as_zombie_villager().is_some(), "Zombie villager downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+
+            let zp_ent = from_type(&EntityType::ZOMBIFIED_PIGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zp_ent.get_mob().expect("Zombified piglin is mob");
+            let living = zp_ent.get_living_entity().expect("Zombified piglin is living");
+            assert!(mob.as_zombified_piglin().is_some(), "Zombified piglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 5.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+        }
+
+        // 2. Skeleton Variants (Skeleton, Wither Skeleton, Stray, Bogged, Parched)
+        {
+            let skel_ent = from_type(&EntityType::SKELETON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = skel_ent.get_mob().expect("Skeleton is mob");
+            let living = skel_ent.get_living_entity().expect("Skeleton is living");
+            assert!(mob.as_skeleton().is_some(), "Skeleton downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 20.0);
+
+            let wither_ent = from_type(&EntityType::WITHER_SKELETON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = wither_ent.get_mob().expect("Wither skeleton is mob");
+            let living = wither_ent.get_living_entity().expect("Wither skeleton is living");
+            assert!(mob.as_wither_skeleton().is_some(), "Wither skeleton downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+            assert_eq!(living.health.load(), 20.0);
+
+            let stray_ent = from_type(&EntityType::STRAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = stray_ent.get_mob().expect("Stray is mob");
+            let living = stray_ent.get_living_entity().expect("Stray is living");
+            assert!(mob.as_stray().is_some(), "Stray downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 20.0);
+
+            let bogged_ent = from_type(&EntityType::BOGGED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = bogged_ent.get_mob().expect("Bogged is mob");
+            let living = bogged_ent.get_living_entity().expect("Bogged is living");
+            assert!(mob.as_bogged().is_some(), "Bogged downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 16.0);
+
+            let parched_ent = from_type(&EntityType::PARCHED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = parched_ent.get_mob().expect("Parched is mob");
+            let living = parched_ent.get_living_entity().expect("Parched is living");
+            assert!(mob.as_parched().is_some(), "Parched downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 16.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

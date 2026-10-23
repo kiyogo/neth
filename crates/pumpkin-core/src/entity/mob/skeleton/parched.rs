@@ -47,6 +47,10 @@ impl Mob for ParchedSkeletonEntity {
         &self.entity.mob_entity
     }
 
+    fn as_parched(&self) -> Option<&ParchedSkeletonEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
