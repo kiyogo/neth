@@ -263,6 +263,44 @@ pub fn knockback_after_resistance(strength: f64, resistance: f64) -> f64 {
     strength * (1.0 - resistance)
 }
 
+/// Calculates the horizontal knockback and hurt animation direction (xd, zd)
+/// mirroring Vanilla `LivingEntity.dealDefaultKnockback`.
+#[must_use]
+pub fn calculate_knockback_direction(
+    target_pos: Vector3<f64>,
+    source_pos: Option<Vector3<f64>>,
+    is_projectile: bool,
+    projectile_velocity: Option<Vector3<f64>>,
+    damage_position: Option<Vector3<f64>>,
+) -> (f64, f64) {
+    if is_projectile {
+        if let Some(vel) = projectile_velocity {
+            if vel.x.mul_add(vel.x, vel.z * vel.z) > 1e-6 {
+                return (-vel.x, -vel.z);
+            }
+        }
+    }
+    if let Some(pos) = source_pos {
+        (pos.x - target_pos.x, pos.z - target_pos.z)
+    } else if let Some(pos) = damage_position {
+        (pos.x - target_pos.x, pos.z - target_pos.z)
+    } else {
+        (0.0, 0.0)
+    }
+}
+
+/// Calculates the hurt animation yaw relative to entity yaw
+/// mirroring Vanilla `ServerPlayer.indicateDamage`:
+/// `(float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI - this.getYRot())`.
+#[must_use]
+pub fn calculate_hurt_direction_yaw(xd: f64, zd: f64, entity_yaw: f32) -> f32 {
+    if xd == 0.0 && zd == 0.0 {
+        -entity_yaw
+    } else {
+        (zd.atan2(xd).to_degrees() as f32) - entity_yaw
+    }
+}
+
 pub fn handle_knockback(attacker: &Entity, victim: &dyn EntityBase, strength: f64) {
     let resistance = victim.get_living_entity().map_or(0.0, |living| {
         living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE)
@@ -1266,6 +1304,74 @@ mod tests {
 
         // Directly above (dx = 0, dz = 0) -> blocked
         assert!(can_block_damage_source(defender_pos, 0.0, Some(Vector3::new(0.0, 70.0, 0.0))));
+    }
+
+    #[test]
+    fn test_knockback_direction_and_hurt_indication_parity() {
+        use pumpkin_data::damage::DamageType;
+        use pumpkin_data::tag;
+
+        let target_pos = Vector3::new(10.0, 64.0, 20.0);
+
+        // 1. Projectile knockback direction: uses negated velocity (-vel.x, -vel.z)
+        let (p_xd, p_zd) = calculate_knockback_direction(
+            target_pos,
+            Some(Vector3::new(100.0, 64.0, 100.0)),
+            true,
+            Some(Vector3::new(2.5, 0.0, -1.5)),
+            None,
+        );
+        assert_eq!((p_xd, p_zd), (-2.5, 1.5));
+
+        // 2. Direct attacker position: (source_pos.x - target_pos.x, source_pos.z - target_pos.z)
+        let (s_xd, s_zd) = calculate_knockback_direction(
+            target_pos,
+            Some(Vector3::new(15.0, 64.0, 32.0)),
+            false,
+            None,
+            None,
+        );
+        assert_eq!((s_xd, s_zd), (5.0, 12.0));
+
+        // 3. Positional damage (explosion, block) without entity source:
+        let (b_xd, b_zd) = calculate_knockback_direction(
+            target_pos,
+            None,
+            false,
+            None,
+            Some(Vector3::new(6.0, 64.0, 10.0)),
+        );
+        assert_eq!((b_xd, b_zd), (-4.0, -10.0));
+
+        // 4. Environmental damage without source and without position:
+        let (n_xd, n_zd) = calculate_knockback_direction(target_pos, None, false, None, None);
+        assert_eq!((n_xd, n_zd), (0.0, 0.0));
+
+        // 5. Hurt indication yaw (Vanilla ServerPlayer.indicateDamage):
+        // When (xd, zd) == (0, 0), returns -yaw
+        assert_eq!(calculate_hurt_direction_yaw(0.0, 0.0, 45.0), -45.0);
+
+        // Attacker directly in front along +Z (xd = 0.0, zd = 10.0), entity facing south (yaw = 0.0)
+        // atan2(10, 0) = 90 deg -> 90 - 0 = 90 deg
+        let yaw_front = calculate_hurt_direction_yaw(0.0, 10.0, 0.0);
+        assert!((yaw_front - 90.0).abs() < 1e-4);
+
+        // Attacker to the right along +X (xd = 10.0, zd = 0.0), entity facing south (yaw = 0.0)
+        // atan2(0, 10) = 0 deg -> 0 - 0 = 0 deg
+        let yaw_right = calculate_hurt_direction_yaw(10.0, 0.0, 0.0);
+        assert!((yaw_right - 0.0).abs() < 1e-4);
+
+        // 6. Tag parity for NO_KNOCKBACK and NO_IMPACT:
+        assert!(DamageType::IN_FIRE.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(DamageType::ON_FIRE.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(DamageType::DROWN.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(DamageType::STARVE.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(DamageType::FALL.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(!DamageType::PLAYER_ATTACK.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+        assert!(!DamageType::MOB_ATTACK.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK));
+
+        assert!(DamageType::DROWN.has_tag(&tag::DamageType::MINECRAFT_NO_IMPACT));
+        assert!(!DamageType::PLAYER_ATTACK.has_tag(&tag::DamageType::MINECRAFT_NO_IMPACT));
     }
 }
 

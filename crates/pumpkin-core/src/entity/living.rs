@@ -3911,16 +3911,35 @@ impl LivingEntity {
         self.last_damage_stamp.store(world.get_world_age(), Relaxed);
 
         if took_full_damage {
+            // Vanilla LivingEntity.dealDefaultKnockback: calculate horizontal knockback/hurt direction (xd, zd)
+            let target_pos = self.entity.pos.load();
+            let (is_projectile, projectile_velocity, source_pos) = if let Some(source) = source {
+                let ent = source.get_entity();
+                let is_proj = crate::entity::projectile::is_projectile(ent.entity_type);
+                let vel = ent.velocity.load();
+                let pos = ent.pos.load();
+                (is_proj, Some(vel), Some(pos))
+            } else {
+                (false, None, None)
+            };
+            let (xd, zd) = crate::entity::combat::calculate_knockback_direction(
+                target_pos,
+                source_pos,
+                is_projectile,
+                projectile_velocity,
+                position,
+            );
+
             if let Some(server) = world.server.upgrade() {
                 let config = &server.advanced_config.pvp;
 
                 if config.hurt_animation {
                     let entity_id = self.entity.entity_id;
-                    let hurt_yaw = source.map_or(0.0, |source| {
-                        let src = source.get_entity().pos.load();
-                        let tgt = self.entity.pos.load();
-                        (src.z - tgt.z).atan2(src.x - tgt.x).to_degrees() as f32 - self.entity.yaw.load()
-                    });
+                    let hurt_yaw = crate::entity::combat::calculate_hurt_direction_yaw(
+                        xd,
+                        zd,
+                        self.entity.yaw.load(),
+                    );
                     let hurt_event = SActorEvent {
                         target_runtime_id: VarULong(entity_id as u64),
                         event_id: ActorEventID::Hurt,
@@ -3944,31 +3963,28 @@ impl LivingEntity {
                 position,
             );
 
-            if let Some(source) = source {
-                let source_ent = source.get_entity();
-                let source_vel = source_ent.velocity.load();
-                let (dx, dz) = if crate::entity::projectile::is_projectile(source_ent.entity_type)
-                    && source_vel.horizontal_length_squared() > 1e-6
-                {
-                    (-source_vel.x, -source_vel.z)
-                } else {
-                    let source_pos = source_ent.pos.load();
-                    let target_pos = self.entity.pos.load();
-                    (source_pos.x - target_pos.x, source_pos.z - target_pos.z)
-                };
+            // Vanilla LivingEntity.java:1245:
+            // if (!source.is(DamageTypeTags.NO_IMPACT) && (!blocked || damage > 0.0F)) { this.markHurt(); }
+            if !damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_IMPACT) {
+                self.entity.mark_hurt();
+            }
+
+            // Vanilla LivingEntity.java:1250:
+            // boolean fullyBlocked = blocked && damage <= 0.0F;
+            // if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) { this.dealDefaultKnockback(source, damage, blocked); }
+            if !damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK) {
                 let resistance = self.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
                 let attacker_living = source
-                    .get_living_entity()
+                    .and_then(|s| s.get_living_entity())
                     .or_else(|| cause.and_then(|c| c.get_living_entity()));
                 let extra_kb = attacker_living.map_or(0.0, LivingEntity::get_knockback);
                 let total_kb = 0.4 + extra_kb;
                 self.entity.apply_knockback(
                     knockback_after_resistance(total_kb as f64, resistance),
-                    dx,
-                    dz,
-                    Some(source.get_entity()),
+                    xd,
+                    zd,
+                    source.map(|s| s.get_entity()),
                 );
-                self.entity.mark_hurt();
             }
 
             self.entity.hurt_marked.store(true, Ordering::SeqCst);

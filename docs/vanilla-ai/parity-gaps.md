@@ -1560,5 +1560,41 @@
   - Refactored `damage_with_context` in `crates/pumpkin-core/src/entity/living.rs` to use these helpers.
   - Verified in unit tests `test_shield_blocking_angle_and_durability_parity`.
 
+## Gap 126: Knockback Direction, NO_KNOCKBACK / NO_IMPACT Tags & Hurt Indication Parity
+- **Vanilla Reference**: `LivingEntity.java:1237-1253` (`hurtServer`), `LivingEntity.java:1293-1309` (`dealDefaultKnockback`), `LivingEntity.java:1647-1665` (`knockback`), `ServerPlayer.java:2169-2172` (`indicateDamage`):
+  - `dealDefaultKnockback`:
+    ```java
+    public void dealDefaultKnockback(final DamageSource source, final float damage, final boolean blocked) {
+       double xd = 0.0;
+       double zd = 0.0;
+       if (source.getDirectEntity() instanceof Projectile projectile) {
+          DoubleDoubleImmutablePair knockbackDirection = projectile.calculateHorizontalHurtKnockbackDirection(this, source);
+          xd = -knockbackDirection.leftDouble();
+          zd = -knockbackDirection.rightDouble();
+       } else if (source.getSourcePosition() != null) {
+          xd = source.getSourcePosition().x() - this.getX();
+          zd = source.getSourcePosition().z() - this.getZ();
+       }
+
+       this.knockback(0.4F, xd, zd, source, damage);
+       if (!blocked) {
+          this.indicateDamage(xd, zd);
+       }
+    }
+    ```
+  - `hurtServer` checks:
+    - `!source.is(DamageTypeTags.NO_IMPACT)`: Call `markHurt()` only when damage is impactful (skipping drowning, starvation, freezing, generic_kill).
+    - `!source.is(DamageTypeTags.NO_KNOCKBACK)`: Call `dealDefaultKnockback` only when the damage type does not have `#minecraft:no_knockback` (skipping fire, lava, suffocation, fall, drown, etc.).
+    - Previously in Neth:
+      - `NO_KNOCKBACK` was not checked at all; entities took knockback on every tick of fire damage from an attacker entity.
+      - `mark_hurt()` was only called if `source` was an entity; environmental/block damage did not sync velocity.
+      - Hurt animation yaw used direct entity position difference even for projectiles and ignored positional damage without entity source.
+      - When `(xd, zd) == (0.0, 0.0)`, hurt indication yaw returned 0 instead of `-yaw`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_knockback_direction(target_pos, source_pos, is_projectile, projectile_velocity, damage_position) -> (f64, f64)` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Implemented `calculate_hurt_direction_yaw(xd, zd, entity_yaw) -> f32` mirroring Vanilla `ServerPlayer.indicateDamage`: `(float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI - this.getYRot())`.
+  - Added `#minecraft:no_knockback` and `#minecraft:no_impact` checks to `LivingEntity::damage_with_context`.
+  - Verified in unit tests `test_knockback_direction_and_hurt_indication_parity`.
+
 
 
