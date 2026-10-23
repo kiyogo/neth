@@ -1198,6 +1198,23 @@
   - Aligned NBT read/write and `set_air_supply` to preserve negative air down to `-20`.
   - Verified in `test_air_supply_and_drowning_parity`.
 
+## Gap 111: Attack Knockback Attribute & LivingEntity Knockback Calculation Parity
+- **Vanilla Reference**: `LivingEntity.java:1546-1551, 2903-2905`, `Player.java:976-978, 1230-1231`:
+  - `LivingEntity.getKnockback(target, damageSource)`:
+    - In vanilla, knockback strength starts with `getAttributeValue(Attributes.ATTACK_KNOCKBACK) / 2.0F`.
+    - Mobs with attack knockback attributes (e.g. Hoglin with 1.0, Ravager with 1.5, Iron Golem) add extra knockback to their attacks.
+  - Knockback application in combat:
+    - Base attack knockback is `0.4F`.
+    - Added extra knockback from attacker is `0.4F + attacker.getKnockback()`.
+    - Total knockback is reduced by target's `Attributes.KNOCKBACK_RESISTANCE`.
+  - Robustness: Ensure `damage_with_context` proceeds with combat damage and knockback even when running outside a full server instance (e.g. testing environments).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `get_knockback(&self) -> f32` on `LivingEntity` and `Mob` trait.
+  - Updated `LivingEntity::damage_with_context` to factor in attacker's `extra_kb` (`attacker.get_knockback()`) on top of base 0.4.
+  - Allowed core damage and knockback processing to execute cleanly without aborting when server reference is not present.
+  - Verified in `test_attack_knockback_attribute_and_strength_parity`.
+
+
 
 
 

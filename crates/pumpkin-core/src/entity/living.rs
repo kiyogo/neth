@@ -2307,6 +2307,14 @@ impl LivingEntity {
         current_supply <= -20
     }
 
+    /// Calculates extra knockback caused by this entity's attacks,
+    /// mirroring vanilla `LivingEntity.getKnockback`.
+    #[must_use]
+    pub fn get_knockback(&self) -> f32 {
+        let knockback = self.get_attribute_value(&Attributes::ATTACK_KNOCKBACK) as f32;
+        knockback / 2.0
+    }
+
     #[allow(clippy::redundant_closure_for_method_calls)]
     /// Builds the chat death message for this entity: picks the
     /// `death.attack.<id>` (or the `.player` variant when a killer entity is
@@ -3740,30 +3748,29 @@ impl LivingEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(damage_type);
         self.last_damage_stamp.store(world.get_world_age(), Relaxed);
 
-        let Some(server) = world.server.upgrade() else {
-            return false;
-        };
-        let config = &server.advanced_config.pvp;
+        if let Some(server) = world.server.upgrade() {
+            let config = &server.advanced_config.pvp;
 
-        if config.hurt_animation {
-            let entity_id = self.entity.entity_id;
-            let hurt_yaw = source.map_or(0.0, |source| {
-                let src = source.get_entity().pos.load();
-                let tgt = self.entity.pos.load();
-                (src.z - tgt.z).atan2(src.x - tgt.x).to_degrees() as f32 - self.entity.yaw.load()
-            });
-            let hurt_event = SActorEvent {
-                target_runtime_id: VarULong(entity_id as u64),
-                event_id: ActorEventID::Hurt,
-                data: VarInt(0),
-                fire_at_position: None,
-            };
-            let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
-            world.send_to_tracking_players_and_self_editioned(
-                &self.entity,
-                &hurt_animation,
-                &hurt_event,
-            );
+            if config.hurt_animation {
+                let entity_id = self.entity.entity_id;
+                let hurt_yaw = source.map_or(0.0, |source| {
+                    let src = source.get_entity().pos.load();
+                    let tgt = self.entity.pos.load();
+                    (src.z - tgt.z).atan2(src.x - tgt.x).to_degrees() as f32 - self.entity.yaw.load()
+                });
+                let hurt_event = SActorEvent {
+                    target_runtime_id: VarULong(entity_id as u64),
+                    event_id: ActorEventID::Hurt,
+                    data: VarInt(0),
+                    fire_at_position: None,
+                };
+                let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
+                world.send_to_tracking_players_and_self_editioned(
+                    &self.entity,
+                    &hurt_animation,
+                    &hurt_event,
+                );
+            }
         }
 
         world.broadcast_damage_event(
@@ -3788,8 +3795,13 @@ impl LivingEntity {
                     (source_pos.x - target_pos.x, source_pos.z - target_pos.z)
                 };
                 let resistance = self.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
+                let attacker_living = source
+                    .get_living_entity()
+                    .or_else(|| cause.and_then(|c| c.get_living_entity()));
+                let extra_kb = attacker_living.map_or(0.0, LivingEntity::get_knockback);
+                let total_kb = 0.4 + extra_kb;
                 self.entity.apply_knockback(
-                    knockback_after_resistance(0.4, resistance),
+                    knockback_after_resistance(total_kb as f64, resistance),
                     dx,
                     dz,
                     Some(source.get_entity()),

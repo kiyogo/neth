@@ -3566,6 +3566,67 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_attack_knockback_attribute_and_strength_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Zombie default ATTACK_KNOCKBACK = 0.0 -> get_knockback() == 0.0
+        let zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let zombie_mob = zombie.get_mob().expect("Zombie is mob");
+        assert_eq!(zombie_mob.get_knockback(), 0.0);
+        assert_eq!(zombie_mob.get_mob_entity().living_entity.get_knockback(), 0.0);
+
+        // 2. Hoglin default ATTACK_KNOCKBACK = 1.0 -> get_knockback() == 0.5 (vanilla LivingEntity.java:1550)
+        let hoglin = from_type(&EntityType::HOGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let hoglin_mob = hoglin.get_mob().expect("Hoglin is mob");
+        hoglin_mob.get_mob_entity().living_entity.set_attribute_base(&pumpkin_data::attributes::Attributes::ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(hoglin_mob.get_knockback(), 0.5);
+
+        // 3. Ravager ATTACK_KNOCKBACK = 1.5 -> get_knockback() == 0.75
+        let ravager = from_type(&EntityType::RAVAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let ravager_mob = ravager.get_mob().expect("Ravager is mob");
+        ravager_mob.get_mob_entity().living_entity.set_attribute_base(&pumpkin_data::attributes::Attributes::ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(ravager_mob.get_knockback(), 0.75);
+
+        // 4. Knockback applied to victim incorporates attacker's get_knockback()
+        let victim = from_type(&EntityType::COW, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let victim_living = &victim.get_mob().expect("Cow is mob").get_mob_entity().living_entity;
+
+        // Reset velocity
+        victim.get_entity().velocity.store(Vector3::new(0.0, 0.0, 0.0));
+
+        // Damage cow with zombie (0.0 extra knockback -> total 0.4)
+        victim_living.damage_with_context(
+            victim.as_ref(),
+            1.0,
+            pumpkin_data::damage::DamageType::MOB_ATTACK,
+            None,
+            Some(zombie.as_ref()),
+            Some(zombie.as_ref()),
+        );
+        let vel_zombie = victim.get_entity().velocity.load();
+        let speed_zombie = vel_zombie.horizontal_length();
+        assert!((speed_zombie - 0.4).abs() < 1e-4, "Zombie attack deals base 0.4 knockback, got {speed_zombie}");
+
+        // Fresh victim for hoglin (0.5 extra knockback -> total 0.9)
+        let victim2 = from_type(&EntityType::COW, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let victim2_living = &victim2.get_mob().expect("Cow is mob").get_mob_entity().living_entity;
+
+        victim2_living.damage_with_context(
+            victim2.as_ref(),
+            1.0,
+            pumpkin_data::damage::DamageType::MOB_ATTACK,
+            None,
+            Some(hoglin.as_ref()),
+            Some(hoglin.as_ref()),
+        );
+        let vel_hoglin = victim2.get_entity().velocity.load();
+        let speed_hoglin = vel_hoglin.horizontal_length();
+        assert!((speed_hoglin - 0.9).abs() < 1e-4, "Hoglin attack deals 0.4 + 0.5 = 0.9 knockback, got {speed_hoglin}");
+
+        world.level.shutdown().await;
+    }
 }
 
 

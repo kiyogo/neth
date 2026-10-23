@@ -1119,6 +1119,11 @@ pub trait Mob: EntityBase + Send + Sync {
         self.get_mob_entity().living_entity.should_take_drowning_damage(current)
     }
 
+    /// `LivingEntity.getKnockback`.
+    fn get_knockback(&self) -> f32 {
+        self.get_mob_entity().living_entity.get_knockback()
+    }
+
     /// Rain counts as water for [`Mob::dries_out_on_land`].
     fn rehydrates_in_rain(&self) -> bool {
         false
