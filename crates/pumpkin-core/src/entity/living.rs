@@ -2940,13 +2940,14 @@ impl LivingEntity {
                 }
                 let slot = EquipmentSlot::from_hand(hand);
                 if let Some(player) = caller.get_player() {
+                    player.inventory.set_stack_in_hand(hand, stack.clone());
                     player
-                        .inventory()
+                        .inventory
                         .entity_equipment
                         .lock()
                         .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .equipment
-                        .insert(slot, stack);
+                        .insert(slot.clone(), stack.clone());
                     player.trigger_advancement(
                         crate::entity::player::advancement::trigger::AdvancementTrigger::UsedTotem,
                     );
@@ -2960,8 +2961,9 @@ impl LivingEntity {
                         .lock()
                         .unwrap_or_else(std::sync::PoisonError::into_inner)
                         .equipment
-                        .insert(slot, stack);
+                        .insert(slot.clone(), stack.clone());
                 }
+                self.send_equipment_changes(&[(slot, stack)]);
 
                 self.set_health(1.0);
                 self.clear_status_effects();
@@ -2976,6 +2978,10 @@ impl LivingEntity {
                     Sound::ItemTotemUse,
                     SoundCategory::Players,
                     &self.entity.pos.load(),
+                );
+                world.emit_game_event(
+                    GameEvent::ItemInteractFinish.name(),
+                    self.entity.pos.load(),
                 );
 
                 // Set Absorption II (100 ticks), Regeneration II (900 ticks), Fire Resistance I (800 ticks)

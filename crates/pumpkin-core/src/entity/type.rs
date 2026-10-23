@@ -3910,6 +3910,99 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_totem_of_undying_consumption_and_resurrection_parity() {
+        use pumpkin_util::math::vector3::Vector3;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item_stack::ItemStack;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::damage::DamageType;
+        use pumpkin_data::effect::StatusEffect;
+        use pumpkin_data::data_component_impl::EquipmentSlot;
+
+        let (world, _temp_dir) = create_test_world();
+
+        let pig = from_type(&EntityType::PIG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let living = pig.get_living_entity().expect("Pig is living");
+
+        // 1. Equip Totem of Undying in MAIN_HAND
+        let totem = ItemStack::new(1, &Item::TOTEM_OF_UNDYING);
+        living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .put(&EquipmentSlot::MAIN_HAND, totem);
+
+        // Add a dummy status effect to verify clearing
+        living.add_effect(pumpkin_data::potion::Effect {
+            effect_type: &StatusEffect::SLOWNESS,
+            duration: 200,
+            amplifier: 0,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+            blend: false,
+        });
+        assert!(living.has_effect(&StatusEffect::SLOWNESS));
+
+        // 2. Lethal damage with MOB_ATTACK
+        let survived = living.damage_with_context(
+            pig.as_ref(),
+            100.0,
+            DamageType::MOB_ATTACK,
+            None,
+            None,
+            None,
+        );
+        assert!(survived, "Totem should resurrect entity and confirm damage handling");
+        assert_eq!(living.health.load(), 1.0, "Health restored to 1.0");
+        assert!(!living.dead.load(std::sync::atomic::Ordering::Relaxed), "Entity must not be dead");
+
+        // 3. Totem should be consumed (MAIN_HAND item empty)
+        let main_hand = living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .get(&EquipmentSlot::MAIN_HAND)
+            .clone();
+        assert!(main_hand.is_empty(), "Totem must be consumed from hand");
+
+        // 4. Old effects cleared, new resurrection effects applied
+        assert!(!living.has_effect(&StatusEffect::SLOWNESS), "Slowness must be cleared");
+        assert!(living.has_effect(&StatusEffect::REGENERATION), "Regeneration applied");
+        assert!(living.has_effect(&StatusEffect::ABSORPTION), "Absorption applied");
+        assert!(living.has_effect(&StatusEffect::FIRE_RESISTANCE), "Fire resistance applied");
+
+        // 5. OUT_OF_WORLD bypasses totem
+        living.hurt_cooldown.store(0, std::sync::atomic::Ordering::Relaxed);
+        living.last_damage_taken.store(0.0);
+        let totem2 = ItemStack::new(1, &Item::TOTEM_OF_UNDYING);
+        living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .put(&EquipmentSlot::MAIN_HAND, totem2);
+        let lethal_void = living.damage_with_context(
+            pig.as_ref(),
+            100.0,
+            DamageType::OUT_OF_WORLD,
+            None,
+            None,
+            None,
+        );
+        assert!(lethal_void);
+        assert_eq!(living.health.load(), 0.0, "Health should drop to 0.0 on lethal void damage");
+        let totem2_after = living
+            .entity_equipment
+            .lock()
+            .unwrap()
+            .get(&EquipmentSlot::MAIN_HAND)
+            .clone();
+        assert!(!totem2_after.is_empty(), "Totem must not be consumed when bypassed by OUT_OF_WORLD");
+
+        world.level.shutdown().await;
+    }
 }
 
 

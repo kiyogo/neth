@@ -1312,15 +1312,16 @@
   - Switched view direction calculation in `LivingEntity::damage_with_context` to use `head_yaw`.
   - Verified in unit test `test_shield_blocking_direction_and_piercing_parity`.
 
-
-
-
-
-
-
-
-
-
-
-
-
+## Gap 118: Totem of Undying Equipment Consumption, Inventory Sync & Game Event Parity
+- **Vanilla Reference**: `LivingEntity.java:1393-1424`, `DeathProtection.java:17-43`, `GameEvent.java:51`:
+  - `LivingEntity.checkTotemDeathProtection`:
+    - Checks `killingDamage.is(DamageTypeTags.BYPASSES_INVULNERABILITY)` (e.g. `OUT_OF_WORLD`, `GENERIC_KILL`). If so, totem cannot prevent death.
+    - Iterates through hands (`MAIN_HAND`, then `OFF_HAND`). If an item with death protection (`TOTEM_OF_UNDYING`) is found, decrements stack by 1.
+    - Synchronizes the decremented stack to player inventory (`player.inventory.set_stack_in_hand(hand, stack)`) and sends equipment change packet to tracking clients.
+    - Calls `protectionItem.causeUseVibration(this, GameEvent.ITEM_INTERACT_FINISH)` (`world.emit_game_event(GameEvent::ItemInteractFinish)`).
+    - Sets health to `1.0`, clears existing status effects, triggers advancement `UsedTotem`, broadcasts entity status 35 (`EntityStatus::TotemOfUndying`), plays totem sound.
+    - Applies standard resurrection effects: Regeneration II (45 seconds / 900 ticks), Absorption II (5 seconds / 100 ticks), Fire Resistance I (40 seconds / 800 ticks).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `LivingEntity::check_totem_death_protection` to synchronize consumed totem item back into `player.inventory` and broadcast equipment changes via `send_equipment_changes`.
+  - Added emission of `GameEvent::ItemInteractFinish` at entity location on totem activation.
+  - Verified in unit test `test_totem_of_undying_consumption_and_resurrection_parity`.
