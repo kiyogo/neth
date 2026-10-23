@@ -997,6 +997,11 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    /// Returns the mob's total armor value, mirroring vanilla `LivingEntity.getArmorValue()`.
+    fn get_armor_value(&self) -> i32 {
+        self.get_mob_entity().living_entity.get_armor_value()
+    }
+
     /// Takes the navigation lock, so callers must not already hold it.
     fn is_navigator_idle(&self) -> bool {
         self.get_mob_entity()

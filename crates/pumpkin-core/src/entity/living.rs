@@ -3267,6 +3267,11 @@ impl LivingEntity {
         // todo more...
     }
 
+    /// Returns the entity's total armor value, mirroring vanilla `LivingEntity.getArmorValue()`.
+    pub fn get_armor_value(&self) -> i32 {
+        self.get_attribute_value(&Attributes::ARMOR).floor() as i32
+    }
+
     /// Calculates damage after armor reduction, mirroring vanilla `LivingEntity.getDamageAfterArmorAbsorb`.
     pub fn get_damage_after_armor_absorb(
         &self,
@@ -3278,33 +3283,30 @@ impl LivingEntity {
             return damage;
         }
 
-        let mut armor = 0.0f32;
-        let mut toughness = 0.0f32;
-        {
-            let equipment_lock = self
-                .entity_equipment
+        // If items are present in entity_equipment but attribute modifiers were not yet synchronized
+        // (e.g. direct slot placement or equipment added without packet updates), sync them now.
+        let equipment_unapplied = {
+            let map = self
+                .equipment_attribute_modifier_ids
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            for slot in [
-                EquipmentSlot::HEAD,
-                EquipmentSlot::CHEST,
-                EquipmentSlot::LEGS,
-                EquipmentSlot::FEET,
-            ] {
-                if let Some(stack) = equipment_lock.equipment.get(&slot)
-                    && !stack.is_empty()
-                    && let Some(modifiers) = stack.get_data_component::<AttributeModifiersImpl>()
-                {
-                    for modifier in modifiers.attribute_modifiers.iter() {
-                        if modifier.r#type == &Attributes::ARMOR {
-                            armor += modifier.amount as f32;
-                        } else if modifier.r#type == &Attributes::ARMOR_TOUGHNESS {
-                            toughness += modifier.amount as f32;
-                        }
-                    }
-                }
+            map.is_empty()
+        };
+        if equipment_unapplied {
+            let has_equipment = {
+                let eq = self
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                !eq.equipment.is_empty()
+            };
+            if has_equipment {
+                self.apply_current_equipment_attribute_modifiers();
             }
         }
+
+        let total_armor = self.get_armor_value() as f32;
+        let armor_toughness = self.get_attribute_value(&Attributes::ARMOR_TOUGHNESS) as f32;
 
         let breach_level = attacker
             .and_then(|att| {
@@ -3317,7 +3319,7 @@ impl LivingEntity {
             })
             .unwrap_or(0);
 
-        CombatRules::get_damage_after_absorb(damage, armor, toughness, breach_level)
+        CombatRules::get_damage_after_absorb(damage, total_armor, armor_toughness, breach_level)
     }
 
     /// Calculates damage after magic/resistance/enchantment reduction, mirroring vanilla `LivingEntity.getDamageAfterMagicAbsorb`.

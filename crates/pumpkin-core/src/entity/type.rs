@@ -3281,6 +3281,67 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_combat_rules_armor_and_toughness_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Wither base armor parity (4.0 armor)
+        {
+            let ent = from_type(&EntityType::WITHER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Wither is living");
+            assert_eq!(living.get_armor_value(), 4);
+
+            let normal_dmg = living.get_damage_after_armor_absorb(10.0, &DamageType::MOB_ATTACK, None);
+            let expected_dmg = crate::entity::combat::CombatRules::get_damage_after_absorb(10.0, 4.0, 0.0, 0);
+            assert_eq!(normal_dmg, expected_dmg);
+            assert!(normal_dmg < 10.0, "Wither base armor reduces damage");
+
+            // Damage type bypassing armor
+            let bypass_dmg = living.get_damage_after_armor_absorb(10.0, &DamageType::OUT_OF_WORLD, None);
+            assert_eq!(bypass_dmg, 10.0, "OUT_OF_WORLD bypasses armor");
+        }
+
+        // 2. Zombie base armor parity (2.0 armor)
+        {
+            let ent = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ent.get_living_entity().expect("Zombie is living");
+            assert_eq!(living.get_armor_value(), 2);
+
+            let normal_dmg = living.get_damage_after_armor_absorb(10.0, &DamageType::PLAYER_ATTACK, None);
+            let expected_dmg = crate::entity::combat::CombatRules::get_damage_after_absorb(10.0, 2.0, 0.0, 0);
+            assert_eq!(normal_dmg, expected_dmg);
+        }
+
+        // 3. Shulker shell armor parity (20.0 armor when closed, 0.0 when open)
+        {
+            let ent = from_type(&EntityType::SHULKER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ent.get_mob().expect("Shulker is mob");
+            let living = ent.get_living_entity().expect("Shulker is living");
+            let shulker = mob.as_shulker().expect("Shulker downcast");
+
+            // Initially closed
+            assert_eq!(living.get_armor_value(), 20);
+            assert_eq!(mob.get_armor_value(), 20);
+            let closed_dmg = living.get_damage_after_armor_absorb(10.0, &DamageType::MOB_ATTACK, None);
+            let expected_closed = crate::entity::combat::CombatRules::get_damage_after_absorb(10.0, 20.0, 0.0, 0);
+            assert_eq!(closed_dmg, expected_closed);
+
+            // Open shell (peek > 0)
+            shulker.set_raw_peek(30);
+            assert_eq!(living.get_armor_value(), 0);
+            assert_eq!(mob.get_armor_value(), 0);
+            let open_dmg = living.get_damage_after_armor_absorb(10.0, &DamageType::MOB_ATTACK, None);
+            assert_eq!(open_dmg, 10.0, "Open shulker has 0 armor");
+
+            // Close shell again
+            shulker.set_raw_peek(0);
+            assert_eq!(living.get_armor_value(), 20);
+            assert_eq!(mob.get_armor_value(), 20);
+        }
+
+        world.level.shutdown().await;
+    }
 }
 
 

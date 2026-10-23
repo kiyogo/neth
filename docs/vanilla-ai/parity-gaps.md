@@ -1119,4 +1119,18 @@
   - Implemented `as_sulfur_cube` on `Mob` trait and `CubeMobEntity`.
   - Verified in `test_camel_husk_and_sulfur_cube_parity`.
 
+## Gap 106: Combat Rules & LivingEntity Armor Value & Toughness Parity
+- **Vanilla Reference**: `LivingEntity.java:1884-1886, 1908-1915`, `CombatRules.java:16-32`, `Shulker.java:68-69`:
+  - `LivingEntity.getArmorValue()` returns `floor(getAttributeValue(Attributes.ARMOR))` as `int`.
+  - `LivingEntity.getDamageAfterArmorAbsorb` calls `CombatRules.getDamageAfterAbsorb(this, damage, damageSource, this.getArmorValue(), (float)this.getAttributeValue(Attributes.ARMOR_TOUGHNESS))`.
+  - Mobs with natural base armor (e.g. Wither with 4.0, Zombies/Husks/Drowned with 2.0, Magma Cubes with 3*size) and Shulker when closed (20.0 armor) absorb damage via `Attributes.ARMOR` rather than only checking manual equipment slots.
+  - Equipment attribute modifiers on any slot (including body/custom) are properly factored into total armor.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `get_armor_value(&self) -> i32` on `LivingEntity` and `Mob` trait, returning `floor(get_attribute_value(&Attributes::ARMOR))`.
+  - Updated `LivingEntity::get_damage_after_armor_absorb` to use `self.get_armor_value() as f32` and `get_attribute_value(&Attributes::ARMOR_TOUGHNESS) as f32` with backwards-compatible attribute sync.
+  - Aligned `ShulkerEntity` to dynamically update base armor to 20.0 when closed (`peek_amount == 0`) and 0.0 when open.
+  - Verified in `test_combat_rules_armor_and_toughness_parity`.
+
+
+
 

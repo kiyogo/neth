@@ -77,7 +77,7 @@ impl ShulkerEntity {
             Arc::downgrade(&mob_arc)
         };
 
-        // Vanilla Shulker: MAX_HEALTH = 30.0
+        // Vanilla Shulker: MAX_HEALTH = 30.0, ARMOR = 20.0 (when closed)
         {
             let mut attributes = mob_arc
                 .mob_entity
@@ -88,6 +88,10 @@ impl ShulkerEntity {
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
                 health.base_value = 30.0;
                 health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                armor.base_value = 20.0;
+                armor.dirty.store(true, Ordering::Relaxed);
             }
         }
         mob_arc.mob_entity.living_entity.set_health(30.0);
@@ -182,7 +186,22 @@ impl ShulkerEntity {
             );
         }
 
+        let was_closed = self.is_closed();
         self.peek_amount.store(amount, Ordering::Relaxed);
+        let is_closed = self.is_closed();
+
+        if was_closed != is_closed {
+            let mut attributes = self
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                armor.base_value = if is_closed { 20.0 } else { 0.0 };
+                armor.dirty.store(true, Ordering::Relaxed);
+            }
+        }
 
         entity.set_synced_data(pumpkin_data::tracked_data::shulker::PEEK_ID, amount);
     }
@@ -351,7 +370,18 @@ impl Mob for ShulkerEntity {
             self.attach_face.store(face as u8, Ordering::Relaxed);
         }
         if let Some(peek) = nbt.get_byte("PeekAmount") {
-            self.peek_amount.store(peek as u8, Ordering::Relaxed);
+            let val = peek as u8;
+            self.peek_amount.store(val, Ordering::Relaxed);
+            let mut attributes = self
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                armor.base_value = if val == 0 { 20.0 } else { 0.0 };
+                armor.dirty.store(true, Ordering::Relaxed);
+            }
         }
         if let Some(color) = nbt.get_byte("Color") {
             self.color.store(color as u8, Ordering::Relaxed);
@@ -412,16 +442,6 @@ impl Mob for ShulkerEntity {
             return false;
         }
         true
-    }
-
-    fn modify_incoming_damage(&self, amount: f32, damage_type: DamageType) -> f32 {
-        if self.is_closed() && !crate::entity::living::bypasses_armor_durability(&damage_type) {
-            const ARMOR: f32 = 20.0;
-            let f1 = (ARMOR - amount * 0.5f32).clamp(ARMOR * 0.2f32, 20.0f32);
-            (amount * (1.0f32 - f1 / 25.0f32)).max(0.0)
-        } else {
-            amount
-        }
     }
 }
 
