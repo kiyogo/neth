@@ -1422,7 +1422,7 @@ impl Player {
         damage = damage.max(0.0);
 
         let pos = victim_entity.pos.load();
-        let attack_type = AttackType::new(self, attack_cooldown_progress as f32);
+        let attack_type = AttackType::new(self, victim.as_ref(), attack_cooldown_progress as f32);
 
         let is_mace_smash = item_stack.item.id == pumpkin_data::item::Item::MACE.id
             && can_smash_attack(&self.living_entity);
@@ -1525,6 +1525,19 @@ impl Player {
                 CEntityAnimation::new(victim_entity.entity_id.into(), Animation::CriticalEffect);
             let be_packet = pumpkin_protocol::bedrock::server::animate::SAnimate {
                 action: pumpkin_protocol::bedrock::server::animate::AnimateAction::CriticalHit,
+                target_actor_runtime_id: VarULong(victim_entity.entity_id as u64),
+                data: 0.0,
+                swing_source: None,
+            };
+            world.broadcast_editioned(&je_packet, &be_packet);
+        }
+
+        // Vanilla Player.attackVisualEffects: magicBoost > 0.0F -> magicCrit(entity)
+        if extra_ench_damage > 0.0 {
+            let je_packet =
+                CEntityAnimation::new(victim_entity.entity_id.into(), Animation::MagicCriticaleffect);
+            let be_packet = pumpkin_protocol::bedrock::server::animate::SAnimate {
+                action: pumpkin_protocol::bedrock::server::animate::AnimateAction::MagicCriticalHit,
                 target_actor_runtime_id: VarULong(victim_entity.entity_id as u64),
                 data: 0.0,
                 swing_source: None,

@@ -1344,3 +1344,34 @@
   - Added honey slide sound and `EntityStatus::HoneyJump` broadcast to `HoneyBlock::on_landed_upon`.
   - Added `GameEvent::HitGround` emission in `LivingEntity::fall` when landing on ground.
   - Verified in unit test `test_fall_damage_block_modifiers_and_sneak_parity`.
+
+## Gap 120: Player Attack Critical Hit Conditions & Magic Crit Effects Parity
+- **Vanilla Reference**: `Player.java:1021-1030, 1061-1063`, `LivingEntity.java:1728-1736`, `Animation.java:4-5`:
+  - `Player.canCriticalAttack(Entity entity)`:
+    - Vanilla requirements for critical hit:
+      ```java
+      return this.fallDistance > 0.0
+         && !this.onGround()
+         && !this.onClimbable()
+         && !this.isInWater()
+         && !this.isMobilityRestricted() // this.hasEffect(MobEffects.BLINDNESS)
+         && !this.isPassenger()
+         && entity instanceof LivingEntity
+         && !this.isSprinting();
+      ```
+    - Previously in Neth, `AttackType::new` only checked `!on_ground && fall_distance > 0.0` when `is_strong`. It lacked checks for:
+      - `!on_climbable`: attacking while on ladders, vines, weeping/twisting vines, etc., is not a critical hit.
+      - `!is_in_water`: attacking while submerged in water is not a critical hit.
+      - `!has_effect(BLINDNESS)`: blindness suppresses critical hits (`isMobilityRestricted`).
+      - `!is_passenger`: riding vehicles/mounts suppresses critical hits.
+      - `!is_sprinting`: sprinting suppresses critical hits (causes knockback attack instead).
+      - `victim instanceof LivingEntity`: attacking non-living entities (armor stands, boats, minecarts) cannot produce critical hits.
+  - `Player.magicCrit(Entity entity)`:
+    - In `Player.java:1061-1063`, when attacking with extra damage from enchantments (Sharpness, Smite, Bane of Arthropods, etc. where `extra_ench_damage > 0.0`), the server triggers `magicCrit`:
+      - Broadcasts `Animation::MagicCriticaleffect` (byte 5) to tracking clients (Java edition).
+      - Sends Bedrock `AnimateAction::MagicCriticalHit` to Bedrock clients.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `EntityBase::on_climbable` to check `#minecraft:climbable` block tag matching `LivingEntity.onClimbable`.
+  - Implemented `can_critical_attack_raw` and `can_critical_attack` enforcing all 7 vanilla conditions (`fall_distance > 0`, `!on_ground`, `!on_climbable`, `!in_water`, `!blindness`, `!passenger`, `!sprinting`, and `victim is living entity`).
+  - Added broadcast of `Animation::MagicCriticaleffect` in `Player::attack` when weapon has `extra_ench_damage > 0.0`.
+  - Verified in unit test `test_critical_attack_conditions_parity`.

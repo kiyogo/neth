@@ -241,7 +241,11 @@ pub trait EntityBase: Send + Sync + std::any::Any {
     }
 
     fn on_climbable(&self) -> bool {
-        false
+        let entity = self.get_entity();
+        let pos = entity.block_pos.load();
+        let world = entity.world.load();
+        let block = world.get_block(&pos);
+        block.id.has_tag(pumpkin_data::tag::Block::MINECRAFT_CLIMBABLE)
     }
 
     /// Whether the entity is immune from explosion knockback and damage

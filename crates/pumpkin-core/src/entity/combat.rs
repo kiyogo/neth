@@ -30,12 +30,11 @@ pub enum AttackType {
 }
 
 impl AttackType {
-    pub fn new(player: &Player, attack_cooldown_progress: f32) -> Self {
+    pub fn new(player: &Player, victim: &dyn EntityBase, attack_cooldown_progress: f32) -> Self {
         let entity = &player.get_entity();
 
         let sprinting = entity.is_sprinting();
         let on_ground = entity.on_ground.load(Ordering::Relaxed);
-        let fall_distance = player.living_entity.fall_distance.load();
         let held_item = player.inventory().held_item();
 
         let sword = held_item.is_sword();
@@ -46,7 +45,7 @@ impl AttackType {
             return Self::Knockback;
         }
 
-        if is_strong && !on_ground && fall_distance > 0.0 {
+        if can_critical_attack(player, victim, attack_cooldown_progress) {
             return Self::Critical;
         }
 
@@ -65,6 +64,53 @@ impl AttackType {
 
         if is_strong { Self::Strong } else { Self::Weak }
     }
+}
+
+/// Checks critical attack eligibility based on raw physics and status flags,
+/// mirroring vanilla `Player.canCriticalAttack(Entity)`.
+#[must_use]
+pub fn can_critical_attack_raw(
+    sprinting: bool,
+    on_ground: bool,
+    fall_distance: f32,
+    on_climbable: bool,
+    is_in_water: bool,
+    is_blind: bool,
+    is_passenger: bool,
+    is_victim_living: bool,
+    attack_cooldown_progress: f32,
+) -> bool {
+    let is_strong = attack_cooldown_progress > 0.9;
+    is_strong
+        && fall_distance > 0.0
+        && !on_ground
+        && !on_climbable
+        && !is_in_water
+        && !is_blind
+        && !is_passenger
+        && is_victim_living
+        && !sprinting
+}
+
+/// Vanilla `Player.canCriticalAttack(Entity)`.
+#[must_use]
+pub fn can_critical_attack(
+    player: &Player,
+    victim: &dyn EntityBase,
+    attack_cooldown_progress: f32,
+) -> bool {
+    let entity = &player.get_entity();
+    can_critical_attack_raw(
+        entity.is_sprinting(),
+        entity.on_ground.load(Ordering::Relaxed),
+        player.living_entity.fall_distance.load(),
+        player.on_climbable(),
+        entity.is_in_water(),
+        player.living_entity.has_effect(&pumpkin_data::effect::StatusEffect::BLINDNESS),
+        player.is_passenger(),
+        victim.get_living_entity().is_some(),
+        attack_cooldown_progress,
+    )
 }
 
 /// Checks smash eligibility, rejecting stale fall distance after a ground-only packet.
@@ -792,5 +838,51 @@ mod tests {
 
         // Sweeping Edge III (ratio = 0.75): 1.0 + 0.75 * 9.0 = 7.75
         assert_eq!(calculate_sweeping_damage(9.0, 0.75), 7.75);
+    }
+
+    #[test]
+    fn test_critical_attack_conditions_parity() {
+        // Standard valid critical attack condition:
+        // not sprinting, airborne (!on_ground), fall_distance > 0, not on climbable,
+        // not in water, not blind, not passenger, living victim, cooldown > 0.9.
+        assert!(can_critical_attack_raw(
+            false, // sprinting
+            false, // on_ground
+            1.0,   // fall_distance
+            false, // on_climbable
+            false, // is_in_water
+            false, // is_blind
+            false, // is_passenger
+            true,  // is_victim_living
+            1.0,   // attack_cooldown_progress
+        ));
+
+        // 1. On ground cannot critical attack
+        assert!(!can_critical_attack_raw(false, true, 1.0, false, false, false, false, true, 1.0));
+
+        // 2. Sprinting cannot critical attack (produces knockback attack instead)
+        assert!(!can_critical_attack_raw(true, false, 1.0, false, false, false, false, true, 1.0));
+
+        // 3. Fall distance <= 0 cannot critical attack (moving upward)
+        assert!(!can_critical_attack_raw(false, false, 0.0, false, false, false, false, true, 1.0));
+
+        // 4. On climbable (ladder / vines) cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, true, false, false, false, true, 1.0));
+
+        // 5. In water cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, true, false, false, true, 1.0));
+
+        // 6. Blindness effect (mobility restricted) cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, false, true, false, true, 1.0));
+
+        // 7. Passenger (riding horse/boat/minecart) cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, true, true, 1.0));
+
+        // 8. Non-living victim (ArmorStand, boat, minecart) cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, false, false, 1.0));
+
+        // 9. Attack cooldown not ready (progress <= 0.9) cannot critical attack
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, false, true, 0.9));
+        assert!(!can_critical_attack_raw(false, false, 1.0, false, false, false, false, true, 0.5));
     }
 }
