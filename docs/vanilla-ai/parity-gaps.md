@@ -1298,6 +1298,20 @@
   - Replaced hardcoded axe checks in `LivingEntity::damage_with_context` with dynamic `attacker.get_seconds_to_disable_blocking()`, applying proportional cooldown ticks `(disable_seconds * 20.0).round()`.
   - Verified in unit test `test_seconds_to_disable_blocking_parity`.
 
+## Gap 117: Shield Facing Direction & Piercing Arrow Bypass Parity
+- **Vanilla Reference**: `LivingEntity.java:1323-1335`, `Entity.java:2014-2022`, `BlocksAttacks.java:159-165`:
+  - Piercing projectile bypass:
+    - In `LivingEntity.java:1323-1324`: `if (source.getDirectEntity() instanceof AbstractArrow abstractArrow && abstractArrow.getPierceLevel() > 0) return 0.0F;`.
+    - Projectiles with `pierce_level > 0` (e.g. crossbow piercing enchantment) completely bypass shield blocking, damaging the defender through their guard.
+  - Facing angle resolution:
+    - View direction is calculated from `this.getYHeadRot()` (head yaw rotation vector), matching vanilla `calculateViewVector(0.0F, this.getYHeadRot())`.
+    - In Neth, previously used body `yaw`, which caused shield guards to fail when aiming with the mouse while standing still.
+    - Angle resolution calculates `vector_to_source.dot(&look_vec) > 0.0`, granting a 180-degree forward blocking arc (horizontal angle <= 90 degrees).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added piercing arrow check bypassing shield blocking when `arrow.pierce_level > 0`.
+  - Switched view direction calculation in `LivingEntity::damage_with_context` to use `head_yaw`.
+  - Verified in unit test `test_shield_blocking_direction_and_piercing_parity`.
+
 
 
 

@@ -3841,6 +3841,75 @@ mod tests {
 
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn test_shield_blocking_direction_and_piercing_parity() {
+        use pumpkin_util::math::vector3::Vector3;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::damage::DamageType;
+        use pumpkin_util::Hand;
+        use std::sync::atomic::Ordering;
+
+        let (world, _temp_dir) = create_test_world();
+
+        let defender = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let def_living = defender.get_living_entity().expect("Defender is living");
+        def_living.entity.head_yaw.store(0.0); // Facing South (+Z direction)
+        let shield = pumpkin_data::item_stack::ItemStack::new(1, &pumpkin_data::item::Item::SHIELD);
+        *def_living.item_in_use.lock().unwrap() = Some(shield.clone());
+        *def_living.active_hand.lock().unwrap() = Some(Hand::Left);
+        def_living.item_use_time.store(shield.get_max_use_time() - 10, Ordering::Relaxed);
+        assert!(def_living.is_blocking(), "Defender must be blocking");
+
+        // 1. Attack from front (+Z): damage blocked successfully (returns false)
+        let blocked = def_living.damage_with_context(
+            defender.as_ref(),
+            4.0,
+            DamageType::MOB_ATTACK,
+            Some(Vector3::new(0.0, 64.0, 5.0)),
+            None,
+            None,
+        );
+        assert!(!blocked, "Attack from front should be blocked by shield");
+        assert_eq!(def_living.health.load(), 20.0, "Health should remain full");
+
+        // 2. Attack from behind (-Z): damage NOT blocked (returns true, health reduced)
+        let not_blocked = def_living.damage_with_context(
+            defender.as_ref(),
+            4.0,
+            DamageType::MOB_ATTACK,
+            Some(Vector3::new(0.0, 64.0, -5.0)),
+            None,
+            None,
+        );
+        assert!(not_blocked, "Attack from behind should not be blocked");
+        assert!(def_living.health.load() < 20.0, "Health should be reduced");
+
+        // Reset health & cooldown
+        def_living.health.store(20.0);
+        def_living.hurt_cooldown.store(0, Ordering::Relaxed);
+        *def_living.item_in_use.lock().unwrap() = Some(shield.clone());
+        *def_living.active_hand.lock().unwrap() = Some(Hand::Left);
+        def_living.item_use_time.store(shield.get_max_use_time() - 10, Ordering::Relaxed);
+
+        // 3. Piercing arrow from front (+Z): bypasses shield!
+        let arrow = from_type(&EntityType::ARROW, Vector3::new(0.0, 64.0, 5.0), &world, Uuid::new_v4());
+        if let Some(a) = arrow.cast_any().downcast_ref::<crate::entity::projectile::arrow::ArrowEntity>() {
+            a.set_pierce_level(1);
+        }
+        let arrow_hit = def_living.damage_with_context(
+            defender.as_ref(),
+            4.0,
+            DamageType::ARROW,
+            Some(Vector3::new(0.0, 64.0, 5.0)),
+            Some(arrow.as_ref()),
+            None,
+        );
+        assert!(arrow_hit, "Piercing arrow should bypass shield block");
+        assert!(def_living.health.load() < 20.0, "Health should be reduced by piercing arrow");
+
+        world.level.shutdown().await;
+    }
 }
 
 

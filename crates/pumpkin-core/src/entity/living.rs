@@ -3714,16 +3714,21 @@ impl LivingEntity {
 
         // Check for shield blocking before armor/magic/cooldown
         let damage_pos = position.or_else(|| source.map(|s| s.get_entity().pos.load()));
+        let is_piercing_arrow = source
+            .and_then(|s| s.cast_any().downcast_ref::<crate::entity::projectile::arrow::ArrowEntity>())
+            .is_some_and(|arrow| arrow.pierce_level.load(Ordering::Relaxed) > 0);
+
         if self.is_blocking()
+            && !is_piercing_arrow
             && !damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_SHIELD)
             && let Some(pos) = damage_pos
         {
             let player_pos = self.entity.pos.load();
-            let look_vec = Vector3::rotation_vector(0.0, self.entity.yaw.load() as f64);
-            let mut source_to_player = (player_pos - pos).normalize();
-            source_to_player.y = 0.0;
+            let look_vec = Vector3::rotation_vector(0.0, self.entity.head_yaw.load() as f64);
+            let mut vector_to_source = (pos - player_pos).normalize();
+            vector_to_source.y = 0.0;
 
-            if source_to_player.dot(&look_vec) < 0.0 {
+            if vector_to_source.dot(&look_vec) > 0.0 {
                 let disable_seconds = if let Some(attacker) = source.or(cause) {
                     attacker.get_seconds_to_disable_blocking()
                 } else {
