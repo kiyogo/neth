@@ -4,14 +4,15 @@ use std::sync::{
 };
 use uuid::Uuid;
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::{damage::DamageType, entity::EntityType, sound::Sound};
 
 use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
+        swim::SwimGoal, wander_around::WanderAroundGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -39,6 +40,30 @@ impl VexEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Vex: MAX_HEALTH = 14.0, ATTACK_DAMAGE = 4.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 14.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 4.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(14.0);
+
+        // Vanilla Vex: noPhysics = true (flies through solid blocks), hasNoGravity = true
+        let entity_ref = mob_arc.get_entity();
+        entity_ref.no_physics.store(true, Ordering::Relaxed);
+        entity_ref.set_has_no_gravity(true);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -51,7 +76,7 @@ impl VexEntity {
             goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
                 6,
-                LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
 
@@ -60,8 +85,9 @@ impl VexEntity {
                 .target_selector
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
+            target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
             target_selector.add_goal(
-                1,
+                2,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::PLAYER, true),
             );
         };
@@ -91,6 +117,10 @@ impl VexEntity {
 }
 
 impl Mob for VexEntity {
+    fn as_vex(&self) -> Option<&VexEntity> {
+        Some(self)
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }
@@ -119,6 +149,10 @@ impl Mob for VexEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn burns_in_daylight(&self) -> bool {
+        false
     }
 
     fn get_base_experience_reward(&self) -> u32 {

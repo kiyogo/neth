@@ -33,7 +33,8 @@ use crate::entity::{
             melee_attack::MeleeAttackGoal, pick_up_block::PickUpBlockGoal,
             place_block::PlaceBlockGoal, reset_universal_anger::ResetUniversalAngerGoal,
             revenge::RevengeGoal, swim::SwimGoal,
-            teleport_towards_player::TeleportTowardsPlayerGoal, wander_around::WanderAroundGoal,
+            teleport_towards_player::TeleportTowardsPlayerGoal,
+            water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
         },
         pathfinder::node::PathType,
     },
@@ -70,6 +71,23 @@ pub struct EndermanEntity {
 impl EndermanEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 40.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.3);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 7.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, 64.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, 1.0);
+        mob_entity.living_entity.health.store(40.0);
+
         let entity = Self {
             mob_entity,
             neutral_data: NeutralData::default(),
@@ -108,7 +126,10 @@ impl EndermanEntity {
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(1, Box::new(ChasePlayerGoal::new(mob_arc.clone())));
             goal_selector.add_goal(2, Box::new(MeleeAttackGoal::new(1.0, false)));
-            goal_selector.add_goal(7, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(
+                7,
+                Box::new(WaterAvoidingRandomStrollGoal::with_probability(1.0, 0.0)),
+            );
             goal_selector.add_goal(
                 8,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),

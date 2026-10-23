@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
@@ -11,7 +12,8 @@ use crate::entity::{
     ai::goal::{
         active_target::ActiveTargetGoal, climb_on_top_of_powder_snow::ClimbOnTopOfPowderSnowGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
-        melee_attack::MeleeAttackGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
+        melee_attack::MeleeAttackGoal, revenge::RevengeGoal, swim::SwimGoal,
+        wander_around::WanderAroundGoal,
     },
     mob::{Mob, MobEntity},
 };
@@ -36,6 +38,29 @@ impl EndermiteEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Endermite: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 2.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 8.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.25;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 2.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(8.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -43,23 +68,31 @@ impl EndermiteEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(SwimGoal::default()));
+            // Goal 1: FloatGoal & ClimbOnTopOfPowderSnowGoal
+            goal_selector.add_goal(1, Box::new(SwimGoal::default()));
             goal_selector.add_goal(1, Box::new(ClimbOnTopOfPowderSnowGoal));
-            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, true)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            // Goal 2: MeleeAttackGoal(1.0, false)
+            goal_selector.add_goal(2, Box::new(MeleeAttackGoal::new(1.0, false)));
+            // Goal 3: WaterAvoidingRandomStrollGoal(1.0)
+            goal_selector.add_goal(3, Box::new(WanderAroundGoal::new(1.0)));
+            // Goal 7: LookAtPlayerGoal(8.0)
             goal_selector.add_goal(
-                6,
+                7,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),
             );
-            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
+            // Goal 8: RandomLookAroundGoal
+            goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
 
             let mut target_selector = mob_arc
                 .mob_entity
                 .target_selector
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
+            // Target Goal 1: HurtByTargetGoal(alert_others=true)
+            target_selector.add_goal(1, Box::new(RevengeGoal::new(true).alerting_others()));
+            // Target Goal 2: NearestAttackableTargetGoal(Player)
             target_selector.add_goal(
-                1,
+                2,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::PLAYER, true),
             );
         };
@@ -83,6 +116,10 @@ impl Mob for EndermiteEntity {
         &self.mob_entity
     }
 
+    fn as_endermite(&self) -> Option<&EndermiteEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -103,10 +140,18 @@ impl Mob for EndermiteEntity {
             return;
         }
 
-        let life = self.lifetime.fetch_add(1, Ordering::Relaxed) + 1;
-        if life >= 2400 {
-            entity.remove();
-            return;
+        // Vanilla yBodyRot = getYRot()
+        let yaw = entity.yaw.load();
+        entity.body_yaw.store(yaw);
+        entity.head_yaw.store(yaw);
+
+        // Vanilla aiStep: if (!this.isPersistenceRequired()) { this.life++; }
+        if !self.mob_entity.persistence_required.load(Ordering::Relaxed) {
+            let life = self.lifetime.fetch_add(1, Ordering::Relaxed) + 1;
+            if life >= 2400 {
+                entity.remove();
+                return;
+            }
         }
 
         if rand::random_range(0..100) == 0 && !entity.silent.load(Ordering::Relaxed) {

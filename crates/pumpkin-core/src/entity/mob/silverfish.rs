@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::BlockDirection;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -44,6 +45,29 @@ impl SilverfishEntity {
         };
         let mob_arc = Arc::new(silverfish);
         let mob_weak = Arc::downgrade(&mob_arc);
+
+        // Vanilla Silverfish: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 1.0
+        {
+            let mut attributes = mob_arc
+                .entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 8.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.25;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 1.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.entity.living_entity.set_health(8.0);
 
         {
             let mut goal_selector = mob_arc
@@ -239,6 +263,10 @@ impl CustomSound for SilverfishEntity {
 impl Mob for SilverfishEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.entity
+    }
+
+    fn as_silverfish(&self) -> Option<&SilverfishEntity> {
+        Some(self)
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

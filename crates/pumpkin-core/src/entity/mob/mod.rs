@@ -2,6 +2,7 @@ use super::{Entity, EntityBase, ai::pathfinder::Navigator, living::LivingEntity}
 use crate::entity::ai::brain::memory::PackedMemories;
 use crate::entity::ai::brain::{Brain, BrainTick};
 use crate::entity::ai::control::MoveControlTrait;
+use crate::entity::ai::control::jump_control::JumpControl;
 use crate::entity::ai::control::look_control::LookControl;
 use crate::entity::ai::control::move_control::MoveControl;
 use crate::entity::ai::goal::goal_selector::GoalSelector;
@@ -96,6 +97,7 @@ pub struct MobEntity {
     pub look_control: std::sync::Mutex<LookControl>,
     pub sensing: std::sync::Mutex<Sensing>,
     pub move_control: std::sync::Mutex<Box<dyn MoveControlTrait>>,
+    pub jump_control: std::sync::Mutex<JumpControl>,
     pub brain: std::sync::Mutex<Brain>,
     pub brain_inbox: std::sync::Mutex<Vec<BrainMessage>>,
     pub position_target: AtomicCell<BlockPos>,
@@ -208,6 +210,7 @@ impl MobEntity {
             look_control: std::sync::Mutex::new(LookControl::default()),
             sensing: std::sync::Mutex::new(Sensing::default()),
             move_control: std::sync::Mutex::new(Box::new(MoveControl::default())),
+            jump_control: std::sync::Mutex::new(JumpControl::default()),
             brain: std::sync::Mutex::new(Brain::default()),
             brain_inbox: std::sync::Mutex::new(Vec::new()),
             position_target: AtomicCell::new(BlockPos::ZERO),
@@ -247,6 +250,14 @@ impl MobEntity {
 
     pub fn is_attacking(&self) -> bool {
         (self.mob_flags.load(Relaxed) & Self::ATTACKING_FLAG) != 0
+    }
+
+    /// Vanilla `Mob.getJumpControl().jump()`: requests a jump on the next control tick.
+    pub fn jump(&self) {
+        self.jump_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .jump();
     }
 
     pub fn set_left_handed(&self, left_handed: bool) {
@@ -355,7 +366,16 @@ impl MobEntity {
 
         mob.custom_server_ai_step(caller);
 
-        // Controllers are synchronous, so we can just use normal blocks
+        // Controllers are synchronous, strictly ordered to match vanilla Mob.serverAiStep:
+        // moveControl.tick() -> lookControl.tick() -> jumpControl.tick()
+        {
+            let mut move_control = self
+                .move_control
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            move_control.tick(mob);
+        };
+
         {
             let mut look_control = self
                 .look_control
@@ -365,11 +385,11 @@ impl MobEntity {
         };
 
         {
-            let mut move_control = self
-                .move_control
+            let mut jump_control = self
+                .jump_control
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            move_control.tick(mob);
+            jump_control.tick(mob);
         };
     }
 
@@ -1021,8 +1041,9 @@ pub trait Mob: EntityBase + Send + Sync {
         EquipmentSlot::HEAD
     }
 
+    /// Vanilla `Mob.removeWhenFarAway`: defaults to true for monsters/ambient, false for animals (`Animal.java`).
     fn remove_when_far_away(&self, _distance_sq: f64) -> bool {
-        true
+        self.as_animal().is_none()
     }
 
     fn get_owned_entities(&self) -> Vec<Arc<dyn EntityBase>> {
@@ -1183,6 +1204,11 @@ pub trait Mob: EntityBase + Send + Sync {
         true
     }
 
+    /// Allows a mob to modify incoming damage before it is applied (e.g. Armadillo hiding in shell reduces damage).
+    fn adjust_damage_amount(&self, amount: f32, _damage_type: &DamageType) -> f32 {
+        amount
+    }
+
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {}
 
     fn on_attack(&self, _target: &dyn EntityBase) {}
@@ -1298,11 +1324,143 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    fn as_armadillo(&self) -> Option<&crate::entity::passive::armadillo::ArmadilloEntity> {
+        None
+    }
+
     fn as_llama(&self) -> Option<&crate::entity::passive::llama::LlamaEntity> {
         None
     }
 
+    fn as_trader_llama(&self) -> Option<&crate::entity::passive::trader_llama::TraderLlamaEntity> {
+        None
+    }
+
+    fn as_horse(&self) -> Option<&crate::entity::passive::horse::HorseEntity> {
+        None
+    }
+
+    fn as_donkey(&self) -> Option<&crate::entity::passive::donkey::DonkeyEntity> {
+        None
+    }
+
+    fn as_mule(&self) -> Option<&crate::entity::passive::mule::MuleEntity> {
+        None
+    }
+
+    fn as_skeleton_horse(&self) -> Option<&crate::entity::passive::skeleton_horse::SkeletonHorseEntity> {
+        None
+    }
+
+    fn as_zombie_horse(&self) -> Option<&crate::entity::passive::zombie_horse::ZombieHorseEntity> {
+        None
+    }
+
     fn as_crossbow_attack_mob(&self) -> Option<&dyn crossbow_attack_mob::CrossbowAttackMob> {
+        None
+    }
+
+    fn as_creaking(&self) -> Option<&creaking::CreakingEntity> {
+        None
+    }
+
+    fn as_sniffer(&self) -> Option<&crate::entity::passive::sniffer::SnifferEntity> {
+        None
+    }
+
+    fn as_goat(&self) -> Option<&crate::entity::passive::goat::GoatEntity> {
+        None
+    }
+
+    fn as_fox(&self) -> Option<&crate::entity::passive::fox::FoxEntity> {
+        None
+    }
+
+    fn as_panda(&self) -> Option<&crate::entity::passive::panda::PandaEntity> {
+        None
+    }
+
+    fn as_axolotl(&self) -> Option<&crate::entity::passive::axolotl::AxolotlEntity> {
+        None
+    }
+
+    fn as_dolphin(&self) -> Option<&crate::entity::passive::dolphin::DolphinEntity> {
+        None
+    }
+
+    fn as_turtle(&self) -> Option<&crate::entity::passive::turtle::TurtleEntity> {
+        None
+    }
+
+    fn as_polar_bear(&self) -> Option<&crate::entity::passive::polar_bear::PolarBearEntity> {
+        None
+    }
+
+    fn as_rabbit(&self) -> Option<&crate::entity::passive::rabbit::RabbitEntity> {
+        None
+    }
+
+    fn as_snow_golem(&self) -> Option<&crate::entity::passive::snow_golem::SnowGolemEntity> {
+        None
+    }
+
+    fn as_copper_golem(&self) -> Option<&crate::entity::passive::copper_golem::CopperGolemEntity> {
+        None
+    }
+
+    fn as_happy_ghast(&self) -> Option<&crate::entity::passive::happy_ghast::HappyGhastEntity> {
+        None
+    }
+
+    fn as_nautilus(&self) -> Option<&crate::entity::passive::nautilus::NautilusEntity> {
+        None
+    }
+
+    fn as_zombie_nautilus(&self) -> Option<&crate::entity::passive::zombie_nautilus::ZombieNautilusEntity> {
+        None
+    }
+
+    fn as_vex(&self) -> Option<&crate::entity::mob::vex::VexEntity> {
+        None
+    }
+
+    fn as_hoglin(&self) -> Option<&crate::entity::mob::hoglin::HoglinEntity> {
+        None
+    }
+
+    fn as_zoglin(&self) -> Option<&crate::entity::mob::zoglin::ZoglinEntity> {
+        None
+    }
+
+    fn as_squid(&self) -> Option<&crate::entity::passive::squid::SquidEntity> {
+        None
+    }
+
+    fn as_glow_squid(&self) -> Option<&crate::entity::passive::glow_squid::GlowSquidEntity> {
+        None
+    }
+
+    fn as_strider(&self) -> Option<&crate::entity::passive::strider::StriderEntity> {
+        None
+    }
+
+    fn as_cube_mob(&self) -> Option<&crate::entity::mob::cube_mob::CubeMobEntity> {
+        None
+    }
+
+    fn as_slime(&self) -> Option<&crate::entity::mob::cube_mob::CubeMobEntity> {
+        None
+    }
+
+    fn as_magma_cube(&self) -> Option<&crate::entity::mob::cube_mob::CubeMobEntity> {
+        None
+    }
+
+    fn as_silverfish(&self) -> Option<&crate::entity::mob::silverfish::SilverfishEntity> {
+        None
+    }
+
+    fn as_endermite(&self) -> Option<&crate::entity::mob::endermite::EndermiteEntity> {
         None
     }
 

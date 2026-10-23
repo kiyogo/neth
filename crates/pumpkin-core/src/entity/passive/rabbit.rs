@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -20,7 +21,7 @@ use crate::entity::{
         climb_on_top_of_powder_snow::ClimbOnTopOfPowderSnowGoal, escape_danger::EscapeDangerGoal,
         follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -99,6 +100,35 @@ impl RabbitEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Rabbit: MAX_HEALTH = 3.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0 (Evil: ARMOR = 8.0, ATTACK_DAMAGE = 8.0)
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 3.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = if variant == RabbitVariant::Evil { 8.0 } else { 3.0 };
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if variant == RabbitVariant::Evil {
+                if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                    armor.base_value = 8.0;
+                    armor.dirty.store(true, Ordering::Relaxed);
+                }
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(3.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -123,8 +153,12 @@ impl RabbitEntity {
                 4,
                 Box::new(AvoidEntityGoal::new(&EntityType::FOX, 10.0, 2.2, 2.2)),
             );
+            goal_selector.add_goal(
+                4,
+                Box::new(AvoidEntityGoal::for_monsters(4.0, 2.2, 2.2)),
+            );
             goal_selector.add_goal(5, Box::new(FollowParentGoal::new(0.8)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(0.6)));
+            goal_selector.add_goal(6, Box::new(WaterAvoidingRandomStrollGoal::new(0.6)));
             goal_selector.add_goal(
                 11,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 10.0),
@@ -147,6 +181,35 @@ impl RabbitEntity {
             pumpkin_data::tracked_data::rabbit::DATA_TYPE_ID,
             VarInt(variant.id()),
         );
+
+        // Parity with Vanilla Rabbit.setVariant: EVIL rabbit gets +8 armor and +5 attack damage (total 8.0)
+        {
+            let mut attributes = self
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if variant == RabbitVariant::Evil {
+                if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                    armor.base_value = 8.0;
+                    armor.dirty.store(true, Ordering::Relaxed);
+                }
+                if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                    damage.base_value = 8.0;
+                    damage.dirty.store(true, Ordering::Relaxed);
+                }
+            } else {
+                if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                    armor.base_value = 0.0;
+                    armor.dirty.store(true, Ordering::Relaxed);
+                }
+                if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                    damage.base_value = 3.0;
+                    damage.dirty.store(true, Ordering::Relaxed);
+                }
+            }
+        }
 
         if variant == RabbitVariant::Evil {
             let mut goal_selector = self
@@ -191,6 +254,10 @@ impl Animal for RabbitEntity {
 }
 
 impl Mob for RabbitEntity {
+    fn as_rabbit(&self) -> Option<&RabbitEntity> {
+        Some(self)
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }

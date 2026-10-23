@@ -6,6 +6,7 @@ use std::sync::{
 use uuid::Uuid;
 
 use pumpkin_data::{
+    attributes::Attributes,
     effect::StatusEffect,
     entity::EntityStatus,
     item_stack::ItemStack,
@@ -37,6 +38,33 @@ pub struct NautilusEntity {
 impl NautilusEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+
+        // Vanilla AbstractNautilus: MAX_HEALTH = 15.0, MOVEMENT_SPEED = 1.0, ATTACK_DAMAGE = 3.0, KNOCKBACK_RESISTANCE = 0.3
+        {
+            let mut attributes = mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 15.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 1.0;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 3.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(kb) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
+                kb.base_value = 0.3;
+                kb.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_entity.living_entity.set_health(15.0);
+
         let nautilus = Self {
             mob_entity,
             is_tame: AtomicBool::new(false),
@@ -204,6 +232,10 @@ impl CustomSound for NautilusEntity {
 }
 
 impl Mob for NautilusEntity {
+    fn as_nautilus(&self) -> Option<&NautilusEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn crate::entity::custom_sound::CustomSound> {
         Some(self)
     }
@@ -211,6 +243,22 @@ impl Mob for NautilusEntity {
     /// Water animals never drown.
     fn can_breathe_underwater(&self) -> bool {
         true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
+    }
+
+    fn is_pushed_by_fluids(&self) -> bool {
+        false
+    }
+
+    fn max_air_supply(&self) -> i32 {
+        300
     }
 
     /// WaterAnimal.handleAirSupply.

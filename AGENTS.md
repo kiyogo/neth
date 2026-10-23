@@ -28,6 +28,11 @@ Some directories have their own `AGENTS.md` with details for that area. Read it 
 > [!IMPORTANT]
 > **BẮT BUỘC ĐỐI CHIẾU VỚI JVMC**: Từ giờ tất cả các tính năng, sửa lỗi (bug fixes, parity, generation, chunk system, block/item/entity/networking/tick logic...) đều **BẮT BUỘC** phải đối chiếu trực tiếp với mã nguồn Minecraft Java gốc tại `E:\DATA\source\svmc\ServerMiecraft\jvmc` để làm cho giống và đồng bộ 100% với tính năng, thứ tự thực thi, cấu trúc dữ liệu và hành vi của Minecraft gốc. Bất cứ khi nào viết code hay sửa lỗi, agent/AI đều phải đọc lại và tuân thủ nguyên tắc này.
 
+> [!IMPORTANT]
+> **TỰ ĐỘNG ĐẨY LÊN GITHUB LIÊN TỤC**: Từ giờ mỗi lần code xong hoặc hoàn thành bất kỳ bước parity/tính năng/sửa lỗi nào trong Neth, agent/AI **BẮT BUỘC** phải commit và đẩy (push) ngay lên GitHub repository:
+> `https://github.com/kiyogo/neth` (remote `kiyogo`).
+> Đẩy lên liên tục; trong 1 prompt có thể đẩy lên nhiều lần sau mỗi lần code và test thành công.
+
 A gameplay change is correct when it behaves like the official server, not when it compiles and looks plausible. Reviewers compare PRs against the decompiled vanilla source, so work from that source too, not from memory or the wiki. Both are often wrong about the details that matter here: tick order, rounding, which side effects happen and when.
 
 ### Getting the source

@@ -4,7 +4,7 @@ use super::{Controls, Goal};
 use crate::entity::ai::util::default_random_pos;
 use crate::entity::predicate::EntityPredicate;
 use crate::entity::{EntityBase, ai::pathfinder::NavigatorGoal, mob::Mob};
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityType, MobCategory};
 use pumpkin_util::math::vector3::Vector3;
 
 const FAST_DISTANCE_SQ: f64 = 49.0;
@@ -13,16 +13,19 @@ const VERTICAL_RANGE: i32 = 7;
 
 /// Extra condition deciding whether the mob avoids anything at all right now.
 type AvoidGate = dyn Fn(&dyn Mob) -> bool + Send + Sync;
+/// Extra condition deciding whether a candidate entity should be avoided.
+type TargetPredicate = dyn Fn(&Arc<dyn EntityBase>) -> bool + Send + Sync;
 
 pub struct AvoidEntityGoal {
     goal_control: Controls,
-    flee_type: &'static EntityType,
+    flee_type: Option<&'static EntityType>,
     flee_distance: f64,
     slow_speed: f64,
     fast_speed: f64,
     target: Option<Arc<dyn EntityBase>>,
     flee_pos: Option<Vector3<f64>>,
     gate: Option<Box<AvoidGate>>,
+    target_predicate: Option<Box<TargetPredicate>>,
 }
 
 impl AvoidEntityGoal {
@@ -36,8 +39,34 @@ impl AvoidEntityGoal {
         slow_speed: f64,
         fast_speed: f64,
     ) -> Self {
-        Self::build(flee_type, flee_distance, slow_speed, fast_speed, None)
+        Self::build(Some(flee_type), flee_distance, slow_speed, fast_speed, None, None)
     }
+
+    /// Like [`Self::new`], but flees any hostile monster (`MobCategory::MONSTER`).
+    /// Matches vanilla `RabbitAvoidEntityGoal<>(this, Monster.class, ...)`.
+    #[must_use]
+    pub fn for_monsters(
+        flee_distance: f64,
+        slow_speed: f64,
+        fast_speed: f64,
+    ) -> Self {
+        Self::build(
+            None,
+            flee_distance,
+            slow_speed,
+            fast_speed,
+            None,
+            Some(Box::new(|entity| {
+                entity.get_entity().entity_type.category == &MobCategory::MONSTER
+            })),
+        )
+    }
+
+    #[must_use]
+    pub const fn flee_type(&self) -> Option<&'static EntityType> {
+        self.flee_type
+    }
+
 
     /// Like [`Self::new`], but the goal is skipped entirely while `gate` returns false.
     ///
@@ -56,21 +85,45 @@ impl AvoidEntityGoal {
         F: Fn(&dyn Mob) -> bool + Send + Sync + 'static,
     {
         Self::build(
-            flee_type,
+            Some(flee_type),
             flee_distance,
             slow_speed,
             fast_speed,
             Some(Box::new(gate)),
+            None,
         )
     }
 
-    /// Shared constructor behind [`Self::new`] and [`Self::with_gate`].
-    fn build(
+    /// Creates the goal with a predicate filtering which candidate entities should be avoided.
+    #[must_use]
+    pub fn with_target_predicate<P>(
         flee_type: &'static EntityType,
         flee_distance: f64,
         slow_speed: f64,
         fast_speed: f64,
+        predicate: P,
+    ) -> Self
+    where
+        P: Fn(&Arc<dyn EntityBase>) -> bool + Send + Sync + 'static,
+    {
+        Self::build(
+            Some(flee_type),
+            flee_distance,
+            slow_speed,
+            fast_speed,
+            None,
+            Some(Box::new(predicate)),
+        )
+    }
+
+    /// Shared constructor behind [`Self::new`], [`Self::with_gate`], [`Self::with_target_predicate`], and [`Self::for_monsters`].
+    fn build(
+        flee_type: Option<&'static EntityType>,
+        flee_distance: f64,
+        slow_speed: f64,
+        fast_speed: f64,
         gate: Option<Box<AvoidGate>>,
+        target_predicate: Option<Box<TargetPredicate>>,
     ) -> Self {
         Self {
             goal_control: Controls::MOVE,
@@ -81,6 +134,7 @@ impl AvoidEntityGoal {
             target: None,
             flee_pos: None,
             gate,
+            target_predicate,
         }
     }
 
@@ -94,16 +148,28 @@ impl AvoidEntityGoal {
         let pos = entity.pos.load();
         let world = entity.world.load();
 
-        if self.flee_type == &EntityType::PLAYER {
+        let predicate = |candidate: &Arc<dyn EntityBase>| {
+            if !EntityPredicate::ExceptCreativeOrSpectator.test(candidate.as_ref()) {
+                return false;
+            }
+            if let Some(target_pred) = &self.target_predicate
+                && !target_pred(candidate)
+            {
+                return false;
+            }
+            true
+        };
+
+        if self.flee_type == Some(&EntityType::PLAYER) {
             world
                 .get_nearest_player(pos, self.flee_distance, |player| {
-                    EntityPredicate::ExceptCreativeOrSpectator.test(player.as_ref())
+                    predicate(&(player.clone() as Arc<dyn EntityBase>))
                 })
                 .map(|p| p as Arc<dyn EntityBase>)
+        } else if let Some(flee_type) = self.flee_type {
+            world.get_nearest_entity(pos, self.flee_distance, Some(&[flee_type]), predicate)
         } else {
-            world.get_nearest_entity(pos, self.flee_distance, Some(&[self.flee_type]), |entity| {
-                EntityPredicate::ExceptCreativeOrSpectator.test(entity.as_ref())
-            })
+            world.get_nearest_entity(pos, self.flee_distance, None, predicate)
         }
     }
 }

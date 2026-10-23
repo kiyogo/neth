@@ -3,6 +3,8 @@ use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -16,7 +18,7 @@ use crate::entity::{
     Entity, EntityBase,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
-        active_target::ActiveTargetGoal, breed::BreedGoal, escape_danger::EscapeDangerGoal,
+        active_target::ActiveTargetGoal, breed::BreedGoal,
         follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
         tempt::TemptGoal, try_find_water::TryFindWaterGoal,
@@ -115,6 +117,33 @@ impl AxolotlEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Axolotl: MAX_HEALTH = 14.0, MOVEMENT_SPEED = 1.0, ATTACK_DAMAGE = 2.0, STEP_HEIGHT = 1.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 14.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 1.0;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 2.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(14.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -122,18 +151,18 @@ impl AxolotlEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
+            // Vanilla AxolotlAi: TryFindLiquid, Breed (0.2), Tempt (0.5), FollowAdult (0.6), Attack (0.6), Stroll (0.5)
             goal_selector.add_goal(0, Box::new(TryFindWaterGoal));
-            goal_selector.add_goal(1, EscapeDangerGoal::new(1.5));
-            goal_selector.add_goal(2, BreedGoal::new(1.0));
-            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, TEMPT_ITEMS, false)));
-            goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.25)));
-            goal_selector.add_goal(5, Box::new(MeleeAttackGoal::new(1.2, false)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(1, BreedGoal::new(0.2));
+            goal_selector.add_goal(2, Box::new(TemptGoal::new(0.5, TEMPT_ITEMS, false)));
+            goal_selector.add_goal(3, Box::new(FollowParentGoal::new(0.6)));
+            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(0.6, false)));
+            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(0.5)));
             goal_selector.add_goal(
-                7,
+                6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
             );
-            goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
         {
@@ -144,6 +173,7 @@ impl AxolotlEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
+            // AXOLOTL_ALWAYS_HOSTILES
             target_selector.add_goal(
                 2,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::DROWNED, false),
@@ -160,6 +190,7 @@ impl AxolotlEntity {
                     false,
                 ),
             );
+            // AXOLOTL_HUNT_TARGETS
             target_selector.add_goal(
                 3,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::SQUID, false),
@@ -183,6 +214,14 @@ impl AxolotlEntity {
                     &EntityType::TROPICAL_FISH,
                     false,
                 ),
+            );
+            target_selector.add_goal(
+                3,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::PUFFERFISH, false),
+            );
+            target_selector.add_goal(
+                3,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::TADPOLE, false),
             );
         };
 
@@ -312,6 +351,10 @@ impl Mob for AxolotlEntity {
         Some(self)
     }
 
+    fn as_axolotl(&self) -> Option<&AxolotlEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_int("Variant", self.get_variant().id());
         nbt.put_bool("FromBucket", self.is_from_bucket());
@@ -429,6 +472,40 @@ impl Mob for AxolotlEntity {
         }
 
         self.animal_interact(player, item_stack, Sound::EntityAxolotlIdleAir)
+    }
+
+    fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
+        let entity = self.get_entity();
+        let current_health = self.mob_entity.living_entity.health.load();
+        let max_health = self.mob_entity.living_entity.get_max_health();
+        // Vanilla Axolotl.java:407-420:
+        // if (!this.isNoAi() && this.random.nextInt(3) == 0
+        //     && (this.random.nextInt(3) < damage || currentHealth / this.getMaxHealth() < 0.5F)
+        //     && damage < currentHealth
+        //     && this.isInWater()
+        //     && (source != null)
+        //     && !this.isPlayingDead())
+        if !self.mob_entity.is_no_ai()
+            && rand::random_range(0..3) == 0
+            && (current_health / max_health < 0.5 || rand::random_range(0..3) == 0)
+            && entity.touching_water.load(Ordering::Relaxed)
+            && source.is_some()
+            && !self.is_playing_dead()
+        {
+            self.set_playing_dead(true);
+            self.play_dead_ticks.store(200, Ordering::Relaxed);
+            use pumpkin_data::effect::StatusEffect;
+            use pumpkin_data::potion::Effect;
+            self.mob_entity.living_entity.add_effect(Effect {
+                effect_type: &StatusEffect::REGENERATION,
+                duration: 200,
+                amplifier: 0,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                blend: false,
+            });
+        }
     }
 }
 

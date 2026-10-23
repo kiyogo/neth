@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering::{Relaxed, SeqCst};
+use std::sync::atomic::Ordering::Relaxed;
 
 use pumpkin_data::Block;
 use pumpkin_data::tag::{self, Taggable};
@@ -32,17 +32,7 @@ impl Goal for ClimbOnTopOfPowderSnowGoal {
     }
 
     fn tick(&mut self, mob: &dyn Mob) {
-        mob.get_mob_entity()
-            .living_entity
-            .jumping
-            .store(true, SeqCst);
-    }
-
-    fn stop(&mut self, mob: &dyn Mob) {
-        mob.get_mob_entity()
-            .living_entity
-            .jumping
-            .store(false, SeqCst);
+        mob.get_mob_entity().jump();
     }
 
     fn should_run_every_tick(&self) -> bool {

@@ -1,3 +1,4 @@
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::tag::{self, Taggable};
@@ -298,8 +299,23 @@ impl EnderDragonEntity {
             parts.push(part);
         }
 
+        let mob_entity = MobEntity::new(entity);
+        // Vanilla EnderDragon: MAX_HEALTH = 200.0, CAMERA_DISTANCE = 16.0
+        {
+            let mut attributes = mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 200.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_entity.living_entity.set_health(200.0);
+
         Arc::new(Self {
-            mob_entity: MobEntity::new(entity),
+            mob_entity,
             parts,
             flight_history: Mutex::new(DragonFlightHistory::default()),
             flap_time: Mutex::new(0.0),

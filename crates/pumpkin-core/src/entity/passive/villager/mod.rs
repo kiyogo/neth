@@ -44,7 +44,8 @@ use crate::entity::{
         goal::{
             avoid_entity::AvoidEntityGoal, look_around::RandomLookAroundGoal,
             look_at_entity::LookAtEntityGoal, open_door::OpenDoorGoal, swim::SwimGoal,
-            trade_with_player::TradeWithPlayerGoal, wander_around::WanderAroundGoal,
+            trade_with_player::TradeWithPlayerGoal,
+            water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
             work_at_job_site::WorkAtJobSiteGoal,
         },
         pathfinder::Navigator,
@@ -468,7 +469,7 @@ impl VillagerEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(0, Box::new(OpenDoorGoal::new(true)));
-            // Villagers avoid threats
+            // Villagers avoid threats (VillagerHostilesSensor.java)
             goal_selector.add_goal(
                 1,
                 Box::new(AvoidEntityGoal::new(&EntityType::ZOMBIE, 8.0, 0.5, 0.5)),
@@ -492,13 +493,13 @@ impl VillagerEntity {
             );
             goal_selector.add_goal(
                 1,
-                Box::new(AvoidEntityGoal::new(&EntityType::PILLAGER, 12.0, 0.5, 0.5)),
+                Box::new(AvoidEntityGoal::new(&EntityType::PILLAGER, 15.0, 0.5, 0.5)),
             );
             goal_selector.add_goal(
                 1,
                 Box::new(AvoidEntityGoal::new(
                     &EntityType::VINDICATOR,
-                    12.0,
+                    10.0,
                     0.5,
                     0.5,
                 )),
@@ -509,11 +510,19 @@ impl VillagerEntity {
             );
             goal_selector.add_goal(
                 1,
+                Box::new(AvoidEntityGoal::new(&EntityType::ILLUSIONER, 12.0, 0.5, 0.5)),
+            );
+            goal_selector.add_goal(
+                1,
                 Box::new(AvoidEntityGoal::new(&EntityType::RAVAGER, 12.0, 0.5, 0.5)),
             );
             goal_selector.add_goal(
                 1,
-                Box::new(AvoidEntityGoal::new(&EntityType::VEX, 12.0, 0.5, 0.5)),
+                Box::new(AvoidEntityGoal::new(&EntityType::VEX, 8.0, 0.5, 0.5)),
+            );
+            goal_selector.add_goal(
+                1,
+                Box::new(AvoidEntityGoal::new(&EntityType::ZOGLIN, 10.0, 0.5, 0.5)),
             );
 
             goal_selector.add_goal(2, Box::new(TradeWithPlayerGoal::new()));
@@ -523,7 +532,7 @@ impl VillagerEntity {
             goal_selector.add_goal(3, Box::new(WorkAtJobSiteGoal::new(0.5)));
             goal_selector.add_goal(3, Box::new(JumpOnBedGoal::new(0.6)));
             goal_selector.add_goal(3, Box::new(SocializeAtBellGoal::new(0.3)));
-            goal_selector.add_goal(4, Box::new(WanderAroundGoal::new(0.5)));
+            goal_selector.add_goal(4, Box::new(WaterAvoidingRandomStrollGoal::new(0.4)));
             goal_selector.add_goal(
                 5,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),

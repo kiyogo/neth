@@ -4,6 +4,7 @@ use std::sync::{
 };
 use uuid::Uuid;
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::{
     Block,
     damage::DamageType,
@@ -28,6 +29,7 @@ use crate::{
     entity::{
         Entity, EntityBase,
         ai::goal::{
+            active_target::ActiveTargetGoal,
             look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
             revenge::RevengeGoal,
         },
@@ -77,6 +79,37 @@ impl WitherEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla WitherBoss: MAX_HEALTH = 300.0, MOVEMENT_SPEED = 0.6, FLYING_SPEED = 0.6, FOLLOW_RANGE = 40.0, ARMOR = 4.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 300.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.6;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(flying) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
+                flying.base_value = 0.6;
+                flying.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                follow.base_value = 40.0;
+                follow.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
+                armor.base_value = 4.0;
+                armor.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(300.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -96,6 +129,21 @@ impl WitherEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
 
             target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
+            // Vanilla Wither: targets all LivingEntity not in WITHER_FRIENDS
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::predicated(
+                    &mob_arc.mob_entity,
+                    0,
+                    false,
+                    |target, _world| {
+                        !target
+                            .entity
+                            .entity_type
+                            .has_tag(&tag::EntityType::MINECRAFT_WITHER_FRIENDS)
+                    },
+                ),
+            );
         };
 
         mob_arc

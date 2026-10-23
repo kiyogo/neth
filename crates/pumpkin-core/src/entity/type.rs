@@ -761,6 +761,7 @@ pub fn check_spawn_rules(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entity::mob::Mob;
     use arc_swap::ArcSwap;
     use pumpkin_config::world::LevelConfig;
     use pumpkin_data::attributes::Attributes;
@@ -888,4 +889,1621 @@ mod tests {
         assert!(creaking.is_pushable());
         world.level.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn jump_control_lifecycle_and_tick_parity() {
+        let (world, _dir) = create_test_world();
+        let entity = from_type(&EntityType::CREEPER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        let mob = entity.get_mob().expect("Creeper should be a Mob");
+        let mob_entity = mob.get_mob_entity();
+
+        // 1. Initial state: jumping is false
+        assert!(!mob_entity.living_entity.jumping.load(std::sync::atomic::Ordering::SeqCst));
+
+        // 2. Request jump via helper (vanilla Mob.getJumpControl().jump())
+        mob_entity.jump();
+
+        // 3. Tick jump_control: transfers jump request to jumping flag and resets internal state
+        {
+            let mut jump_ctrl = mob_entity.jump_control.lock().unwrap();
+            jump_ctrl.tick(mob);
+        }
+        assert!(mob_entity.living_entity.jumping.load(std::sync::atomic::Ordering::SeqCst));
+
+        // 4. Tick again without calling jump(): jumping flag becomes false
+        {
+            let mut jump_ctrl = mob_entity.jump_control.lock().unwrap();
+            jump_ctrl.tick(mob);
+        }
+        assert!(!mob_entity.living_entity.jumping.load(std::sync::atomic::Ordering::SeqCst));
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn land_mobs_goal_selector_stroll_parity() {
+        let (world, _dir) = create_test_world();
+        let mob_types = [
+            &EntityType::CREEPER,
+            &EntityType::ZOMBIE,
+            &EntityType::SKELETON,
+            &EntityType::SPIDER,
+            &EntityType::ENDERMAN,
+            &EntityType::COW,
+            &EntityType::SHEEP,
+            &EntityType::PIG,
+            &EntityType::CHICKEN,
+            &EntityType::WOLF,
+        ];
+
+        for &mob_type in &mob_types {
+            let entity = from_type(mob_type, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = entity.get_mob().expect("Entity should be a Mob");
+            let mob_entity = mob.get_mob_entity();
+
+            // Verify GoalSelector and TargetSelector can be locked and ticked without error
+            let mut goals = mob_entity.goals_selector.lock().unwrap();
+            goals.tick(mob);
+            assert!(goals.get_available_goals().len() > 0, "Mob {:?} must have goals registered", mob_type);
+
+            let mut targets = mob_entity.target_selector.lock().unwrap();
+            targets.tick(mob);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn avoid_and_target_goal_selector_parity() {
+        let (world, _dir) = create_test_world();
+        let test_types = [
+            &EntityType::SPIDER,
+            &EntityType::CAVE_SPIDER,
+            &EntityType::PILLAGER,
+            &EntityType::VINDICATOR,
+            &EntityType::EVOKER,
+            &EntityType::RAVAGER,
+            &EntityType::ZOMBIE,
+            &EntityType::DROWNED,
+        ];
+
+        for &mob_type in &test_types {
+            let entity = from_type(mob_type, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = entity.get_mob().expect("Entity should be a Mob");
+            let mob_entity = mob.get_mob_entity();
+
+            let mut goals = mob_entity.goals_selector.lock().unwrap();
+            goals.tick(mob);
+            assert!(
+                !goals.get_available_goals().is_empty(),
+                "Mob {:?} must have registered goals",
+                mob_type
+            );
+
+            let mut targets = mob_entity.target_selector.lock().unwrap();
+            targets.tick(mob);
+            assert!(
+                !targets.get_available_goals().is_empty(),
+                "Mob {:?} must have registered targets",
+                mob_type
+            );
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn updated_mobs_goals_and_targets_parity() {
+        let (world, _dir) = create_test_world();
+        let updated_mobs = [
+            &EntityType::VILLAGER,
+            &EntityType::WARDEN,
+            &EntityType::BREEZE,
+            &EntityType::HOGLIN,
+            &EntityType::ZOGLIN,
+            &EntityType::ZOMBIFIED_PIGLIN,
+            &EntityType::IRON_GOLEM,
+            &EntityType::SNOW_GOLEM,
+            &EntityType::RABBIT,
+            &EntityType::FROG,
+            &EntityType::GOAT,
+            &EntityType::PANDA,
+            &EntityType::CAMEL,
+            &EntityType::CAMEL_HUSK,
+            &EntityType::SNIFFER,
+            &EntityType::ARMADILLO,
+            &EntityType::CREAKING,
+        ];
+
+        for &mob_type in &updated_mobs {
+            let entity = from_type(mob_type, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = entity.get_mob().expect("Entity should be a Mob");
+            let mob_entity = mob.get_mob_entity();
+
+            let mut goals = mob_entity.goals_selector.lock().unwrap();
+            goals.tick(mob);
+            assert!(
+                !goals.get_available_goals().is_empty(),
+                "Mob {:?} must have registered goals",
+                mob_type
+            );
+
+            let mut targets = mob_entity.target_selector.lock().unwrap();
+            targets.tick(mob);
+        }
+
+        // Specific checks for key parity fixes
+        {
+            // Breeze has RevengeGoal + Player + IronGolem targets
+            let breeze = from_type(&EntityType::BREEZE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let targets = breeze.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 3, "Breeze should have at least 3 target goals (Revenge, Player, Golem)");
+        }
+
+        {
+            // Villager has multiple threat avoidances + stroll + look
+            let villager = from_type(&EntityType::VILLAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let goals = villager.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 12, "Villager should have at least 12 goals for threats and stroll");
+        }
+
+        {
+            // Snow Golem has Monster target goal
+            let snow_golem = from_type(&EntityType::SNOW_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let targets = snow_golem.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(!targets.get_available_goals().is_empty(), "Snow Golem must have monster target goal");
+        }
+
+        {
+            // Rabbit has avoid monsters + flee players/wolves/foxes
+            let rabbit = from_type(&EntityType::RABBIT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let goals = rabbit.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 5, "Rabbit should have panic, breed, tempt, avoid threats, stroll");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn avoid_entity_goal_monster_predicate() {
+        use crate::entity::ai::goal::avoid_entity::AvoidEntityGoal;
+        use pumpkin_data::entity::MobCategory;
+
+        let avoid_monster_goal = AvoidEntityGoal::for_monsters(4.0, 2.2, 2.2);
+        assert!(avoid_monster_goal.flee_type().is_none(), "Monster avoid goal should use dynamic predicate");
+
+        let (world, _dir) = create_test_world();
+        let zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        assert_eq!(zombie.get_entity().entity_type.category, &MobCategory::MONSTER);
+
+        let sheep = from_type(&EntityType::SHEEP, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+        assert_ne!(sheep.get_entity().entity_type.category, &MobCategory::MONSTER);
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn raiders_and_skeletons_and_felines_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Bogged: MAX_HEALTH = 16.0, shoots poison arrow
+        {
+            let bogged = from_type(&EntityType::BOGGED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = bogged.get_living_entity().expect("Bogged is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            let mob = bogged.get_mob().expect("Bogged is mob");
+            let arrow = mob.get_arrow_projectile().expect("Bogged shoots custom arrow");
+            let potion = arrow.get_data_component::<PotionContentsImpl>().expect("Arrow has potion component");
+            assert_eq!(potion.custom_effects[0].effect_id, "minecraft:poison");
+            assert_eq!(potion.custom_effects[0].duration, 100);
+        }
+
+        // 2. Stray: shoots slowness arrow (duration 600)
+        {
+            let stray = from_type(&EntityType::STRAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = stray.get_mob().expect("Stray is mob");
+            let arrow = mob.get_arrow_projectile().expect("Stray shoots custom arrow");
+            let potion = arrow.get_data_component::<PotionContentsImpl>().expect("Arrow has potion component");
+            assert_eq!(potion.custom_effects[0].effect_id, "minecraft:slowness");
+            assert_eq!(potion.custom_effects[0].duration, 600);
+        }
+
+        // 3. Vex: MAX_HEALTH = 14.0, ATTACK_DAMAGE = 4.0, has RevengeGoal
+        {
+            let vex = from_type(&EntityType::VEX, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = vex.get_living_entity().expect("Vex is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+            let targets = vex.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 2, "Vex must have revenge and player targets");
+        }
+
+        // 4. Illusioner: has BowAttackGoal, Avoid Creaking, RevengeGoal
+        {
+            let illusioner = from_type(&EntityType::ILLUSIONER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let goals = illusioner.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 8, "Illusioner must have bow attack, avoid, patrol, and stroll");
+            let targets = illusioner.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 4, "Illusioner must have revenge, player, villager, and golem targets");
+        }
+
+        // 5. Fox: has avoid goals (Player, Wolf, PolarBear)
+        {
+            let fox = from_type(&EntityType::FOX, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let goals = fox.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 10, "Fox must have panic, breed, tempt, avoid threats, follow, stroll");
+        }
+
+        // 6. TraderLlama: defends against zombies and illagers
+        {
+            let trader_llama = from_type(&EntityType::TRADER_LLAMA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let targets = trader_llama.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 8, "Trader Llama must defend against wolves, zombies, and illagers");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn aquatic_equine_bosses_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Axolotl: MAX_HEALTH = 14.0, MOVEMENT_SPEED = 1.0, ATTACK_DAMAGE = 2.0, STEP_HEIGHT = 1.0
+        {
+            let axolotl = from_type(&EntityType::AXOLOTL, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = axolotl.get_living_entity().expect("Axolotl is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            let targets = axolotl.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 9, "Axolotl must target hostiles, fish, squid, pufferfish, and tadpoles");
+        }
+
+        // 2. Turtle: MAX_HEALTH = 30.0, MOVEMENT_SPEED = 0.25, ambient interval = 200
+        {
+            let turtle = from_type(&EntityType::TURTLE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = turtle.get_living_entity().expect("Turtle is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            let mob = turtle.get_mob().expect("Turtle is mob");
+            assert_eq!(mob.get_ambient_sound_interval(), 200);
+            let goals = mob.get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 6, "Turtle must have panic, breed, tempt, go to water, look at player, and stroll");
+        }
+
+        // 3. Dolphin: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 1.2, ATTACK_DAMAGE = 3.0
+        {
+            let dolphin = from_type(&EntityType::DOLPHIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = dolphin.get_living_entity().expect("Dolphin is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            let goals = dolphin.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 7, "Dolphin must have swim, avoid, attack, tempt, and look goals");
+        }
+
+        // 4. Donkey & Mule: MOVEMENT_SPEED = 0.175, JUMP_STRENGTH = 0.5
+        {
+            let donkey = from_type(&EntityType::DONKEY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = donkey.get_living_entity().expect("Donkey is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+
+            let mule = from_type(&EntityType::MULE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = mule.get_living_entity().expect("Mule is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+        }
+
+        // 5. SkeletonHorse & ZombieHorse: parity attributes
+        {
+            let skel_horse = from_type(&EntityType::SKELETON_HORSE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = skel_horse.get_living_entity().expect("SkeletonHorse is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 15.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+
+            let zomb_horse = from_type(&EntityType::ZOMBIE_HORSE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = zomb_horse.get_living_entity().expect("ZombieHorse is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 25.0);
+        }
+
+        // 6. PolarBear: MAX_HEALTH = 30.0, FOLLOW_RANGE = 20.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 6.0
+        {
+            let polar_bear = from_type(&EntityType::POLAR_BEAR, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = polar_bear.get_living_entity().expect("PolarBear is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+        }
+
+        // 7. Wither: MAX_HEALTH = 300.0, MOVEMENT_SPEED = 0.6, FLYING_SPEED = 0.6, FOLLOW_RANGE = 40.0, ARMOR = 4.0
+        {
+            let wither = from_type(&EntityType::WITHER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = wither.get_living_entity().expect("Wither is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 300.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 4.0);
+            let targets = wither.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 2, "Wither must have revenge and living entity target goals");
+        }
+
+        // 8. EnderDragon: MAX_HEALTH = 200.0
+        {
+            let dragon = from_type(&EntityType::ENDER_DRAGON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = dragon.get_living_entity().expect("EnderDragon is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 200.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn allay_bee_ravager_shulker_strider_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Allay: MAX_HEALTH = 20.0, FLYING_SPEED = 0.1, MOVEMENT_SPEED = 0.1, ATTACK_DAMAGE = 2.0
+        {
+            let allay = from_type(&EntityType::ALLAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = allay.get_living_entity().expect("Allay is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 20.0);
+            let goals = allay.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 4, "Allay must have registered goals");
+        }
+
+        // 2. Bee: MAX_HEALTH = 10.0, FLYING_SPEED = 0.6, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0
+        {
+            let bee = from_type(&EntityType::BEE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = bee.get_living_entity().expect("Bee is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 10.0);
+            let targets = bee.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert!(targets.get_available_goals().len() >= 3, "Bee must have revenge and anger target goals");
+        }
+
+        // 3. Ravager: MAX_HEALTH = 100.0, MOVEMENT_SPEED = 0.3, KNOCKBACK_RESISTANCE = 0.75, ATTACK_DAMAGE = 12.0, ATTACK_KNOCKBACK = 1.5, FOLLOW_RANGE = 32.0, STEP_HEIGHT = 1.0
+        {
+            let ravager = from_type(&EntityType::RAVAGER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ravager.get_living_entity().expect("Ravager is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 100.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.75);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.5);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 100.0);
+        }
+
+        // 4. Shulker: MAX_HEALTH = 30.0
+        {
+            let shulker = from_type(&EntityType::SHULKER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = shulker.get_living_entity().expect("Shulker is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.health.load(), 30.0);
+        }
+
+        // 5. Strider: MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.175
+        {
+            let strider = from_type(&EntityType::STRIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = strider.get_living_entity().expect("Strider is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn cat_parrot_mooshroom_silverfish_endermite_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Cat: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0, ambient_sound_interval = 120
+        {
+            let cat = from_type(&EntityType::CAT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = cat.get_living_entity().expect("Cat is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 10.0);
+            let mob = cat.get_mob().expect("Cat is mob");
+            assert_eq!(mob.get_ambient_sound_interval(), 120);
+            let goals = mob.get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 10, "Cat must have vanilla goals");
+            let targets = mob.get_mob_entity().target_selector.lock().unwrap();
+            assert_eq!(targets.get_available_goals().len(), 2, "Cat must have 2 untamed prey target goals");
+        }
+
+        // 2. Parrot: MAX_HEALTH = 6.0, FLYING_SPEED = 0.4, MOVEMENT_SPEED = 0.2, ATTACK_DAMAGE = 3.0
+        {
+            let parrot = from_type(&EntityType::PARROT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = parrot.get_living_entity().expect("Parrot is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.4);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 6.0);
+            let goals = parrot.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 3, "Parrot must have panic, float, look, wander goals");
+        }
+
+        // 3. Mooshroom: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2
+        {
+            let mooshroom = from_type(&EntityType::MOOSHROOM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = mooshroom.get_living_entity().expect("Mooshroom is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.health.load(), 10.0);
+            let goals = mooshroom.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 7, "Mooshroom must have full cow goal set");
+        }
+
+        // 4. Silverfish: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 1.0
+        {
+            let silverfish = from_type(&EntityType::SILVERFISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = silverfish.get_living_entity().expect("Silverfish is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 1.0);
+            assert_eq!(living.health.load(), 8.0);
+            let targets = silverfish.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert_eq!(targets.get_available_goals().len(), 2, "Silverfish must have revenge and player target goals");
+        }
+
+        // 5. Endermite: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 2.0
+        {
+            let endermite = from_type(&EntityType::ENDERMITE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = endermite.get_living_entity().expect("Endermite is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 8.0);
+            let goals = endermite.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert_eq!(goals.get_available_goals().len(), 6, "Endermite must have 6 vanilla goals");
+            let targets = endermite.get_mob().unwrap().get_mob_entity().target_selector.lock().unwrap();
+            assert_eq!(targets.get_available_goals().len(), 2, "Endermite must have revenge and player target goals");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn cave_spider_giant_pufferfish_wandering_trader_piglin_brute_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. CaveSpider: MAX_HEALTH = 12.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0
+        {
+            let spider = from_type(&EntityType::CAVE_SPIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = spider.get_living_entity().expect("CaveSpider is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 12.0);
+            let mob = spider.get_mob().unwrap();
+            let goals = mob.get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 6, "CaveSpider must have vanilla goals");
+            let targets = mob.get_mob_entity().target_selector.lock().unwrap();
+            assert_eq!(targets.get_available_goals().len(), 3, "CaveSpider must have revenge, player and golem targets");
+        }
+
+        // 2. Giant: MAX_HEALTH = 100.0, MOVEMENT_SPEED = 0.5, ATTACK_DAMAGE = 50.0, CAMERA_DISTANCE = 16.0
+        {
+            let giant = from_type(&EntityType::GIANT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = giant.get_living_entity().expect("Giant is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 100.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 50.0);
+            assert_eq!(living.get_attribute_base(&Attributes::CAMERA_DISTANCE), 16.0);
+            assert_eq!(living.health.load(), 100.0);
+        }
+
+        // 3. Pufferfish: MAX_HEALTH = 3.0
+        {
+            let pufferfish = from_type(&EntityType::PUFFERFISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = pufferfish.get_living_entity().expect("Pufferfish is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+            let goals = pufferfish.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 4, "Pufferfish must have panic, puff, avoid player and swim goals");
+        }
+
+        // 4. WanderingTrader: MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.5
+        {
+            let trader = from_type(&EntityType::WANDERING_TRADER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = trader.get_living_entity().expect("WanderingTrader is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.health.load(), 20.0);
+            let goals = trader.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 10, "WanderingTrader must have full goal set");
+        }
+
+        // 5. PiglinBrute: MAX_HEALTH = 50.0, MOVEMENT_SPEED = 0.35, ATTACK_DAMAGE = 7.0, FOLLOW_RANGE = 12.0
+        {
+            let brute = from_type(&EntityType::PIGLIN_BRUTE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = brute.get_living_entity().expect("PiglinBrute is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 50.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.35);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 7.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 12.0);
+            assert_eq!(living.health.load(), 50.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn aquatic_and_passive_mobs_parity_tests() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Cod: MAX_HEALTH = 3.0, goals 0, 2, 4
+        {
+            let cod = from_type(&EntityType::COD, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = cod.get_living_entity().expect("Cod is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+            let goals = cod.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            let available = goals.get_available_goals();
+            assert_eq!(available.len(), 3, "Cod has exactly panic, avoid, and swim goals");
+            assert_eq!(available[0].priority, 0);
+            assert_eq!(available[1].priority, 2);
+            assert_eq!(available[2].priority, 4);
+        }
+
+        // 2. Salmon: MAX_HEALTH = 3.0, goals 0, 2, 4
+        {
+            let salmon = from_type(&EntityType::SALMON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = salmon.get_living_entity().expect("Salmon is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+            let goals = salmon.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            let available = goals.get_available_goals();
+            assert_eq!(available.len(), 3, "Salmon has exactly panic, avoid, and swim goals");
+            assert_eq!(available[0].priority, 0);
+            assert_eq!(available[1].priority, 2);
+            assert_eq!(available[2].priority, 4);
+        }
+
+        // 3. TropicalFish: MAX_HEALTH = 3.0, goals 0, 2, 4
+        {
+            let tropical_fish = from_type(&EntityType::TROPICAL_FISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = tropical_fish.get_living_entity().expect("TropicalFish is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.health.load(), 3.0);
+            let goals = tropical_fish.get_mob().unwrap().get_mob_entity().goals_selector.lock().unwrap();
+            let available = goals.get_available_goals();
+            assert_eq!(available.len(), 3, "TropicalFish has exactly panic, avoid, and swim goals");
+            assert_eq!(available[0].priority, 0);
+            assert_eq!(available[1].priority, 2);
+            assert_eq!(available[2].priority, 4);
+        }
+
+        // 4. Tadpole: MAX_HEALTH = 6.0, MOVEMENT_SPEED = 1.0
+        {
+            let tadpole = from_type(&EntityType::TADPOLE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = tadpole.get_living_entity().expect("Tadpole is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.health.load(), 6.0);
+        }
+
+        // 5. Squid: MAX_HEALTH = 10.0
+        {
+            let squid = from_type(&EntityType::SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = squid.get_living_entity().expect("Squid is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 6. GlowSquid: MAX_HEALTH = 10.0
+        {
+            let glow_squid = from_type(&EntityType::GLOW_SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = glow_squid.get_living_entity().expect("GlowSquid is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 7. Ocelot: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0
+        {
+            let ocelot = from_type(&EntityType::OCELOT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ocelot.get_living_entity().expect("Ocelot is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 8. Chicken: MAX_HEALTH = 4.0, MOVEMENT_SPEED = 0.25
+        {
+            let chicken = from_type(&EntityType::CHICKEN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = chicken.get_living_entity().expect("Chicken is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 4.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 4.0);
+        }
+
+        // 9. Cow: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2
+        {
+            let cow = from_type(&EntityType::COW, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = cow.get_living_entity().expect("Cow is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 10. Pig: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.25
+        {
+            let pig = from_type(&EntityType::PIG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = pig.get_living_entity().expect("Pig is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 11. Sheep: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.23
+        {
+            let sheep = from_type(&EntityType::SHEEP, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = sheep.get_living_entity().expect("Sheep is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.health.load(), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn guardian_and_elder_guardian_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Guardian: MAX_HEALTH = 30.0, MOVEMENT_SPEED = 0.5, ATTACK_DAMAGE = 6.0
+        {
+            let guardian = from_type(&EntityType::GUARDIAN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = guardian.get_living_entity().expect("Guardian is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.5);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 30.0);
+        }
+
+        // 2. Elder Guardian: MAX_HEALTH = 80.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 8.0, persistence_required = true
+        {
+            let elder = from_type(&EntityType::ELDER_GUARDIAN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = elder.get_living_entity().expect("Elder Guardian is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 80.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 8.0);
+            assert_eq!(living.health.load(), 80.0);
+            let mob = elder.get_mob().expect("Elder Guardian is mob entity");
+            assert!(mob.get_mob_entity().persistence_required.load(std::sync::atomic::Ordering::Relaxed));
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn hostile_mobs_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Witch: MAX_HEALTH = 26.0, MOVEMENT_SPEED = 0.25
+        {
+            let witch = from_type(&EntityType::WITCH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = witch.get_living_entity().expect("Witch is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 26.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 26.0);
+        }
+
+        // 2. Blaze: MAX_HEALTH = 20.0, ATTACK_DAMAGE = 6.0, MOVEMENT_SPEED = 0.23, FOLLOW_RANGE = 48.0
+        {
+            let blaze = from_type(&EntityType::BLAZE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = blaze.get_living_entity().expect("Blaze is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 48.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 3. Ghast: MAX_HEALTH = 10.0, FOLLOW_RANGE = 100.0, CAMERA_DISTANCE = 8.0, FLYING_SPEED = 0.06
+        {
+            let ghast = from_type(&EntityType::GHAST, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = ghast.get_living_entity().expect("Ghast is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 100.0);
+            assert_eq!(living.get_attribute_base(&Attributes::CAMERA_DISTANCE), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.06);
+            assert_eq!(living.health.load(), 10.0);
+        }
+
+        // 4. Phantom: MAX_HEALTH = 20.0, ATTACK_DAMAGE = 6.0 (at size 0), size scaling
+        {
+            let phantom = from_type(&EntityType::PHANTOM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = phantom.get_living_entity().expect("Phantom is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 20.0);
+
+            let phantom_entity = phantom
+                .cast_any()
+                .downcast_ref::<crate::entity::mob::phantom::PhantomEntity>()
+                .expect("downcast to PhantomEntity");
+            phantom_entity.set_phantom_size(2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn classic_monsters_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Creeper: MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.25, fall swell
+        {
+            let creeper = from_type(&EntityType::CREEPER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = creeper.get_living_entity().expect("Creeper is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.health.load(), 20.0);
+
+            let creeper_entity = creeper
+                .cast_any()
+                .downcast_ref::<crate::entity::mob::creeper::CreeperEntity>()
+                .expect("downcast to CreeperEntity");
+            living.fall_distance.store(4.0);
+            let mob = creeper.get_mob().expect("Creeper is Mob");
+            mob.on_damage(DamageType::FALL, None);
+            assert_eq!(creeper_entity.current_fuse_time.load(std::sync::atomic::Ordering::Relaxed), 6);
+        }
+
+        // 2. Enderman: MAX_HEALTH = 40.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 7.0, FOLLOW_RANGE = 64.0, STEP_HEIGHT = 1.0
+        {
+            let enderman = from_type(&EntityType::ENDERMAN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = enderman.get_living_entity().expect("Enderman is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 7.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 64.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 40.0);
+        }
+
+        // 3. Spider: MAX_HEALTH = 16.0, ATTACK_DAMAGE = 2.0, MOVEMENT_SPEED = 0.3
+        {
+            let spider = from_type(&EntityType::SPIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = spider.get_living_entity().expect("Spider is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.health.load(), 16.0);
+        }
+
+        // 4. Bat: MAX_HEALTH = 6.0, collides = false
+        {
+            let bat = from_type(&EntityType::BAT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = bat.get_living_entity().expect("Bat is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 6.0);
+            assert_eq!(living.health.load(), 6.0);
+            assert!(!living.collides.load(std::sync::atomic::Ordering::Relaxed));
+        }
+
+        // 5. Zombie: MAX_HEALTH = 20.0, FOLLOW_RANGE = 35.0, MOVEMENT_SPEED = 0.23, ATTACK_DAMAGE = 3.0, ARMOR = 2.0
+        {
+            let zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = zombie.get_living_entity().expect("Zombie is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 35.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.23);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 6. Drowned: STEP_HEIGHT = 1.0
+        {
+            let drowned = from_type(&EntityType::DROWNED, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = drowned.get_living_entity().expect("Drowned is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        // 7. Zombified Piglin: ATTACK_DAMAGE = 5.0, ARMOR = 2.0
+        {
+            let zombified = from_type(&EntityType::ZOMBIFIED_PIGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = zombified.get_living_entity().expect("Zombified Piglin is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 5.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 2.0);
+            assert_eq!(living.health.load(), 20.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn skeletons_vex_allay_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Skeleton: min attack interval is 40 on Normal/Easy/Peaceful, 20 on Hard
+        {
+            let skeleton = from_type(&EntityType::SKELETON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = skeleton.get_mob().expect("Skeleton is mob");
+            assert_eq!(mob.get_min_attack_interval(), Some(40), "Default world difficulty normal/easy should give 40 ticks");
+            let living = skeleton.get_living_entity().expect("Skeleton is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+        }
+
+        // 2. Stray: min attack interval is 40 on Normal/Easy/Peaceful, 20 on Hard
+        {
+            let stray = from_type(&EntityType::STRAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = stray.get_mob().expect("Stray is mob");
+            assert_eq!(mob.get_min_attack_interval(), Some(40), "Default world difficulty should give 40 ticks");
+            let arrow = mob.get_arrow_projectile().expect("Stray has arrow projectile");
+            assert_eq!(arrow.item.id, pumpkin_data::item::Item::ARROW.id);
+        }
+
+        // 3. Vex: no_physics = true, has_no_gravity = true, burns_in_daylight = false, health = 14, damage = 4
+        {
+            let vex = from_type(&EntityType::VEX, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let entity = vex.get_entity();
+            assert!(entity.no_physics.load(std::sync::atomic::Ordering::Relaxed), "Vex must fly through blocks with no_physics");
+            assert!(entity.has_no_gravity(), "Vex must have no gravity");
+            let mob = vex.get_mob().expect("Vex is mob");
+            assert!(!mob.burns_in_daylight(), "Vex does not burn in daylight");
+            let living = vex.get_living_entity().expect("Vex is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+        }
+
+        // 4. Allay: MAX_HEALTH = 20.0, FLYING_SPEED = 0.1, MOVEMENT_SPEED = 0.1, ATTACK_DAMAGE = 2.0
+        {
+            let allay = from_type(&EntityType::ALLAY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let living = allay.get_living_entity().expect("Allay is living entity");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.1);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            let mob = allay.get_mob().expect("Allay is mob");
+            assert_eq!(mob.get_ambient_sound(), Some(pumpkin_data::sound::Sound::EntityAllayAmbientWithoutItem));
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn skeleton_powder_snow_and_zombie_water_conversion_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Skeleton Stray conversion tracker
+        {
+            let skeleton = from_type(&EntityType::SKELETON, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let skeleton_mob = skeleton.cast_any().downcast_ref::<crate::entity::mob::skeleton::skeleton::SkeletonEntity>()
+                .expect("Skeleton downcast");
+            assert!(!skeleton_mob.is_converting(), "Skeleton must not be converting initially");
+            skeleton_mob.start_freeze_conversion(300);
+            assert!(skeleton_mob.is_converting(), "Skeleton must be converting after start_freeze_conversion");
+            let mut nbt = pumpkin_nbt::compound::NbtCompound::new();
+            skeleton_mob.mob_write_nbt(&mut nbt);
+            assert_eq!(nbt.get_int("StrayConversionTime"), Some(300));
+        }
+
+        // 2. Zombie Drowned conversion tracker
+        {
+            let zombie = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let zombie_mob = zombie.cast_any().downcast_ref::<crate::entity::mob::zombie::zombie::ZombieEntity>()
+                .expect("Zombie downcast");
+            assert!(!zombie_mob.is_converting(), "Zombie must not be converting initially");
+            zombie_mob.start_drowned_conversion(300);
+            assert!(zombie_mob.is_converting(), "Zombie must be converting after start_drowned_conversion");
+            let mut nbt = pumpkin_nbt::compound::NbtCompound::new();
+            zombie_mob.mob_write_nbt(&mut nbt);
+            assert_eq!(nbt.get_int("DrownedConversionTime"), Some(300));
+        }
+
+        // 3. Husk Zombie conversion tracker
+        {
+            let husk = from_type(&EntityType::HUSK, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let husk_mob = husk.cast_any().downcast_ref::<crate::entity::mob::zombie::husk::HuskEntity>()
+                .expect("Husk downcast");
+            assert!(!husk_mob.is_converting(), "Husk must not be converting initially");
+            husk_mob.start_drowned_conversion(300);
+            assert!(husk_mob.is_converting(), "Husk must be converting after start_drowned_conversion");
+            let mut nbt = pumpkin_nbt::compound::NbtCompound::new();
+            husk_mob.mob_write_nbt(&mut nbt);
+            assert_eq!(nbt.get_int("DrownedConversionTime"), Some(300));
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn creaking_sniffer_armadillo_camel_frog_parity_tests() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Creaking parity
+        {
+            let creaking = from_type(&EntityType::CREAKING, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = creaking.get_mob().expect("Creaking is mob");
+            assert!(mob.as_creaking().is_some());
+            assert_eq!(mob.get_min_attack_interval(), Some(40), "Creaking attack interval must be 40 ticks");
+            assert!(!mob.burns_in_daylight(), "Creaking must not burn in daylight");
+            assert!(!mob.can_drown(), "Creaking must not drown");
+
+            let living = creaking.get_living_entity().expect("Creaking is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 1.0);
+            assert!((living.get_attribute_base(&Attributes::MOVEMENT_SPEED) - 0.4).abs() < 1e-6);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0625);
+
+            let creaking_entity = mob.as_creaking().unwrap();
+            creaking_entity.set_transient(pumpkin_util::math::position::BlockPos::new(0, 64, 0));
+            assert!(creaking_entity.is_heart_bound(), "Creaking must be heart bound after set_transient");
+
+            // Normal damage is absorbed by heart
+            assert!(!mob.pre_damage(DamageType::GENERIC, None), "Heart-bound creaking must be invulnerable to generic damage");
+            // Damage that bypasses invulnerability penetrates
+            assert!(mob.pre_damage(DamageType::OUT_OF_WORLD, None), "Out of world damage must bypass invulnerability");
+        }
+
+        // 2. Sniffer parity
+        {
+            let sniffer = from_type(&EntityType::SNIFFER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = sniffer.get_mob().expect("Sniffer is mob");
+            assert!(mob.as_sniffer().is_some());
+
+            let living = sniffer.get_living_entity().expect("Sniffer is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.1);
+            assert_eq!(living.health.load(), 14.0);
+        }
+
+        // 3. Armadillo parity
+        {
+            let armadillo = from_type(&EntityType::ARMADILLO, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = armadillo.get_mob().expect("Armadillo is mob");
+            let living = armadillo.get_living_entity().expect("Armadillo is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.14);
+            assert_eq!(living.health.load(), 12.0);
+            assert_eq!(mob.get_max_head_rotation(), 32.5);
+
+            let armadillo_entity = mob.as_armadillo().expect("Armadillo downcast");
+            armadillo_entity.switch_to_state(crate::entity::passive::armadillo::ArmadilloState::Scared);
+            assert_eq!(mob.get_max_head_rotation(), 0.0, "Head yaw rotation must be 0 while scared");
+
+            // Damage reduction while rolled up: (dmg - 1.0) / 2.0
+            assert_eq!(mob.adjust_damage_amount(7.0, &DamageType::GENERIC), 3.0);
+            armadillo_entity.switch_to_state(crate::entity::passive::armadillo::ArmadilloState::Idle);
+            assert_eq!(mob.adjust_damage_amount(7.0, &DamageType::GENERIC), 7.0);
+        }
+
+        // 4. Camel & Camel Husk parity
+        {
+            let camel = from_type(&EntityType::CAMEL, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = camel.get_mob().expect("Camel is mob");
+            let living = camel.get_living_entity().expect("Camel is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 32.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.09);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.5);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.42);
+            assert_eq!(living.health.load(), 32.0);
+            assert_eq!(mob.get_max_head_rotation(), 30.0);
+            assert!(!mob.remove_when_far_away(1000.0), "Normal camel must not despawn when far away");
+
+            let husk = from_type(&EntityType::CAMEL_HUSK, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let husk_mob = husk.get_mob().expect("CamelHusk is mob");
+            let husk_living = husk.get_living_entity().expect("CamelHusk is living");
+            assert_eq!(husk_living.get_attribute_base(&Attributes::MAX_HEALTH), 32.0);
+            assert_eq!(husk_living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.09);
+            assert_eq!(husk_living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.5);
+            assert_eq!(husk_living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.42);
+            assert_eq!(husk_mob.get_max_head_rotation(), 30.0);
+            assert!(husk_mob.remove_when_far_away(1000.0), "CamelHusk must despawn when far away");
+        }
+
+        // 5. Frog parity
+        {
+            let frog = from_type(&EntityType::FROG, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = frog.get_mob().expect("Frog is mob");
+            let living = frog.get_living_entity().expect("Frog is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 10.0);
+            assert_eq!(mob.get_max_head_rotation(), 5.0);
+            assert!(!mob.can_drown(), "Frog must not drown");
+            assert!(mob.can_breathe_under_water(), "Frog breathes underwater");
+
+            // Fall damage reduction of 5
+            assert_eq!(mob.adjust_damage_amount(8.0, &DamageType::FALL), 3.0);
+            assert_eq!(mob.adjust_damage_amount(4.0, &DamageType::FALL), 0.0);
+            assert_eq!(mob.adjust_damage_amount(8.0, &DamageType::GENERIC), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_goat_fox_panda_axolotl_dolphin_parity() {
+        use crate::entity::passive::panda::PandaGene;
+        use std::sync::atomic::Ordering;
+
+        let (world, _dir) = create_test_world();
+
+        // 1. Goat Parity (Gap 77)
+        {
+            let goat = from_type(&EntityType::GOAT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = goat.get_mob().expect("Goat is mob");
+            let living = goat.get_living_entity().expect("Goat is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 10.0);
+            assert!(mob.as_goat().is_some());
+
+            // Fall damage reduction of 10
+            assert_eq!(mob.adjust_damage_amount(15.0, &DamageType::FALL), 5.0);
+            assert_eq!(mob.adjust_damage_amount(10.0, &DamageType::FALL), 0.0);
+            assert_eq!(mob.adjust_damage_amount(6.0, &DamageType::FALL), 0.0);
+            assert_eq!(mob.adjust_damage_amount(15.0, &DamageType::GENERIC), 15.0);
+        }
+
+        // 2. Fox Parity (Gap 78)
+        {
+            let fox = from_type(&EntityType::FOX, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = fox.get_mob().expect("Fox is mob");
+            let living = fox.get_living_entity().expect("Fox is living");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.get_attribute_base(&Attributes::SAFE_FALL_DISTANCE), 5.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 32.0);
+            assert_eq!(living.health.load(), 10.0);
+            assert!(mob.get_mob_entity().can_pick_up_loot());
+            assert!(mob.as_fox().is_some());
+
+            // Sweet berry bush damage cancelled
+            assert!(!mob.pre_damage(DamageType::SWEET_BERRY_BUSH, None));
+            assert!(mob.pre_damage(DamageType::GENERIC, None));
+        }
+
+        // 3. Panda Parity (Gap 79)
+        {
+            let panda = from_type(&EntityType::PANDA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = panda.get_mob().expect("Panda is mob");
+            let living = panda.get_living_entity().expect("Panda is living");
+            let panda_entity = mob.as_panda().expect("PandaEntity downcast");
+
+            // Attack damage base
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+
+            // Genetics logic
+            assert!(PandaGene::Brown.is_recessive());
+            assert!(PandaGene::Weak.is_recessive());
+            assert!(!PandaGene::Normal.is_recessive());
+            assert!(!PandaGene::Lazy.is_recessive());
+
+            assert_eq!(PandaGene::get_variant_from_genes(PandaGene::Weak, PandaGene::Weak), PandaGene::Weak);
+            assert_eq!(PandaGene::get_variant_from_genes(PandaGene::Weak, PandaGene::Normal), PandaGene::Normal);
+            assert_eq!(PandaGene::get_variant_from_genes(PandaGene::Normal, PandaGene::Weak), PandaGene::Normal);
+            assert_eq!(PandaGene::get_variant_from_genes(PandaGene::Lazy, PandaGene::Normal), PandaGene::Lazy);
+
+            // Set Weak gene
+            panda_entity.set_main_gene(PandaGene::Weak);
+            panda_entity.set_hidden_gene(PandaGene::Weak);
+            assert!(panda_entity.is_weak());
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+
+            // Set Lazy gene
+            panda_entity.set_main_gene(PandaGene::Lazy);
+            panda_entity.set_hidden_gene(PandaGene::Normal);
+            assert!(panda_entity.is_lazy());
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.07);
+        }
+
+        // 4. Axolotl Parity (Gap 80)
+        {
+            let axolotl = from_type(&EntityType::AXOLOTL, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = axolotl.get_mob().expect("Axolotl is mob");
+            let living = axolotl.get_living_entity().expect("Axolotl is living");
+            assert!(mob.as_axolotl().is_some());
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert!(!mob.can_drown(), "Axolotl must not drown");
+            assert!(mob.can_breathe_under_water(), "Axolotl breathes underwater");
+            assert!(mob.dries_out_on_land(), "Axolotl dries out on land");
+            assert!(mob.rehydrates_in_rain(), "Axolotl rehydrates in rain");
+            assert_eq!(mob.max_air_supply(), 6000);
+            assert!(!axolotl.is_pushed_by_fluids());
+        }
+
+        // 5. Dolphin Parity (Gap 81)
+        {
+            let dolphin = from_type(&EntityType::DOLPHIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = dolphin.get_mob().expect("Dolphin is mob");
+            let living = dolphin.get_living_entity().expect("Dolphin is living");
+            let dolphin_entity = mob.as_dolphin().expect("Dolphin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.2);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.breath.air_supply.load(Ordering::Relaxed), 4800);
+            assert_eq!(mob.max_air_supply(), 4800);
+            assert_eq!(mob.increase_air_supply(200), 4800);
+            assert_eq!(mob.get_max_head_rotation(), 1.0);
+            assert!(!mob.can_breathe_under_water(), "Dolphins cannot breathe underwater (they drown without air)");
+            assert_eq!(dolphin_entity.moistness_level.load(Ordering::Relaxed), 2400);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_turtle_polar_bear_rabbit_snow_golem_parity() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Turtle Parity (Gap 82)
+        {
+            let turtle = from_type(&EntityType::TURTLE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = turtle.get_mob().expect("Turtle is mob");
+            let living = turtle.get_living_entity().expect("Turtle is living");
+            assert!(mob.as_turtle().is_some(), "Turtle downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 30.0);
+            assert!(mob.can_breathe_under_water(), "Turtles breathe underwater");
+            assert!(!mob.can_drown(), "Turtles never drown");
+            assert!(!turtle.is_pushed_by_fluids(), "Turtles not pushed by fluids");
+            assert_eq!(mob.get_ambient_sound_interval(), 200);
+        }
+
+        // 2. Polar Bear Parity (Gap 83)
+        {
+            let bear = from_type(&EntityType::POLAR_BEAR, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = bear.get_mob().expect("Polar bear is mob");
+            let living = bear.get_living_entity().expect("Polar bear is living");
+            assert!(mob.as_polar_bear().is_some(), "Polar bear downcast");
+            assert!(mob.as_neutral().is_some(), "Polar bear is neutral");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 30.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 30.0);
+        }
+
+        // 3. Rabbit & Killer Bunny Parity (Gap 84)
+        {
+            let rabbit = from_type(&EntityType::RABBIT, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = rabbit.get_mob().expect("Rabbit is mob");
+            let living = rabbit.get_living_entity().expect("Rabbit is living");
+            let rabbit_entity = mob.as_rabbit().expect("Rabbit downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.health.load(), 3.0);
+
+            // Test Killer Bunny mutation parity
+            rabbit_entity.set_variant(crate::entity::passive::rabbit::RabbitVariant::Evil);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 8.0);
+
+            // Return to normal
+            rabbit_entity.set_variant(crate::entity::passive::rabbit::RabbitVariant::Brown);
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 0.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+        }
+
+        // 4. Snow Golem Parity (Gap 85)
+        {
+            let golem = from_type(&EntityType::SNOW_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = golem.get_mob().expect("Snow golem is mob");
+            let living = golem.get_living_entity().expect("Snow golem is living");
+            assert!(mob.as_snow_golem().is_some(), "Snow golem downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 4.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.health.load(), 4.0);
+            assert!(mob.is_sensitive_to_water(), "Snow golem is sensitive to water");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_copper_golem_happy_ghast_nautilus_parity() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Copper Golem Parity (Gap 86)
+        {
+            let golem = from_type(&EntityType::COPPER_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = golem.get_mob().expect("Copper golem is mob");
+            let living = golem.get_living_entity().expect("Copper golem is living");
+            assert!(mob.as_copper_golem().is_some(), "Copper golem downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 12.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.health.load(), 12.0);
+        }
+
+        // 2. Happy Ghast Parity (Gap 87)
+        {
+            let ghast = from_type(&EntityType::HAPPY_GHAST, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = ghast.get_mob().expect("Happy ghast is mob");
+            let living = ghast.get_living_entity().expect("Happy ghast is living");
+            assert!(mob.as_happy_ghast().is_some(), "Happy ghast downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::TEMPT_RANGE), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FLYING_SPEED), 0.05);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.05);
+            assert_eq!(living.get_attribute_base(&Attributes::FOLLOW_RANGE), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::CAMERA_DISTANCE), 8.0);
+            assert_eq!(living.health.load(), 20.0);
+            assert!(!mob.can_breathe_under_water(), "Adult happy ghast cannot breathe underwater");
+            assert!(mob.can_drown(), "Adult happy ghast can drown");
+        }
+
+        // 3. Nautilus Parity (Gap 88)
+        {
+            let nautilus = from_type(&EntityType::NAUTILUS, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = nautilus.get_mob().expect("Nautilus is mob");
+            let living = nautilus.get_living_entity().expect("Nautilus is living");
+            assert!(mob.as_nautilus().is_some(), "Nautilus downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 15.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.3);
+            assert_eq!(living.health.load(), 15.0);
+            assert!(mob.can_breathe_under_water(), "Nautilus breathes underwater");
+            assert!(!mob.can_drown(), "Nautilus never drowns");
+            assert!(!nautilus.is_pushed_by_fluids(), "Nautilus not pushed by fluids");
+            assert_eq!(mob.max_air_supply(), 300);
+            assert!(mob.dries_out_on_land());
+        }
+
+        // 4. Zombie Nautilus Parity (Gap 89)
+        {
+            let znautilus = from_type(&EntityType::ZOMBIE_NAUTILUS, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = znautilus.get_mob().expect("Zombie nautilus is mob");
+            let living = znautilus.get_living_entity().expect("Zombie nautilus is living");
+            assert!(mob.as_zombie_nautilus().is_some(), "Zombie nautilus downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 15.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 1.1);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.3);
+            assert_eq!(living.health.load(), 15.0);
+            assert!(mob.can_breathe_under_water(), "Zombie nautilus breathes underwater");
+            assert!(!mob.can_drown(), "Zombie nautilus never drowns");
+            assert!(!znautilus.is_pushed_by_fluids(), "Zombie nautilus not pushed by fluids");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_wolf_llama_golems_phantom_cat_parity() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Wolf & Llama Interaction & Targets (Gap 90)
+        {
+            let wolf = from_type(&EntityType::WOLF, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let wolf_mob = wolf.get_mob().expect("Wolf is mob");
+            let wolf_goals = wolf_mob.get_mob_entity().goals_selector.lock().unwrap();
+            let wolf_targets = wolf_mob.get_mob_entity().target_selector.lock().unwrap();
+
+            // Check wolf has AvoidEntityGoal for Llama and Trader Llama
+            assert!(wolf_goals.get_available_goals().len() >= 10, "Wolf has avoid llama goals");
+            // Check wolf has skeleton targets (Skeleton, Wither Skeleton, Stray, Bogged, Parched)
+            let target_goals = wolf_targets.get_available_goals();
+            let skeleton_targets = target_goals.iter().filter(|g| g.priority == 7).count();
+            assert_eq!(skeleton_targets, 5, "Wolf must target 5 skeleton variants: Skeleton, Wither Skeleton, Stray, Bogged, Parched");
+
+            let llama = from_type(&EntityType::LLAMA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let llama_mob = llama.get_mob().expect("Llama is mob");
+            let llama_targets = llama_mob.get_mob_entity().target_selector.lock().unwrap();
+            assert!(llama_targets.get_available_goals().len() >= 2, "Llama has revenge and wolf target goals");
+
+            let trader_llama = from_type(&EntityType::TRADER_LLAMA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let trader_llama_mob = trader_llama.get_mob().expect("Trader llama is mob");
+            let trader_llama_targets = trader_llama_mob.get_mob_entity().target_selector.lock().unwrap();
+            assert!(trader_llama_targets.get_available_goals().len() >= 4, "Trader llama targets untamed wolves, zombies, husks, drowned");
+        }
+
+        // 2. Iron Golem & Copper Golem Underwater Respiration (Gap 91)
+        {
+            let iron_golem = from_type(&EntityType::IRON_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let iron_mob = iron_golem.get_mob().expect("Iron golem is mob");
+            assert!(iron_mob.can_breathe_under_water(), "Iron golem breathes underwater (parity with vanilla decreaseAirSupply override)");
+            assert!(!iron_mob.can_drown(), "Iron golem never drowns");
+
+            let copper_golem = from_type(&EntityType::COPPER_GOLEM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let copper_mob = copper_golem.get_mob().expect("Copper golem is mob");
+            assert!(copper_mob.can_breathe_under_water(), "Copper golem breathes underwater");
+            assert!(!copper_mob.can_drown(), "Copper golem never drowns");
+        }
+
+        // 3. Phantom Cat Avoidance (Gap 92)
+        {
+            let phantom = from_type(&EntityType::PHANTOM, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = phantom.get_mob().expect("Phantom is mob");
+            let goals = mob.get_mob_entity().goals_selector.lock().unwrap();
+            assert!(goals.get_available_goals().len() >= 3, "Phantom has attack strategy, sweep attack, circle goals");
+            let targets = mob.get_mob_entity().target_selector.lock().unwrap();
+            assert_eq!(targets.get_available_goals().len(), 1, "Phantom has player attack target goal");
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_equine_mobs_parity() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Horse Base Attributes Parity (Gap 93)
+        {
+            let horse = from_type(&EntityType::HORSE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = horse.get_mob().expect("Horse is mob");
+            let living = horse.get_living_entity().expect("Horse is living");
+            assert!(mob.as_horse().is_some(), "Horse downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 53.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.225);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.7);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::SAFE_FALL_DISTANCE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FALL_DAMAGE_MULTIPLIER), 0.5);
+            assert_eq!(living.health.load(), 53.0);
+        }
+
+        // 2. Donkey & Mule Base Attributes Parity
+        {
+            let donkey = from_type(&EntityType::DONKEY, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = donkey.get_mob().expect("Donkey is mob");
+            let living = donkey.get_living_entity().expect("Donkey is living");
+            assert!(mob.as_donkey().is_some(), "Donkey downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 53.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+            assert_eq!(living.get_attribute_base(&Attributes::STEP_HEIGHT), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::SAFE_FALL_DISTANCE), 6.0);
+            assert_eq!(living.get_attribute_base(&Attributes::FALL_DAMAGE_MULTIPLIER), 0.5);
+            assert_eq!(living.health.load(), 53.0);
+
+            let mule = from_type(&EntityType::MULE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = mule.get_mob().expect("Mule is mob");
+            let living = mule.get_living_entity().expect("Mule is living");
+            assert!(mob.as_mule().is_some(), "Mule downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 53.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+            assert_eq!(living.health.load(), 53.0);
+        }
+
+        // 3. Skeleton Horse & Zombie Horse Attributes, Undead Breathing Parity
+        {
+            let skeleton_horse = from_type(&EntityType::SKELETON_HORSE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = skeleton_horse.get_mob().expect("Skeleton horse is mob");
+            let living = skeleton_horse.get_living_entity().expect("Skeleton horse is living");
+            assert!(mob.as_skeleton_horse().is_some(), "Skeleton horse downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 15.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.2);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.7);
+            assert_eq!(living.health.load(), 15.0);
+            assert!(mob.can_breathe_under_water(), "Skeleton horse breathes underwater");
+            assert!(!mob.can_drown(), "Skeleton horse never drowns");
+
+            let zombie_horse = from_type(&EntityType::ZOMBIE_HORSE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zombie_horse.get_mob().expect("Zombie horse is mob");
+            let living = zombie_horse.get_living_entity().expect("Zombie horse is living");
+            assert!(mob.as_zombie_horse().is_some(), "Zombie horse downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 25.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.225);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.7);
+            assert_eq!(living.health.load(), 25.0);
+            assert!(mob.can_breathe_under_water(), "Zombie horse breathes underwater");
+            assert!(!mob.can_drown(), "Zombie horse never drowns");
+        }
+
+        // 4. Llama & Trader Llama Attributes Parity
+        {
+            let llama = from_type(&EntityType::LLAMA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = llama.get_mob().expect("Llama is mob");
+            let living = llama.get_living_entity().expect("Llama is living");
+            assert!(mob.as_llama().is_some(), "Llama downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 53.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+            assert_eq!(living.health.load(), 53.0);
+
+            let trader_llama = from_type(&EntityType::TRADER_LLAMA, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = trader_llama.get_mob().expect("Trader llama is mob");
+            let living = trader_llama.get_living_entity().expect("Trader llama is living");
+            assert!(mob.as_trader_llama().is_some(), "Trader llama downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 53.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.get_attribute_base(&Attributes::JUMP_STRENGTH), 0.5);
+            assert_eq!(living.health.load(), 53.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_vex_squids_hoglin_zoglin_parity() {
+        let (world, _dir) = create_test_world();
+
+        // 1. Vex Attributes, Health & Flight Parity (Gap 94)
+        {
+            let vex = from_type(&EntityType::VEX, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = vex.get_mob().expect("Vex is mob");
+            let living = vex.get_living_entity().expect("Vex is living");
+            assert!(mob.as_vex().is_some(), "Vex downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 14.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+            assert_eq!(living.health.load(), 14.0);
+            assert!(vex.get_entity().no_physics.load(std::sync::atomic::Ordering::Relaxed));
+            assert!(vex.get_entity().has_no_gravity());
+        }
+
+        // 2. Squid & Glow Squid Water Respiration & Downcasts Parity
+        {
+            let squid = from_type(&EntityType::SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = squid.get_mob().expect("Squid is mob");
+            let living = squid.get_living_entity().expect("Squid is living");
+            assert!(mob.as_squid().is_some(), "Squid downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+            assert!(mob.can_breathe_under_water(), "Squid breathes underwater");
+            assert!(!mob.can_drown(), "Squid never drowns");
+            assert!(!squid.is_pushed_by_fluids(), "Squid fluid push immune");
+            assert!(mob.dries_out_on_land());
+
+            let glow_squid = from_type(&EntityType::GLOW_SQUID, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = glow_squid.get_mob().expect("Glow squid is mob");
+            let living = glow_squid.get_living_entity().expect("Glow squid is living");
+            assert!(mob.as_glow_squid().is_some(), "Glow squid downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 10.0);
+            assert_eq!(living.health.load(), 10.0);
+            assert!(mob.can_breathe_under_water(), "Glow squid breathes underwater");
+            assert!(!mob.can_drown(), "Glow squid never drowns");
+            assert!(!glow_squid.is_pushed_by_fluids(), "Glow squid fluid push immune");
+            assert!(mob.dries_out_on_land());
+        }
+
+        // 3. Hoglin & Zoglin Attributes & Downcasts Parity
+        {
+            let hoglin = from_type(&EntityType::HOGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = hoglin.get_mob().expect("Hoglin is mob");
+            let living = hoglin.get_living_entity().expect("Hoglin is living");
+            assert!(mob.as_hoglin().is_some(), "Hoglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 40.0);
+
+            let zoglin = from_type(&EntityType::ZOGLIN, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = zoglin.get_mob().expect("Zoglin is mob");
+            let living = zoglin.get_living_entity().expect("Zoglin is living");
+            assert!(mob.as_zoglin().is_some(), "Zoglin downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 40.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.3);
+            assert_eq!(living.get_attribute_base(&Attributes::KNOCKBACK_RESISTANCE), 0.6);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_KNOCKBACK), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0);
+            assert_eq!(living.health.load(), 40.0);
+        }
+
+        world.level.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_strider_cubes_silverfish_endermite_parity() {
+        let (world, _temp_dir) = create_test_world();
+
+        // 1. Strider Suffocating Speed & Water Sensitivity Parity (Gap 95)
+        {
+            let strider_ent = from_type(&EntityType::STRIDER, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = strider_ent.get_mob().expect("Strider is mob");
+            let living = strider_ent.get_living_entity().expect("Strider is living");
+            let strider = mob.as_strider().expect("Strider downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 20.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+            assert_eq!(living.health.load(), 20.0);
+            assert!(mob.is_sensitive_to_water(), "Strider is sensitive to water");
+
+            // Out of lava / suffocating reduces speed by 34% (Strider.java:81-83)
+            strider.set_suffocating(true);
+            assert!(strider.is_suffocating());
+            let suffocating_speed = living.get_attribute_base(&Attributes::MOVEMENT_SPEED);
+            assert!((suffocating_speed - (0.175 * 0.66)).abs() < 1e-4);
+
+            // Back in lava restores base speed 0.175
+            strider.set_suffocating(false);
+            assert!(!strider.is_suffocating());
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.175);
+        }
+
+        // 2. Slime & Magma Cube Size Attributes Parity (Gap 95)
+        {
+            let slime_ent = from_type(&EntityType::SLIME, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = slime_ent.get_mob().expect("Slime is mob");
+            let living = slime_ent.get_living_entity().expect("Slime is living");
+            assert!(mob.as_cube_mob().is_some(), "CubeMob downcast");
+            let slime = mob.as_slime().expect("Slime downcast");
+            assert!(mob.as_magma_cube().is_none(), "Slime is not magma cube");
+
+            slime.set_size(1, true);
+            assert!(slime.is_tiny());
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 1.0);
+            assert_eq!(living.health.load(), 1.0);
+
+            slime.set_size(4, true);
+            assert!(!slime.is_tiny());
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 4.0);
+            assert_eq!(living.health.load(), 16.0);
+
+            let magma_ent = from_type(&EntityType::MAGMA_CUBE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = magma_ent.get_mob().expect("Magma cube is mob");
+            let living = magma_ent.get_living_entity().expect("Magma cube is living");
+            assert!(mob.as_cube_mob().is_some(), "CubeMob downcast");
+            let magma = mob.as_magma_cube().expect("Magma cube downcast");
+            assert!(mob.as_slime().is_none(), "Magma cube is not slime");
+
+            magma.set_size(1, true);
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 1.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 3.0); // 1 + 2
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 3.0); // 1 * 3
+            assert_eq!(living.health.load(), 1.0);
+
+            magma.set_size(4, true);
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 16.0);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 6.0); // 4 + 2
+            assert_eq!(living.get_attribute_base(&Attributes::ARMOR), 12.0); // 4 * 3
+            assert_eq!(living.health.load(), 16.0);
+        }
+
+        // 3. Silverfish & Endermite Parity (Gap 96)
+        {
+            let silverfish_ent = from_type(&EntityType::SILVERFISH, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = silverfish_ent.get_mob().expect("Silverfish is mob");
+            let living = silverfish_ent.get_living_entity().expect("Silverfish is living");
+            assert!(mob.as_silverfish().is_some(), "Silverfish downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 1.0);
+            assert_eq!(living.health.load(), 8.0);
+
+            let endermite_ent = from_type(&EntityType::ENDERMITE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
+            let mob = endermite_ent.get_mob().expect("Endermite is mob");
+            let living = endermite_ent.get_living_entity().expect("Endermite is living");
+            assert!(mob.as_endermite().is_some(), "Endermite downcast");
+            assert_eq!(living.get_attribute_base(&Attributes::MAX_HEALTH), 8.0);
+            assert_eq!(living.get_attribute_base(&Attributes::MOVEMENT_SPEED), 0.25);
+            assert_eq!(living.get_attribute_base(&Attributes::ATTACK_DAMAGE), 2.0);
+            assert_eq!(living.health.load(), 8.0);
+        }
+
+        world.level.shutdown().await;
+    }
 }
+
+

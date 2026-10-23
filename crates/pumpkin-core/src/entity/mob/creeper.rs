@@ -3,6 +3,8 @@ use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::{
     entity::EntityType,
@@ -20,7 +22,7 @@ use crate::entity::{
         active_target::ActiveTargetGoal, avoid_entity::AvoidEntityGoal,
         creeper_ignite::CreeperIgniteGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
-        swim::SwimGoal, wander_around::WanderAroundGoal,
+        swim::SwimGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{Mob, MobEntity},
     player::Player,
@@ -43,6 +45,14 @@ pub struct CreeperEntity {
 impl CreeperEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.25);
+        mob_entity.living_entity.health.store(20.0);
+
         let entity = Self {
             mob_entity,
             fuse_speed: AtomicI32::new(-1),
@@ -82,7 +92,7 @@ impl CreeperEntity {
                 Box::new(AvoidEntityGoal::new(&EntityType::CAT, 6.0, 1.0, 1.2)),
             );
             goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, false)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(0.8)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.8)));
 
             goal_selector.add_goal(
                 6,
@@ -230,6 +240,17 @@ impl Mob for CreeperEntity {
         self.mob_entity
             .living_entity
             .on_lightning_strike(caller, lightning);
+    }
+
+    fn on_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        if damage_type.id == DamageType::FALL.id {
+            let fall_distance = self.mob_entity.living_entity.fall_distance.load();
+            let added_swell = (fall_distance * 1.5) as i32;
+            let max_swell = self.fuse_time.load(Ordering::Relaxed);
+            let current = self.current_fuse_time.load(Ordering::Relaxed);
+            let new_swell = (current + added_swell).min(max_swell - 5);
+            self.current_fuse_time.store(new_swell.max(current), Ordering::Relaxed);
+        }
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {

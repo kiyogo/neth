@@ -3,6 +3,8 @@ use std::sync::{
     atomic::{AtomicI32, AtomicU8, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -15,10 +17,11 @@ use crate::entity::{
     Entity, EntityBase,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
-        breed::BreedGoal, climb_on_top_of_powder_snow::ClimbOnTopOfPowderSnowGoal,
-        escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
-        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        avoid_entity::AvoidEntityGoal, breed::BreedGoal,
+        climb_on_top_of_powder_snow::ClimbOnTopOfPowderSnowGoal, escape_danger::EscapeDangerGoal,
+        follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
+        look_at_entity::LookAtEntityGoal, swim::SwimGoal, tempt::TemptGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -101,17 +104,61 @@ impl FoxEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(0, Box::new(ClimbOnTopOfPowderSnowGoal));
-            goal_selector.add_goal(1, EscapeDangerGoal::new(1.5));
+            goal_selector.add_goal(1, EscapeDangerGoal::new(2.2));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(3, Box::new(TemptGoal::new(1.2, FOX_FOOD, false)));
-            goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.1)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(
+                4,
+                Box::new(AvoidEntityGoal::new(&EntityType::PLAYER, 16.0, 1.6, 1.4)),
+            );
+            goal_selector.add_goal(
+                4,
+                Box::new(AvoidEntityGoal::new(&EntityType::WOLF, 8.0, 1.6, 1.4)),
+            );
+            goal_selector.add_goal(
+                4,
+                Box::new(AvoidEntityGoal::new(&EntityType::POLAR_BEAR, 8.0, 1.6, 1.4)),
+            );
+            goal_selector.add_goal(5, Box::new(FollowParentGoal::new(1.25)));
+            goal_selector.add_goal(6, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(
                 7,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 24.0),
             );
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
+
+        // Vanilla Fox: MOVEMENT_SPEED = 0.3, MAX_HEALTH = 10.0, ATTACK_DAMAGE = 2.0, SAFE_FALL_DISTANCE = 5.0, FOLLOW_RANGE = 32.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 2.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(fall) = attributes.get_mut(&Attributes::SAFE_FALL_DISTANCE.id) {
+                fall.base_value = 5.0;
+                fall.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                follow.base_value = 32.0;
+                follow.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(10.0);
+        mob_arc.mob_entity.set_can_pick_up_loot(true);
 
         mob_arc
     }
@@ -243,6 +290,22 @@ impl Mob for FoxEntity {
 
     fn as_animal(&self) -> Option<&dyn Animal> {
         Some(self)
+    }
+
+    fn as_fox(&self) -> Option<&FoxEntity> {
+        Some(self)
+    }
+
+    /// Vanilla `SweetBerryBushBlock`: foxes are immune to sweet berry bush damage.
+    fn pre_damage(
+        &self,
+        damage_type: DamageType,
+        _source: Option<&dyn EntityBase>,
+    ) -> bool {
+        if damage_type == DamageType::SWEET_BERRY_BUSH {
+            return false;
+        }
+        true
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {

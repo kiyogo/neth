@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -16,7 +17,7 @@ use crate::entity::{
     ai::goal::{
         escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, swim::SwimGoal, tempt::TemptGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -48,6 +49,35 @@ impl CamelHuskEntity {
             flags: AtomicU8::new(0),
             dashing: AtomicBool::new(false),
         };
+
+        // Initialize attributes: Max Health = 32.0, Movement Speed = 0.09, Step Height = 1.5, Jump Strength = 0.42
+        {
+            let mut attributes = camel
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 32.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.09;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.5;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(jump) = attributes.get_mut(&Attributes::JUMP_STRENGTH.id) {
+                jump.base_value = 0.42;
+                jump.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        camel.mob_entity.living_entity.health.store(32.0);
+
         let mob_arc = Arc::new(camel);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -62,9 +92,9 @@ impl CamelHuskEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
-            goal_selector.add_goal(1, EscapeDangerGoal::new(2.0));
-            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, TEMPT_ITEMS, false)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(0.7)));
+            goal_selector.add_goal(1, EscapeDangerGoal::new(4.0));
+            goal_selector.add_goal(3, Box::new(TemptGoal::new(2.5, TEMPT_ITEMS, false)));
+            goal_selector.add_goal(6, Box::new(WaterAvoidingRandomStrollGoal::new(2.0)));
             goal_selector.add_goal(
                 7,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -234,6 +264,10 @@ impl Mob for CamelHuskEntity {
 
     fn set_saddled(&self, saddled: bool) {
         self.set_flag(FLAG_SADDLE, saddled);
+    }
+
+    fn get_max_head_rotation(&self) -> f32 {
+        30.0
     }
 }
 

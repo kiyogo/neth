@@ -25,7 +25,7 @@ use crate::entity::{
     ai::goal::{
         Controls, Goal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{Mob, MobEntity},
 };
@@ -514,8 +514,8 @@ impl WardenEntity {
                 3,
                 Box::new(WardenSonicBoomGoal::new(Arc::downgrade(&mob_arc))),
             );
-            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, true)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(0.5)));
+            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.2, true)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.5)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),

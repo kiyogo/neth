@@ -1,8 +1,9 @@
-use pumpkin_data::damage::DamageType;
 use crossbeam::atomic::AtomicCell;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
@@ -39,6 +40,22 @@ impl GlowSquidEntity {
             air_supply: AtomicI32::new(300),
             dark_ticks_remaining: AtomicI32::new(0),
         };
+
+        // Vanilla Glow Squid attributes: MAX_HEALTH = 10.0
+        {
+            let mut attributes = glow_squid
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        glow_squid.mob_entity.living_entity.set_health(10.0);
+
         Arc::new(glow_squid)
     }
 }
@@ -52,12 +69,24 @@ impl Mob for GlowSquidEntity {
         Some(self)
     }
 
+    fn as_glow_squid(&self) -> Option<&GlowSquidEntity> {
+        Some(self)
+    }
+
     fn is_pushed_by_fluids(&self) -> bool {
         false
     }
 
     fn can_breathe_underwater(&self) -> bool {
         true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
     }
 
     fn dries_out_on_land(&self) -> bool {

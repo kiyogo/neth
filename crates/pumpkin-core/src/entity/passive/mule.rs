@@ -4,6 +4,7 @@ use std::sync::{
 };
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -18,7 +19,7 @@ use crate::entity::{
     ai::goal::{
         escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -65,6 +66,41 @@ impl MuleEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Mule (AbstractChestedHorse): MAX_HEALTH = 53.0, MOVEMENT_SPEED = 0.175, JUMP_STRENGTH = 0.5, STEP_HEIGHT = 1.0, SAFE_FALL_DISTANCE = 6.0, FALL_DAMAGE_MULTIPLIER = 0.5
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 53.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.175;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(jump) = attributes.get_mut(&Attributes::JUMP_STRENGTH.id) {
+                jump.base_value = 0.5;
+                jump.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(safe_fall) = attributes.get_mut(&Attributes::SAFE_FALL_DISTANCE.id) {
+                safe_fall.base_value = 6.0;
+                safe_fall.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(fall_mult) = attributes.get_mut(&Attributes::FALL_DAMAGE_MULTIPLIER.id) {
+                fall_mult.base_value = 0.5;
+                fall_mult.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(53.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -76,7 +112,7 @@ impl MuleEntity {
             goal_selector.add_goal(1, EscapeDangerGoal::new(1.2));
             goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, TEMPT_ITEMS, false)));
             goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.0)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(0.7)));
+            goal_selector.add_goal(6, Box::new(WaterAvoidingRandomStrollGoal::new(0.7)));
             goal_selector.add_goal(
                 7,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -188,6 +224,10 @@ impl Mob for MuleEntity {
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
+        Some(self)
+    }
+
+    fn as_mule(&self) -> Option<&MuleEntity> {
         Some(self)
     }
 

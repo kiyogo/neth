@@ -21,7 +21,7 @@ pub struct ParchedSkeletonEntity {
 
 impl ParchedSkeletonEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
-        let entity = SkeletonEntityBase::new(entity);
+        let entity = SkeletonEntityBase::new_with_attack_interval(entity, 50);
 
         // Vanilla: Attributes.MAX_HEALTH = 16.0
         {

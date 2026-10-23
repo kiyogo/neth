@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::effect::StatusEffect;
@@ -12,13 +13,14 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::tracked_data;
 
+use crate::entity::attributes::{Modifier, ModifierOperation};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, ranged_attack::RangedAttackGoal, revenge::RevengeGoal,
-        swim::SwimGoal, wander_around::WanderAroundGoal,
+        swim::SwimGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{
         Mob, MobEntity, RangedAttackMob,
@@ -64,6 +66,14 @@ impl WitchEntity {
     #[must_use]
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 26.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.25);
+        mob_entity.living_entity.health.store(26.0);
+
         let witch = Self {
             mob_entity,
             raider_data: RaiderData::default(),
@@ -97,12 +107,12 @@ impl WitchEntity {
                 2,
                 Box::new(RangedAttackGoal::new(ranged_weak, 1.0, 60, 10.0)),
             );
+            goal_selector.add_goal(2, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(3, Box::new(RaiderMoveThroughVillageGoal::new(1.05)));
-            goal_selector.add_goal(3, Box::new(PathfindToRaidGoal::default()));
-            goal_selector.add_goal(4, Box::new(RaiderCelebrationGoal));
-            goal_selector.add_goal(4, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(4, Box::new(PathfindToRaidGoal::default()));
+            goal_selector.add_goal(5, Box::new(RaiderCelebrationGoal));
             goal_selector.add_goal(
-                5,
+                6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
             goal_selector.add_goal(6, Box::new(RandomLookAroundGoal::default()));
@@ -269,6 +279,9 @@ impl Mob for WitchEntity {
                 self.set_drinking_potion(false);
                 if let Some(witch) = caller.cast_any().downcast_ref::<Self>() {
                     let living = &witch.mob_entity.living_entity;
+                    living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
+                        inst.remove_modifier("minecraft:drinking");
+                    });
                     let mut equipment = living
                         .entity_equipment
                         .lock()
@@ -332,6 +345,17 @@ impl Mob for WitchEntity {
 
                 self.using_time.store(32, Ordering::Relaxed);
                 self.set_drinking_potion(true);
+                if let Some(witch) = caller.cast_any().downcast_ref::<Self>() {
+                    let living = &witch.mob_entity.living_entity;
+                    living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
+                        inst.add_or_replace_modifier(Modifier {
+                            id: "minecraft:drinking".to_string(),
+                            amount: -0.25,
+                            operation: ModifierOperation::Add,
+                            permanent: false,
+                        });
+                    });
+                }
 
                 if !entity.silent.load(Ordering::Relaxed) {
                     let pos = entity.pos.load();

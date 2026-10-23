@@ -51,8 +51,16 @@ impl GiantEntity {
                     .dirty
                     .store(true, std::sync::atomic::Ordering::Relaxed);
             }
+            if let Some(camera) =
+                attributes.get_mut(&pumpkin_data::attributes::Attributes::CAMERA_DISTANCE.id)
+            {
+                camera.base_value = 16.0;
+                camera
+                    .dirty
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+            }
         }
-        mob_entity.living_entity.health.store(100.0);
+        mob_entity.living_entity.set_health(100.0);
 
         let giant = Self { mob_entity };
         let mob_arc = Arc::new(giant);

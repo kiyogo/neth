@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
@@ -14,11 +15,7 @@ use rand::RngExt;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
-    ai::goal::{
-        Controls, Goal,
-        look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal,
-    },
+    ai::goal::{Controls, Goal},
     mob::{Mob, MobEntity},
 };
 
@@ -61,6 +58,14 @@ impl PhantomEntity {
         let spawn_pos = entity.pos.load();
         let anchor = Vector3::new(spawn_pos.x, spawn_pos.y + 5.0, spawn_pos.z);
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 6.0);
+        mob_entity.living_entity.health.store(20.0);
+
         let phantom = Self {
             mob_entity,
             attack_phase: AtomicCell::new(PhantomAttackPhase::Circle),
@@ -71,10 +76,6 @@ impl PhantomEntity {
         };
         let mob_arc = Arc::new(phantom);
         let phantom_weak = Arc::downgrade(&mob_arc);
-        let mob_weak: Weak<dyn Mob> = {
-            let mob_dyn: Arc<dyn Mob> = mob_arc.clone();
-            Arc::downgrade(&mob_dyn)
-        };
 
         {
             let mut goal_selector = mob_arc
@@ -86,11 +87,6 @@ impl PhantomEntity {
             goal_selector.add_goal(1, Box::new(PhantomAttackStrategyGoal::new(phantom_weak.clone())));
             goal_selector.add_goal(2, Box::new(PhantomSweepAttackGoal::new(phantom_weak.clone())));
             goal_selector.add_goal(3, Box::new(PhantomCircleAroundAnchorGoal::new(phantom_weak)));
-            goal_selector.add_goal(
-                6,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
-            );
-            goal_selector.add_goal(6, Box::new(RandomLookAroundGoal::default()));
         };
 
         {
@@ -104,6 +100,16 @@ impl PhantomEntity {
         };
 
         mob_arc
+    }
+
+    pub fn set_phantom_size(&self, size: i32) {
+        let clamped = size.clamp(0, 64);
+        self.phantom_size.store(clamped, Ordering::Relaxed);
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_synced_data(tracked_data::phantom::ID_SIZE, clamped);
+        self.mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, (6 + clamped) as f64);
     }
 
     fn tick_flight(&self) {
@@ -278,7 +284,10 @@ impl Goal for PhantomSweepAttackGoal {
             let world = entity.world.load();
             let bb = entity.bounding_box.load().expand(16.0, 16.0, 16.0);
             let nearby = world.get_entities_at_box(&bb);
-            let has_cat = nearby.iter().any(|e| e.get_entity().entity_type == &EntityType::CAT);
+            let has_cat = nearby.iter().any(|e| {
+                let ent = e.get_entity();
+                ent.is_alive() && ent.entity_type == &EntityType::CAT
+            });
             if has_cat {
                 world.play_sound(
                     Sound::EntityCatHiss,
@@ -294,10 +303,11 @@ impl Goal for PhantomSweepAttackGoal {
         !self.is_scared_of_cat
     }
 
-    fn stop(&mut self, _mob: &dyn Mob) {
+    fn stop(&mut self, mob: &dyn Mob) {
         if let Some(phantom) = self.phantom.upgrade() {
             phantom.attack_phase.store(PhantomAttackPhase::Circle);
         }
+        mob.get_mob_entity().set_target(None);
     }
 
     fn tick(&mut self, mob: &dyn Mob) {
@@ -528,9 +538,7 @@ impl Mob for PhantomEntity {
             self.anchor_point.store(Vector3::new(f64::from(x), f64::from(y), f64::from(z)));
         }
         if let Some(size) = nbt.get_int("Size") {
-            self.phantom_size.store(size, Ordering::Relaxed);
-            let entity = self.get_entity();
-            entity.set_synced_data(tracked_data::phantom::ID_SIZE, size);
+            self.set_phantom_size(size);
         }
     }
 }

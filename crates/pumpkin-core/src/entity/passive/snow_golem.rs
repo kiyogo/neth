@@ -2,8 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::Block;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityType, MobCategory};
 use pumpkin_data::environment_attribute::EnvironmentAttribute;
 use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
@@ -19,7 +20,7 @@ use crate::entity::{
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, ranged_attack::RangedAttackGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     item::ItemEntity,
@@ -51,6 +52,25 @@ impl SnowGolemEntity {
             Arc::downgrade(&ranged_arc)
         };
 
+        // Vanilla SnowGolem: MAX_HEALTH = 4.0, MOVEMENT_SPEED = 0.2
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 4.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.2;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(4.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -67,7 +87,7 @@ impl SnowGolemEntity {
                 1,
                 Box::new(RangedAttackGoal::new(ranged_weak, 1.25, 20, 10.0)),
             );
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -76,7 +96,9 @@ impl SnowGolemEntity {
 
             target_selector.add_goal(
                 1,
-                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::ZOMBIE, true),
+                ActiveTargetGoal::predicated(&mob_arc.mob_entity, 10, true, |living, _world| {
+                    living.entity.entity_type.category == &MobCategory::MONSTER
+                }),
             );
         };
 
@@ -156,6 +178,10 @@ impl Shearable for SnowGolemEntity {
 }
 
 impl Mob for SnowGolemEntity {
+    fn as_snow_golem(&self) -> Option<&SnowGolemEntity> {
+        Some(self)
+    }
+
     fn as_shearable(&self) -> Option<&dyn Shearable> {
         Some(self)
     }

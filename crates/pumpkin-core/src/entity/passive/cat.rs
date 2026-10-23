@@ -5,6 +5,7 @@ use std::sync::{
 
 use pumpkin_data::cat_sound_variant::CatSoundVariant;
 use pumpkin_data::cat_variant::CatVariant;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::{EntityPose, EntityStatus, EntityType};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -148,6 +149,29 @@ impl CatEntity {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
         };
+
+        // Vanilla Cat: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 3.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(10.0);
         // Captured by the tempt goal, which re-reads the tame state from the cat on every start
         // attempt (`CatTemptGoal#canUse`).
         let tempt_weak = mob_arc.weak_ref();
@@ -435,6 +459,27 @@ impl Mob for CatEntity {
 
     fn as_tamable(&self) -> Option<&dyn TamableAnimal> {
         Some(self)
+    }
+
+    fn get_ambient_sound(&self) -> Option<pumpkin_data::sound::Sound> {
+        let is_baby = self.get_entity().age.load(Ordering::Relaxed) < 0;
+        let sound_variant = CatSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
+            .unwrap_or_default();
+        if self.is_tame() {
+            if self.mob_entity.is_in_love() {
+                Some(sound_variant.purr_sound(is_baby))
+            } else if rand::random_range(0..4) == 0 {
+                Some(sound_variant.purreow_sound(is_baby))
+            } else {
+                Some(sound_variant.ambient_sound(is_baby))
+            }
+        } else {
+            Some(sound_variant.stray_ambient_sound())
+        }
+    }
+
+    fn get_ambient_sound_interval(&self) -> i32 {
+        120
     }
 
     /// Vanilla `Cat.customServerAiStep`: the pose and sprint state follow the speed the

@@ -4,6 +4,7 @@ use std::sync::{
 };
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -21,7 +22,8 @@ use crate::entity::{
         active_target::ActiveTargetGoal, breed::BreedGoal, escape_danger::EscapeDangerGoal,
         follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, ranged_attack::RangedAttackGoal, revenge::RevengeGoal,
-        swim::SwimGoal, tempt::TemptGoal, wander_around::WanderAroundGoal,
+        swim::SwimGoal, tempt::TemptGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity, RangedAttackMob},
@@ -116,6 +118,41 @@ impl TraderLlamaEntity {
             Arc::downgrade(&ranged_arc)
         };
 
+        // Vanilla TraderLlama (AbstractChestedHorse): MAX_HEALTH = 53.0, MOVEMENT_SPEED = 0.175, JUMP_STRENGTH = 0.5, STEP_HEIGHT = 1.0, SAFE_FALL_DISTANCE = 6.0, FALL_DAMAGE_MULTIPLIER = 0.5
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 53.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.175;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(jump) = attributes.get_mut(&Attributes::JUMP_STRENGTH.id) {
+                jump.base_value = 0.5;
+                jump.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(safe_fall) = attributes.get_mut(&Attributes::SAFE_FALL_DISTANCE.id) {
+                safe_fall.base_value = 6.0;
+                safe_fall.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(fall_mult) = attributes.get_mut(&Attributes::FALL_DAMAGE_MULTIPLIER.id) {
+                fall_mult.base_value = 0.5;
+                fall_mult.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(53.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -129,7 +166,7 @@ impl TraderLlamaEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
-            goal_selector.add_goal(1, EscapeDangerGoal::new(1.2));
+            goal_selector.add_goal(1, EscapeDangerGoal::new(2.0));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(
                 3,
@@ -137,7 +174,7 @@ impl TraderLlamaEntity {
             );
             goal_selector.add_goal(4, Box::new(TemptGoal::new(1.25, TEMPT_ITEMS, false)));
             goal_selector.add_goal(5, Box::new(FollowParentGoal::new(1.0)));
-            goal_selector.add_goal(7, Box::new(WanderAroundGoal::new(0.7)));
+            goal_selector.add_goal(7, Box::new(WaterAvoidingRandomStrollGoal::new(0.7)));
             goal_selector.add_goal(
                 8,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -147,7 +184,42 @@ impl TraderLlamaEntity {
             target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
             target_selector.add_goal(
                 2,
-                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::WOLF, true),
+                ActiveTargetGoal::predicated(&mob_arc.mob_entity, 16, true, |target, _world| {
+                    target.entity.entity_type == &EntityType::WOLF
+                        && target
+                            .get_mob()
+                            .and_then(|m| m.as_tamable())
+                            .is_none_or(|t| !t.is_tamed())
+                }),
+            );
+            // Vanilla TraderLlama defends WanderingTrader against zombies and illagers
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::ZOMBIE, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::HUSK, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::DROWNED, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::PILLAGER, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::VINDICATOR, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::EVOKER, true),
+            );
+            target_selector.add_goal(
+                2,
+                ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::ILLUSIONER, true),
             );
         };
 
@@ -308,6 +380,10 @@ impl Mob for TraderLlamaEntity {
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
+        Some(self)
+    }
+
+    fn as_trader_llama(&self) -> Option<&TraderLlamaEntity> {
         Some(self)
     }
 

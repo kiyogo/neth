@@ -2,6 +2,7 @@ use crossbeam::atomic::AtomicCell;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Arc;
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -37,6 +38,22 @@ impl SquidEntity {
             rotate_speed: AtomicCell::new(0.0),
             air_supply: AtomicI32::new(300),
         };
+
+        // Vanilla Squid attributes: MAX_HEALTH = 10.0
+        {
+            let mut attributes = squid
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        squid.mob_entity.living_entity.set_health(10.0);
+
         Arc::new(squid)
     }
 }
@@ -50,12 +67,24 @@ impl Mob for SquidEntity {
         Some(self)
     }
 
+    fn as_squid(&self) -> Option<&SquidEntity> {
+        Some(self)
+    }
+
     fn is_pushed_by_fluids(&self) -> bool {
         false
     }
 
     fn can_breathe_underwater(&self) -> bool {
         true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
     }
 
     fn dries_out_on_land(&self) -> bool {

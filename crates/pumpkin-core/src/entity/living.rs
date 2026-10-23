@@ -3423,6 +3423,13 @@ impl LivingEntity {
             return false;
         }
 
+        if let Some(mob) = caller.get_mob() {
+            if !mob.pre_damage(damage_type, source.or(cause)) {
+                return false;
+            }
+            amount = mob.adjust_damage_amount(amount, &damage_type);
+        }
+
         let mut damage_event =
             crate::plugin::api::events::entity::entity_damage::EntityDamageEvent::new(
                 self.entity.entity_id,
@@ -3881,6 +3888,10 @@ impl LivingEntity {
                     .fire_blocking(&server, &mut death_event);
             }
             self.on_death(damage_type, source, cause);
+        }
+
+        if let Some(mob) = caller.get_mob() {
+            mob.on_damage(damage_type, source.or(cause));
         }
 
         true

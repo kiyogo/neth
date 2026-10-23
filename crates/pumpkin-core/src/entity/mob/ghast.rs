@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -35,6 +36,20 @@ impl GhastEntity {
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 10.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, 100.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::CAMERA_DISTANCE, 8.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FLYING_SPEED, 0.06);
+        mob_entity.living_entity.health.store(10.0);
+
         let ghast = Self {
             mob_entity,
             is_charging: AtomicBool::new(false),
@@ -72,7 +87,8 @@ impl GhastEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            // Priority 1: Target nearest player within vertical proximity
+            // Priority 1: Target nearest player within vertical proximity (Math.abs(target.getY() - this.getY()) <= 4.0)
+            let ghast_weak = Arc::downgrade(&mob_arc);
             target_selector.add_goal(
                 1,
                 Box::new(ActiveTargetGoal::new(
@@ -81,7 +97,13 @@ impl GhastEntity {
                     10,
                     true,
                     false,
-                    Some(|_target: &LivingEntity, _world: &World| true),
+                    Some(move |target: &LivingEntity, _world: &World| {
+                        ghast_weak.upgrade().is_some_and(|ghast| {
+                            let ghast_y = ghast.mob_entity.living_entity.entity.pos.load().y;
+                            let target_y = target.entity.pos.load().y;
+                            (target_y - ghast_y).abs() <= 4.0
+                        })
+                    }),
                 )),
             );
         };

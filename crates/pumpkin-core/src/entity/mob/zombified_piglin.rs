@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::entity::EntityType;
@@ -16,7 +17,7 @@ use crate::entity::{
     ai::goal::{
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         melee_attack::MeleeAttackGoal, revenge::RevengeGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{
         Mob, MobEntity,
@@ -42,6 +43,23 @@ impl ZombifiedPiglinEntity {
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, 35.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 5.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ARMOR, 2.0);
+        mob_entity.living_entity.health.store(20.0);
+
         let piglin = Self {
             mob_entity,
             neutral_data: NeutralData::default(),
@@ -63,7 +81,7 @@ impl ZombifiedPiglinEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(2, Box::new(MeleeAttackGoal::new(1.0, true)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),

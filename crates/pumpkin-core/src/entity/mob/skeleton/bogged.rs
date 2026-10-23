@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::data_component_impl::{PotionContentsImpl, StatusEffectInstance};
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -28,7 +29,22 @@ pub struct BoggedSkeletonEntity {
 
 impl BoggedSkeletonEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
-        let entity = SkeletonEntityBase::new(entity);
+        let entity = SkeletonEntityBase::new_with_attack_interval(entity, 50);
+
+        // Vanilla Bogged: Attributes.MAX_HEALTH = 16.0
+        {
+            let mut attributes = entity
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 16.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+
         let bogged = Self {
             entity,
             sheared: AtomicBool::new(false),

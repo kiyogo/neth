@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicI32, AtomicI64, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -121,6 +122,29 @@ impl CopperGolemEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla CopperGolem: MOVEMENT_SPEED = 0.2, STEP_HEIGHT = 1.0, MAX_HEALTH = 12.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 12.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.2;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(12.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -216,6 +240,18 @@ impl Mob for CopperGolemEntity {
         if let Some(state) = nbt.get_int("weather_state") {
             self.set_weather_state(WeatherState::from_id(state));
         }
+    }
+
+    fn as_copper_golem(&self) -> Option<&CopperGolemEntity> {
+        Some(self)
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
     }
 
     fn get_mob_entity(&self) -> &MobEntity {

@@ -11,6 +11,7 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tag::Taggable;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::java::client::play::CEntityStatus;
 use pumpkin_util::math::position::BlockPos;
@@ -23,7 +24,7 @@ use crate::entity::{
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{Mob, MobEntity},
     player::Player,
@@ -42,6 +43,10 @@ pub const CREAKING_GRAY: i32 = 6250335;
 pub const INVULNERABILITY_ANIMATION_DURATION: i32 = 8;
 pub const TWITCH_DEATH_DURATION: i32 = 45;
 pub const MAX_PLAYER_STUCK_COUNTER: i32 = 4;
+
+fn creaking_can_move(mob: &dyn Mob) -> bool {
+    mob.as_creaking().map_or(true, |c| c.can_move())
+}
 
 pub struct CreakingEntity {
     pub mob_entity: MobEntity,
@@ -120,8 +125,8 @@ impl CreakingEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
-            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, true)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, true).gated_by(creaking_can_move)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.3)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),
@@ -504,10 +509,41 @@ impl Mob for CreakingEntity {
         }
     }
 
+    fn as_creaking(&self) -> Option<&CreakingEntity> {
+        Some(self)
+    }
+
+    fn get_min_attack_interval(&self) -> Option<i32> {
+        Some(ATTACK_INTERVAL)
+    }
+
+    fn burns_in_daylight(&self) -> bool {
+        false
+    }
+
+    fn can_drown(&self) -> bool {
+        false
+    }
+
+    fn on_attack(&self, _target: &dyn EntityBase) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.attack_animation_remaining_ticks
+            .store(ATTACK_ANIMATION_DURATION, Ordering::Relaxed);
+        let world = entity.world.load();
+        world.broadcast_to_chunk(
+            entity.chunk_pos.load(),
+            &CEntityStatus::new(entity.entity_id, 4),
+        );
+        self.play_sound(Sound::EntityCreakingAttack);
+    }
+
     fn pre_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) -> bool {
         let entity = &self.mob_entity.living_entity.entity;
 
-        if self.is_heart_bound() && damage_type != DamageType::OUT_OF_WORLD {
+        if self.is_heart_bound()
+            && !damage_type
+                .has_tag(&pumpkin_data::tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY)
+        {
             if self
                 .invulnerability_animation_remaining_ticks
                 .load(Ordering::Relaxed)
@@ -515,7 +551,7 @@ impl Mob for CreakingEntity {
                 && entity.is_alive()
             {
                 self.invulnerability_animation_remaining_ticks
-                    .store(8, Ordering::Relaxed);
+                    .store(INVULNERABILITY_ANIMATION_DURATION, Ordering::Relaxed);
 
                 let world = entity.world.load();
                 world.broadcast_to_chunk(

@@ -17,7 +17,8 @@ use crate::entity::{
         active_target::ActiveTargetGoal, defend_village::DefendVillageTargetGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         melee_attack::MeleeAttackGoal, move_towards_target::MoveTowardsTargetGoal,
-        offer_flower::OfferFlowerGoal, revenge::RevengeGoal, wander_around::WanderAroundGoal,
+        offer_flower::OfferFlowerGoal, revenge::RevengeGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{
@@ -68,7 +69,7 @@ impl IronGolemEntity {
 
             goal_selector.add_goal(1, Box::new(MeleeAttackGoal::new(1.0, true)));
             goal_selector.add_goal(2, Box::new(MoveTowardsTargetGoal::new(0.9, 32.0)));
-            goal_selector.add_goal(4, Box::new(WanderAroundGoal::new(0.6)));
+            goal_selector.add_goal(4, Box::new(WaterAvoidingRandomStrollGoal::new(0.6)));
             goal_selector.add_goal(5, Box::new(OfferFlowerGoal::new()));
             goal_selector.add_goal(
                 7,
@@ -174,6 +175,14 @@ impl Mob for IronGolemEntity {
 
     fn as_iron_golem(&self) -> Option<&crate::entity::passive::iron_golem::IronGolemEntity> {
         Some(self)
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {

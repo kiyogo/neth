@@ -44,18 +44,31 @@ impl ZombieNautilusEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
 
-        // Vanilla: Attributes.MOVEMENT_SPEED = 1.1F
+        // Vanilla AbstractNautilus / ZombieNautilus: MAX_HEALTH = 15.0, MOVEMENT_SPEED = 1.1, ATTACK_DAMAGE = 3.0, KNOCKBACK_RESISTANCE = 0.3
         {
             let mut attributes = mob_entity
                 .living_entity
                 .attributes
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 15.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
                 speed.base_value = 1.1;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 3.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(kb) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
+                kb.base_value = 0.3;
+                kb.dirty.store(true, Ordering::Relaxed);
+            }
         }
+        mob_entity.living_entity.set_health(15.0);
 
         let nautilus = Self {
             mob_entity,
@@ -189,6 +202,10 @@ impl CustomSound for ZombieNautilusEntity {
 }
 
 impl Mob for ZombieNautilusEntity {
+    fn as_zombie_nautilus(&self) -> Option<&ZombieNautilusEntity> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -196,6 +213,18 @@ impl Mob for ZombieNautilusEntity {
     /// Water animals never drown.
     fn can_breathe_underwater(&self) -> bool {
         true
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
+    }
+
+    fn is_pushed_by_fluids(&self) -> bool {
+        false
     }
 
     /// WaterAnimal.handleAirSupply.

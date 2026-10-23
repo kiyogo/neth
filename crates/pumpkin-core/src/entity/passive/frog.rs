@@ -3,6 +3,8 @@ use std::sync::{
     atomic::{AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -15,8 +17,9 @@ use crate::entity::{
     Entity, EntityBase,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
-        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        breed::BreedGoal, escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
+        look_at_entity::LookAtEntityGoal, swim::SwimGoal, tempt::TemptGoal,
+        wander_around::WanderAroundGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -47,6 +50,35 @@ impl FrogEntity {
             variant: AtomicI32::new(FrogVariant::Temperate.id() as i32),
             tongue_target_id: AtomicI32::new(-1),
         };
+
+        // Initialize attributes: Max Health = 10.0, Movement Speed = 1.0, Attack Damage = 10.0, Step Height = 1.0
+        {
+            let mut attributes = frog
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 1.0;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 10.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        frog.mob_entity.living_entity.health.store(10.0);
+
         let mob_arc = Arc::new(frog);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -61,13 +93,15 @@ impl FrogEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
-            goal_selector.add_goal(1, Box::new(TemptGoal::new(1.0, FROG_FOOD, false)));
-            goal_selector.add_goal(2, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(1, EscapeDangerGoal::new(2.0));
+            goal_selector.add_goal(2, BreedGoal::new(1.0));
+            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, FROG_FOOD, false)));
+            goal_selector.add_goal(4, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
-                3,
+                5,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
             );
-            goal_selector.add_goal(4, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(6, Box::new(RandomLookAroundGoal::default()));
         };
 
         mob_arc
@@ -196,6 +230,26 @@ impl Mob for FrogEntity {
             }
         }
         res
+    }
+
+    fn get_max_head_rotation(&self) -> f32 {
+        5.0
+    }
+
+    fn can_drown(&self) -> bool {
+        false
+    }
+
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn adjust_damage_amount(&self, amount: f32, damage_type: &DamageType) -> f32 {
+        if *damage_type == DamageType::FALL {
+            (amount - 5.0).max(0.0)
+        } else {
+            amount
+        }
     }
 }
 

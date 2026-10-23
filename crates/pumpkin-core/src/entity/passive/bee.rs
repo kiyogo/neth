@@ -1,10 +1,12 @@
 use std::sync::{
-    Arc, Weak,
+    Arc,
     atomic::{AtomicI32, AtomicU8, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::Sound;
@@ -19,15 +21,15 @@ use crate::entity::{
         active_target::{ActiveTargetGoal, TargetCondition},
         breed::BreedGoal,
         follow_parent::FollowParentGoal,
-        look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal,
         melee_attack::MeleeAttackGoal,
         reset_universal_anger::ResetUniversalAngerGoal,
         revenge::RevengeGoal,
         swim::SwimGoal,
         tempt::TemptGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_flying::WaterAvoidingRandomFlyingGoal,
     },
+    ai::control::flying_move_control::FlyingMoveControl,
+    ai::pathfinder::Navigator,
     custom_sound::CustomSound,
     mob::{
         Mob, MobEntity,
@@ -40,6 +42,27 @@ use crate::entity::{
 pub const FLAG_ROLL: u8 = 2;
 pub const FLAG_HAS_STUNG: u8 = 4;
 pub const FLAG_HAS_NECTAR: u8 = 8;
+
+const TEMPT_ITEMS: &[&Item] = &[
+    &Item::DANDELION,
+    &Item::POPPY,
+    &Item::BLUE_ORCHID,
+    &Item::ALLIUM,
+    &Item::AZURE_BLUET,
+    &Item::RED_TULIP,
+    &Item::ORANGE_TULIP,
+    &Item::WHITE_TULIP,
+    &Item::PINK_TULIP,
+    &Item::OXEYE_DAISY,
+    &Item::CORNFLOWER,
+    &Item::LILY_OF_THE_VALLEY,
+    &Item::WITHER_ROSE,
+    &Item::SUNFLOWER,
+    &Item::LILAC,
+    &Item::ROSE_BUSH,
+    &Item::PEONY,
+    &Item::TORCHFLOWER,
+];
 
 fn is_angry(mob: &dyn Mob) -> bool {
     mob.as_neutral().is_some_and(NeutralMob::is_angry)
@@ -68,6 +91,16 @@ pub struct BeeEntity {
 impl BeeEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        *mob_entity
+            .move_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Box::new(FlyingMoveControl::new(20, true));
+        *mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::flying();
+
         let bee = Self {
             mob_entity,
             ageable_data: AgeableData::default(),
@@ -79,10 +112,33 @@ impl BeeEntity {
             time_since_sting: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(bee);
-        let mob_weak: Weak<dyn Mob> = {
-            let mob_arc: Arc<dyn Mob> = mob_arc.clone();
-            Arc::downgrade(&mob_arc)
-        };
+
+        // Vanilla Bee: MAX_HEALTH = 10.0, FLYING_SPEED = 0.6, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(flying) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
+                flying.base_value = 0.6;
+                flying.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 2.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(10.0);
 
         {
             let mut goal_selector = mob_arc
@@ -91,20 +147,22 @@ impl BeeEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
+            // Vanilla Bee.registerGoals:
+            // 0: BeeAttackGoal(1.4)
+            // 2: BreedGoal(1.0)
+            // 3: TemptGoal(1.25)
+            // 5: FollowParentGoal(1.25)
+            // 8: BeeWanderGoal(1.0)
+            // 9: FloatGoal
             goal_selector.add_goal(
                 0,
                 Box::new(MeleeAttackGoal::new(1.4, true).gated_by(can_sting)),
             );
             goal_selector.add_goal(2, BreedGoal::new(1.0));
-            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, &[], false)));
+            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, TEMPT_ITEMS, false)));
             goal_selector.add_goal(5, Box::new(FollowParentGoal::new(1.25)));
-            goal_selector.add_goal(8, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(8, Box::new(WaterAvoidingRandomFlyingGoal::new(1.0)));
             goal_selector.add_goal(9, Box::new(SwimGoal::default()));
-            goal_selector.add_goal(
-                10,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
-            );
-            goal_selector.add_goal(11, Box::new(RandomLookAroundGoal::default()));
         };
 
         {
@@ -267,10 +325,24 @@ impl Mob for BeeEntity {
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         self.ageable_ai_step();
 
+        // Vanilla Bee.aiStep: shouldRoll = isAngry() && !hasStung() && getTarget() != null && getTarget().distanceToSqr(this) < 4.0;
+        let should_roll = is_angry(self)
+            && !self.has_stung()
+            && self.mob_entity.get_target().is_some_and(|target| {
+                let my_pos = self.get_entity().pos.load();
+                let t_pos = target.get_entity().pos.load();
+                my_pos.squared_distance_to(t_pos.x, t_pos.y, t_pos.z) < 4.0
+            });
+        self.set_rolling(should_roll);
+
         if self.has_stung() {
             let time = self.time_since_sting.fetch_add(1, Ordering::Relaxed) + 1;
-            if time >= 1200 {
-                self.mob_entity.living_entity.set_health(0.0);
+            // Vanilla Bee.customServerAiStep: timeSinceSting % 5 == 0 && random.nextInt(clamp(1200 - timeSinceSting, 1, 1200)) == 0
+            if time % 5 == 0 {
+                let remaining = (1200 - time).clamp(1, 1200) as u32;
+                if time >= 1200 || rand::random_range(0..remaining) == 0 {
+                    self.mob_entity.living_entity.set_health(0.0);
+                }
             }
         }
     }

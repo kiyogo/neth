@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -14,7 +15,7 @@ use crate::entity::{
     Entity, EntityBase,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
-        breed::BreedGoal, escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
+        breed::BreedGoal, escape_danger::EscapeDangerGoal,
         look_at_entity::LookAtEntityGoal, tempt::TemptGoal,
         try_find_water::TryFindWaterGoal, wander_around::WanderAroundGoal,
     },
@@ -63,6 +64,29 @@ impl TurtleEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Turtle: MAX_HEALTH = 30.0, MOVEMENT_SPEED = 0.25, STEP_HEIGHT = 1.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 30.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.25;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(30.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -70,16 +94,16 @@ impl TurtleEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(TryFindWaterGoal));
-            goal_selector.add_goal(1, EscapeDangerGoal::new(1.2));
-            goal_selector.add_goal(3, BreedGoal::new(1.0));
-            goal_selector.add_goal(4, Box::new(TemptGoal::new(1.1, TEMPT_ITEMS, false)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            // Vanilla Turtle: 0 Panic(1.2), 1 Breed(1.0), 2 Tempt(1.1), 3 GoToWater(1.0), 8 LookAtPlayer(8.0), 9 Stroll(1.0)
+            goal_selector.add_goal(0, EscapeDangerGoal::new(1.2));
+            goal_selector.add_goal(1, BreedGoal::new(1.0));
+            goal_selector.add_goal(2, Box::new(TemptGoal::new(1.1, TEMPT_ITEMS, false)));
+            goal_selector.add_goal(3, Box::new(TryFindWaterGoal));
             goal_selector.add_goal(
-                6,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
+                8,
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
-            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(9, Box::new(WanderAroundGoal::new(1.0)));
         };
 
         mob_arc
@@ -133,11 +157,28 @@ impl Mob for TurtleEntity {
         true
     }
 
+    fn can_breathe_under_water(&self) -> bool {
+        true
+    }
+
+    fn can_drown(&self) -> bool {
+        false
+    }
+
+    /// Turtle.getAmbientSoundInterval in vanilla is 200.
+    fn get_ambient_sound_interval(&self) -> i32 {
+        200
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
 
     fn as_animal(&self) -> Option<&dyn Animal> {
+        Some(self)
+    }
+
+    fn as_turtle(&self) -> Option<&TurtleEntity> {
         Some(self)
     }
 

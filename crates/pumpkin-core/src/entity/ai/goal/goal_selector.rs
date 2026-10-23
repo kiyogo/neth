@@ -166,6 +166,11 @@ impl GoalSelector {
         self.disabled_controls.set(control, !enabled);
     }
 
+    #[must_use]
+    pub fn get_available_goals(&self) -> &[PrioritizedGoal] {
+        &self.goals
+    }
+
     fn get_goal_by_control(&mut self, control: Controls) -> Option<&mut PrioritizedGoal> {
         let i = self.goals_by_control[control.idx()];
         self.goals.get_mut(i)

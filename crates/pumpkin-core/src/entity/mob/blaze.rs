@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -13,7 +14,8 @@ use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, swim::SwimGoal, wander_around::WanderAroundGoal,
+        look_at_entity::LookAtEntityGoal, move_towards_restriction::MoveTowardsRestrictionGoal,
+        revenge::RevengeGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{Mob, MobEntity},
 };
@@ -34,7 +36,22 @@ impl BlazeEntity {
     pub const XP_REWARD: u32 = 10;
 
     pub fn new(entity: Entity) -> Arc<Self> {
-        let entity = Arc::new(MobEntity::new(entity));
+        let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 6.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, 48.0);
+        mob_entity.living_entity.health.store(20.0);
+
+        let entity = Arc::new(mob_entity);
         let blaze = Self {
             entity,
             is_charged: AtomicBool::new(false),
@@ -58,8 +75,6 @@ impl BlazeEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(SwimGoal::default()));
-
             goal_selector.add_goal(
                 4,
                 Box::new(
@@ -68,14 +83,19 @@ impl BlazeEntity {
                     ),
                 ),
             );
+            goal_selector.add_goal(5, Box::new(MoveTowardsRestrictionGoal::new(1.0)));
 
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(
+                7,
+                Box::new(WaterAvoidingRandomStrollGoal::with_probability(1.0, 0.0)),
+            );
             goal_selector.add_goal(
                 8,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
 
+            target_selector.add_goal(1, Box::new(RevengeGoal::new(true)));
             target_selector.add_goal(
                 2,
                 ActiveTargetGoal::with_default(&mob_arc.entity, &EntityType::PLAYER, true),

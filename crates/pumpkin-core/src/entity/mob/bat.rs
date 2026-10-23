@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering::Relaxed};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
@@ -32,6 +33,11 @@ pub struct BatEntity {
 impl BatEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 6.0);
+        mob_entity.living_entity.health.store(6.0);
+        mob_entity.living_entity.collides.store(false, Relaxed);
         let bat = Self {
             mob_entity,
             hanging_position: Mutex::new(None),

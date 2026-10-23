@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -53,6 +54,41 @@ impl HappyGhastEntity {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
         };
+
+        // Vanilla HappyGhast: MAX_HEALTH = 20.0, TEMPT_RANGE = 16.0, FLYING_SPEED = 0.05, MOVEMENT_SPEED = 0.05, FOLLOW_RANGE = 16.0, CAMERA_DISTANCE = 8.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 20.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(tempt) = attributes.get_mut(&Attributes::TEMPT_RANGE.id) {
+                tempt.base_value = 16.0;
+                tempt.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(fly) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
+                fly.base_value = 0.05;
+                fly.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.05;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                follow.base_value = 16.0;
+                follow.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(cam) = attributes.get_mut(&Attributes::CAMERA_DISTANCE.id) {
+                cam.base_value = 8.0;
+                cam.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(20.0);
 
         {
             let mut goal_selector = mob_arc
@@ -130,6 +166,19 @@ impl Animal for HappyGhastEntity {
 }
 
 impl Mob for HappyGhastEntity {
+    fn as_happy_ghast(&self) -> Option<&HappyGhastEntity> {
+        Some(self)
+    }
+
+    /// Vanilla HappyGhast.canBreatheUnderwater: baby can breathe underwater.
+    fn can_breathe_under_water(&self) -> bool {
+        self.is_baby()
+    }
+
+    fn can_drown(&self) -> bool {
+        !self.is_baby()
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }

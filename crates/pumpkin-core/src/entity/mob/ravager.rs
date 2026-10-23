@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -15,8 +16,8 @@ use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
-        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
+        swim::SwimGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{
         Mob, MobEntity,
@@ -53,6 +54,45 @@ impl RavagerEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Ravager: MAX_HEALTH = 100.0, MOVEMENT_SPEED = 0.3, KNOCKBACK_RESISTANCE = 0.75, ATTACK_DAMAGE = 12.0, ATTACK_KNOCKBACK = 1.5, FOLLOW_RANGE = 32.0, STEP_HEIGHT = 1.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 100.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(kb) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
+                kb.base_value = 0.75;
+                kb.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 12.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(attack_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
+                attack_kb.base_value = 1.5;
+                attack_kb.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(range) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
+                range.base_value = 32.0;
+                range.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
+                step.base_value = 1.0;
+                step.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(100.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -67,10 +107,10 @@ impl RavagerEntity {
             goal_selector.add_goal(4, Box::new(RaiderMoveThroughVillageGoal::new(1.05)));
             goal_selector.add_goal(4, Box::new(PathfindToRaidGoal::default()));
             goal_selector.add_goal(5, Box::new(RaiderCelebrationGoal));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.4)));
             goal_selector.add_goal(
                 6,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
             );
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
 
@@ -79,16 +119,25 @@ impl RavagerEntity {
                 .target_selector
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
+            target_selector.add_goal(2, Box::new(RevengeGoal::new(true)));
             target_selector.add_goal(
-                1,
+                3,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::PLAYER, true),
             );
             target_selector.add_goal(
-                2,
+                4,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::VILLAGER, true),
             );
             target_selector.add_goal(
-                3,
+                4,
+                ActiveTargetGoal::with_default(
+                    &mob_arc.mob_entity,
+                    &EntityType::WANDERING_TRADER,
+                    true,
+                ),
+            );
+            target_selector.add_goal(
+                4,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::IRON_GOLEM, true),
             );
         };
@@ -247,6 +296,29 @@ impl Mob for RavagerEntity {
 
         if self.attack_tick.load(Ordering::Relaxed) > 0 {
             self.attack_tick.fetch_sub(1, Ordering::Relaxed);
+        }
+
+        // Vanilla Ravager.aiStep: movement speed transitions (0.0 when immobile, 0.35 when targeting, 0.3 normal)
+        let target_speed = if self.is_immobile() {
+            0.0
+        } else if self.mob_entity.get_target().is_some() {
+            0.35
+        } else {
+            0.3
+        };
+        {
+            let mut attributes = self
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(speed_attr) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                if (speed_attr.base_value - target_speed).abs() > 1e-4 {
+                    speed_attr.base_value = target_speed;
+                    speed_attr.dirty.store(true, Ordering::Relaxed);
+                }
+            }
         }
 
         // Ambient sound

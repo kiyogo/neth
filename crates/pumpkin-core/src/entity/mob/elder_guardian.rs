@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
@@ -50,6 +51,36 @@ impl ElderGuardianEntity {
             tick_count: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(guardian);
+
+        // Vanilla Elder Guardian attributes: MAX_HEALTH = 80.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 8.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 80.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.3;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+                damage.base_value = 8.0;
+                damage.dirty.store(true, Ordering::Relaxed);
+            } else {
+                attributes.insert(
+                    Attributes::ATTACK_DAMAGE.id,
+                    crate::entity::attributes::AttributeInstance::new(8.0),
+                );
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(80.0);
+        mob_arc.mob_entity.persistence_required.store(true, Ordering::Relaxed);
+
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -64,11 +95,16 @@ impl ElderGuardianEntity {
 
             goal_selector.add_goal(4, Box::new(GuardianAttackGoal::new(true)));
             goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(7, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
-                6,
+                8,
                 LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),
             );
-            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(
+                8,
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::GUARDIAN, 12.0),
+            );
+            goal_selector.add_goal(9, Box::new(RandomLookAroundGoal::default()));
 
             let mut target_selector = mob_arc
                 .mob_entity

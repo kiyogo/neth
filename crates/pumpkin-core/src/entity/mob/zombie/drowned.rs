@@ -2,6 +2,7 @@ use std::f64::consts::FRAC_PI_2;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -58,6 +59,9 @@ impl DrownedEntity {
         });
 
         let mob_entity = &drowned.entity.mob_entity;
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, 1.0);
         let mut navigator = Navigator::amphibious(false);
         navigator.set_pathfinding_malus(PathType::Water, 0.0);
         *mob_entity
@@ -128,6 +132,10 @@ impl DrownedEntity {
         target_selector.add_goal(
             3,
             ActiveTargetGoal::with_default(mob_entity, &EntityType::VILLAGER, false),
+        );
+        target_selector.add_goal(
+            3,
+            ActiveTargetGoal::with_default(mob_entity, &EntityType::WANDERING_TRADER, false),
         );
         target_selector.add_goal(
             3,

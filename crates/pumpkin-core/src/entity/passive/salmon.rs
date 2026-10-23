@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_util::math::vector3::Vector3;
@@ -11,7 +12,6 @@ use crate::entity::{
     ai::control::fish_move_control::FishMoveControl,
     ai::goal::{
         avoid_entity::AvoidEntityGoal, escape_danger::EscapeDangerGoal,
-        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         random_swimming::RandomSwimmingGoal,
     },
     ai::pathfinder::{node::PathType, Navigator},
@@ -46,10 +46,21 @@ impl SalmonEntity {
             air_supply: AtomicI32::new(300),
         };
         let mob_arc = Arc::new(salmon);
-        let mob_weak: Weak<dyn Mob> = {
-            let mob_arc: Arc<dyn Mob> = mob_arc.clone();
-            Arc::downgrade(&mob_arc)
-        };
+
+        // Vanilla AbstractFish: MAX_HEALTH = 3.0
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 3.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(3.0);
 
         {
             let mut goal_selector = mob_arc
@@ -58,17 +69,15 @@ impl SalmonEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
+            // Priority 0: PanicGoal (EscapeDangerGoal 1.25)
             goal_selector.add_goal(0, EscapeDangerGoal::new(1.25));
+            // Priority 2: AvoidEntityGoal (Player, 8.0, 1.6, 1.4)
             goal_selector.add_goal(
-                1,
+                2,
                 Box::new(AvoidEntityGoal::new(&EntityType::PLAYER, 8.0, 1.6, 1.4)),
             );
-            goal_selector.add_goal(2, Box::new(RandomSwimmingGoal::new(1.0)));
-            goal_selector.add_goal(
-                3,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
-            );
-            goal_selector.add_goal(4, Box::new(RandomLookAroundGoal::default()));
+            // Priority 4: FishSwimGoal (RandomSwimmingGoal 1.0)
+            goal_selector.add_goal(4, Box::new(RandomSwimmingGoal::new(1.0)));
         };
 
         mob_arc

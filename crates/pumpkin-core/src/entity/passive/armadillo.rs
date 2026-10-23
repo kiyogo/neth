@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicI32, AtomicU64, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -18,7 +19,7 @@ use crate::entity::{
     ai::goal::{
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     item::ItemEntity,
     custom_sound::CustomSound,
@@ -133,6 +134,27 @@ impl ArmadilloEntity {
             scute_time: AtomicI32::new(pick_next_scute_drop_time()),
             danger_detected_recently_ticks: AtomicI32::new(0),
         };
+
+        // Initialize attributes: Max Health = 12.0, Movement Speed = 0.14
+        {
+            let mut attributes = armadillo
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 12.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.14;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        armadillo.mob_entity.living_entity.health.store(12.0);
+
         let mob_arc = Arc::new(armadillo);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -150,8 +172,8 @@ impl ArmadilloEntity {
             goal_selector.add_goal(1, EscapeDangerGoal::new_environmental(2.0));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, ARMADILLO_FOOD, false)));
-            goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.1)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.25)));
+            goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -304,6 +326,10 @@ impl Mob for ArmadilloEntity {
         Some(self)
     }
 
+    fn as_armadillo(&self) -> Option<&ArmadilloEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_string("state", self.get_state().name().to_string());
         nbt.put_int("scute_time", self.scute_time.load(Ordering::Relaxed));
@@ -447,6 +473,18 @@ impl Mob for ArmadilloEntity {
             return false;
         }
         self.animal_interact(player, item_stack, Sound::EntityArmadilloAmbient)
+    }
+
+    fn get_max_head_rotation(&self) -> f32 {
+        if self.is_scared() { 0.0 } else { 32.5 }
+    }
+
+    fn adjust_damage_amount(&self, amount: f32, _damage_type: &DamageType) -> f32 {
+        if self.is_scared() {
+            ((amount - 1.0) / 2.0).max(0.0)
+        } else {
+            amount
+        }
     }
 }
 

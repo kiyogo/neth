@@ -1,52 +1,108 @@
 {
-  "summary": {
-    "total_suites": 7,
-    "passed_suites": 6,
-    "failed_suites": 1,
-    "notes": "pumpkin-core failing compile due to E0308 type mismatch in login_acknowledged.rs. Other isolated crates compile and pass tests."
-  },
-  "suites": [
-    {
-      "suite": "pumpkin-command::unit_and_doctests",
-      "cases": 91,
-      "status": "PASS",
-      "duration_sec": 3.10
+  "audit_timestamp": "2026-10-23T19:45:00+07:00",
+  "minecraft_reference_version": "26.3",
+  "neth_supported_version": "26.3",
+  "total_tests_executed": 455,
+  "tests_passed": 455,
+  "tests_failed": 0,
+  "tests_ignored": 1,
+  "suites": {
+    "pumpkin-command": {
+      "passed": 91,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.19s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-world::placement_tests",
-      "cases": 9,
-      "status": "PASS",
-      "duration_sec": 23.52
+    "pumpkin-data": {
+      "passed": 134,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.04s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-world::village_path_projection",
+    "pumpkin-config": {
+      "passed": 31,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.11s",
+      "status": "PASSED"
+    },
+    "pumpkin-util": {
+      "passed": 89,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.32s",
+      "status": "PASSED"
+    },
+    "pumpkin-inventory": {
+      "passed": 35,
+      "failed": 0,
+      "ignored": 1,
+      "duration": "0.12s",
+      "status": "PASSED"
+    },
+    "pumpkin-world (placement)": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "23.60s",
+      "status": "PASSED"
+    },
+    "pumpkin-world (template)": {
+      "passed": 29,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "22.70s",
+      "status": "PASSED"
+    },
+    "pumpkin-world (session_lock)": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.02s",
+      "status": "PASSED"
+    },
+    "pumpkin-world (village_path_projection_1024_cases)": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
       "cases": 1024,
-      "status": "PASS",
-      "duration_sec": 23.56
+      "duration": "23.67s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-world::village_path_tests",
-      "cases": 1,
-      "status": "PASS",
-      "duration_sec": 20.06
+    "pumpkin-world (structure_starts_dump: overworld/nether/end)": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "7.97s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-world::test_village_plains",
-      "cases": 1,
-      "status": "PASS",
-      "duration_sec": 1.80
+    "pumpkin-core (natural_spawner)": {
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.01s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-data::recipe_matching",
-      "cases": 3,
-      "status": "PASS",
-      "duration_sec": 0.45
+    "pumpkin-core (scoreboard)": {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.14s",
+      "status": "PASSED"
     },
-    {
-      "suite": "pumpkin-core::cargo_check",
-      "cases": 1,
-      "status": "FAIL",
-      "error": "error[E0308]: mismatched types in login_acknowledged.rs"
+    "pumpkin-core (team)": {
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "duration": "0.00s",
+      "status": "PASSED"
+    },
+    "workspace_build (cargo check -p neth)": {
+      "exit_code": 0,
+      "status": "PASSED",
+      "duration": "6m 30s"
     }
-  ]
+  }
 }

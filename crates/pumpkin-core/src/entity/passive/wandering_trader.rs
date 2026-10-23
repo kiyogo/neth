@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 use uuid::Uuid;
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
@@ -164,6 +165,25 @@ impl WanderingTraderEntity {
             Arc::downgrade(&mob_arc)
         };
         let trader_weak = Arc::downgrade(&mob_arc);
+
+        // Vanilla WanderingTrader (AbstractVillager/Villager): MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.5
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 20.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.5;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(20.0);
 
         {
             let mut goal_selector = mob_arc

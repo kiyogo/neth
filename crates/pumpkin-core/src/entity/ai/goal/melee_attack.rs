@@ -205,7 +205,8 @@ impl Goal for MeleeAttackGoal {
             && mob.get_mob_entity().is_in_attack_range(target.as_ref())
             && mob.has_line_of_sight(target.get_entity())
         {
-            self.cooldown = self.get_max_cooldown();
+            let interval = mob.get_min_attack_interval().unwrap_or(20);
+            self.cooldown = self.get_tick_count(interval);
 
             // Iron golem animation plays on every swing, even when blocked
             if let Some(golem) = mob.as_iron_golem() {

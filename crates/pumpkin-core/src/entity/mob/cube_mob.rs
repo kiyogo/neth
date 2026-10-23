@@ -308,6 +308,26 @@ impl Mob for CubeMobEntity {
         &self.mob_entity
     }
 
+    fn as_cube_mob(&self) -> Option<&CubeMobEntity> {
+        Some(self)
+    }
+
+    fn as_slime(&self) -> Option<&CubeMobEntity> {
+        if self.mob_entity.living_entity.entity.entity_type == &EntityType::SLIME {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
+    fn as_magma_cube(&self) -> Option<&CubeMobEntity> {
+        if self.mob_entity.living_entity.entity.entity_type == &EntityType::MAGMA_CUBE {
+            Some(self)
+        } else {
+            None
+        }
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

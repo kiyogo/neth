@@ -3,7 +3,7 @@ use crate::entity::ai::goal::break_door::BreakDoorGoal;
 use crate::entity::ai::goal::destroy_egg::DestroyEggGoal;
 use crate::entity::ai::goal::look_around::RandomLookAroundGoal;
 use crate::entity::ai::goal::revenge::RevengeGoal;
-use crate::entity::ai::goal::wander_around::WanderAroundGoal;
+use crate::entity::ai::goal::water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal;
 use crate::entity::ai::goal::zombie_attack::ZombieAttackGoal;
 use crate::entity::mob::equipment::RegionalDifficulty;
 use crate::entity::{
@@ -12,6 +12,7 @@ use crate::entity::{
 };
 use crate::world::World;
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -53,6 +54,23 @@ impl ZombieEntityBase {
     /// own behaviour goals.
     pub fn without_behaviour_goals(entity: Entity, can_break_doors: bool) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, 35.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 3.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ARMOR, 2.0);
+        mob_entity.living_entity.health.store(20.0);
+
         let mut rng = rand::rng();
         let reinforcement_chance = if rng.random::<f32>() < 0.05 {
             0.55
@@ -106,7 +124,7 @@ impl ZombieEntityBase {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
 
         goal_selector.add_goal(2, ZombieAttackGoal::new(1.0, false));
-        goal_selector.add_goal(7, Box::new(WanderAroundGoal::new(1.0)));
+        goal_selector.add_goal(7, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
 
         target_selector.add_goal(
             1,
@@ -122,7 +140,11 @@ impl ZombieEntityBase {
         );
         target_selector.add_goal(
             3,
-            ActiveTargetGoal::with_default(&self.mob_entity, &EntityType::VILLAGER, true),
+            ActiveTargetGoal::with_default(&self.mob_entity, &EntityType::VILLAGER, false),
+        );
+        target_selector.add_goal(
+            3,
+            ActiveTargetGoal::with_default(&self.mob_entity, &EntityType::WANDERING_TRADER, false),
         );
         target_selector.add_goal(
             3,

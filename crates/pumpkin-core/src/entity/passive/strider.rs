@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -13,7 +14,7 @@ use crate::entity::{
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
-        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
+        look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         tempt::TemptGoal, wander_around::WanderAroundGoal,
     },
     item_steerable::{ItemBasedSteering, ItemSteerable},
@@ -49,6 +50,25 @@ impl StriderEntity {
             Arc::downgrade(&mob_arc)
         };
 
+        // Vanilla Strider: MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.175
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 20.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.175;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(20.0);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -56,17 +76,17 @@ impl StriderEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            goal_selector.add_goal(0, Box::new(SwimGoal::default()));
+            // Vanilla Strider.registerGoals: Panic(1.65), Breed(1.0), Tempt(1.4), FollowParent(1.0), RandomStroll(1.0), LookAtPlayer(8.0), RandomLookAround
             goal_selector.add_goal(1, EscapeDangerGoal::new(1.65));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(3, Box::new(TemptGoal::new(1.4, TEMPT_ITEMS, false)));
-            goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.1)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(5, Box::new(FollowParentGoal::new(1.0)));
+            goal_selector.add_goal(7, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
-                6,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
+                8,
+                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
-            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
         mob_arc
@@ -78,12 +98,30 @@ impl StriderEntity {
     }
 
     pub fn set_suffocating(&self, suffocating: bool) {
-        self.suffocating.store(suffocating, Ordering::Relaxed);
+        let prev = self.suffocating.swap(suffocating, Ordering::Relaxed);
         let entity = self.get_entity();
         entity.set_synced_data(
             pumpkin_data::tracked_data::strider::DATA_SUFFOCATING,
             suffocating,
         );
+        if prev != suffocating {
+            // Vanilla Strider.java:164-174: SUFFOCATING_MODIFIER = -0.34F
+            // Base speed is 0.175. When suffocating (out of lava/warm blocks): 0.175 * 0.66 = 0.1155.
+            let mut attributes = self
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = if suffocating {
+                    0.175 * 0.66
+                } else {
+                    0.175
+                };
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
     }
 }
 
@@ -101,6 +139,10 @@ impl Animal for StriderEntity {
 }
 
 impl Mob for StriderEntity {
+    fn as_strider(&self) -> Option<&StriderEntity> {
+        Some(self)
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -158,6 +200,22 @@ impl Mob for StriderEntity {
         if !entity.is_alive() {
             return;
         }
+
+        // Vanilla Strider.tick: checks if standing in lava or on STRIDER_WARM_BLOCKS
+        let in_warm_blocks = entity.touching_lava.load(Ordering::Relaxed)
+            || entity.lava_height.load() > 0.0
+            || {
+                let pos = entity.block_pos.load();
+                let world = entity.world.load();
+                let block_pos_down = pos.down();
+                let block = world.get_block(&pos);
+                let block_down = world.get_block(&block_pos_down);
+                block.has_tag(&tag::Block::MINECRAFT_STRIDER_WARM_BLOCKS)
+                    || block_down.has_tag(&tag::Block::MINECRAFT_STRIDER_WARM_BLOCKS)
+                    || block.id == pumpkin_data::Block::LAVA.id
+                    || block_down.id == pumpkin_data::Block::LAVA.id
+            };
+        self.set_suffocating(!in_warm_blocks);
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             entity.world.load().play_sound_fine(

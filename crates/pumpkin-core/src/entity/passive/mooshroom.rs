@@ -4,6 +4,7 @@ use std::sync::{
 };
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::cow_variant::CowVariant;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -100,6 +101,25 @@ impl MooshroomEntity {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
         };
+
+        // Vanilla Mooshroom (AbstractCow): MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2
+        {
+            let mut attributes = mob_arc
+                .mob_entity
+                .living_entity
+                .attributes
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+                health.base_value = 10.0;
+                health.dirty.store(true, Ordering::Relaxed);
+            }
+            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                speed.base_value = 0.2;
+                speed.dirty.store(true, Ordering::Relaxed);
+            }
+        }
+        mob_arc.mob_entity.living_entity.set_health(10.0);
 
         {
             let mut goal_selector = mob_arc
@@ -372,19 +392,23 @@ impl Mob for MooshroomEntity {
         caller: &dyn EntityBase,
         lightning: &crate::entity::lightning::LightningBoltEntity,
     ) {
-        let new_variant = if self.get_variant() == MooshroomVariant::Red {
-            MooshroomVariant::Brown
-        } else {
-            MooshroomVariant::Red
-        };
-        self.set_variant(new_variant);
-        let entity = self.get_entity();
-        let world = entity.world.load();
-        world.play_sound(
-            Sound::EntityMooshroomConvert,
-            SoundCategory::Neutral,
-            &entity.pos.load(),
-        );
+        let lightning_uuid = lightning.get_entity().entity_uuid;
+        if self.last_lightning_bolt_uuid.load() != Some(lightning_uuid) {
+            let new_variant = if self.get_variant() == MooshroomVariant::Red {
+                MooshroomVariant::Brown
+            } else {
+                MooshroomVariant::Red
+            };
+            self.set_variant(new_variant);
+            self.last_lightning_bolt_uuid.store(Some(lightning_uuid));
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            world.play_sound(
+                Sound::EntityMooshroomConvert,
+                SoundCategory::Neutral,
+                &entity.pos.load(),
+            );
+        }
         self.mob_entity
             .living_entity
             .on_lightning_strike(caller, lightning);

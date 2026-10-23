@@ -25,12 +25,12 @@ use crate::entity::{
     ai::goal::{
         active_target::{ActiveTargetGoal, TargetCondition}, avoid_entity::AvoidEntityGoal, beg::BegGoal,
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_owner::FollowOwnerGoal,
-        follow_parent::FollowParentGoal, leap_at_target::LeapAtTargetGoal,
+        leap_at_target::LeapAtTargetGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         melee_attack::MeleeAttackGoal, owner_hurt_by_target::OwnerHurtByTargetGoal,
         owner_hurt_target::OwnerHurtTargetGoal, revenge::RevengeGoal,
         sit_when_ordered_to::SitWhenOrderedToGoal, swim::SwimGoal,
-        wander_around::WanderAroundGoal,
+        water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     mob::{
         Mob, MobEntity,
@@ -93,10 +93,26 @@ impl WolfEntity {
             goal_selector.add_goal(1, EscapeDangerGoal::new_environmental(1.5));
             // 2: SitWhenOrderedToGoal
             goal_selector.add_goal(2, Box::new(SitWhenOrderedToGoal::new()));
-            // 3: Avoid Llama
+            // 3: Avoid Llama & Trader Llama (only untamed wolves avoid llamas)
             goal_selector.add_goal(
                 3,
-                Box::new(AvoidEntityGoal::new(&EntityType::LLAMA, 24.0, 1.5, 1.5)),
+                Box::new(AvoidEntityGoal::with_gate(
+                    &EntityType::LLAMA,
+                    24.0,
+                    1.5,
+                    1.5,
+                    |mob| mob.as_tamable().is_none_or(|t| !t.is_tamed()),
+                )),
+            );
+            goal_selector.add_goal(
+                3,
+                Box::new(AvoidEntityGoal::with_gate(
+                    &EntityType::TRADER_LLAMA,
+                    24.0,
+                    1.5,
+                    1.5,
+                    |mob| mob.as_tamable().is_none_or(|t| !t.is_tamed()),
+                )),
             );
             // 4: LeapAtTargetGoal
             goal_selector.add_goal(4, Box::new(LeapAtTargetGoal::new(0.4)));
@@ -106,9 +122,8 @@ impl WolfEntity {
             goal_selector.add_goal(6, FollowOwnerGoal::new(1.0, 10.0, 2.0));
             // 7: BreedGoal
             goal_selector.add_goal(7, BreedGoal::new(1.0));
-            // 8: FollowParentGoal & WanderAroundGoal
-            goal_selector.add_goal(8, Box::new(FollowParentGoal::new(1.1)));
-            goal_selector.add_goal(8, Box::new(WanderAroundGoal::new(1.0)));
+            // 8: WaterAvoidingRandomStrollGoal
+            goal_selector.add_goal(8, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             // 9: BegGoal
             goal_selector.add_goal(9, BegGoal::new(8.0));
             // 10: LookAtPlayer & RandomLookAround
@@ -168,12 +183,13 @@ impl WolfEntity {
                 .when(TargetCondition::NonTamed),
             );
 
-            // 7: NearestAttackableTarget (Skeletons: Skeleton, Wither Skeleton, Stray, Bogged)
+            // 7: NearestAttackableTarget (Skeletons: Skeleton, Wither Skeleton, Stray, Bogged, Parched)
             for skeleton in [
                 &EntityType::SKELETON,
                 &EntityType::WITHER_SKELETON,
                 &EntityType::STRAY,
                 &EntityType::BOGGED,
+                &EntityType::PARCHED,
             ] {
                 target_selector.add_goal(
                     7,

@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicI32, AtomicU8, Ordering},
 };
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -18,7 +19,7 @@ use crate::entity::{
     ai::goal::{
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        tempt::TemptGoal, wander_around::WanderAroundGoal,
+        tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -102,6 +103,24 @@ impl PandaGene {
             Self::Normal
         }
     }
+
+    #[must_use]
+    pub const fn is_recessive(self) -> bool {
+        matches!(self, Self::Brown | Self::Weak)
+    }
+
+    #[must_use]
+    pub fn get_variant_from_genes(main: Self, hidden: Self) -> Self {
+        if main.is_recessive() {
+            if main == hidden {
+                main
+            } else {
+                Self::Normal
+            }
+        } else {
+            main
+        }
+    }
 }
 
 pub struct PandaEntity {
@@ -146,9 +165,9 @@ impl PandaEntity {
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(1, EscapeDangerGoal::new_environmental(2.0));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
-            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.2, TEMPT_ITEMS, false)));
+            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.0, TEMPT_ITEMS, false)));
             goal_selector.add_goal(4, Box::new(FollowParentGoal::new(1.25)));
-            goal_selector.add_goal(6, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(6, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(
                 7,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
@@ -156,7 +175,74 @@ impl PandaEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        // Vanilla Panda: MAX_HEALTH = 20.0 (weak: 10.0), MOVEMENT_SPEED = 0.15 (lazy: 0.07), ATTACK_DAMAGE = 6.0
+        mob_arc.set_attributes();
+        let max_hp = if mob_arc.is_weak() { 10.0 } else { 20.0 };
+        mob_arc.mob_entity.living_entity.set_health(max_hp);
+
         mob_arc
+    }
+
+    #[must_use]
+    pub fn get_variant(&self) -> PandaGene {
+        PandaGene::get_variant_from_genes(self.get_main_gene(), self.get_hidden_gene())
+    }
+
+    #[must_use]
+    pub fn is_lazy(&self) -> bool {
+        self.get_variant() == PandaGene::Lazy
+    }
+
+    #[must_use]
+    pub fn is_worried(&self) -> bool {
+        self.get_variant() == PandaGene::Worried
+    }
+
+    #[must_use]
+    pub fn is_playful(&self) -> bool {
+        self.get_variant() == PandaGene::Playful
+    }
+
+    #[must_use]
+    pub fn is_brown(&self) -> bool {
+        self.get_variant() == PandaGene::Brown
+    }
+
+    #[must_use]
+    pub fn is_weak(&self) -> bool {
+        self.get_variant() == PandaGene::Weak
+    }
+
+    #[must_use]
+    pub fn is_aggressive(&self) -> bool {
+        self.get_variant() == PandaGene::Aggressive
+    }
+
+    /// Vanilla `Panda.setAttributes`: weak pandas have 10 max health, lazy pandas have 0.07 speed.
+    pub fn set_attributes(&self) {
+        let mut attributes = self
+            .mob_entity
+            .living_entity
+            .attributes
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let max_health = if self.is_weak() { 10.0 } else { 20.0 };
+        if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
+            health.base_value = max_health;
+            health.dirty.store(true, Ordering::Relaxed);
+        }
+
+        let speed = if self.is_lazy() { 0.07 } else { 0.15 };
+        if let Some(spd) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+            spd.base_value = speed;
+            spd.dirty.store(true, Ordering::Relaxed);
+        }
+
+        if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
+            damage.base_value = 6.0;
+            damage.dirty.store(true, Ordering::Relaxed);
+        }
     }
 
     #[must_use]
@@ -171,6 +257,10 @@ impl PandaEntity {
             pumpkin_data::tracked_data::panda::MAIN_GENE_ID,
             gene.id() as i8,
         );
+        self.set_attributes();
+        if self.is_weak() && self.mob_entity.living_entity.health.load() > 10.0 {
+            self.mob_entity.living_entity.set_health(10.0);
+        }
     }
 
     #[must_use]
@@ -185,6 +275,10 @@ impl PandaEntity {
             pumpkin_data::tracked_data::panda::HIDDEN_GENE_ID,
             gene.id() as i8,
         );
+        self.set_attributes();
+        if self.is_weak() && self.mob_entity.living_entity.health.load() > 10.0 {
+            self.mob_entity.living_entity.set_health(10.0);
+        }
     }
 
     #[must_use]
@@ -267,6 +361,10 @@ impl Mob for PandaEntity {
         Some(self)
     }
 
+    fn as_panda(&self) -> Option<&PandaEntity> {
+        Some(self)
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
         nbt.put_string("MainGene", self.get_main_gene().as_str().to_string());
@@ -281,6 +379,7 @@ impl Mob for PandaEntity {
         if let Some(hidden) = nbt.get_string("HiddenGene") {
             self.set_hidden_gene(PandaGene::from_name(hidden));
         }
+        self.set_attributes();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -296,9 +395,9 @@ impl Mob for PandaEntity {
         }
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
-            let sound = if self.get_main_gene() == PandaGene::Aggressive {
+            let sound = if self.is_aggressive() {
                 Sound::EntityPandaAggressiveAmbient
-            } else if self.get_main_gene() == PandaGene::Worried {
+            } else if self.is_worried() {
                 Sound::EntityPandaWorriedAmbient
             } else {
                 Sound::EntityPandaAmbient
