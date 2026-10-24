@@ -1681,5 +1681,22 @@
   - Replaced ad-hoc post-attack loops in `Player::attack` and sweeping attacks with `apply_weapon_post_attack_effects` supporting in-water extinguish and Bane of Arthropods `ApplyMobEffect`.
   - Verified with 15/15 passing tests in `entity::combat::tests`, including `test_fire_extinguish_and_mob_effect_post_attack_parity`.
 
+### Gap 130: Mob Melee Attack Weapon Damage, Extra Knockback, Post-Attack Effects & PVP Resistance Stat Independence
+- **Vanilla Reference**:
+  - `Mob.java:1380-1401` (`doHurtTarget`):
+    - Mob attack damage takes into account the held weapon item: `dmg += EnchantmentHelper.modifyDamage(level, weaponItem, target, damageSource, dmg)`.
+    - Mob attack knockback takes into account `this.getKnockback(target, damageSource)`: `((attributeValue(Attributes.ATTACK_KNOCKBACK) + enchantment_knockback) / 2.0F)`.
+    - If the target is hurt, mob runs `EnchantmentHelper.doPostAttackEffects(level, target, damageSource)` from its held weapon item (e.g. Fire Aspect, Bane of Arthropods).
+  - `LivingEntity.java:1929-1935`:
+    - When damage is reduced by Resistance effect, `awardStat(Stats.DAMAGE_RESISTED)` is awarded to the victim player, and `awardStat(Stats.DAMAGE_DEALT_RESISTED)` is independently awarded to the attacker player.
+  - Previously in Neth:
+    - `MobEntity::try_attack` completely ignored held weapon enchantments (Sharpness, Smite, Bane), weapon knockback, and post-attack effects (e.g., mob wielding a Fire Aspect sword never ignited the victim).
+    - In `LivingEntity::get_damage_after_magic_absorb`, an `else if` prevented the attacker player from being awarded `CustomStatistic::DamageDealtResisted` in PvP when the victim was a player.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_mob_attack_damage` and `calculate_mob_extra_knockback` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `MobEntity::try_attack` in `crates/pumpkin-core/src/entity/mob/mod.rs` to compute held weapon enchantment damage, apply extra weapon/attribute knockback, and execute weapon post-attack effects via `apply_weapon_post_attack_effects`.
+  - Updated `LivingEntity::get_damage_after_magic_absorb` to award `DamageResisted` to victim and `DamageDealtResisted` to attacker independently.
+  - Verified with 16/16 passing unit tests in `entity::combat::tests`, including `test_mob_attack_damage_and_knockback_parity`.
+
 
 

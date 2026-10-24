@@ -565,6 +565,19 @@ pub fn calculate_mob_effect_amplifier(
     amp.round().max(0.0) as u8
 }
 
+/// Vanilla `Mob.java:1384`: Calculates final attack damage for a mob including enchantment bonus.
+#[must_use]
+pub fn calculate_mob_attack_damage(base_attack_damage: f32, extra_enchantment_damage: f32) -> f32 {
+    (base_attack_damage + extra_enchantment_damage).max(0.0)
+}
+
+/// Vanilla `LivingEntity.java:206`: `getKnockback`
+/// Formula: `(attributeValue(Attributes.ATTACK_KNOCKBACK) + enchantment_knockback) / 2.0F`
+#[must_use]
+pub fn calculate_mob_extra_knockback(attack_knockback_attr: f32, enchantment_knockback: f32) -> f32 {
+    ((attack_knockback_attr + enchantment_knockback) / 2.0).max(0.0)
+}
+
 /// Vanilla `Player.java:1078-1094` & `EnchantmentHelper.java:226-261`:
 /// Applies the attacker's weapon post-attack effects (e.g. Fire Aspect, Bane of Arthropods)
 /// to the victim.
@@ -1654,6 +1667,26 @@ mod tests {
         assert!(EntityType::BEE.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
         assert!(!EntityType::ZOMBIE.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
         assert!(!EntityType::PLAYER.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+    }
+
+    #[test]
+    fn test_mob_attack_damage_and_knockback_parity() {
+        // Vanilla Mob.java:1381-1389 & LivingEntity.java:206
+        // 1. Zombie bare hand (base 3.0, no enchants):
+        let dmg = calculate_mob_attack_damage(3.0, 0.0);
+        assert_eq!(dmg, 3.0);
+
+        // 2. Zombie with Iron Sword Sharpness II (extra 1.5):
+        let dmg_sharp = calculate_mob_attack_damage(3.0, 1.5);
+        assert_eq!(dmg_sharp, 4.5);
+
+        // 3. Mob extra knockback:
+        // No knockback:
+        assert_eq!(calculate_mob_extra_knockback(0.0, 0.0), 0.0);
+        // Knockback I on sword (1.0): (0.0 + 1.0) / 2.0 = 0.5
+        assert_eq!(calculate_mob_extra_knockback(0.0, 1.0), 0.5);
+        // Warden / Ravager with base ATTACK_KNOCKBACK = 1.5: 1.5 / 2.0 = 0.75
+        assert_eq!(calculate_mob_extra_knockback(1.5, 0.0), 0.75);
     }
 }
 

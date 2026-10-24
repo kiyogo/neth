@@ -1,4 +1,4 @@
-use super::{Entity, EntityBase, ai::pathfinder::Navigator, living::LivingEntity};
+use super::{Entity, EntityBase, ai::pathfinder::Navigator, combat, living::LivingEntity};
 use crate::entity::ai::brain::memory::PackedMemories;
 use crate::entity::ai::brain::{Brain, BrainTick};
 use crate::entity::ai::control::MoveControlTrait;
@@ -16,7 +16,7 @@ use crate::world::brightness::DAYLIGHT_BRIGHTNESS;
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::data_component_impl::EquipmentSlot;
+use pumpkin_data::data_component_impl::{EnchantmentsImpl, EquipmentSlot};
 use pumpkin_data::entity::{EntityPose, EntityType};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -798,9 +798,28 @@ impl MobEntity {
             return false;
         }
 
-        let attack_damage: f32 =
-            self.living_entity
-                .get_attribute_value(&Attributes::ATTACK_DAMAGE) as f32;
+        let base_damage = self
+            .living_entity
+            .get_attribute_value(&Attributes::ATTACK_DAMAGE) as f32;
+
+        let held_item = self.living_entity.held_item(caller);
+        let mut extra_ench_damage = 0.0f32;
+        let mut ench_knockback = 0.0f32;
+
+        if let Some(enchantments) = held_item.get_data_component::<EnchantmentsImpl>() {
+            let victim_type = Some(target.get_entity().entity_type);
+            for (enchantment, level) in enchantments.enchantment.iter() {
+                let mut extra = 0.0f64;
+                enchantment.modify_damage_against(*level, &mut extra, victim_type);
+                extra_ench_damage += extra as f32;
+
+                let mut kb = 0.0f32;
+                enchantment.modify_knockback(*level, &mut kb);
+                ench_knockback += kb;
+            }
+        }
+
+        let attack_damage = combat::calculate_mob_attack_damage(base_damage, extra_ench_damage);
 
         let damaged = target.damage_with_context(
             target,
@@ -820,6 +839,32 @@ impl MobEntity {
             self.living_entity
                 .last_attack_time
                 .store(self.living_entity.entity.age.load(Relaxed), Relaxed);
+
+            // Vanilla Mob.java:1389: causeExtraKnockback(target, this.getKnockback(target, damageSource), ...)
+            let mob_atk_kb = self
+                .living_entity
+                .get_attribute_value(&Attributes::ATTACK_KNOCKBACK) as f32;
+            let extra_kb = combat::calculate_mob_extra_knockback(mob_atk_kb, ench_knockback);
+            if extra_kb > 0.0 {
+                let target_pos = target.get_entity().pos.load();
+                let caller_pos = caller.get_entity().pos.load();
+                let xd = caller_pos.x - target_pos.x;
+                let zd = caller_pos.z - target_pos.z;
+                let resistance = target
+                    .get_living_entity()
+                    .map_or(0.0, |l| l.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE));
+                target.get_entity().apply_knockback(
+                    combat::knockback_after_resistance(f64::from(extra_kb), resistance),
+                    xd,
+                    zd,
+                    Some(caller.get_entity()),
+                );
+            }
+
+            // Vanilla Mob.java:1394: EnchantmentHelper.doPostAttackEffects(level, target, damageSource)
+            if !held_item.is_empty() {
+                combat::apply_weapon_post_attack_effects(&held_item, target);
+            }
         }
 
         damaged

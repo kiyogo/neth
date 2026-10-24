@@ -3561,17 +3561,19 @@ impl LivingEntity {
             damage = (v / 25.0).max(0.0);
             let damage_resisted = old_damage - damage;
             if damage_resisted > 0.0 {
+                let stat_amount = (damage_resisted * 10.0).round() as i32;
                 if let Some(victim_player) = caller.get_player() {
                     victim_player.increment_stat(
                         StatisticCategory::Custom,
                         CustomStatistic::DamageResisted as i32,
-                        (damage_resisted * 10.0).round() as i32,
+                        stat_amount,
                     );
-                } else if let Some(attacker_player) = cause.and_then(|c| c.get_player()) {
+                }
+                if let Some(attacker_player) = cause.and_then(|c| c.get_player()) {
                     attacker_player.increment_stat(
                         StatisticCategory::Custom,
                         CustomStatistic::DamageDealtResisted as i32,
-                        (damage_resisted * 10.0).round() as i32,
+                        stat_amount,
                     );
                 }
             }
