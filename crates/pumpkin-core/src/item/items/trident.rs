@@ -42,6 +42,22 @@ impl ItemBehaviour for TridentItem {
         let inventory = player.inventory();
         let stack = inventory.get_stack_in_hand(hand);
 
+        // Vanilla TridentItem.java:129-130:
+        // if (riptideStrength > 0.0F && !player.isInWaterOrRain()) return FAIL;
+        let mut riptide_level = 0u32;
+        if let Some(enchantments) =
+            stack.get_data_component::<pumpkin_data::data_component_impl::EnchantmentsImpl>()
+        {
+            for (enchantment, level) in enchantments.enchantment.iter() {
+                if **enchantment == pumpkin_data::Enchantment::RIPTIDE {
+                    riptide_level = *level as u32;
+                }
+            }
+        }
+        if riptide_level > 0 && !player.get_entity().is_in_water_or_rain() {
+            return;
+        }
+
         player
             .living_entity
             .set_active_hand(hand, stack, 72000);
@@ -80,9 +96,15 @@ impl ItemBehaviour for TridentItem {
         }
 
         if riptide_level > 0 {
-            let in_water = world.get_block_state(&player.position().to_block_pos()).id
-                == pumpkin_data::Block::WATER.default_state.id;
-            if !in_water {
+            // Vanilla TridentItem.java:70:
+            // if (!(riptideStrength > 0.0F) || player.isInWaterOrRain() && !player.isPassenger())
+            let in_water_or_rain = player.get_entity().is_in_water_or_rain();
+            let is_passenger = player.get_entity().has_vehicle();
+            if !crate::entity::combat::can_perform_riptide(
+                riptide_level,
+                in_water_or_rain,
+                is_passenger,
+            ) {
                 player.living_entity.clear_active_hand();
                 return;
             }
@@ -103,24 +125,36 @@ impl ItemBehaviour for TridentItem {
                 }
             }
 
-            let f = f64::from(riptide_level);
+            let riptide_strength =
+                crate::entity::combat::calculate_riptide_strength(riptide_level);
             let (yaw, pitch) = player.rotation();
-            let f_yaw = f32::to_radians(yaw);
-            let f_pitch = f32::to_radians(pitch);
+            let velocity =
+                crate::entity::combat::calculate_riptide_velocity(yaw, pitch, riptide_strength);
 
-            let vx = f64::from(-f32::sin(f_yaw) * f32::cos(f_pitch));
-            let vy = f64::from(-f32::sin(f_pitch));
-            let vz = f64::from(f32::cos(f_yaw) * f32::cos(f_pitch));
+            player.living_entity.entity.velocity.store(velocity);
+            player.living_entity.start_auto_spin_attack(20, 8.0);
 
-            let sq = (vx * vx + vy * vy + vz * vz).sqrt();
-            if sq > 0.0 {
-                let mult = (1.0 + f * 0.75) / sq;
-                player.living_entity.entity.velocity.store(Vector3::new(
-                    vx * mult,
-                    vy * mult,
-                    vz * mult,
+            // Vanilla TridentItem.java:104-107:
+            // if (player.onGround()) { player.move(MoverType.SELF, new Vec3(0.0, 1.1999999F, 0.0)); }
+            if player
+                .get_entity()
+                .on_ground
+                .load(std::sync::atomic::Ordering::Relaxed)
+            {
+                let current_pos = player.position();
+                player.living_entity.entity.set_pos(Vector3::new(
+                    current_pos.x,
+                    current_pos.y + 1.1999999,
+                    current_pos.z,
                 ));
             }
+
+            let sound = crate::entity::combat::get_riptide_sound(riptide_level);
+            world.play_sound(
+                sound,
+                pumpkin_data::sound::SoundCategory::Players,
+                &player.position(),
+            );
 
             let slot = EquipmentSlot::from_hand(active_hand);
             player.damage_item_in_slot(&slot, 1);

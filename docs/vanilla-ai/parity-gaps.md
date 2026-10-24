@@ -2061,6 +2061,42 @@
   - Implemented `ConsumeEffect::PlaySound` in `LivingEntity::apply_consumable_effects`.
   - Added unit test `test_consumable_use_effects_and_sound_pitch_parity` in `combat.rs`. Total 29/29 tests in `entity::combat::tests` passing.
 
+### Gap 144: Trident Riptide Launch Physics, Level Sounds, Auto Spin Attack State & Conditions Parity
+- **Vanilla Reference**:
+  - `TridentItem.java:69-70, 92-110, 129-130`:
+    ```java
+    float riptideStrength = EnchantmentHelper.getTridentSpinAttackStrength(itemStack, player);
+    if (!(riptideStrength > 0.0F) || player.isInWaterOrRain() && !player.isPassenger()) {
+       ...
+       player.push(xd, yd, zd);
+       player.startAutoSpinAttack(20, 8.0F, itemStack);
+       if (player.onGround()) {
+          player.move(MoverType.SELF, new Vec3(0.0, 1.1999999F, 0.0));
+       }
+       level.playSound(null, player, sound.value(), SoundSource.PLAYERS, 1.0F, 1.0F);
+    }
+    ```
+  - `riptide.json`:
+    - Spin attack strength formula: linear base `1.5`, per level above first `0.75` (Level 1: 1.5, Level 2: 2.25, Level 3: 3.0).
+    - Sound effects: Level 1 `item.trident.riptide_1`, Level 2 `item.trident.riptide_2`, Level 3 `item.trident.riptide_3`.
+  - `LivingEntity.java:3155-3158, 3261-3265`:
+    - Auto spin attack runs for 20 ticks, setting flag bit 4 (`USING_RIPTIDE_FLAG`), enabling spin attack animation and pose.
+  - In vanilla Minecraft Java:
+    - Riptide can be used in water or rain (`isInWaterOrRain`) and cannot be used while riding vehicles (`!isPassenger`).
+    - Using a Riptide trident on ground lifts the player by 1.2 blocks to clear ground drag.
+    - Sound matches the exact Riptide level (1, 2, or 3).
+  - Previously in Neth:
+    - Checked only block `WATER` at player position, ignoring rain, bubble columns, or vehicle status.
+    - Used inaccurate strength calculation `(1.0 + level * 0.75)`.
+    - Never played Riptide sounds (only throw sound on plain throw).
+    - Never set auto spin attack flag (bit 4) or timer for Java players, leaving client without spin animation.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `calculate_riptide_strength`, `calculate_riptide_velocity`, `get_riptide_sound`, and `can_perform_riptide` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `auto_spin_attack_ticks` atomic tracking, `start_auto_spin_attack`, decay countdown in `LivingEntity::tick`, and reset in `LivingEntity::on_death` in `crates/pumpkin-core/src/entity/living.rs`.
+  - Updated `crates/pumpkin-core/src/item/items/trident.rs` with vanilla water/rain and vehicle checks, level sound dispatch, ground boost (`+1.2`), and auto spin attack activation.
+  - Added unit test `test_riptide_strength_velocity_and_conditions_parity` in `combat.rs`. Total 30/30 tests in `entity::combat::tests` passing.
+
+
 
 
 

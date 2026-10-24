@@ -1468,6 +1468,73 @@ pub fn calculate_consumable_sound_volume_and_pitch(
     }
 }
 
+/// Calculates the Riptide spin attack strength based on enchantment level.
+///
+/// Mirrors vanilla `riptide.json`: `base: 1.5, per_level_above_first: 0.75`:
+/// - Level 1: 1.5
+/// - Level 2: 2.25
+/// - Level 3: 3.0
+#[must_use]
+pub fn calculate_riptide_strength(level: u32) -> f32 {
+    if level == 0 {
+        0.0
+    } else {
+        1.5 + (level - 1) as f32 * 0.75
+    }
+}
+
+/// Calculates the 3D velocity push vector for a Riptide launch given yaw, pitch, and riptide strength.
+///
+/// Mirrors vanilla `TridentItem.java:93-102`:
+/// ```java
+/// float xd = -Mth.sin(yRot * (float) (Math.PI / 180.0)) * Mth.cos(xRot * (float) (Math.PI / 180.0));
+/// float yd = -Mth.sin(xRot * (float) (Math.PI / 180.0));
+/// float zd = Mth.cos(yRot * (float) (Math.PI / 180.0)) * Mth.cos(xRot * (float) (Math.PI / 180.0));
+/// float dist = Mth.sqrt(xd * xd + yd * yd + zd * zd);
+/// xd *= riptideStrength / dist;
+/// yd *= riptideStrength / dist;
+/// zd *= riptideStrength / dist;
+/// ```
+#[must_use]
+pub fn calculate_riptide_velocity(yaw: f32, pitch: f32, riptide_strength: f32) -> Vector3<f64> {
+    let f_yaw = yaw.to_radians();
+    let f_pitch = pitch.to_radians();
+    let xd = f64::from(-f_yaw.sin() * f_pitch.cos());
+    let yd = f64::from(-f_pitch.sin());
+    let zd = f64::from(f_yaw.cos() * f_pitch.cos());
+    let dist = (xd * xd + yd * yd + zd * zd).sqrt();
+    if dist > 0.0 {
+        let factor = f64::from(riptide_strength) / dist;
+        Vector3::new(xd * factor, yd * factor, zd * factor)
+    } else {
+        Vector3::new(0.0, 0.0, 0.0)
+    }
+}
+
+/// Selects the appropriate Riptide sound for a given enchantment level.
+///
+/// Mirrors vanilla `riptide.json`:
+/// - Level 1: `Sound::ItemTridentRiptide1`
+/// - Level 2: `Sound::ItemTridentRiptide2`
+/// - Level >= 3: `Sound::ItemTridentRiptide3`
+#[must_use]
+pub fn get_riptide_sound(level: u32) -> Sound {
+    match level {
+        1 => Sound::ItemTridentRiptide1,
+        2 => Sound::ItemTridentRiptide2,
+        _ => Sound::ItemTridentRiptide3,
+    }
+}
+
+/// Determines whether an entity can perform a Riptide launch.
+///
+/// Mirrors vanilla `TridentItem.java:70, 129`:
+/// `riptideStrength > 0.0F && player.isInWaterOrRain() && !player.isPassenger()`
+#[must_use]
+pub fn can_perform_riptide(riptide_level: u32, is_in_water_or_rain: bool, is_passenger: bool) -> bool {
+    riptide_level > 0 && is_in_water_or_rain && !is_passenger
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2382,6 +2449,45 @@ mod tests {
         let (_, eat_pitch_min) =
             calculate_consumable_sound_volume_and_pitch(false, false, 0.0, 1.0);
         assert!((eat_pitch_min - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_riptide_strength_velocity_and_conditions_parity() {
+        // Vanilla riptide.json: base: 1.5, per_level_above_first: 0.75
+        assert_eq!(calculate_riptide_strength(0), 0.0);
+        assert_eq!(calculate_riptide_strength(1), 1.5);
+        assert_eq!(calculate_riptide_strength(2), 2.25);
+        assert_eq!(calculate_riptide_strength(3), 3.0);
+
+        // Vanilla Riptide sounds (riptide.json)
+        assert_eq!(get_riptide_sound(1), Sound::ItemTridentRiptide1);
+        assert_eq!(get_riptide_sound(2), Sound::ItemTridentRiptide2);
+        assert_eq!(get_riptide_sound(3), Sound::ItemTridentRiptide3);
+        assert_eq!(get_riptide_sound(5), Sound::ItemTridentRiptide3);
+
+        // Vanilla TridentItem.java:70:
+        // riptideStrength > 0.0 && isInWaterOrRain && !isPassenger
+        assert!(!can_perform_riptide(0, true, false)); // no riptide enchantment
+        assert!(!can_perform_riptide(1, false, false)); // not in water or rain
+        assert!(!can_perform_riptide(1, true, true)); // riding vehicle
+        assert!(can_perform_riptide(1, true, false)); // valid
+
+        // Vanilla TridentItem.java:93-102:
+        // 1. Horizontal forward along +Z (yaw = 0, pitch = 0):
+        let v_forward = calculate_riptide_velocity(0.0, 0.0, 1.5);
+        assert!(v_forward.x.abs() < 1e-6);
+        assert!(v_forward.y.abs() < 1e-6);
+        assert!((v_forward.z - 1.5).abs() < 1e-6);
+
+        // 2. Straight up (pitch = -90):
+        let v_up = calculate_riptide_velocity(0.0, -90.0, 3.0);
+        assert!(v_up.x.abs() < 1e-6);
+        assert!((v_up.y - 3.0).abs() < 1e-6);
+        assert!(v_up.z.abs() < 1e-6);
+
+        // 3. Zero strength gives zero vector:
+        let v_zero = calculate_riptide_velocity(45.0, -30.0, 0.0);
+        assert_eq!(v_zero, Vector3::new(0.0, 0.0, 0.0));
     }
 }
 

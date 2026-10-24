@@ -94,6 +94,7 @@ pub struct LivingEntity {
     /// The current absorption (yellow hearts) on the entity.
     pub absorption: AtomicCell<f32>,
     pub item_use_time: AtomicI32,
+    pub auto_spin_attack_ticks: AtomicI32,
     pub item_in_use: std::sync::Mutex<Option<ItemStack>>,
     pub active_hand: std::sync::Mutex<Option<Hand>>,
     pub recent_kinetic_enemies: std::sync::Mutex<FxHashMap<i32, i32>>,
@@ -294,6 +295,7 @@ impl LivingEntity {
             dead: AtomicBool::new(false),
             collides: AtomicBool::new(true),
             item_use_time: AtomicI32::new(0),
+            auto_spin_attack_ticks: AtomicI32::new(0),
             item_in_use: std::sync::Mutex::new(None),
             active_hand: std::sync::Mutex::new(None),
             recent_kinetic_enemies: std::sync::Mutex::new(FxHashMap::default()),
@@ -774,7 +776,17 @@ impl LivingEntity {
     }
 
     pub fn set_auto_spin_attack(&self, value: bool) {
+        if !value {
+            self.auto_spin_attack_ticks.store(0, Ordering::Relaxed);
+        }
         self.set_living_flag(Self::USING_RIPTIDE_FLAG, value);
+    }
+
+    /// Starts auto spin attack (Riptide) state for the given duration,
+    /// mirroring vanilla `Player.startAutoSpinAttack(activationTicks, dmg, itemStackUsed)`.
+    pub fn start_auto_spin_attack(&self, activation_ticks: i32, _dmg: f32) {
+        self.auto_spin_attack_ticks.store(activation_ticks, Ordering::Relaxed);
+        self.set_living_flag(Self::USING_RIPTIDE_FLAG, true);
     }
 
     pub fn clear_active_hand(&self) {
@@ -2594,6 +2606,7 @@ impl LivingEntity {
 
             self.set_arrow_count(0);
             self.set_stinger_count(0);
+            self.set_auto_spin_attack(false);
 
             let kill_credit = self.get_kill_credit();
             let killer = cause.or(source).or(kill_credit.as_deref());
@@ -4668,6 +4681,15 @@ impl EntityBase for LivingEntity {
 
         if self.hurt_cooldown.load(Relaxed) > 0 {
             self.hurt_cooldown.fetch_sub(1, Relaxed);
+        }
+
+        // Parity Gap 144: Auto spin attack (Riptide) timer countdown
+        // Vanilla LivingEntity.java:3155-3158, 3261-3265
+        if self.auto_spin_attack_ticks.load(Relaxed) > 0 {
+            let remaining = self.auto_spin_attack_ticks.fetch_sub(1, Relaxed) - 1;
+            if remaining <= 0 {
+                self.set_living_flag(Self::USING_RIPTIDE_FLAG, false);
+            }
         }
         if self.health.load() <= 0.0 {
             let time = self
