@@ -3117,3 +3117,31 @@
     - Updated `mob_interact` dùng `calculate_iron_golem_repair_pitch` và cập nhật crackiness.
   - Updated `SnowGolemEntity::throw_snowball` trong `crates/pumpkin-core/src/entity/passive/snow_golem.rs` phát âm thanh `Sound::EntitySnowGolemShoot` theo công thức pitch Vanilla.
   - Added unit test `test_iron_golem_and_snow_golem_parity` trong `combat.rs`. Total 55/55 tests passing in `entity::combat::tests`.
+
+## Gap 170: Enderman Projectile Immunity & Passenger Check, Water/Rain Teleport Evasion, Shulker Arrow Deflection & Shulker Bullet Duplication Parity
+- **Vanilla Reference**:
+  - `EnderMan.java:368-398`:
+    - Khi nhận sát thương từ Projectile (`source.is(IS_PROJECTILE)`):
+      - Nếu `!this.isPassenger()`: lặp 64 lần thử teleport (`repeatedlyTryToTeleport()`) và hủy bỏ hoàn toàn sát thương (trả về `false`).
+      - Nếu đang cưỡi xe/thuyền (`this.isPassenger() == true`): không thể né đòn và không dịch chuyển.
+    - Khi nhận sát thương không phải từ LivingEntity (ví dụ sát thương nước/mưa `DamageType::DROWN`, hoặc lửa môi trường):
+      - Với xác suất 90% (`this.random.nextInt(10) != 0`), Enderman kích hoạt teleport (`this.teleport()`) né khỏi nguồn sát thương môi trường.
+  - `Shulker.java:429-472`:
+    - Khi đóng vỏ (`this.isClosed() == true`):
+      - Hoàn toàn vô hiệu hóa và làm dội ngược mũi tên bắn tới (`directEntity instanceof AbstractArrow`).
+    - Khi bị thương:
+      - Nếu máu dưới 50% (`getHealth() < getMaxHealth() * 0.5`) và `random.nextInt(4) == 0`: thử dịch chuyển ngẫu nhiên `teleportSomewhere()`.
+      - Khi bị trúng bởi đạn Shulker (`ShulkerBullet`):
+        - Nếu Shulker đang mở nắp (`!isClosed()`) và dịch chuyển thành công:
+        - Tính số Shulker xung quanh trong bán kính 8 block: `failureChance = (shulkerCount - 1) / 5.0F`.
+        - Nếu `rand_float >= failureChance`: sinh ra 1 Shulker con/mới tại vị trí cũ với cùng màu sắc variant.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `should_enderman_evade_damage`, `should_shulker_deflect_arrow`, `should_shulker_teleport_on_low_health`, `calculate_shulker_duplication_failure_chance`, and `can_shulker_duplicate` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `EndermanEntity` in `crates/pumpkin-core/src/entity/mob/enderman.rs`:
+    - `pre_damage` incorporates `has_vehicle()` passenger check so riding Endermen cannot dodge projectiles.
+    - `on_damage` teleports with 90% chance away from non-living damage (water/rain/fire).
+    - `mob_tick` applies environmental water/rain drown damage without attacker.
+  - Updated `ShulkerEntity` in `crates/pumpkin-core/src/entity/mob/shulker.rs`:
+    - `pre_damage` deflects arrows when closed using `should_shulker_deflect_arrow`.
+    - `on_damage` uses `should_shulker_teleport_on_low_health` and spawns duplicated Shulker with matching color on Shulker Bullet hit.
+  - Added unit test `test_enderman_and_shulker_parity` in `combat.rs`. Total 56/56 tests passing in `entity::combat::tests`.

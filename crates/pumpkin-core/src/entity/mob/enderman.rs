@@ -491,7 +491,8 @@ impl Mob for EndermanEntity {
         let raining_at_feet = world.is_raining_at(&entity.block_pos.load());
         let raining_at_head = world.is_raining_at(&entity.bounding_box.load().max_block_pos());
         if entity.touching_water.load(Ordering::SeqCst) || raining_at_feet || raining_at_head {
-            caller.damage(caller, 1.0, DamageType::DROWN);
+            // Environmental water/rain damage has no attacker entity
+            caller.damage_with_context(caller, 1.0, DamageType::DROWN, None, None, None);
         }
 
         // Vanilla sunlight avoidance:
@@ -523,24 +524,58 @@ impl Mob for EndermanEntity {
         }
     }
 
-    fn pre_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) -> bool {
-        let is_projectile = is_projectile_damage(damage_type);
-        if is_projectile {
+    fn pre_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
+        let is_projectile = is_projectile_damage(damage_type)
+            || source.is_some_and(|s| {
+                let et = s.get_entity().entity_type;
+                et == &EntityType::ARROW
+                    || et == &EntityType::SPECTRAL_ARROW
+                    || et == &EntityType::TRIDENT
+                    || et == &EntityType::SNOWBALL
+                    || et == &EntityType::EGG
+                    || et == &EntityType::WIND_CHARGE
+                    || et == &EntityType::BREEZE_WIND_CHARGE
+                    || et == &EntityType::SMALL_FIREBALL
+                    || et == &EntityType::FIREBALL
+                    || et == &EntityType::DRAGON_FIREBALL
+                    || et == &EntityType::WITHER_SKULL
+                    || et == &EntityType::SHULKER_BULLET
+                    || et == &EntityType::LLAMA_SPIT
+            });
+
+        let is_passenger = self.mob_entity.living_entity.entity.has_vehicle();
+        let (should_cancel, should_teleport) =
+            crate::entity::combat::should_enderman_evade_damage(
+                is_projectile,
+                is_passenger,
+                true,
+                0,
+            );
+
+        if should_teleport {
             for _ in 0..64 {
                 if self.teleport_randomly() {
                     break;
                 }
             }
+        }
+
+        if should_cancel {
             return false;
         }
+
         true
     }
 
     fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
-        if source.is_some_and(|s| s.get_living_entity().is_some()) {
-            return;
-        }
-        let should_teleport = self.get_random().random_range(0..10) != 0;
+        let has_living_attacker = source.is_some_and(|s| s.get_living_entity().is_some());
+        let (_, should_teleport) = crate::entity::combat::should_enderman_evade_damage(
+            false,
+            false,
+            has_living_attacker,
+            rand::random::<u32>(),
+        );
+
         if should_teleport {
             self.teleport_randomly();
         }

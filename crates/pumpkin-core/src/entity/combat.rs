@@ -3428,9 +3428,86 @@ pub fn calculate_snow_golem_shoot_pitch(rand: f32) -> f32 {
     0.4 / rand.mul_add(0.4, 0.8)
 }
 
+/// Determines whether an Enderman should evade damage via teleportation and whether the damage should be cancelled.
+///
+/// Mirrors vanilla `EnderMan.java:374-388`:
+/// - If projectile damage and not a passenger: cancel damage (`true`), repeatedly teleport (`true`).
+/// - If damage source is NOT from a living entity (e.g. water/rain/fire/environmental): damage is applied (`false`),
+///   teleports with 90% chance (`rand_int_10 != 0`).
+/// - Otherwise: damage is applied (`false`), do not auto-teleport (`false`).
+#[must_use]
+pub fn should_enderman_evade_damage(
+    is_projectile: bool,
+    is_passenger: bool,
+    has_living_attacker: bool,
+    rand_int_10: u32,
+) -> (bool, bool) {
+    if is_projectile && !is_passenger {
+        (true, true)
+    } else if !has_living_attacker {
+        (false, rand_int_10 % 10 != 0)
+    } else {
+        (false, false)
+    }
+}
 
+/// Determines whether a Shulker completely deflects an incoming projectile when closed.
+///
+/// Mirrors vanilla `Shulker.java:430-435`:
+/// ```java
+/// if (this.isClosed()) {
+///    Entity directEntity = source.getDirectEntity();
+///    if (directEntity instanceof AbstractArrow) {
+///       return false;
+///    }
+/// }
+/// ```
+#[must_use]
+pub const fn should_shulker_deflect_arrow(is_closed: bool, is_arrow: bool) -> bool {
+    is_closed && is_arrow
+}
 
+/// Determines whether a Shulker attempts low-health teleport upon being hurt.
+///
+/// Mirrors vanilla `Shulker.java:441-442`:
+/// `if (this.getHealth() < this.getMaxHealth() * 0.5 && this.random.nextInt(4) == 0)`
+#[must_use]
+pub fn should_shulker_teleport_on_low_health(
+    health: f32,
+    max_health: f32,
+    rand_int_4: u32,
+) -> bool {
+    health < max_health * 0.5 && rand_int_4 % 4 == 0
+}
 
+/// Calculates failure chance of Shulker duplication when hit by a Shulker Bullet.
+///
+/// Mirrors vanilla `Shulker.java:461-463`:
+/// ```java
+/// int shulkerCount = this.level().getEntities(EntityTypes.SHULKER, oldAabb.inflate(8.0), Entity::isAlive).size();
+/// float failureChance = (shulkerCount - 1) / 5.0F;
+/// ```
+#[must_use]
+pub fn calculate_shulker_duplication_failure_chance(nearby_shulkers: usize) -> f32 {
+    let count = nearby_shulkers.saturating_sub(1) as f32;
+    (count / 5.0).clamp(0.0, 1.0)
+}
+
+/// Determines whether Shulker reproduces upon being hit by a Shulker Bullet.
+///
+/// Mirrors vanilla `Shulker.java:460-464`:
+/// - Shulker must not be closed (`!is_closed`)
+/// - Shulker must successfully teleport (`teleport_success`)
+/// - Random float must be >= failureChance (`rand_float >= failure_chance`)
+#[must_use]
+pub fn can_shulker_duplicate(
+    is_closed: bool,
+    teleport_success: bool,
+    failure_chance: f32,
+    rand_float: f32,
+) -> bool {
+    !is_closed && teleport_success && rand_float >= failure_chance
+}
 
 #[cfg(test)]
 mod tests {
@@ -5391,6 +5468,59 @@ mod tests {
         // 0.4 / (rand * 0.4 + 0.8)
         assert_eq!(calculate_snow_golem_shoot_pitch(0.0), 0.5); // 0.4 / 0.8 = 0.5
         assert!((calculate_snow_golem_shoot_pitch(1.0) - (0.4 / 1.2)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_enderman_and_shulker_parity() {
+        // 1. Enderman projectile dodge (EnderMan.java:374)
+        // When not a passenger: evades projectile (cancel=true, teleport=true)
+        let (cancel, teleport) = should_enderman_evade_damage(true, false, false, 0);
+        assert!(cancel);
+        assert!(teleport);
+
+        // When riding a boat/minecart (is_passenger=true): cannot evade projectile
+        let (cancel, teleport) = should_enderman_evade_damage(true, true, false, 0);
+        assert!(!cancel);
+        assert!(!teleport);
+
+        // 2. Enderman environmental/water/rain damage evasion (EnderMan.java:386-388)
+        // Non-living damage source: damage NOT cancelled, 90% teleport chance (rand_int_10 != 0)
+        let (cancel, teleport) = should_enderman_evade_damage(false, false, false, 1);
+        assert!(!cancel);
+        assert!(teleport);
+        let (cancel, teleport) = should_enderman_evade_damage(false, false, false, 0);
+        assert!(!cancel);
+        assert!(!teleport);
+
+        // Attack from living entity: damage NOT cancelled, does not auto-teleport from this formula
+        let (cancel, teleport) = should_enderman_evade_damage(false, false, true, 1);
+        assert!(!cancel);
+        assert!(!teleport);
+
+        // 3. Shulker arrow deflection when closed (Shulker.java:430-435)
+        assert!(should_shulker_deflect_arrow(true, true));   // closed + arrow -> deflects
+        assert!(!should_shulker_deflect_arrow(false, true));  // open + arrow -> does not deflect
+        assert!(!should_shulker_deflect_arrow(true, false));  // closed + non-arrow -> does not deflect
+
+        // 4. Shulker low-health teleport (Shulker.java:441)
+        // Health < 50% max and rand % 4 == 0
+        assert!(should_shulker_teleport_on_low_health(14.0, 30.0, 0));
+        assert!(!should_shulker_teleport_on_low_health(14.0, 30.0, 1));
+        assert!(!should_shulker_teleport_on_low_health(15.0, 30.0, 0)); // 15.0 is not < 15.0
+
+        // 5. Shulker duplication failure chance (Shulker.java:461-463)
+        // (count - 1) / 5.0
+        assert_eq!(calculate_shulker_duplication_failure_chance(1), 0.0); // 100% success
+        assert_eq!(calculate_shulker_duplication_failure_chance(2), 0.2); // 80% success
+        assert_eq!(calculate_shulker_duplication_failure_chance(3), 0.4); // 60% success
+        assert_eq!(calculate_shulker_duplication_failure_chance(6), 1.0); // 0% success (cap)
+        assert_eq!(calculate_shulker_duplication_failure_chance(10), 1.0);
+
+        // 6. Shulker duplication conditions (Shulker.java:460-464)
+        assert!(can_shulker_duplicate(false, true, 0.2, 0.5)); // open, teleported, rand >= 0.2
+        assert!(!can_shulker_duplicate(true, true, 0.2, 0.5));  // closed cannot duplicate
+        assert!(!can_shulker_duplicate(false, false, 0.2, 0.5)); // failed teleport cannot duplicate
+        assert!(!can_shulker_duplicate(false, true, 0.2, 0.1));  // rand < failure_chance fails
     }
 }
 

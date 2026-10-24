@@ -333,13 +333,51 @@ impl ShulkerEntity {
         false
     }
 
-    pub fn on_shulker_damage(&self) {
+    pub fn hit_by_shulker_bullet(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let old_pos = entity.pos.load();
+        let old_bb = entity.bounding_box.load();
+
+        if !self.is_closed() && self.teleport_somewhere() {
+            let world = entity.world.load_full();
+            let search_box = old_bb.expand(8.0, 8.0, 8.0);
+            let nearby_shulkers = world
+                .get_entities_at_box(&search_box)
+                .into_iter()
+                .filter(|e| {
+                    let ent = e.get_entity();
+                    ent.entity_type == &EntityType::SHULKER && ent.is_alive()
+                })
+                .count();
+
+            let failure_chance =
+                crate::entity::combat::calculate_shulker_duplication_failure_chance(nearby_shulkers);
+            let rand_val = rand::random::<f32>();
+
+            if crate::entity::combat::can_shulker_duplicate(false, true, failure_chance, rand_val) {
+                let new_entity = Entity::new(world.clone(), old_pos, &EntityType::SHULKER);
+                let baby = Self::new(new_entity);
+                baby.set_color(self.get_color());
+                world.spawn_entity(baby);
+            }
+        }
+    }
+
+    pub fn on_shulker_damage(&self, source: Option<&dyn EntityBase>) {
         let living = &self.mob_entity.living_entity;
         let health = living.health.load();
         let max = living.get_max_health();
 
-        if health < max * 0.5 && rand::rng().random_range(0..4) == 0 {
+        if crate::entity::combat::should_shulker_teleport_on_low_health(
+            health,
+            max,
+            rand::random::<u32>(),
+        ) {
             self.teleport_somewhere();
+        } else if let Some(source) = source {
+            if source.get_entity().entity_type == &EntityType::SHULKER_BULLET {
+                self.hit_by_shulker_bullet();
+            }
         }
     }
 }
@@ -433,12 +471,14 @@ impl Mob for ShulkerEntity {
         }
     }
 
-    fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
-        self.on_shulker_damage();
+    fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
+        self.on_shulker_damage(source);
     }
 
-    fn pre_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) -> bool {
-        if self.is_closed() && damage_type == DamageType::ARROW {
+    fn pre_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
+        let is_arrow = damage_type == DamageType::ARROW
+            || source.is_some_and(|s| s.get_entity().entity_type == &EntityType::ARROW);
+        if crate::entity::combat::should_shulker_deflect_arrow(self.is_closed(), is_arrow) {
             return false;
         }
         true
