@@ -2483,6 +2483,96 @@ pub const fn get_wither_skull_kill_heal_amount() -> f32 {
     5.0
 }
 
+/// Calculates experience orb amount dropped by thrown experience bottle.
+///
+/// Mirrors vanilla `ThrownExperienceBottle.java:48`:
+/// `int xpCount = 3 + this.random.nextInt(5) + this.random.nextInt(5);`
+#[must_use]
+pub const fn calculate_experience_bottle_xp(rand1: i32, rand2: i32) -> i32 {
+    3 + rand1 + rand2
+}
+
+/// Returns default gravity acceleration for thrown experience bottle (0.07).
+///
+/// Mirrors vanilla `ThrownExperienceBottle.java:36`:
+/// `return 0.07;`
+#[must_use]
+pub const fn get_experience_bottle_gravity() -> f64 {
+    0.07
+}
+
+/// Returns potion break splash color int for thrown experience bottle (-13083194).
+///
+/// Mirrors vanilla `ThrownExperienceBottle.java:43`:
+/// `level.levelEvent(2002, this.blockPosition(), -13083194);`
+#[must_use]
+pub const fn get_experience_bottle_splash_color() -> i32 {
+    -13_083_194
+}
+
+/// Returns base damage dealt by Shulker bullet projectile (4.0 HP).
+///
+/// Mirrors vanilla `ShulkerBullet.java:285`:
+/// `boolean wasHurt = target.hurtOrSimulate(damageSource, 4.0F);`
+#[must_use]
+pub const fn get_shulker_bullet_damage() -> f32 {
+    4.0
+}
+
+/// Returns levitation effect duration applied by Shulker bullet (200 ticks = 10 seconds).
+///
+/// Mirrors vanilla `ShulkerBullet.java:292`:
+/// `new MobEffectInstance(MobEffects.LEVITATION, 200)`
+#[must_use]
+pub const fn get_shulker_bullet_levitation_duration() -> i32 {
+    200
+}
+
+/// Checks whether a Shulker bullet should instantly despawn due to Peaceful difficulty.
+///
+/// Mirrors vanilla `ShulkerBullet.java:179-181`:
+/// `if (this.level().getDifficulty() == Difficulty.PEACEFUL) { this.discard(); }`
+#[must_use]
+pub const fn should_shulker_bullet_despawn_in_peaceful(difficulty: pumpkin_util::Difficulty) -> bool {
+    matches!(difficulty, pumpkin_util::Difficulty::Peaceful)
+}
+
+/// Returns the particle count when a Shulker bullet is deflected / hit by an attack (15 crit particles).
+///
+/// Mirrors vanilla `ShulkerBullet.java:333`:
+/// `level.sendParticles(ParticleTypes.CRIT, this.getX(), this.getY(), this.getZ(), 15, 0.2, 0.2, 0.2, 0.0);`
+#[must_use]
+pub const fn get_shulker_bullet_deflect_particle_count() -> i32 {
+    15
+}
+
+/// Returns base damage dealt by Llama spit projectile (1.0 HP).
+///
+/// Mirrors vanilla `LlamaSpit.java:75`:
+/// `target.hurtServer(serverLevel, damageSource, 1.0F)`
+#[must_use]
+pub const fn get_llama_spit_damage() -> f32 {
+    1.0
+}
+
+/// Returns default gravity acceleration for Llama spit (0.06).
+///
+/// Mirrors vanilla `LlamaSpit.java:39`:
+/// `return 0.06;`
+#[must_use]
+pub const fn get_llama_spit_gravity() -> f64 {
+    0.06
+}
+
+/// Returns air drag factor for Llama spit (0.99).
+///
+/// Mirrors vanilla `LlamaSpit.java:66`:
+/// `return 0.99F;`
+#[must_use]
+pub const fn get_llama_spit_air_drag() -> f32 {
+    0.99
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4032,6 +4122,30 @@ mod tests {
 
         // 3. Kill heal amount for Wither boss owner (WitherSkull.java:71)
         assert_eq!(get_wither_skull_kill_heal_amount(), 5.0);
+    }
+
+    #[test]
+    fn test_experience_bottle_shulker_bullet_and_llama_spit_parity() {
+        // 1. Experience bottle XP bounds (ThrownExperienceBottle.java:48: 3 + rand(5) + rand(5))
+        assert_eq!(calculate_experience_bottle_xp(0, 0), 3);
+        assert_eq!(calculate_experience_bottle_xp(4, 4), 11);
+        assert_eq!(calculate_experience_bottle_xp(2, 2), 7);
+        assert_eq!(get_experience_bottle_gravity(), 0.07);
+        assert_eq!(get_experience_bottle_splash_color(), -13_083_194);
+
+        // 2. Shulker bullet damage, levitation duration, peaceful despawn, and deflect particles (ShulkerBullet.java:179-181, 285, 292, 333)
+        assert_eq!(get_shulker_bullet_damage(), 4.0);
+        assert_eq!(get_shulker_bullet_levitation_duration(), 200);
+        assert!(should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Peaceful));
+        assert!(!should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Easy));
+        assert!(!should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Normal));
+        assert!(!should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Hard));
+        assert_eq!(get_shulker_bullet_deflect_particle_count(), 15);
+
+        // 3. Llama spit damage, gravity, and air drag (LlamaSpit.java:39, 66, 75)
+        assert_eq!(get_llama_spit_damage(), 1.0);
+        assert_eq!(get_llama_spit_gravity(), 0.06);
+        assert_eq!(get_llama_spit_air_drag(), 0.99);
     }
 }
 

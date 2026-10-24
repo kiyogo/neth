@@ -307,7 +307,7 @@ impl EntityBase for ShulkerBulletEntity {
         let world = entity.world.load();
         let pos = entity.pos.load();
         world.play_sound_fine(
-            Sound::EntityShulkerBulletHit,
+            Sound::EntityShulkerBulletHurt,
             SoundCategory::Hostile,
             &pos,
             1.0,
@@ -317,8 +317,8 @@ impl EntityBase for ShulkerBulletEntity {
             pos,
             Vector3::new(0.2, 0.2, 0.2),
             0.0,
-            2,
-            Particle::Explosion,
+            crate::entity::combat::get_shulker_bullet_deflect_particle_count(),
+            Particle::Crit,
         );
         entity.remove();
         true
@@ -326,6 +326,17 @@ impl EntityBase for ShulkerBulletEntity {
     #[allow(clippy::too_many_lines)]
     fn tick(&self, _caller: &dyn EntityBase, _server: &Server) {
         if self.has_hit.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let entity = &self.entity;
+        let world = entity.world.load();
+
+        // Vanilla ShulkerBullet.java:179-181 checkDespawn on peaceful
+        if crate::entity::combat::should_shulker_bullet_despawn_in_peaceful(
+            world.level_info.load().difficulty,
+        ) {
+            entity.remove();
             return;
         }
 
@@ -475,7 +486,7 @@ impl EntityBase for ShulkerBulletEntity {
             let owner_arc = world.get_entity_by_id(self.owner_id);
             let damaged = hit_entity.damage_with_context(
                 hit_entity.as_ref(),
-                4.0,
+                crate::entity::combat::get_shulker_bullet_damage(),
                 DamageType::MOB_PROJECTILE,
                 None,
                 owner_arc.as_deref(),
@@ -485,7 +496,7 @@ impl EntityBase for ShulkerBulletEntity {
             if damaged {
                 let effect = Effect {
                     effect_type: &StatusEffect::LEVITATION,
-                    duration: 200,
+                    duration: crate::entity::combat::get_shulker_bullet_levitation_duration(),
                     amplifier: 0,
                     ambient: false,
                     show_particles: true,

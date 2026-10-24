@@ -96,12 +96,16 @@ impl EntityBase for ExperienceBottleEntity {
             world.sync_world_event(WorldEvent::SoundSpellPotionSplash, position, 0);
         }
         let mut random = rand::rng();
-        let amount = 3 + random.random_range(0..5) + random.random_range(0..5);
+        let amount = crate::entity::combat::calculate_experience_bottle_xp(
+            random.random_range(0..5),
+            random.random_range(0..5),
+        );
         let direction = match &hit {
             ProjectileHit::Block { face, .. } => face.to_offset().to_f64(),
             ProjectileHit::Entity { .. } => entity.velocity.load().multiply(-1.0, -1.0, -1.0),
         };
-        ExperienceOrbEntity::spawn_with_direction(&world, hit.hit_pos(), direction, amount);
+        ExperienceOrbEntity::spawn_with_direction(&world, hit.hit_pos(), direction, amount as u32);
+        entity.remove();
     }
 
     fn cast_any(&self) -> &dyn std::any::Any {

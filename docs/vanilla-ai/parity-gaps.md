@@ -2626,6 +2626,92 @@
   - Updated `WitherSkullEntity::on_hit` to heal living owner by 5.0 HP when a victim is killed, scale wither effect duration strictly by difficulty, and discard projectile upon impact.
   - Added unit test `test_wither_skull_inertia_difficulty_effect_and_heal_parity` in `combat.rs`. Total 44/44 tests passing in `entity::combat::tests`.
 
+## Gap 159: Experience Bottle Discard on Hit, Shulker Bullet Levitation & Llama Spit Damage Parity
+- **Vanilla Reference**:
+  - `ThrownExperienceBottle.java:31-58`:
+    ```java
+    @Override
+    protected double getDefaultGravity() {
+       return 0.07;
+    }
+
+    @Override
+    protected void onHit(final HitResult hitResult) {
+       super.onHit(hitResult);
+       if (this.level() instanceof ServerLevel level) {
+          level.levelEvent(2002, this.blockPosition(), -13083194);
+          if (!this.isSilent()) {
+             level.levelEvent(1053, this.blockPosition(), 0);
+          }
+
+          int xpCount = 3 + this.random.nextInt(5) + this.random.nextInt(5);
+          if (hitResult instanceof BlockHitResult blockHitResult) {
+             Vec3 blockNormalHit = blockHitResult.getDirection().getUnitVec3();
+             ExperienceOrb.awardWithDirection(level, hitResult.getLocation(), blockNormalHit, xpCount);
+          } else {
+             ExperienceOrb.awardWithDirection(level, hitResult.getLocation(), this.getDeltaMovement().scale(-1.0), xpCount);
+          }
+
+          this.discard();
+       }
+    }
+    ```
+    - Default gravity is `0.07`, splash color is `-13083194`, XP count is `3 + rand(5) + rand(5)` (triangular distribution between 3 and 11, avg 7).
+    - Plays particle spell splash (event 2002) and sound spell splash (event 1053) unless silent.
+    - Explicitly discards entity after spawning XP orbs.
+  - `ShulkerBullet.java:179-181, 284-295, 331-336`:
+    ```java
+    @Override
+    public void checkDespawn() {
+       if (this.level().getDifficulty() == Difficulty.PEACEFUL) {
+          this.discard();
+       }
+    }
+
+    @Override
+    protected void onHitEntity(final EntityHitResult hitResult) {
+       super.onHitEntity(hitResult);
+       Entity target = hitResult.getEntity();
+       Entity owner = this.getOwner();
+       LivingEntity livingOwner = owner instanceof LivingEntity livingEntity ? livingEntity : null;
+       DamageSource damageSource = this.damageSources().mobProjectile(this, livingOwner);
+       boolean wasHurt = target.hurtOrSimulate(damageSource, 4.0F);
+       if (wasHurt) {
+          if (this.level() instanceof ServerLevel serverLevel) {
+             EnchantmentHelper.doPostAttackEffects(serverLevel, target, damageSource);
+          }
+
+          if (target instanceof LivingEntity livingTarget) {
+             livingTarget.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 200), (Entity)MoreObjects.firstNonNull(owner, this));
+          }
+       }
+    }
+
+    @Override
+    public boolean hurtServer(final ServerLevel level, final DamageSource source, final float damage) {
+       this.playSound(SoundEvents.SHULKER_BULLET_HURT, 1.0F, 1.0F);
+       level.sendParticles(ParticleTypes.CRIT, this.getX(), this.getY(), this.getZ(), 15, 0.2, 0.2, 0.2, 0.0);
+       this.destroy();
+       return true;
+    }
+    ```
+    - Shulker bullet deals 4.0 damage (`DamageType::MOB_PROJECTILE`) and applies Levitation for 200 ticks (10s, amplifier 0).
+    - Despawns immediately on Peaceful difficulty.
+    - Emits `SoundEvents.SHULKER_BULLET_HURT` and 15 `ParticleTypes.CRIT` when deflected/hit by an attacker (`hurtServer`), distinct from `SHULKER_BULLET_HIT` and explosion particles on impact.
+  - `LlamaSpit.java:38-40, 65-67, 70-79`:
+    - Base gravity: `0.06`, air drag: `0.99`.
+    - Deals 1.0 damage (`DamageType::SPIT`).
+    - Discards on block impact and when submerged in water or touching no air.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_experience_bottle_xp`, `get_experience_bottle_gravity`, `get_experience_bottle_splash_color`, `get_shulker_bullet_damage`, `get_shulker_bullet_levitation_duration`, `should_shulker_bullet_despawn_in_peaceful`, `get_shulker_bullet_deflect_particle_count`, `get_llama_spit_damage`, `get_llama_spit_gravity`, and `get_llama_spit_air_drag` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `ExperienceBottleEntity::on_hit` to ensure `entity.remove()` is called and XP count matches vanilla triangular distribution.
+  - Updated `ShulkerBulletEntity`:
+    - Added Peaceful difficulty check to despawn bullet on tick start.
+    - Updated `damage_with_context` to emit `Sound::EntityShulkerBulletHurt` and 15 `Particle::Crit` upon being hit/deflected.
+    - Updated impact damage (4.0) and Levitation duration (200 ticks).
+  - Updated `LlamaSpitEntity` to utilize `get_llama_spit_damage`.
+  - Added unit test `test_experience_bottle_shulker_bullet_and_llama_spit_parity` in `combat.rs`. Total 45/45 tests passing in `entity::combat::tests`.
+
 
 
 

@@ -95,7 +95,7 @@ impl EntityBase for LlamaSpitEntity {
 
             let _ = entity.damage_with_context(
                 entity.as_ref(),
-                1.0,
+                crate::entity::combat::get_llama_spit_damage(),
                 DamageType::SPIT,
                 Some(hit_pos),
                 Some(self.get_entity()),
