@@ -1960,6 +1960,26 @@ impl LivingEntity {
         let effective_speed = self.get_attribute_value(&Attributes::MOVEMENT_SPEED);
 
         if water {
+            if caller.get_player().is_some() && self.entity.is_swimming() {
+                let pos = self.entity.pos.load();
+                let head_pos = pumpkin_util::math::position::BlockPos::floored(pos.x, pos.y + 0.9, pos.z);
+                let world = self.entity.world.load();
+                let (fluid, _) = world.get_fluid_and_fluid_state(&head_pos);
+                let head_submerged = fluid.id != pumpkin_data::fluid::Fluid::EMPTY.id;
+                let look_angle_y = -f64::from(self.entity.pitch.load().to_radians().sin());
+                let (impulse, should_apply) = crate::entity::combat::calculate_swimming_vertical_impulse(
+                    look_angle_y,
+                    self.entity.velocity.load().y,
+                    self.jumping.load(SeqCst),
+                    head_submerged,
+                );
+                if should_apply {
+                    let mut velo = self.entity.velocity.load();
+                    velo.y += impulse;
+                    self.entity.velocity.store(velo);
+                }
+            }
+
             let mut friction = if self.entity.sprinting.load(Relaxed) {
                 0.9
             } else {

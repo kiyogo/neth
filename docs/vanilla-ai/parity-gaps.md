@@ -2244,6 +2244,33 @@
   - Triggered immediate `player.update_player_pose()` in `crates/pumpkin-core/src/net/java/play/player_input.rs` upon sneak toggles.
   - Added unit test `test_player_pose_dimensions_and_crawling_parity` in `combat.rs`. Total 33/33 tests in `entity::combat::tests` passing.
 
+## Gap 148: Player Swimming Vertical Acceleration Impulse, Look Angle Multiplier & Surface Breach Prevention Parity
+- **Vanilla Reference**:
+  - `Player.java:1392-1402`:
+    ```java
+    if (this.isSwimming()) {
+       double lookAngleY = this.getLookAngle().y;
+       double multiplier = lookAngleY < -0.2 ? 0.085 : 0.06;
+       if (lookAngleY <= 0.0
+          || this.jumping
+          || !this.level().getFluidState(BlockPos.containing(this.getX(), this.getY() + 1.0 - 0.1, this.getZ())).isEmpty()) {
+          Vec3 movement = this.getDeltaMovement();
+          this.setDeltaMovement(movement.add(0.0, (lookAngleY - movement.y) * multiplier, 0.0));
+       }
+    }
+    ```
+    - While swimming, player pitch direction directly drives vertical fluid velocity:
+      - Steep downwards diving (`lookAngleY < -0.2`): accelerated by multiplier `0.085`.
+      - Shallow diving / swimming up (`lookAngleY >= -0.2`): accelerated by multiplier `0.06`.
+      - Vertical impulse formula: `delta_y = (lookAngleY - current_vel_y) * multiplier`.
+      - Activation condition: `lookAngleY <= 0.0 || is_jumping || head_submerged`.
+      - When player breaches surface (`lookAngleY > 0.0`, space not pressed, and head is above fluid), vertical impulse cuts off to prevent launching into the air.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `calculate_swimming_vertical_impulse` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Integrated swimming vertical impulse application into `LivingEntity::travel_in_fluid` (`crates/pumpkin-core/src/entity/living.rs`) for swimming players.
+  - Added unit test `test_swimming_vertical_impulse_and_multiplier_parity` in `combat.rs`. Total 34/34 tests in `entity::combat::tests` passing.
+
+
 
 
 

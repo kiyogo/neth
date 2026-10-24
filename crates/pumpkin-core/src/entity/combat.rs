@@ -1702,6 +1702,35 @@ pub const fn determine_player_actual_pose(
     }
 }
 
+/// Calculates the swimming vertical acceleration impulse and condition based on look angle and head submersion.
+///
+/// Mirrors vanilla `Player.java:1392-1402`:
+/// ```java
+/// double lookAngleY = this.getLookAngle().y;
+/// double multiplier = lookAngleY < -0.2 ? 0.085 : 0.06;
+/// if (lookAngleY <= 0.0
+///    || this.jumping
+///    || !this.level().getFluidState(BlockPos.containing(this.getX(), this.getY() + 1.0 - 0.1, this.getZ())).isEmpty()) {
+///    Vec3 movement = this.getDeltaMovement();
+///    this.setDeltaMovement(movement.add(0.0, (lookAngleY - movement.y) * multiplier, 0.0));
+/// }
+/// ```
+#[must_use]
+pub fn calculate_swimming_vertical_impulse(
+    look_angle_y: f64,
+    current_vel_y: f64,
+    is_jumping: bool,
+    head_submerged: bool,
+) -> (f64, bool) {
+    let should_apply = look_angle_y <= 0.0 || is_jumping || head_submerged;
+    if !should_apply {
+        return (0.0, false);
+    }
+    let multiplier = if look_angle_y < -0.2 { 0.085 } else { 0.06 };
+    let impulse = (look_angle_y - current_vel_y) * multiplier;
+    (impulse, true)
+}
+
 
 
 #[cfg(test)]
@@ -2846,6 +2875,44 @@ mod tests {
             EntityPose::Swimming,
         );
         assert!(pose_spectator == EntityPose::Standing);
+    }
+
+    #[test]
+    fn test_swimming_vertical_impulse_and_multiplier_parity() {
+        // Vanilla Player.java:1392-1402:
+        // double lookAngleY = this.getLookAngle().y;
+        // double multiplier = lookAngleY < -0.2 ? 0.085 : 0.06;
+        // if (lookAngleY <= 0.0 || this.jumping || !fluidAtHead.isEmpty()) {
+        //     movement.add(0.0, (lookAngleY - movement.y) * multiplier, 0.0);
+        // }
+
+        // 1. Diving steep down: lookAngleY = -0.6 (< -0.2) -> multiplier = 0.085
+        let (impulse_dive, should_apply) = calculate_swimming_vertical_impulse(-0.6, 0.0, false, false);
+        assert!(should_apply);
+        // impulse = (-0.6 - 0.0) * 0.085 = -0.051
+        assert!((impulse_dive - (-0.051)).abs() < 1e-6);
+
+        // 2. Horizontal swimming: lookAngleY = 0.0 (>= -0.2) -> multiplier = 0.06
+        let (impulse_horiz, should_apply) = calculate_swimming_vertical_impulse(0.0, -0.1, false, false);
+        assert!(should_apply);
+        // impulse = (0.0 - (-0.1)) * 0.06 = 0.006
+        assert!((impulse_horiz - 0.006).abs() < 1e-6);
+
+        // 3. Swimming up with head submerged: lookAngleY = 0.5 (> 0.0), head_submerged = true -> multiplier = 0.06
+        let (impulse_up, should_apply) = calculate_swimming_vertical_impulse(0.5, 0.0, false, true);
+        assert!(should_apply);
+        // impulse = (0.5 - 0.0) * 0.06 = 0.03
+        assert!((impulse_up - 0.03).abs() < 1e-6);
+
+        // 4. Swimming up with Space pressed: lookAngleY = 0.5, is_jumping = true
+        let (impulse_jump, should_apply) = calculate_swimming_vertical_impulse(0.5, 0.0, true, false);
+        assert!(should_apply);
+        assert!((impulse_jump - 0.03).abs() < 1e-6);
+
+        // 5. Head above water, looking up, space NOT pressed: does not launch out of water
+        let (impulse_none, should_apply) = calculate_swimming_vertical_impulse(0.5, 0.0, false, false);
+        assert!(!should_apply);
+        assert_eq!(impulse_none, 0.0);
     }
 }
 
