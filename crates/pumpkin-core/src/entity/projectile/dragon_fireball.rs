@@ -109,19 +109,43 @@ impl EntityBase for DragonFireballEntity {
         }
 
         // 4. Create and spawn Dragon Breath AreaEffectCloud
+        let radius_per_tick = crate::entity::combat::calculate_dragon_fireball_radius_per_tick(
+            crate::entity::combat::get_dragon_fireball_initial_radius(),
+            crate::entity::combat::get_dragon_fireball_max_radius(),
+            crate::entity::combat::get_dragon_fireball_duration(),
+        );
         let cloud_entity = Entity::new(world.clone(), cloud_pos, &EntityType::AREA_EFFECT_CLOUD);
-        let cloud = AreaEffectCloudEntity::create(
+        let cloud = AreaEffectCloudEntity::create_full(
             cloud_entity,
             ItemStack::new(0, &Item::DRAGON_BREATH),
             vec![(&StatusEffect::INSTANT_DAMAGE, 1, 1, false, true, true)],
-            600,
-            3.0,
-            20,
-            20,
-            0.5,
-            -100,
+            crate::entity::combat::get_dragon_fireball_duration(),
+            crate::entity::combat::get_dragon_fireball_initial_radius(),
+            crate::entity::combat::get_lingering_potion_reapplication_delay(),
+            0,
+            0.0,
+            0,
+            radius_per_tick,
         );
         world.spawn_entity(cloud);
+
+        // Vanilla DragonFireball.java:56:
+        // this.level().levelEvent(2006, this.blockPosition(), this.isSilent() ? -1 : 1);
+        let block_pos = pumpkin_util::math::position::BlockPos(pumpkin_util::math::vector3::Vector3::new(
+            hit_pos.x.floor() as i32,
+            hit_pos.y.floor() as i32,
+            hit_pos.z.floor() as i32,
+        ));
+        let chunk_pos = pumpkin_util::math::vector2::to_chunk_pos(&pumpkin_util::math::vector2::Vector2::new(block_pos.0.x, block_pos.0.z));
+        world.broadcast_to_chunk(
+            chunk_pos,
+            &pumpkin_protocol::java::client::play::CWorldEvent::new(
+                crate::entity::combat::get_dragon_breath_level_event(),
+                block_pos,
+                1,
+                false,
+            ),
+        );
 
         // 5. Remove projectile
         self.get_entity().remove();

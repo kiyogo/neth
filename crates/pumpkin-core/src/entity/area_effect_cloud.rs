@@ -79,7 +79,7 @@ impl AreaEffectCloudEntity {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn create(
+    pub fn create_full(
         entity: Entity,
         item_stack: ItemStack,
         effects_in: Vec<EffectEntry>,
@@ -89,6 +89,7 @@ impl AreaEffectCloudEntity {
         wait_time_in: i32,
         radius_on_use_in: f32,
         duration_on_use_in: i32,
+        radius_on_tick_in: f32,
     ) -> Arc<dyn EntityBase> {
         entity
             .no_physics
@@ -102,13 +103,40 @@ impl AreaEffectCloudEntity {
             age: Mutex::new(0),
             reapplication_delay: Mutex::new(reapplication_delay_in),
             reapplication_map: Mutex::new(HashMap::new()),
-            radius_on_tick: Mutex::new(-radius_in / (duration_in as f32).max(1.0)),
+            radius_on_tick: Mutex::new(radius_on_tick_in),
             radius_on_use: Mutex::new(radius_on_use_in),
             duration_on_use: Mutex::new(duration_on_use_in),
             wait_time: Mutex::new(wait_time_in),
         };
 
         Arc::new(cloud)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn create(
+        entity: Entity,
+        item_stack: ItemStack,
+        effects_in: Vec<EffectEntry>,
+        duration_in: i32,
+        radius_in: f32,
+        reapplication_delay_in: i32,
+        wait_time_in: i32,
+        radius_on_use_in: f32,
+        duration_on_use_in: i32,
+    ) -> Arc<dyn EntityBase> {
+        let radius_on_tick = -radius_in / (duration_in as f32).max(1.0);
+        Self::create_full(
+            entity,
+            item_stack,
+            effects_in,
+            duration_in,
+            radius_in,
+            reapplication_delay_in,
+            wait_time_in,
+            radius_on_use_in,
+            duration_on_use_in,
+            radius_on_tick,
+        )
     }
 }
 

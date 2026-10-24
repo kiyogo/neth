@@ -2388,6 +2388,64 @@ pub const fn get_spectral_arrow_duration() -> i32 {
     200
 }
 
+/// Calculates radius change per tick for Dragon Fireball area effect cloud (+4.0 / 600.0).
+///
+/// Mirrors vanilla `DragonFireball.java:43`:
+/// `cloud.setRadiusPerTick((7.0F - cloud.getRadius()) / (float)cloud.getDuration());`
+#[must_use]
+pub fn calculate_dragon_fireball_radius_per_tick(
+    initial_radius: f32,
+    target_radius: f32,
+    duration: i32,
+) -> f32 {
+    (target_radius - initial_radius) / (duration as f32).max(1.0)
+}
+
+/// Checks whether a small fireball is allowed to place fire on block hit.
+///
+/// Mirrors vanilla `SmallFireball.java:55`:
+/// `if (!(owner instanceof Mob) || serverLevel.getGameRules().get(GameRules.MOB_GRIEFING))`
+#[must_use]
+pub const fn can_small_fireball_place_fire(is_mob_owner: bool, mob_griefing: bool) -> bool {
+    !is_mob_owner || mob_griefing
+}
+
+/// Returns the vanilla initial radius for dragon fireball breath cloud (3.0 blocks).
+///
+/// Mirrors vanilla `DragonFireball.java:41`:
+/// `cloud.setRadius(3.0F);`
+#[must_use]
+pub const fn get_dragon_fireball_initial_radius() -> f32 {
+    3.0
+}
+
+/// Returns the vanilla max radius for dragon fireball breath cloud expansion (7.0 blocks).
+///
+/// Mirrors vanilla `DragonFireball.java:43`:
+/// `7.0F`
+#[must_use]
+pub const fn get_dragon_fireball_max_radius() -> f32 {
+    7.0
+}
+
+/// Returns the vanilla duration for dragon fireball breath cloud (600 ticks = 30 seconds).
+///
+/// Mirrors vanilla `DragonFireball.java:42`:
+/// `cloud.setDuration(600);`
+#[must_use]
+pub const fn get_dragon_fireball_duration() -> i32 {
+    600
+}
+
+/// Returns the vanilla level event ID for dragon breath explosion (2006).
+///
+/// Mirrors vanilla `DragonFireball.java:56`:
+/// `this.level().levelEvent(2006, this.blockPosition(), this.isSilent() ? -1 : 1);`
+#[must_use]
+pub const fn get_dragon_breath_level_event() -> i32 {
+    2006
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3902,6 +3960,25 @@ mod tests {
 
         // 5. Spectral arrow default duration (SpectralArrow.java:18)
         assert_eq!(get_spectral_arrow_duration(), 200);
+    }
+
+    #[test]
+    fn test_fireball_and_dragon_breath_cloud_parity() {
+        // 1. Dragon Fireball cloud expansion per tick (DragonFireball.java:43: (7.0 - 3.0) / 600)
+        let rate = calculate_dragon_fireball_radius_per_tick(3.0, 7.0, 600);
+        assert!((rate - (4.0 / 600.0)).abs() < 1e-6);
+
+        // 2. Mob griefing fire placement permission (SmallFireball.java:55)
+        assert!(can_small_fireball_place_fire(false, false)); // Player always allowed
+        assert!(can_small_fireball_place_fire(false, true));
+        assert!(!can_small_fireball_place_fire(true, false)); // Mob denied if mob_griefing is false
+        assert!(can_small_fireball_place_fire(true, true)); // Mob allowed if mob_griefing is true
+
+        // 3. Dragon Fireball constants (DragonFireball.java:41-43, 56)
+        assert_eq!(get_dragon_fireball_initial_radius(), 3.0);
+        assert_eq!(get_dragon_fireball_max_radius(), 7.0);
+        assert_eq!(get_dragon_fireball_duration(), 600);
+        assert_eq!(get_dragon_breath_level_event(), 2006);
     }
 }
 

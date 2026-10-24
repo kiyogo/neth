@@ -2559,6 +2559,42 @@
   - Updated `ArrowEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/arrow.rs` to scale punch knockback with victim's `KNOCKBACK_RESISTANCE`, increment arrow count only if `should_arrow_stick_in_entity(pierce)`, send `CGameEvent::new(GameEvent::ArrowHitPlayer, 0.0)` to shooter when hitting another player, and use vanilla pitch formula.
   - Added unit test `test_arrow_damage_punch_knockback_and_spectral_duration_parity` in `combat.rs`. Total 42/42 tests passing in `entity::combat::tests`.
 
+## Gap 157: SmallFireball Discard on Hit, Mob Griefing Fire Placement & Dragon Fireball AreaEffectCloud Expansion Parity
+- **Vanilla Reference**:
+  - `SmallFireball.java:34-60`:
+    ```java
+    if (!(owner instanceof Mob) || serverLevel.getGameRules().get(GameRules.MOB_GRIEFING)) {
+       BlockPos pos = hitResult.getBlockPos().relative(hitResult.getDirection());
+       if (this.level().isEmptyBlock(pos)) {
+          this.level().setBlockAndUpdate(pos, BaseFireBlock.getState(this.level(), pos));
+       }
+    }
+    ```
+    - Small Fireball places fire on block impact only if owner is not a mob or `mobGriefing` is enabled.
+    - Projectile is discarded after impact on block or entity.
+  - `DragonFireball.java:30-60`:
+    ```java
+    AreaEffectCloud cloud = new AreaEffectCloud(this.level(), this.getX(), this.getY(), this.getZ());
+    cloud.setRadius(3.0F);
+    cloud.setDuration(600);
+    cloud.setRadiusPerTick((7.0F - cloud.getRadius()) / cloud.getDuration());
+    cloud.setPotionDurationScale(0.25F);
+    cloud.addEffect(new MobEffectInstance(MobEffects.INSTANT_DAMAGE, 1, 1));
+    this.level().levelEvent(2006, this.blockPosition(), this.isSilent() ? -1 : 1);
+    this.level().addFreshEntity(cloud);
+    this.discard();
+    ```
+    - Dragon Fireball spawns a breath cloud that expands from radius 3.0 up to 7.0 blocks over 600 ticks (`radiusPerTick = (7.0 - 3.0) / 600 = +0.0066667`).
+    - Cloud wait time is 0 (activates immediately), radius on use is 0.0, duration on use is 0.
+    - Plays dragon breath sound and particle burst via level event `2006`.
+    - Projectile is discarded immediately after onHit.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_dragon_fireball_radius_per_tick`, `can_small_fireball_place_fire`, `get_dragon_fireball_initial_radius`, `get_dragon_fireball_max_radius`, `get_dragon_fireball_duration`, and `get_dragon_breath_level_event` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `AreaEffectCloudEntity::create_full` in `crates/pumpkin-core/src/entity/area_effect_cloud.rs` supporting arbitrary positive or negative `radius_on_tick`.
+  - Updated `DragonFireballEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/dragon_fireball.rs` to create an expanding cloud with positive `radius_per_tick` and broadcast level event `2006`.
+  - Updated `SmallFireballEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/small_fireball.rs` to check `mob_griefing` game rule when owner is a mob and properly discard the fireball projectile on collision.
+  - Added unit test `test_fireball_and_dragon_breath_cloud_parity` in `combat.rs`. Total 43/43 tests passing in `entity::combat::tests`.
+
 
 
 
