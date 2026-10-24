@@ -1833,3 +1833,40 @@
   - Updated `LivingEntity::damage_with_context` in `crates/pumpkin-core/src/entity/living.rs` to decouple player attribution and mob anger resolution into two distinct phases, ensuring living player attackers are recorded in `last_hurt_by_mob_id` while respecting `#minecraft:no_anger` and `#minecraft:no_anger_from_wind_charge`.
   - Added unit test `test_mob_anger_resolution_and_tag_exemptions_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 23/23 tests in `entity::combat::tests` passing.
 
+### Gap 138: Hurt Processing Parity - Directional Hurt Animation Suppression for NO_KNOCKBACK Damage
+- **Vanilla Reference**:
+  - `LivingEntity.java:1250-1253` & `dealDefaultKnockback` (`LivingEntity.java:1305-1308`):
+    ```java
+    boolean fullyBlocked = blocked && damage <= 0.0F;
+    if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) {
+       this.dealDefaultKnockback(source, damage, blocked);
+    }
+    ```
+    ```java
+    public void dealDefaultKnockback(final DamageSource source, final float damage, final boolean blocked) {
+       // ...
+       this.knockback(0.4F, xd, zd, source, damage);
+       if (!blocked) {
+          this.indicateDamage(xd, zd);
+       }
+    }
+    ```
+  - `ServerPlayer.java:2169-2172` (`indicateDamage`):
+    ```java
+    @Override
+    public void indicateDamage(final double xd, final double zd) {
+       this.hurtDir = (float)(Mth.atan2(zd, xd) * 180.0F / (float)Math.PI - this.getYRot());
+       this.connection.send(new ClientboundHurtAnimationPacket(this));
+    }
+    ```
+  - In vanilla Minecraft Java, `ClientboundHurtAnimationPacket` (which tilts the player camera and renders directional damage yaw) is exclusively triggered via `dealDefaultKnockback`.
+  - Damage types tagged `#minecraft:no_knockback` (such as `in_fire`, `on_fire`, `drown`, `starve`, `freeze`, `poison`, `wither`) bypass `dealDefaultKnockback`. They cause `broadcastDamageEvent` (red tint) and hurt sounds, but **never** send directional hurt animation or apply velocity knockback.
+  - Previously in Neth:
+    - `CHurtAnimation` and Bedrock `SActorEvent(ActorEventID::Hurt)` were sent unconditionally whenever `took_full_damage` was true, before and outside the `!damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK)` check.
+    - As a result, environmental damage (fire ticks, drowning, hunger, poison, freeze) sent random-angled directional hurt animation packets every tick damage was applied, tilting the player's camera erratically.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `should_deal_default_knockback_and_hurt_anim` helper in `crates/pumpkin-core/src/entity/combat.rs`.
+  - In `LivingEntity::damage_with_context` in `crates/pumpkin-core/src/entity/living.rs`, relocated the `CHurtAnimation` and hurt actor event broadcast inside the `!damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK)` block, mirroring vanilla `LivingEntity.dealDefaultKnockback`.
+  - Added unit test `test_hurt_animation_and_knockback_no_knockback_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 24/24 tests in `entity::combat::tests` passing.
+
+

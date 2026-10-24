@@ -1285,6 +1285,20 @@ pub const fn can_cause_mob_anger(
     true
 }
 
+/// Determines if directional hurt animation and knockback should be dealt upon taking full damage,
+/// mirroring vanilla `LivingEntity.hurtServer` (LivingEntity.java:1250) and `dealDefaultKnockback`.
+///
+/// In vanilla:
+/// `if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) { this.dealDefaultKnockback(source, damage, blocked); }`
+/// And `dealDefaultKnockback` only invokes `indicateDamage` (sending `ClientboundHurtAnimationPacket`) if `!blocked`.
+#[must_use]
+pub const fn should_deal_default_knockback_and_hurt_anim(
+    has_no_knockback_tag: bool,
+    fully_blocked: bool,
+) -> bool {
+    !has_no_knockback_tag && !fully_blocked
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2005,6 +2019,24 @@ mod tests {
 
         // 5. Wind charge damage against normal entity -> causes anger
         assert!(can_cause_mob_anger(true, false, true, false));
+    }
+
+    #[test]
+    fn test_hurt_animation_and_knockback_no_knockback_parity() {
+        // Vanilla LivingEntity.java:1250:
+        // boolean fullyBlocked = blocked && damage <= 0.0F;
+        // if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) { dealDefaultKnockback(...); }
+
+        // Normal damage (e.g. player hit, arrow, mob attack): has_no_knockback = false, fully_blocked = false
+        assert!(should_deal_default_knockback_and_hurt_anim(false, false));
+
+        // Damage with #minecraft:no_knockback (fire, drowning, starve, freeze, poison, wither):
+        // NO directional hurt animation or knockback
+        assert!(!should_deal_default_knockback_and_hurt_anim(true, false));
+        assert!(!should_deal_default_knockback_and_hurt_anim(true, true));
+
+        // Fully blocked by shield: NO knockback or hurt animation
+        assert!(!should_deal_default_knockback_and_hurt_anim(false, true));
     }
 }
 

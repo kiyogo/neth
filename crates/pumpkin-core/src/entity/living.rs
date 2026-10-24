@@ -3974,31 +3974,6 @@ impl LivingEntity {
                 position,
             );
 
-            if let Some(server) = world.server.upgrade() {
-                let config = &server.advanced_config.pvp;
-
-                if config.hurt_animation {
-                    let entity_id = self.entity.entity_id;
-                    let hurt_yaw = crate::entity::combat::calculate_hurt_direction_yaw(
-                        xd,
-                        zd,
-                        self.entity.yaw.load(),
-                    );
-                    let hurt_event = SActorEvent {
-                        target_runtime_id: VarULong(entity_id as u64),
-                        event_id: ActorEventID::Hurt,
-                        data: VarInt(0),
-                        fire_at_position: None,
-                    };
-                    let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
-                    world.send_to_tracking_players_and_self_editioned(
-                        &self.entity,
-                        &hurt_animation,
-                        &hurt_event,
-                    );
-                }
-            }
-
             world.broadcast_damage_event(
                 &self.entity,
                 i32::from(damage_type.id),
@@ -4013,10 +3988,38 @@ impl LivingEntity {
                 self.entity.mark_hurt();
             }
 
-            // Vanilla LivingEntity.java:1250:
+            // Vanilla LivingEntity.java:1250 & dealDefaultKnockback:
             // boolean fullyBlocked = blocked && damage <= 0.0F;
-            // if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) { this.dealDefaultKnockback(source, damage, blocked); }
+            // if (!source.is(DamageTypeTags.NO_KNOCKBACK) && !fullyBlocked) {
+            //     this.dealDefaultKnockback(source, damage, blocked);
+            //     if (!blocked) { this.indicateDamage(xd, zd); }
+            // }
             if !damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK) {
+                if let Some(server) = world.server.upgrade() {
+                    let config = &server.advanced_config.pvp;
+
+                    if config.hurt_animation {
+                        let entity_id = self.entity.entity_id;
+                        let hurt_yaw = crate::entity::combat::calculate_hurt_direction_yaw(
+                            xd,
+                            zd,
+                            self.entity.yaw.load(),
+                        );
+                        let hurt_event = SActorEvent {
+                            target_runtime_id: VarULong(entity_id as u64),
+                            event_id: ActorEventID::Hurt,
+                            data: VarInt(0),
+                            fire_at_position: None,
+                        };
+                        let hurt_animation = CHurtAnimation::new(entity_id.into(), hurt_yaw);
+                        world.send_to_tracking_players_and_self_editioned(
+                            &self.entity,
+                            &hurt_animation,
+                            &hurt_event,
+                        );
+                    }
+                }
+
                 let resistance = self.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE);
                 let attacker_living = source
                     .and_then(|s| s.get_living_entity())
