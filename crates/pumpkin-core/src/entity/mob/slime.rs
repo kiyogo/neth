@@ -39,6 +39,8 @@ pub const SLIME: CubeKind = CubeKind {
     split_count: random_split_count,
     spawn_size: random_spawn_size,
     register_goals: register_hostile_goals,
+    is_magma_cube: false,
+    squish_decay: 0.6,
 };
 
 pub struct SlimeEntity;

@@ -3279,3 +3279,46 @@
     - `PhantomAttackStrategyGoal::tick`: plays swoop sound with volume 10.0 and formula pitch `calculate_phantom_swoop_pitch`.
     - `PhantomSweepAttackGoal::tick`: aborts swoop on wall collision (`horizontal_collision`) or recent damage (`hurt_cooldown > 0`) via `should_phantom_abort_swoop_on_collision_or_damage`.
   - Added unit test `test_phantom_and_ghast_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 60/60 tests passing in `entity::combat::tests`.
+
+## Gap 175: Slime & MagmaCube Size Scaling, Squish Dynamics, Jump Physics, Contact Damage, Sound Pitch & Experience Parity
+- **Vanilla Reference**:
+  - `Slime.java:119-125, 49-71`:
+    - Attack damage scaling: Tiny Slime (`size <= 1`) không gây sát thương (`canDealDamage() = false`). Slime `size > 1` gây `size` sát thương.
+    - Experience reward: `xpReward = actualSize` (size 1: 1 XP, size 2: 2 XP, size 4: 4 XP).
+    - Sound variants: phân biệt sound thường và small cho hurt, death, squish, jump.
+  - `MagmaCube.java:60-66, 80-99, 102-120`:
+    - Attack damage & Armor: Luôn gây sát thương kể cả Tiny (`canDealDamage() = isEffectiveAi()`). Sát thương = `size + 2` (size 1: 3, size 2: 4, size 4: 6). Giáp = `size * 3` (size 1: 3, size 2: 6, size 4: 12).
+    - Squish decay: `targetSquish *= 0.9F` (thay vì 0.6F như Slime).
+    - Jump boost on ground: `getJumpPower() + size * 0.1F`.
+    - Jump in lava: `0.22F + size * 0.05F`.
+    - Fire immunity: `isOnFire() = false` và EntityType `.fireImmune()` miễn nhiễm 100% sát thương lửa, dung nham, campfire, magma block.
+  - `AbstractCubeMob.java:139, 150, 220-245, 280, 292-295`:
+    - Push / Collision damage: khi chạm Player hoặc push vào IronGolem, nếu `canDealDamage()`, tấn công mục tiêu và phát âm thanh `SoundEvents.SLIME_ATTACK` (volume 1.0, pitch `(rand - rand) * 0.2 + 1.0`).
+    - Landing squish sound pitch: `((rand - rand) * 0.2 + 1.0) / 0.8`.
+    - Jump sound pitch: `((rand - rand) * 0.2 + 1.0) * (if isTiny { 1.4 } else { 0.8 })`.
+    - Sound volume: `0.4F * size`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_cube_mob_attack_damage`: Slime tiny 0.0 / size, MagmaCube `size + 2`.
+    - `should_cube_mob_deal_contact_damage`: checks effective AI and size restriction.
+    - `calculate_cube_mob_armor`: MagmaCube `size * 3`, Slime 0.0.
+    - `calculate_cube_mob_xp_reward`: returns `actualSize`.
+    - `calculate_cube_mob_squish_decay`: 0.6 for Slime, 0.9 for MagmaCube.
+    - `calculate_cube_mob_jump_velocity`: adds `size * 0.1` boost for MagmaCube.
+    - `calculate_magma_cube_lava_jump_velocity`: `0.22 + size * 0.05`.
+    - `calculate_cube_mob_sound_volume`: `0.4 * size`.
+    - `calculate_cube_mob_sound_pitch`: adjuster 1.4 for tiny, 0.8 for normal.
+    - `calculate_cube_mob_squish_pitch`: divided by 0.8.
+    - `calculate_cube_mob_attack_pitch`: `rand_diff * 0.2 + 1.0`.
+    - `is_magma_cube_damage_negated`: negates in_fire, on_fire, lava, hot_floor, campfire.
+  - Added `is_magma_cube` and `squish_decay` to `CubeKind` and wired them in `slime.rs` and `magma_cube.rs`.
+  - Added `mob_push` hook to `Mob` trait and called it in `EntityBase::push`.
+  - Updated `CubeMobEntity` in `crates/pumpkin-core/src/entity/mob/cube_mob.rs`:
+    - `mob_player_collision` & `mob_push`: attacks player/iron golem and plays `Sound::EntitySlimeAttack` with formula pitch.
+    - `get_base_experience_reward`: drops `actualSize` XP.
+    - `modify_incoming_damage_with_source`: negates fire damage for MagmaCube.
+    - `mob_tick`: decays target squish with `self.kind.squish_decay` and calculates landing pitch via `calculate_cube_mob_squish_pitch`.
+    - `CubeMobMoveControl`: boosts Y-velocity by `size * 0.1` when MagmaCube jumps from ground.
+    - `CubeMobFloatGoal`: sets Y-velocity `0.22 + size * 0.05` when MagmaCube touches lava.
+  - Added unit test `test_slime_and_magma_cube_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 61/61 tests passing in `entity::combat::tests`.
+

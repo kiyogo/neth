@@ -68,6 +68,8 @@ pub struct CubeKind {
     pub spawn_size: fn() -> i32,
     /// `addBehaviourGoals` and `addTargetingGoals`.
     pub register_goals: fn(&MobEntity),
+    pub is_magma_cube: bool,
+    pub squish_decay: f32,
 }
 
 /// Vanilla `AbstractCubeMob.setSpawnSize`, without the difficulty multiplier.
@@ -218,12 +220,14 @@ impl CubeMobEntity {
     }
 
     fn can_deal_damage(&self) -> bool {
-        let allowed = match self.kind.contact_damage {
-            ContactDamage::Never => false,
-            ContactDamage::UnlessTiny => !self.is_tiny(),
-            ContactDamage::Always => true,
-        };
-        allowed && !self.mob_entity.is_no_ai()
+        if matches!(self.kind.contact_damage, ContactDamage::Never) {
+            return false;
+        }
+        crate::entity::combat::should_cube_mob_deal_contact_damage(
+            self.get_size(),
+            self.kind.is_magma_cube,
+            !self.mob_entity.is_no_ai(),
+        )
     }
 
     fn get_jump_delay(&self) -> i32 {
@@ -231,12 +235,12 @@ impl CubeMobEntity {
     }
 
     fn get_sound_volume(&self) -> f32 {
-        0.4 * self.get_size() as f32
+        crate::entity::combat::calculate_cube_mob_sound_volume(self.get_size())
     }
 
     fn get_sound_pitch(&self) -> f32 {
-        let pitch_adjuster = if self.is_tiny() { 1.4 } else { 0.8 };
-        ((rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0)) * 0.2 + 1.0) * pitch_adjuster
+        let rand_diff = rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0);
+        crate::entity::combat::calculate_cube_mob_sound_pitch(self.is_tiny(), rand_diff)
     }
 
     fn play_sound(&self, sound: Sound, pitch: f32) {
@@ -373,16 +377,17 @@ impl Mob for CubeMobEntity {
         let was_on_ground = self.was_on_ground.load(Ordering::Relaxed);
         if on_ground && !was_on_ground {
             // Landing particles are client-side: vanilla's Level.addParticle is a no-op on the server.
+            let rand_diff = rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0);
             self.play_sound(
                 self.kind.sounds.squish.get(self.is_tiny()),
-                ((rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0)) * 0.2 + 1.0) / 0.8,
+                crate::entity::combat::calculate_cube_mob_squish_pitch(rand_diff),
             );
             self.target_squish.store(-0.5);
         } else if !on_ground && was_on_ground {
             self.target_squish.store(1.0);
         }
         self.was_on_ground.store(on_ground, Ordering::Relaxed);
-        self.target_squish.store(self.target_squish.load() * 0.6);
+        self.target_squish.store(self.target_squish.load() * self.kind.squish_decay);
         self.is_aggressive.store(false, Ordering::Relaxed);
         self.speed_modifier.store(0.0);
     }
@@ -400,8 +405,53 @@ impl Mob for CubeMobEntity {
     }
 
     fn mob_player_collision(&self, player: &Arc<Player>) {
-        if self.can_deal_damage() {
-            self.mob_entity.try_attack(self, &**player);
+        if self.can_deal_damage() && self.mob_entity.try_attack(self, &**player) {
+            let rand_diff = rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0);
+            let pitch = crate::entity::combat::calculate_cube_mob_attack_pitch(rand_diff);
+            let entity = &self.mob_entity.living_entity.entity;
+            entity.world.load().play_sound_fine(
+                Sound::EntitySlimeAttack,
+                self.kind.sound_category,
+                &entity.pos.load(),
+                1.0,
+                pitch,
+            );
+        }
+    }
+
+    fn mob_push(&self, other: &dyn EntityBase) {
+        if other.get_entity().entity_type == &EntityType::IRON_GOLEM
+            && self.can_deal_damage()
+            && self.mob_entity.try_attack(self, other)
+        {
+            let rand_diff = rand::random_range(0.0..1.0) - rand::random_range(0.0..1.0);
+            let pitch = crate::entity::combat::calculate_cube_mob_attack_pitch(rand_diff);
+            let entity = &self.mob_entity.living_entity.entity;
+            entity.world.load().play_sound_fine(
+                Sound::EntitySlimeAttack,
+                self.kind.sound_category,
+                &entity.pos.load(),
+                1.0,
+                pitch,
+            );
+        }
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::calculate_cube_mob_xp_reward(self.get_size())
+    }
+
+    fn modify_incoming_damage_with_source(
+        &self,
+        damage: f32,
+        damage_type: pumpkin_data::damage::DamageType,
+        _source: Option<&dyn EntityBase>,
+        _cause: Option<&dyn EntityBase>,
+    ) -> f32 {
+        if self.kind.is_magma_cube && crate::entity::combat::is_magma_cube_damage_negated(&damage_type) {
+            0.0
+        } else {
+            damage
         }
     }
 }
@@ -438,6 +488,16 @@ impl MoveControlTrait for CubeMobMoveControl {
                     }
                     cube.jump_delay.store(next_delay, Ordering::Relaxed);
                     living_entity.jumping.store(true, Ordering::SeqCst);
+                    if cube.kind.is_magma_cube {
+                        let mut velo = entity.velocity.load();
+                        velo.y = crate::entity::combat::calculate_cube_mob_jump_velocity(
+                            velo.y.max(0.42),
+                            cube.get_size(),
+                            true,
+                        );
+                        entity.velocity.store(velo);
+                        entity.velocity_dirty.store(true, Ordering::SeqCst);
+                    }
                     cube.play_sound(
                         cube.kind.sounds.jump.get(cube.is_tiny()),
                         cube.get_sound_pitch(),
@@ -466,7 +526,13 @@ impl Goal for CubeMobFloatGoal {
         let Some(cube) = as_cube(mob) else {
             return;
         };
-        if rand::random_range(0.0..1.0) < 0.8 {
+        let entity = &cube.mob_entity.living_entity.entity;
+        if entity.touching_lava.load(Ordering::Relaxed) && cube.kind.is_magma_cube {
+            let mut velo = entity.velocity.load();
+            velo.y = crate::entity::combat::calculate_magma_cube_lava_jump_velocity(cube.get_size());
+            entity.velocity.store(velo);
+            entity.velocity_dirty.store(true, Ordering::SeqCst);
+        } else if rand::random_range(0.0..1.0) < 0.8 {
             cube.mob_entity
                 .living_entity
                 .jumping

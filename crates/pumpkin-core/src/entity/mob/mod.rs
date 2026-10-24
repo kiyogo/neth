@@ -2094,6 +2094,8 @@ pub trait Mob: EntityBase + Send + Sync {
 
     fn mob_player_collision(&self, _player: &Arc<Player>) {}
 
+    fn mob_push(&self, _entity: &dyn EntityBase) {}
+
     fn mob_receives_player_touch(&self) -> bool {
         false
     }
@@ -2404,6 +2406,11 @@ impl<T: Mob + Send + 'static> EntityBase for T {
 
     fn on_player_collision(&self, player: &Arc<Player>) {
         self.mob_player_collision(player);
+    }
+
+    fn push(&self, entity: &dyn EntityBase) {
+        self.mob_push(entity);
+        crate::entity::velocity::push_apart(self, entity);
     }
 
     fn receives_player_touch(&self) -> bool {

@@ -3844,6 +3844,158 @@ pub const fn calculate_ghast_damage_received(
     }
 }
 
+/// Calculates CubeMob (Slime & MagmaCube) contact attack damage based on size and mob type.
+///
+/// Mirrors vanilla `Slime.java:122` & `MagmaCube.java:63, 118-120`:
+/// - Slime: Tiny (size <= 1) deals 0.0 (cannot deal damage). Size >= 2 deals `size as f32`.
+/// - MagmaCube: Deals `(size + 2) as f32` for all sizes.
+#[must_use]
+pub fn calculate_cube_mob_attack_damage(size: i32, is_magma_cube: bool) -> f32 {
+    let actual_size = size.max(1);
+    if is_magma_cube {
+        (actual_size + 2) as f32
+    } else if actual_size <= 1 {
+        0.0
+    } else {
+        actual_size as f32
+    }
+}
+
+/// Determines whether a CubeMob can deal contact damage to touched entities.
+///
+/// Mirrors vanilla `Slime.java` / `AbstractCubeMob.java:254` & `MagmaCube.java:113-115`:
+/// - MagmaCube: `isEffectiveAi()` (can deal damage at all sizes)
+/// - Slime: `!isTiny() && isEffectiveAi()` (size > 1 only)
+#[must_use]
+pub const fn should_cube_mob_deal_contact_damage(
+    size: i32,
+    is_magma_cube: bool,
+    has_effective_ai: bool,
+) -> bool {
+    if !has_effective_ai {
+        false
+    } else if is_magma_cube {
+        true
+    } else {
+        size > 1
+    }
+}
+
+/// Calculates armor points for CubeMob based on size.
+///
+/// Mirrors vanilla `MagmaCube.java:64`:
+/// `this.getAttribute(Attributes.ARMOR).setBaseValue(size * 3);`
+#[must_use]
+pub fn calculate_cube_mob_armor(size: i32, is_magma_cube: bool) -> f32 {
+    if is_magma_cube {
+        (size.max(1) * 3) as f32
+    } else {
+        0.0
+    }
+}
+
+/// Calculates base experience reward dropped by a CubeMob.
+///
+/// Mirrors vanilla `Slime.java:123` & `MagmaCube.java:65`:
+/// `this.xpReward = actualSize;`
+#[must_use]
+pub fn calculate_cube_mob_xp_reward(size: i32) -> u32 {
+    size.max(1) as u32
+}
+
+/// Returns squish decay multiplier applied each tick.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:150` & `MagmaCube.java:90`:
+/// - Slime / Default: `0.6F`
+/// - MagmaCube: `0.9F`
+#[must_use]
+pub const fn calculate_cube_mob_squish_decay(is_magma_cube: bool) -> f32 {
+    if is_magma_cube {
+        0.9
+    } else {
+        0.6
+    }
+}
+
+/// Calculates Y-velocity boost applied when a CubeMob jumps from the ground.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:268-270` & `MagmaCube.java:95-97`:
+/// - Slime: `base_jump_power`
+/// - MagmaCube: `base_jump_power + size * 0.1F`
+#[must_use]
+pub fn calculate_cube_mob_jump_velocity(
+    base_jump_power: f64,
+    size: i32,
+    is_magma_cube: bool,
+) -> f64 {
+    if is_magma_cube {
+        base_jump_power + f64::from(size.max(1)) * 0.1
+    } else {
+        base_jump_power
+    }
+}
+
+/// Calculates Y-velocity applied when a MagmaCube jumps in lava.
+///
+/// Mirrors vanilla `MagmaCube.java:104-106`:
+/// `0.22F + this.getSize() * 0.05F`
+#[must_use]
+pub fn calculate_magma_cube_lava_jump_velocity(size: i32) -> f64 {
+    0.22 + f64::from(size.max(1)) * 0.05
+}
+
+/// Calculates sound volume for CubeMob based on size.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:280`:
+/// `0.4F * this.getSize()`
+#[must_use]
+pub fn calculate_cube_mob_sound_volume(size: i32) -> f32 {
+    0.4 * size.max(1) as f32
+}
+
+/// Calculates general sound pitch for CubeMob (jump, ambient).
+///
+/// Mirrors vanilla `AbstractCubeMob.java:293-295`:
+/// `((rand - rand) * 0.2F + 1.0F) * (isTiny ? 1.4F : 0.8F)`
+#[must_use]
+pub fn calculate_cube_mob_sound_pitch(is_tiny: bool, rand_diff: f32) -> f32 {
+    let pitch_adjuster = if is_tiny { 1.4 } else { 0.8 };
+    rand_diff.mul_add(0.2, 1.0) * pitch_adjuster
+}
+
+/// Calculates squish landing sound pitch for CubeMob.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:139`:
+/// `((rand - rand) * 0.2F + 1.0F) / 0.8F`
+#[must_use]
+pub fn calculate_cube_mob_squish_pitch(rand_diff: f32) -> f32 {
+    rand_diff.mul_add(0.2, 1.0) / 0.8
+}
+
+/// Calculates attack sound pitch for CubeMob.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:242`:
+/// `(rand - rand) * 0.2F + 1.0F`
+#[must_use]
+pub fn calculate_cube_mob_attack_pitch(rand_diff: f32) -> f32 {
+    rand_diff.mul_add(0.2, 1.0)
+}
+
+/// Determines whether damage to MagmaCube should be completely negated due to fire immunity.
+///
+/// Mirrors vanilla `EntityTypes.java:649` (`fireImmune()`) & `MagmaCube.java:80`:
+#[must_use]
+pub fn is_magma_cube_damage_negated(damage_type: &pumpkin_data::damage::DamageType) -> bool {
+    matches!(
+        *damage_type,
+        pumpkin_data::damage::DamageType::IN_FIRE
+            | pumpkin_data::damage::DamageType::ON_FIRE
+            | pumpkin_data::damage::DamageType::LAVA
+            | pumpkin_data::damage::DamageType::HOT_FLOOR
+            | pumpkin_data::damage::DamageType::CAMPFIRE
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6046,6 +6198,68 @@ mod tests {
 
         assert_eq!(calculate_ghast_damage_received(6.0, true), 1000.0);
         assert_eq!(calculate_ghast_damage_received(6.0, false), 6.0);
+    }
+
+    #[test]
+    fn test_slime_and_magma_cube_parity() {
+        // 1. Attack damage scaling & contact damage permission
+        // Slime: tiny (size 1) deals 0 damage, size 2 deals 2, size 4 deals 4
+        assert_eq!(calculate_cube_mob_attack_damage(1, false), 0.0);
+        assert_eq!(calculate_cube_mob_attack_damage(2, false), 2.0);
+        assert_eq!(calculate_cube_mob_attack_damage(4, false), 4.0);
+        assert!(!should_cube_mob_deal_contact_damage(1, false, true));
+        assert!(should_cube_mob_deal_contact_damage(2, false, true));
+        assert!(!should_cube_mob_deal_contact_damage(2, false, false)); // no effective AI
+
+        // Magma Cube: size 1 deals 3 damage (size + 2), size 2 deals 4, size 4 deals 6
+        assert_eq!(calculate_cube_mob_attack_damage(1, true), 3.0);
+        assert_eq!(calculate_cube_mob_attack_damage(2, true), 4.0);
+        assert_eq!(calculate_cube_mob_attack_damage(4, true), 6.0);
+        assert!(should_cube_mob_deal_contact_damage(1, true, true));
+        assert!(!should_cube_mob_deal_contact_damage(1, true, false)); // no effective AI
+
+        // 2. Armor points
+        assert_eq!(calculate_cube_mob_armor(1, false), 0.0);
+        assert_eq!(calculate_cube_mob_armor(4, false), 0.0);
+        assert_eq!(calculate_cube_mob_armor(1, true), 3.0);
+        assert_eq!(calculate_cube_mob_armor(2, true), 6.0);
+        assert_eq!(calculate_cube_mob_armor(4, true), 12.0);
+
+        // 3. Experience reward
+        assert_eq!(calculate_cube_mob_xp_reward(1), 1);
+        assert_eq!(calculate_cube_mob_xp_reward(2), 2);
+        assert_eq!(calculate_cube_mob_xp_reward(4), 4);
+
+        // 4. Squish decay factor
+        assert_eq!(calculate_cube_mob_squish_decay(false), 0.6);
+        assert_eq!(calculate_cube_mob_squish_decay(true), 0.9);
+
+        // 5. Jump velocity boost & lava jump
+        assert_eq!(calculate_cube_mob_jump_velocity(0.42, 1, false), 0.42);
+        assert!((calculate_cube_mob_jump_velocity(0.42, 1, true) - 0.52).abs() < 1e-6);
+        assert!((calculate_cube_mob_jump_velocity(0.42, 4, true) - 0.82).abs() < 1e-6);
+
+        assert!((calculate_magma_cube_lava_jump_velocity(1) - 0.27).abs() < 1e-6);
+        assert!((calculate_magma_cube_lava_jump_velocity(4) - 0.42).abs() < 1e-6);
+
+        // 6. Sound pitch formulas
+        // Tiny jump pitch: adjuster 1.4
+        assert!((calculate_cube_mob_sound_pitch(true, 0.0) - 1.4).abs() < 1e-6);
+        // Normal jump pitch: adjuster 0.8
+        assert!((calculate_cube_mob_sound_pitch(false, 0.0) - 0.8).abs() < 1e-6);
+        // Squish landing pitch: div 0.8 = 1.25
+        assert!((calculate_cube_mob_squish_pitch(0.0) - 1.25).abs() < 1e-6);
+        // Attack pitch
+        assert!((calculate_cube_mob_attack_pitch(0.0) - 1.0).abs() < 1e-6);
+
+        // 7. Fire immunity for Magma Cube
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::IN_FIRE));
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::ON_FIRE));
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::LAVA));
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::HOT_FLOOR));
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::CAMPFIRE));
+        assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::FALL));
+        assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::PLAYER_ATTACK));
     }
 }
 

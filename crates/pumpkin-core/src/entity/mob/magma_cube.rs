@@ -30,5 +30,7 @@ pub const MAGMA_CUBE: CubeKind = CubeKind {
     ],
     jump_delay_multiplier: 4,
     contact_damage: ContactDamage::Always,
+    is_magma_cube: true,
+    squish_decay: 0.9,
     ..SLIME
 };
