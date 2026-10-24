@@ -1876,6 +1876,46 @@ pub fn calculate_block_destroy_progress(destroy_speed: f32, block_hardness: f32,
     destroy_speed / block_hardness / modifier
 }
 
+/// Calculates Wind Charge throw sound pitch.
+///
+/// Mirrors vanilla `WindChargeItem.java:49`:
+/// `0.4F / (random.nextFloat() * 0.4F + 0.8F)`
+#[must_use]
+pub fn calculate_wind_charge_throw_pitch(random_sample: f32) -> f32 {
+    0.4 / (random_sample * 0.4 + 0.8)
+}
+
+/// Calculates Wind Charge projectile spawn position from player eye level.
+///
+/// Mirrors vanilla `WindChargeItem.java:31`:
+/// `new WindCharge(player, level, player.position().x(), player.getEyePosition().y(), player.position().z())`
+#[must_use]
+pub fn calculate_wind_charge_spawn_position(player_pos: Vector3<f64>, eye_y: f64) -> Vector3<f64> {
+    Vector3::new(player_pos.x, eye_y, player_pos.z)
+}
+
+/// Calculates explosion position on block collision with 0.25 normal offset.
+///
+/// Mirrors vanilla `AbstractWindCharge.java:107-109`:
+/// `Vec3 scaledNormal = Vec3.atLowerCornerOf(collisionNormal).multiply(0.25, 0.25, 0.25);`
+/// `Vec3 explosionPos = hitResult.getLocation().add(scaledNormal);`
+#[must_use]
+pub fn calculate_wind_charge_block_explosion_pos(
+    hit_pos: Vector3<f64>,
+    face_offset: Vector3<f64>,
+) -> Vector3<f64> {
+    hit_pos + face_offset * 0.25
+}
+
+/// Returns the vanilla cooldown ticks for wind charge throw (0.5 seconds = 10 ticks).
+///
+/// Mirrors vanilla `Items.java:2233`:
+/// `new Item.Properties().useCooldown(0.5F)`
+#[must_use]
+pub const fn calculate_wind_charge_cooldown_ticks() -> i32 {
+    10
+}
+
 
 
 #[cfg(test)]
@@ -3161,6 +3201,34 @@ mod tests {
 
         // Bedrock hardness = -1.0 -> unbreakable (0.0)
         assert_eq!(calculate_block_destroy_progress(34.0, -1.0, true), 0.0);
+    }
+
+    #[test]
+    fn test_wind_charge_throw_pitch_spawn_and_impact_parity() {
+        // 1. Wind Charge sound pitch: 0.4 / (rand * 0.4 + 0.8)
+        // rand = 0.0 -> pitch = 0.4 / 0.8 = 0.5
+        assert!((calculate_wind_charge_throw_pitch(0.0) - 0.5).abs() < 1e-6);
+        // rand = 1.0 -> pitch = 0.4 / 1.2 = 0.333333...
+        assert!((calculate_wind_charge_throw_pitch(1.0) - (0.4 / 1.2)).abs() < 1e-6);
+        // rand = 0.5 -> pitch = 0.4 / (0.2 + 0.8) = 0.4
+        assert!((calculate_wind_charge_throw_pitch(0.5) - 0.4).abs() < 1e-6);
+
+        // 2. Wind charge spawn position: eye level y
+        let player_pos = Vector3::new(10.0, 64.0, -20.0);
+        let eye_y = 65.62;
+        let spawn_pos = calculate_wind_charge_spawn_position(player_pos, eye_y);
+        assert_eq!(spawn_pos.x, 10.0);
+        assert_eq!(spawn_pos.y, 65.62);
+        assert_eq!(spawn_pos.z, -20.0);
+
+        // 3. Block impact normal offset: face_normal * 0.25
+        let hit_pos = Vector3::new(5.0, 64.0, 5.0);
+        let top_face_normal = Vector3::new(0.0, 1.0, 0.0);
+        let exp_pos = calculate_wind_charge_block_explosion_pos(hit_pos, top_face_normal);
+        assert_eq!(exp_pos, Vector3::new(5.0, 64.25, 5.0));
+
+        // 4. Cooldown ticks: 10 ticks (0.5s)
+        assert_eq!(calculate_wind_charge_cooldown_ticks(), 10);
     }
 }
 

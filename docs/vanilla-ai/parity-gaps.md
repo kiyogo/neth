@@ -2358,6 +2358,35 @@
     - Fixed Mining Fatigue penalty multiplier to vanilla formula `0.3^(amp + 1)`.
   - Added unit test `test_submerged_mining_speed_aqua_affinity_and_destroy_speed_parity` in `combat.rs`. Total 36/36 tests in `entity::combat::tests` passing.
 
+## Gap 151: Wind Charge Eye-Height Throw, 10-Tick Cooldown, Sound Pitch Formula & Block Impact Offset Parity
+- **Vanilla Reference**:
+  - `WindChargeItem.java:27-54, 73-80`:
+    ```java
+    Projectile.spawnProjectileFromRotation(
+       (source, l, itemStack) -> new WindCharge(player, level, player.position().x(), player.getEyePosition().y(), player.position().z()),
+       serverLevel, stack, player, 0.0F, 1.5F, 1.0F
+    );
+    level.playSound(
+       null, player.getX(), player.getY(), player.getZ(),
+       SoundEvents.WIND_CHARGE_THROW, SoundSource.NEUTRAL,
+       0.5F, 0.4F / (level.getRandom().nextFloat() * 0.4F + 0.8F)
+    );
+    player.awardStat(Stats.ITEM_USED.get(this));
+    stack.consume(1, player);
+    ```
+  - `Items.java:2233`:
+    - `WIND_CHARGE` item registration: `new Item.Properties().useCooldown(0.5F)` (10 ticks cooldown).
+  - `AbstractWindCharge.java:103-112`:
+    - On block collision, explosion is shifted along face normal by 0.25 block (`face_normal * 0.25`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_wind_charge_throw_pitch`, `calculate_wind_charge_spawn_position`, `calculate_wind_charge_block_explosion_pos`, and `calculate_wind_charge_cooldown_ticks` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `WindChargeItem::normal_use_with_hand` in `crates/pumpkin-core/src/item/items/wind_charge.rs`:
+    - Checked `has_item_cooldown` and applied 10-tick (0.5s) cooldown on `minecraft:wind_charge`.
+    - Spawned projectile from `(player.x, player.get_eye_y(), player.z)`.
+    - Played `Sound::EntityWindChargeThrow` at volume 0.5 and pitch `0.4 / (rand * 0.4 + 0.8)`.
+    - Incremented `ItemUsed` statistic for `Item::WIND_CHARGE`.
+  - Added unit test `test_wind_charge_throw_pitch_spawn_and_impact_parity` in `combat.rs`. Total 37/37 tests in `entity::combat::tests` passing.
+
 
 
 
