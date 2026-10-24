@@ -209,12 +209,18 @@ impl Mob for GhastEntity {
         }
     }
 
-    fn modify_incoming_damage(&self, amount: f32, damage_type: DamageType) -> f32 {
-        if damage_type.id == DamageType::FIREBALL.id {
-            1000.0
-        } else {
-            amount
-        }
+    fn modify_incoming_damage_with_source(
+        &self,
+        amount: f32,
+        damage_type: DamageType,
+        source: Option<&dyn EntityBase>,
+        cause: Option<&dyn EntityBase>,
+    ) -> f32 {
+        let is_fireball = damage_type.id == DamageType::FIREBALL.id
+            || source.is_some_and(|s| s.get_entity().entity_type == &EntityType::FIREBALL);
+        let is_player_cause = cause.is_some_and(|c| c.get_player().is_some());
+        let is_reflected = crate::entity::combat::is_ghast_reflected_fireball(is_fireball, is_player_cause);
+        crate::entity::combat::calculate_ghast_damage_received(amount, is_reflected)
     }
 
     fn get_base_experience_reward(&self) -> u32 {

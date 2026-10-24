@@ -3246,5 +3246,36 @@
     - `mob_tick`: removed fragile caller downcast, using direct `&self.mob_entity.living_entity`. Integrated `should_witch_drink_...` conditions with submerged water check and drinking sound pitch formula `0.8 + rand * 0.4`.
     - `throw_potion`: integrated `determine_witch_thrown_potion` for complete Vanilla potion priority and throw sound pitch formula `0.8 + rand * 0.4`.
     - `pre_damage`: immune to self-inflicted damage when source entity matches witch id.
-    - `modify_incoming_damage`: integrated `calculate_witch_damage_received` applying 85% damage reduction for `#minecraft:witch_resistant_to`.
   - Added unit test `test_witch_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 59/59 tests passing in `entity::combat::tests`.
+
+## Gap 174: Phantom Attack Scaling, Collision/Damage Abort, Swoop Pitch & Ghast Reflected Fireball Instakill Parity
+- **Vanilla Reference**:
+  - `Phantom.java:83-94, 194-198`:
+    - `setPhantomSize(size)` (0..64):
+      - Cập nhật attribute attack damage theo kích thước: `Attributes.ATTACK_DAMAGE.setBaseValue(6 + size)`.
+      - Bounding box dimension phóng to: `scale(1.0F + 0.15F * size)`.
+  - `Phantom.java:277, 118`:
+    - Âm thanh bổ nhào Swoop: `SoundEvents.PHANTOM_SWOOP`, volume `10.0F`, pitch `0.95F + random.nextFloat() * 0.1F`.
+    - Âm thanh vỗ cánh Flap: `SoundEvents.PHANTOM_FLAP`, pitch `0.95F + random.nextFloat() * 0.05F`.
+  - `Phantom.java:487-495` (PhantomSweepAttackGoal):
+    - Đòn cắn trúng đích: chuyển về `AttackPhase.CIRCLE`.
+    - `else if (Phantom.this.horizontalCollision || Phantom.this.wasHurtRecently())`: nếu Phantom va vào tường hoặc vừa bị đánh trúng (`hurt_cooldown > 0`), Phantom lập tức hủy đòn swoop và lượn vòng lại (`attackPhase = CIRCLE`).
+  - `Ghast.java:76-78, 101-108`:
+    - Reflected Fireball:
+      ```java
+      private static boolean isReflectedFireball(final DamageSource source) {
+         return source.getDirectEntity() instanceof LargeFireball && source.getEntity() instanceof Player;
+      }
+      ```
+    - Chỉ gây 1000.0F sát thương khi đạn là Fireball VÀ người phản xạ đòn đánh là `Player`.
+    - Các nguồn Fireball khác (Blaze, Ghast khác, hoặc bắn thường) chỉ gây sát thương bình thường.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_phantom_attack_damage`, `calculate_phantom_dimension_scale`, `calculate_phantom_swoop_pitch`, `calculate_phantom_flap_pitch`, `should_phantom_abort_swoop_on_collision_or_damage`, `is_ghast_reflected_fireball`, and `calculate_ghast_damage_received` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `modify_incoming_damage_with_source` to `Mob` trait and wired it into `Mob::damage_with_context`.
+  - Updated `GhastEntity` in `crates/pumpkin-core/src/entity/mob/ghast.rs`:
+    - `modify_incoming_damage_with_source`: only deals 1000.0F when direct entity is Fireball AND cause is Player via `is_ghast_reflected_fireball`.
+  - Updated `PhantomEntity` in `crates/pumpkin-core/src/entity/mob/phantom.rs`:
+    - `set_phantom_size`: calculates attack damage via `calculate_phantom_attack_damage`.
+    - `PhantomAttackStrategyGoal::tick`: plays swoop sound with volume 10.0 and formula pitch `calculate_phantom_swoop_pitch`.
+    - `PhantomSweepAttackGoal::tick`: aborts swoop on wall collision (`horizontal_collision`) or recent damage (`hurt_cooldown > 0`) via `should_phantom_abort_swoop_on_collision_or_damage`.
+  - Added unit test `test_phantom_and_ghast_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 60/60 tests passing in `entity::combat::tests`.

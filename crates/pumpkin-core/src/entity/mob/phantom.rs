@@ -107,9 +107,10 @@ impl PhantomEntity {
         self.phantom_size.store(clamped, Ordering::Relaxed);
         let entity = &self.mob_entity.living_entity.entity;
         entity.set_synced_data(tracked_data::phantom::ID_SIZE, clamped);
+        let attack_damage = crate::entity::combat::calculate_phantom_attack_damage(clamped);
         self.mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, (6 + clamped) as f64);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, attack_damage as f64);
     }
 
     fn tick_flight(&self) {
@@ -217,12 +218,18 @@ impl Goal for PhantomAttackStrategyGoal {
                 self.next_sweep_tick = (8 + mob.get_random().random_range(0..4)) * 20;
 
                 let entity = &phantom.mob_entity.living_entity.entity;
-                let world = entity.world.load();
-                world.play_sound(
-                    Sound::EntityPhantomSwoop,
-                    SoundCategory::Hostile,
-                    &entity.pos.load(),
-                );
+                if !entity.silent.load(Ordering::Relaxed) {
+                    let world = entity.world.load();
+                    let rand_pitch: f32 = mob.get_random().random();
+                    let pitch = crate::entity::combat::calculate_phantom_swoop_pitch(rand_pitch);
+                    world.play_sound_fine(
+                        Sound::EntityPhantomSwoop,
+                        SoundCategory::Hostile,
+                        &entity.pos.load(),
+                        10.0,
+                        pitch,
+                    );
+                }
             }
         }
     }
@@ -327,7 +334,7 @@ impl Goal for PhantomSweepAttackGoal {
 
         if phantom_bb.intersects(&target_bb) {
             let damaged = mob.get_mob_entity().try_attack(entity, target.as_ref());
-            if damaged {
+            if damaged && !entity.silent.load(Ordering::Relaxed) {
                 let world = entity.world.load();
                 world.play_sound(
                     Sound::EntityPhantomBite,
@@ -336,6 +343,12 @@ impl Goal for PhantomSweepAttackGoal {
                 );
             }
             phantom.attack_phase.store(PhantomAttackPhase::Circle);
+        } else {
+            let hit_wall = entity.horizontal_collision.load(Ordering::Relaxed);
+            let was_hurt = phantom.mob_entity.living_entity.hurt_cooldown.load(Ordering::Relaxed) > 0;
+            if crate::entity::combat::should_phantom_abort_swoop_on_collision_or_damage(hit_wall, was_hurt) {
+                phantom.attack_phase.store(PhantomAttackPhase::Circle);
+            }
         }
     }
 }

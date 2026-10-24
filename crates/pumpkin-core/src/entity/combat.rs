@@ -3768,6 +3768,82 @@ pub const fn calculate_witch_damage_received(
     }
 }
 
+/// Calculates Phantom attack damage scaling based on size (0..=64).
+///
+/// Mirrors vanilla `Phantom.java:89`: `6 + this.getPhantomSize()`
+#[must_use]
+pub fn calculate_phantom_attack_damage(phantom_size: i32) -> f32 {
+    6.0 + phantom_size.clamp(0, 64) as f32
+}
+
+/// Calculates Phantom bounding box dimension scale based on size (0..=64).
+///
+/// Mirrors vanilla `Phantom.java:197`: `1.0F + 0.15F * size`
+#[must_use]
+pub fn calculate_phantom_dimension_scale(phantom_size: i32) -> f32 {
+    1.0 + 0.15 * phantom_size.clamp(0, 64) as f32
+}
+
+/// Calculates Phantom swoop sound pitch.
+///
+/// Mirrors vanilla `Phantom.java:277`: `0.95F + this.random.nextFloat() * 0.1F`
+#[must_use]
+pub fn calculate_phantom_swoop_pitch(rand_0_to_1: f32) -> f32 {
+    0.95 + rand_0_to_1 * 0.1
+}
+
+/// Calculates Phantom wing flap sound pitch.
+///
+/// Mirrors vanilla `Phantom.java:118`: `0.95F + this.random.nextFloat() * 0.05F`
+#[must_use]
+pub fn calculate_phantom_flap_pitch(rand_0_to_1: f32) -> f32 {
+    0.95 + rand_0_to_1 * 0.05
+}
+
+/// Determines whether a Phantom should abort swoop attack due to collision or recent damage.
+///
+/// Mirrors vanilla `Phantom.java:493`:
+/// `else if (Phantom.this.horizontalCollision || Phantom.this.wasHurtRecently())`
+#[must_use]
+pub const fn should_phantom_abort_swoop_on_collision_or_damage(
+    horizontal_collision: bool,
+    was_hurt_recently: bool,
+) -> bool {
+    horizontal_collision || was_hurt_recently
+}
+
+/// Checks whether a damage source against a Ghast is a reflected LargeFireball by a Player.
+///
+/// Mirrors vanilla `Ghast.java:76-78`:
+/// `source.getDirectEntity() instanceof LargeFireball && source.getEntity() instanceof Player`
+#[must_use]
+pub const fn is_ghast_reflected_fireball(
+    direct_entity_is_fireball: bool,
+    attacker_is_player: bool,
+) -> bool {
+    direct_entity_is_fireball && attacker_is_player
+}
+
+/// Calculates damage received by a Ghast. Reflected fireballs deal 1000.0F instakill damage.
+///
+/// Mirrors vanilla `Ghast.java:101-108`:
+/// ```java
+/// if (isReflectedFireball(source)) {
+///     super.hurtServer(level, source, 1000.0F);
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_ghast_damage_received(
+    raw_damage: f32,
+    is_reflected_fireball: bool,
+) -> f32 {
+    if is_reflected_fireball {
+        1000.0
+    } else {
+        raw_damage
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5937,6 +6013,39 @@ mod tests {
         assert_eq!(calculate_witch_damage_received(10.0, true, false), 0.0);
         assert_eq!(calculate_witch_damage_received(10.0, false, true), 1.5);
         assert_eq!(calculate_witch_damage_received(10.0, false, false), 10.0);
+    }
+
+    #[test]
+    fn test_phantom_and_ghast_parity() {
+        // 1. Phantom attack damage & dimension scaling (Phantom.java:89, 197)
+        assert_eq!(calculate_phantom_attack_damage(0), 6.0);
+        assert_eq!(calculate_phantom_attack_damage(1), 7.0);
+        assert_eq!(calculate_phantom_attack_damage(64), 70.0);
+        assert_eq!(calculate_phantom_attack_damage(-5), 6.0);
+        assert_eq!(calculate_phantom_attack_damage(100), 70.0);
+
+        assert_eq!(calculate_phantom_dimension_scale(0), 1.0);
+        assert!((calculate_phantom_dimension_scale(1) - 1.15).abs() < 1e-6);
+        assert!((calculate_phantom_dimension_scale(10) - 2.5).abs() < 1e-6);
+
+        // 2. Phantom swoop & flap pitch formulas (Phantom.java:277, 118)
+        assert_eq!(calculate_phantom_swoop_pitch(0.0), 0.95);
+        assert!((calculate_phantom_swoop_pitch(1.0) - 1.05).abs() < 1e-6);
+        assert_eq!(calculate_phantom_flap_pitch(0.0), 0.95);
+        assert!((calculate_phantom_flap_pitch(1.0) - 1.00).abs() < 1e-6);
+
+        // 3. Phantom swoop abort conditions (Phantom.java:493)
+        assert!(should_phantom_abort_swoop_on_collision_or_damage(true, false));
+        assert!(should_phantom_abort_swoop_on_collision_or_damage(false, true));
+        assert!(!should_phantom_abort_swoop_on_collision_or_damage(false, false));
+
+        // 4. Ghast reflected fireball detection & instakill damage (Ghast.java:76-78, 101-108)
+        assert!(is_ghast_reflected_fireball(true, true));
+        assert!(!is_ghast_reflected_fireball(true, false));  // non-player reflected
+        assert!(!is_ghast_reflected_fireball(false, true));  // non-fireball player attack
+
+        assert_eq!(calculate_ghast_damage_received(6.0, true), 1000.0);
+        assert_eq!(calculate_ghast_damage_received(6.0, false), 6.0);
     }
 }
 

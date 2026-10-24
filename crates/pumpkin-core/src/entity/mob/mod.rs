@@ -1331,6 +1331,16 @@ pub trait Mob: EntityBase + Send + Sync {
         amount
     }
 
+    fn modify_incoming_damage_with_source(
+        &self,
+        amount: f32,
+        damage_type: DamageType,
+        _source: Option<&dyn EntityBase>,
+        _cause: Option<&dyn EntityBase>,
+    ) -> f32 {
+        self.modify_incoming_damage(amount, damage_type)
+    }
+
     /// Mirrors vanilla `LivingEntity#isSensitiveToWater`.
     fn is_sensitive_to_water(&self) -> bool {
         false
@@ -2372,8 +2382,8 @@ impl<T: Mob + Send + 'static> EntityBase for T {
         if !self.pre_damage(damage_type, source) {
             return false;
         }
-        // Mob-specific damage modifier (e.g. shulker armor when closed).
-        let amount = self.modify_incoming_damage(amount, damage_type);
+        // Mob-specific damage modifier (e.g. shulker armor when closed, ghast reflected fireball).
+        let amount = self.modify_incoming_damage_with_source(amount, damage_type, source, cause);
         let damaged = self.get_mob_entity().living_entity.damage_with_context(
             caller,
             amount,
