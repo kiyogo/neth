@@ -3,6 +3,9 @@ use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
+use crossbeam::atomic::AtomicCell;
+use pumpkin_data::attributes::Attributes;
+use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::{EntityStatus, EntityType, MobCategory};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
@@ -37,6 +40,7 @@ pub struct IronGolemEntity {
     pub player_created: AtomicBool,
     pub attack_animation_tick: AtomicI32,
     pub offer_flower_tick: AtomicI32,
+    pub crackiness: AtomicCell<u8>,
 }
 
 impl IronGolemEntity {
@@ -48,6 +52,7 @@ impl IronGolemEntity {
             player_created: AtomicBool::new(false),
             attack_animation_tick: AtomicI32::new(0),
             offer_flower_tick: AtomicI32::new(0),
+            crackiness: AtomicCell::new(0),
         };
         let mob_arc = Arc::new(iron_golem);
         let mob_weak: Weak<dyn Mob> = {
@@ -131,6 +136,11 @@ impl IronGolemEntity {
         let world = entity.world.load();
         world.send_entity_status(entity, EntityStatus::StartAttacking, None);
     }
+
+    #[must_use]
+    pub fn get_crackiness(&self) -> u8 {
+        self.crackiness.load()
+    }
 }
 
 impl NeutralMob for IronGolemEntity {
@@ -209,11 +219,26 @@ impl Mob for IronGolemEntity {
             let current_health = living.health.load();
             let max_health = living.get_max_health();
             if current_health < max_health {
-                living.set_health((current_health + 25.0).min(max_health));
+                let new_health = (current_health + 25.0).min(max_health);
+                living.set_health(new_health);
+                self.crackiness.store(crate::entity::combat::calculate_iron_golem_crackiness(
+                    new_health,
+                    max_health,
+                ));
                 let entity = self.get_entity();
                 let world = entity.world.load();
                 let pos = entity.pos.load();
-                world.play_sound(Sound::EntityIronGolemRepair, SoundCategory::Neutral, &pos);
+                let pitch = crate::entity::combat::calculate_iron_golem_repair_pitch(
+                    rand::random::<f32>(),
+                    rand::random::<f32>(),
+                );
+                world.play_sound_fine(
+                    Sound::EntityIronGolemRepair,
+                    SoundCategory::Neutral,
+                    &pos,
+                    1.0,
+                    pitch,
+                );
                 if player.gamemode.load() != GameMode::Creative {
                     item_stack.item_count = item_stack.item_count.saturating_sub(1);
                 }
@@ -221,6 +246,37 @@ impl Mob for IronGolemEntity {
             }
         }
         false
+    }
+
+    fn on_attack(&self, target: &dyn EntityBase) {
+        let kb_res = target
+            .get_living_entity()
+            .map_or(0.0, |l| l.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE));
+        let current_vel = target.get_entity().velocity.load();
+        let new_y = crate::entity::combat::calculate_iron_golem_fling_velocity_y(current_vel.y, kb_res);
+        let mut vel = current_vel;
+        vel.y = new_y;
+        target.get_entity().velocity.store(vel);
+
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        world.play_sound(Sound::EntityIronGolemAttack, SoundCategory::Neutral, &pos);
+    }
+
+    fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        let living = &self.mob_entity.living_entity;
+        let new_crackiness = crate::entity::combat::calculate_iron_golem_crackiness(
+            living.health.load(),
+            living.get_max_health(),
+        );
+        let old_crackiness = self.crackiness.swap(new_crackiness);
+        if new_crackiness != old_crackiness {
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            let pos = entity.pos.load();
+            world.play_sound(Sound::EntityIronGolemDamage, SoundCategory::Neutral, &pos);
+        }
     }
 }
 

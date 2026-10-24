@@ -141,7 +141,16 @@ impl SnowGolemEntity {
         snowball.thrown.set_velocity(dx, dy + yo, dz, 1.6, 12.0);
 
         if !entity.silent.load(Ordering::Relaxed) {
-            world.play_sound(Sound::EntitySnowballThrow, SoundCategory::Neutral, &mob_pos);
+            let pitch = crate::entity::combat::calculate_snow_golem_shoot_pitch(
+                rand::random::<f32>(),
+            );
+            world.play_sound_fine(
+                Sound::EntitySnowGolemShoot,
+                SoundCategory::Neutral,
+                &mob_pos,
+                1.0,
+                pitch,
+            );
         }
 
         let snowball_arc: Arc<dyn EntityBase> = Arc::new(snowball);

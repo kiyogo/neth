@@ -3096,7 +3096,24 @@
   - Implemented bubble column tracking and physics in `BoatEntity` (`crates/pumpkin-core/src/entity/vehicle/boat.rs`).
   - Added unit test `test_bubble_column_and_lightning_conversion_parity` in `combat.rs`. Total 54/54 tests passing in `entity::combat::tests`.
 
-
-
-
-
+## Gap 169: Iron Golem Attack Fling & Variable Damage, Crackiness Sound & Repair Pitch, Snow Golem Shoot Sound Parity
+- **Vanilla Reference**:
+  - `IronGolem.java:189-220, 261-277`:
+    - `IronGolem.doHurtTarget`:
+      - Sát thương ngẫu nhiên: `float damage = (int)attackDamage > 0 ? attackDamage / 2.0F + this.random.nextInt((int)attackDamage) : attackDamage;` (với 14.0 base attack: gây ra từ 7.0 đến 20.0 damage).
+      - Hất tung mục tiêu lên không trung: `target.setDeltaMovement(target.getDeltaMovement().add(0.0, 0.4F * (1.0 - knockbackResistance), 0.0))`.
+      - Phát âm thanh `SoundEvents.IRON_GOLEM_ATTACK`.
+    - `IronGolem.actuallyHurt`:
+      - Khi nhận sát thương, nếu `Crackiness` thay đổi (vượt ngưỡng 75%, 50%, 25% max health), phát `SoundEvents.IRON_GOLEM_DAMAGE`.
+    - `IronGolem.mobInteract`:
+      - Sửa chữa bằng Iron Ingot: hồi 25.0 HP, phát `SoundEvents.IRON_GOLEM_REPAIR` với pitch ngẫu nhiên `1.0F + (random - random) * 0.2F`.
+  - `SnowGolem.java:133, 144`:
+    - Khi bắn Snowball (`performRangedAttack`), phát âm thanh `SoundEvents.SNOW_GOLEM_SHOOT` với pitch ngẫu nhiên `0.4F / (random * 0.4F + 0.8F)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_iron_golem_attack_damage`, `calculate_iron_golem_fling_velocity_y`, `calculate_iron_golem_repair_pitch`, `calculate_iron_golem_crackiness`, and `calculate_snow_golem_shoot_pitch` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `IronGolemEntity` in `crates/pumpkin-core/src/entity/passive/iron_golem.rs`:
+    - Track `crackiness: AtomicCell<u8>` và đồng bộ status khi bị thương / sửa chữa.
+    - Added `on_attack` với lực hất tung dọc tỷ lệ nghịch với knockback resistance, biến thiên sát thương, và âm thanh `EntityIronGolemAttack`.
+    - Updated `mob_interact` dùng `calculate_iron_golem_repair_pitch` và cập nhật crackiness.
+  - Updated `SnowGolemEntity::throw_snowball` trong `crates/pumpkin-core/src/entity/passive/snow_golem.rs` phát âm thanh `Sound::EntitySnowGolemShoot` theo công thức pitch Vanilla.
+  - Added unit test `test_iron_golem_and_snow_golem_parity` trong `combat.rs`. Total 55/55 tests passing in `entity::combat::tests`.

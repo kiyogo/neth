@@ -3359,6 +3359,75 @@ pub const fn can_lightning_convert_mob(difficulty: pumpkin_util::Difficulty) -> 
     !matches!(difficulty, pumpkin_util::Difficulty::Peaceful)
 }
 
+/// Calculates attack damage dealt by an Iron Golem with random spread.
+///
+/// Mirrors vanilla `IronGolem.java:193`:
+/// `float damage = (int)attackDamage > 0 ? attackDamage / 2.0F + this.random.nextInt((int)attackDamage) : attackDamage;`
+#[must_use]
+pub fn calculate_iron_golem_attack_damage(base_attack: f32, rand_sample: u32) -> f32 {
+    let int_atk = base_attack as i32;
+    if int_atk > 0 {
+        base_attack / 2.0 + (rand_sample % (int_atk as u32)) as f32
+    } else {
+        base_attack
+    }
+}
+
+/// Calculates upward vertical velocity added to an Iron Golem's victim scaled by knockback resistance.
+///
+/// Mirrors vanilla `IronGolem.java:198-199`:
+/// ```java
+/// double scale = Math.max(0.0, 1.0 - knockbackResistance);
+/// target.setDeltaMovement(target.getDeltaMovement().add(0.0, 0.4F * scale, 0.0));
+/// ```
+#[must_use]
+pub fn calculate_iron_golem_fling_velocity_y(current_y: f64, knockback_resistance: f64) -> f64 {
+    let scale = (1.0 - knockback_resistance).max(0.0);
+    current_y + 0.4 * scale
+}
+
+/// Calculates pitch for Iron Golem repair sound when fed an Iron Ingot.
+///
+/// Mirrors vanilla `IronGolem.java:273`:
+/// `1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.2F;`
+#[must_use]
+pub fn calculate_iron_golem_repair_pitch(rand1: f32, rand2: f32) -> f32 {
+    (rand1 - rand2).mul_add(0.2, 1.0)
+}
+
+/// Calculates Crackiness level of an Iron Golem from health ratio.
+///
+/// Mirrors vanilla `IronGolem.java:219` and `Crackiness.java`:
+/// - 0: None (> 0.75)
+/// - 1: Low (0.50..=0.75)
+/// - 2: Medium (0.25..=0.50)
+/// - 3: High (<= 0.25)
+#[must_use]
+pub fn calculate_iron_golem_crackiness(health: f32, max_health: f32) -> u8 {
+    if max_health <= 0.0 {
+        return 0;
+    }
+    let fraction = health / max_health;
+    if fraction > 0.75 {
+        0
+    } else if fraction > 0.50 {
+        1
+    } else if fraction > 0.25 {
+        2
+    } else {
+        3
+    }
+}
+
+/// Calculates sound pitch when a Snow Golem throws a snowball.
+///
+/// Mirrors vanilla `SnowGolem.java:133`:
+/// `0.4F / (this.getRandom().nextFloat() * 0.4F + 0.8F)`
+#[must_use]
+pub fn calculate_snow_golem_shoot_pitch(rand: f32) -> f32 {
+    0.4 / rand.mul_add(0.4, 0.8)
+}
+
 
 
 
@@ -5282,6 +5351,46 @@ mod tests {
         assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Easy));
         assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Normal));
         assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Hard));
+    }
+
+    #[test]
+    fn test_iron_golem_and_snow_golem_parity() {
+        // 1. Iron Golem attack damage random formula (IronGolem.java:193)
+        // With base_attack = 14.0: damage = 7.0 + random.nextInt(14) (range 7.0 to 20.0)
+        let min_dmg = calculate_iron_golem_attack_damage(14.0, 0);
+        let max_dmg = calculate_iron_golem_attack_damage(14.0, 13);
+        assert_eq!(min_dmg, 7.0);
+        assert_eq!(max_dmg, 20.0);
+
+        // 2. Iron Golem fling upward velocity (IronGolem.java:198-199)
+        // Without knockback resistance (0.0): +0.4 Y velocity
+        assert!((calculate_iron_golem_fling_velocity_y(0.0, 0.0) - 0.4).abs() < 1e-6);
+        // With 50% knockback resistance (0.5): +0.2 Y velocity
+        assert!((calculate_iron_golem_fling_velocity_y(0.0, 0.5) - 0.2).abs() < 1e-6);
+        // With 100% knockback resistance (1.0): 0.0 Y velocity added
+        assert_eq!(calculate_iron_golem_fling_velocity_y(0.0, 1.0), 0.0);
+
+        // 3. Iron Golem repair pitch (IronGolem.java:273)
+        // 1.0 + (rand1 - rand2) * 0.2
+        assert_eq!(calculate_iron_golem_repair_pitch(0.5, 0.5), 1.0);
+        assert_eq!(calculate_iron_golem_repair_pitch(1.0, 0.0), 1.2);
+        assert_eq!(calculate_iron_golem_repair_pitch(0.0, 1.0), 0.8);
+
+        // 4. Iron Golem crackiness tiers (IronGolem.java:219)
+        // Max health 100.0:
+        assert_eq!(calculate_iron_golem_crackiness(100.0, 100.0), 0); // None
+        assert_eq!(calculate_iron_golem_crackiness(76.0, 100.0), 0);  // None
+        assert_eq!(calculate_iron_golem_crackiness(75.0, 100.0), 1);  // Low
+        assert_eq!(calculate_iron_golem_crackiness(51.0, 100.0), 1);  // Low
+        assert_eq!(calculate_iron_golem_crackiness(50.0, 100.0), 2);  // Medium
+        assert_eq!(calculate_iron_golem_crackiness(26.0, 100.0), 2);  // Medium
+        assert_eq!(calculate_iron_golem_crackiness(25.0, 100.0), 3);  // High
+        assert_eq!(calculate_iron_golem_crackiness(5.0, 100.0), 3);   // High
+
+        // 5. Snow Golem shoot pitch (SnowGolem.java:133)
+        // 0.4 / (rand * 0.4 + 0.8)
+        assert_eq!(calculate_snow_golem_shoot_pitch(0.0), 0.5); // 0.4 / 0.8 = 0.5
+        assert!((calculate_snow_golem_shoot_pitch(1.0) - (0.4 / 1.2)).abs() < 1e-6);
     }
 }
 
