@@ -7,7 +7,6 @@ use std::sync::{
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{Block, BlockId, BlockStateId};
-use pumpkin_util::Difficulty;
 use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
@@ -200,7 +199,9 @@ impl EntityBase for LightningBoltEntity {
             let world = entity.world.load();
             let pos = entity.pos.load();
 
-            let pitch_thunder = 0.8 + rand::rng().random::<f32>() * 0.2;
+            let pitch_thunder = crate::entity::combat::calculate_lightning_thunder_pitch(
+                rand::rng().random::<f32>(),
+            );
             world.play_sound_fine(
                 Sound::EntityLightningBoltThunder,
                 SoundCategory::Weather,
@@ -208,7 +209,9 @@ impl EntityBase for LightningBoltEntity {
                 10000.0,
                 pitch_thunder,
             );
-            let pitch_impact = 0.5 + rand::rng().random::<f32>() * 0.2;
+            let pitch_impact = crate::entity::combat::calculate_lightning_impact_pitch(
+                rand::rng().random::<f32>(),
+            );
             world.play_sound_fine(
                 Sound::EntityLightningBoltImpact,
                 SoundCategory::Weather,
@@ -218,7 +221,7 @@ impl EntityBase for LightningBoltEntity {
             );
 
             let difficulty = world.level_info.load().difficulty;
-            if difficulty == Difficulty::Normal || difficulty == Difficulty::Hard {
+            if crate::entity::combat::can_lightning_spawn_fire(difficulty) {
                 self.spawn_fire(&world, 4);
             }
 

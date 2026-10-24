@@ -3224,6 +3224,67 @@ pub fn calculate_thorns_damage(
     }
 }
 
+/// Calculates pitch for lightning thunder sound (distant rumble).
+///
+/// Mirrors vanilla `LightningBolt.java:89`:
+/// `0.8F + this.random.nextFloat() * 0.2F`
+#[must_use]
+pub fn calculate_lightning_thunder_pitch(rand_val: f32) -> f32 {
+    0.8 + rand_val * 0.2
+}
+
+/// Calculates pitch for lightning impact sound (close crack).
+///
+/// Mirrors vanilla `LightningBolt.java:100`:
+/// `0.5F + this.random.nextFloat() * 0.2F`
+#[must_use]
+pub fn calculate_lightning_impact_pitch(rand_val: f32) -> f32 {
+    0.5 + rand_val * 0.2
+}
+
+/// Checks whether lightning strikes should spawn fire based on difficulty.
+///
+/// Mirrors vanilla `LightningBolt.java:105-108`:
+/// `if (difficulty == Difficulty.NORMAL || difficulty == Difficulty.HARD) { this.spawnFire(4); }`
+#[must_use]
+pub const fn can_lightning_spawn_fire(difficulty: pumpkin_util::Difficulty) -> bool {
+    matches!(difficulty, pumpkin_util::Difficulty::Normal | pumpkin_util::Difficulty::Hard)
+}
+
+/// Calculates random short fuse for primed TNT chain reactions.
+///
+/// Mirrors vanilla `PrimedTnt.java:183-185`:
+/// `random.nextInt(Math.max(1, fuse / 4)) + fuse / 8;`
+#[must_use]
+pub fn calculate_tnt_short_fuse(fuse: u32, rand_sample: u32) -> u32 {
+    let bound = (fuse / 4).max(1);
+    (rand_sample % bound) + fuse / 8
+}
+
+/// Calculates Y-coordinate for TNT explosion origin.
+///
+/// Mirrors vanilla `PrimedTnt.java:135`:
+/// `this.getY(0.0625)` -> `pos.y + height * 0.0625`
+#[must_use]
+pub fn calculate_tnt_explosion_pos_y(pos_y: f64, height: f32) -> f64 {
+    f64::from(height).mul_add(0.0625, pos_y)
+}
+
+/// Checks whether primed TNT takes damage from outside damage sources.
+///
+/// Mirrors vanilla `PrimedTnt.java:210-212`:
+/// ```java
+/// @Override
+/// public final boolean hurtServer(final ServerLevel level, final DamageSource source, final float damage) {
+///    return false;
+/// }
+/// ```
+#[must_use]
+pub const fn should_tnt_take_damage() -> bool {
+    false
+}
+
+
 
 
 
@@ -5082,6 +5143,35 @@ mod tests {
         let (thorns_dmg, extra_durability) = calculate_thorns_damage(3, 0.10, 0.5).unwrap();
         assert!(thorns_dmg >= 1.0 && thorns_dmg <= 4.0);
         assert_eq!(extra_durability, 2); // 2 extra durability damage per trigger
+    }
+
+    #[test]
+    fn test_tnt_and_lightning_parity() {
+        // 1. Lightning thunder & impact pitch (LightningBolt.java:89, 100)
+        assert_eq!(calculate_lightning_thunder_pitch(0.0), 0.8);
+        assert_eq!(calculate_lightning_thunder_pitch(1.0), 1.0);
+        assert_eq!(calculate_lightning_impact_pitch(0.0), 0.5);
+        assert_eq!(calculate_lightning_impact_pitch(1.0), 0.7);
+
+        // 2. Lightning fire spawn difficulty check (LightningBolt.java:105-108)
+        assert!(!can_lightning_spawn_fire(pumpkin_util::Difficulty::Peaceful));
+        assert!(!can_lightning_spawn_fire(pumpkin_util::Difficulty::Easy));
+        assert!(can_lightning_spawn_fire(pumpkin_util::Difficulty::Normal));
+        assert!(can_lightning_spawn_fire(pumpkin_util::Difficulty::Hard));
+
+        // 3. TNT short fuse for chain reactions (PrimedTnt.java:183-185)
+        // With default fuse 80: bound = 20, min = 10, max = 29
+        let min_fuse = calculate_tnt_short_fuse(80, 0);
+        let max_fuse = calculate_tnt_short_fuse(80, 19);
+        assert_eq!(min_fuse, 10);
+        assert_eq!(max_fuse, 29);
+
+        // 4. TNT explosion origin Y offset (PrimedTnt.java:135)
+        let tnt_y = calculate_tnt_explosion_pos_y(64.0, 0.98);
+        assert!((tnt_y - (64.0 + 0.98 * 0.0625)).abs() < 1e-6);
+
+        // 5. Primed TNT invulnerability (PrimedTnt.java:210-212)
+        assert!(!should_tnt_take_damage());
     }
 }
 

@@ -64,7 +64,7 @@ impl TNTEntity {
     /// Vanilla `PrimedTnt.getRandomShortFuse`.
     #[must_use]
     pub fn random_short_fuse(fuse: u32) -> u32 {
-        rand::random_range(0..(fuse / 4).max(1)) + fuse / 8
+        crate::entity::combat::calculate_tnt_short_fuse(fuse, rand::random::<u32>())
     }
 }
 
@@ -128,7 +128,10 @@ impl EntityBase for TNTEntity {
             if world.level_info.load().game_rules.tnt_explodes {
                 // Vanilla `PrimedTnt.explode`: `getY(0.0625)`.
                 let pos = entity.pos.load();
-                let y = f64::from(entity.entity_type.dimension[1]).mul_add(0.0625, pos.y);
+                let y = crate::entity::combat::calculate_tnt_explosion_pos_y(
+                    pos.y,
+                    entity.entity_type.dimension[1],
+                );
                 world.explode(
                     Vector3::new(pos.x, y, pos.z),
                     self.power.load(),
@@ -157,6 +160,19 @@ impl EntityBase for TNTEntity {
 
     fn get_living_entity(&self) -> Option<&LivingEntity> {
         None
+    }
+
+    /// Vanilla `PrimedTnt.hurtServer`: primed TNT is immune to external damage.
+    fn damage_with_context(
+        &self,
+        _caller: &dyn EntityBase,
+        _amount: f32,
+        _damage_type: pumpkin_data::damage::DamageType,
+        _position: Option<Vector3<f64>>,
+        _source: Option<&dyn EntityBase>,
+        _cause: Option<&dyn EntityBase>,
+    ) -> bool {
+        crate::entity::combat::should_tnt_take_damage()
     }
 
     fn can_hit(&self) -> bool {

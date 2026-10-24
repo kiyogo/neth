@@ -3021,5 +3021,32 @@
   - Updated `Player::apply_mending_from_xp` in `crates/pumpkin-core/src/entity/player.rs` to compute durability/XP via `calculate_mending_repair` and recursively repair remaining damaged items.
   - Added unit test `test_bow_power_firework_mending_and_thorns_parity` in `combat.rs`. Total 52/52 tests passing in `entity::combat::tests`.
 
+## Gap 167: Primed TNT Invulnerability & Explosion Offset, TNT Short Fuse Formula, Lightning Sound Pitch & Weather Fire Spawn Parity
+- **Vanilla Reference**: `PrimedTnt.java:135, 183-185, 210-212`, `LightningBolt.java:89, 100, 105-108`:
+  - `PrimedTnt.java:210-212`:
+    ```java
+    @Override
+    public final boolean hurtServer(final ServerLevel level, final DamageSource source, final float damage) {
+       return false;
+    }
+    ```
+    - Khối thuốc nổ đã kích hoạt (Primed TNT) hoàn toàn miễn nhiễm với mọi loại sát thương bên ngoài (vũ khí cận chiến, cung tên, v.v.). Trước đây Neth chưa ghi đè `damage_with_context`, cho phép sát thương từ ngoài tác động vào TNT entity.
+  - `PrimedTnt.java:135`:
+    - Điểm nổ thực tế của Primed TNT có toạ độ Y là `this.getY(0.0625)` (tức `pos.y + height * 0.0625`), mô phỏng tâm nổ nằm ngay sát đáy khối thuốc nổ đang nhấp nháy.
+  - `PrimedTnt.java:183-185`:
+    - Khi TNT kích nổ dây chuyền do nổ khác hoặc lửa, thời gian đếm ngược kíp nổ ngắn ngẫu nhiên: `random.nextInt(Math.max(1, fuse / 4)) + fuse / 8`. Với fuse mặc định 80, dải nổ ngắn từ 10 đến 29 ticks (thay vì đợi đủ 80 ticks).
+  - `LightningBolt.java:89, 100, 105-108`:
+    - Âm thanh sét đánh:
+      - Tiếng sấm gầm xa (`LIGHTNING_BOLT_THUNDER`): Volume 10000.0, pitch `0.8F + random * 0.2F`.
+      - Tiếng sét đánh trúng gần (`LIGHTNING_BOLT_IMPACT`): Volume 2.0, pitch `0.5F + random * 0.2F`.
+    - Điều kiện tạo lửa của sét đánh:
+      - Chỉ tạo lửa ngẫu nhiên xung quanh khi độ khó là `Difficulty::Normal` hoặc `Difficulty::Hard`. Ở độ khó `Peaceful` hoặc `Easy`, sét đánh không làm cháy lan xung quanh.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_lightning_thunder_pitch`, `calculate_lightning_impact_pitch`, `can_lightning_spawn_fire`, `calculate_tnt_short_fuse`, `calculate_tnt_explosion_pos_y`, and `should_tnt_take_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `TNTEntity::random_short_fuse`, `tick`, and added `damage_with_context` override in `crates/pumpkin-core/src/entity/tnt.rs`.
+  - Updated `LightningBoltEntity::tick` in `crates/pumpkin-core/src/entity/lightning.rs` using lightning sound pitch and difficulty fire spawn helpers.
+  - Added unit test `test_tnt_and_lightning_parity` in `combat.rs`. Total 53/53 tests passing in `entity::combat::tests`.
+
+
 
 
