@@ -113,10 +113,13 @@ impl ItemBehaviour for CrossbowItem {
                         player.consume_arrow(slot);
                     }
 
-                    player.world().play_sound(
+                    let end_pitch = crate::entity::combat::calculate_crossbow_loading_end_pitch(rand::random());
+                    player.world().play_sound_fine(
                         Sound::ItemCrossbowLoadingEnd,
                         SoundCategory::Players,
                         &player.position(),
+                        1.0,
+                        end_pitch,
                     );
                 }
             }
@@ -151,11 +154,16 @@ impl CrossbowItem {
 
             if !projectiles.is_empty() {
                 let world = player.world();
-                world.play_sound(
-                    Sound::ItemCrossbowShoot,
-                    SoundCategory::Players,
-                    &player.position(),
-                );
+                for (i, _) in projectiles.iter().enumerate() {
+                    let pitch = crate::entity::combat::calculate_crossbow_shot_pitch(i, rand::random());
+                    world.play_sound_fine(
+                        Sound::ItemCrossbowShoot,
+                        SoundCategory::Players,
+                        &player.position(),
+                        1.0,
+                        pitch,
+                    );
+                }
 
                 let is_firework = projectiles
                     .iter()
@@ -182,9 +190,12 @@ impl CrossbowItem {
                     .retain(|(id, _)| *id != DataComponent::ChargedProjectiles);
                 player.inventory().set_stack_in_hand(hand, held);
 
-                let durability_use = if is_firework { 3 } else { 1 };
+                let durability_use = crate::entity::combat::calculate_crossbow_durability_use(
+                    is_firework,
+                    projectiles.len(),
+                );
                 let slot = EquipmentSlot::from_hand(hand);
-                player.damage_item_in_slot(&slot, durability_use);
+                player.damage_item_in_slot(&slot, durability_use as i32);
 
                 player.increment_stat(
                     pumpkin_data::statistic::StatisticCategory::Used,

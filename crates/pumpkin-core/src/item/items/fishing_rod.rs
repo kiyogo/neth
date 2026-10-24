@@ -25,7 +25,7 @@ impl ItemMetadata for FishingRodItem {
 /// Vanilla `FishingRodItem.use` randomises the bobber sound pitch as
 /// `0.4 / (random * 0.4 + 0.8)`, so the throw and retrieve sounds vary around 0.4.
 fn bobber_sound_pitch(random: f32) -> f32 {
-    0.4 / (random * 0.4 + 0.8)
+    crate::entity::combat::calculate_bobber_sound_pitch(random)
 }
 
 impl ItemBehaviour for FishingRodItem {

@@ -183,16 +183,20 @@ impl FishingBobberEntity {
 
             let player_pos = player.get_entity().pos.load();
             let bobber_pos = self.entity.pos.load();
-            let delta = player_pos - bobber_pos;
-            let motion = delta * 0.1;
+            let motion = crate::entity::combat::calculate_fishing_hook_pull_motion(player_pos, bobber_pos);
             hooked.get_entity().add_velocity(motion);
             world.send_entity_status(&self.entity, EntityStatus::FishingRodReelIn, None);
 
-            damage = if hooked.get_entity().entity_type == &EntityType::ITEM {
-                3
+            let target_type = if hooked.get_entity().entity_type == &EntityType::ITEM {
+                crate::entity::combat::HookedTargetType::Item
             } else {
-                5
+                crate::entity::combat::HookedTargetType::OtherEntity
             };
+            damage = crate::entity::combat::calculate_fishing_rod_damage(
+                Some(target_type),
+                false,
+                false,
+            ) as i32;
         } else if self.bite_countdown.load(Ordering::Relaxed) > 0 {
             let bobber_pos = self.entity.pos.load();
             let player_luck = player.living_entity.get_attribute_value(&Attributes::LUCK) as f32;
@@ -229,13 +233,7 @@ impl FishingBobberEntity {
 
             for item_stack in loot {
                 let player_pos = player.position();
-                let delta = player_pos - bobber_pos;
-                let dist_sq = delta.length_squared();
-                let velocity = Vector3::new(
-                    delta.x * 0.1,
-                    delta.y * 0.1 + dist_sq.sqrt().sqrt() * 0.08,
-                    delta.z * 0.1,
-                );
+                let velocity = crate::entity::combat::calculate_caught_item_velocity(player_pos, bobber_pos);
 
                 let entity = Entity::new(world.clone(), bobber_pos, &EntityType::ITEM);
 
@@ -291,11 +289,11 @@ impl FishingBobberEntity {
                 );
             }
 
-            damage = 1;
+            damage = crate::entity::combat::calculate_fishing_rod_damage(None, true, false) as i32;
         }
 
         if self.entity.on_ground.load(Ordering::Relaxed) {
-            damage = 2;
+            damage = crate::entity::combat::calculate_fishing_rod_damage(None, false, true) as i32;
         }
 
         damage
@@ -648,14 +646,13 @@ impl FishingBobberEntity {
         let entity = self.get_entity();
         let pos = entity.pos.load();
 
-        let mut fishing_speed = 1;
         let above = block_pos.up();
-        if rand::random::<f32>() < 0.25 && world.is_raining_at(&above) {
-            fishing_speed += 1;
-        }
-        if rand::random::<f32>() < 0.5 && !world.can_see_sky(&above) {
-            fishing_speed -= 1;
-        }
+        let fishing_speed = crate::entity::combat::calculate_fishing_tick_speed(
+            world.is_raining_at(&above),
+            world.can_see_sky(&above),
+            rand::random::<f32>(),
+            rand::random::<f32>(),
+        );
 
         let nibble = self.bite_countdown.load(Ordering::Relaxed);
         if nibble > 0 {

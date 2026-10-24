@@ -2965,6 +2965,160 @@ pub fn is_douseable_fire_or_campfire(is_fire: bool, is_lit_campfire: bool, is_li
     is_fire || is_lit_campfire || is_lit_candle
 }
 
+/// Target entity type hooked by a fishing bobber.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum HookedTargetType {
+    Item,
+    OtherEntity,
+}
+
+/// Calculates durability damage dealt to a fishing rod upon retrieving the bobber.
+///
+/// Mirrors vanilla `FishingHook.java:441-480`:
+/// ```java
+/// int dmg = 0;
+/// if (this.hookedIn != null) {
+///    this.pullEntity(this.hookedIn);
+///    dmg = this.hookedIn instanceof ItemEntity ? 3 : 5;
+/// } else if (this.nibble > 0) {
+///    ...
+///    dmg = 1;
+/// }
+/// if (this.onGround()) {
+///    dmg = 2;
+/// }
+/// return dmg;
+/// ```
+#[must_use]
+pub const fn calculate_fishing_rod_damage(
+    hooked_target: Option<HookedTargetType>,
+    is_nibbling: bool,
+    on_ground: bool,
+) -> u32 {
+    if let Some(target) = hooked_target {
+        match target {
+            HookedTargetType::Item => 3,
+            HookedTargetType::OtherEntity => 5,
+        }
+    } else if is_nibbling {
+        1
+    } else if on_ground {
+        2
+    } else {
+        0
+    }
+}
+
+/// Calculates pull velocity applied to a hooked entity when reeling in.
+///
+/// Mirrors vanilla `FishingHook.java:500-506`:
+/// ```java
+/// Vec3 delta = new Vec3(owner.getX() - this.getX(), owner.getY() - this.getY(), owner.getZ() - this.getZ()).scale(0.1);
+/// entity.setDeltaMovement(entity.getDeltaMovement().add(delta));
+/// ```
+#[must_use]
+pub fn calculate_fishing_hook_pull_motion(
+    owner_pos: Vector3<f64>,
+    hook_pos: Vector3<f64>,
+) -> Vector3<f64> {
+    (owner_pos - hook_pos) * 0.1
+}
+
+/// Calculates velocity vector for item loot caught when fishing.
+///
+/// Mirrors vanilla `FishingHook.java:460-464`:
+/// ```java
+/// double xa = owner.getX() - this.getX();
+/// double ya = owner.getY() - this.getY();
+/// double za = owner.getZ() - this.getZ();
+/// double speed = 0.1;
+/// entity.setDeltaMovement(xa * 0.1, ya * 0.1 + Math.sqrt(Math.sqrt(xa * xa + ya * ya + za * za)) * 0.08, za * 0.1);
+/// ```
+#[must_use]
+pub fn calculate_caught_item_velocity(
+    owner_pos: Vector3<f64>,
+    hook_pos: Vector3<f64>,
+) -> Vector3<f64> {
+    let delta = owner_pos - hook_pos;
+    let dist_sq = delta.length_squared();
+    Vector3::new(
+        delta.x * 0.1,
+        delta.y.mul_add(0.1, dist_sq.sqrt().sqrt() * 0.08),
+        delta.z * 0.1,
+    )
+}
+
+/// Calculates pitch for fishing bobber throw and retrieve sounds.
+///
+/// Mirrors vanilla `FishingRodItem.java:38, 50`:
+/// `0.4F / (level.getRandom().nextFloat() * 0.4F + 0.8F)`
+#[must_use]
+pub fn calculate_bobber_sound_pitch(rand_val: f32) -> f32 {
+    0.4 / (rand_val * 0.4 + 0.8)
+}
+
+/// Calculates durability loss for firing a crossbow.
+///
+/// Mirrors vanilla `ProjectileWeaponItem.java:71` & `CrossbowItem.java:167-169`:
+/// Firework rocket costs 3 durability per shot, arrow costs 1 durability per shot.
+/// Under Multishot, durability is consumed for each projectile launched.
+#[must_use]
+pub const fn calculate_crossbow_durability_use(is_firework: bool, projectile_count: usize) -> u32 {
+    let per_shot: u32 = if is_firework { 3 } else { 1 };
+    per_shot * (projectile_count as u32)
+}
+
+/// Calculates projectile spread angle (in degrees) for multishot projectile weapons.
+///
+/// Mirrors vanilla `ProjectileWeaponItem.java:54-63`:
+/// ```java
+/// float angleStep = projectiles.size() == 1 ? 0.0F : 2.0F * maxAngle / (projectiles.size() - 1);
+/// float angleOffset = (projectiles.size() - 1) % 2 * angleStep / 2.0F;
+/// float angle = angleOffset + direction * ((i + 1) / 2) * angleStep;
+/// ```
+#[must_use]
+pub fn calculate_multishot_spread_angle(index: usize, count: usize, max_spread: f32) -> f32 {
+    if count <= 1 {
+        return 0.0;
+    }
+    let angle_step = 2.0 * max_spread / (count as f32 - 1.0);
+    let angle_offset = ((count - 1) % 2) as f32 * angle_step / 2.0;
+    let direction = if index % 2 == 1 { -1.0 } else { 1.0 };
+    angle_offset + direction * (index.div_ceil(2) as f32) * angle_step
+}
+
+/// Calculates crossbow shot sound pitch.
+///
+/// Mirrors vanilla `CrossbowItem.java:193-200`:
+/// ```java
+/// private static float getShotPitch(final RandomSource random, final int index) {
+///    return index == 0 ? 1.0F : getRandomShotPitch((index & 1) == 1, random);
+/// }
+/// private static float getRandomShotPitch(final boolean highPitch, final RandomSource random) {
+///    float rangeDecider = highPitch ? 0.63F : 0.43F;
+///    return 1.0F / (random.nextFloat() * 0.5F + 1.8F) + rangeDecider;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_crossbow_shot_pitch(index: usize, rand_val: f32) -> f32 {
+    if index == 0 {
+        1.0
+    } else {
+        let range_decider = if (index & 1) == 1 { 0.63 } else { 0.43 };
+        1.0 / (rand_val * 0.5 + 1.8) + range_decider
+    }
+}
+
+/// Calculates pitch for crossbow load end sound.
+///
+/// Mirrors vanilla `CrossbowItem.java:234`:
+/// `1.0F / (level.getRandom().nextFloat() * 0.5F + 1.0F) + 0.2F`
+#[must_use]
+pub fn calculate_crossbow_loading_end_pitch(rand_val: f32) -> f32 {
+    1.0 / (rand_val * 0.5 + 1.0) + 0.2
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -4719,6 +4873,61 @@ mod tests {
         assert!(is_douseable_fire_or_campfire(false, true, false));
         assert!(is_douseable_fire_or_campfire(false, false, true));
         assert!(!is_douseable_fire_or_campfire(false, false, false));
+    }
+
+    #[test]
+    fn test_fishing_rod_and_crossbow_multishot_parity() {
+        // 1. Fishing rod retrieve durability damage (FishingHook.java:446, 472, 476)
+        assert_eq!(calculate_fishing_rod_damage(Some(HookedTargetType::Item), false, false), 3);
+        assert_eq!(calculate_fishing_rod_damage(Some(HookedTargetType::OtherEntity), false, false), 5);
+        assert_eq!(calculate_fishing_rod_damage(None, true, false), 1);
+        assert_eq!(calculate_fishing_rod_damage(None, false, true), 2);
+        assert_eq!(calculate_fishing_rod_damage(None, false, false), 0);
+
+        // 2. Fishing hook pull motion (FishingHook.java:503)
+        let owner = Vector3::new(10.0, 64.0, 10.0);
+        let hook = Vector3::new(0.0, 64.0, 0.0);
+        let pull = calculate_fishing_hook_pull_motion(owner, hook);
+        assert!((pull.x - 1.0).abs() < 1e-6);
+        assert!((pull.y - 0.0).abs() < 1e-6);
+        assert!((pull.z - 1.0).abs() < 1e-6);
+
+        // 3. Caught item loot velocity (FishingHook.java:464)
+        let caught_vel = calculate_caught_item_velocity(owner, hook);
+        assert!((caught_vel.x - 1.0).abs() < 1e-6);
+        // dist_sq = 100 + 0 + 100 = 200. sqrt(sqrt(200)) = (200)^0.25 ≈ 3.7606
+        // y = 0.0 * 0.1 + 3.7606 * 0.08 ≈ 0.3008
+        assert!(caught_vel.y > 0.25 && caught_vel.y < 0.35);
+
+        // 4. Bobber throw & retrieve sound pitch (FishingRodItem.java:38, 50)
+        let min_pitch = calculate_bobber_sound_pitch(1.0); // 0.4 / 1.2 ≈ 0.333
+        let max_pitch = calculate_bobber_sound_pitch(0.0); // 0.4 / 0.8 = 0.5
+        assert!((min_pitch - (0.4 / 1.2)).abs() < 1e-5);
+        assert!((max_pitch - 0.5).abs() < 1e-5);
+
+        // 5. Crossbow durability consumption (CrossbowItem.java:167-169 & ProjectileWeaponItem.java:71)
+        assert_eq!(calculate_crossbow_durability_use(false, 1), 1);
+        assert_eq!(calculate_crossbow_durability_use(false, 3), 3); // Multishot arrows = 3
+        assert_eq!(calculate_crossbow_durability_use(true, 1), 3);
+        assert_eq!(calculate_crossbow_durability_use(true, 3), 9);  // Multishot fireworks = 9
+
+        // 6. Multishot projectile angles (ProjectileWeaponItem.java:54-63)
+        // 3 projectiles with 10.0 spread: center (0°), left (-10°), right (+10°)
+        assert_eq!(calculate_multishot_spread_angle(0, 3, 10.0), 0.0);
+        assert_eq!(calculate_multishot_spread_angle(1, 3, 10.0), -10.0);
+        assert_eq!(calculate_multishot_spread_angle(2, 3, 10.0), 10.0);
+        // Single projectile: 0°
+        assert_eq!(calculate_multishot_spread_angle(0, 1, 10.0), 0.0);
+
+        // 7. Crossbow shot pitch (CrossbowItem.java:193-200)
+        assert_eq!(calculate_crossbow_shot_pitch(0, 0.5), 1.0);
+        let odd_pitch = calculate_crossbow_shot_pitch(1, 0.0); // 1.0/1.8 + 0.63 ≈ 1.185
+        let even_pitch = calculate_crossbow_shot_pitch(2, 0.0); // 1.0/1.8 + 0.43 ≈ 0.985
+        assert!(odd_pitch > even_pitch);
+
+        // 8. Crossbow loading end pitch (CrossbowItem.java:234)
+        let load_end_pitch = calculate_crossbow_loading_end_pitch(0.0); // 1.0/1.0 + 0.2 = 1.2
+        assert!((load_end_pitch - 1.2).abs() < 1e-5);
     }
 }
 

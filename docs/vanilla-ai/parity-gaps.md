@@ -2932,3 +2932,37 @@
   - Updated `extinguish_fire` in `crates/pumpkin-core/src/entity/projectile/splash_potion.rs` to detect both `BlockId::CAMPFIRE` and `BlockId::SOUL_CAMPFIRE`, extinguish `lit` state to `false`, and broadcast chunk world event `1009` (`SOUND_EXTINGUISH_FIRE`).
   - Added unit test `test_thrown_trident_water_inertia_loyalty_despawn_and_douse_parity` in `combat.rs`. Total 50/50 tests passing in `entity::combat::tests`.
 
+## Gap 165: Fishing Rod Hook Retrieval Durability & Pull Motion Parity, Crossbow Multishot Durability, Pitch & Loading Phase Sound Parity
+- **Vanilla Reference**: `FishingHook.java:441-480, 500-506`, `FishingRodItem.java:26-28, 38, 50`, `CrossbowItem.java:167-169, 193-200, 234`, `ProjectileWeaponItem.java:54-71`:
+  - `FishingHook.java:441-480`:
+    - Khi thu cần câu (`retrieve`):
+      - Nếu dính ItemEntity: giảm 3 độ bền (`dmg = 3`), kéo item về phía người chơi.
+      - Nếu dính LivingEntity/Player/Mob khác: giảm 5 độ bền (`dmg = 5`), kéo entity về phía người chơi (`pullEntity`).
+      - Nếu cắn câu (nibble > 0): sinh vật phẩm loot theo bảng câu cá, bắn loot về phía người chơi với vận tốc `Y = ya * 0.1 + sqrt(sqrt(dist_sq)) * 0.08`, rơi 1-6 kinh nghiệm tại vị trí người chơi, giảm 1 độ bền (`dmg = 1`).
+      - Nếu phao câu cắm vào đất (`onGround()`): giảm 2 độ bền (`dmg = 2`).
+      - Không trúng gì: giảm 0 độ bền (`dmg = 0`).
+  - `FishingRodItem.java:38, 50`:
+    - Pitch của âm thanh ném phao (`FISHING_BOBBER_THROW`) và thu cần (`FISHING_BOBBER_RETRIEVE`):
+      `0.4F / (random.nextFloat() * 0.4F + 0.8F)`.
+  - `ProjectileWeaponItem.java:54-71` & `CrossbowItem.java:167-169`:
+    - Độ bền tiêu hao khi bắn nỏ (`getDurabilityUse`):
+      - Tên (Arrow): 1 độ bền trên mỗi projectile bắn ra.
+      - Pháo hoa (Firework Rocket): 3 độ bền trên mỗi projectile bắn ra.
+      - Khi có phù phép Multishot (3 projectiles): Neth trước đây chỉ trừ 1 lần duy nhất; Vanilla Java trừ độ bền cho từng projectile trong vòng lặp bắn (tổng cộng 3 độ bền cho 3 mũi tên, 9 độ bền cho 3 quả pháo hoa).
+    - Góc bắn Multishot (`calculate_multishot_spread_angle`):
+      - 3 projectiles với spread 10.0°: Mũi giữa (0°), mũi lệch trái (-10°), mũi lệch phải (+10°).
+    - Cao độ âm thanh bắn nỏ (`getShotPitch`):
+      - Mũi tên chính giữa (`index == 0`): pitch = 1.0F.
+      - Mũi tên Multishot lẻ (`index & 1 == 1`): `1.0F / (random * 0.5F + 1.8F) + 0.63F`.
+      - Mũi tên Multishot chẵn (`index & 1 == 0`): `1.0F / (random * 0.5F + 1.8F) + 0.43F`.
+    - Âm thanh kết thúc nạp đạn nỏ (`CROSSBOW_LOADING_END`):
+      - Pitch = `1.0F / (random * 0.5F + 1.0F) + 0.2F`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_fishing_rod_damage`, `calculate_fishing_hook_pull_motion`, `calculate_caught_item_velocity`, `calculate_bobber_sound_pitch`, `calculate_crossbow_durability_use`, `calculate_multishot_spread_angle`, `calculate_crossbow_shot_pitch`, and `calculate_crossbow_loading_end_pitch` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `FishingBobberEntity::reel_in` and `catching_fish` in `crates/pumpkin-core/src/entity/projectile/fishing_bobber.rs` using parity helpers.
+  - Updated `FishingRodItem::bobber_sound_pitch` in `crates/pumpkin-core/src/item/items/fishing_rod.rs`.
+  - Updated `CrossbowItem::fire_projectiles` and `on_stopped_using` in `crates/pumpkin-core/src/item/items/crossbow.rs` to compute total multishot durability consumption and pitch per projectile.
+  - Updated `ProjectileWeaponItem::shoot_projectiles` in `crates/pumpkin-core/src/item/items/projectile_weapon.rs` to use `calculate_multishot_spread_angle`.
+  - Added unit test `test_fishing_rod_and_crossbow_multishot_parity` in `combat.rs`. Total 51/51 tests passing in `entity::combat::tests`.
+
+

@@ -140,14 +140,6 @@ impl ProjectileWeaponItem {
         }
 
         let max_angle = EnchantmentHelper::process_projectile_spread(weapon, 0.0);
-        let angle_step = if projectiles.len() == 1 {
-            0.0
-        } else {
-            2.0 * max_angle / (projectiles.len() as f32 - 1.0)
-        };
-        let angle_offset = ((projectiles.len() - 1) % 2) as f32 * angle_step / 2.0;
-        let mut direction = 1.0f32;
-
         let (yaw, pitch) = (shooter.yaw.load(), shooter.pitch.load());
 
         for (i, projectile) in projectiles.iter().enumerate() {
@@ -155,8 +147,11 @@ impl ProjectileWeaponItem {
                 continue;
             }
 
-            let angle = angle_offset + direction * (i.div_ceil(2) as f32) * angle_step;
-            direction = -direction;
+            let angle = crate::entity::combat::calculate_multishot_spread_angle(
+                i,
+                projectiles.len(),
+                max_angle,
+            );
 
             if projectile.item.id == Item::FIREWORK_ROCKET.id {
                 let mut pos = shooter.pos.load();
