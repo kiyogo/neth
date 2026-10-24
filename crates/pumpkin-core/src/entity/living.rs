@@ -2526,6 +2526,25 @@ impl LivingEntity {
             self.movement_input.store(Vector3::default());
             self.jumping.store(false, Relaxed);
 
+            // Vanilla LivingEntity.java:1466-1470 & Player.java:534-542:
+            // if (this.isSleeping()) { this.stopSleeping(); }
+            // this.stopUsingItem();
+            // this.setDeltaMovement(...);
+            if let Some(player) = dyn_self.get_player() {
+                if player.is_sleeping() {
+                    player.wake_up();
+                }
+                player.stop_using_item();
+                let death_velocity = crate::entity::combat::calculate_player_death_velocity(
+                    self.entity.yaw.load(),
+                    0.0,
+                    source.is_some() || cause.is_some(),
+                );
+                self.entity.set_velocity(death_velocity);
+            } else {
+                self.clear_active_hand();
+            }
+
             let kill_credit = self.get_kill_credit();
             let killer = cause.or(source).or(kill_credit.as_deref());
 

@@ -1911,5 +1911,46 @@
   - Implemented `LivingEntity::create_wither_rose` in `crates/pumpkin-core/src/entity/living.rs` and integrated it into `drop_all_death_loot`.
   - Added unit test `test_wither_rose_creation_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 25/25 tests in `entity::combat::tests` passing.
 
+### Gap 140: Living Entity & Player Death Lifecycle, Item Usage Cleanup, Sleep Cancellation & Death Velocity Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:1466-1470` (`die(DamageSource)`):
+    ```java
+    if (this.isSleeping()) {
+       this.stopSleeping();
+    }
+    this.stopUsingItem();
+    ```
+  - `Player.java:534-548` & `ServerPlayer.java:947-949`:
+    ```java
+    if (source != null) {
+       this.setDeltaMovement(
+          -Mth.cos((this.getHurtDir() + this.getYRot()) * (float) (Math.PI / 180.0)) * 0.1F,
+          0.1F,
+          -Mth.sin((this.getHurtDir() + this.getYRot()) * (float) (Math.PI / 180.0)) * 0.1F
+       );
+    } else {
+       this.setDeltaMovement(0.0, 0.1, 0.0);
+    }
+    this.clearFire();
+    this.setTicksFrozen(0);
+    this.setSharedFlagOnFire(false);
+    ```
+  - In vanilla Minecraft Java, whenever a living entity or player dies:
+    - Any active item in use (shield blocking, bow/crossbow charging, eating, drinking) is immediately cancelled via `stopUsingItem()`.
+    - Sleeping is immediately cancelled via `stopSleeping()`.
+    - Player receives specific death knockback velocity (`(0.0, 0.1, 0.0)` if damage source is null, or rotated `(-cos(yaw)*0.1, 0.1, -sin(yaw)*0.1)` if damage source is present).
+    - Player fire ticks and freeze ticks are cleared (`clearFire()`, `setTicksFrozen(0)`).
+  - Previously in Neth:
+    - `on_death` never called `stop_using_item()` or `clear_active_hand()`, leaving dead entities/players in active using item states.
+    - Sleeping players were only awakened late in `handle_killed`.
+    - Player death delta movement was not set to vanilla's standard death arc.
+    - Fire ticks and freeze ticks were not extinguished upon player death.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_player_death_velocity` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added immediate item usage cleanup (`stop_using_item()` / `clear_active_hand()`), sleeping cancellation (`wake_up()`), and death delta velocity in `LivingEntity::on_death`.
+  - Added `extinguish()` and `set_frozen_ticks(0)` upon player death in `Player::handle_killed`.
+  - Added unit test `test_player_death_lifecycle_and_velocity_parity` in `combat.rs`. Total 26/26 tests in `entity::combat::tests` passing.
+
+
 
 

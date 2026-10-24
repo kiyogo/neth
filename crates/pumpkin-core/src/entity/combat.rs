@@ -1343,6 +1343,36 @@ pub const fn determine_wither_rose_action(
     }
 }
 
+/// Calculates the player's delta movement upon death, mirroring Vanilla `Player.java:534-542`:
+/// ```java
+/// if (source != null) {
+///    this.setDeltaMovement(
+///       -Mth.cos((this.getHurtDir() + this.getYRot()) * (float) (Math.PI / 180.0)) * 0.1F,
+///       0.1F,
+///       -Mth.sin((this.getHurtDir() + this.getYRot()) * (float) (Math.PI / 180.0)) * 0.1F
+///    );
+/// } else {
+///    this.setDeltaMovement(0.0, 0.1, 0.0);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_player_death_velocity(
+    yaw: f32,
+    hurt_dir: f32,
+    has_source: bool,
+) -> Vector3<f64> {
+    if has_source {
+        let angle_rad = (hurt_dir + yaw) * (std::f32::consts::PI / 180.0);
+        Vector3::new(
+            f64::from(-angle_rad.cos() * 0.1),
+            0.1,
+            f64::from(-angle_rad.sin() * 0.1),
+        )
+    } else {
+        Vector3::new(0.0, 0.1, 0.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2119,7 +2149,32 @@ mod tests {
             WitherRosePlacementAction::DropItem
         );
     }
+
+    #[test]
+    fn test_player_death_lifecycle_and_velocity_parity() {
+        // Vanilla Player.java:534-542:
+        // When source is null, delta movement is strictly (0.0, 0.1, 0.0)
+        let vel_no_source = calculate_player_death_velocity(0.0, 0.0, false);
+        assert_eq!(vel_no_source.x, 0.0);
+        assert_eq!(vel_no_source.y, 0.1);
+        assert_eq!(vel_no_source.z, 0.0);
+
+        // When source is present and yaw = 0, angle = 0:
+        // x = -cos(0) * 0.1 = -0.1, z = -sin(0) * 0.1 = -0.0, y = 0.1
+        let vel_yaw_0 = calculate_player_death_velocity(0.0, 0.0, true);
+        assert!((vel_yaw_0.x - (-0.1)).abs() < 1e-6);
+        assert_eq!(vel_yaw_0.y, 0.1);
+        assert!(vel_yaw_0.z.abs() < 1e-6);
+
+        // When source is present and yaw = 90 deg:
+        // x = -cos(90) * 0.1 ≈ 0.0, z = -sin(90) * 0.1 = -0.1, y = 0.1
+        let vel_yaw_90 = calculate_player_death_velocity(90.0, 0.0, true);
+        assert!(vel_yaw_90.x.abs() < 1e-6);
+        assert_eq!(vel_yaw_90.y, 0.1);
+        assert!((vel_yaw_90.z - (-0.1)).abs() < 1e-6);
+    }
 }
+
 
 
 

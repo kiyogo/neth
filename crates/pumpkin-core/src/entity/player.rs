@@ -5584,6 +5584,13 @@ impl Player {
         // Reset air supply & drowning ticks on death
         self.living_entity.breath.reset(self.get_entity());
 
+        // Vanilla Player.java:547-548 / ServerPlayer.java:947-949:
+        // this.clearFire();
+        // this.setTicksFrozen(0);
+        // this.setSharedFlagOnFire(false);
+        self.living_entity.entity.extinguish();
+        self.living_entity.entity.set_frozen_ticks(0);
+
         if matches!(self.client.as_ref(), ClientPlatform::Java(_)) {
             self.set_client_loaded(false);
         }
