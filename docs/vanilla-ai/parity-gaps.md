@@ -2387,6 +2387,56 @@
     - Incremented `ItemUsed` statistic for `Item::WIND_CHARGE`.
   - Added unit test `test_wind_charge_throw_pitch_spawn_and_impact_parity` in `combat.rs`. Total 37/37 tests in `entity::combat::tests` passing.
 
+## Gap 152: Thrown Trident Loyalty Return Physics, In-Ground Delay, Void Auto-Recall & Channeling Parity
+- **Vanilla Reference**:
+  - `ThrownTrident.java:63-97`:
+    ```java
+    if (this.inGroundTime > 4) {
+       this.dealtDamage = true;
+    }
+
+    Entity currentOwner = this.getOwner();
+    int loyalty = this.entityData.get(ID_LOYALTY);
+    if (loyalty > 0 && (this.dealtDamage || this.isNoPhysics()) && currentOwner != null) {
+       if (!this.isAcceptibleReturnOwner()) {
+          if (this.level() instanceof ServerLevel level && this.pickup == AbstractArrow.Pickup.ALLOWED) {
+             this.spawnAtLocation(level, this.getPickupItem(), 0.1F);
+          }
+          this.discard();
+       } else {
+          if (!(currentOwner instanceof Player) && this.position().distanceTo(currentOwner.getEyePosition()) < currentOwner.getBbWidth() + 1.0) {
+             this.discard();
+             return;
+          }
+
+          this.setNoPhysics(true);
+          Vec3 vec = currentOwner.getEyePosition().subtract(this.position());
+          this.setPosRaw(this.getX(), this.getY() + vec.y * 0.015 * loyalty, this.getZ());
+          double accel = 0.05 * loyalty;
+          this.setDeltaMovement(this.getDeltaMovement().scale(0.95).add(vec.normalize().scale(accel)));
+          if (this.clientSideReturnTridentTickCount == 0) {
+             this.playSound(SoundEvents.TRIDENT_RETURN, 10.0F, 1.0F);
+          }
+          this.clientSideReturnTridentTickCount++;
+       }
+    }
+    ```
+  - `Enchantments.java:1050-1098`:
+    - Channeling on Entity Hit: requires `channeling > 0`, `world.is_thundering()`, and `can_see_sky(victim_pos)`.
+    - Channeling on Block Hit: requires `channeling > 0`, `world.is_thundering()`, `can_see_sky(block_pos)`, and **the hit block must belong to `BlockTags.LIGHTNING_RODS`**! Regular blocks do not summon lightning.
+    - Sound event: `SoundEvents.TRIDENT_THUNDER` (volume 5.0, pitch 1.0).
+  - `Entity.java:605` (`getY() < min_y - 64`):
+    - Tridents with Loyalty falling into the void auto-recall to owner instead of being lost permanently.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_trident_loyalty_step`, `should_trident_return_loyalty`, `should_trident_trigger_return_after_in_ground`, `is_acceptable_trident_return_owner`, `should_trident_auto_recall_from_void`, `should_channeling_strike_entity`, and `should_channeling_strike_block` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Fixed loyalty return velocity accumulation bug in Neth: previously `vel.y += delta.y * 0.015 * loyalty` was added into persistent velocity, causing exponential vertical overshoot. Now separated into direct position offset `y_offset` and 0.95 velocity drag with normalized acceleration.
+  - Added in-ground return delay parity: tridents only initiate loyalty recall after `in_ground_time > 4` ticks.
+  - Added void auto-recall safeguard for tridents falling below `y < min_y - 64.0`.
+  - Added `is_lightning_rod_block` check to Channeling on block hit: only lightning rod blocks trigger lightning strikes matching vanilla.
+  - Played `Sound::ItemTridentThunder` at volume 5.0 and pitch 1.0 on Channeling strikes.
+  - Added unit test `test_thrown_trident_loyalty_physics_void_recall_and_channeling_parity` in `combat.rs`. Total 38/38 tests passing in `entity::combat::tests`.
+
+
 
 
 

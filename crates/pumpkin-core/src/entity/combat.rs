@@ -1916,7 +1916,113 @@ pub const fn calculate_wind_charge_cooldown_ticks() -> i32 {
     10
 }
 
+/// Calculates updated position and velocity for Thrown Trident Loyalty return step.
+///
+/// Mirrors vanilla `ThrownTrident.java:83-87`:
+/// ```java
+/// this.setNoPhysics(true);
+/// Vec3 vec = currentOwner.getEyePosition().subtract(this.position());
+/// this.setPosRaw(this.getX(), this.getY() + vec.y * 0.015 * loyalty, this.getZ());
+/// double accel = 0.05 * loyalty;
+/// this.setDeltaMovement(this.getDeltaMovement().scale(0.95).add(vec.normalize().scale(accel)));
+/// ```
+#[must_use]
+pub fn calculate_trident_loyalty_step(
+    pos: Vector3<f64>,
+    velocity: Vector3<f64>,
+    owner_eye_pos: Vector3<f64>,
+    loyalty: u8,
+) -> (Vector3<f64>, Vector3<f64>) {
+    let delta = owner_eye_pos - pos;
+    let dist = delta.length();
+    let norm = if dist > 1e-4 {
+        delta * (1.0 / dist)
+    } else {
+        Vector3::new(0.0, 0.0, 0.0)
+    };
+    let accel = 0.05 * f64::from(loyalty);
+    let new_vel = velocity * 0.95 + norm * accel;
+    let y_offset = delta.y * 0.015 * f64::from(loyalty);
+    let new_pos = Vector3::new(
+        pos.x + new_vel.x,
+        pos.y + y_offset + new_vel.y,
+        pos.z + new_vel.z,
+    );
+    (new_pos, new_vel)
+}
 
+/// Determines if trident should return via Loyalty enchantment.
+///
+/// Mirrors vanilla `ThrownTrident.java:70`:
+/// `if (loyalty > 0 && (this.dealtDamage || this.isNoPhysics()) && currentOwner != null)`
+#[must_use]
+pub const fn should_trident_return_loyalty(
+    loyalty: u8,
+    dealt_damage: bool,
+    is_no_physics: bool,
+    has_owner: bool,
+) -> bool {
+    loyalty > 0 && (dealt_damage || is_no_physics) && has_owner
+}
+
+/// Determines if trident should start returning after being stuck in ground.
+///
+/// Mirrors vanilla `ThrownTrident.java:64-66`:
+/// `if (this.inGroundTime > 4) { this.dealtDamage = true; }`
+#[must_use]
+pub const fn should_trident_trigger_return_after_in_ground(in_ground_time: u32) -> bool {
+    in_ground_time > 4
+}
+
+/// Checks whether owner is acceptable to receive returned trident.
+///
+/// Mirrors vanilla `ThrownTrident.java:100-102`:
+/// `return currentOwner == null || !currentOwner.isAlive() ? false : !(currentOwner instanceof ServerPlayer) || !currentOwner.isSpectator();`
+#[must_use]
+pub const fn is_acceptable_trident_return_owner(is_owner_alive: bool, is_spectator: bool) -> bool {
+    is_owner_alive && !is_spectator
+}
+
+/// Checks if trident has fallen below world void threshold and should auto-recall to owner.
+///
+/// Under vanilla `Entity.java:605` (`getY() < min_y - 64`), entities enter void.
+/// Tridents with Loyalty auto-recall to prevent item loss in void.
+#[must_use]
+pub const fn should_trident_auto_recall_from_void(
+    pos_y: f64,
+    loyalty: u8,
+    has_owner: bool,
+    min_y: f64,
+) -> bool {
+    pos_y < (min_y - 64.0) && loyalty > 0 && has_owner
+}
+
+/// Checks if Channeling enchantment should strike lightning on entity hit.
+///
+/// Mirrors vanilla `Enchantments.java:1070-1074`:
+/// `WeatherCheck.weather().setThundering(true)` && `canSeeSky(true)`
+#[must_use]
+pub const fn should_channeling_strike_entity(
+    has_channeling: bool,
+    is_thundering: bool,
+    can_see_sky: bool,
+) -> bool {
+    has_channeling && is_thundering && can_see_sky
+}
+
+/// Checks if Channeling enchantment should strike lightning on block hit.
+///
+/// Mirrors vanilla `Enchantments.java:1086-1095`:
+/// `WeatherCheck.weather().setThundering(true)` && `canSeeSky(true)` && `is_lightning_rod`
+#[must_use]
+pub const fn should_channeling_strike_block(
+    has_channeling: bool,
+    is_thundering: bool,
+    can_see_sky: bool,
+    is_lightning_rod: bool,
+) -> bool {
+    has_channeling && is_thundering && can_see_sky && is_lightning_rod
+}
 
 #[cfg(test)]
 mod tests {
@@ -3229,6 +3335,64 @@ mod tests {
 
         // 4. Cooldown ticks: 10 ticks (0.5s)
         assert_eq!(calculate_wind_charge_cooldown_ticks(), 10);
+    }
+
+    #[test]
+    fn test_thrown_trident_loyalty_physics_void_recall_and_channeling_parity() {
+        // 1. Loyalty Return Physics (ThrownTrident.java:83-87)
+        // pos = (0, 0, 0), vel = (1, 0, 0), owner_eye = (0, 10, 0), loyalty = 3
+        let pos = Vector3::new(0.0, 0.0, 0.0);
+        let vel = Vector3::new(1.0, 0.0, 0.0);
+        let owner_eye = Vector3::new(0.0, 10.0, 0.0);
+        let (new_pos, new_vel) = calculate_trident_loyalty_step(pos, vel, owner_eye, 3);
+
+        // new_vel = (1, 0, 0) * 0.95 + (0, 1, 0) * (0.05 * 3) = (0.95, 0.15, 0.0)
+        assert!((new_vel.x - 0.95).abs() < 1e-6);
+        assert!((new_vel.y - 0.15).abs() < 1e-6);
+        assert!((new_vel.z - 0.0).abs() < 1e-6);
+
+        // y_offset = 10.0 * 0.015 * 3 = 0.45
+        // new_pos = (0.95, 0.45 + 0.15, 0.0) = (0.95, 0.60, 0.0)
+        assert!((new_pos.x - 0.95).abs() < 1e-6);
+        assert!((new_pos.y - 0.60).abs() < 1e-6);
+        assert!((new_pos.z - 0.0).abs() < 1e-6);
+
+        // 2. Loyalty Return Trigger Conditions (ThrownTrident.java:70)
+        assert!(!should_trident_return_loyalty(0, true, true, true));
+        assert!(!should_trident_return_loyalty(1, false, false, true));
+        assert!(should_trident_return_loyalty(1, true, false, true));
+        assert!(should_trident_return_loyalty(1, false, true, true));
+        assert!(!should_trident_return_loyalty(1, true, false, false));
+
+        // 3. In-ground recall delay (ThrownTrident.java:64-66)
+        assert!(!should_trident_trigger_return_after_in_ground(0));
+        assert!(!should_trident_trigger_return_after_in_ground(4));
+        assert!(should_trident_trigger_return_after_in_ground(5));
+
+        // 4. Acceptable return owner check (ThrownTrident.java:100-102)
+        assert!(is_acceptable_trident_return_owner(true, false));
+        assert!(!is_acceptable_trident_return_owner(false, false));
+        assert!(!is_acceptable_trident_return_owner(true, true));
+
+        // 5. Void auto-recall safeguard (Entity.java:605 min_y - 64)
+        assert!(should_trident_auto_recall_from_void(-65.0, 1, true, 0.0));
+        assert!(!should_trident_auto_recall_from_void(-63.0, 1, true, 0.0));
+        assert!(!should_trident_auto_recall_from_void(-150.0, 0, true, 0.0));
+        assert!(!should_trident_auto_recall_from_void(-150.0, 1, false, 0.0));
+
+        // 6. Channeling entity strike conditions (Enchantments.java:1070-1074)
+        assert!(should_channeling_strike_entity(true, true, true));
+        assert!(!should_channeling_strike_entity(false, true, true));
+        assert!(!should_channeling_strike_entity(true, false, true));
+        assert!(!should_channeling_strike_entity(true, true, false));
+
+        // 7. Channeling block strike conditions (Enchantments.java:1086-1095)
+        // Must be a lightning rod!
+        assert!(should_channeling_strike_block(true, true, true, true));
+        assert!(!should_channeling_strike_block(true, true, true, false)); // regular blocks do not trigger channeling
+        assert!(!should_channeling_strike_block(false, true, true, true));
+        assert!(!should_channeling_strike_block(true, false, true, true));
+        assert!(!should_channeling_strike_block(true, true, false, true));
     }
 }
 
