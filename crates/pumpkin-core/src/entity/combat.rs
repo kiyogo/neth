@@ -1796,6 +1796,86 @@ pub fn should_effects_refill_air_supply(
     !has_nautilus_breath || has_water_breathing || has_conduit_power
 }
 
+/// Calculates submerged mining speed taking base attribute and helmet Aqua Affinity enchantment into account.
+///
+/// Mirrors vanilla `Enchantments.java:311-320`:
+/// Aqua Affinity applies `ADD_MULTIPLIED_TOTAL` with `4.0 * level` to `Attributes.SUBMERGED_MINING_SPEED` (base 0.2),
+/// turning `0.2 * (1 + 4.0) = 1.0`.
+#[must_use]
+pub fn calculate_submerged_mining_speed(base_submerged_speed: f32, aqua_affinity_level: i32) -> f32 {
+    let multiplier = 1.0 + 4.0 * (aqua_affinity_level.max(0) as f32);
+    base_submerged_speed * multiplier
+}
+
+/// Calculates Mining Fatigue speed penalty multiplier.
+///
+/// Mirrors vanilla `Player.java:595`:
+/// `float scale = (float)Math.pow(0.3, amplifier + 1);`
+#[must_use]
+pub fn calculate_mining_fatigue_scale(amplifier: u8) -> f32 {
+    0.3_f32.powi(i32::from(amplifier) + 1)
+}
+
+/// Calculates total player destroy speed for a block matching vanilla formula order.
+///
+/// Mirrors vanilla `Player.java:583-609`:
+/// 1. `heldItem.getDestroySpeed(state)`
+/// 2. If speed > 1.0: `speed += MINING_EFFICIENCY`
+/// 3. If Haste/Conduit: `speed *= 1.0 + (haste_amp + 1) * 0.2`
+/// 4. If Mining Fatigue: `speed *= 0.3^(fatigue_amp + 1)`
+/// 5. `speed *= BLOCK_BREAK_SPEED`
+/// 6. If `is_eye_in_water`: `speed *= SUBMERGED_MINING_SPEED`
+/// 7. If `!on_ground`: `speed /= 5.0`
+#[must_use]
+pub fn calculate_player_destroy_speed(
+    tool_speed: f32,
+    efficiency_bonus: f32,
+    haste_amplifier: Option<u32>,
+    fatigue_amplifier: Option<u8>,
+    block_break_speed: f32,
+    is_eye_in_water: bool,
+    submerged_speed: f32,
+    on_ground: bool,
+) -> f32 {
+    let mut speed = tool_speed;
+    if speed > 1.0 {
+        speed += efficiency_bonus;
+    }
+
+    if let Some(amp) = haste_amplifier {
+        speed *= 1.0 + ((amp + 1) as f32) * 0.2;
+    }
+
+    if let Some(amp) = fatigue_amplifier {
+        speed *= calculate_mining_fatigue_scale(amp);
+    }
+
+    speed *= block_break_speed;
+
+    if is_eye_in_water {
+        speed *= submerged_speed;
+    }
+
+    if !on_ground {
+        speed /= 5.0;
+    }
+
+    speed
+}
+
+/// Calculates per-tick destroy progress for a block.
+///
+/// Mirrors vanilla `BlockBehaviour.java:345-352`:
+/// `player.getDestroySpeed(state) / destroySpeed / (canHarvest ? 30 : 100)`
+#[must_use]
+pub fn calculate_block_destroy_progress(destroy_speed: f32, block_hardness: f32, can_harvest: bool) -> f32 {
+    if block_hardness == -1.0 {
+        return 0.0;
+    }
+    let modifier = if can_harvest { 30.0 } else { 100.0 };
+    destroy_speed / block_hardness / modifier
+}
+
 
 
 #[cfg(test)]
@@ -3031,6 +3111,56 @@ mod tests {
         assert!(should_effects_refill_air_supply(true, false, true));
         assert!(!should_effects_refill_air_supply(false, false, true));
         assert!(should_effects_refill_air_supply(false, false, false));
+    }
+
+    #[test]
+    fn test_submerged_mining_speed_aqua_affinity_and_destroy_speed_parity() {
+        // 1. Aqua Affinity and Submerged Mining Speed:
+        // Base submerged speed = 0.2
+        let base_submerged = 0.2_f32;
+        let speed_no_aqua = calculate_submerged_mining_speed(base_submerged, 0);
+        assert!((speed_no_aqua - 0.2).abs() < 1e-6);
+
+        // Aqua Affinity I: 0.2 * (1.0 + 4.0 * 1) = 1.0 (full normal speed underwater)
+        let speed_aqua1 = calculate_submerged_mining_speed(base_submerged, 1);
+        assert!((speed_aqua1 - 1.0).abs() < 1e-6);
+
+        // 2. Mining Fatigue exponent parity: 0.3^(amp + 1)
+        assert!((calculate_mining_fatigue_scale(0) - 0.3).abs() < 1e-6);
+        assert!((calculate_mining_fatigue_scale(1) - 0.09).abs() < 1e-6);
+        assert!((calculate_mining_fatigue_scale(2) - 0.027).abs() < 1e-6); // Previously 0.0027 in Neth (10x bug)
+        assert!((calculate_mining_fatigue_scale(3) - 0.0081).abs() < 1e-6); // Previously 0.00081 in Neth (10x bug)
+
+        // 3. Destroy speed full pipeline:
+        // Diamond pickaxe on stone: tool_speed = 8.0, Efficiency V = 26.0 -> 34.0
+        // On ground, dry air: 34.0
+        let speed_normal = calculate_player_destroy_speed(8.0, 26.0, None, None, 1.0, false, 0.2, true);
+        assert!((speed_normal - 34.0).abs() < 1e-6);
+
+        // Underwater without Aqua Affinity: 34.0 * 0.2 = 6.8
+        let speed_underwater = calculate_player_destroy_speed(8.0, 26.0, None, None, 1.0, true, 0.2, true);
+        assert!((speed_underwater - 6.8).abs() < 1e-6);
+
+        // Underwater with Aqua Affinity: 34.0 * 1.0 = 34.0
+        let speed_underwater_aqua = calculate_player_destroy_speed(8.0, 26.0, None, None, 1.0, true, 1.0, true);
+        assert!((speed_underwater_aqua - 34.0).abs() < 1e-6);
+
+        // Airborne (floating in water or jumping): divided by 5.0
+        let speed_airborne = calculate_player_destroy_speed(8.0, 26.0, None, None, 1.0, false, 0.2, false);
+        assert!((speed_airborne - 6.8).abs() < 1e-6);
+
+        // Underwater without Aqua AND Airborne: 34.0 * 0.2 / 5.0 = 1.36
+        let speed_submerged_airborne = calculate_player_destroy_speed(8.0, 26.0, None, None, 1.0, true, 0.2, false);
+        assert!((speed_submerged_airborne - 1.36).abs() < 1e-6);
+
+        // 4. Destroy progress calculation (BlockBehaviour.java:345-352)
+        // Stone hardness = 1.5, correct tool (can_harvest = true -> modifier 30.0)
+        let progress = calculate_block_destroy_progress(34.0, 1.5, true);
+        // 34.0 / 1.5 / 30.0 = 0.75555...
+        assert!((progress - (34.0 / 1.5 / 30.0)).abs() < 1e-6);
+
+        // Bedrock hardness = -1.0 -> unbreakable (0.0)
+        assert_eq!(calculate_block_destroy_progress(34.0, -1.0, true), 0.0);
     }
 }
 

@@ -2315,6 +2315,49 @@
   - Added `Player::has_turtle_helmet_equipped` and `Player::turtle_helmet_tick` in `crates/pumpkin-core/src/entity/player.rs`, ticking 200-tick Water Breathing when player is out of water wearing a Turtle Helmet.
   - Added unit test `test_air_supply_respiration_drowning_and_turtle_helmet_parity` in `combat.rs`. Total 35/35 tests in `entity::combat::tests` passing.
 
+## Gap 150: Player Submerged Mining Speed, Aqua Affinity, Mining Fatigue Exponent & Block Break Speed Parity
+- **Vanilla Reference**:
+  - `Player.java:583-609`:
+    ```java
+    public float getDestroySpeed(final BlockState state) {
+       float speed = this.inventory.getSelectedItem().getDestroySpeed(state);
+       if (speed > 1.0F) {
+          speed += (float)this.getAttributeValue(Attributes.MINING_EFFICIENCY);
+       }
+       if (MobEffectUtil.hasDigSpeed(this)) {
+          speed *= 1.0F + (MobEffectUtil.getDigSpeedAmplification(this) + 1) * 0.2F;
+       }
+       if (this.hasEffect(MobEffects.MINING_FATIGUE)) {
+          int amplifier = this.getEffect(MobEffects.MINING_FATIGUE).getAmplifier();
+          float scale = (float)Math.pow(0.3, amplifier + 1);
+          speed *= scale;
+       }
+       speed *= (float)this.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
+       if (this.isEyeInFluid(FluidTags.WATER)) {
+          speed *= (float)this.getAttribute(Attributes.SUBMERGED_MINING_SPEED).getValue();
+       }
+       if (!this.onGround()) {
+          speed /= 5.0F;
+       }
+       return speed;
+    }
+    ```
+  - `Enchantments.java:299-320`:
+    - Aqua Affinity applies `AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL` with value `4.0 * level` to `Attributes.SUBMERGED_MINING_SPEED`.
+    - Base `Attributes.SUBMERGED_MINING_SPEED` is `0.2` (80% penalty underwater).
+    - With Aqua Affinity I: `0.2 * (1.0 + 4.0) = 1.0` (100% normal speed underwater).
+  - `Player.java:595`:
+    - Fixed 10x penalty bug in Neth where `Mining Fatigue III` was hardcoded to `0.0027` instead of `0.3^3 = 0.027`, and `Mining Fatigue IV` was `0.00081` instead of `0.3^4 = 0.0081`. Now computes `0.3_f32.powi(amplifier + 1)`.
+  - `BlockBehaviour.java:345-352`:
+    - Block destroy progress per tick: `player.getDestroySpeed(state) / destroySpeed / (canHarvest ? 30 : 100)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_submerged_mining_speed`, `calculate_mining_fatigue_scale`, `calculate_player_destroy_speed`, and `calculate_block_destroy_progress` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `Player::get_mining_speed` in `crates/pumpkin-core/src/entity/player.rs`:
+    - Multiplied with `Attributes::BLOCK_BREAK_SPEED`.
+    - Applied submerged mining speed when `is_eye_in_water`, combining base `Attributes::SUBMERGED_MINING_SPEED` with helmet Aqua Affinity enchantment (`0.2 * (1 + 4.0 * level)`).
+    - Fixed Mining Fatigue penalty multiplier to vanilla formula `0.3^(amp + 1)`.
+  - Added unit test `test_submerged_mining_speed_aqua_affinity_and_destroy_speed_parity` in `combat.rs`. Total 36/36 tests in `entity::combat::tests` passing.
+
 
 
 

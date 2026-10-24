@@ -5804,30 +5804,52 @@ impl Player {
         self.sync_mining_efficiency();
         let held_item = self.inventory.held_item();
         let mut speed = held_item.get_speed(block);
-        // Effi only gets applied if tool's break speed for block is alreadyabove 1 (meaning it's
-        // the correct tool)
+        // Efficiency only gets applied if tool's break speed for block is already above 1 (meaning it's the correct tool)
         if speed > 1.0 {
             speed += self
                 .living_entity
                 .get_attribute_value(&Attributes::MINING_EFFICIENCY) as f32;
         }
-        // Haste
+        // Haste / Conduit Power
         if self.living_entity.has_effect(&StatusEffect::HASTE)
             || self.living_entity.has_effect(&StatusEffect::CONDUIT_POWER)
         {
             speed *= ((self.get_haste_amplifier() + 1) as f32).mul_add(0.2, 1.0);
         }
-        // Fatigue
+        // Mining Fatigue: vanilla Player.java:595 scale = (float)Math.pow(0.3, amplifier + 1)
         if let Some(fatigue) = self.living_entity.get_effect(&StatusEffect::MINING_FATIGUE) {
-            let fatigue_speed = match fatigue.amplifier {
-                0 => 0.3,
-                1 => 0.09,
-                2 => 0.0027,
-                _ => 8.1E-4,
-            };
-            speed *= fatigue_speed;
+            speed *= 0.3_f32.powi(i32::from(fatigue.amplifier) + 1);
         }
-        // TODO: Handle when in water
+
+        // Block break speed attribute modifier
+        speed *= self
+            .living_entity
+            .get_attribute_value(&Attributes::BLOCK_BREAK_SPEED) as f32;
+
+        // Submerged mining speed (vanilla Player.java:600-602):
+        // Underwater mining speed multiplier (base 0.2). Aqua Affinity applies ADD_MULTIPLIED_TOTAL with 4.0 * level,
+        // turning 0.2 into 0.2 * (1 + 4.0) = 1.0.
+        if super::breath::BreathManager::is_eye_in_water(self.get_entity()) {
+            let mut submerged_speed = self
+                .living_entity
+                .get_attribute_value(&Attributes::SUBMERGED_MINING_SPEED) as f32;
+            let aqua_affinity_level = {
+                let equipment = self
+                    .living_entity
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                equipment
+                    .get(&EquipmentSlot::HEAD)
+                    .get_enchantment_level(&pumpkin_data::Enchantment::AQUA_AFFINITY)
+            };
+            if aqua_affinity_level > 0 {
+                submerged_speed *= 1.0 + 4.0 * (aqua_affinity_level as f32);
+            }
+            speed *= submerged_speed;
+        }
+
+        // Airborne mining penalty: vanilla Player.java:604-606 (divides by 5.0)
         if !self.living_entity.entity.on_ground.load(Ordering::Relaxed) {
             speed /= 5.0;
         }
