@@ -2201,6 +2201,50 @@
   - Updated `FireworkRocketItem::use_on_block` to return `BlockActionResult::Pass` while fall flying so players boost instead of placing firework rockets on clicked blocks.
   - Added unit test `test_firework_flight_duration_and_elytra_boost_parity` in `combat.rs` and updated tests in `firework_rocket.rs`. Total 32/32 tests in `entity::combat::tests` passing.
 
+## Gap 147: Player Pose Dimensions, Forced Sneak & Crawling (1-Block Gap) Clearance Parity
+- **Vanilla Reference**:
+  - `Avatar.java:21-37` and `LivingEntity.java:196`:
+    ```java
+    STANDING_DIMENSIONS = EntityDimensions.scalable(0.6F, 1.8F).withEyeHeight(1.62F);
+    POSES = ImmutableMap.builder()
+       .put(Pose.STANDING, STANDING_DIMENSIONS)
+       .put(Pose.SLEEPING, SLEEPING_DIMENSIONS) // 0.2F, 0.2F, eye: 0.2F
+       .put(Pose.FALL_FLYING, EntityDimensions.scalable(0.6F, 0.6F).withEyeHeight(0.4F))
+       .put(Pose.SWIMMING, EntityDimensions.scalable(0.6F, 0.6F).withEyeHeight(0.4F))
+       .put(Pose.SPIN_ATTACK, EntityDimensions.scalable(0.6F, 0.6F).withEyeHeight(0.4F))
+       .put(Pose.CROUCHING, EntityDimensions.scalable(0.6F, 1.5F).withEyeHeight(1.27F))
+       .put(Pose.DYING, EntityDimensions.fixed(0.2F, 0.2F).withEyeHeight(1.62F))
+       .build();
+    ```
+  - `Player.java:345-377`:
+    ```java
+    protected void updatePlayerPose() {
+       if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.SWIMMING)) {
+          Pose desiredPose = this.getDesiredPose();
+          Pose actualPose;
+          if (this.isSpectator() || this.isPassenger() || this.canPlayerFitWithinBlocksAndEntitiesWhen(desiredPose)) {
+             actualPose = desiredPose;
+          } else if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.CROUCHING)) {
+             actualPose = Pose.CROUCHING;
+          } else {
+             actualPose = Pose.SWIMMING;
+          }
+          this.setPose(actualPose);
+       }
+    }
+    ```
+    - When a player cannot fit in a 1.8m standing space due to an overhead block (e.g. 1.5m clearance), the engine automatically forces `Pose.CROUCHING` (forced sneak).
+    - When a player cannot fit in a 1.5m sneaking space due to a low overhead block (e.g. 1.0m clearance with trapdoors or pistons), the engine automatically forces `Pose.SWIMMING` (crawling).
+    - If the player is completely suffocated (cannot even fit `Pose.SWIMMING` 0.6m), pose is kept without abrupt reset.
+    - When client releases the sneak key (`Action::StopSneaking`), input must be 0 instead of re-sending `SPlayerInput::SNEAK` so the player can actually stand back up.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `get_player_pose_dimensions` and `determine_player_actual_pose` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `Player::update_player_pose` in `crates/pumpkin-core/src/entity/player.rs` to route through `determine_player_actual_pose`.
+  - Fixed severe bug in `crates/pumpkin-core/src/net/java/play/player_command.rs` where `Action::StopSneaking` was grouped with `Action::StartSneaking` and was sending `SPlayerInput::SNEAK` instead of `input: 0`.
+  - Triggered immediate `player.update_player_pose()` in `crates/pumpkin-core/src/net/java/play/player_input.rs` upon sneak toggles.
+  - Added unit test `test_player_pose_dimensions_and_crawling_parity` in `combat.rs`. Total 33/33 tests in `entity::combat::tests` passing.
+
+
 
 
 

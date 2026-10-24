@@ -1640,6 +1640,69 @@ pub fn calculate_firework_explosion_damage(explosions_count: usize, distance: f6
     }
 }
 
+/// Returns the vanilla dimensions (width, height, eye_height) for a Player in a given pose.
+///
+/// Mirrors vanilla `Avatar.java:21-37` and `LivingEntity.java:196`:
+/// - `Standing`: (0.6, 1.8, 1.62)
+/// - `Crouching`: (0.6, 1.5, 1.27)
+/// - `Swimming`: (0.6, 0.6, 0.4)
+/// - `FallFlying`: (0.6, 0.6, 0.4)
+/// - `SpinAttack`: (0.6, 0.6, 0.4)
+/// - `Sleeping`: (0.2, 0.2, 0.2)
+/// - `Dying`: (0.2, 0.2, 1.62)
+#[must_use]
+pub const fn get_player_pose_dimensions(pose: pumpkin_data::entity::EntityPose) -> (f32, f32, f32) {
+    use pumpkin_data::entity::EntityPose;
+    match pose {
+        EntityPose::Standing => (0.6, 1.8, 1.62),
+        EntityPose::Crouching => (0.6, 1.5, 1.27),
+        EntityPose::Swimming | EntityPose::FallFlying | EntityPose::SpinAttack => (0.6, 0.6, 0.4),
+        EntityPose::Sleeping => (0.2, 0.2, 0.2),
+        EntityPose::Dying => (0.2, 0.2, 1.62),
+        _ => (0.6, 1.8, 1.62),
+    }
+}
+
+/// Determines the actual pose of a player based on desired pose and collision clearance.
+///
+/// Mirrors vanilla `Player.java:345-358`:
+/// ```java
+/// if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.SWIMMING)) {
+///    Pose desiredPose = this.getDesiredPose();
+///    Pose actualPose;
+///    if (this.isSpectator() || this.isPassenger() || this.canPlayerFitWithinBlocksAndEntitiesWhen(desiredPose)) {
+///       actualPose = desiredPose;
+///    } else if (this.canPlayerFitWithinBlocksAndEntitiesWhen(Pose.CROUCHING)) {
+///       actualPose = Pose.CROUCHING;
+///    } else {
+///       actualPose = Pose.SWIMMING;
+///    }
+///    this.setPose(actualPose);
+/// }
+/// ```
+#[must_use]
+pub const fn determine_player_actual_pose(
+    desired_pose: pumpkin_data::entity::EntityPose,
+    is_spectator: bool,
+    is_passenger: bool,
+    can_fit_swimming: bool,
+    can_fit_desired: bool,
+    can_fit_crouching: bool,
+    current_pose: pumpkin_data::entity::EntityPose,
+) -> pumpkin_data::entity::EntityPose {
+    use pumpkin_data::entity::EntityPose;
+    if !can_fit_swimming {
+        current_pose
+    } else if is_spectator || is_passenger || can_fit_desired {
+        desired_pose
+    } else if can_fit_crouching {
+        EntityPose::Crouching
+    } else {
+        EntityPose::Swimming
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -2696,6 +2759,93 @@ mod tests {
         // At distance 3.75m: (5.0 - 3.75) / 5.0 = 1.25 / 5.0 = 0.25 -> sqrt(0.25) = 0.5 -> 7.0 * 0.5 = 3.5
         let dmg_quarter = calculate_firework_explosion_damage(1, 3.75);
         assert!((dmg_quarter - 3.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_player_pose_dimensions_and_crawling_parity() {
+        use pumpkin_data::entity::EntityPose;
+
+        // Dimensions and eye height verification (Avatar.java:21-37)
+        assert_eq!(get_player_pose_dimensions(EntityPose::Standing), (0.6, 1.8, 1.62));
+        assert_eq!(get_player_pose_dimensions(EntityPose::Crouching), (0.6, 1.5, 1.27));
+        assert_eq!(get_player_pose_dimensions(EntityPose::Swimming), (0.6, 0.6, 0.4));
+        assert_eq!(get_player_pose_dimensions(EntityPose::FallFlying), (0.6, 0.6, 0.4));
+        assert_eq!(get_player_pose_dimensions(EntityPose::SpinAttack), (0.6, 0.6, 0.4));
+        assert_eq!(get_player_pose_dimensions(EntityPose::Sleeping), (0.2, 0.2, 0.2));
+        assert_eq!(get_player_pose_dimensions(EntityPose::Dying), (0.2, 0.2, 1.62));
+
+        // Actual pose determination logic (Player.java:345-358)
+        // 1. Normal open space: player wants Standing, fits Standing -> Standing
+        let pose = determine_player_actual_pose(
+            EntityPose::Standing,
+            false,
+            false,
+            true, // can fit swimming
+            true, // can fit standing
+            true, // can fit crouching
+            EntityPose::Standing,
+        );
+        assert!(pose == EntityPose::Standing);
+
+        // 2. Sneaking key pressed in open space: wants Crouching, fits Crouching -> Crouching
+        let pose = determine_player_actual_pose(
+            EntityPose::Crouching,
+            false,
+            false,
+            true,
+            true,
+            true,
+            EntityPose::Standing,
+        );
+        assert!(pose == EntityPose::Crouching);
+
+        // 3. Forced sneak (ceiling height 1.5m): player wants Standing, but cannot fit Standing; fits Crouching -> Forced Crouching
+        let pose = determine_player_actual_pose(
+            EntityPose::Standing,
+            false,
+            false,
+            true,  // can fit swimming
+            false, // cannot fit standing (ceiling blocks 1.8m)
+            true,  // can fit crouching (1.5m clearance)
+            EntityPose::Standing,
+        );
+        assert!(pose == EntityPose::Crouching);
+
+        // 4. Crawling / 1-block gap (ceiling height 1.0m, trapdoor down): player cannot fit Standing nor Crouching; fits Swimming -> Swimming (Crawling)
+        let pose = determine_player_actual_pose(
+            EntityPose::Standing,
+            false,
+            false,
+            true,  // can fit swimming (0.6m clearance)
+            false, // cannot fit standing
+            false, // cannot fit crouching
+            EntityPose::Standing,
+        );
+        assert!(pose == EntityPose::Swimming);
+
+        // 5. Completely suffocated/blocked space (cannot fit even Swimming 0.6m): keeps current pose without crash/glitch
+        let pose = determine_player_actual_pose(
+            EntityPose::Standing,
+            false,
+            false,
+            false, // cannot fit swimming
+            false,
+            false,
+            EntityPose::Crouching,
+        );
+        assert!(pose == EntityPose::Crouching);
+
+        // 6. Spectator / Passenger bypasses collision clearance
+        let pose_spectator = determine_player_actual_pose(
+            EntityPose::Standing,
+            true,  // spectator
+            false,
+            true,
+            false, // no clearance
+            false,
+            EntityPose::Swimming,
+        );
+        assert!(pose_spectator == EntityPose::Standing);
     }
 }
 

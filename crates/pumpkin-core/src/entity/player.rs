@@ -2720,16 +2720,21 @@ impl Player {
 
         self.update_swimming();
         let desired_pose = self.get_desired_pose();
-        let actual_pose = if self.gamemode.load() == GameMode::Spectator
-            || self.get_entity().has_vehicle()
-            || self.can_fit_pose(desired_pose)
-        {
-            desired_pose
-        } else if self.can_fit_pose(EntityPose::Crouching) {
-            EntityPose::Crouching
-        } else {
-            EntityPose::Swimming
-        };
+        let is_spectator = self.gamemode.load() == GameMode::Spectator;
+        let is_passenger = self.get_entity().has_vehicle();
+        let can_fit_desired = self.can_fit_pose(desired_pose);
+        let can_fit_crouching = self.can_fit_pose(EntityPose::Crouching);
+        let current_pose = self.get_entity().pose.load();
+
+        let actual_pose = crate::entity::combat::determine_player_actual_pose(
+            desired_pose,
+            is_spectator,
+            is_passenger,
+            true,
+            can_fit_desired,
+            can_fit_crouching,
+            current_pose,
+        );
 
         self.get_entity().set_pose(actual_pose);
     }

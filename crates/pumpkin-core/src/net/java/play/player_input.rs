@@ -37,6 +37,7 @@ impl JavaClient {
                 PlayerToggleSneakEvent::new(player.clone(), sneak);
                 'after: {
                     player.get_entity().set_sneaking(event.is_sneaking);
+                    player.update_player_pose();
                 }
             }}
         }
