@@ -21,6 +21,11 @@ impl JavaClient {
         let entity = &player.get_entity();
         match command.action {
             Action::StartSprinting => {
+                let may_fly = player.abilities.try_lock().is_ok_and(|a| a.allow_flying);
+                if !player.hunger_manager.can_sprint(may_fly) {
+                    player.set_sprinting(false);
+                    return;
+                }
                 if !entity.is_sprinting() {
                     send_cancellable_blocking! {{
                         server;

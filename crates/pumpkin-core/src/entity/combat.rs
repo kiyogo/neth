@@ -2704,6 +2704,60 @@ pub const fn get_eye_of_ender_break_level_event() -> i32 {
     2003
 }
 
+/// Calculates food saturation gained from nutrition and saturation modifier.
+///
+/// Mirrors vanilla `FoodConstants.java:30-32`:
+/// `return nutrition * modifier * 2.0F;`
+#[must_use]
+pub fn calculate_food_saturation_from_modifier(nutrition: i32, modifier: f32) -> f32 {
+    (nutrition as f32) * modifier * 2.0
+}
+
+/// Checks whether a player has enough food level to sprint (> 6 food, or can fly).
+///
+/// Mirrors vanilla `Player.java:1579-1581` & `FoodData.java:93`:
+/// `return this.getFoodData().hasEnoughFood() || this.getAbilities().mayfly;`
+/// where `hasEnoughFood()` is `this.getFoodLevel() > 6.0F`.
+#[must_use]
+pub const fn can_player_sprint_with_food(food_level: u8, may_fly: bool) -> bool {
+    food_level > 6 || may_fly
+}
+
+/// Determines whether a starving player should take damage on a starvation tick.
+///
+/// Mirrors vanilla `FoodData.java:63-65`:
+/// `if (player.getHealth() > 10.0F || difficulty == Difficulty.HARD || player.getHealth() > 1.0F && difficulty == Difficulty.NORMAL)`
+#[must_use]
+pub const fn should_starve_take_damage(health: f32, difficulty: pumpkin_util::Difficulty) -> bool {
+    health > 10.0
+        || matches!(difficulty, pumpkin_util::Difficulty::Hard)
+        || (health > 1.0 && matches!(difficulty, pumpkin_util::Difficulty::Normal))
+}
+
+/// Calculates heal amount and saturation cost for fast health regeneration (saturation >= 20, food == 20).
+///
+/// Mirrors vanilla `FoodData.java:48-50`:
+/// ```java
+/// float saturationSpent = Math.min(this.saturationLevel, 6.0F);
+/// player.heal(saturationSpent / 6.0F);
+/// this.addExhaustion(saturationSpent);
+/// ```
+#[must_use]
+pub fn calculate_fast_regen_heal_and_cost(saturation: f32) -> (f32, f32) {
+    let cost = saturation.min(6.0);
+    let heal = cost / 6.0;
+    (heal, cost)
+}
+
+/// Checks whether a player needs food (foodLevel < 20).
+///
+/// Mirrors vanilla `FoodData.java:97`:
+/// `return this.foodLevel < 20;`
+#[must_use]
+pub const fn is_food_needs_eating(food_level: u8) -> bool {
+    food_level < 20
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4331,6 +4385,49 @@ mod tests {
         assert!(!should_eye_of_ender_survive(0));
         assert_eq!(get_eye_of_ender_max_life(), 80);
         assert_eq!(get_eye_of_ender_break_level_event(), 2003);
+    }
+
+    #[test]
+    fn test_food_data_saturation_sprint_and_starvation_parity() {
+        // 1. Saturation modifier calculation (FoodConstants.java:31: nutrition * modifier * 2.0)
+        // Cooked beef: 8 * 0.8 * 2.0 = 12.8
+        let beef_sat = calculate_food_saturation_from_modifier(8, 0.8);
+        assert!((beef_sat - 12.8).abs() < 1e-5);
+        // Golden carrot: 6 * 1.2 * 2.0 = 14.4
+        let carrot_sat = calculate_food_saturation_from_modifier(6, 1.2);
+        assert!((carrot_sat - 14.4).abs() < 1e-5);
+
+        // 2. Sprint permission by food level (FoodData.java:93: food > 6)
+        assert!(can_player_sprint_with_food(7, false));
+        assert!(can_player_sprint_with_food(20, false));
+        assert!(!can_player_sprint_with_food(6, false));
+        assert!(!can_player_sprint_with_food(0, false));
+        // Flying overrides food restriction
+        assert!(can_player_sprint_with_food(0, true));
+
+        // 3. Starvation damage condition by difficulty (FoodData.java:63-65)
+        // Hard: always takes damage even at 0.5 HP
+        assert!(should_starve_take_damage(0.5, pumpkin_util::Difficulty::Hard));
+        // Normal: takes damage until down to 1.0 HP (stops at 1.0)
+        assert!(should_starve_take_damage(2.0, pumpkin_util::Difficulty::Normal));
+        assert!(!should_starve_take_damage(1.0, pumpkin_util::Difficulty::Normal));
+        // Easy: takes damage until down to 10.0 HP (stops at 10.0)
+        assert!(should_starve_take_damage(11.0, pumpkin_util::Difficulty::Easy));
+        assert!(!should_starve_take_damage(10.0, pumpkin_util::Difficulty::Easy));
+        assert!(!should_starve_take_damage(5.0, pumpkin_util::Difficulty::Easy));
+
+        // 4. Fast regen heal & cost (FoodData.java:48-50)
+        let (heal_full, cost_full) = calculate_fast_regen_heal_and_cost(10.0);
+        assert_eq!(cost_full, 6.0);
+        assert_eq!(heal_full, 1.0);
+
+        let (heal_partial, cost_partial) = calculate_fast_regen_heal_and_cost(3.0);
+        assert_eq!(cost_partial, 3.0);
+        assert_eq!(heal_partial, 0.5);
+
+        // 5. Needs food check (FoodData.java:97)
+        assert!(is_food_needs_eating(19));
+        assert!(!is_food_needs_eating(20));
     }
 }
 

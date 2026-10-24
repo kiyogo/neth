@@ -49,6 +49,12 @@ impl HungerManager {
                 saturation = (saturation - 1.0).max(0.0);
             } else if difficulty != Difficulty::Peaceful {
                 level = level.saturating_sub(1);
+                let may_fly = player.abilities.try_lock().is_ok_and(|a| a.allow_flying);
+                if !crate::entity::combat::can_player_sprint_with_food(level, may_fly)
+                    && player.living_entity.entity.is_sprinting()
+                {
+                    player.set_sprinting(false);
+                }
             }
             needs_sync = true;
         }
@@ -56,8 +62,8 @@ impl HungerManager {
         if natural_regen && saturation > 0.0 && can_heal && level >= 20 {
             timer += 1;
             if timer >= 10 {
-                let cost = saturation.min(6.0);
-                heal_amount = cost / 6.0;
+                let (heal, cost) = crate::entity::combat::calculate_fast_regen_heal_and_cost(saturation);
+                heal_amount = heal;
                 exhaustion = (exhaustion + cost).min(MAX_EXHAUSTION);
                 timer = 0;
                 needs_sync = true;
@@ -74,14 +80,11 @@ impl HungerManager {
             timer += 1;
             if timer >= 80 {
                 timer = 0;
-                let should_starve = health > 10.0
-                    || difficulty == Difficulty::Hard
-                    || (health > 1.0 && difficulty == Difficulty::Normal);
+                let should_starve = crate::entity::combat::should_starve_take_damage(health, difficulty);
 
                 if should_starve {
                     damage_amount = 1.0;
                 }
-                self.tick_timer.store(0);
             }
         } else {
             timer = 0;
@@ -151,6 +154,14 @@ impl HungerManager {
 
     pub fn set_exhaustion(&self, exhaustion: f32) {
         self.exhaustion.store(exhaustion.min(MAX_EXHAUSTION));
+    }
+
+    pub fn can_sprint(&self, may_fly: bool) -> bool {
+        crate::entity::combat::can_player_sprint_with_food(self.level.load(), may_fly)
+    }
+
+    pub fn needs_food(&self) -> bool {
+        crate::entity::combat::is_food_needs_eating(self.level.load())
     }
 
     pub fn restart(&self) {

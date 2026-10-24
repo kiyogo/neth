@@ -2815,17 +2815,41 @@
   - Updated `EyeOfEnder` in `crates/pumpkin-core/src/entity/projectile/eye_of_ender.rs` to use `should_eye_of_ender_survive` and `get_eye_of_ender_max_life`.
   - Added unit test `test_large_fireball_and_eye_of_ender_parity` in `combat.rs`. Total 47/47 tests passing in `entity::combat::tests`.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Gap 162: FoodData Saturation & Starvation Timing, Sprint Hunger Check & Fast Regen Parity
+- **Vanilla Reference**: `FoodData.java:11-115`, `FoodConstants.java:3-33`, `ServerGamePacketListenerImpl.java:2322-2329`:
+  - `FoodConstants.java`:
+    - `saturationByModifier(nutrition, modifier) = nutrition * modifier * 2.0F`.
+    - `EXHAUSTION_DROP_RATIO = 4.0F`: Khi exhaustion tích luỹ đạt >= 4.0F, reset trừ 4.0F exhaustion và tiêu hao 1.0F saturation (hoặc 1 food level nếu saturation = 0).
+    - `FAST_HEALING_TICK_RATE = 10`, `SLOW_HEALING_TICK_RATE = 80`, `STARVATION_TICK_RATE = 80`.
+    - `FAST_HEALING_FOOD_LEVEL = 20`, `SLOW_HEALING_FOOD_LEVEL = 18`.
+  - `FoodData.java:107-111`:
+    ```java
+    public boolean hasEnoughFood() {
+       return this.foodLevel > 6;
+    }
+    ```
+    - Người chơi chỉ có thể sprint khi `foodLevel > 6` (trừ khi có `allow_flying` bypass).
+    - Khi `foodLevel <= 6` và đang sprint, server tự động hủy sprint của người chơi.
+  - `FoodData.java:62-67` (Starvation check):
+    ```java
+    if (this.tickCounter >= 80) {
+       if (this.foodLevel <= 0) {
+          if (player.getHealth() > 10.0F || difficulty == Difficulty.HARD || player.getHealth() > 1.0F && difficulty == Difficulty.NORMAL) {
+             player.hurtServer(serverLevel, player.damageSources().starve(), 1.0F);
+          }
+       }
+       ...
+    }
+    ```
+    - Ở Difficulty `Easy`: Người chơi chỉ mất máu do đói khi máu > 10.0 HP (5 tim).
+    - Ở Difficulty `Normal`: Chỉ mất máu khi máu > 1.0 HP (nửa tim).
+    - Ở Difficulty `Hard`: Chết vì đói (mất máu cho tới khi tử vong).
+    - Ở Difficulty `Peaceful`: Không mất máu vì đói.
+  - Fast Regen vs Normal Regen:
+    - Fast Regen (`foodLevel >= 20` và `saturationLevel > 0.0F`): Mỗi 10 ticks hồi `saturationSpent / 6.0F` HP và tăng `saturationSpent = min(saturation, 6.0F)` exhaustion.
+    - Normal Regen (`foodLevel >= 18`): Mỗi 80 ticks hồi 1.0F HP và tăng 6.0F exhaustion.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_saturation_gain`, `can_sprint_with_food_level`, and `should_starve_take_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `ServerGamePacketListenerImpl` / `handle_player_command` in `crates/pumpkin-core/src/net/java/play/player_command.rs` to prevent starting sprint when `food_level <= 6` and not flying.
+  - Updated `HungerManager::tick` in `crates/pumpkin-core/src/entity/hunger.rs` to stop sprinting when `food_level <= 6`, and strictly follow starvation health limits per vanilla Difficulty (`Easy` > 10.0, `Normal` > 1.0, `Hard` down to 0).
+  - Added unit test `test_food_data_saturation_sprint_and_starvation_parity` in `crates/pumpkin-core/src/entity/combat.rs`. All 48/48 tests passing in `entity::combat::tests`.
