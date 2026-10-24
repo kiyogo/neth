@@ -672,10 +672,11 @@ impl CombatRules {
         let mut armor_fraction = real_armor / Self::ARMOR_PROTECTION_DIVIDER;
 
         if breach_level > 0 {
-            let mut effectiveness = 1.0f32;
+            // Vanilla `CombatRules.java:23-28`: modifyArmorEffectiveness applies additive
+            // reduction (-0.15 * level) directly to armorFraction.
             pumpkin_data::Enchantment::BREACH
-                .modify_armor_effectiveness(breach_level as i32, &mut effectiveness);
-            armor_fraction = (armor_fraction * effectiveness.clamp(0.0, 1.0)).clamp(0.0, 1.0);
+                .modify_armor_effectiveness(breach_level as i32, &mut armor_fraction);
+            armor_fraction = armor_fraction.clamp(0.0, 1.0);
         }
 
         let damage_multiplier = 1.0 - armor_fraction;
@@ -1718,6 +1719,36 @@ mod tests {
         assert!(!DamageType::GENERIC.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
         assert!(!DamageType::PLAYER_ATTACK.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
         assert!(!DamageType::FALL.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
+    }
+
+    #[test]
+    fn test_breach_armor_reduction_parity() {
+        // Vanilla CombatRules.java:20-31:
+        // realArmor = clamp(totalArmor - damage / (2.0 + toughness / 4.0), totalArmor * 0.2, 20.0)
+        // armorFraction = realArmor / 25.0
+        // Breach reduces armorFraction by 0.15 per level:
+        // modifiedArmorFraction = clamp(armorFraction - 0.15 * level, 0.0, 1.0)
+        // damageMultiplier = 1.0 - modifiedArmorFraction
+        //
+        // Example: damage = 10.0, total_armor = 20.0, toughness = 0.0
+        // toughness_div = 2.0
+        // realArmor = 20.0 - 10.0 / 2.0 = 15.0
+        // armorFraction = 15.0 / 25.0 = 0.60
+        // Without breach: dmg = 10.0 * (1.0 - 0.60) = 4.0
+        let no_breach = CombatRules::get_damage_after_absorb(10.0, 20.0, 0.0, 0);
+        assert!((no_breach - 4.0).abs() < 1e-4);
+
+        // With Breach I (level 1):
+        // modifiedArmorFraction = 0.60 - 0.15 = 0.45
+        // dmg = 10.0 * (1.0 - 0.45) = 5.5
+        let breach_1 = CombatRules::get_damage_after_absorb(10.0, 20.0, 0.0, 1);
+        assert!((breach_1 - 5.5).abs() < 1e-4);
+
+        // With Breach IV (level 4):
+        // modifiedArmorFraction = clamp(0.60 - 0.60, 0.0, 1.0) = 0.0
+        // dmg = 10.0 * (1.0 - 0.0) = 10.0 (full damage through armor)
+        let breach_4 = CombatRules::get_damage_after_absorb(10.0, 20.0, 0.0, 4);
+        assert!((breach_4 - 10.0).abs() < 1e-4);
     }
 }
 

@@ -3534,10 +3534,15 @@ impl LivingEntity {
 
         let breach_level = attacker
             .and_then(|att| {
-                let player = att.get_player()?;
-                let hand_stack = player
-                    .inventory()
-                    .get_stack_in_hand(pumpkin_util::Hand::Right);
+                let hand_stack = if let Some(player) = att.get_player() {
+                    player
+                        .inventory()
+                        .get_stack_in_hand(pumpkin_util::Hand::Right)
+                } else if let Some(living) = att.get_living_entity() {
+                    living.get_stack_in_hand(att, pumpkin_util::Hand::Right)
+                } else {
+                    return None;
+                };
                 let level = hand_stack.get_enchantment_level(&Enchantment::BREACH);
                 (level > 0).then_some(level as u32)
             })
@@ -3607,6 +3612,7 @@ impl LivingEntity {
                 EquipmentSlot::CHEST,
                 EquipmentSlot::LEGS,
                 EquipmentSlot::FEET,
+                EquipmentSlot::BODY,
             ] {
                 if let Some(stack) = equipment_lock.equipment.get(&slot)
                     && !stack.is_empty()

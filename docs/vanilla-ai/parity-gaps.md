@@ -1714,4 +1714,21 @@
   - Updated `Player::send_combat_death` in `crates/pumpkin-core/src/entity/player.rs` to destroy vanishing-cursed items on death without dropping or incrementing drop statistics.
   - Updated `LivingEntity::drop_equipment` in `crates/pumpkin-core/src/entity/living.rs` to skip and destroy vanishing-cursed mob equipment.
   - Updated `LivingEntity::check_totem_death_protection` to check `damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY)`.
-  - Verified with 17/17 passing unit tests in `entity::combat::tests`, including `test_vanishing_curse_and_totem_bypasses_invulnerability_parity`.
+
+### Gap 132: Breach Armor Reduction Additive Formula & Non-Player Living Attacker Weapon Breach Parity
+- **Vanilla Reference**:
+  - `CombatRules.java:23-31`:
+    - In Vanilla, armor effectiveness modification (`EnchantmentHelper.modifyArmorEffectiveness`) operates directly on `armorFraction` (`realArmor / 25.0F`).
+    - The Breach enchantment (`EnchantmentEffectComponents.ARMOR_EFFECTIVENESS`) defines `AddValue(LevelBasedValue.perLevel(-0.15F))` in `Enchantments.java:1197`, reducing the armor fraction additively by `0.15 * level` (`armorFraction += -0.15 * level`, clamped to `[0.0, 1.0]`).
+    - For example, with 20 armor (0.60 fraction at 10 damage), Breach IV (-0.60) completely negates the armor (0.0 fraction, 100% damage through armor).
+  - `CombatRules.java:22-25`:
+    - Weapon item check reads the attacker's weapon from `damageSource.getWeaponItem()` for any living entity, not just player attackers.
+  - Previously in Neth:
+    - `CombatRules::get_damage_after_absorb` incorrectly initialized `effectiveness = 1.0` and multiplied `armor_fraction * effectiveness`, treating Breach as a multiplicative scale rather than the vanilla additive reduction `armor_fraction += -0.15 * level`.
+    - `LivingEntity::get_damage_after_armor_absorb` only checked `attacker.get_player()`, ignoring held weapon Breach enchantments when a mob or other non-player living entity attacked.
+    - `LivingEntity::get_damage_after_magic_absorb` omitted `EquipmentSlot::BODY` (e.g. Wolf armor) when calculating enchantment protection.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `CombatRules::get_damage_after_absorb` in `crates/pumpkin-core/src/entity/combat.rs` to apply `modify_armor_effectiveness` directly to `armor_fraction` additively and clamp to `[0.0, 1.0]`.
+  - Updated `LivingEntity::get_damage_after_armor_absorb` in `crates/pumpkin-core/src/entity/living.rs` to extract Breach level from any living entity attacker's main hand stack.
+  - Added `EquipmentSlot::BODY` to the equipment slots checked for damage protection enchantments in `LivingEntity::get_damage_after_magic_absorb`.
+  - Added and verified unit test `test_breach_armor_reduction_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 18/18 tests in `entity::combat::tests` passing.
