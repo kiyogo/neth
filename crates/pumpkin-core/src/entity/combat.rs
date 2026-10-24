@@ -1535,6 +1535,36 @@ pub fn can_perform_riptide(riptide_level: u32, is_in_water_or_rain: bool, is_pas
     riptide_level > 0 && is_in_water_or_rain && !is_passenger
 }
 
+/// Determines whether an Elytra glider should receive durability damage on this tick.
+///
+/// Mirrors vanilla `LivingEntity.java:3188-3195`:
+/// ```java
+/// int checkFallFlyTicks = this.fallFlyTicks + 1;
+/// if (checkFallFlyTicks % 10 == 0) {
+///     int freeFallInterval = checkFallFlyTicks / 10;
+///     if (freeFallInterval % 2 == 0) {
+///         this.getItemBySlot(slotToDamage).hurtAndBreak(1, this, slotToDamage);
+///     }
+/// }
+/// ```
+#[must_use]
+pub const fn should_damage_elytra(check_fall_fly_ticks: i32) -> bool {
+    check_fall_fly_ticks > 0 && check_fall_fly_ticks % 20 == 0
+}
+
+/// Determines whether an Elytra glider game event should be emitted on this tick (every 10 ticks).
+///
+/// Mirrors vanilla `LivingEntity.java:3188-3198`:
+/// ```java
+/// if (checkFallFlyTicks % 10 == 0) {
+///     this.gameEvent(GameEvent.ELYTRA_GLIDE);
+/// }
+/// ```
+#[must_use]
+pub const fn should_emit_elytra_game_event(check_fall_fly_ticks: i32) -> bool {
+    check_fall_fly_ticks > 0 && check_fall_fly_ticks % 10 == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2488,6 +2518,42 @@ mod tests {
         // 3. Zero strength gives zero vector:
         let v_zero = calculate_riptide_velocity(45.0, -30.0, 0.0);
         assert_eq!(v_zero, Vector3::new(0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_elytra_decay_timing_parity() {
+        // Vanilla LivingEntity.java:3188-3198:
+        // checkFallFlyTicks = fallFlyTicks + 1
+        // Event emitted every 10 ticks: checkFallFlyTicks % 10 == 0
+        // Durability damaged every 20 ticks: freeFallInterval = checkFallFlyTicks / 10, freeFallInterval % 2 == 0
+
+        // Ticks 1..9: neither event nor damage
+        for t in 1..=9 {
+            assert!(!should_emit_elytra_game_event(t));
+            assert!(!should_damage_elytra(t));
+        }
+
+        // Tick 10: game event emitted, NO durability damage (interval = 1 % 2 != 0)
+        assert!(should_emit_elytra_game_event(10));
+        assert!(!should_damage_elytra(10));
+
+        // Ticks 11..19: neither
+        for t in 11..=19 {
+            assert!(!should_emit_elytra_game_event(t));
+            assert!(!should_damage_elytra(t));
+        }
+
+        // Tick 20: game event emitted AND durability damage applied (interval = 2 % 2 == 0)
+        assert!(should_emit_elytra_game_event(20));
+        assert!(should_damage_elytra(20));
+
+        // Tick 30: event only
+        assert!(should_emit_elytra_game_event(30));
+        assert!(!should_damage_elytra(30));
+
+        // Tick 40: event AND damage
+        assert!(should_emit_elytra_game_event(40));
+        assert!(should_damage_elytra(40));
     }
 }
 

@@ -2096,6 +2096,42 @@
   - Updated `crates/pumpkin-core/src/item/items/trident.rs` with vanilla water/rain and vehicle checks, level sound dispatch, ground boost (`+1.2`), and auto spin attack activation.
   - Added unit test `test_riptide_strength_velocity_and_conditions_parity` in `combat.rs`. Total 30/30 tests in `entity::combat::tests` passing.
 
+### Gap 145: Elytra Gliding Ticks, Durability Decay Interval & Fall Flying Auto-Exit Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:3181-3215`:
+    ```java
+    if (!this.level().isClientSide()) {
+       if (!this.canGlide()) {
+          this.setSharedFlag(7, false);
+          return;
+       }
+       int checkFallFlyTicks = this.fallFlyTicks + 1;
+       if (checkFallFlyTicks % 10 == 0) {
+          int freeFallInterval = checkFallFlyTicks / 10;
+          if (freeFallInterval % 2 == 0) {
+             List<EquipmentSlot> slotsWithGliders = EquipmentSlot.VALUES.stream().filter(slot -> canGlideUsing(this.getItemBySlot(slot), slot)).toList();
+             EquipmentSlot slotToDamage = Util.getRandom(slotsWithGliders, this.random);
+             this.getItemBySlot(slotToDamage).hurtAndBreak(1, this, slotToDamage);
+          }
+          this.gameEvent(GameEvent.ELYTRA_GLIDE);
+       }
+    }
+    ```
+  - In vanilla Minecraft Java:
+    - When fall flying (gliding with Elytra), `fallFlyTicks` counts up continuously while airborne.
+    - Every 10 ticks, an `ELYTRA_GLIDE` game event is triggered.
+    - Every 20 ticks (1 second of flight), 1 durability is consumed from the equipped Elytra glider (`checkFallFlyTicks % 20 == 0`).
+    - If the Elytra's durability falls below minimum (`!can_glide()`), or if the player lands or dies, fall flying state immediately auto-exits (`set_fall_flying(false)`) and `fall_fly_ticks` resets to 0.
+  - Previously in Neth:
+    - Neth lacked `fall_fly_ticks` tracking and durability degradation entirely; gliding players could fly infinitely without consuming Elytra durability.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `should_damage_elytra` and `should_emit_elytra_game_event` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `fall_fly_ticks` atomic tracking in `LivingEntity` (`crates/pumpkin-core/src/entity/living.rs`).
+  - Added Elytra 20-tick durability damage, condition checks, and auto-exit logic in `LivingEntity::tick`.
+  - Added reset of `fall_flying` and `fall_fly_ticks` in `LivingEntity::on_death`.
+  - Added unit test `test_elytra_decay_timing_parity` in `combat.rs`. Total 31/31 tests in `entity::combat::tests` passing.
+
+
 
 
 

@@ -95,6 +95,7 @@ pub struct LivingEntity {
     pub absorption: AtomicCell<f32>,
     pub item_use_time: AtomicI32,
     pub auto_spin_attack_ticks: AtomicI32,
+    pub fall_fly_ticks: AtomicI32,
     pub item_in_use: std::sync::Mutex<Option<ItemStack>>,
     pub active_hand: std::sync::Mutex<Option<Hand>>,
     pub recent_kinetic_enemies: std::sync::Mutex<FxHashMap<i32, i32>>,
@@ -296,6 +297,7 @@ impl LivingEntity {
             collides: AtomicBool::new(true),
             item_use_time: AtomicI32::new(0),
             auto_spin_attack_ticks: AtomicI32::new(0),
+            fall_fly_ticks: AtomicI32::new(0),
             item_in_use: std::sync::Mutex::new(None),
             active_hand: std::sync::Mutex::new(None),
             recent_kinetic_enemies: std::sync::Mutex::new(FxHashMap::default()),
@@ -2607,6 +2609,8 @@ impl LivingEntity {
             self.set_arrow_count(0);
             self.set_stinger_count(0);
             self.set_auto_spin_attack(false);
+            self.entity.set_fall_flying(false);
+            self.fall_fly_ticks.store(0, Relaxed);
 
             let kill_credit = self.get_kill_credit();
             let killer = cause.or(source).or(kill_credit.as_deref());
@@ -4690,6 +4694,28 @@ impl EntityBase for LivingEntity {
             if remaining <= 0 {
                 self.set_living_flag(Self::USING_RIPTIDE_FLAG, false);
             }
+        }
+
+        // Parity Gap 145: Elytra gliding decay and auto-exit
+        // Vanilla LivingEntity.java:3181-3200
+        if self.entity.is_fall_flying() {
+            if !self.can_glide() || self.entity.on_ground.load(Relaxed) {
+                self.entity.set_fall_flying(false);
+                self.fall_fly_ticks.store(0, Relaxed);
+            } else {
+                let check_ticks = self.fall_fly_ticks.fetch_add(1, Relaxed) + 1;
+                if crate::entity::combat::should_damage_elytra(check_ticks) {
+                    if let Some(player) = caller.get_player() {
+                        player.damage_item_in_slot(&EquipmentSlot::CHEST, 1);
+                        if !self.can_glide() {
+                            self.entity.set_fall_flying(false);
+                            self.fall_fly_ticks.store(0, Relaxed);
+                        }
+                    }
+                }
+            }
+        } else if self.fall_fly_ticks.load(Relaxed) > 0 {
+            self.fall_fly_ticks.store(0, Relaxed);
         }
         if self.health.load() <= 0.0 {
             let time = self
