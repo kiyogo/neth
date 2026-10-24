@@ -242,12 +242,13 @@ impl EntityBase for SplashPotionEntity {
             color = (r << 16) | (g << 8) | b;
         }
 
-        // Play splash particles
+        // Play splash particles and sounds (Vanilla AbstractThrownPotion.java:80-90)
         let has_instant = effects.iter().any(|(e, _, _, _, _, _)| {
             e.id == pumpkin_data::effect::StatusEffect::INSTANT_DAMAGE.id
                 || e.id == pumpkin_data::effect::StatusEffect::INSTANT_HEALTH.id
         });
-        let event_id = if has_instant { 2007 } else { 2002 };
+        let particle_event = crate::entity::combat::get_splash_potion_particle_event(has_instant);
+        let sound_event = crate::entity::combat::get_splash_potion_break_sound_event(has_instant);
 
         // Convert hit_pos to BlockPos
         let block_pos = BlockPos(Vector3::new(
@@ -255,18 +256,18 @@ impl EntityBase for SplashPotionEntity {
             hit_pos.y.floor() as i32,
             hit_pos.z.floor() as i32,
         ));
+        let chunk_pos = to_chunk_pos(&Vector2::new(block_pos.0.x, block_pos.0.z));
         world.broadcast_to_chunk(
-            to_chunk_pos(&Vector2::new(block_pos.0.x, block_pos.0.z)),
-            &CWorldEvent::new(event_id, block_pos, color, false),
+            chunk_pos,
+            &CWorldEvent::new(particle_event, block_pos, color, false),
+        );
+        world.broadcast_to_chunk(
+            chunk_pos,
+            &CWorldEvent::new(sound_event, block_pos, 0, false),
         );
 
         // A water bottle hurts water-sensitive mobs even though it has no effects.
         let hurts_water_sensitive = is_water_potion(&stack);
-
-        // If no effects, just splash (like water bottles)
-        if effects.is_empty() && !hurts_water_sensitive {
-            return;
-        }
 
         let radius = 4.0f64;
         let min = Vector3::new(hit_pos.x - radius, hit_pos.y - radius, hit_pos.z - radius);
@@ -275,6 +276,25 @@ impl EntityBase for SplashPotionEntity {
 
         // Gather entity and player candidates
         let candidates = world.get_all_at_box(&aabb);
+
+        // Extinguish fire on entities if water potion (AbstractThrownPotion.java:100, 109)
+        if hurts_water_sensitive {
+            for cand in &candidates {
+                let ent = cand.get_entity();
+                if crate::entity::combat::should_water_potion_extinguish_entity(
+                    true,
+                    ent.is_on_fire(),
+                    !ent.removed.load(std::sync::atomic::Ordering::Relaxed),
+                ) {
+                    ent.extinguish();
+                }
+            }
+        }
+
+        // If no effects, just splash (like water bottles)
+        if effects.is_empty() && !hurts_water_sensitive {
+            return;
+        }
 
         let mut affected: Vec<(Arc<dyn EntityBase>, f32)> = Vec::new();
         for cand in candidates {
@@ -325,7 +345,7 @@ impl EntityBase for SplashPotionEntity {
                     living,
                     effects.clone(),
                     scale,
-                    crate::item::potion::PotionApplicationSource::Normal,
+                    crate::item::potion::PotionApplicationSource::Splash,
                 );
             }
         }

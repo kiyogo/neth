@@ -2137,6 +2137,81 @@ pub fn calculate_fall_flying_movement_step(
     movement
 }
 
+/// Calculates splash potion effect scale based on squared distance from impact center.
+///
+/// Mirrors vanilla `ThrownSplashPotion.java:54-56`:
+/// ```java
+/// double dist = potionAabb.distanceToSqr(entity.getBoundingBox().inflate(margin));
+/// if (dist < 16.0) {
+///    double scale = 1.0 - Math.sqrt(dist) / 4.0;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_splash_potion_scale(distance_sq: f64) -> f32 {
+    if (0.0..16.0).contains(&distance_sq) {
+        (1.0 - distance_sq.sqrt() / 4.0) as f32
+    } else {
+        0.0
+    }
+}
+
+/// Calculates scaled effect duration for splash potion effects.
+///
+/// Mirrors vanilla `ThrownSplashPotion.java:63`:
+/// `int duration = effectInstance.mapDuration(d -> (int)(scale * d * durationScale + 0.5));`
+#[must_use]
+pub fn calculate_scaled_effect_duration(base_duration: i32, scale: f32, duration_scale: f32) -> i32 {
+    ((scale * (base_duration as f32) * duration_scale) + 0.5) as i32
+}
+
+/// Checks whether a scaled effect should be applied to an entity.
+///
+/// Mirrors vanilla `ThrownSplashPotion.java:67`:
+/// `if (!newEffect.endsWithin(20)) { entity.addEffect(newEffect, effectSource); }`
+#[must_use]
+pub const fn should_apply_scaled_effect(duration: i32) -> bool {
+    duration > 20
+}
+
+/// Returns the sound level event ID for potion break.
+///
+/// Mirrors vanilla `AbstractThrownPotion.java:80-90`:
+/// `level.levelEvent(hasInstantEffects ? 1054 : 1053, blockPosition, 0)`
+#[must_use]
+pub const fn get_splash_potion_break_sound_event(has_instant_effects: bool) -> i32 {
+    if has_instant_effects {
+        1054
+    } else {
+        1053
+    }
+}
+
+/// Returns the particle level event ID for potion break.
+///
+/// Mirrors vanilla `AbstractThrownPotion.java:81, 86`:
+/// `level.levelEvent(hasInstantEffects ? 2007 : 2002, blockPosition, color)`
+#[must_use]
+pub const fn get_splash_potion_particle_event(has_instant_effects: bool) -> i32 {
+    if has_instant_effects {
+        2007
+    } else {
+        2002
+    }
+}
+
+/// Checks whether a water potion splash should extinguish an entity.
+///
+/// Mirrors vanilla `AbstractThrownPotion.java:100, 109`:
+/// `if (extinguishesEntities && entity.isOnFire() && entity.isAlive()) { entity.extinguishFire(); }`
+#[must_use]
+pub const fn should_water_potion_extinguish_entity(
+    is_water: bool,
+    is_on_fire: bool,
+    is_alive: bool,
+) -> bool {
+    is_water && is_on_fire && is_alive
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3550,6 +3625,46 @@ mod tests {
         assert!((next_move.z - 0.9918).abs() < 1e-3);
         // x remains 0
         assert!(next_move.x.abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_splash_potion_scale_duration_and_sound_events_parity() {
+        // 1. Distance-based scale calculation (ThrownSplashPotion.java:54-56)
+        // At impact center (dist_sq = 0.0) -> scale 1.0
+        assert!((calculate_splash_potion_scale(0.0) - 1.0).abs() < 1e-6);
+        // At 2 blocks away (dist_sq = 4.0) -> scale 1.0 - 2/4 = 0.5
+        assert!((calculate_splash_potion_scale(4.0) - 0.5).abs() < 1e-6);
+        // At 3 blocks away (dist_sq = 9.0) -> scale 1.0 - 3/4 = 0.25
+        assert!((calculate_splash_potion_scale(9.0) - 0.25).abs() < 1e-6);
+        // At or beyond 4 blocks (dist_sq >= 16.0) -> scale 0.0
+        assert_eq!(calculate_splash_potion_scale(16.0), 0.0);
+        assert_eq!(calculate_splash_potion_scale(25.0), 0.0);
+
+        // 2. Scaled effect duration (ThrownSplashPotion.java:63)
+        // Base 900 ticks (45s), scale 0.5 -> 450 ticks
+        assert_eq!(calculate_scaled_effect_duration(900, 0.5, 1.0), 450);
+        // Base 100 ticks, scale 0.25 -> 25 ticks
+        assert_eq!(calculate_scaled_effect_duration(100, 0.25, 1.0), 25);
+
+        // 3. Minimum duration threshold !endsWithin(20) (ThrownSplashPotion.java:67)
+        assert!(!should_apply_scaled_effect(20)); // 20 ticks or less is dropped
+        assert!(!should_apply_scaled_effect(15));
+        assert!(should_apply_scaled_effect(21)); // > 20 ticks is applied
+        assert!(should_apply_scaled_effect(100));
+
+        // 4. Break sound events (AbstractThrownPotion.java:83, 88)
+        assert_eq!(get_splash_potion_break_sound_event(false), 1053);
+        assert_eq!(get_splash_potion_break_sound_event(true), 1054);
+
+        // 5. Break particle events (AbstractThrownPotion.java:81, 86)
+        assert_eq!(get_splash_potion_particle_event(false), 2002);
+        assert_eq!(get_splash_potion_particle_event(true), 2007);
+
+        // 6. Water potion extinguish entity condition (AbstractThrownPotion.java:100, 109)
+        assert!(should_water_potion_extinguish_entity(true, true, true));
+        assert!(!should_water_potion_extinguish_entity(false, true, true));
+        assert!(!should_water_potion_extinguish_entity(true, false, true));
+        assert!(!should_water_potion_extinguish_entity(true, true, false));
     }
 }
 

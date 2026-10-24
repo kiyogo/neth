@@ -2472,6 +2472,37 @@
   - Refactored `LivingEntity::handle_fall_flying_collisions` and `LivingEntity::update_fall_flying_movement` in `crates/pumpkin-core/src/entity/living.rs` to use verified vanilla formulas.
   - Added unit test `test_elytra_kinetic_damage_wall_collision_and_aerodynamics_parity` in `combat.rs`. Total 39/39 tests passing in `entity::combat::tests`.
 
+## Gap 154: Thrown Splash Potion Sound Events (1053/1054), Effect Duration Threshold (endsWithin 20) & Fire Extinguishing Parity
+- **Vanilla Reference**:
+  - `AbstractThrownPotion.java:80-90`:
+    ```java
+    if (potion.potion().isPresent() && potion.potion().get().value().hasInstantEffects()) {
+       level.levelEvent(2007, this.blockPosition(), potion.getColor());
+       if (!this.isSilent()) {
+          level.levelEvent(1054, this.blockPosition(), 0);
+       }
+    } else {
+       level.levelEvent(2002, this.blockPosition(), potion.getColor());
+       if (!this.isSilent()) {
+          level.levelEvent(1053, this.blockPosition(), 0);
+       }
+    }
+    ```
+    - Splash potion impact sends both particle level event (`2002` or `2007` for instant effects) AND break sound level event (`1053` or `1054` for instant effects).
+  - `ThrownSplashPotion.java:54-71`:
+    - Distance-based scale: `scale = 1.0 - Math.sqrt(dist) / 4.0` for `dist < 16.0`.
+    - Effect duration formula: `duration = (int)(scale * d * durationScale + 0.5)`.
+    - Minimum duration gate: `if (!newEffect.endsWithin(20)) { entity.addEffect(newEffect, effectSource); }` (effects scaled to <= 20 ticks / 1 second are dropped and never applied).
+  - `AbstractThrownPotion.java:97-113`:
+    - When potion is water (`is(PotionTags.EXTINGUISHES_ENTITIES)`):
+      `if (extinguishesEntities && entity.isOnFire() && entity.isAlive()) { entity.extinguishFire(); }`
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_splash_potion_scale`, `calculate_scaled_effect_duration`, `should_apply_scaled_effect`, `get_splash_potion_break_sound_event`, `get_splash_potion_particle_event`, and `should_water_potion_extinguish_entity` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `PotionApplicationSource::Splash` and enforced `should_apply_scaled_effect` threshold in `PotionContents::apply_effects_to` in `crates/pumpkin-core/src/item/potion.rs`.
+  - Updated `SplashPotionEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/splash_potion.rs` to broadcast both particle event (`2002`/`2007`) and sound event (`1053`/`1054`), and extinguish fire on living entities when splashed by a water potion.
+  - Added unit test `test_splash_potion_scale_duration_and_sound_events_parity` in `combat.rs`. Total 40/40 tests passing in `entity::combat::tests`.
+
+
 
 
 

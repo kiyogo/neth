@@ -9,8 +9,10 @@ pub struct PotionContents;
 /// Source context for applying potion effects (affects scaling rules).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PotionApplicationSource {
-    /// Normal application (drinking / splash)
+    /// Normal application (drinking)
     Normal,
+    /// Splash potion application
+    Splash,
     /// `AreaEffectCloud` application (shorter durations and weaker instant potency)
     AreaEffectCloud,
     Arrow,
@@ -21,14 +23,14 @@ impl PotionApplicationSource {
         match self {
             Self::AreaEffectCloud => scale * 0.5,
             Self::Arrow => 1.0,
-            Self::Normal => scale,
+            Self::Normal | Self::Splash => scale,
         }
     }
 
     const fn duration_scale(self, scale: f32) -> f32 {
         match self {
             Self::AreaEffectCloud => scale * 0.25,
-            Self::Arrow | Self::Normal => scale,
+            Self::Arrow | Self::Normal | Self::Splash => scale,
         }
     }
 }
@@ -169,6 +171,11 @@ impl PotionContents {
                 let duration_scale = source.duration_scale(scale);
 
                 let dur = ((duration as f32) * duration_scale).max(1.0) as i32;
+                if matches!(source, PotionApplicationSource::Splash)
+                    && !crate::entity::combat::should_apply_scaled_effect(dur)
+                {
+                    continue;
+                }
                 let eff = pumpkin_data::potion::Effect {
                     effect_type,
                     duration: dur,
