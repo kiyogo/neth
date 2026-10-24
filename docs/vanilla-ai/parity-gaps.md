@@ -1951,6 +1951,58 @@
   - Added `extinguish()` and `set_frozen_ticks(0)` upon player death in `Player::handle_killed`.
   - Added unit test `test_player_death_lifecycle_and_velocity_parity` in `combat.rs`. Total 26/26 tests in `entity::combat::tests` passing.
 
+### Gap 141: Living Entity Stuck Arrows & Bee Stingers Tracking & Auto-Removal Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:2001-2015` (`getArrowCount`, `setArrowCount`, `getStingerCount`, `setStingerCount`):
+    ```java
+    public final int getArrowCount() { return this.entityData.get(DATA_ARROW_COUNT_ID); }
+    public final void setArrowCount(final int count) { this.entityData.set(DATA_ARROW_COUNT_ID, count); }
+    public final int getStingerCount() { return this.entityData.get(DATA_STINGER_COUNT_ID); }
+    public final void setStingerCount(final int count) { this.entityData.set(DATA_STINGER_COUNT_ID, count); }
+    ```
+  - `AbstractArrow.java:468-470`:
+    ```java
+    if (mob != null) {
+       mob.setArrowCount(mob.getArrowCount() + 1);
+    }
+    ```
+  - `LivingEntity.java:2755-2778` (`tick()`):
+    ```java
+    int arrowCount = this.getArrowCount();
+    if (arrowCount > 0) {
+       if (this.removeArrowTime <= 0) {
+          this.removeArrowTime = 20 * (30 - arrowCount);
+       }
+       this.removeArrowTime--;
+       if (this.removeArrowTime <= 0) {
+          this.setArrowCount(arrowCount - 1);
+       }
+    }
+    int stingerCount = this.getStingerCount();
+    if (stingerCount > 0) {
+       if (this.removeStingerTime <= 0) {
+          this.removeStingerTime = 20 * (30 - stingerCount);
+       }
+       this.removeStingerTime--;
+       if (this.removeStingerTime <= 0) {
+          this.setStingerCount(stingerCount - 1);
+       }
+    }
+    ```
+  - In vanilla Minecraft Java:
+    - When an arrow strikes a living entity or player, its `arrowCount` tracked data is incremented, rendering visual arrows stuck in the entity's model.
+    - During each tick, stuck arrows and stingers count down using an exact removal interval `20 * (30 - count)`. When the timer expires, the count decrements by 1 and a new timer begins if more projectiles remain.
+    - On death, stuck projectiles are cleared (`arrowCount = 0`, `stingerCount = 0`).
+  - Previously in Neth:
+    - Neth lacked stuck arrows and bee stingers tracking, tracked data synchronization, hit increment, and decay timer mechanisms entirely.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_stuck_projectile_removal_time` and `tick_stuck_projectile_counter` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `arrow_count`, `stinger_count`, `remove_arrow_time`, and `remove_stinger_time` atomics, along with `get_arrow_count`, `set_arrow_count`, `get_stinger_count`, `set_stinger_count` in `crates/pumpkin-core/src/entity/living.rs` with `DATA_ARROW_COUNT_ID` and `DATA_STINGER_COUNT_ID` tracked data synchronization.
+  - Added stuck projectile decay ticking in `LivingEntity::tick` and reset in `LivingEntity::on_death`.
+  - Added arrow hit incrementation in `crates/pumpkin-core/src/entity/projectile/arrow.rs`.
+  - Added unit test `test_stuck_projectiles_tracking_and_decay_parity` in `combat.rs`. Total 27/27 tests in `entity::combat::tests` passing.
+
+
 
 
 

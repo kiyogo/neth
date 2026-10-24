@@ -1373,6 +1373,35 @@ pub fn calculate_player_death_velocity(
     }
 }
 
+/// Calculates the removal interval in ticks for stuck arrows/stingers,
+/// mirroring Vanilla `LivingEntity.java:2758, 2770`:
+/// `20 * (30 - count)`.
+#[must_use]
+pub fn calculate_stuck_projectile_removal_time(count: i32) -> i32 {
+    20 * (30 - count)
+}
+
+/// Updates the stuck projectile counter and removal timer for one tick,
+/// mirroring Vanilla `LivingEntity.java:2755-2778`.
+/// Returns `(new_count, new_timer)`.
+#[must_use]
+pub fn tick_stuck_projectile_counter(count: i32, current_timer: i32) -> (i32, i32) {
+    if count <= 0 {
+        return (0, 0);
+    }
+    let timer = if current_timer <= 0 {
+        calculate_stuck_projectile_removal_time(count)
+    } else {
+        current_timer
+    };
+    let next_timer = timer - 1;
+    if next_timer <= 0 {
+        ((count - 1).max(0), 0)
+    } else {
+        (count, next_timer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2172,6 +2201,40 @@ mod tests {
         assert!(vel_yaw_90.x.abs() < 1e-6);
         assert_eq!(vel_yaw_90.y, 0.1);
         assert!((vel_yaw_90.z - (-0.1)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_stuck_projectiles_tracking_and_decay_parity() {
+        // Vanilla LivingEntity.java:2755-2778:
+        // Interval = 20 * (30 - count)
+        assert_eq!(calculate_stuck_projectile_removal_time(1), 580);
+        assert_eq!(calculate_stuck_projectile_removal_time(5), 500);
+        assert_eq!(calculate_stuck_projectile_removal_time(10), 400);
+        assert_eq!(calculate_stuck_projectile_removal_time(20), 200);
+        assert_eq!(calculate_stuck_projectile_removal_time(30), 0);
+
+        // 1. Count = 0 -> stays 0 with 0 timer
+        assert_eq!(tick_stuck_projectile_counter(0, 0), (0, 0));
+
+        // 2. Count = 1, fresh start (timer = 0) -> timer initialized to 580, ticked to 579, count remains 1
+        let (count, timer) = tick_stuck_projectile_counter(1, 0);
+        assert_eq!(count, 1);
+        assert_eq!(timer, 579);
+
+        // 3. Count = 1, timer running (timer = 50) -> timer decreases to 49, count remains 1
+        let (count, timer) = tick_stuck_projectile_counter(1, 50);
+        assert_eq!(count, 1);
+        assert_eq!(timer, 49);
+
+        // 4. Count = 1, timer expiring (timer = 1) -> count decrements to 0, timer resets to 0
+        let (count, timer) = tick_stuck_projectile_counter(1, 1);
+        assert_eq!(count, 0);
+        assert_eq!(timer, 0);
+
+        // 5. Count = 30, timer = 0 -> interval is 0, next_timer <= 0 -> count decrements to 29 immediately
+        let (count, timer) = tick_stuck_projectile_counter(30, 0);
+        assert_eq!(count, 29);
+        assert_eq!(timer, 0);
     }
 }
 

@@ -143,6 +143,15 @@ pub struct LivingEntity {
     /// The tick at which this entity was last hurt by a mob/entity.
     pub last_hurt_by_mob_time: AtomicI64,
 
+    /// Number of arrows stuck in this entity (`LivingEntity.java:2001-2007`).
+    pub arrow_count: AtomicI32,
+    /// Number of bee stingers stuck in this entity (`LivingEntity.java:2009-2015`).
+    pub stinger_count: AtomicI32,
+    /// Timer for removing stuck arrows (`LivingEntity.java:2757-2765`).
+    pub remove_arrow_time: AtomicI32,
+    /// Timer for removing stuck stingers (`LivingEntity.java:2769-2777`).
+    pub remove_stinger_time: AtomicI32,
+
     water_movement_speed_multiplier: f32,
     livings_flags: AtomicU8,
 
@@ -308,6 +317,10 @@ impl LivingEntity {
             last_hurt_by_player_time: AtomicI64::new(0),
             last_hurt_by_mob_id: AtomicI32::new(0),
             last_hurt_by_mob_time: AtomicI64::new(0),
+            arrow_count: AtomicI32::new(0),
+            stinger_count: AtomicI32::new(0),
+            remove_arrow_time: AtomicI32::new(0),
+            remove_stinger_time: AtomicI32::new(0),
             movement_input: AtomicCell::new(Vector3::default()),
             water_movement_speed_multiplier,
             last_block_pos: AtomicCell::new(None),
@@ -795,6 +808,40 @@ impl LivingEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .insert(target_id, now);
+    }
+
+    /// Returns the number of arrows stuck in this entity, mirroring vanilla `LivingEntity.getArrowCount`.
+    #[must_use]
+    pub fn get_arrow_count(&self) -> i32 {
+        self.arrow_count.load(Ordering::Relaxed)
+    }
+
+    /// Sets the number of arrows stuck in this entity and syncs the tracked data,
+    /// mirroring vanilla `LivingEntity.setArrowCount`.
+    pub fn set_arrow_count(&self, count: i32) {
+        let clamped = count.max(0);
+        self.arrow_count.store(clamped, Ordering::Relaxed);
+        self.entity.set_synced_data(
+            tracked_data::living_entity::DATA_ARROW_COUNT_ID,
+            VarInt(clamped),
+        );
+    }
+
+    /// Returns the number of bee stingers stuck in this entity, mirroring vanilla `LivingEntity.getStingerCount`.
+    #[must_use]
+    pub fn get_stinger_count(&self) -> i32 {
+        self.stinger_count.load(Ordering::Relaxed)
+    }
+
+    /// Sets the number of bee stingers stuck in this entity and syncs the tracked data,
+    /// mirroring vanilla `LivingEntity.setStingerCount`.
+    pub fn set_stinger_count(&self, count: i32) {
+        let clamped = count.max(0);
+        self.stinger_count.store(clamped, Ordering::Relaxed);
+        self.entity.set_synced_data(
+            tracked_data::living_entity::DATA_STINGER_COUNT_ID,
+            VarInt(clamped),
+        );
     }
 
     pub fn is_blocking(&self) -> bool {
@@ -2544,6 +2591,9 @@ impl LivingEntity {
             } else {
                 self.clear_active_hand();
             }
+
+            self.set_arrow_count(0);
+            self.set_stinger_count(0);
 
             let kill_credit = self.get_kill_credit();
             let killer = cause.or(source).or(kill_credit.as_deref());
@@ -4354,6 +4404,26 @@ impl EntityBase for LivingEntity {
         let is_alive = !self.dead.load(Relaxed) && self.health.load() > 0.0;
         let in_death_animation = self.health.load() <= 0.0 && self.death_time.load(Relaxed) < 20;
         let is_player = self.entity.entity_type == &EntityType::PLAYER;
+
+        // Vanilla `LivingEntity.tick` (LivingEntity.java:2755-2778):
+        // Auto-decrement stuck arrows and bee stingers timers
+        let (new_arrows, new_arrow_timer) = crate::entity::combat::tick_stuck_projectile_counter(
+            self.get_arrow_count(),
+            self.remove_arrow_time.load(Ordering::Relaxed),
+        );
+        if new_arrows != self.get_arrow_count() {
+            self.set_arrow_count(new_arrows);
+        }
+        self.remove_arrow_time.store(new_arrow_timer, Ordering::Relaxed);
+
+        let (new_stingers, new_stinger_timer) = crate::entity::combat::tick_stuck_projectile_counter(
+            self.get_stinger_count(),
+            self.remove_stinger_time.load(Ordering::Relaxed),
+        );
+        if new_stingers != self.get_stinger_count() {
+            self.set_stinger_count(new_stingers);
+        }
+        self.remove_stinger_time.store(new_stinger_timer, Ordering::Relaxed);
 
         // Vanilla `LivingEntity.tick` (LivingEntity.java:2780): every 20 ticks (1s), recheck combat status
         let tick_count = self.entity.age.load(Relaxed);
