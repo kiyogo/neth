@@ -5559,6 +5559,11 @@ impl Player {
             for item in main_inv.iter_mut().chain(equipment.values_mut()) {
                 if !item.is_empty() {
                     let stack = std::mem::replace(item, ItemStack::EMPTY.clone());
+                    // Vanilla Player.java:553-568 destroyVanishingCursedItems:
+                    // Curse of Vanishing destroys the item on death without dropping it.
+                    if combat::has_vanishing_curse(&stack) {
+                        continue;
+                    }
                     self.increment_stat(
                         statistics::StatisticCategory::Dropped,
                         stack.item.id as i32,

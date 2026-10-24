@@ -641,6 +641,14 @@ pub fn apply_weapon_post_attack_effects(item_stack: &ItemStack, victim: &dyn Ent
     }
 }
 
+/// Vanilla `Player.java:553-568` (`destroyVanishingCursedItems`), `Mob.java:899-905` (`dropEquipment`):
+/// Checks whether an item stack has the Curse of Vanishing (`minecraft:vanishing_curse`),
+/// which prevents equipment from dropping on death.
+#[must_use]
+pub fn has_vanishing_curse(item_stack: &ItemStack) -> bool {
+    item_stack.get_enchantment_level(&pumpkin_data::Enchantment::VANISHING_CURSE) > 0
+}
+
 /// Combat calculation rules mirroring vanilla `net.minecraft.world.damagesource.CombatRules`.
 pub struct CombatRules;
 
@@ -1687,6 +1695,29 @@ mod tests {
         assert_eq!(calculate_mob_extra_knockback(0.0, 1.0), 0.5);
         // Warden / Ravager with base ATTACK_KNOCKBACK = 1.5: 1.5 / 2.0 = 0.75
         assert_eq!(calculate_mob_extra_knockback(1.5, 0.0), 0.75);
+    }
+
+    #[test]
+    fn test_vanishing_curse_and_totem_bypasses_invulnerability_parity() {
+        use pumpkin_data::damage::DamageType;
+        use pumpkin_data::item::Item;
+
+        // 1. Vanishing curse check parity
+        let mut item = ItemStack::new(1, &Item::DIAMOND_SWORD);
+        assert!(!has_vanishing_curse(&item));
+
+        // Add vanishing curse
+        item.add_enchantment(&pumpkin_data::Enchantment::VANISHING_CURSE, 1);
+        assert!(has_vanishing_curse(&item));
+
+        // 2. Totem death protection bypasses invulnerability tag parity:
+        // Vanilla LivingEntity.java:1394: checkTotemDeathProtection
+        // if (damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return false;
+        assert!(DamageType::OUT_OF_WORLD.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
+        assert!(DamageType::GENERIC_KILL.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
+        assert!(!DamageType::GENERIC.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
+        assert!(!DamageType::PLAYER_ATTACK.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
+        assert!(!DamageType::FALL.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY));
     }
 }
 

@@ -32,7 +32,9 @@ use crate::entity::ageable::AgeableMob;
 use crate::entity::attributes::AttributeInstance;
 use crate::entity::attributes::Modifier;
 use crate::entity::attributes::ModifierOperation;
-use crate::entity::combat::{CombatRules, CombatTracker, FallLocation, knockback_after_resistance};
+use crate::entity::combat::{
+    CombatRules, CombatTracker, FallLocation, has_vanishing_curse, knockback_after_resistance,
+};
 use crate::entity::mob::equipment::DEFAULT_EQUIPMENT_DROP_CHANCE;
 use crate::entity::player::statistics::{CustomStatistic, StatisticCategory};
 use crate::server::Server;
@@ -2709,6 +2711,10 @@ impl LivingEntity {
             if item.is_empty() {
                 continue;
             }
+            // Vanilla Mob.java:899-905: Curse of Vanishing prevents equipment from dropping on death.
+            if has_vanishing_curse(&item) {
+                continue;
+            }
             // Vanilla approximation: Mob.dropCustomDeathLoot applies random
             // damage to dropped equipment using two chained random calls:
             // setDamageValue(maxDamage - random.nextInt(1 + random.nextInt(max(maxDamage - 3, 1))))
@@ -2954,7 +2960,9 @@ impl LivingEntity {
         caller: &dyn EntityBase,
         damage_type: DamageType,
     ) -> bool {
-        if damage_type == DamageType::OUT_OF_WORLD || damage_type == DamageType::GENERIC_KILL {
+        // Vanilla LivingEntity.java:1394: checkTotemDeathProtection
+        // if (damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return false;
+        if damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY) {
             return false;
         }
 

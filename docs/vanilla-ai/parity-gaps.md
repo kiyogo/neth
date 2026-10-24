@@ -1698,5 +1698,20 @@
   - Updated `LivingEntity::get_damage_after_magic_absorb` to award `DamageResisted` to victim and `DamageDealtResisted` to attacker independently.
   - Verified with 16/16 passing unit tests in `entity::combat::tests`, including `test_mob_attack_damage_and_knockback_parity`.
 
-
-
+### Gap 131: Curse of Vanishing Death Item Destruction & Totem Death Protection Tag Parity
+- **Vanilla Reference**:
+  - `Player.java:553-568` (`destroyVanishingCursedItems`) & `ServerPlayer.java:652`:
+    - When `keepInventory` is false on player death, `destroyVanishingCursedItems()` removes all items possessing `EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP` (`minecraft:vanishing_curse`) so they are destroyed rather than dropped onto the ground.
+  - `Mob.java:899-905` (`dropEquipment`):
+    - When a mob dies and drops equipment, any item possessing `EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP` is skipped and destroyed.
+  - `LivingEntity.java:1394` (`checkTotemDeathProtection`):
+    - Death protection checks `damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY)` rather than hardcoding specific damage types.
+  - Previously in Neth:
+    - Players and mobs dropped all items on death even if they carried `Curse of Vanishing` (`minecraft:vanishing_curse`).
+    - `LivingEntity::check_totem_death_protection` hardcoded checks for `DamageType::OUT_OF_WORLD || DamageType::GENERIC_KILL` instead of using the vanilla tag `#minecraft:bypasses_invulnerability`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `has_vanishing_curse` helper in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `Player::send_combat_death` in `crates/pumpkin-core/src/entity/player.rs` to destroy vanishing-cursed items on death without dropping or incrementing drop statistics.
+  - Updated `LivingEntity::drop_equipment` in `crates/pumpkin-core/src/entity/living.rs` to skip and destroy vanishing-cursed mob equipment.
+  - Updated `LivingEntity::check_totem_death_protection` to check `damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY)`.
+  - Verified with 17/17 passing unit tests in `entity::combat::tests`, including `test_vanishing_curse_and_totem_bypasses_invulnerability_parity`.
