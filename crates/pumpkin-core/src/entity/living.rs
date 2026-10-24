@@ -33,7 +33,7 @@ use crate::entity::attributes::AttributeInstance;
 use crate::entity::attributes::Modifier;
 use crate::entity::attributes::ModifierOperation;
 use crate::entity::combat::{
-    CombatRules, CombatTracker, FallLocation, WitherRosePlacementAction, can_cause_mob_anger,
+    self, CombatRules, CombatTracker, FallLocation, WitherRosePlacementAction, can_cause_mob_anger,
     can_place_wither_rose, determine_wither_rose_action, has_vanishing_curse,
     knockback_after_resistance, should_entity_drop_experience,
 };
@@ -1877,52 +1877,16 @@ impl LivingEntity {
 
     fn update_fall_flying_movement(
         &self,
-        mut movement: Vector3<f64>,
+        movement: Vector3<f64>,
         caller: &dyn EntityBase,
     ) -> Vector3<f64> {
-        let yaw = f64::from(self.entity.yaw.load());
-        let pitch = f64::from(self.entity.pitch.load());
-        let pitch_rad = pitch.to_radians();
-        let yaw_rad = yaw.to_radians();
-
-        let look_x = -pitch_rad.cos() * yaw_rad.sin();
-        let look_y = -pitch_rad.sin();
-        let look_z = pitch_rad.cos() * yaw_rad.cos();
-        let look_angle = Vector3::new(look_x, look_y, look_z);
-
-        let lean_angle = pitch_rad;
-        let look_hor_length = (look_angle.x * look_angle.x + look_angle.z * look_angle.z).sqrt();
-        let move_hor_length = (movement.x * movement.x + movement.z * movement.z).sqrt();
         let gravity = self.get_effective_gravity(caller);
-        let cos_lean = lean_angle.cos();
-        let lift_force = cos_lean * cos_lean;
-
-        movement.y += gravity * (-1.0 + lift_force * 0.75);
-
-        if movement.y < 0.0 && look_hor_length > 0.0 {
-            let convert = movement.y * -0.1 * lift_force;
-            movement.x += look_angle.x * convert / look_hor_length;
-            movement.y += convert;
-            movement.z += look_angle.z * convert / look_hor_length;
-        }
-
-        if lean_angle < 0.0 && look_hor_length > 0.0 {
-            let convert = move_hor_length * -lean_angle.sin() * 0.04;
-            movement.x += -look_angle.x * convert / look_hor_length;
-            movement.y += convert * 3.2;
-            movement.z += -look_angle.z * convert / look_hor_length;
-        }
-
-        if look_hor_length > 0.0 {
-            movement.x += (look_angle.x / look_hor_length * move_hor_length - movement.x) * 0.1;
-            movement.z += (look_angle.z / look_hor_length * move_hor_length - movement.z) * 0.1;
-        }
-
-        movement.x *= 0.99;
-        movement.y *= 0.98;
-        movement.z *= 0.99;
-
-        movement
+        combat::calculate_fall_flying_movement_step(
+            movement,
+            self.entity.pitch.load(),
+            self.entity.yaw.load(),
+            gravity,
+        )
     }
 
     pub(crate) fn handle_fall_flying_collisions(
@@ -1933,13 +1897,9 @@ impl LivingEntity {
     ) {
         if self.entity.horizontal_collision.load(SeqCst) {
             let diff = move_hor_length - new_move_hor_length;
-            let dmg = (diff * 10.0 - 3.0) as f32;
+            let dmg = combat::calculate_fly_into_wall_damage(diff);
             if dmg > 0.0 {
-                let sound = if dmg > 4.0 {
-                    Sound::EntityGenericBigFall
-                } else {
-                    Sound::EntityGenericSmallFall
-                };
+                let sound = combat::get_fly_into_wall_sound(dmg);
                 self.entity.world.load().play_sound_fine(
                     sound,
                     SoundCategory::Players,

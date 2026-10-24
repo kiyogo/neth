@@ -2024,6 +2024,119 @@ pub const fn should_channeling_strike_block(
     has_channeling && is_thundering && can_see_sky && is_lightning_rod
 }
 
+/// Calculates kinetic damage from horizontal collision while fall flying (flying into wall).
+///
+/// Mirrors vanilla `LivingEntity.java:2616-2617`:
+/// ```java
+/// double diff = moveHorLength - newMoveHorLength;
+/// float dmg = (float)(diff * 10.0 - 3.0);
+/// ```
+#[must_use]
+pub fn calculate_fly_into_wall_damage(horizontal_speed_diff: f64) -> f32 {
+    let dmg = (horizontal_speed_diff.mul_add(10.0, -3.0)) as f32;
+    if dmg > 0.0 { dmg } else { 0.0 }
+}
+
+/// Returns the sound played when receiving fly-into-wall kinetic damage.
+///
+/// Mirrors vanilla `LivingEntity.java:2619`:
+/// `this.playSound(this.getFallDamageSound((int)dmg), 1.0F, 1.0F);`
+/// where `getFallDamageSound(dmg)` returns big fall sound if dmg > 4, else small fall sound.
+#[must_use]
+pub fn get_fly_into_wall_sound(damage: f32) -> pumpkin_data::sound::Sound {
+    if damage > 4.0 {
+        pumpkin_data::sound::Sound::EntityGenericBigFall
+    } else {
+        pumpkin_data::sound::Sound::EntityGenericSmallFall
+    }
+}
+
+/// Determines whether an entity can glide using Elytra.
+///
+/// Mirrors vanilla `LivingEntity.java:3202-3214`:
+/// `return !this.onGround() && !this.isPassenger() && !this.hasEffect(MobEffects.LEVITATION) && hasGliderItem;`
+#[must_use]
+pub const fn can_entity_glide(
+    on_ground: bool,
+    is_passenger: bool,
+    has_levitation: bool,
+    has_glider_equipped: bool,
+) -> bool {
+    !on_ground && !is_passenger && !has_levitation && has_glider_equipped
+}
+
+/// Determines whether fall flying should be stopped when touching a climbable block (ladder, vine).
+///
+/// Mirrors vanilla `LivingEntity.java:2567-2570`:
+/// ```java
+/// if (this.onClimbable()) {
+///    this.travelInAir(input);
+///    this.stopFallFlying();
+/// }
+/// ```
+#[must_use]
+pub const fn should_stop_fall_flying_on_climbable(on_climbable: bool) -> bool {
+    on_climbable
+}
+
+/// Calculates updated fall-flying movement per tick matching vanilla aerodynamics.
+///
+/// Mirrors vanilla `LivingEntity.java:2587-2612`:
+/// - Pitch lean lift force = cos(lean_angle)^2
+/// - Gravity modification: gravity * (-1.0 + lift_force * 0.75)
+/// - Dive pull down into horizontal speed conversion: movement.y * -0.1 * lift_force
+/// - Pitch up lift: horizontal_speed * -sin(lean_angle) * 0.04 (up to 3.2 y multiplier)
+/// - Direction alignment dampening with 0.1 factor
+/// - Drag multipliers: (0.99, 0.98, 0.99)
+#[must_use]
+pub fn calculate_fall_flying_movement_step(
+    mut movement: Vector3<f64>,
+    pitch_deg: f32,
+    yaw_deg: f32,
+    gravity: f64,
+) -> Vector3<f64> {
+    let pitch_rad = (pitch_deg as f64).to_radians();
+    let yaw_rad = (yaw_deg as f64).to_radians();
+
+    let look_x = -pitch_rad.cos() * yaw_rad.sin();
+    let look_y = -pitch_rad.sin();
+    let look_z = pitch_rad.cos() * yaw_rad.cos();
+    let look_angle = Vector3::new(look_x, look_y, look_z);
+
+    let lean_angle = pitch_rad;
+    let look_hor_length = (look_angle.x * look_angle.x + look_angle.z * look_angle.z).sqrt();
+    let move_hor_length = (movement.x * movement.x + movement.z * movement.z).sqrt();
+    let cos_lean = lean_angle.cos();
+    let lift_force = cos_lean * cos_lean;
+
+    movement.y += gravity * (-1.0 + lift_force * 0.75);
+
+    if movement.y < 0.0 && look_hor_length > 0.0 {
+        let convert = movement.y * -0.1 * lift_force;
+        movement.x += look_angle.x * convert / look_hor_length;
+        movement.y += convert;
+        movement.z += look_angle.z * convert / look_hor_length;
+    }
+
+    if lean_angle < 0.0 && look_hor_length > 0.0 {
+        let convert = move_hor_length * -lean_angle.sin() * 0.04;
+        movement.x += -look_angle.x * convert / look_hor_length;
+        movement.y += convert * 3.2;
+        movement.z += -look_angle.z * convert / look_hor_length;
+    }
+
+    if look_hor_length > 0.0 {
+        movement.x += (look_angle.x / look_hor_length * move_hor_length - movement.x) * 0.1;
+        movement.z += (look_angle.z / look_hor_length * move_hor_length - movement.z) * 0.1;
+    }
+
+    movement.x *= 0.99;
+    movement.y *= 0.98;
+    movement.z *= 0.99;
+
+    movement
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3393,6 +3506,50 @@ mod tests {
         assert!(!should_channeling_strike_block(false, true, true, true));
         assert!(!should_channeling_strike_block(true, false, true, true));
         assert!(!should_channeling_strike_block(true, true, false, true));
+    }
+
+    #[test]
+    fn test_elytra_kinetic_damage_wall_collision_and_aerodynamics_parity() {
+        // 1. Kinetic damage from flying into wall (LivingEntity.java:2616-2617)
+        // diff <= 0.3 -> no damage (diff * 10 - 3 <= 0)
+        assert_eq!(calculate_fly_into_wall_damage(0.1), 0.0);
+        assert_eq!(calculate_fly_into_wall_damage(0.3), 0.0);
+
+        // diff = 0.5 -> 0.5 * 10 - 3 = 2.0
+        assert!((calculate_fly_into_wall_damage(0.5) - 2.0).abs() < 1e-6);
+
+        // diff = 1.0 -> 1.0 * 10 - 3 = 7.0
+        assert!((calculate_fly_into_wall_damage(1.0) - 7.0).abs() < 1e-6);
+
+        // 2. Sound played on wall impact (LivingEntity.java:2619)
+        assert_eq!(get_fly_into_wall_sound(2.0), pumpkin_data::sound::Sound::EntityGenericSmallFall);
+        assert_eq!(get_fly_into_wall_sound(4.0), pumpkin_data::sound::Sound::EntityGenericSmallFall);
+        assert_eq!(get_fly_into_wall_sound(4.5), pumpkin_data::sound::Sound::EntityGenericBigFall);
+
+        // 3. Can glide conditions (LivingEntity.java:3202-3214)
+        assert!(can_entity_glide(false, false, false, true));
+        assert!(!can_entity_glide(true, false, false, true)); // on ground
+        assert!(!can_entity_glide(false, true, false, true)); // is passenger
+        assert!(!can_entity_glide(false, false, true, true)); // levitation
+        assert!(!can_entity_glide(false, false, false, false)); // no elytra
+
+        // 4. Climbable stops fall flying (LivingEntity.java:2567-2570)
+        assert!(should_stop_fall_flying_on_climbable(true));
+        assert!(!should_stop_fall_flying_on_climbable(false));
+
+        // 5. Aerodynamics step calculation (LivingEntity.java:2587-2612)
+        // Level flight: pitch = 0, yaw = 0, movement = (0, 0, 1.0), gravity = 0.08
+        let init_move = Vector3::new(0.0, 0.0, 1.0);
+        let next_move = calculate_fall_flying_movement_step(init_move, 0.0, 0.0, 0.08);
+
+        // cos(0)^2 = 1.0, gravity * (-1.0 + 0.75) = 0.08 * -0.25 = -0.02
+        // dive convert: convert = -0.02 * -0.1 * 1.0 = +0.002
+        // y becomes (-0.02 + 0.002) * 0.98 = -0.01764
+        assert!((next_move.y - (-0.01764)).abs() < 1e-4);
+        // forward z with convert and direction alignment drag: ~0.9918
+        assert!((next_move.z - 0.9918).abs() < 1e-3);
+        // x remains 0
+        assert!(next_move.x.abs() < 1e-6);
     }
 }
 

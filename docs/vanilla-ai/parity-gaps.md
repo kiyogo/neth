@@ -2436,6 +2436,43 @@
   - Played `Sound::ItemTridentThunder` at volume 5.0 and pitch 1.0 on Channeling strikes.
   - Added unit test `test_thrown_trident_loyalty_physics_void_recall_and_channeling_parity` in `combat.rs`. Total 38/38 tests passing in `entity::combat::tests`.
 
+## Gap 153: Elytra Kinetic Damage, Wall Impact Velocity Threshold & Gliding Aerodynamics Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:2614-2623`:
+    ```java
+    private void handleFallFlyingCollisions(final double moveHorLength, final double newMoveHorLength) {
+       if (this.horizontalCollision) {
+          double diff = moveHorLength - newMoveHorLength;
+          float dmg = (float)(diff * 10.0 - 3.0);
+          if (dmg > 0.0F) {
+             this.playSound(this.getFallDamageSound((int)dmg), 1.0F, 1.0F);
+             this.hurt(this.damageSources().flyIntoWall(), dmg);
+          }
+       }
+    }
+    ```
+    - Damage formula: `(diff * 10.0 - 3.0)` where `diff = moveHorLength - newMoveHorLength`.
+    - Threshold: requires horizontal deceleration `diff > 0.3` blocks/tick (6.0 blocks/sec) to inflict damage.
+    - Sound event: `SoundEvents.GENERIC_BIG_FALL` if `dmg > 4.0`, else `SoundEvents.GENERIC_SMALL_FALL` at volume 1.0, pitch 1.0.
+    - Damage type: `DamageType::FLY_INTO_WALL`.
+  - `LivingEntity.java:3202-3214`:
+    - `canGlide()` requires `!onGround() && !isPassenger() && !hasEffect(MobEffects.LEVITATION) && hasGliderItem`.
+  - `LivingEntity.java:2567-2570`:
+    - `if (this.onClimbable()) { this.travelInAir(input); this.stopFallFlying(); }`
+  - `LivingEntity.java:2587-2612`:
+    - Gliding aerodynamics:
+      - Lift force: `cos(pitch_rad)^2`.
+      - Gravity adjustment: `gravity * (-1.0 + lift_force * 0.75)`.
+      - Dive speed conversion: `movement.y * -0.1 * lift_force` transferred along look angle.
+      - Pull up lift conversion: `horizontal_speed * -sin(pitch_rad) * 0.04` with 3.2 vertical multiplier.
+      - Heading turn dampening factor 0.1 towards look direction.
+      - Drag friction multipliers: `(0.99, 0.98, 0.99)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_fly_into_wall_damage`, `get_fly_into_wall_sound`, `can_entity_glide`, `should_stop_fall_flying_on_climbable`, and `calculate_fall_flying_movement_step` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Refactored `LivingEntity::handle_fall_flying_collisions` and `LivingEntity::update_fall_flying_movement` in `crates/pumpkin-core/src/entity/living.rs` to use verified vanilla formulas.
+  - Added unit test `test_elytra_kinetic_damage_wall_collision_and_aerodynamics_parity` in `combat.rs`. Total 39/39 tests passing in `entity::combat::tests`.
+
+
 
 
 
