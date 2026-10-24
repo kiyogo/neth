@@ -2758,6 +2758,135 @@ pub const fn is_food_needs_eating(food_level: u8) -> bool {
     food_level < 20
 }
 
+/// Determines whether Totem of Undying can prevent death from this damage source.
+///
+/// Mirrors vanilla `LivingEntity.java:1393-1396`:
+/// ```java
+/// private boolean checkTotemDeathProtection(final DamageSource killingDamage) {
+///    if (killingDamage.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+///       return false;
+///    }
+///    ...
+/// ```
+#[must_use]
+pub const fn should_totem_prevent_death(bypasses_invulnerability: bool, has_totem_item: bool) -> bool {
+    !bypasses_invulnerability && has_totem_item
+}
+
+/// Determines whether an entity death sound should be played upon taking fatal damage.
+///
+/// Mirrors vanilla `LivingEntity.java:1255-1267`:
+/// ```java
+/// if (this.isDeadOrDying()) {
+///    if (!this.checkTotemDeathProtection(source)) {
+///       if (tookFullDamage) {
+///          this.makeSound(this.getDeathSound());
+///          this.playSecondaryHurtSound(source);
+///       }
+///       this.die(source);
+///    }
+/// } else if (tookFullDamage) {
+///    this.playHurtSound(source);
+///    this.playSecondaryHurtSound(source);
+/// }
+/// ```
+#[must_use]
+pub const fn should_play_death_sound(is_dying: bool, totem_prevented_death: bool, took_full_damage: bool) -> bool {
+    is_dying && !totem_prevented_death && took_full_damage
+}
+
+/// Determines whether an entity hurt sound should be played upon taking damage.
+///
+/// Mirrors vanilla `LivingEntity.java:1264-1267`.
+#[must_use]
+pub const fn should_play_hurt_sound(is_dying: bool, took_full_damage: bool) -> bool {
+    !is_dying && took_full_damage
+}
+
+/// Determines if an entity type is sensitive to water and rain.
+///
+/// Mirrors vanilla `LivingEntity.java:3162-3174` and entity overrides:
+/// - `SnowGolem.java:86`: `return true;`
+/// - `Blaze.java:114`: `return true;`
+/// - `Enderman.java:242`: `return true;`
+/// - `Strider.java:374`: `return true;`
+#[must_use]
+pub fn is_entity_sensitive_to_water(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    entity_type == &pumpkin_data::entity::EntityType::SNOW_GOLEM
+        || entity_type == &pumpkin_data::entity::EntityType::BLAZE
+        || entity_type == &pumpkin_data::entity::EntityType::ENDERMAN
+        || entity_type == &pumpkin_data::entity::EntityType::STRIDER
+}
+
+/// Determines whether an entity should receive cramming damage under maxEntityCramming game rule.
+///
+/// Mirrors vanilla `LivingEntity.java:3223-3235`:
+/// ```java
+/// int maxCramming = serverLevel.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+/// if (maxCramming > 0 && pushableEntities.size() > maxCramming - 1 && this.random.nextInt(4) == 0) {
+///     int count = 0;
+///     for (Entity entity : pushableEntities) {
+///         if (!entity.isPassenger()) {
+///             count++;
+///         }
+///     }
+///     if (count > maxCramming - 1) {
+///         this.hurtServer(serverLevel, this.damageSources().cramming(), 6.0F);
+///     }
+/// }
+/// ```
+#[must_use]
+pub const fn should_take_cramming_damage(max_cramming: i32, non_passenger_pushable_count: i32, random_4: i32) -> bool {
+    max_cramming > 0 && non_passenger_pushable_count > (max_cramming - 1) && random_4 == 0
+}
+
+/// Vanilla cramming damage amount (6.0F = 3 hearts).
+pub const CRAMMING_DAMAGE: f32 = 6.0;
+
+/// Calculates out-of-world-border damage for players outside safe zone.
+///
+/// Mirrors vanilla `LivingEntity.java:432-437`:
+/// ```java
+/// double dist = level.getWorldBorder().getDistanceToBorder(this) + level.getWorldBorder().getSafeZone();
+/// if (dist < 0.0) {
+///     double damagePerBlock = level.getWorldBorder().getDamagePerBlock();
+///     if (damagePerBlock > 0.0) {
+///         this.hurtServer(level, this.damageSources().outOfBorder(), Math.max(1, Mth.floor(-dist * damagePerBlock)));
+///     }
+/// }
+/// ```
+#[must_use]
+pub fn calculate_out_of_border_damage(distance_to_border: f64, safe_zone: f64, damage_per_block: f64) -> Option<f32> {
+    let dist = distance_to_border + safe_zone;
+    if dist < 0.0 && damage_per_block > 0.0 {
+        let raw = (-dist * damage_per_block).floor() as f32;
+        Some(raw.max(1.0))
+    } else {
+        None
+    }
+}
+
+/// Determines if an entity in a suffocating wall should receive suffocation damage.
+///
+/// Mirrors vanilla `LivingEntity.java:429-430`, `LivingEntity.java:3877-3878`:
+/// ```java
+/// if (this.isInWall()) {
+///     this.hurtServer(level, this.damageSources().inWall(), 1.0F);
+/// }
+/// ...
+/// public boolean isInWall() {
+///     return !this.isSleeping() && super.isInWall();
+/// }
+/// ```
+#[must_use]
+pub const fn should_take_in_wall_damage(is_sleeping: bool, in_wall: bool) -> bool {
+    !is_sleeping && in_wall
+}
+
+/// Vanilla in-wall suffocation damage amount (1.0F = 0.5 heart).
+pub const IN_WALL_DAMAGE: f32 = 1.0;
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4429,9 +4558,56 @@ mod tests {
         assert!(is_food_needs_eating(19));
         assert!(!is_food_needs_eating(20));
     }
+
+    #[test]
+    fn test_totem_death_protection_water_sensitivity_and_suffocation_parity() {
+        // 1. Totem prevents death (LivingEntity.java:1394-1408)
+        // Bypasses invulnerability (void / kill) prevents totem from triggering
+        assert!(!should_totem_prevent_death(true, true));
+        assert!(!should_totem_prevent_death(false, false));
+        assert!(should_totem_prevent_death(false, true));
+
+        // 2. Sound suppression (LivingEntity.java:1255-1267)
+        // When totem triggers, neither death sound nor hurt sound is played
+        assert!(!should_play_death_sound(true, true, true));
+        assert!(!should_play_hurt_sound(true, true));
+        // When dying without totem, death sound is played if took full damage
+        assert!(should_play_death_sound(true, false, true));
+        assert!(!should_play_death_sound(true, false, false));
+        // When surviving, hurt sound is played
+        assert!(should_play_hurt_sound(false, true));
+        assert!(!should_play_hurt_sound(false, false));
+
+        // 3. Water sensitivity (LivingEntity.java:3162-3174)
+        assert!(is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::BLAZE));
+        assert!(is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::ENDERMAN));
+        assert!(is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::SNOW_GOLEM));
+        assert!(is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::STRIDER));
+        assert!(!is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::ZOMBIE));
+        assert!(!is_entity_sensitive_to_water(&pumpkin_data::entity::EntityType::PLAYER));
+
+        // 4. Entity cramming damage (LivingEntity.java:3223-3235)
+        assert_eq!(CRAMMING_DAMAGE, 6.0);
+        // maxCramming = 24. 23 non-passenger entities: no cramming
+        assert!(!should_take_cramming_damage(24, 23, 0));
+        // 24 entities (count > 24 - 1): random 1-in-4 check
+        assert!(should_take_cramming_damage(24, 24, 0));
+        assert!(!should_take_cramming_damage(24, 24, 1));
+        assert!(!should_take_cramming_damage(0, 50, 0)); // maxCramming <= 0 disables cramming
+
+        // 5. Out of border damage (LivingEntity.java:432-437)
+        // Inside border safe zone
+        assert_eq!(calculate_out_of_border_damage(5.0, 0.0, 0.2), None);
+        // Outside border by 10 blocks with damage per block 0.2: ceil/floor(-(-10) * 0.2) = 2.0
+        assert_eq!(calculate_out_of_border_damage(-10.0, 0.0, 0.2), Some(2.0));
+        // Minimum damage is 1.0
+        assert_eq!(calculate_out_of_border_damage(-1.0, 0.0, 0.2), Some(1.0));
+
+        // 6. In-wall suffocation damage (LivingEntity.java:429-430, 3877-3878)
+        assert_eq!(IN_WALL_DAMAGE, 1.0);
+        assert!(should_take_in_wall_damage(false, true));
+        assert!(!should_take_in_wall_damage(true, true)); // sleeping suppresses in_wall
+        assert!(!should_take_in_wall_damage(false, false));
+    }
 }
-
-
-
-
 

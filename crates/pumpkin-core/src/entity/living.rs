@@ -4213,45 +4213,6 @@ impl LivingEntity {
         let max_h = self.get_max_health();
         let new_health = (self.health.load() - dmg_to_health).clamp(0.0, max_h);
 
-        if play_sound {
-            let sound = if new_health <= 0.0 {
-                Self::death_sound_for_entity(self.entity.entity_type)
-            } else {
-                self.hurt_sound(caller)
-            };
-
-            world.play_sound_fine(
-                sound,
-                self.sound_category(caller.get_player().is_some()),
-                &self.entity.pos.load(),
-                1.0,
-                self.get_pitch(),
-            );
-
-            // Vanilla parity: playSecondaryHurtSound for thorns hit
-            if damage_type == DamageType::THORNS {
-                let category = if caller.get_player().is_some() {
-                    SoundCategory::Players
-                } else {
-                    SoundCategory::Hostile
-                };
-                world.play_sound_fine(
-                    Sound::EnchantThornsHit,
-                    category,
-                    &self.entity.pos.load(),
-                    1.0,
-                    self.get_pitch(),
-                );
-            }
-
-            if let Some(mob) = caller.get_mob() {
-                let interval = mob.get_ambient_sound_interval();
-                mob.get_mob_entity()
-                    .ambient_sound_time
-                    .store(-interval, Relaxed);
-            }
-        }
-
         if dmg_to_health > 0.0 {
             if let Some(player) = caller.get_player() {
                 if damage_type.exhaustion > 0.0 {
@@ -4359,9 +4320,37 @@ impl LivingEntity {
             }
         }
 
+        // Vanilla parity: LivingEntity.java:1255-1267:
+        // Check totem death protection before playing death sound or triggering on_death.
         if new_health <= 0.0 {
             if self.check_totem_death_protection(caller, damage_type) {
                 return true;
+            }
+
+            if play_sound {
+                let sound = Self::death_sound_for_entity(self.entity.entity_type);
+                world.play_sound_fine(
+                    sound,
+                    self.sound_category(caller.get_player().is_some()),
+                    &self.entity.pos.load(),
+                    1.0,
+                    self.get_pitch(),
+                );
+
+                if damage_type == DamageType::THORNS {
+                    let category = if caller.get_player().is_some() {
+                        SoundCategory::Players
+                    } else {
+                        SoundCategory::Hostile
+                    };
+                    world.play_sound_fine(
+                        Sound::EnchantThornsHit,
+                        category,
+                        &self.entity.pos.load(),
+                        1.0,
+                        self.get_pitch(),
+                    );
+                }
             }
 
             let mut death_event =
@@ -4375,6 +4364,38 @@ impl LivingEntity {
                     .fire_blocking(&server, &mut death_event);
             }
             self.on_death(damage_type, source, cause);
+        } else if play_sound {
+            let sound = self.hurt_sound(caller);
+            world.play_sound_fine(
+                sound,
+                self.sound_category(caller.get_player().is_some()),
+                &self.entity.pos.load(),
+                1.0,
+                self.get_pitch(),
+            );
+
+            // Vanilla parity: playSecondaryHurtSound for thorns hit
+            if damage_type == DamageType::THORNS {
+                let category = if caller.get_player().is_some() {
+                    SoundCategory::Players
+                } else {
+                    SoundCategory::Hostile
+                };
+                world.play_sound_fine(
+                    Sound::EnchantThornsHit,
+                    category,
+                    &self.entity.pos.load(),
+                    1.0,
+                    self.get_pitch(),
+                );
+            }
+
+            if let Some(mob) = caller.get_mob() {
+                let interval = mob.get_ambient_sound_interval();
+                mob.get_mob_entity()
+                    .ambient_sound_time
+                    .store(-interval, Relaxed);
+            }
         }
 
         if let Some(mob) = caller.get_mob() {

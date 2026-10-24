@@ -2853,3 +2853,36 @@
   - Updated `ServerGamePacketListenerImpl` / `handle_player_command` in `crates/pumpkin-core/src/net/java/play/player_command.rs` to prevent starting sprint when `food_level <= 6` and not flying.
   - Updated `HungerManager::tick` in `crates/pumpkin-core/src/entity/hunger.rs` to stop sprinting when `food_level <= 6`, and strictly follow starvation health limits per vanilla Difficulty (`Easy` > 10.0, `Normal` > 1.0, `Hard` down to 0).
   - Added unit test `test_food_data_saturation_sprint_and_starvation_parity` in `crates/pumpkin-core/src/entity/combat.rs`. All 48/48 tests passing in `entity::combat::tests`.
+
+## Gap 163: Totem Death Protection Execution Ordering, Death Sound Suppression, Water Sensitivity & In-Wall/Cramming Parity
+- **Vanilla Reference**: `LivingEntity.java:1255-1267`, `LivingEntity.java:1393-1424`, `LivingEntity.java:3162-3174`, `LivingEntity.java:3223-3235`, `LivingEntity.java:428-439`:
+  - `LivingEntity.java:1255-1267` (`hurtServer` sound & death logic):
+    ```java
+    if (this.isDeadOrDying()) {
+       if (!this.checkTotemDeathProtection(source)) {
+          if (tookFullDamage) {
+             this.makeSound(this.getDeathSound());
+             this.playSecondaryHurtSound(source);
+          }
+          this.die(source);
+       }
+    } else if (tookFullDamage) {
+       this.playHurtSound(source);
+       this.playSecondaryHurtSound(source);
+    }
+    ```
+    - Khi nhận sát thương chí mạng (`new_health <= 0`): Vanilla Java kiểm tra kích hoạt Totem of Undying (`checkTotemDeathProtection`) TRƯỚC.
+    - Nếu Totem cứu mạng: Sức khỏe được hồi thành 1.0F, toàn bộ hiệu ứng trạng thái bị xoá, nhận Absorption II, Regeneration II, Fire Resistance I, phát sự kiện byte 35 (`ProtectedFromDeath`) và âm thanh `item.totem.use`. TUYỆT ĐỐI KHÔNG PHÁT âm thanh chết (`getDeathSound`) và không phát âm thanh bị thương (`hurtSound`), không gọi `die()`.
+    - Chỉ khi Totem KHÔNG cứu (hoặc không có Totem, hoặc sát thương thuộc `#minecraft:bypasses_invulnerability` như void/kill) thì mới phát âm thanh chết và gọi `die()`.
+  - `LivingEntity.java:3162-3174` (Sensitive to Water):
+    - Các entity: `SnowGolem` (`SnowGolem.java:86`), `Blaze` (`Blaze.java:114`), `Enderman` (`Enderman.java:242`), `Strider` (`Strider.java:374`) nhạy cảm với nước (`isSensitiveToWater() == true`).
+    - Khi ở trong nước hoặc mưa (`isInWaterOrRain()`), phải chịu 1.0F sát thương loại `DamageType::DROWN`.
+  - `LivingEntity.java:3223-3235` (Entity Cramming):
+    - Khi `maxEntityCramming > 0` và số thực thể pushable không phải passenger > `maxEntityCramming - 1`, với tỉ lệ 1-in-4 (`random.nextInt(4) == 0`), thực thể chịu 6.0F sát thương loại `DamageType::CRAMMING`.
+  - `LivingEntity.java:428-439` (In-Wall Suffocation & Out-of-Border):
+    - `isInWall()`: kiểm tra hộp va chạm co lại 80% bề ngang không rỗng và bị kẹt trong khối gây ngạt (`isSuffocating`), nếu không ngủ thì chịu 1.0F sát thương `DamageType::IN_WALL`.
+    - Người chơi ở ngoài WorldBorder (`dist < 0.0`): chịu sát thương `Math.max(1, Mth.floor(-dist * damagePerBlock))` loại out-of-border.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Refactored `damage_with_context` in `crates/pumpkin-core/src/entity/living.rs`: Totem death protection check is evaluated prior to emitting death sounds, completely suppressing spurious death sounds and `on_death` triggers when a Totem saves the entity.
+  - Added helper functions `should_totem_prevent_death`, `should_play_death_sound`, `should_play_hurt_sound`, `is_entity_sensitive_to_water`, `should_take_cramming_damage`, `calculate_out_of_border_damage`, and `should_take_in_wall_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added unit test `test_totem_death_protection_water_sensitivity_and_suffocation_parity` in `combat.rs`. All 49/49 tests passing in `entity::combat::tests`.
