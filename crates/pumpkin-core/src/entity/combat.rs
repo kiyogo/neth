@@ -4,6 +4,9 @@ use std::sync::atomic::Ordering;
 use crate::entity::EntityBase;
 use crate::entity::decoration::armor_stand::ArmorStandEntity;
 use crate::entity::living::LivingEntity;
+use pumpkin_data::data_component_impl::EnchantmentsImpl;
+use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::tag;
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{
@@ -512,6 +515,115 @@ pub fn player_attack_sound(pos: &Vector3<f64>, world: &World, attack_type: Attac
         }
         AttackType::Weak => {
             world.play_sound(Sound::EntityPlayerAttackWeak, SoundCategory::Players, pos);
+        }
+    }
+}
+
+/// Vanilla `Entity.java:1063`: `playEntityOnFireExtinguishedSound`
+/// Pitch formula: `1.6F + (random.nextFloat() - random.nextFloat()) * 0.4F`
+#[must_use]
+pub fn calculate_extinguish_sound_pitch(rand1: f32, rand2: f32) -> f32 {
+    1.6 + (rand1 - rand2) * 0.4
+}
+
+/// Vanilla `Entity.java:1002-1008` & `WaterFluid.java:88`:
+/// If an entity is burning (fire_ticks > 0 or is_on_fire flag) and enters water or is in rain,
+/// the fire is extinguished.
+#[must_use]
+pub fn should_extinguish_fire(
+    fire_ticks: i32,
+    is_on_fire: bool,
+    in_water: bool,
+    in_rain: bool,
+) -> bool {
+    (fire_ticks > 0 || is_on_fire) && (in_water || in_rain)
+}
+
+/// Vanilla `ApplyMobEffect.java:41-47`:
+/// `int ticks = Math.round(Mth.randomBetween(random, minDuration, maxDuration) * 20.0F);`
+#[must_use]
+pub fn calculate_mob_effect_duration_ticks(
+    min_duration_sec: f32,
+    max_duration_sec: f32,
+    rand_factor: f32,
+) -> i32 {
+    let clamped_rand = rand_factor.clamp(0.0, 1.0);
+    let sec = min_duration_sec + (max_duration_sec - min_duration_sec) * clamped_rand;
+    (sec * 20.0).round() as i32
+}
+
+/// Vanilla `ApplyMobEffect.java:44-46`:
+/// `int amplifier = Math.max(0, Math.round(Mth.randomBetween(random, minAmplifier, maxAmplifier)));`
+#[must_use]
+pub fn calculate_mob_effect_amplifier(
+    min_amplifier: f32,
+    max_amplifier: f32,
+    rand_factor: f32,
+) -> u8 {
+    let clamped_rand = rand_factor.clamp(0.0, 1.0);
+    let amp = min_amplifier + (max_amplifier - min_amplifier) * clamped_rand;
+    amp.round().max(0.0) as u8
+}
+
+/// Vanilla `Player.java:1078-1094` & `EnchantmentHelper.java:226-261`:
+/// Applies the attacker's weapon post-attack effects (e.g. Fire Aspect, Bane of Arthropods)
+/// to the victim.
+pub fn apply_weapon_post_attack_effects(item_stack: &ItemStack, victim: &dyn EntityBase) {
+    let victim_entity = victim.get_entity();
+    if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>() {
+        for (enchantment, level) in enchantments.enchantment.iter() {
+            for post_effect in enchantment.get_post_attack_effects() {
+                if post_effect.affected == Some(pumpkin_data::enchantment::EnchantmentTarget::Victim) {
+                    match &post_effect.effect {
+                        pumpkin_data::enchantment::EnchantmentEntityEffect::Ignite { duration } => {
+                            let duration_seconds = duration.calculate(*level);
+                            if victim_entity.is_in_water() {
+                                victim_entity.play_entity_on_fire_extinguished_sound();
+                            } else {
+                                victim_entity
+                                    .set_on_fire_for_ticks((duration_seconds * 20.0) as u32);
+                            }
+                        }
+                        pumpkin_data::enchantment::EnchantmentEntityEffect::ApplyMobEffect {
+                            to_apply,
+                            min_duration,
+                            max_duration,
+                            min_amplifier,
+                            max_amplifier,
+                        } => {
+                            if victim_entity
+                                .entity_type
+                                .has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS)
+                                && let Some(living_victim) = victim.get_living_entity()
+                            {
+                                let rand_val = rand::random::<f32>();
+                                let min_dur = min_duration.calculate(*level);
+                                let max_dur = max_duration.calculate(*level);
+                                let min_amp = min_amplifier.calculate(*level);
+                                let max_amp = max_amplifier.calculate(*level);
+                                let ticks = calculate_mob_effect_duration_ticks(
+                                    min_dur, max_dur, rand_val,
+                                );
+                                let amplifier = calculate_mob_effect_amplifier(
+                                    min_amp, max_amp, rand_val,
+                                );
+                                for effect_type in *to_apply {
+                                    living_victim.add_effect(pumpkin_data::potion::Effect {
+                                        effect_type,
+                                        duration: ticks,
+                                        amplifier,
+                                        ambient: false,
+                                        show_particles: true,
+                                        show_icon: true,
+                                        blend: false,
+                                    });
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
     }
 }
@@ -1497,6 +1609,51 @@ mod tests {
         // Total = 4.3
         let dmg_cooldown = calculate_player_attack_damage(7.0, 0.5, 0.0, 3.0, false);
         assert!((dmg_cooldown - 4.3).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_fire_extinguish_and_mob_effect_post_attack_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Extinguish sound pitch formula parity (Vanilla Entity.java:1063):
+        // 1.6 + (rand1 - rand2) * 0.4
+        let base_pitch = calculate_extinguish_sound_pitch(0.0, 0.0);
+        assert_eq!(base_pitch, 1.6);
+        let max_pitch = calculate_extinguish_sound_pitch(1.0, 0.0);
+        assert_eq!(max_pitch, 2.0);
+        let min_pitch = calculate_extinguish_sound_pitch(0.0, 1.0);
+        assert_eq!(min_pitch, 1.2);
+
+        // 2. Extinguish condition parity (Vanilla Entity.java:1002-1008 & WaterFluid.java:88):
+        // Must extinguish when on fire and touching water or in rain
+        assert!(should_extinguish_fire(100, true, true, false));
+        assert!(should_extinguish_fire(100, false, true, false));
+        assert!(should_extinguish_fire(0, true, false, true));
+        assert!(!should_extinguish_fire(100, true, false, false));
+        assert!(!should_extinguish_fire(0, false, true, false));
+
+        // 3. Mob effect duration calculation parity (Vanilla ApplyMobEffect.java:41-47):
+        // Bane of Arthropods V: min 1.5s, max 3.5s
+        let dur_min = calculate_mob_effect_duration_ticks(1.5, 3.5, 0.0);
+        assert_eq!(dur_min, 30); // 1.5s * 20 = 30 ticks
+        let dur_max = calculate_mob_effect_duration_ticks(1.5, 3.5, 1.0);
+        assert_eq!(dur_max, 70); // 3.5s * 20 = 70 ticks
+        let dur_mid = calculate_mob_effect_duration_ticks(1.5, 3.5, 0.5);
+        assert_eq!(dur_mid, 50); // 2.5s * 20 = 50 ticks
+
+        // 4. Mob effect amplifier calculation parity (Vanilla ApplyMobEffect.java:44-46):
+        // Bane of Arthropods: amplifier 3 (Slowness IV)
+        let amp = calculate_mob_effect_amplifier(3.0, 3.0, 0.5);
+        assert_eq!(amp, 3);
+
+        // 5. Sensitive to Bane of Arthropods tag parity:
+        assert!(EntityType::SPIDER.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(EntityType::CAVE_SPIDER.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(EntityType::SILVERFISH.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(EntityType::ENDERMITE.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(EntityType::BEE.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(!EntityType::ZOMBIE.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
+        assert!(!EntityType::PLAYER.has_tag(&tag::EntityType::MINECRAFT_SENSITIVE_TO_BANE_OF_ARTHROPODS));
     }
 }
 

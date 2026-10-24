@@ -2534,9 +2534,34 @@ impl Entity {
         }
     }
 
-    /// Extinguishes this entity.
+    /// Extinguishes this entity's fire ticks and visual fire.
     pub fn extinguish(&self) {
         self.fire_ticks.store(0, Ordering::Relaxed);
+        self.set_on_fire(false);
+    }
+
+    /// Vanilla `Entity.java:1052-1065`: Plays fire extinguish sound.
+    pub fn play_entity_on_fire_extinguished_sound(&self) {
+        let world = self.world.load();
+        let pitch = combat::calculate_extinguish_sound_pitch(
+            rand::random::<f32>(),
+            rand::random::<f32>(),
+        );
+        world.play_sound_fine(
+            Sound::EntityGenericExtinguishFire,
+            SoundCategory::Neutral,
+            &self.pos.load(),
+            0.7,
+            pitch,
+        );
+    }
+
+    /// Vanilla `Entity.java:1068-1074`: Plays extinguish sound if on fire, then clears fire.
+    pub fn extinguish_fire(&self) {
+        if self.is_on_fire() {
+            self.play_entity_on_fire_extinguished_sound();
+        }
+        self.extinguish();
     }
 
     /// Maximum freeze ticks (7 seconds at 20 tps)
@@ -4742,6 +4767,20 @@ impl EntityBase for Entity {
         self.tick_portal(caller);
         self.update_fluid_state(caller);
         self.check_out_of_world(caller);
+
+        // Vanilla Entity.java:1002-1008 & WaterFluid.java:88:
+        // If entity is in water or rain, extinguish fire with sound and clear fire_ticks.
+        let in_water = self.is_in_water();
+        let in_rain = self.is_in_rain();
+        if combat::should_extinguish_fire(
+            self.fire_ticks.load(Ordering::Relaxed),
+            self.is_on_fire(),
+            in_water,
+            in_rain,
+        ) {
+            self.extinguish_fire();
+        }
+
         let fire_ticks = self.fire_ticks.load(Ordering::Relaxed);
 
         // Check for fire immunity (or if the specific entity is)

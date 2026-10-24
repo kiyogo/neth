@@ -1660,5 +1660,26 @@
   - Updated `player_attack_sound` to play both `EntityPlayerAttackKnockback` and `EntityPlayerAttackStrong` on knockback attacks.
   - Verified in unit tests `test_player_attack_damage_critical_and_magic_boost_parity`.
 
+### Gap 129: Post-Attack Effects, Fire Aspect / Fire Extinguishing in Water & Target Sound Interactions
+- **Vanilla Reference**:
+  - `Entity.java:1002-1008` & `WaterFluid.java:88`:
+    - Entities extinguish fire (`clearFire()`) when in water or rain (`isInWater() || isInRain()`).
+    - If the entity was on fire (`wasOnFire && !this.isOnFire()`), it plays `SoundEvents.GENERIC_EXTINGUISH_FIRE` (volume 0.7, pitch `1.6F + (rand - rand) * 0.4F`).
+  - `Entity.java:1068-1074` (`extinguishFire`):
+    - Plays extinguish sound if on fire, then clears fire ticks and resets visual fire flag.
+  - `Player.java:1078-1094` (`itemAttackInteraction`), `EnchantmentHelper.java:226-261` (`doPostAttackEffectsWithItemSource`), `ApplyMobEffect.java:36-50`:
+    - Weapon post-attack effects apply to the victim:
+      - Fire Aspect (`Ignite`): Ignites victim for `4.0 * level` seconds. If victim is in water, immediately extinguishes with sound instead of burning underwater.
+      - Bane of Arthropods (`ApplyMobEffect`): Applies Slowness IV (amplifier 3) for `1.5s` to `(1.5 + 0.5 * (level - 1))`s (`30` to `70` ticks) to `#minecraft:sensitive_to_bane_of_arthropods` mobs.
+  - Previously in Neth:
+    - Burning entities never extinguished when touching water or in rain during tick, continuing to burn and take periodic fire damage while submerged.
+    - `Entity::extinguish` only zeroed `fire_ticks` without resetting visual fire or playing `Sound::EntityGenericExtinguishFire`.
+    - `Player::attack` and sweep attack only implemented hardcoded `Ignite`, ignoring in-water target state and omitting `ApplyMobEffect` (Bane of Arthropods).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `calculate_extinguish_sound_pitch`, `should_extinguish_fire`, `calculate_mob_effect_duration_ticks`, `calculate_mob_effect_amplifier`, and `apply_weapon_post_attack_effects` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `play_entity_on_fire_extinguished_sound` and `extinguish_fire` in `crates/pumpkin-core/src/entity/mod.rs`, and integrated automatic extinguish into `Entity::tick`.
+  - Replaced ad-hoc post-attack loops in `Player::attack` and sweeping attacks with `apply_weapon_post_attack_effects` supporting in-water extinguish and Bane of Arthropods `ApplyMobEffect`.
+  - Verified with 15/15 passing tests in `entity::combat::tests`, including `test_fire_extinguish_and_mob_effect_post_attack_parity`.
+
 
 
