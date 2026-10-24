@@ -1744,4 +1744,21 @@
 - **Neth Status**: **RESOLVED & VERIFIED**
   - Added `should_weapon_damage_on_attack` helper in `crates/pumpkin-core/src/entity/combat.rs`.
   - Updated `Player::attack` in `crates/pumpkin-core/src/entity/player.rs` to guard weapon durability reduction and `StatisticCategory::Used` increment behind `victim.get_living_entity().is_some()`.
-  - Added unit test `test_weapon_durability_and_item_used_conditions_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 19/19 tests in `entity::combat::tests` passing.
+
+### Gap 134: Jump Boost Safe Fall Distance & Slow Falling / Levitation Fall Damage Immunity Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:1862` (`calculateFallPower`) & `MobEffects.java:51` (`JUMP_BOOST`):
+    - `MobEffects.JUMP_BOOST` registers an attribute modifier on `Attributes.SAFE_FALL_DISTANCE` with `1.0` per amplifier level (`Operation.ADD_VALUE`).
+    - Every level of Jump Boost adds 1.0 block to the entity's safe fall distance (e.g. Jump Boost I provides 4.0 blocks safe fall, Jump Boost II provides 5.0 blocks).
+  - `LivingEntity.java:3120-3122` (`travel`):
+    - When an entity has `MobEffects.SLOW_FALLING` or `MobEffects.LEVITATION`, `resetFallDistance()` is called every tick.
+    - Entities with Slow Falling or Levitation are completely immune to accumulating fall distance and taking fall damage.
+  - Previously in Neth:
+    - `calculate_fall_power` used only the base `SAFE_FALL_DISTANCE` attribute, omitting the `+1.0` per Jump Boost amplifier level.
+    - `should_prevent_fall_damage` and `calculate_fall_damage` did not check `SLOW_FALLING` or `LEVITATION`, allowing entities to take fall damage on landing or when events evaluated fall damage.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `calculate_safe_fall_distance`, `calculate_fall_power`, and `calculate_fall_damage_raw` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `LivingEntity::should_prevent_fall_damage` in `crates/pumpkin-core/src/entity/living.rs` to return `true` when `SLOW_FALLING` or `LEVITATION` is active.
+  - Updated `LivingEntity::calculate_fall_power` to incorporate the Jump Boost amplifier bonus (`+1.0` block per amplifier level).
+  - Updated `LivingEntity::calculate_fall_damage` to return `0` when `SLOW_FALLING` or `LEVITATION` is active.
+  - Added unit test `test_fall_damage_jump_boost_and_fall_immunity_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 20/20 tests in `entity::combat::tests` passing.

@@ -659,6 +659,44 @@ pub fn should_weapon_damage_on_attack(is_victim_living: bool, has_weapon_compone
     is_victim_living && has_weapon_component
 }
 
+/// Vanilla `LivingEntity.java:1862` & `MobEffects.java:51`:
+/// Calculates the effective safe fall distance, accounting for the base attribute
+/// and the Jump Boost effect modifier (+1.0 block per amplifier level).
+#[must_use]
+pub fn calculate_safe_fall_distance(
+    base_safe_fall: f64,
+    jump_boost_amplifier: Option<u32>,
+) -> f64 {
+    let mut safe = base_safe_fall;
+    if let Some(amp) = jump_boost_amplifier {
+        safe += f64::from(amp + 1);
+    }
+    safe
+}
+
+/// Vanilla `LivingEntity.java:1862`:
+/// Calculates the fall power: `fall_distance + 1.0E-6 - safe_fall_distance`.
+#[must_use]
+pub fn calculate_fall_power(fall_distance: f64, safe_fall_distance: f64) -> f64 {
+    fall_distance + 1.0E-6 - safe_fall_distance
+}
+
+/// Vanilla `LivingEntity.java:1858`:
+/// Calculates the integer fall damage from fall power, damage modifier, and multiplier.
+#[must_use]
+pub fn calculate_fall_damage_raw(
+    fall_power: f64,
+    damage_modifier: f32,
+    fall_damage_multiplier: f32,
+) -> i32 {
+    if fall_power <= 0.0 {
+        return 0;
+    }
+    (fall_power as f32 * damage_modifier * fall_damage_multiplier)
+        .floor()
+        .max(0.0) as i32
+}
+
 /// Combat calculation rules mirroring vanilla `net.minecraft.world.damagesource.CombatRules`.
 pub struct CombatRules;
 
@@ -1773,6 +1811,43 @@ mod tests {
         // Attacking with an item without Weapon component (e.g. bare hand, stick) does not take weapon durability:
         assert!(!should_weapon_damage_on_attack(true, false));
         assert!(!should_weapon_damage_on_attack(false, false));
+    }
+
+    #[test]
+    fn test_fall_damage_jump_boost_and_fall_immunity_parity() {
+        // Vanilla LivingEntity.java:1852-1863 & MobEffects.java:51
+        // 1. Default safe fall distance (3.0 blocks):
+        let default_safe = calculate_safe_fall_distance(3.0, None);
+        assert_eq!(default_safe, 3.0);
+
+        // 2. Jump Boost I (amp 0): adds 1.0 block -> 4.0 blocks
+        let jb1_safe = calculate_safe_fall_distance(3.0, Some(0));
+        assert_eq!(jb1_safe, 4.0);
+
+        // 3. Jump Boost II (amp 1): adds 2.0 blocks -> 5.0 blocks
+        let jb2_safe = calculate_safe_fall_distance(3.0, Some(1));
+        assert_eq!(jb2_safe, 5.0);
+
+        // 4. Fall power calculations:
+        // Falling 3 blocks with default safe: power = 3.0 + 1e-6 - 3.0 = 1e-6 (damage = 0)
+        let power_3 = calculate_fall_power(3.0, default_safe);
+        assert_eq!(calculate_fall_damage_raw(power_3, 1.0, 1.0), 0);
+
+        // Falling 4 blocks with default safe: power = 4.0 + 1e-6 - 3.0 = 1.000001 (damage = 1)
+        let power_4 = calculate_fall_power(4.0, default_safe);
+        assert_eq!(calculate_fall_damage_raw(power_4, 1.0, 1.0), 1);
+
+        // Falling 4 blocks with Jump Boost I (safe 4.0): power = 4.0 + 1e-6 - 4.0 = 1e-6 (damage = 0!)
+        let power_4_jb1 = calculate_fall_power(4.0, jb1_safe);
+        assert_eq!(calculate_fall_damage_raw(power_4_jb1, 1.0, 1.0), 0);
+
+        // Falling 10 blocks with default safe: power = 10.0 + 1e-6 - 3.0 = 7.000001 (damage = 7)
+        let power_10 = calculate_fall_power(10.0, default_safe);
+        assert_eq!(calculate_fall_damage_raw(power_10, 1.0, 1.0), 7);
+
+        // Falling 10 blocks with Jump Boost II (safe 5.0): power = 10.0 + 1e-6 - 5.0 = 5.000001 (damage = 5)
+        let power_10_jb2 = calculate_fall_power(10.0, jb2_safe);
+        assert_eq!(calculate_fall_damage_raw(power_10_jb2, 1.0, 1.0), 5);
     }
 }
 

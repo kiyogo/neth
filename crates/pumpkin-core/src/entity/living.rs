@@ -1426,6 +1426,14 @@ impl LivingEntity {
     }
 
     pub fn should_prevent_fall_damage(&self) -> bool {
+        // Vanilla LivingEntity.java:3120-3122:
+        // Slow falling and levitation effects reset fall distance and prevent fall damage.
+        if self.has_effect(&StatusEffect::SLOW_FALLING)
+            || self.has_effect(&StatusEffect::LEVITATION)
+        {
+            return true;
+        }
+
         let (prevents, block) = self.is_in_fall_damage_resetting();
 
         if block == &Block::SCAFFOLDING && !self.entity.is_sneaking() {
@@ -2271,19 +2279,28 @@ impl LivingEntity {
     /// Calculates fall power based on distance and safe fall distance attribute,
     /// mirroring vanilla `LivingEntity.calculateFallPower`.
     pub fn calculate_fall_power(&self, fall_distance: f64) -> f64 {
-        fall_distance + 1.0E-6 - self.get_attribute_value(&Attributes::SAFE_FALL_DISTANCE)
+        let base_safe = self.get_attribute_value(&Attributes::SAFE_FALL_DISTANCE);
+        let jump_amp = self
+            .get_effect(&StatusEffect::JUMP_BOOST)
+            .map(|e| e.amplifier as u32);
+        let safe_distance =
+            crate::entity::combat::calculate_safe_fall_distance(base_safe, jump_amp);
+        crate::entity::combat::calculate_fall_power(fall_distance, safe_distance)
     }
 
     /// Calculates fall damage based on distance, damage modifier, and fall damage multiplier attribute,
     /// mirroring vanilla `LivingEntity.calculateFallDamage`.
     pub fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
-        if self.is_immune_to_fall_damage() {
+        if self.is_immune_to_fall_damage()
+            || self.has_effect(&StatusEffect::SLOW_FALLING)
+            || self.has_effect(&StatusEffect::LEVITATION)
+        {
             return 0;
         }
 
-        let base_damage = self.calculate_fall_power(fall_distance);
+        let fall_power = self.calculate_fall_power(fall_distance);
         let multiplier = self.get_attribute_value(&Attributes::FALL_DAMAGE_MULTIPLIER) as f32;
-        (base_damage as f32 * damage_modifier * multiplier).floor().max(0.0) as i32
+        crate::entity::combat::calculate_fall_damage_raw(fall_power, damage_modifier, multiplier)
     }
 
     const fn get_fall_sound(damage: i32) -> Sound {
