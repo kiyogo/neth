@@ -8,7 +8,6 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag;
 use pumpkin_data::tag::Taggable;
 use pumpkin_nbt::compound::NbtCompound;
-use pumpkin_protocol::java::client::play::CEntityStatus;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
@@ -159,8 +158,7 @@ impl RavagerEntity {
         let pos = entity.pos.load();
         let world = entity.world.load();
         world.play_sound(Sound::EntityRavagerStunned, SoundCategory::Hostile, &pos);
-        let status_packet = CEntityStatus::new(entity.entity_id, 39);
-        world.send_to_tracking_players_and_self(entity, &status_packet);
+        world.send_entity_status(entity, pumpkin_data::entity::EntityStatus::RavagerStunned, None);
         self.mob_entity
             .navigator
             .lock()
@@ -174,14 +172,12 @@ impl RavagerEntity {
         let my_pos = entity.pos.load();
         let target_entity = target.get_entity();
         let t_pos = target_entity.pos.load();
-        let xd = t_pos.x - my_pos.x;
-        let zd = t_pos.z - my_pos.z;
-        let dd = (xd * xd + zd * zd).max(0.001);
-        let push_x = (xd / dd) * 4.0;
-        let push_z = (zd / dd) * 4.0;
+        let (push_x, push_y, push_z) = crate::entity::combat::calculate_ravager_strong_knockback(
+            my_pos.x, my_pos.z, t_pos.x, t_pos.z,
+        );
         let mut vel = target_entity.velocity.load();
         vel.x += push_x.clamp(-2.0, 2.0);
-        vel.y += 0.2;
+        vel.y += push_y;
         vel.z += push_z.clamp(-2.0, 2.0);
         target_entity.set_velocity(vel);
     }
@@ -189,7 +185,6 @@ impl RavagerEntity {
     pub fn roar(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         let world = entity.world.load_full();
-        let my_pos = entity.pos.load();
         let my_id = entity.entity_id;
 
         let roar_bb = entity.bounding_box.load().expand_all(4.0);
@@ -200,13 +195,7 @@ impl RavagerEntity {
             if target_entity.entity_id == my_id {
                 continue;
             }
-            if target_entity.entity_type == &EntityType::RAVAGER
-                || target_entity.entity_type == &EntityType::PILLAGER
-                || target_entity.entity_type == &EntityType::EVOKER
-                || target_entity.entity_type == &EntityType::VINDICATOR
-                || target_entity.entity_type == &EntityType::ILLUSIONER
-                || target_entity.entity_type == &EntityType::WITCH
-            {
+            if crate::entity::combat::is_illager_immune_to_ravager_roar(target_entity.entity_type) {
                 continue;
             }
 
@@ -216,20 +205,16 @@ impl RavagerEntity {
                 }
                 target.damage(target.as_ref(), 6.0, DamageType::MOB_ATTACK);
 
-                // Vanilla strong knockback
-                let t_pos = target_entity.pos.load();
-                let xd = t_pos.x - my_pos.x;
-                let zd = t_pos.z - my_pos.z;
-                let dd = (xd * xd + zd * zd).max(0.001);
-                let push_x = (xd / dd) * 4.0;
-                let push_z = (zd / dd) * 4.0;
-                let mut vel = target_entity.velocity.load();
-                vel.x += push_x.clamp(-2.0, 2.0);
-                vel.y += 0.2;
-                vel.z += push_z.clamp(-2.0, 2.0);
-                target_entity.set_velocity(vel);
+                // Vanilla Ravager.java:233: if (!(entity instanceof Player)) { this.strongKnockback(entity); }
+                if crate::entity::combat::should_ravager_roar_knockback_target(
+                    target_entity.entity_type == &EntityType::PLAYER,
+                ) {
+                    self.strong_knockback(&*target);
+                }
             }
         }
+
+        world.send_entity_status(entity, pumpkin_data::entity::EntityStatus::RavagerRoared, None);
     }
 }
 
@@ -359,7 +344,23 @@ impl Mob for RavagerEntity {
         }
     }
 
-    fn on_attack(&self, _target: &dyn EntityBase) {}
+    fn on_attack(&self, _target: &dyn EntityBase) {
+        self.attack_tick.store(10, Ordering::Relaxed);
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        world.send_entity_status(entity, pumpkin_data::entity::EntityStatus::StartAttacking, None);
+        world.play_sound_fine(
+            Sound::EntityRavagerAttack,
+            SoundCategory::Hostile,
+            &entity.pos.load(),
+            1.0,
+            1.0,
+        );
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::get_ravager_xp_reward()
+    }
 
     fn on_blocked_by_shield(&self, defender: &dyn EntityBase, _fully_blocked: bool) {
         if self.roar_tick.load(Ordering::Relaxed) == 0 {

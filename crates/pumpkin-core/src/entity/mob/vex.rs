@@ -22,16 +22,19 @@ pub struct VexEntity {
     pub mob_entity: MobEntity,
     pub has_limited_life: AtomicBool,
     pub limited_life_ticks: AtomicI32,
+    pub is_charging: AtomicBool,
     pub owner_uuid: Mutex<Option<Uuid>>,
 }
 
 impl VexEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
+        entity.synched_data.define(pumpkin_data::tracked_data::vex::DATA_FLAGS_ID, 0u8);
         let mob_entity = MobEntity::new(entity);
         let vex = Self {
             mob_entity,
             has_limited_life: AtomicBool::new(false),
             limited_life_ticks: AtomicI32::new(0),
+            is_charging: AtomicBool::new(false),
             owner_uuid: Mutex::new(None),
         };
         let mob_arc = Arc::new(vex);
@@ -39,6 +42,20 @@ impl VexEntity {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
         };
+
+        // Vanilla Vex: populateDefaultEquipmentSlots -> Iron Sword in mainhand with 0.0 drop chance
+        {
+            let mut equipment = mob_arc
+                .mob_entity
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equipment.put(
+                &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
+                pumpkin_data::item_stack::ItemStack::new(1, &pumpkin_data::item::Item::IRON_SWORD),
+            );
+        }
 
         // Vanilla Vex: MAX_HEALTH = 14.0, ATTACK_DAMAGE = 4.0
         {
@@ -114,6 +131,19 @@ impl VexEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
+
+    pub fn set_charging(&self, charging: bool) {
+        self.is_charging.store(charging, Ordering::Relaxed);
+        self.mob_entity.living_entity.entity.set_synced_data(
+            pumpkin_data::tracked_data::vex::DATA_FLAGS_ID,
+            if charging { 1u8 } else { 0u8 },
+        );
+    }
+
+    #[must_use]
+    pub fn is_charging(&self) -> bool {
+        self.is_charging.load(Ordering::Relaxed)
+    }
 }
 
 impl Mob for VexEntity {
@@ -123,6 +153,18 @@ impl Mob for VexEntity {
 
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
+    }
+
+    fn on_attack(&self, _target: &dyn EntityBase) {
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        world.play_sound_fine(
+            Sound::EntityVexCharge,
+            pumpkin_data::sound::SoundCategory::Hostile,
+            &entity.pos.load(),
+            1.0,
+            1.0,
+        );
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -156,7 +198,7 @@ impl Mob for VexEntity {
     }
 
     fn get_base_experience_reward(&self) -> u32 {
-        3
+        crate::entity::combat::get_vex_xp_reward()
     }
 }
 

@@ -3322,3 +3322,51 @@
     - `CubeMobFloatGoal`: sets Y-velocity `0.22 + size * 0.05` when MagmaCube touches lava.
   - Added unit test `test_slime_and_magma_cube_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 61/61 tests passing in `entity::combat::tests`.
 
+## Gap 176: Ravager Stun/Roar Dynamics, Vex Weapon Equipment & Charge State, Zoglin Targeting & Damage Parity
+- **Vanilla Reference**:
+  - `Ravager.java:70, 139-145, 209-222, 224-241, 250-254, 295-300`:
+    - Experience reward: `xpReward = 20`.
+    - Movement speed state: `0.0` khi immobile (stun, roar, attack); `0.35` khi có attack target; `0.3` khi đi tuần bình thường.
+    - Attack state: `on_attack` set `attack_tick = 10`, broadcast status 4 (`EntityStatus::StartAttacking`), phát âm thanh `SoundEvents.RAVAGER_ATTACK`.
+    - Shield block reaction (`blockedByItem`): 50% stun 40 ticks (`stunned_tick = 40`), broadcast status 39 (`EntityStatus::RavagerStunned`), phát `SoundEvents.RAVAGER_STUNNED`, defender đẩy ravager lùi; 50% defender nhận `strongKnockback`. Khi hết stun: phát `SoundEvents.RAVAGER_ROAR`, set `roar_tick = 20`.
+    - Roar (`roar()` tại tick 10): gây 6.0F sát thương cho tất cả `LivingEntity` trong phạm vi mở rộng 4.0 ngoại trừ nhóm Illagers (`AbstractIllager`). Đẩy văng `strongKnockback` tất cả LivingEntity NGOẠI TRỪ Player (`!(entity instanceof Player)`). Broadcast status 69 (`EntityStatus::RavagerRoared`).
+  - `Vex.java:49, 61, 64-66, 169-175, 216-220`:
+    - Trang bị mặc định: Vex luôn cầm `Items.IRON_SWORD` ở tay chính `MAIN_HAND` với tỉ lệ rơi đồ bằng 0.0 (`setDropChance(EquipmentSlot.MAINHAND, 0.0F)`).
+    - Kinh nghiệm rơi: `xpReward = 3`.
+    - Flapping: vỗ cánh mỗi 4 ticks (`tickCount % 4 == 0`).
+    - Charging: khi lao vào tấn công, đồng bộ dữ liệu `DATA_FLAGS_ID = 1` và phát âm thanh `SoundEvents.VEX_CHARGE`.
+  - `Zoglin.java:69-70, 84, 139, 203-207, 252`:
+    - Kinh nghiệm rơi: `xpReward = 5`.
+    - Targeting: Zoglin là quái thú tấn công điên cuồng mọi mob sống ngoại trừ chính Zoglin và Creeper (`!target.is(ZOGLIN) && !target.is(CREEPER)`).
+    - Attack damage: Người lớn gây 6.0 damage, con non gây 0.5 damage.
+    - Sound pitch: Con non có pitch cao hơn (`rand_diff * 0.2 + 1.5` so với `rand_diff * 0.2 + 1.0` của người lớn).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_ravager_target_speed`: immobile 0.0, targeting 0.35, idle 0.3.
+    - `calculate_ravager_strong_knockback`: computes 3D velocity impulse `(xd/dd * 4, 0.2, zd/dd * 4)`.
+    - `should_ravager_roar_knockback_target`: returns true for non-players, false for players.
+    - `is_illager_immune_to_ravager_roar`: filters Pillager, Evoker, Vindicator, Illusioner, Witch, Ravager.
+    - `get_ravager_xp_reward`: returns 20.
+    - `is_vex_flapping`: `tick % 4 == 0`.
+    - `get_vex_xp_reward`: returns 3.
+    - `can_zoglin_target_entity`: excludes Zoglin and Creeper.
+    - `calculate_zoglin_attack_damage`: adult 6.0, baby 0.5.
+    - `calculate_zoglin_sound_pitch`: baby base 1.5, adult base 1.0.
+  - Updated `RavagerEntity` in `crates/pumpkin-core/src/entity/mob/ravager.rs`:
+    - `get_base_experience_reward`: returns 20 XP.
+    - `on_attack`: triggers attack animation status 4 and plays `Sound::EntityRavagerAttack`.
+    - `roar`: exempts players from knockback, exempts illagers from damage, broadcasts status 69.
+    - `strong_knockback`: uses `calculate_ravager_strong_knockback`.
+  - Updated `VexEntity` in `crates/pumpkin-core/src/entity/mob/vex.rs`:
+    - Equips Iron Sword in mainhand with 0.0 drop chance.
+    - Added `is_charging` state and syncs `DATA_FLAGS_ID`.
+    - Plays `Sound::EntityVexCharge` on attack.
+    - `get_base_experience_reward`: returns 3 XP.
+  - Updated `ZoglinEntity` in `crates/pumpkin-core/src/entity/mob/zoglin.rs`:
+    - `ActiveTargetGoal` uses `can_zoglin_target_entity`.
+    - `get_base_experience_reward`: returns 5 XP.
+    - `set_baby`: sets attack damage via `calculate_zoglin_attack_damage(true)`.
+    - `mob_tick`: calculates ambient/angry pitch via `calculate_zoglin_sound_pitch`.
+  - Added unit test `test_ravager_vex_and_zoglin_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 62/62 tests passing in `entity::combat::tests`.
+
+

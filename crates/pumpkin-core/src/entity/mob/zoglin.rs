@@ -28,7 +28,6 @@ pub struct ZoglinEntity {
 
 impl ZoglinEntity {
     pub const XP_REWARD: u32 = 5;
-    const BABY_ATTACK_DAMAGE: f64 = 0.5;
 
     pub const BABY_DIMENSIONS: EntityDimensions = EntityDimensions {
         width: 0.75,
@@ -108,8 +107,7 @@ impl ZoglinEntity {
                     true,
                     false,
                     Some(|target: &LivingEntity, _world: &World| {
-                        target.entity.entity_type != &EntityType::ZOGLIN
-                            && target.entity.entity_type != &EntityType::CREEPER
+                        crate::entity::combat::can_zoglin_target_entity(target.entity.entity_type)
                     }),
                 )),
             );
@@ -134,7 +132,10 @@ impl ZoglinEntity {
             Entity::type_dimensions(living.entity.entity_type)
         });
         if baby {
-            living.set_attribute_base(&Attributes::ATTACK_DAMAGE, Self::BABY_ATTACK_DAMAGE);
+            living.set_attribute_base(
+                &Attributes::ATTACK_DAMAGE,
+                crate::entity::combat::calculate_zoglin_attack_damage(true),
+            );
         }
     }
 }
@@ -200,11 +201,11 @@ impl Mob for ZoglinEntity {
             } else {
                 Sound::EntityZoglinAmbient
             };
-            let pitch = if self.is_baby.load(Ordering::Relaxed) {
-                (rand::random::<f32>() - rand::random::<f32>()).mul_add(0.2, 1.5)
-            } else {
-                (rand::random::<f32>() - rand::random::<f32>()).mul_add(0.2, 1.0)
-            };
+            let rand_diff = rand::random::<f32>() - rand::random::<f32>();
+            let pitch = crate::entity::combat::calculate_zoglin_sound_pitch(
+                self.is_baby.load(Ordering::Relaxed),
+                rand_diff,
+            );
             entity.world.load().play_sound_fine(
                 sound,
                 SoundCategory::Hostile,
@@ -213,6 +214,10 @@ impl Mob for ZoglinEntity {
                 pitch,
             );
         }
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     fn on_attack(&self, target: &dyn EntityBase) {

@@ -3996,6 +3996,135 @@ pub fn is_magma_cube_damage_negated(damage_type: &pumpkin_data::damage::DamageTy
     )
 }
 
+/// Calculates target movement speed for Ravager based on mobility state and target presence.
+///
+/// Mirrors vanilla `Ravager.java:139-145`:
+/// - When immobile (stunned, attacking, roaring): `0.0`
+/// - When targeting: `0.35`
+/// - Default idle: `0.3`
+#[must_use]
+pub const fn calculate_ravager_target_speed(is_immobile: bool, has_target: bool) -> f64 {
+    if is_immobile {
+        0.0
+    } else if has_target {
+        0.35
+    } else {
+        0.3
+    }
+}
+
+/// Calculates strong knockback impulse applied by Ravager.
+///
+/// Mirrors vanilla `Ravager.java:250-254`:
+/// ```java
+/// double xd = entity.getX() - this.getX();
+/// double zd = entity.getZ() - this.getZ();
+/// double dd = Math.max(xd * xd + zd * zd, 0.001);
+/// entity.push(xd / dd * 4.0, 0.2, zd / dd * 4.0);
+/// ```
+#[must_use]
+pub fn calculate_ravager_strong_knockback(
+    ravager_pos_x: f64,
+    ravager_pos_z: f64,
+    target_pos_x: f64,
+    target_pos_z: f64,
+) -> (f64, f64, f64) {
+    let xd = target_pos_x - ravager_pos_x;
+    let zd = target_pos_z - ravager_pos_z;
+    let dd = (xd.mul_add(xd, zd * zd)).max(0.001);
+    let push_x = (xd / dd) * 4.0;
+    let push_z = (zd / dd) * 4.0;
+    (push_x, 0.2, push_z)
+}
+
+/// Determines whether an entity receives strong knockback from Ravager roar.
+///
+/// Mirrors vanilla `Ravager.java:233-235`:
+/// `if (!(entity instanceof Player)) { this.strongKnockback(entity); }`
+#[must_use]
+pub const fn should_ravager_roar_knockback_target(is_player: bool) -> bool {
+    !is_player
+}
+
+/// Checks whether an entity type is immune to Ravager roar damage (Illagers).
+///
+/// Mirrors vanilla `Ravager.java:229-231`:
+/// `if (!(entity instanceof AbstractIllager)) { entity.hurtServer(level, ..., 6.0F); }`
+#[must_use]
+pub fn is_illager_immune_to_ravager_roar(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    entity_type == &pumpkin_data::entity::EntityType::PILLAGER
+        || entity_type == &pumpkin_data::entity::EntityType::EVOKER
+        || entity_type == &pumpkin_data::entity::EntityType::VINDICATOR
+        || entity_type == &pumpkin_data::entity::EntityType::ILLUSIONER
+        || entity_type == &pumpkin_data::entity::EntityType::WITCH
+        || entity_type == &pumpkin_data::entity::EntityType::RAVAGER
+}
+
+/// Calculates base experience reward dropped by a Ravager (20 XP).
+///
+/// Mirrors vanilla `Ravager.java:70`:
+/// `this.xpReward = 20;`
+#[must_use]
+pub const fn get_ravager_xp_reward() -> u32 {
+    20
+}
+
+/// Determines whether a Vex is currently flapping its wings.
+///
+/// Mirrors vanilla `Vex.java:49, 64-66`:
+/// `public static final int TICKS_PER_FLAP = Mth.ceil((float) (Math.PI * 5.0 / 4.0)); // 4`
+#[must_use]
+pub const fn is_vex_flapping(tick_count: u32) -> bool {
+    tick_count % 4 == 0
+}
+
+/// Calculates base experience reward dropped by a Vex (3 XP).
+///
+/// Mirrors vanilla `Vex.java:61`:
+/// `this.xpReward = 3;`
+#[must_use]
+pub const fn get_vex_xp_reward() -> u32 {
+    3
+}
+
+/// Determines whether a Zoglin can target an entity.
+///
+/// Mirrors vanilla `Zoglin.java:139`:
+/// `!target.is(EntityTypes.ZOGLIN) && !target.is(EntityTypes.CREEPER)`
+#[must_use]
+pub fn can_zoglin_target_entity(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    entity_type != &pumpkin_data::entity::EntityType::ZOGLIN
+        && entity_type != &pumpkin_data::entity::EntityType::CREEPER
+}
+
+/// Calculates Zoglin attack damage based on baby status.
+///
+/// Mirrors vanilla `Zoglin.java:69-70, 252`:
+/// - Adult: 6.0
+/// - Baby: 0.5
+#[must_use]
+pub const fn calculate_zoglin_attack_damage(is_baby: bool) -> f64 {
+    if is_baby {
+        0.5
+    } else {
+        6.0
+    }
+}
+
+/// Calculates sound pitch for Zoglin ambient/angry sound.
+///
+/// Mirrors vanilla `Zoglin.java:203-207`:
+/// - Baby: `rand_diff * 0.2 + 1.5`
+/// - Adult: `rand_diff * 0.2 + 1.0`
+#[must_use]
+pub fn calculate_zoglin_sound_pitch(is_baby: bool, rand_diff: f32) -> f32 {
+    if is_baby {
+        rand_diff.mul_add(0.2, 1.5)
+    } else {
+        rand_diff.mul_add(0.2, 1.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6260,6 +6389,62 @@ mod tests {
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::CAMPFIRE));
         assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::FALL));
         assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::PLAYER_ATTACK));
+    }
+
+    #[test]
+    fn test_ravager_vex_and_zoglin_parity() {
+        // 1. Ravager target movement speed (Ravager.java:139-145)
+        assert_eq!(calculate_ravager_target_speed(true, false), 0.0);
+        assert_eq!(calculate_ravager_target_speed(true, true), 0.0);
+        assert_eq!(calculate_ravager_target_speed(false, true), 0.35);
+        assert_eq!(calculate_ravager_target_speed(false, false), 0.3);
+
+        // 2. Ravager strong knockback calculation (Ravager.java:250-254)
+        let (kx, ky, kz) = calculate_ravager_strong_knockback(0.0, 0.0, 3.0, 4.0);
+        // dd = max(9 + 16, 0.001) = 25.0, push_x = 3.0 / 25.0 * 4.0 = 0.48, push_z = 4.0 / 25.0 * 4.0 = 0.64
+        assert!((kx - 0.48).abs() < 1e-6);
+        assert_eq!(ky, 0.2);
+        assert!((kz - 0.64).abs() < 1e-6);
+
+        // 3. Ravager roar knockback exemption: Player is exempt from strong knockback (Ravager.java:233)
+        assert!(!should_ravager_roar_knockback_target(true));
+        assert!(should_ravager_roar_knockback_target(false));
+
+        // 4. Ravager roar damage exemption: Illagers exempt (Ravager.java:229-231)
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::PILLAGER));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::EVOKER));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::VINDICATOR));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::ILLUSIONER));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::WITCH));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::RAVAGER));
+        assert!(!is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::PLAYER));
+        assert!(!is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::IRON_GOLEM));
+        assert!(!is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::VILLAGER));
+
+        // 5. XP rewards
+        assert_eq!(get_ravager_xp_reward(), 20);
+        assert_eq!(get_vex_xp_reward(), 3);
+
+        // 6. Vex flapping ticks (Vex.java:49, 64-66: tickCount % 4 == 0)
+        assert!(is_vex_flapping(0));
+        assert!(!is_vex_flapping(1));
+        assert!(!is_vex_flapping(2));
+        assert!(!is_vex_flapping(3));
+        assert!(is_vex_flapping(4));
+
+        // 7. Zoglin targeting & attack damage parity (Zoglin.java:69-70, 139)
+        assert!(!can_zoglin_target_entity(&pumpkin_data::entity::EntityType::ZOGLIN));
+        assert!(!can_zoglin_target_entity(&pumpkin_data::entity::EntityType::CREEPER));
+        assert!(can_zoglin_target_entity(&pumpkin_data::entity::EntityType::PLAYER));
+        assert!(can_zoglin_target_entity(&pumpkin_data::entity::EntityType::VILLAGER));
+        assert!(can_zoglin_target_entity(&pumpkin_data::entity::EntityType::IRON_GOLEM));
+
+        assert_eq!(calculate_zoglin_attack_damage(false), 6.0);
+        assert_eq!(calculate_zoglin_attack_damage(true), 0.5);
+
+        // 8. Zoglin sound pitch (Zoglin.java:203-207)
+        assert_eq!(calculate_zoglin_sound_pitch(false, 0.0), 1.0);
+        assert_eq!(calculate_zoglin_sound_pitch(true, 0.0), 1.5);
     }
 }
 
