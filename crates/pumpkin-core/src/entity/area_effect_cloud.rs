@@ -209,26 +209,17 @@ impl EntityBase for AreaEffectCloudEntity {
     #[allow(clippy::semicolon_outside_block)]
     fn tick(&self, _caller: &dyn EntityBase, _server: &Server) {
         // Age & duration handling
-        {
+        let age = {
             let mut age = self
                 .age
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             *age += 1;
-            let duration = *self
-                .duration
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if *age > duration {
-                // Remove old entities
-                self.entity.remove();
-                return;
-            }
-        }
+            *age
+        };
 
-        // Get current age and waiting period
-        let age = *self
-            .age
+        let duration = *self
+            .duration
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let wait_time = *self
@@ -236,7 +227,15 @@ impl EntityBase for AreaEffectCloudEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-        // When the waiting period ends, notify clients so they render full particles
+        // Vanilla AreaEffectCloud.java:191:
+        // if (this.duration != -1 && this.tickCount - this.waitTime >= this.duration) { this.discard(); }
+        if crate::entity::combat::should_area_effect_cloud_discard(age, wait_time, duration, 1.0) {
+            self.entity.remove();
+            return;
+        }
+
+        // Vanilla AreaEffectCloud.java:194-198:
+        // boolean shouldWait = this.tickCount < this.waitTime;
         if age == wait_time && wait_time > 0 {
             self.entity.set_synced_data(
                 pumpkin_data::tracked_data::area_effect_cloud::WAITING,
@@ -249,7 +248,7 @@ impl EntityBase for AreaEffectCloudEntity {
             return;
         }
 
-        // Update radius
+        // Update radius per tick
         {
             let mut radius = self
                 .radius
@@ -259,19 +258,23 @@ impl EntityBase for AreaEffectCloudEntity {
                 .radius_on_tick
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            *radius += delta;
-            let current_radius = *radius;
-            if current_radius <= 0.0 {
-                self.entity.remove();
-                return;
-            }
+            if delta != 0.0 {
+                *radius += delta;
+                let current_radius = *radius;
+                // Vanilla AreaEffectCloud.java:204: if (radius < 0.5F) { this.discard(); return; }
+                if current_radius < 0.5 {
+                    drop(radius);
+                    self.entity.remove();
+                    return;
+                }
 
-            // Send new radius
-            drop(radius);
-            self.entity.set_synced_data(
-                pumpkin_data::tracked_data::area_effect_cloud::RADIUS,
-                current_radius,
-            );
+                // Send new radius
+                drop(radius);
+                self.entity.set_synced_data(
+                    pumpkin_data::tracked_data::area_effect_cloud::RADIUS,
+                    current_radius,
+                );
+            }
         }
 
         // Tick down reapplication map
@@ -286,14 +289,19 @@ impl EntityBase for AreaEffectCloudEntity {
             });
         }
 
+        // Vanilla AreaEffectCloud.java:212: only search and apply effects every 5 ticks
+        if age % 5 != 0 {
+            return;
+        }
+
         // Apply effects to nearby entities if eligible
         let pos = self.entity.pos.load();
         let r = *self
             .radius
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) as f64;
-        let min = Vector3::new(pos.x - r, pos.y - r, pos.z - r);
-        let max = Vector3::new(pos.x + r, pos.y + r, pos.z + r);
+        let min = Vector3::new(pos.x - r, pos.y - 0.5, pos.z - r);
+        let max = Vector3::new(pos.x + r, pos.y + 0.5, pos.z + r);
         let aabb = BoundingBox::new(min, max);
         let world = self.entity.world.load();
 
@@ -335,14 +343,20 @@ impl EntityBase for AreaEffectCloudEntity {
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 as f64;
             let pos_e = cand_clone.get_entity().pos.load();
-            let dx = pos_e.x - pos.x;
-            let dy = pos_e.y - pos.y;
-            let dz = pos_e.z - pos.z;
-            let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-            if dist > radius_f {
+            // Vanilla AreaEffectCloud.java:223-226: horizontal cylinder distance check xd*xd + zd*zd <= radius*radius
+            if !crate::entity::combat::is_entity_in_area_effect_cloud_radius(
+                pos.x,
+                pos.z,
+                pos_e.x,
+                pos_e.z,
+                radius_f as f32,
+            ) {
                 continue;
             }
 
+            let dx = pos_e.x - pos.x;
+            let dz = pos_e.z - pos.z;
+            let dist = (dx * dx + dz * dz).sqrt();
             let scale = 1.0f32 - (dist as f32 / radius_f as f32);
 
             // Decide whether this contact will actually apply an effect

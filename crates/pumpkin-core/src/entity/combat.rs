@@ -2212,6 +2212,115 @@ pub const fn should_water_potion_extinguish_entity(
     is_water && is_on_fire && is_alive
 }
 
+/// Returns the vanilla default duration (in ticks) for lingering potion clouds (30 seconds = 600 ticks).
+///
+/// Mirrors vanilla `AreaEffectCloud.java:33`:
+/// `private int duration = 600;`
+#[must_use]
+pub const fn get_lingering_potion_initial_duration() -> i32 {
+    600
+}
+
+/// Returns the vanilla initial radius (in blocks) for lingering potion clouds (3.0 blocks).
+///
+/// Mirrors vanilla `AreaEffectCloud.java:29`:
+/// `public static final float DEFAULT_RADIUS = 3.0F;`
+#[must_use]
+pub const fn get_lingering_potion_initial_radius() -> f32 {
+    3.0
+}
+
+/// Returns the vanilla wait time (in ticks) before lingering potion cloud activates (0.5 seconds = 10 ticks).
+///
+/// Mirrors vanilla `ThrownLingeringPotion.java:47`:
+/// `areaEffectCloud.setWaitTime(10);`
+#[must_use]
+pub const fn get_lingering_potion_wait_time() -> i32 {
+    10
+}
+
+/// Returns the vanilla radius shrinkage on use when an entity is affected (-0.5 blocks).
+///
+/// Mirrors vanilla `ThrownLingeringPotion.java:46`:
+/// `areaEffectCloud.setRadiusOnUse(-0.5F);`
+#[must_use]
+pub const fn get_lingering_potion_radius_on_use() -> f32 {
+    -0.5
+}
+
+/// Returns the vanilla duration change on use when an entity is affected (0 ticks).
+///
+/// Mirrors vanilla `AreaEffectCloud.java:36` (not modified by `ThrownLingeringPotion`):
+/// `private int durationOnUse = 0;`
+#[must_use]
+pub const fn get_lingering_potion_duration_on_use() -> i32 {
+    0
+}
+
+/// Returns the vanilla reapplication delay between reapplying effects to the same entity (20 ticks = 1 second).
+///
+/// Mirrors vanilla `AreaEffectCloud.java:35`:
+/// `private int reapplicationDelay = 20;`
+#[must_use]
+pub const fn get_lingering_potion_reapplication_delay() -> i32 {
+    20
+}
+
+/// Calculates radius shrinkage per tick for lingering potion clouds.
+///
+/// Mirrors vanilla `ThrownLingeringPotion.java:48`:
+/// `areaEffectCloud.setRadiusPerTick(-areaEffectCloud.getRadius() / (float)areaEffectCloud.getDuration());`
+#[must_use]
+pub fn calculate_lingering_potion_radius_per_tick(radius: f32, duration: i32) -> f32 {
+    -radius / (duration as f32).max(1.0)
+}
+
+/// Checks whether an area effect cloud has expired by duration or shrunk below minimum radius (0.5 blocks).
+///
+/// Mirrors vanilla `AreaEffectCloud.java:191-192, 204-206, 239-241`:
+/// ```java
+/// if (this.duration != -1 && this.tickCount - this.waitTime >= this.duration) { this.discard(); }
+/// if (radius < 0.5F) { this.discard(); }
+/// ```
+#[must_use]
+pub const fn should_area_effect_cloud_discard(
+    age: i32,
+    wait_time: i32,
+    duration: i32,
+    radius: f32,
+) -> bool {
+    if duration != -1 && (age - wait_time) >= duration {
+        return true;
+    }
+    if radius < 0.5 {
+        return true;
+    }
+    false
+}
+
+/// Checks whether an entity is within horizontal radius of an area effect cloud.
+///
+/// Mirrors vanilla `AreaEffectCloud.java:223-226`:
+/// ```java
+/// double xd = entity.getX() - this.getX();
+/// double zd = entity.getZ() - this.getZ();
+/// double dist = xd * xd + zd * zd;
+/// if (dist <= radius * radius)
+/// ```
+#[must_use]
+pub fn is_entity_in_area_effect_cloud_radius(
+    cloud_x: f64,
+    cloud_z: f64,
+    entity_x: f64,
+    entity_z: f64,
+    radius: f32,
+) -> bool {
+    let dx = entity_x - cloud_x;
+    let dz = entity_z - cloud_z;
+    let dist_sq = dx * dx + dz * dz;
+    dist_sq <= ((radius * radius) as f64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3665,6 +3774,34 @@ mod tests {
         assert!(!should_water_potion_extinguish_entity(false, true, true));
         assert!(!should_water_potion_extinguish_entity(true, false, true));
         assert!(!should_water_potion_extinguish_entity(true, true, false));
+    }
+
+    #[test]
+    fn test_lingering_potion_and_area_effect_cloud_parity() {
+        // 1. Initial lingering potion parameters (ThrownLingeringPotion.java:44-51)
+        assert_eq!(get_lingering_potion_initial_duration(), 600);
+        assert_eq!(get_lingering_potion_initial_radius(), 3.0);
+        assert_eq!(get_lingering_potion_wait_time(), 10);
+        assert_eq!(get_lingering_potion_radius_on_use(), -0.5);
+        assert_eq!(get_lingering_potion_duration_on_use(), 0);
+        assert_eq!(get_lingering_potion_reapplication_delay(), 20);
+
+        // 2. Radius per tick calculation (ThrownLingeringPotion.java:48: -radius / duration)
+        let radius_per_tick = calculate_lingering_potion_radius_per_tick(3.0, 600);
+        assert!((radius_per_tick - (-0.005)).abs() < 1e-6);
+
+        // 3. Cloud discard condition (AreaEffectCloud.java:191-192, 204-206, 239-241)
+        // Age not expired (age - wait_time < duration)
+        assert!(!should_area_effect_cloud_discard(609, 10, 600, 2.0));
+        // Age expired (age - wait_time >= duration)
+        assert!(should_area_effect_cloud_discard(610, 10, 600, 2.0));
+        // Minimum radius threshold (radius < 0.5)
+        assert!(should_area_effect_cloud_discard(100, 10, 600, 0.49));
+        assert!(!should_area_effect_cloud_discard(100, 10, 600, 0.5));
+
+        // 4. Horizontal distance check (AreaEffectCloud.java:223-226)
+        assert!(is_entity_in_area_effect_cloud_radius(10.0, 20.0, 12.0, 21.0, 3.0)); // dist_sq = 4 + 1 = 5 <= 9
+        assert!(!is_entity_in_area_effect_cloud_radius(10.0, 20.0, 13.0, 21.0, 3.0)); // dist_sq = 9 + 1 = 10 > 9
     }
 }
 

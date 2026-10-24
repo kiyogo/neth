@@ -2502,6 +2502,29 @@
   - Updated `SplashPotionEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/splash_potion.rs` to broadcast both particle event (`2002`/`2007`) and sound event (`1053`/`1054`), and extinguish fire on living entities when splashed by a water potion.
   - Added unit test `test_splash_potion_scale_duration_and_sound_events_parity` in `combat.rs`. Total 40/40 tests passing in `entity::combat::tests`.
 
+## Gap 155: Thrown Lingering Potion Wait Time, Radius Shrinkage Per Tick/Use & AreaEffectCloud Parity
+- **Vanilla Reference**:
+  - `ThrownLingeringPotion.java:34-53`:
+    ```java
+    areaEffectCloud.setRadius(3.0F);
+    areaEffectCloud.setRadiusOnUse(-0.5F);
+    areaEffectCloud.setWaitTime(10);
+    areaEffectCloud.setRadiusPerTick(-areaEffectCloud.getRadius() / (float)areaEffectCloud.getDuration());
+    areaEffectCloud.applyComponentsFromItemStack(itemStack);
+    ```
+    - Lingering potion creates an `AreaEffectCloud` with initial radius 3.0 blocks, radius on use -0.5 blocks, wait time 10 ticks (0.5 seconds), default duration 600 ticks (30 seconds), and radius shrinkage per tick `-3.0 / 600.0 = -0.005` blocks/tick.
+    - Also emits break sound level event `1053` or `1054` (for instant effects) matching `AbstractThrownPotion.java:80-90`.
+  - `AreaEffectCloud.java:190-262`:
+    - Cloud expiry lifecycle: `if (this.duration != -1 && this.tickCount - this.waitTime >= this.duration) { this.discard(); }`
+    - Minimum radius threshold: if `radius < 0.5F` (either through `radiusPerTick` or `radiusOnUse`), the cloud immediately discards.
+    - Effect application cadence: entity search and effect reapplication runs every 5 ticks (`tickCount % 5 == 0`).
+    - Horizontal distance check: 2D cylindrical plane `xd * xd + zd * zd <= radius * radius` within cloud height 0.5 blocks.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `get_lingering_potion_initial_duration`, `get_lingering_potion_initial_radius`, `get_lingering_potion_wait_time`, `get_lingering_potion_radius_on_use`, `get_lingering_potion_duration_on_use`, `get_lingering_potion_reapplication_delay`, `calculate_lingering_potion_radius_per_tick`, `should_area_effect_cloud_discard`, and `is_entity_in_area_effect_cloud_radius` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `crates/pumpkin-core/src/entity/projectile/lingering_potion.rs` to broadcast break sound level event `1053`/`1054` and pass vanilla constants to `AreaEffectCloudEntity::create` (`wait_time: 10`, `duration_on_use: 0`).
+  - Updated `AreaEffectCloudEntity::tick` in `crates/pumpkin-core/src/entity/area_effect_cloud.rs` to enforce vanilla discard check `age - wait_time >= duration`, radius shrinkage threshold `radius < 0.5`, 5-tick search cadence, and 2D cylindrical distance check.
+  - Added unit test `test_lingering_potion_and_area_effect_cloud_parity` in `combat.rs`. Total 41/41 tests passing in `entity::combat::tests`.
+
 
 
 

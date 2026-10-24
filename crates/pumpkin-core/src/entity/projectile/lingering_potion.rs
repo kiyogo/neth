@@ -185,6 +185,18 @@ impl EntityBase for LingeringPotionEntity {
             &CWorldEvent::new(event_id, block_pos, color, false),
         );
 
+        // Vanilla AbstractThrownPotion emits break sound event 1054 (instant) or 1053 (duration/other)
+        let has_instant_effects = effects.iter().any(|(eff, _, _, _, _, _)| {
+            eff.id == pumpkin_data::effect::StatusEffect::INSTANT_DAMAGE.id
+                || eff.id == pumpkin_data::effect::StatusEffect::INSTANT_HEALTH.id
+        });
+        let sound_level_event =
+            crate::entity::combat::get_splash_potion_break_sound_event(has_instant_effects);
+        world.broadcast_to_chunk(
+            chunk_pos,
+            &CWorldEvent::new(sound_level_event, block_pos, 0, false),
+        );
+
         // Spawn and configure an `AreaEffectCloud` entity
         extinguish_fire_if_water_potion(&world, hit_pos, &stack);
 
@@ -220,12 +232,12 @@ impl EntityBase for LingeringPotionEntity {
             cloud_entity,
             stack,
             effects,
-            600,
-            3.0,
-            20,
-            20,
-            -0.5,
-            -100,
+            crate::entity::combat::get_lingering_potion_initial_duration(),
+            crate::entity::combat::get_lingering_potion_initial_radius(),
+            crate::entity::combat::get_lingering_potion_reapplication_delay(),
+            crate::entity::combat::get_lingering_potion_wait_time(),
+            crate::entity::combat::get_lingering_potion_radius_on_use(),
+            crate::entity::combat::get_lingering_potion_duration_on_use(),
         );
 
         world.spawn_entity(cloud);
