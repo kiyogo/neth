@@ -323,6 +323,35 @@ pub fn calculate_base_damage_scale_factor(attack_strength_scale: f64) -> f64 {
     attack_strength_scale.powi(2).mul_add(0.8, 0.2)
 }
 
+/// Calculates total melee attack damage mirroring Vanilla `Player.attack`:
+/// `baseDamage *= baseDamageScaleFactor();`
+/// `if (criticalAttack) { baseDamage *= 1.5F; }`
+/// `totalDamage = baseDamage + magicBoost;`
+///
+/// In vanilla Minecraft, enchantment damage (magicBoost) is NOT multiplied
+/// by the 1.5x critical hit multiplier. Only weapon base damage crits.
+#[must_use]
+pub fn calculate_player_attack_damage(
+    base_weapon_damage: f64,
+    attack_cooldown_progress: f64,
+    bonus_item_damage: f64,
+    extra_enchantment_damage: f64,
+    is_critical: bool,
+) -> f64 {
+    let damage_multiplier = if attack_cooldown_progress < 1.0 {
+        calculate_base_damage_scale_factor(attack_cooldown_progress)
+    } else {
+        1.0
+    };
+    let mut base_damage = (base_weapon_damage * damage_multiplier).max(0.0);
+    base_damage += bonus_item_damage;
+    if is_critical {
+        base_damage *= 1.5;
+    }
+    let magic_boost = extra_enchantment_damage * attack_cooldown_progress;
+    (base_damage + magic_boost).max(0.0)
+}
+
 pub fn handle_knockback(attacker: &Entity, victim: &dyn EntityBase, strength: f64) {
     let resistance = victim.get_living_entity().map_or(0.0, |living| {
         living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE)
@@ -470,6 +499,7 @@ pub fn player_attack_sound(pos: &Vector3<f64>, world: &World, attack_type: Attac
                 SoundCategory::Players,
                 pos,
             );
+            world.play_sound(Sound::EntityPlayerAttackStrong, SoundCategory::Players, pos);
         }
         AttackType::Critical => {
             world.play_sound(Sound::EntityPlayerAttackCrit, SoundCategory::Players, pos);
@@ -1429,6 +1459,44 @@ mod tests {
         // At tick 23: fully charged (1.0)
         let p_axe_full = calculate_attack_cooldown_progress(23, 0.5, 20.0, 0.9);
         assert_eq!(p_axe_full, 1.0);
+    }
+
+    #[test]
+    fn test_player_attack_damage_critical_and_magic_boost_parity() {
+        // Vanilla Player.java:946-966:
+        // baseDamage *= baseDamageScaleFactor();
+        // baseDamage += bonus_item_damage;
+        // if (criticalAttack) { baseDamage *= 1.5F; }
+        // totalDamage = baseDamage + magicBoost;
+
+        // 1. Diamond sword (base 7.0), fully charged, no enchants, non-crit
+        let dmg_normal = calculate_player_attack_damage(7.0, 1.0, 0.0, 0.0, false);
+        assert_eq!(dmg_normal, 7.0);
+
+        // 2. Diamond sword (base 7.0), fully charged, no enchants, CRIT (1.5x on base)
+        let dmg_crit = calculate_player_attack_damage(7.0, 1.0, 0.0, 0.0, true);
+        assert_eq!(dmg_crit, 10.5);
+
+        // 3. Diamond sword (base 7.0) with Sharpness V (3.0 extra magic damage):
+        // Normal hit: base (7.0) + magic (3.0) = 10.0
+        let dmg_sharp = calculate_player_attack_damage(7.0, 1.0, 0.0, 3.0, false);
+        assert_eq!(dmg_sharp, 10.0);
+
+        // Critical hit: base crits (7.0 * 1.5 = 10.5) + magic (3.0, NOT multiplied) = 13.5
+        // (Vanilla parity: Sharpness does NOT crit!)
+        let dmg_sharp_crit = calculate_player_attack_damage(7.0, 1.0, 0.0, 3.0, true);
+        assert_eq!(dmg_sharp_crit, 13.5);
+
+        // 4. Mace with bonus damage: bonus damage IS added before crit multiplier
+        let dmg_mace_crit = calculate_player_attack_damage(6.0, 1.0, 8.0, 0.0, true);
+        assert_eq!(dmg_mace_crit, (6.0 + 8.0) * 1.5); // 21.0
+
+        // 5. Cooldown reduction: at progress 0.5 (damage multiplier 0.4):
+        // Base damage = 7.0 * 0.4 = 2.8
+        // Magic boost = 3.0 * 0.5 = 1.5
+        // Total = 4.3
+        let dmg_cooldown = calculate_player_attack_damage(7.0, 0.5, 0.0, 3.0, false);
+        assert!((dmg_cooldown - 4.3).abs() < 1e-4);
     }
 }
 

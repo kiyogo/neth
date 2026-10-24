@@ -1632,8 +1632,33 @@
   - Added `Player::reset_attack_cooldown()` and pure helpers `calculate_attack_cooldown_progress` and `calculate_base_damage_scale_factor`.
   - Added attack cooldown ticker reset on main hand arm swing (`handle_swing_arm`).
   - Added item use interruption (`player.stop_using_item()`) and attack cooldown reset on carried slot change (`handle_set_held_item`).
-  - Added attack cooldown reset on item drop (`drop_held_item`) and hand swap (`swap_item`).
   - Verified in unit tests `test_attack_cooldown_progress_and_base_damage_scale_parity`.
+
+## Gap 128: Critical Hit Formula (Enchantment Magic Boost Exclusion) & Sprint Knockback Sound Parity
+- **Vanilla Reference**: `Player.java:946-966, 1052-1064`:
+  - `Player.java:946-966`:
+    ```java
+    float attackStrengthScale = this.getAttackStrengthScale(0.5F);
+    float magicBoost = attackStrengthScale * (this.getEnchantedDamage(entity, baseDamage, damageSource) - baseDamage);
+    baseDamage *= this.baseDamageScaleFactor();
+    ...
+    baseDamage += attackingItemStack.getItem().getAttackDamageBonus(entity, baseDamage, damageSource);
+    boolean criticalAttack = fullStrengthAttack && this.canCriticalAttack(entity);
+    if (criticalAttack) {
+       baseDamage *= 1.5F;
+    }
+    float totalDamage = baseDamage + magicBoost;
+    ```
+  - `Player.java:953-956, 1057-1059`:
+    - Sprint knockback attacks play `SoundEvents.PLAYER_ATTACK_KNOCKBACK` immediately, AND ALSO play `SoundEvents.PLAYER_ATTACK_STRONG` in `attackVisualEffects` (since `fullStrengthAttack == true && !criticalAttack && !sweepAttack`).
+  - Previously in Neth:
+    - Enchantment extra damage (`extra_ench_damage`) was added to `damage` before the critical hit check, causing `damage *= 1.5` to multiply enchantment damage by 1.5x as well. In Vanilla Java, enchantment damage (Sharpness, Smite, Bane of Arthropods) is never multiplied by crits.
+    - `AttackType::Knockback` only played `EntityPlayerAttackKnockback`, omitting the `EntityPlayerAttackStrong` sound effect.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Implemented `calculate_player_attack_damage(base_weapon_damage, attack_cooldown_progress, bonus_item_damage, extra_enchantment_damage, is_critical) -> f64` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `Player::attack` to compute `damage` using this vanilla formula where `extra_ench_damage` is added after the 1.5x critical multiplier on `base_damage`.
+  - Updated `player_attack_sound` to play both `EntityPlayerAttackKnockback` and `EntityPlayerAttackStrong` on knockback attacks.
+  - Verified in unit tests `test_player_attack_damage_critical_and_magic_boost_parity`.
 
 
 

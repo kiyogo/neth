@@ -1385,14 +1385,12 @@ impl Player {
             );
         }
 
-        let damage = self
+        let base_weapon_damage = self
             .living_entity
             .get_attribute_value(&Attributes::ATTACK_DAMAGE);
         let attack_speed = self
             .living_entity
             .get_attribute_value(&Attributes::ATTACK_SPEED);
-
-        let mut damage_multiplier = 1.0;
 
         let mut extra_ench_damage = 0.0;
         let mut enchantment_knockback = 0.0f64;
@@ -1421,23 +1419,17 @@ impl Player {
         };
         self.last_attacked_ticks.store(0, Ordering::Relaxed);
 
-        // Only reduce attack damage if in cooldown
-        // TODO: Enchantments are reduced in the same way, just without the square.
-        if attack_cooldown_progress < 1.0 {
-            damage_multiplier = combat::calculate_base_damage_scale_factor(attack_cooldown_progress);
-        }
-
-        // Modify the added damage based on the multiplier.
-        let mut damage = damage * damage_multiplier;
-        damage += extra_ench_damage * attack_cooldown_progress;
-        // Strength and Weakness are modifiers on ATTACK_DAMAGE, so
-        // `base_damage` already carries them, like vanilla `Player.attack`.
-        damage = damage.max(0.0);
+        let damage_multiplier = if attack_cooldown_progress < 1.0 {
+            combat::calculate_base_damage_scale_factor(attack_cooldown_progress)
+        } else {
+            1.0
+        };
 
         let attack_type = AttackType::new(self, victim.as_ref(), attack_cooldown_progress as f32);
 
         let is_mace_smash = item_stack.item.id == pumpkin_data::item::Item::MACE.id
             && can_smash_attack(&self.living_entity);
+        let mut bonus_damage = 0.0f64;
         // Vanilla adds the weapon's damage bonus before the critical hit multiplier.
         if is_mace_smash {
             let fall_distance = f64::from(self.living_entity.fall_distance.load());
@@ -1447,13 +1439,18 @@ impl Player {
                     enchantment.modify_fall_based_damage(*level, &mut smash_bonus_per_block);
                 }
             }
-            damage += smash_bonus_per_block
+            bonus_damage = smash_bonus_per_block
                 .mul_add(fall_distance, mace_smash_damage_bonus(fall_distance));
         }
 
-        if matches!(attack_type, AttackType::Critical) {
-            damage *= 1.5;
-        }
+        let is_critical = matches!(attack_type, AttackType::Critical);
+        let damage = combat::calculate_player_attack_damage(
+            base_weapon_damage,
+            attack_cooldown_progress,
+            bonus_damage,
+            extra_ench_damage,
+            is_critical,
+        );
 
         let old_living_health = victim.get_living_entity().map(|l| l.get_health());
 
