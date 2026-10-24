@@ -1731,6 +1731,71 @@ pub fn calculate_swimming_vertical_impulse(
     (impulse, true)
 }
 
+/// Calculates the total oxygen bonus combining base attribute and helmet Respiration enchantment.
+///
+/// Mirrors vanilla `Enchantments.java:287-295` (Respiration adds 1.0 * level to Attributes.OXYGEN_BONUS).
+#[must_use]
+pub fn calculate_respiration_oxygen_bonus(helmet_respiration_level: i32, base_oxygen_bonus: f64) -> f64 {
+    base_oxygen_bonus + (helmet_respiration_level.max(0) as f64)
+}
+
+/// Determines whether an entity's air supply should decrease this tick based on oxygen bonus.
+///
+/// Mirrors vanilla `LivingEntity.java:591-601`:
+/// `oxygenBonus > 0.0 && this.random.nextDouble() >= 1.0 / (oxygenBonus + 1.0) ? currentSupply : currentSupply - 1;`
+#[must_use]
+pub fn should_decrease_air_supply(oxygen_bonus: f64, random_sample: f64) -> bool {
+    if oxygen_bonus <= 0.0 {
+        true
+    } else {
+        random_sample < 1.0 / (oxygen_bonus + 1.0)
+    }
+}
+
+/// Calculates increased air supply when breathing or surfaced.
+///
+/// Mirrors vanilla `LivingEntity.java:603-605`:
+/// `Math.min(currentSupply + 4, this.getMaxAirSupply());`
+#[must_use]
+pub fn calculate_increased_air_supply(current_air: i32, max_air: i32) -> i32 {
+    (current_air + 4).min(max_air)
+}
+
+/// Determines whether an entity should take drowning damage.
+///
+/// Mirrors vanilla `LivingEntity.java:509-511`:
+/// `return this.getAirSupply() <= -20;`
+#[must_use]
+pub fn should_take_drowning_damage(current_air: i32) -> bool {
+    current_air <= -20
+}
+
+/// Checks if any water breathing effect is active.
+///
+/// Mirrors vanilla `MobEffectUtil.java:43-45`:
+/// `mob.hasEffect(MobEffects.WATER_BREATHING) || mob.hasEffect(MobEffects.CONDUIT_POWER) || mob.hasEffect(MobEffects.BREATH_OF_THE_NAUTILUS);`
+#[must_use]
+pub fn has_water_breathing_effects(
+    has_water_breathing: bool,
+    has_conduit_power: bool,
+    has_nautilus_breath: bool,
+) -> bool {
+    has_water_breathing || has_conduit_power || has_nautilus_breath
+}
+
+/// Checks if active status effects allow refilling air supply underwater.
+///
+/// Mirrors vanilla `MobEffectUtil.java:47-49`:
+/// `!mob.hasEffect(MobEffects.BREATH_OF_THE_NAUTILUS) || mob.hasEffect(MobEffects.WATER_BREATHING) || mob.hasEffect(MobEffects.CONDUIT_POWER);`
+#[must_use]
+pub fn should_effects_refill_air_supply(
+    has_water_breathing: bool,
+    has_conduit_power: bool,
+    has_nautilus_breath: bool,
+) -> bool {
+    !has_nautilus_breath || has_water_breathing || has_conduit_power
+}
+
 
 
 #[cfg(test)]
@@ -2913,6 +2978,59 @@ mod tests {
         let (impulse_none, should_apply) = calculate_swimming_vertical_impulse(0.5, 0.0, false, false);
         assert!(!should_apply);
         assert_eq!(impulse_none, 0.0);
+    }
+
+    #[test]
+    fn test_air_supply_respiration_drowning_and_turtle_helmet_parity() {
+        // 1. Oxygen bonus calculation: base 0.0, Respiration III (level 3) -> 3.0
+        let bonus_none = calculate_respiration_oxygen_bonus(0, 0.0);
+        assert_eq!(bonus_none, 0.0);
+        let bonus_resp3 = calculate_respiration_oxygen_bonus(3, 0.0);
+        assert_eq!(bonus_resp3, 3.0);
+        // Base bonus + enchantment
+        let bonus_custom = calculate_respiration_oxygen_bonus(2, 1.5);
+        assert_eq!(bonus_custom, 3.5);
+
+        // 2. Air depletion probability check:
+        // Without respiration: always decreases (should_decrease = true)
+        assert!(should_decrease_air_supply(0.0, 0.0));
+        assert!(should_decrease_air_supply(0.0, 0.999));
+
+        // With Respiration I (oxygen_bonus = 1.0): chance to decrease is 1 / (1 + 1) = 0.5
+        // random < 0.5 -> decreases; random >= 0.5 -> does not decrease (preserves air)
+        assert!(should_decrease_air_supply(1.0, 0.49));
+        assert!(!should_decrease_air_supply(1.0, 0.51));
+
+        // With Respiration III (oxygen_bonus = 3.0): chance to decrease is 1 / (3 + 1) = 0.25
+        assert!(should_decrease_air_supply(3.0, 0.20));
+        assert!(!should_decrease_air_supply(3.0, 0.26));
+
+        // 3. Air recovery rate: +4 per tick, capped at max_air (300)
+        assert_eq!(calculate_increased_air_supply(0, 300), 4);
+        assert_eq!(calculate_increased_air_supply(295, 300), 299);
+        assert_eq!(calculate_increased_air_supply(298, 300), 300);
+        assert_eq!(calculate_increased_air_supply(300, 300), 300);
+
+        // 4. Drowning damage threshold: air <= -20
+        assert!(!should_take_drowning_damage(0));
+        assert!(!should_take_drowning_damage(-1));
+        assert!(!should_take_drowning_damage(-19));
+        assert!(should_take_drowning_damage(-20));
+        assert!(should_take_drowning_damage(-25));
+
+        // 5. Water breathing effect conditions:
+        // Any of WATER_BREATHING, CONDUIT_POWER, or BREATH_OF_THE_NAUTILUS allows breathing underwater
+        assert!(has_water_breathing_effects(true, false, false));
+        assert!(has_water_breathing_effects(false, true, false));
+        assert!(has_water_breathing_effects(false, false, true));
+        assert!(!has_water_breathing_effects(false, false, false));
+
+        // Refill air underwater: allowed unless only BREATH_OF_THE_NAUTILUS is active
+        assert!(should_effects_refill_air_supply(true, false, false));
+        assert!(should_effects_refill_air_supply(false, true, false));
+        assert!(should_effects_refill_air_supply(true, false, true));
+        assert!(!should_effects_refill_air_supply(false, false, true));
+        assert!(should_effects_refill_air_supply(false, false, false));
     }
 }
 

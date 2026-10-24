@@ -2739,6 +2739,31 @@ impl Player {
         self.get_entity().set_pose(actual_pose);
     }
 
+    /// Checks whether the player is currently wearing a Turtle Helmet in their head slot.
+    ///
+    /// Mirrors vanilla `Player.java:281, 329-339` (`isEquipped(Items.TURTLE_HELMET)`).
+    #[must_use]
+    pub fn has_turtle_helmet_equipped(&self) -> bool {
+        self.living_entity.get_equipment_item(&EquipmentSlot::HEAD).item
+            == &pumpkin_data::item::Item::TURTLE_HELMET
+    }
+
+    /// Ticks the turtle helmet water breathing effect when outside of water.
+    ///
+    /// Mirrors vanilla `Player.java:325-327`:
+    /// `this.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 200, 0, false, false, true));`
+    pub fn turtle_helmet_tick(&self) {
+        self.add_effect(pumpkin_data::potion::Effect {
+            effect_type: &pumpkin_data::effect::StatusEffect::WATER_BREATHING,
+            duration: 200,
+            amplifier: 0,
+            ambient: false,
+            show_particles: false,
+            show_icon: true,
+            blend: false,
+        });
+    }
+
     pub fn wake_up(&self) {
         let world = self.world();
         let Some(bed_pos) = self.sleeping_bed_pos.load() else {
@@ -3499,6 +3524,13 @@ impl Player {
             }
         }
         self.hunger_manager.tick(self);
+
+        // Vanilla Player.java:281-283: Water breathing tick when wearing turtle helmet outside of water
+        if !super::breath::BreathManager::is_eye_in_water(self.get_entity())
+            && self.has_turtle_helmet_equipped()
+        {
+            self.turtle_helmet_tick();
+        }
 
         // Vanilla updates pose in PlayerEntity#tick after super.tick().
         self.update_player_pose();

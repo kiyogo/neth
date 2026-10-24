@@ -46,9 +46,20 @@ impl BreathManager {
     pub fn has_water_breathing(living: &LivingEntity) -> bool {
         living.has_effect(&StatusEffect::WATER_BREATHING)
             || living.has_effect(&StatusEffect::CONDUIT_POWER)
+            || living.has_effect(&StatusEffect::BREATH_OF_THE_NAUTILUS)
+    }
+
+    /// `MobEffectUtil.shouldEffectsRefillAirsupply`.
+    #[must_use]
+    pub fn should_effects_refill_airsupply(living: &LivingEntity) -> bool {
+        !living.has_effect(&StatusEffect::BREATH_OF_THE_NAUTILUS)
+            || living.has_effect(&StatusEffect::WATER_BREATHING)
+            || living.has_effect(&StatusEffect::CONDUIT_POWER)
     }
 
     /// One tick of air change and suffocation damage.
+    ///
+    /// Mirrors vanilla `LivingEntity.java:441-463`.
     pub fn tick(&self, living: &LivingEntity, caller: &dyn EntityBase) {
         if living.health.load() <= 0.0 {
             return;
@@ -79,12 +90,6 @@ impl BreathManager {
             return;
         }
 
-        let breathes_underwater = living.can_breathe_under_water()
-            || mob.is_some_and(|m| m.can_breathe_underwater() || m.can_breathe_under_water())
-            || Self::has_water_breathing(living);
-        let drowning = !breathes_underwater
-            && Self::is_eye_in_water(entity)
-            && !Self::is_eye_in_bubble_column(entity);
         let dries_out = mob.is_some_and(Mob::dries_out_on_land);
         let hydrated = if mob.is_some_and(Mob::rehydrates_in_rain) {
             entity.is_in_water_rain_or_bubble()
@@ -93,13 +98,72 @@ impl BreathManager {
         };
         let drying_out = dries_out && !hydrated;
 
-        let (suffocating, damage_type) = if drying_out {
-            (true, DamageType::DRY_OUT)
-        } else {
-            (drowning, DamageType::DROWN)
-        };
+        if drying_out {
+            let prev = self.air_supply.load(Ordering::Relaxed);
+            let new_air = mob.map_or_else(
+                || living.decrease_air_supply(prev),
+                |mob| mob.decrease_air_supply(prev),
+            );
+            if new_air != prev {
+                self.set_air(entity, new_air, max_air);
+            }
 
-        if !suffocating {
+            let current_air = self.air_supply.load(Ordering::Relaxed);
+            if mob.map_or_else(
+                || living.should_take_drowning_damage(current_air),
+                |mob| mob.should_take_drowning_damage(current_air),
+            ) {
+                self.set_air(entity, 0, max_air);
+                living.damage(caller, DROWNING_DAMAGE, DamageType::DRY_OUT);
+            }
+            return;
+        }
+
+        let is_eye_in_water = Self::is_eye_in_water(entity);
+        let in_bubble_column = Self::is_eye_in_bubble_column(entity);
+
+        if is_eye_in_water && !in_bubble_column {
+            let can_drown_in_water = !living.can_breathe_under_water()
+                && !mob.is_some_and(|m| m.can_breathe_underwater() || m.can_breathe_under_water())
+                && !Self::has_water_breathing(living);
+
+            if can_drown_in_water {
+                let prev = self.air_supply.load(Ordering::Relaxed);
+                let new_air = mob.map_or_else(
+                    || living.decrease_air_supply(prev),
+                    |mob| mob.decrease_air_supply(prev),
+                );
+                if new_air != prev {
+                    self.set_air(entity, new_air, max_air);
+                }
+
+                let current_air = self.air_supply.load(Ordering::Relaxed);
+                if mob.map_or_else(
+                    || living.should_take_drowning_damage(current_air),
+                    |mob| mob.should_take_drowning_damage(current_air),
+                ) {
+                    self.set_air(entity, 0, max_air);
+                    entity.world.load().broadcast_entity_event(
+                        entity,
+                        pumpkin_data::entity::EntityStatus::DrownParticles,
+                        None,
+                    );
+                    living.damage(caller, DROWNING_DAMAGE, DamageType::DROWN);
+                }
+            } else if self.air_supply.load(Ordering::Relaxed) < max_air
+                && Self::should_effects_refill_airsupply(living)
+            {
+                let prev = self.air_supply.load(Ordering::Relaxed);
+                let new_air = mob.map_or_else(
+                    || living.increase_air_supply(prev, max_air),
+                    |mob| mob.increase_air_supply(prev),
+                )
+                .clamp(0, max_air);
+                if new_air != prev {
+                    self.set_air(entity, new_air, max_air);
+                }
+            }
+        } else if self.air_supply.load(Ordering::Relaxed) < max_air {
             let prev = self.air_supply.load(Ordering::Relaxed);
             let new_air = if dries_out {
                 max_air
@@ -113,31 +177,6 @@ impl BreathManager {
             if new_air != prev {
                 self.set_air(entity, new_air, max_air);
             }
-            self.drowning_tick.store(0, Ordering::Relaxed);
-            return;
-        }
-
-        let prev = self.air_supply.load(Ordering::Relaxed);
-        let new_air = mob.map_or_else(
-            || living.decrease_air_supply(prev),
-            |mob| mob.decrease_air_supply(prev),
-        );
-        if new_air != prev {
-            self.set_air(entity, new_air, max_air);
-        }
-
-        let current_air = self.air_supply.load(Ordering::Relaxed);
-        if mob.map_or_else(
-            || living.should_take_drowning_damage(current_air),
-            |mob| mob.should_take_drowning_damage(current_air),
-        ) {
-            self.set_air(entity, 0, max_air);
-            entity.world.load().broadcast_entity_event(
-                entity,
-                pumpkin_data::entity::EntityStatus::DrownParticles,
-                None,
-            );
-            living.damage(caller, DROWNING_DAMAGE, damage_type);
         }
     }
 

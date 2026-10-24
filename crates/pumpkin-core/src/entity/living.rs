@@ -2394,11 +2394,24 @@ impl LivingEntity {
         }
     }
 
-    /// Calculates decreased air supply taking `Attributes::OXYGEN_BONUS` into account,
-    /// mirroring vanilla `LivingEntity.decreaseAirSupply`.
+    /// Calculates decreased air supply taking `Attributes::OXYGEN_BONUS` and helmet Respiration enchantment into account,
+    /// mirroring vanilla `LivingEntity.decreaseAirSupply` and `Enchantments.java:287-295`.
     #[must_use]
     pub fn decrease_air_supply(&self, current_supply: i32) -> i32 {
-        let oxygen_bonus = self.get_attribute_value(&Attributes::OXYGEN_BONUS);
+        let mut oxygen_bonus = self.get_attribute_value(&Attributes::OXYGEN_BONUS);
+        let respiration_level = {
+            let equipment = self
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equipment
+                .get(&EquipmentSlot::HEAD)
+                .get_enchantment_level(&pumpkin_data::Enchantment::RESPIRATION)
+        };
+        if respiration_level > 0 {
+            oxygen_bonus += respiration_level as f64;
+        }
+
         if oxygen_bonus > 0.0 && rand::random::<f64>() >= 1.0 / (oxygen_bonus + 1.0) {
             current_supply
         } else {
@@ -2435,6 +2448,16 @@ impl LivingEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         !equipment.get(&EquipmentSlot::HEAD).is_empty()
+    }
+
+    /// Returns a clone of the item equipped in the specified equipment slot.
+    #[must_use]
+    pub fn get_equipment_item(&self, slot: &EquipmentSlot) -> ItemStack {
+        let equipment = self
+            .entity_equipment
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        equipment.get(slot)
     }
 
     /// Vanilla parity: Thorns reflection from victim's armor.

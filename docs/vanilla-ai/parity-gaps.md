@@ -2270,6 +2270,51 @@
   - Integrated swimming vertical impulse application into `LivingEntity::travel_in_fluid` (`crates/pumpkin-core/src/entity/living.rs`) for swimming players.
   - Added unit test `test_swimming_vertical_impulse_and_multiplier_parity` in `combat.rs`. Total 34/34 tests in `entity::combat::tests` passing.
 
+## Gap 149: Player Underwater Air Supply Depletion, Respiration Enchantment, Turtle Helmet Water Breathing & Drowning Damage Timing Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:441-463, 509-511, 591-605`:
+    ```java
+    if (this.isEyeInFluid(FluidTags.WATER) && !level.getBlockState(BlockPos.containing(this.getX(), this.getEyeY(), this.getZ())).is(Blocks.BUBBLE_COLUMN)) {
+       boolean canDrownInWater = !this.canBreatheUnderwater()
+          && !MobEffectUtil.hasWaterBreathing(this)
+          && (!isPlayer || !((Player)this).getAbilities().invulnerable);
+       if (canDrownInWater) {
+          this.setAirSupply(this.decreaseAirSupply(this.getAirSupply()));
+          if (this.shouldTakeDrowningDamage()) {
+             this.setAirSupply(0);
+             level.broadcastEntityEvent(this, (byte)67);
+             this.hurtServer(level, this.damageSources().drown(), 2.0F);
+          }
+       } else if (this.getAirSupply() < this.getMaxAirSupply() && MobEffectUtil.shouldEffectsRefillAirsupply(this)) {
+          this.setAirSupply(this.increaseAirSupply(this.getAirSupply()));
+       }
+    } else if (this.getAirSupply() < this.getMaxAirSupply()) {
+       this.setAirSupply(this.increaseAirSupply(this.getAirSupply()));
+    }
+    ```
+  - `LivingEntity.java:591-601` & `Enchantments.java:287-295`:
+    - Respiration enchantment adds `1.0 * level` to `Attributes.OXYGEN_BONUS`.
+    - Air supply depletion formula: `oxygenBonus > 0.0 && this.random.nextDouble() >= 1.0 / (oxygenBonus + 1.0) ? currentSupply : currentSupply - 1`.
+    - With Respiration III (`oxygen_bonus = 3.0`), chance of depleting air per tick is `1 / (3 + 1) = 25%` (air lasts 4x longer, ~60s instead of 15s).
+  - `LivingEntity.java:509-511`:
+    - `shouldTakeDrowningDamage`: `current_air <= -20`.
+    - When triggered, `setAirSupply(0)` resets negative air to 0, broadcast event 67 (`EntityStatus::DrownParticles`), and inflicts 2.0 damage. This enforces an exact 20-tick (1-second) interval between drown damage ticks.
+  - `MobEffectUtil.java:43-49`:
+    - `hasWaterBreathing`: `WATER_BREATHING || CONDUIT_POWER || BREATH_OF_THE_NAUTILUS`.
+    - `shouldEffectsRefillAirsupply`: `!BREATH_OF_THE_NAUTILUS || WATER_BREATHING || CONDUIT_POWER`.
+  - `Player.java:281-283, 325-339`:
+    - When wearing a Turtle Helmet (`Item::TURTLE_HELMET` in `EquipmentSlot::HEAD`) while eyes are outside of water (`!isEyeInFluid(FluidTags.WATER)`), ticks `WATER_BREATHING` effect for 200 ticks (10s, amplifier 0, visible false, showIcon true).
+    - When diving underwater, the 10-second water breathing duration runs down before air supply begins depleting.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_respiration_oxygen_bonus`, `should_decrease_air_supply`, `calculate_increased_air_supply`, `should_take_drowning_damage`, `has_water_breathing_effects`, and `should_effects_refill_air_supply` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `LivingEntity::decrease_air_supply` in `crates/pumpkin-core/src/entity/living.rs` to read helmet Respiration enchantment level and combine with `Attributes::OXYGEN_BONUS`. Added `LivingEntity::get_equipment_item`.
+  - Updated `BreathManager` in `crates/pumpkin-core/src/entity/breath.rs`:
+    - Included `StatusEffect::BREATH_OF_THE_NAUTILUS` in `has_water_breathing`.
+    - Added `should_effects_refill_airsupply`.
+    - Aligned `tick()` with `LivingEntity.java:441-463` to prevent underwater air refill when only `BREATH_OF_THE_NAUTILUS` is active, and enforce exact 20-tick drowning damage cadence with `set_air(0)`.
+  - Added `Player::has_turtle_helmet_equipped` and `Player::turtle_helmet_tick` in `crates/pumpkin-core/src/entity/player.rs`, ticking 200-tick Water Breathing when player is out of water wearing a Turtle Helmet.
+  - Added unit test `test_air_supply_respiration_drowning_and_turtle_helmet_parity` in `combat.rs`. Total 35/35 tests in `entity::combat::tests` passing.
+
 
 
 
