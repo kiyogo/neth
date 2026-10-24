@@ -163,38 +163,30 @@ impl WitchEntity {
         let zd = target_pos.z + target_vel.z - witch_pos.z;
         let dist = xd.hypot(zd);
 
-        let mut potion = &Potion::HARMING;
-
-        if let Some(target_living) = target.get_living_entity() {
+        let potion = if let Some(target_living) = target.get_living_entity() {
             let is_raider = target
                 .get_entity()
                 .entity_type
                 .has_tag(&tag::EntityType::MINECRAFT_RAIDERS);
             if is_raider {
-                if target_living.health.load() <= 4.0 {
-                    potion = &Potion::HEALING;
-                } else {
-                    potion = &Potion::REGENERATION;
-                }
                 *self
                     .mob_entity
                     .target
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
-            } else {
-                let r: f32 = rand::random();
-                if dist >= 8.0 && !target_living.has_effect(&StatusEffect::SLOWNESS) {
-                    potion = &Potion::SLOWNESS;
-                } else if target_living.health.load() >= 8.0
-                    && !target_living.has_effect(&StatusEffect::POISON)
-                {
-                    potion = &Potion::POISON;
-                } else if dist <= 3.0 && !target_living.has_effect(&StatusEffect::WEAKNESS) && r < 0.25
-                {
-                    potion = &Potion::WEAKNESS;
-                }
             }
-        }
+            crate::entity::combat::determine_witch_thrown_potion(
+                is_raider,
+                target_living.health.load(),
+                dist,
+                target_living.has_effect(&StatusEffect::SLOWNESS),
+                target_living.has_effect(&StatusEffect::POISON),
+                target_living.has_effect(&StatusEffect::WEAKNESS),
+                rand::random(),
+            )
+        } else {
+            &Potion::HARMING
+        };
 
         let potion_stack = create_potion_stack(&Item::SPLASH_POTION, potion);
 
@@ -208,7 +200,15 @@ impl WitchEntity {
         splash.thrown.set_velocity(xd, yd + yo, zd, speed, 8.0);
 
         if !entity.silent.load(Ordering::Relaxed) {
-            world.play_sound(Sound::EntityWitchThrow, SoundCategory::Hostile, &witch_pos);
+            let rand_pitch: f32 = rand::random();
+            let pitch = crate::entity::combat::calculate_witch_throw_pitch(rand_pitch);
+            world.play_sound_fine(
+                Sound::EntityWitchThrow,
+                SoundCategory::Hostile,
+                &witch_pos,
+                1.0,
+                pitch,
+            );
         }
 
         let splash_arc: Arc<dyn EntityBase> = Arc::new(splash);
@@ -256,23 +256,24 @@ impl Mob for WitchEntity {
     }
 
     fn pre_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
-        if let Some(src) = source
-            && src.get_entity().entity_id == self.mob_entity.living_entity.entity.entity_id
-        {
-            return false;
+        // Vanilla Witch.java:211:
+        // if (damageSource.getEntity() == this) { damage = 0.0F; }
+        if let Some(src) = source {
+            let self_id = self.mob_entity.living_entity.entity.entity_id;
+            if src.get_entity().entity_id == self_id {
+                return false;
+            }
         }
         true
     }
 
-    fn modify_incoming_damage(&self, mut amount: f32, damage_type: DamageType) -> f32 {
+    fn modify_incoming_damage(&self, amount: f32, damage_type: DamageType) -> f32 {
         // Vanilla `Witch.getDamageAfterMagicAbsorb`.
-        if damage_type.has_tag(&tag::DamageType::MINECRAFT_WITCH_RESISTANT_TO) {
-            amount *= 0.15;
-        }
-        amount
+        let is_witch_resistant = damage_type.has_tag(&tag::DamageType::MINECRAFT_WITCH_RESISTANT_TO);
+        crate::entity::combat::calculate_witch_damage_received(amount, false, is_witch_resistant)
     }
 
-    fn mob_tick(&self, caller: &dyn EntityBase) {
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         let living = &self.mob_entity.living_entity;
         let world = entity.world.load();
@@ -281,89 +282,100 @@ impl Mob for WitchEntity {
             let remaining = self.using_time.fetch_sub(1, Ordering::Relaxed) - 1;
             if remaining <= 0 {
                 self.set_drinking_potion(false);
-                if let Some(witch) = caller.cast_any().downcast_ref::<Self>() {
-                    let living = &witch.mob_entity.living_entity;
-                    living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
-                        inst.remove_modifier("minecraft:drinking");
-                    });
-                    let mut equipment = living
-                        .entity_equipment
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner);
-                    let stack = equipment.get(&EquipmentSlot::MAIN_HAND);
-                    equipment.put(&EquipmentSlot::MAIN_HAND, ItemStack::EMPTY.clone());
-                    drop(equipment);
-                    living.send_equipment_changes(&[(
-                        EquipmentSlot::MAIN_HAND,
-                        ItemStack::EMPTY.clone(),
-                    )]);
+                living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
+                    inst.remove_modifier("minecraft:drinking");
+                });
+                let mut equipment = living
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let stack = equipment.get(&EquipmentSlot::MAIN_HAND);
+                equipment.put(&EquipmentSlot::MAIN_HAND, ItemStack::EMPTY.clone());
+                drop(equipment);
+                living.send_equipment_changes(&[(
+                    EquipmentSlot::MAIN_HAND,
+                    ItemStack::EMPTY.clone(),
+                )]);
 
-                    let effects = crate::item::potion::PotionContents::read_potion_effects(&stack);
-                    crate::item::potion::PotionContents::apply_effects_to(
-                        living,
-                        effects,
-                        1.0,
-                        crate::item::potion::PotionApplicationSource::Normal,
-                    );
-                }
+                let effects = crate::item::potion::PotionContents::read_potion_effects(&stack);
+                crate::item::potion::PotionContents::apply_effects_to(
+                    living,
+                    effects,
+                    1.0,
+                    crate::item::potion::PotionApplicationSource::Normal,
+                );
             }
         } else {
             let mut potion: Option<&'static Potion> = None;
             let r: f32 = rand::random();
 
-            if r < 0.15
-                && entity.touching_water.load(Ordering::Relaxed)
-                && !living.has_effect(&StatusEffect::WATER_BREATHING)
-            {
+            let eye_in_water = entity.is_submerged_in_water();
+            let is_on_fire = entity.fire_ticks.load(Ordering::Relaxed) > 0;
+
+            if crate::entity::combat::should_witch_drink_water_breathing(
+                r,
+                eye_in_water,
+                living.has_effect(&StatusEffect::WATER_BREATHING),
+            ) {
                 potion = Some(&Potion::WATER_BREATHING);
-            } else if r < 0.15
-                && entity.fire_ticks.load(Ordering::Relaxed) > 0
-                && !living.has_effect(&StatusEffect::FIRE_RESISTANCE)
-            {
+            } else if crate::entity::combat::should_witch_drink_fire_resistance(
+                r,
+                is_on_fire,
+                false,
+                living.has_effect(&StatusEffect::FIRE_RESISTANCE),
+            ) {
                 potion = Some(&Potion::FIRE_RESISTANCE);
-            } else if r < 0.05 && living.health.load() < living.get_max_health() {
+            } else if crate::entity::combat::should_witch_drink_healing(
+                r,
+                living.health.load(),
+                living.get_max_health(),
+            ) {
                 potion = Some(&Potion::HEALING);
-            } else if r < 0.5
-                && let Some(target) = self.mob_entity.get_target()
-                && !living.has_effect(&StatusEffect::SPEED)
-            {
+            } else if let Some(target) = self.mob_entity.get_target() {
                 let target_pos = target.get_entity().pos.load();
                 let self_pos = entity.pos.load();
-                if self_pos.squared_distance_to_vec(&target_pos) > 121.0 {
+                if crate::entity::combat::should_witch_drink_speed(
+                    r,
+                    true,
+                    self_pos.squared_distance_to_vec(&target_pos),
+                    living.has_effect(&StatusEffect::SPEED),
+                ) {
                     potion = Some(&Potion::SWIFTNESS);
                 }
             }
 
             if let Some(potion) = potion {
                 let stack = create_potion_stack(&Item::POTION, potion);
-                if let Some(witch) = caller.cast_any().downcast_ref::<Self>() {
-                    let living = &witch.mob_entity.living_entity;
-                    let mut equipment = living
-                        .entity_equipment
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner);
-                    equipment.put(&EquipmentSlot::MAIN_HAND, stack.clone());
-                    drop(equipment);
-                    living.send_equipment_changes(&[(EquipmentSlot::MAIN_HAND, stack)]);
-                }
+                let mut equipment = living
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                equipment.put(&EquipmentSlot::MAIN_HAND, stack.clone());
+                drop(equipment);
+                living.send_equipment_changes(&[(EquipmentSlot::MAIN_HAND, stack)]);
 
                 self.using_time.store(32, Ordering::Relaxed);
                 self.set_drinking_potion(true);
-                if let Some(witch) = caller.cast_any().downcast_ref::<Self>() {
-                    let living = &witch.mob_entity.living_entity;
-                    living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
-                        inst.add_or_replace_modifier(Modifier {
-                            id: "minecraft:drinking".to_string(),
-                            amount: -0.25,
-                            operation: ModifierOperation::Add,
-                            permanent: false,
-                        });
+                living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
+                    inst.add_or_replace_modifier(Modifier {
+                        id: "minecraft:drinking".to_string(),
+                        amount: -0.25,
+                        operation: ModifierOperation::Add,
+                        permanent: false,
                     });
-                }
+                });
 
                 if !entity.silent.load(Ordering::Relaxed) {
                     let pos = entity.pos.load();
-                    world.play_sound(Sound::EntityWitchDrink, SoundCategory::Hostile, &pos);
+                    let rand_pitch: f32 = rand::random();
+                    let pitch = crate::entity::combat::calculate_witch_drink_pitch(rand_pitch);
+                    world.play_sound_fine(
+                        Sound::EntityWitchDrink,
+                        SoundCategory::Hostile,
+                        &pos,
+                        1.0,
+                        pitch,
+                    );
                 }
             } else if rand::random_range(0..100) == 0 && !entity.silent.load(Ordering::Relaxed) {
                 world.play_sound_fine(

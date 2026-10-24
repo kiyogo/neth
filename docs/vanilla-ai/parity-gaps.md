@@ -3212,3 +3212,39 @@
   - Updated `on_damage` in both `GuardianEntity` and `ElderGuardianEntity` to retaliate thorns 2.0 only when spikes are extended (`!is_moving()`), direct attacker is living, and damage type is not thorns or exempt tag, passing Guardian as correct damager.
   - Updated `GuardianAttackGoal` in `crates/pumpkin-core/src/entity/ai/goal/guardian_attack.rs` to separate indirect magic damage from physical melee damage via `try_attack`.
   - Added unit test `test_guardian_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 58/58 tests passing in `entity::combat::tests`.
+
+## Gap 173: Witch Potion Drinking Decisions & Sound Pitch, Ranged Splash Potion Selection & Self-Damage Immunity Parity
+- **Vanilla Reference**:
+  - `Witch.java:134-173` (aiStep):
+    - Khi không uống thuốc, Witch cân nhắc uống một bình Potion:
+      - `rand < 0.15 && isEyeInFluid(FluidTags.WATER) && !hasEffect(WATER_BREATHING)` -> Potion::WATER_BREATHING
+      - `rand < 0.15 && (isOnFire() || lastDamageSource.is(DamageTypeTags.IS_FIRE)) && !hasEffect(FIRE_RESISTANCE)` -> Potion::FIRE_RESISTANCE
+      - `rand < 0.05 && health < maxHealth` -> Potion::HEALING
+      - `rand < 0.5 && target != null && !hasEffect(SPEED) && dist_sq > 121.0` -> Potion::SWIFTNESS
+    - Âm thanh khi uống potion: `SoundEvents.WITCH_DRINK`, pitch `0.8F + random.nextFloat() * 0.4F`.
+    - Khi uống xong: xóa modifier giảm tốc `minecraft:drinking` (-0.25 speed), áp dụng hiệu ứng potion.
+  - `Witch.java:209-220` (getDamageAfterMagicAbsorb):
+    - Miễn nhiễm hoàn toàn với sát thương do chính mình gây ra:
+      `if (damageSource.getEntity() == this) { damage = 0.0F; }`
+    - Kháng 85% sát thương phép thuật:
+      `if (damageSource.is(DamageTypeTags.WITCH_RESISTANT_TO)) { damage *= 0.15F; }`
+  - `Witch.java:223-269` (performRangedAttack):
+    - Lựa chọn potion ném:
+      - Nếu target là `Raider` đồng minh:
+        - `target.getHealth() <= 4.0F` -> Potion::HEALING
+        - else -> Potion::REGENERATION
+        - Reset target (`setTarget(null)`)
+      - Nếu target là kẻ thù:
+        - `dist >= 8.0 && !target.hasEffect(SLOWNESS)` -> Potion::SLOWNESS
+        - `target.health >= 8.0 && !target.hasEffect(POISON)` -> Potion::POISON
+        - `dist <= 3.0 && !target.hasEffect(WEAKNESS) && rand < 0.25` -> Potion::WEAKNESS
+        - Mặc định: Potion::HARMING
+    - Âm thanh ném splash potion: `SoundEvents.WITCH_THROW`, pitch `0.8F + random.nextFloat() * 0.4F`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_witch_drink_pitch`, `calculate_witch_throw_pitch`, `should_witch_drink_water_breathing`, `should_witch_drink_fire_resistance`, `should_witch_drink_healing`, `should_witch_drink_speed`, `determine_witch_thrown_potion`, and `calculate_witch_damage_received` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `WitchEntity` in `crates/pumpkin-core/src/entity/mob/witch.rs`:
+    - `mob_tick`: removed fragile caller downcast, using direct `&self.mob_entity.living_entity`. Integrated `should_witch_drink_...` conditions with submerged water check and drinking sound pitch formula `0.8 + rand * 0.4`.
+    - `throw_potion`: integrated `determine_witch_thrown_potion` for complete Vanilla potion priority and throw sound pitch formula `0.8 + rand * 0.4`.
+    - `pre_damage`: immune to self-inflicted damage when source entity matches witch id.
+    - `modify_incoming_damage`: integrated `calculate_witch_damage_received` applying 85% damage reduction for `#minecraft:witch_resistant_to`.
+  - Added unit test `test_witch_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 59/59 tests passing in `entity::combat::tests`.

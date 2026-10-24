@@ -3633,6 +3633,141 @@ pub fn calculate_guardian_laser_damage(
     damage
 }
 
+/// Calculates the sound pitch for a Witch drinking a potion.
+///
+/// Mirrors vanilla `Witch.java:165`: `0.8F + this.random.nextFloat() * 0.4F`
+#[must_use]
+pub fn calculate_witch_drink_pitch(rand_0_to_1: f32) -> f32 {
+    0.8 + rand_0_to_1 * 0.4
+}
+
+/// Calculates the sound pitch for a Witch throwing a splash potion.
+///
+/// Mirrors vanilla `Witch.java:265`: `0.8F + this.random.nextFloat() * 0.4F`
+#[must_use]
+pub fn calculate_witch_throw_pitch(rand_0_to_1: f32) -> f32 {
+    0.8 + rand_0_to_1 * 0.4
+}
+
+/// Determines whether a Witch should drink a Potion of Water Breathing.
+///
+/// Mirrors vanilla `Witch.java:136-137`:
+/// `this.random.nextFloat() < 0.15F && this.isEyeInFluid(FluidTags.WATER) && !this.hasEffect(MobEffects.WATER_BREATHING)`
+#[must_use]
+pub const fn should_witch_drink_water_breathing(
+    rand_0_to_1: f32,
+    eye_in_water: bool,
+    has_water_breathing: bool,
+) -> bool {
+    rand_0_to_1 < 0.15 && eye_in_water && !has_water_breathing
+}
+
+/// Determines whether a Witch should drink a Potion of Fire Resistance.
+///
+/// Mirrors vanilla `Witch.java:138-141`:
+/// `this.random.nextFloat() < 0.15F && (this.isOnFire() || lastDamageSource.is(DamageTypeTags.IS_FIRE)) && !this.hasEffect(MobEffects.FIRE_RESISTANCE)`
+#[must_use]
+pub const fn should_witch_drink_fire_resistance(
+    rand_0_to_1: f32,
+    is_on_fire: bool,
+    damage_is_fire: bool,
+    has_fire_resistance: bool,
+) -> bool {
+    rand_0_to_1 < 0.15 && (is_on_fire || damage_is_fire) && !has_fire_resistance
+}
+
+/// Determines whether a Witch should drink a Potion of Healing.
+///
+/// Mirrors vanilla `Witch.java:142-143`:
+/// `this.random.nextFloat() < 0.05F && this.getHealth() < this.getMaxHealth()`
+#[must_use]
+pub const fn should_witch_drink_healing(
+    rand_0_to_1: f32,
+    health: f32,
+    max_health: f32,
+) -> bool {
+    rand_0_to_1 < 0.05 && health < max_health
+}
+
+/// Determines whether a Witch should drink a Potion of Swiftness.
+///
+/// Mirrors vanilla `Witch.java:144-149`:
+/// `this.random.nextFloat() < 0.5F && this.getTarget() != null && !this.hasEffect(MobEffects.SPEED) && this.getTarget().distanceToSqr(this) > 121.0`
+#[must_use]
+pub const fn should_witch_drink_speed(
+    rand_0_to_1: f32,
+    has_target: bool,
+    dist_sq: f64,
+    has_speed: bool,
+) -> bool {
+    rand_0_to_1 < 0.5 && has_target && dist_sq > 121.0 && !has_speed
+}
+
+/// Witch thrown potion selection.
+///
+/// Mirrors vanilla `Witch.java:230-246`:
+/// - When targeting a Raider ally:
+///   - Health <= 4.0: Healing
+///   - Health > 4.0: Regeneration
+/// - When targeting an enemy:
+///   - Distance >= 8.0 and not slowness: Slowness
+///   - Target health >= 8.0 and not poison: Poison
+///   - Distance <= 3.0 and not weakness and 25% chance: Weakness
+///   - Default: Harming
+#[must_use]
+pub fn determine_witch_thrown_potion(
+    is_raider: bool,
+    target_health: f32,
+    horizontal_dist: f64,
+    has_slowness: bool,
+    has_poison: bool,
+    has_weakness: bool,
+    weakness_rand: f32,
+) -> &'static pumpkin_data::potion::Potion {
+    use pumpkin_data::potion::Potion;
+    if is_raider {
+        if target_health <= 4.0 {
+            &Potion::HEALING
+        } else {
+            &Potion::REGENERATION
+        }
+    } else if horizontal_dist >= 8.0 && !has_slowness {
+        &Potion::SLOWNESS
+    } else if target_health >= 8.0 && !has_poison {
+        &Potion::POISON
+    } else if horizontal_dist <= 3.0 && !has_weakness && weakness_rand < 0.25 {
+        &Potion::WEAKNESS
+    } else {
+        &Potion::HARMING
+    }
+}
+
+/// Calculates damage received by a Witch after magic absorption and self-immunity.
+///
+/// Mirrors vanilla `Witch.java:209-220`:
+/// ```java
+/// if (damageSource.getEntity() == this) {
+///     damage = 0.0F;
+/// }
+/// if (damageSource.is(DamageTypeTags.WITCH_RESISTANT_TO)) {
+///     damage *= 0.15F;
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_witch_damage_received(
+    raw_damage: f32,
+    is_self_damage: bool,
+    is_witch_resistant_to: bool,
+) -> f32 {
+    if is_self_damage {
+        0.0
+    } else if is_witch_resistant_to {
+        raw_damage * 0.15
+    } else {
+        raw_damage
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5743,6 +5878,65 @@ mod tests {
             calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, true),
             5.0
         );
+    }
+
+    #[test]
+    fn test_witch_parity() {
+        use pumpkin_data::potion::Potion;
+
+        // 1. Witch drink & throw sound pitches (Witch.java:165, 265: 0.8F + rand * 0.4F)
+        assert_eq!(calculate_witch_drink_pitch(0.0), 0.8);
+        assert!((calculate_witch_drink_pitch(1.0) - 1.2).abs() < 1e-6);
+        assert_eq!(calculate_witch_throw_pitch(0.0), 0.8);
+        assert!((calculate_witch_throw_pitch(1.0) - 1.2).abs() < 1e-6);
+
+        // 2. Witch drinking decisions (Witch.java:136-149)
+        // Water breathing
+        assert!(should_witch_drink_water_breathing(0.1, true, false));
+        assert!(!should_witch_drink_water_breathing(0.2, true, false));
+        assert!(!should_witch_drink_water_breathing(0.1, false, false));
+        assert!(!should_witch_drink_water_breathing(0.1, true, true));
+
+        // Fire resistance
+        assert!(should_witch_drink_fire_resistance(0.1, true, false, false));
+        assert!(should_witch_drink_fire_resistance(0.1, false, true, false));
+        assert!(!should_witch_drink_fire_resistance(0.2, true, false, false));
+        assert!(!should_witch_drink_fire_resistance(0.1, true, false, true));
+
+        // Healing
+        assert!(should_witch_drink_healing(0.04, 20.0, 26.0));
+        assert!(!should_witch_drink_healing(0.06, 20.0, 26.0));
+        assert!(!should_witch_drink_healing(0.04, 26.0, 26.0));
+
+        // Swiftness
+        assert!(should_witch_drink_speed(0.4, true, 144.0, false));
+        assert!(!should_witch_drink_speed(0.6, true, 144.0, false));
+        assert!(!should_witch_drink_speed(0.4, false, 144.0, false));
+        assert!(!should_witch_drink_speed(0.4, true, 100.0, false));
+        assert!(!should_witch_drink_speed(0.4, true, 144.0, true));
+
+        // 3. Witch thrown potion selection (Witch.java:230-246)
+        // Raider ally
+        assert_eq!(determine_witch_thrown_potion(true, 4.0, 5.0, false, false, false, 0.5).id, Potion::HEALING.id);
+        assert_eq!(determine_witch_thrown_potion(true, 10.0, 5.0, false, false, false, 0.5).id, Potion::REGENERATION.id);
+
+        // Enemy: Slowness if dist >= 8.0 and not slowness
+        assert_eq!(determine_witch_thrown_potion(false, 20.0, 10.0, false, false, false, 0.5).id, Potion::SLOWNESS.id);
+
+        // Enemy: Poison if dist < 8.0, health >= 8.0 and not poison
+        assert_eq!(determine_witch_thrown_potion(false, 10.0, 5.0, false, false, false, 0.5).id, Potion::POISON.id);
+
+        // Enemy: Weakness if dist <= 3.0, not weakness and rand < 0.25
+        assert_eq!(determine_witch_thrown_potion(false, 6.0, 2.0, false, true, false, 0.1).id, Potion::WEAKNESS.id);
+
+        // Enemy: Default is Harming
+        assert_eq!(determine_witch_thrown_potion(false, 6.0, 5.0, false, true, false, 0.5).id, Potion::HARMING.id);
+
+        // 4. Witch self-damage immunity & magic resistance (Witch.java:211-217)
+        assert_eq!(calculate_witch_damage_received(10.0, true, true), 0.0);
+        assert_eq!(calculate_witch_damage_received(10.0, true, false), 0.0);
+        assert_eq!(calculate_witch_damage_received(10.0, false, true), 1.5);
+        assert_eq!(calculate_witch_damage_received(10.0, false, false), 10.0);
     }
 }
 
