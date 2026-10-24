@@ -2595,6 +2595,37 @@
   - Updated `SmallFireballEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/small_fireball.rs` to check `mob_griefing` game rule when owner is a mob and properly discard the fireball projectile on collision.
   - Added unit test `test_fireball_and_dragon_breath_cloud_parity` in `combat.rs`. Total 43/43 tests passing in `entity::combat::tests`.
 
+## Gap 158: Wither Skull Inertia, Kill Heal Owner, Difficulty Effect Scaling & Discard Parity
+- **Vanilla Reference**:
+  - `WitherSkull.java:42-44`:
+    ```java
+    @Override
+    protected float getInertia() {
+       return this.isDangerous() ? 0.73F : super.getInertia();
+    }
+    ```
+    - Dangerous blue skull has inertia `0.73F` while standard black skull has inertia `0.95F` (`AbstractHurtingProjectile.java:156`).
+  - `WitherSkull.java:63-74`:
+    ```java
+    if (wasHurt) {
+       if (var8.isAlive()) {
+          EnchantmentHelper.doPostAttackEffects(serverLevel, var8, damageSource);
+       } else {
+          livingOwner.heal(5.0F);
+       }
+    }
+    ```
+    - If a victim is killed by the wither skull attack, the living owner (Wither boss) is healed by 5.0 HP (2.5 hearts).
+  - `WitherSkull.java:79-88`:
+    - Inflicts Wither II effect based strictly on world difficulty: 10 seconds (200 ticks) on Normal, 40 seconds (800 ticks) on Hard, and 0 on Easy / Peaceful.
+  - `WitherSkull.java:94-100`:
+    - Discards projectile entity immediately after creating explosion (`this.discard()`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `get_wither_skull_inertia`, `get_wither_skull_effect_duration`, and `get_wither_skull_kill_heal_amount` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `WitherSkullEntity::tick` in `crates/pumpkin-core/src/entity/projectile/wither_skull.rs` to apply vanilla acceleration power 0.1 and inertia (0.73 for dangerous skulls, 0.95 for standard skulls).
+  - Updated `WitherSkullEntity::on_hit` to heal living owner by 5.0 HP when a victim is killed, scale wither effect duration strictly by difficulty, and discard projectile upon impact.
+  - Added unit test `test_wither_skull_inertia_difficulty_effect_and_heal_parity` in `combat.rs`. Total 44/44 tests passing in `entity::combat::tests`.
+
 
 
 

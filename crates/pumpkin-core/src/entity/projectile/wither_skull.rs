@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use pumpkin_data::{damage::DamageType, effect::StatusEffect, potion::Effect, tracked_data};
 use pumpkin_nbt::compound::NbtCompound;
-use pumpkin_util::{Difficulty, math::vector3::Vector3};
+use pumpkin_util::math::vector3::Vector3;
 
 use crate::{
     entity::{
@@ -99,7 +99,26 @@ impl EntityBase for WitherSkullEntity {
     }
 
     fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
-        self.thrown.process_tick(caller);
+        let entity = self.get_entity();
+        let mut velocity = entity.velocity.load();
+
+        let inertia = if entity.touching_water.load(Ordering::Relaxed) {
+            0.8
+        } else {
+            crate::entity::combat::get_wither_skull_inertia(self.is_dangerous())
+        };
+
+        let speed = velocity.length();
+        if speed > 1e-6 {
+            let norm = velocity.normalize();
+            velocity = norm
+                .multiply(0.1, 0.1, 0.1)
+                .add(&velocity)
+                .multiply(inertia, inertia, inertia);
+            entity.velocity.store(velocity);
+        }
+
+        self.thrown.process_move_and_collision(caller);
     }
 
     fn get_entity(&self) -> &Entity {
@@ -138,27 +157,32 @@ impl EntityBase for WitherSkullEntity {
                 shooter.as_deref(),
             );
 
-            if damaged && let Some(living) = entity.get_living_entity() {
-                let duration = match difficulty {
-                    Difficulty::Hard => 800,   // 40 seconds
-                    Difficulty::Normal => 200, // 10 seconds
-                    Difficulty::Easy | Difficulty::Peaceful => 0,
-                };
+            if damaged {
+                // Vanilla WitherSkull.java:70-72:
+                // If victim was killed, heal living owner by 5.0 HP
+                if !entity.get_entity().is_alive()
+                    && let Some(living_owner) = shooter.as_ref().and_then(|s| s.get_living_entity())
+                {
+                    living_owner.heal(crate::entity::combat::get_wither_skull_kill_heal_amount());
+                }
 
-                if duration > 0 {
-                    let effect = Effect {
-                        effect_type: &StatusEffect::WITHER,
-                        duration,
-                        amplifier: 1,
-                        ambient: false,
-                        show_particles: true,
-                        show_icon: true,
-                        blend: true,
-                    };
-                    if let Some(player) = entity.get_player() {
-                        player.add_effect(effect);
-                    } else {
-                        living.add_effect(effect);
+                if let Some(living) = entity.get_living_entity() {
+                    let duration = crate::entity::combat::get_wither_skull_effect_duration(difficulty);
+                    if duration > 0 {
+                        let effect = Effect {
+                            effect_type: &StatusEffect::WITHER,
+                            duration,
+                            amplifier: 1,
+                            ambient: false,
+                            show_particles: true,
+                            show_icon: true,
+                            blend: true,
+                        };
+                        if let Some(player) = entity.get_player() {
+                            player.add_effect(effect);
+                        } else {
+                            living.add_effect(effect);
+                        }
                     }
                 }
             }
@@ -166,5 +190,8 @@ impl EntityBase for WitherSkullEntity {
 
         let hit_pos = hit.hit_pos();
         world.explode(hit_pos, 1.0, ExplosionInteraction::Mob);
+
+        // Vanilla WitherSkull.java:98: discard projectile after exploding
+        self.get_entity().remove();
     }
 }

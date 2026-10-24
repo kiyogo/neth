@@ -2446,6 +2446,43 @@ pub const fn get_dragon_breath_level_event() -> i32 {
     2006
 }
 
+/// Returns inertia multiplier for Wither Skull projectile based on dangerous flag.
+///
+/// Mirrors vanilla `WitherSkull.java:42-44`:
+/// `return this.isDangerous() ? 0.73F : 0.95F;`
+#[must_use]
+pub const fn get_wither_skull_inertia(is_dangerous: bool) -> f64 {
+    if is_dangerous {
+        0.73
+    } else {
+        0.95
+    }
+}
+
+/// Returns wither effect duration (in ticks) inflicted by Wither Skull based on world difficulty.
+///
+/// Mirrors vanilla `WitherSkull.java:79-88`:
+/// - Normal difficulty: 10 seconds (200 ticks)
+/// - Hard difficulty: 40 seconds (800 ticks)
+/// - Easy/Peaceful: 0 seconds (no wither effect)
+#[must_use]
+pub const fn get_wither_skull_effect_duration(difficulty: pumpkin_util::Difficulty) -> i32 {
+    match difficulty {
+        pumpkin_util::Difficulty::Hard => 800,
+        pumpkin_util::Difficulty::Normal => 200,
+        pumpkin_util::Difficulty::Easy | pumpkin_util::Difficulty::Peaceful => 0,
+    }
+}
+
+/// Calculates heal amount granted to Wither boss owner upon killing a victim entity (5.0 HP).
+///
+/// Mirrors vanilla `WitherSkull.java:71`:
+/// `livingOwner.heal(5.0F);`
+#[must_use]
+pub const fn get_wither_skull_kill_heal_amount() -> f32 {
+    5.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3979,6 +4016,22 @@ mod tests {
         assert_eq!(get_dragon_fireball_max_radius(), 7.0);
         assert_eq!(get_dragon_fireball_duration(), 600);
         assert_eq!(get_dragon_breath_level_event(), 2006);
+    }
+
+    #[test]
+    fn test_wither_skull_inertia_difficulty_effect_and_heal_parity() {
+        // 1. Inertia values for dangerous vs normal skull (WitherSkull.java:42-44)
+        assert_eq!(get_wither_skull_inertia(true), 0.73);
+        assert_eq!(get_wither_skull_inertia(false), 0.95);
+
+        // 2. Wither effect duration by difficulty (WitherSkull.java:79-88)
+        assert_eq!(get_wither_skull_effect_duration(pumpkin_util::Difficulty::Hard), 800);
+        assert_eq!(get_wither_skull_effect_duration(pumpkin_util::Difficulty::Normal), 200);
+        assert_eq!(get_wither_skull_effect_duration(pumpkin_util::Difficulty::Easy), 0);
+        assert_eq!(get_wither_skull_effect_duration(pumpkin_util::Difficulty::Peaceful), 0);
+
+        // 3. Kill heal amount for Wither boss owner (WitherSkull.java:71)
+        assert_eq!(get_wither_skull_kill_heal_amount(), 5.0);
     }
 }
 
