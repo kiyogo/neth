@@ -243,6 +243,11 @@ impl Mob for BatEntity {
         Some(self)
     }
 
+    /// Vanilla AmbientCreature.java:13: Bats cannot be leashed.
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = &self.mob_entity.living_entity.entity;
         let block_pos = entity.block_pos.load();

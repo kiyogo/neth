@@ -233,4 +233,9 @@ impl Mob for ZoglinEntity {
             throw_target(&self.mob_entity.living_entity.entity, defender);
         }
     }
+
+    /// Vanilla Zoglin.java:193: Zoglins can be leashed despite being hostile monsters.
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
 }

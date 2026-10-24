@@ -12,6 +12,7 @@ use rand::RngExt;
 
 use crate::entity::{
     Entity, EntityBase,
+    combat,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
 };
@@ -23,6 +24,7 @@ pub struct SquidEntity {
     pub tentacle_speed: AtomicCell<f32>,
     pub rotate_speed: AtomicCell<f32>,
     pub air_supply: AtomicI32,
+    pub flee_ticks: AtomicI32,
 }
 
 impl SquidEntity {
@@ -37,6 +39,7 @@ impl SquidEntity {
             tentacle_speed: AtomicCell::new(tentacle_speed),
             rotate_speed: AtomicCell::new(0.0),
             air_supply: AtomicI32::new(300),
+            flee_ticks: AtomicI32::new(0),
         };
 
         // Vanilla Squid attributes: MAX_HEALTH = 10.0
@@ -97,6 +100,14 @@ impl Mob for SquidEntity {
         true
     }
 
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        combat::get_squid_xp_reward(rand::rng().random_range(0..3))
+    }
+
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.silent.load(Ordering::Relaxed) {
@@ -108,13 +119,30 @@ impl Mob for SquidEntity {
                 1.0,
             );
         }
-        entity.world.load().spawn_particle(
-            entity.pos.load() + Vector3::new(0.0, 0.5, 0.0),
-            Vector3::new(0.3, 0.3, 0.3),
-            0.1,
-            20,
-            Particle::SquidInk,
-        );
+
+        // Vanilla Squid.java:188-203: directional ink burst of 30 particles
+        let mut rng = rand::rng();
+        let pitch = entity.pitch.load();
+        let yaw = entity.yaw.load();
+        let pos = entity.pos.load() + combat::rotate_squid_vector(Vector3::new(0.0, -1.0, 0.0), pitch, yaw);
+        let world = entity.world.load();
+        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+
+        for _ in 0..30 {
+            let rx = (rng.random::<f64>() * 0.6 - 0.3) as f64;
+            let rz = (rng.random::<f64>() * 0.6 - 0.3) as f64;
+            let dir = combat::rotate_squid_vector(Vector3::new(rx, -1.0, rz), pitch, yaw);
+            let offset_scale = combat::calculate_squid_ink_offset_scale(is_baby, rng.random::<f32>()) as f64;
+            let dir_offset = dir * offset_scale;
+
+            world.spawn_particle(
+                pos + Vector3::new(0.0, 0.5, 0.0),
+                Vector3::new(dir_offset.x as f32, dir_offset.y as f32, dir_offset.z as f32),
+                0.1,
+                0,
+                Particle::SquidInk,
+            );
+        }
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -126,13 +154,58 @@ impl Mob for SquidEntity {
         let in_water =
             entity.touching_water.load(Ordering::Relaxed) || entity.is_in_water();
 
-
-
         let mut rng = rand::rng();
 
-        // 1. Random movement vector selection (SquidRandomMovementGoal from vanilla Squid.java)
+        // 1. Squid Flee Goal (Vanilla Squid.java:240-298: SquidFleeGoal)
+        let last_attacker_id = self
+            .mob_entity
+            .living_entity
+            .last_attacker_id
+            .load(Ordering::Relaxed);
+        let mut is_fleeing = false;
+
+        if in_water && last_attacker_id != 0 {
+            let world = entity.world.load();
+            if let Some(attacker) = world.get_entity_by_id(last_attacker_id) {
+                let attacker_ent = attacker.get_entity();
+                let attacker_pos = attacker_ent.pos.load();
+                let dist_sqr = entity.pos.load().squared_distance_to_vec(&attacker_pos);
+                if combat::should_squid_flee(in_water, attacker_ent.is_alive(), dist_sqr) {
+                    let ticks = self.flee_ticks.fetch_add(1, Ordering::Relaxed) + 1;
+                    let block_above = entity.block_pos.load().up();
+                    let is_air_above = world.get_block(&block_above) == &pumpkin_data::Block::AIR;
+                    let flee_movement = combat::calculate_squid_flee_movement(
+                        entity.pos.load(),
+                        attacker_pos,
+                        is_air_above,
+                    );
+                    self.movement_vector.store(flee_movement);
+
+                    if ticks % 10 == 5 {
+                        world.spawn_particle(
+                            entity.pos.load(),
+                            Vector3::new(0.0, 0.0, 0.0),
+                            0.0,
+                            1,
+                            Particle::Bubble,
+                        );
+                    }
+                    is_fleeing = true;
+                } else {
+                    self.flee_ticks.store(0, Ordering::Relaxed);
+                }
+            } else {
+                self.flee_ticks.store(0, Ordering::Relaxed);
+            }
+        } else {
+            self.flee_ticks.store(0, Ordering::Relaxed);
+        }
+
+        // 2. Random movement vector selection (SquidRandomMovementGoal from vanilla Squid.java)
         let mut movement_vec = self.movement_vector.load();
-        if !in_water || movement_vec.length_squared() < 1e-5 || rng.random_range(0..50) == 0 {
+        if !is_fleeing
+            && (!in_water || movement_vec.length_squared() < 1e-5 || rng.random_range(0..50) == 0)
+        {
             let angle = rng.random::<f32>() * std::f32::consts::TAU;
             movement_vec = Vector3::new(
                 (angle.cos() * 0.2) as f64,
@@ -142,7 +215,7 @@ impl Mob for SquidEntity {
             self.movement_vector.store(movement_vec);
         }
 
-        // 2. Tentacle thrust cycle (Squid.aiStep from vanilla Squid.java)
+        // 3. Tentacle thrust cycle (Squid.aiStep from vanilla Squid.java)
         let mut tentacle_movement = self.tentacle_movement.load() + self.tentacle_speed.load();
         if tentacle_movement > std::f32::consts::TAU {
             tentacle_movement -= std::f32::consts::TAU;

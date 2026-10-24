@@ -3401,5 +3401,49 @@
     - Added `DolphinSwimWithPlayerGoal` to Dolphin's `goal_selector` at priority 2 with speed modifier 4.0.
   - Added unit test `test_spider_cave_spider_and_dolphin_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 63/63 tests passing in `entity::combat::tests`.
 
+## Gap 178: Squid & GlowSquid Flee Dynamics, Directional Ink Cloud, XP Drops, and Water Mob Leashing Parity
+- **Vanilla Reference**:
+  - `Squid.java:88-90, 188-203, 240-298`, `GlowSquid.java:34-37, 94-100`, `AgeableWaterCreature.java:33-35, 62`:
+    - Squid & GlowSquid Flee Goal (`SquidFleeGoal`):
+      - Khi bị tổn thương bởi một thực thể sống (`lastHurtByMob != null`) trong nước ở khoảng cách `< 100.0` (10 blocks):
+      - Tính toán vector trốn chạy `fleeTo = squid.pos - attacker.pos`.
+      - Tính tốc độ trốn thoát: `avoidSpeed = 3.0`, nếu `length > 5.0` thì giảm dần `avoidSpeed -= (length - 5.0) / 5.0`.
+      - Nếu khối phía trên là Air, triệt tiêu thành phần trục Y (`fleeTo.y = 0.0`) để mực không bị đẩy vọt lên cạn.
+      - Chuyển động được gán thành `movementVector = fleeTo / 20.0`.
+      - Mỗi 10 ticks (khi `fleeTicks % 10 == 5`), phun bọt khí `ParticleTypes.BUBBLE` tại vị trí mực đang bơi trốn.
+    - Directional Ink Squirt Cloud:
+      - Khi bị thương, Squid và GlowSquid phụt ra đám mây mực gồm 30 hạt mực (`ParticleTypes.SQUID_INK` hoặc `GLOW_SQUID_INK`) phát ra từ phía sau thân mực theo góc quay `pitch` và `yaw` của cơ thể (`rotateVector(new Vec3(0.0, -1.0, 0.0))`).
+      - Hạt mực phụt ngược chiều di chuyển với hệ số offset scale `(is_baby ? 0.1 : 0.3) + rand * 2.0` và vận tốc hướng tán xạ `(rand * 0.6 - 0.3, -1.0, rand * 0.6 - 0.3)`.
+    - Experience Drop Parity:
+      - `AgeableWaterCreature.java:34`: Mực rơi `1 + rand.nextInt(3)` (1 đến 3 XP) khi bị tiêu diệt bởi người chơi.
+    - Leashing Parity (`Mob.java:1288`, `AgeableWaterCreature.java:62`, `AmbientCreature.java:13`, `Squid.java:88-90`, `Dolphin.java:376`, `Axolotl.java:369`, `Turtle.java:279`, `Zoglin.java:193`):
+      - Mặc định quái vật `MobCategory::MONSTER` không thể bị dắt dây (`canBeLeashed() -> false`), ngoại trừ `Zoglin` (`canBeLeashed() -> true`).
+      - Sinh vật môi trường `Bat` không thể bị dắt dây (`canBeLeashed() -> false`).
+      - Đa số sinh vật dưới nước (`AgeableWaterCreature`) gồm Rùa biển `Turtle`, các loài cá (`Cod`, `Salmon`, `Pufferfish`, `TropicalFish`, `Tadpole`) không thể bị dắt dây (`canBeLeashed() -> false`).
+      - Ngoại lệ đặc biệt: `Squid`, `GlowSquid`, `Dolphin`, và `Axolotl` có thể được dắt dây dắt (`canBeLeashed() -> true`).
+      - Dân làng `Villager` và thương nhân lang thang `WanderingTrader` không thể bị dắt dây (`canBeLeashed() -> false`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_squid_flee_movement`: computes flee vector scaled by avoid speed and air bound clamp.
+    - `should_squid_flee`: validates water condition, attacker existence, and distance `< 100.0`.
+    - `calculate_squid_ink_offset_scale`: computes offset scale based on baby status and random factor.
+    - `rotate_squid_vector`: rotates 3D vector by body pitch and yaw angles.
+    - `get_squid_xp_reward`: returns `1 + rand(0..3)` XP.
+    - `is_mob_leashable`: centralizes leashing permissions across all mob categories, water creatures, and vanilla overrides.
+  - Updated `Mob` trait and `interact_mob_item` in `crates/pumpkin-core/src/entity/mob/mod.rs`:
+    - Added `can_be_leashed` to `Mob` trait defaulting to `combat::is_mob_leashable(self.get_entity().entity_type)`.
+    - Enforced `mob.can_be_leashed()` check in `interact_mob_item` before allowing Lead item leashing.
+  - Updated `SquidEntity` & `GlowSquidEntity`:
+    - Added `flee_ticks` tracking and integrated `SquidFleeGoal` logic with bubble particles into `mob_tick`.
+    - Updated `on_damage` to burst 30 directional ink particles behind the squid's body.
+    - Implemented `can_be_leashed` returning `true`.
+    - Implemented `get_base_experience_reward` returning 1..=3 XP.
+  - Updated `TurtleEntity` and `BatEntity`:
+    - Overrode `can_be_leashed` returning `false`.
+  - Updated `ZoglinEntity`:
+    - Overrode `can_be_leashed` returning `true`.
+  - Added unit test `test_squid_glow_squid_turtle_and_leash_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 64/64 tests passing in `entity::combat::tests`.
+
+
 
 

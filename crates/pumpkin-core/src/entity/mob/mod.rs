@@ -928,9 +928,10 @@ impl MobEntity {
             return true;
         }
 
-        // If holding a lead, leash the mob to the player
-        if item_stack.item.registry_key == "lead"
-            || item_stack.item.registry_key == "minecraft:lead"
+        // If holding a lead, leash the mob to the player (Vanilla Mob.java:1497-1502: check canBeLeashed)
+        if (item_stack.item.registry_key == "lead"
+            || item_stack.item.registry_key == "minecraft:lead")
+            && combat::is_mob_leashable(entity.entity_type)
         {
             let diff = entity.pos.load() - player.get_entity().pos.load();
             let dist_sq = diff.length_squared();
@@ -1132,6 +1133,12 @@ pub trait Mob: EntityBase + Send + Sync {
 
     fn mob_bedrock_identifier(&self) -> Option<&'static str> {
         None
+    }
+
+    /// Vanilla `Mob.canBeLeashed`: returns whether this mob can be leashed with a lead.
+    /// Defaults to `combat::is_mob_leashable(self.get_entity().entity_type)`.
+    fn can_be_leashed(&self) -> bool {
+        combat::is_mob_leashable(self.get_entity().entity_type)
     }
 
     /// `LivingEntity.canBreatheUnderwater`: no air is lost while submerged.

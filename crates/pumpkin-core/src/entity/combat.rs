@@ -4187,6 +4187,143 @@ pub const fn calculate_dolphin_grace_duration() -> i32 {
     100
 }
 
+/// Calculates flee motion vector for Squid and GlowSquid when hurt by an attacker.
+///
+/// Mirrors vanilla `Squid.java:267-290`:
+/// ```java
+/// Vec3 fleeTo = new Vec3(Squid.this.getX() - lastHurtByMob.getX(), Squid.this.getY() - lastHurtByMob.getY(), Squid.this.getZ() - lastHurtByMob.getZ());
+/// double length = fleeTo.length();
+/// if (length > 0.0) {
+///    fleeTo.normalize();
+///    double avoidSpeed = 3.0;
+///    if (length > 5.0) {
+///       avoidSpeed -= (length - 5.0) / 5.0;
+///    }
+///    if (avoidSpeed > 0.0) {
+///       fleeTo = fleeTo.scale(avoidSpeed);
+///    }
+/// }
+/// if (blockState.isAir()) {
+///    fleeTo = fleeTo.subtract(0.0, fleeTo.y, 0.0);
+/// }
+/// Squid.this.movementVector = new Vec3(fleeTo.x / 20.0, fleeTo.y / 20.0, fleeTo.z / 20.0);
+/// ```
+#[must_use]
+pub fn calculate_squid_flee_movement(
+    squid_pos: Vector3<f64>,
+    attacker_pos: Vector3<f64>,
+    is_target_air: bool,
+) -> Vector3<f64> {
+    let mut flee_to = squid_pos - attacker_pos;
+    let length = (flee_to.x * flee_to.x + flee_to.y * flee_to.y + flee_to.z * flee_to.z).sqrt();
+    if length > 0.0 {
+        flee_to = flee_to * (1.0 / length);
+        let mut avoid_speed = 3.0;
+        if length > 5.0 {
+            avoid_speed -= (length - 5.0) / 5.0;
+        }
+        if avoid_speed > 0.0 {
+            flee_to = flee_to * avoid_speed;
+        }
+    }
+    if is_target_air {
+        flee_to.y = 0.0;
+    }
+    Vector3::new(flee_to.x / 20.0, flee_to.y / 20.0, flee_to.z / 20.0)
+}
+
+/// Evaluates whether a Squid or GlowSquid should flee from an attacker.
+///
+/// Mirrors vanilla `Squid.java:249`:
+/// `Squid.this.isInWater() && entity != null ? Squid.this.distanceToSqr(entity) < 100.0 : false;`
+#[must_use]
+pub fn should_squid_flee(is_in_water: bool, has_attacker: bool, distance_sqr: f64) -> bool {
+    is_in_water && has_attacker && distance_sqr < 100.0
+}
+
+/// Calculates ink offset scale for Squid ink particles.
+///
+/// Mirrors vanilla `Squid.java:199-200`:
+/// `float inkPosOffsetScale = this.isBaby() ? 0.1F : 0.3F;`
+/// `Vec3 dirOffset = dir.scale(inkPosOffsetScale + this.random.nextFloat() * 2.0F);`
+#[must_use]
+pub fn calculate_squid_ink_offset_scale(is_baby: bool, rand_factor: f32) -> f32 {
+    let base = if is_baby { 0.1 } else { 0.3 };
+    rand_factor.mul_add(2.0, base)
+}
+
+/// Rotates a 3D vector by entity pitch and yaw.
+///
+/// Mirrors vanilla `Squid.java:188-191`:
+/// `Vec3 v = vec.xRot(this.xBodyRotO * (float) (Math.PI / 180.0)); return v.yRot(-this.yBodyRotO * (float) (Math.PI / 180.0));`
+#[must_use]
+pub fn rotate_squid_vector(vec: Vector3<f64>, pitch_deg: f32, yaw_deg: f32) -> Vector3<f64> {
+    let pitch_rad = (pitch_deg as f64).to_radians();
+    let yaw_rad = (yaw_deg as f64).to_radians();
+
+    let cos_p = pitch_rad.cos();
+    let sin_p = pitch_rad.sin();
+    let y1 = vec.y * cos_p - vec.z * sin_p;
+    let z1 = vec.y * sin_p + vec.z * cos_p;
+    let x1 = vec.x;
+
+    let cos_y = (-yaw_rad).cos();
+    let sin_y = (-yaw_rad).sin();
+    let x2 = x1 * cos_y + z1 * sin_y;
+    let z2 = -x1 * sin_y + z1 * cos_y;
+    let y2 = y1;
+
+    Vector3::new(x2, y2, z2)
+}
+
+/// Calculates base experience reward dropped by Squid / GlowSquid.
+///
+/// Mirrors vanilla `AgeableWaterCreature.java:33-35`:
+/// `return 1 + this.random.nextInt(3);`
+#[must_use]
+pub fn get_squid_xp_reward(rand_0_to_2: i32) -> u32 {
+    (1 + rand_0_to_2).max(1) as u32
+}
+
+/// Determines whether an entity type can be leashed with a lead.
+///
+/// Mirrors vanilla `Mob.java:1288`, `AgeableWaterCreature.java:62`, `AmbientCreature.java:13`,
+/// `Squid.java:88`, `Dolphin.java:376`, `Axolotl.java:369`, `Turtle.java:279`, `Zoglin.java:193`:
+#[must_use]
+pub fn is_mob_leashable(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+
+    if entity_type == &EntityType::ZOGLIN {
+        return true;
+    }
+    if entity_type == &EntityType::SQUID
+        || entity_type == &EntityType::GLOW_SQUID
+        || entity_type == &EntityType::DOLPHIN
+        || entity_type == &EntityType::AXOLOTL
+    {
+        return true;
+    }
+
+    if entity_type == &EntityType::TURTLE
+        || entity_type == &EntityType::COD
+        || entity_type == &EntityType::SALMON
+        || entity_type == &EntityType::PUFFERFISH
+        || entity_type == &EntityType::TROPICAL_FISH
+        || entity_type == &EntityType::TADPOLE
+    {
+        return false;
+    }
+
+    if entity_type == &EntityType::BAT
+        || entity_type == &EntityType::VILLAGER
+        || entity_type == &EntityType::WANDERING_TRADER
+    {
+        return false;
+    }
+
+    entity_type.category != &pumpkin_data::entity::MobCategory::MONSTER
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6547,6 +6684,81 @@ mod tests {
 
         // 5. Dolphin grace duration
         assert_eq!(calculate_dolphin_grace_duration(), 100);
+    }
+
+    #[test]
+    fn test_squid_glow_squid_turtle_and_leash_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Squid flee motion (Squid.java:267-290)
+        let squid_pos = Vector3::new(10.0, 60.0, 10.0);
+        let attacker_pos = Vector3::new(7.0, 60.0, 10.0);
+        let flee_vec = calculate_squid_flee_movement(squid_pos, attacker_pos, false);
+        // Distance is 3.0 (< 5.0), so avoidSpeed is 3.0.
+        // Direction is (1.0, 0.0, 0.0), scaled by 3.0, divided by 20.0 = 0.15
+        assert!((flee_vec.x - 0.15).abs() < 1e-4);
+        assert_eq!(flee_vec.y, 0.0);
+        assert_eq!(flee_vec.z, 0.0);
+
+        // When target block is air, vertical velocity is zeroed
+        let attacker_below = Vector3::new(10.0, 58.0, 10.0);
+        let flee_air = calculate_squid_flee_movement(squid_pos, attacker_below, true);
+        assert_eq!(flee_air.y, 0.0);
+
+        // 2. Squid flee trigger condition (Squid.java:249: in water, has attacker, dist_sq < 100.0)
+        assert!(should_squid_flee(true, true, 25.0));
+        assert!(should_squid_flee(true, true, 99.9));
+        assert!(!should_squid_flee(false, true, 25.0));
+        assert!(!should_squid_flee(true, false, 25.0));
+        assert!(!should_squid_flee(true, true, 100.0));
+
+        // 3. Squid ink offset scale (Squid.java:199-200)
+        assert_eq!(calculate_squid_ink_offset_scale(true, 0.0), 0.1);
+        assert_eq!(calculate_squid_ink_offset_scale(false, 0.0), 0.3);
+        assert!((calculate_squid_ink_offset_scale(false, 0.5) - 1.3).abs() < 1e-6);
+
+        // 4. Squid experience reward (AgeableWaterCreature.java:33-35: 1 + nextInt(3))
+        assert_eq!(get_squid_xp_reward(0), 1);
+        assert_eq!(get_squid_xp_reward(1), 2);
+        assert_eq!(get_squid_xp_reward(2), 3);
+
+        // 5. Leashing parity (Mob.java:1288, AgeableWaterCreature.java:62, AmbientCreature.java:13, etc.)
+        // Monsters cannot be leashed, except Zoglin
+        assert!(!is_mob_leashable(&EntityType::ZOMBIE));
+        assert!(!is_mob_leashable(&EntityType::SKELETON));
+        assert!(!is_mob_leashable(&EntityType::CREEPER));
+        assert!(!is_mob_leashable(&EntityType::RAVAGER));
+        assert!(is_mob_leashable(&EntityType::ZOGLIN));
+
+        // Squid, GlowSquid, Dolphin, Axolotl CAN be leashed
+        assert!(is_mob_leashable(&EntityType::SQUID));
+        assert!(is_mob_leashable(&EntityType::GLOW_SQUID));
+        assert!(is_mob_leashable(&EntityType::DOLPHIN));
+        assert!(is_mob_leashable(&EntityType::AXOLOTL));
+
+        // Turtles, fish and bat CANNOT be leashed
+        assert!(!is_mob_leashable(&EntityType::TURTLE));
+        assert!(!is_mob_leashable(&EntityType::COD));
+        assert!(!is_mob_leashable(&EntityType::SALMON));
+        assert!(!is_mob_leashable(&EntityType::PUFFERFISH));
+        assert!(!is_mob_leashable(&EntityType::TROPICAL_FISH));
+        assert!(!is_mob_leashable(&EntityType::TADPOLE));
+        assert!(!is_mob_leashable(&EntityType::BAT));
+
+        // Villagers & Wandering Traders CANNOT be leashed
+        assert!(!is_mob_leashable(&EntityType::VILLAGER));
+        assert!(!is_mob_leashable(&EntityType::WANDERING_TRADER));
+
+        // Common passive animals CAN be leashed
+        assert!(is_mob_leashable(&EntityType::COW));
+        assert!(is_mob_leashable(&EntityType::SHEEP));
+        assert!(is_mob_leashable(&EntityType::PIG));
+        assert!(is_mob_leashable(&EntityType::CHICKEN));
+        assert!(is_mob_leashable(&EntityType::HORSE));
+        assert!(is_mob_leashable(&EntityType::LLAMA));
+        assert!(is_mob_leashable(&EntityType::FROG));
+        assert!(is_mob_leashable(&EntityType::CAT));
+        assert!(is_mob_leashable(&EntityType::WOLF));
     }
 }
 

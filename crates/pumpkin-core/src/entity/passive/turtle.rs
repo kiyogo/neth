@@ -165,6 +165,11 @@ impl Mob for TurtleEntity {
         false
     }
 
+    /// Vanilla Turtle.java:279: Turtles cannot be leashed.
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     /// Turtle.getAmbientSoundInterval in vanilla is 200.
     fn get_ambient_sound_interval(&self) -> i32 {
         200
