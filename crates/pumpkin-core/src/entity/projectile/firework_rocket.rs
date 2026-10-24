@@ -32,14 +32,18 @@ pub struct FireworkRocketEntity {
 }
 
 /// Vanilla adds ten ticks of lifetime per level of the stack's `Fireworks` flight-duration
-/// component, before the random terms. A stack without the component (shouldn't normally
-/// happen - every firework rocket item carries one) falls back to duration 1.
+/// component, before the random terms. A stack without the component (or duration 0)
+/// falls back to base flightCount 1 (10..=21 ticks).
 fn life_time_for(item_stack: &ItemStack, random: &mut RandomGenerator) -> u32 {
     let flight_duration = item_stack
         .get_data_component::<FireworksImpl>()
-        .map_or(1, |fireworks| fireworks.flight_duration.max(1) as u32);
+        .map(|fireworks| fireworks.flight_duration as u8);
 
-    10 * flight_duration + random.next_bounded_i32(6) as u32 + random.next_bounded_i32(7) as u32
+    crate::entity::combat::calculate_firework_lifetime(
+        flight_duration,
+        random.next_bounded_i32(6),
+        random.next_bounded_i32(7),
+    )
 }
 
 impl FireworkRocketEntity {
@@ -138,19 +142,21 @@ impl FireworkRocketEntity {
         rocket_stack: &pumpkin_data::item_stack::ItemStack,
         shot_at_angle: bool,
     ) -> Self {
-        let mut flight_count = 1;
+        let mut flight_duration = None;
         let mut explosions_count = 0;
         if let Some(fireworks) =
             rocket_stack.get_data_component::<pumpkin_data::data_component_impl::FireworksImpl>()
         {
-            flight_count += fireworks.flight_duration.max(0);
+            flight_duration = Some(fireworks.flight_duration.max(0) as u8);
             explosions_count = fireworks.explosions.len() as u32;
         }
 
         let mut random = RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()));
-        let life_time = (10 * flight_count
-            + random.next_bounded_i32(6) as i32
-            + random.next_bounded_i32(7) as i32) as u32;
+        let life_time = crate::entity::combat::calculate_firework_lifetime(
+            flight_duration,
+            random.next_bounded_i32(6),
+            random.next_bounded_i32(7),
+        );
 
         entity.set_synced_data(
             pumpkin_data::tracked_data::firework_rocket::SHOT_AT_ANGLE,
@@ -205,16 +211,52 @@ impl FireworkRocketEntity {
 
         // Vanilla explosion damage: 5.0 + explosions.size() * 2.0
         if self.explosions_count > 0 {
-            let damage_amount = 5.0 + (self.explosions_count as f32) * 2.0;
             let pos = entity.pos.load();
             let attacker_opt = self.entity.owner_id.and_then(|id| world.get_entity_by_id(id));
             let attacker_ref = attacker_opt.as_ref().map(|a| a.as_ref() as &dyn EntityBase);
 
+            let mut direct_hit_id = None;
+            if self.attached_to_shooter
+                && let Some(shooter_id) = self.entity.owner_id
+                && let Some(shooter) = world.get_entity_by_id(shooter_id)
+            {
+                direct_hit_id = Some(shooter_id);
+                let direct_damage = crate::entity::combat::calculate_firework_direct_damage(
+                    self.explosions_count as usize,
+                );
+                if let Some(living) = shooter.get_living_entity() {
+                    living.damage_with_context(
+                        shooter.as_ref(),
+                        direct_damage,
+                        pumpkin_data::damage::DamageType::FIREWORKS,
+                        Some(pos),
+                        attacker_ref,
+                        Some(self),
+                    );
+                } else if let Some(player) = world.get_player_by_id(shooter_id) {
+                    player.damage_with_context(
+                        player.as_ref(),
+                        direct_damage,
+                        pumpkin_data::damage::DamageType::FIREWORKS,
+                        Some(pos),
+                        attacker_ref,
+                        Some(self),
+                    );
+                }
+            }
+
             for living in world.get_nearby_entities(pos, 5.0).into_values() {
+                let target_id = living.get_entity().entity_id;
+                if Some(target_id) == direct_hit_id {
+                    continue;
+                }
                 let target_pos = living.get_entity().pos.load();
                 let dist = target_pos.squared_distance_to(pos.x, pos.y, pos.z).sqrt();
                 if dist <= 5.0 {
-                    let damage = damage_amount * ((5.0 - dist) as f32 / 5.0).max(0.0).sqrt();
+                    let damage = crate::entity::combat::calculate_firework_explosion_damage(
+                        self.explosions_count as usize,
+                        dist,
+                    );
                     living.damage_with_context(
                         living.as_ref(),
                         damage,
@@ -227,10 +269,17 @@ impl FireworkRocketEntity {
             }
 
             for player in world.get_nearby_players(pos, 5.0) {
+                let target_id = player.get_entity().entity_id;
+                if Some(target_id) == direct_hit_id {
+                    continue;
+                }
                 let target_pos = player.get_entity().pos.load();
                 let dist = target_pos.squared_distance_to(pos.x, pos.y, pos.z).sqrt();
                 if dist <= 5.0 {
-                    let damage = damage_amount * ((5.0 - dist) as f32 / 5.0).max(0.0).sqrt();
+                    let damage = crate::entity::combat::calculate_firework_explosion_damage(
+                        self.explosions_count as usize,
+                        dist,
+                    );
                     player.damage_with_context(
                         player.as_ref(),
                         damage,
@@ -304,7 +353,10 @@ impl EntityBase for FireworkRocketEntity {
                     let shooter_vel = shooter.velocity.load();
 
                     let new_shooter_vel =
-                        shooter_vel + (rotation * 0.1 + (rotation * 1.5 - shooter_vel) * 0.5);
+                        crate::entity::combat::calculate_elytra_firework_boost_velocity(
+                            shooter_vel,
+                            rotation,
+                        );
 
                     shooter.set_velocity(new_shooter_vel);
 
@@ -322,6 +374,15 @@ impl EntityBase for FireworkRocketEntity {
         }
 
         let current_life = self.life.fetch_add(1, Ordering::Relaxed);
+        if current_life == 0 && !entity.is_silent() {
+            world.play_sound_fine(
+                pumpkin_data::sound::Sound::EntityFireworkRocketLaunch,
+                pumpkin_data::sound::SoundCategory::Ambient,
+                &entity.pos.load(),
+                3.0,
+                1.0,
+            );
+        }
         if current_life > self.life_time.load(Ordering::Relaxed) {
             self.explode_and_remove(&world);
         }
@@ -357,23 +418,31 @@ mod test {
         RandomGenerator::Xoroshiro(Xoroshiro::from_seed(get_seed()))
     }
 
-    /// Without a `Fireworks` component, lifetime falls back to duration 1: the same
-    /// 10 + [0,6) + [0,7) range the rocket used before flight duration was accounted for.
+    /// Default firework rocket item carries flight duration 1, so flightCount = 1 + 1 = 2
+    /// and lifetime is in [20, 31] ticks.
     #[test]
-    fn life_time_without_fireworks_component_uses_duration_one() {
+    fn default_firework_rocket_item_uses_duration_one() {
         let stack = ItemStack::new(1, &Item::FIREWORK_ROCKET);
+        let life_time = life_time_for(&stack, &mut random());
+        assert!((20..=31).contains(&life_time));
+    }
+
+    /// Without a `Fireworks` component, lifetime falls back to base flightCount 1 (10..=21 ticks).
+    #[test]
+    fn life_time_without_fireworks_component_uses_base_duration() {
+        let stack = ItemStack::new(1, &Item::DIRT);
         let life_time = life_time_for(&stack, &mut random());
         assert!((10..=21).contains(&life_time));
     }
 
-    /// Vanilla adds ten ticks per flight-duration level before the random terms, so a
-    /// duration-3 rocket's lifetime always exceeds a duration-1 rocket's maximum.
+    /// Vanilla adds ten ticks per flight-duration level plus base flight 1 before random terms,
+    /// so flight duration 3 gives flightCount 4 -> 40..=51 ticks lifetime.
     #[test]
     fn life_time_scales_with_flight_duration() {
         let mut stack = ItemStack::new(1, &Item::FIREWORK_ROCKET);
         stack.set_data_component(FireworksImpl::new(3, Vec::new()));
 
         let life_time = life_time_for(&stack, &mut random());
-        assert!((30..=41).contains(&life_time));
+        assert!((40..=51).contains(&life_time));
     }
 }

@@ -43,6 +43,12 @@ impl ItemBehaviour for FireworkRocketItem {
         _block: &Block,
         _server: &Server,
     ) -> BlockActionResult {
+        // Vanilla FireworkRocketItem.java:31-33:
+        // When fall flying, clicking a block passes through to normal item use (boost).
+        if player.get_entity().is_fall_flying() {
+            return BlockActionResult::Pass;
+        }
+
         let world = player.world();
         // The exact click point, nudged just outside the clicked face so the rocket doesn't
         // spawn embedded in the block.

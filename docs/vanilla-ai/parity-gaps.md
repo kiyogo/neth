@@ -2131,6 +2131,77 @@
   - Added reset of `fall_flying` and `fall_fly_ticks` in `LivingEntity::on_death`.
   - Added unit test `test_elytra_decay_timing_parity` in `combat.rs`. Total 31/31 tests in `entity::combat::tests` passing.
 
+## Gap 146: Firework Rocket Boost during Elytra Gliding, Flight Duration Formula, Launch Sound & Explosion Direct Damage Parity
+- **Vanilla Reference**:
+  - `FireworkRocketItem.java:28-75`:
+    ```java
+    @Override
+    public InteractionResult useOn(final UseOnContext context) {
+       Level level = context.getLevel();
+       Player player = context.getPlayer();
+       if (player != null && player.isFallFlying()) {
+          return InteractionResult.PASS;
+       }
+       // Spawns FireworkRocketEntity outside block face (+0.15)
+       return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public InteractionResult use(final Level level, final Player player, final InteractionHand hand) {
+       if (player.isFallFlying()) {
+          ItemStack itemStack = player.getItemInHand(hand);
+          if (level instanceof ServerLevel serverLevel) {
+             if (player.dropAllLeashConnections(null)) {
+                level.playSound(null, player, SoundEvents.LEAD_BREAK, SoundSource.NEUTRAL, 1.0F, 1.0F);
+             }
+             Projectile.spawnProjectile(new FireworkRocketEntity(level, itemStack, player), serverLevel, itemStack);
+             itemStack.consume(1, player);
+             player.awardStat(Stats.ITEM_USED.get(this));
+          }
+          return InteractionResult.SUCCESS;
+       } else {
+          return InteractionResult.PASS;
+       }
+    }
+    ```
+  - `FireworkRocketEntity.java:62-70, 127-147, 169-172, 223-256`:
+    - Lifetime formula:
+      ```java
+      int flightCount = 1;
+      Fireworks fireworks = sourceItemStack.get(DataComponents.FIREWORKS);
+      if (fireworks != null) {
+         flightCount += fireworks.flightDuration();
+      }
+      this.lifetime = 10 * flightCount + this.random.nextInt(6) + this.random.nextInt(7);
+      ```
+      - No fireworks component / duration 0: `flightCount = 1` -> `lifetime = 10 + [0, 11] = 10..=21` ticks.
+      - Duration 1 (standard crafted rocket): `flightCount = 1 + 1 = 2` -> `lifetime = 20 + [0, 11] = 20..=31` ticks.
+      - Duration 2: `flightCount = 1 + 2 = 3` -> `lifetime = 30 + [0, 11] = 30..=41` ticks.
+      - Duration 3: `flightCount = 1 + 3 = 4` -> `lifetime = 40 + [0, 11] = 40..=51` ticks.
+    - Attached boost velocity:
+      ```java
+      movement.add(
+         lookAngle.x * 0.1 + (lookAngle.x * 1.5 - movement.x) * 0.5,
+         lookAngle.y * 0.1 + (lookAngle.y * 1.5 - movement.y) * 0.5,
+         lookAngle.z * 0.1 + (lookAngle.z * 1.5 - movement.z) * 0.5
+      );
+      ```
+    - Launch sound on tick 0 (`life == 0`):
+      `SoundEvents.FIREWORK_ROCKET_LAUNCH` (`entity.firework_rocket.launch`) with volume `3.0F`, pitch `1.0F`, category `SoundSource.AMBIENT`.
+    - Explosion damage parity:
+      - Attached glider receives direct full damage: `5.0F + explosions.size() * 2`.
+      - Surrounding entities within 5.0 blocks receive radial falloff damage: `damageAmount * sqrt((5.0 - dist) / 5.0)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `calculate_firework_lifetime`, `calculate_elytra_firework_boost_velocity`, `calculate_firework_direct_damage`, and `calculate_firework_explosion_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `FireworkRocketEntity`:
+    - Synchronized `life_time_for` and `new_shot_projectile` with vanilla `flightCount = 1 + duration` formula.
+    - Added launch sound emission `Sound::EntityFireworkRocketLaunch` (`volume: 3.0, pitch: 1.0, Ambient`) on tick 0.
+    - Applied `calculate_elytra_firework_boost_velocity` during attached flight.
+    - Separated direct explosion damage for the attached flyer from radial distance damage for nearby targets.
+  - Updated `FireworkRocketItem::use_on_block` to return `BlockActionResult::Pass` while fall flying so players boost instead of placing firework rockets on clicked blocks.
+  - Added unit test `test_firework_flight_duration_and_elytra_boost_parity` in `combat.rs` and updated tests in `firework_rocket.rs`. Total 32/32 tests in `entity::combat::tests` passing.
+
+
 
 
 

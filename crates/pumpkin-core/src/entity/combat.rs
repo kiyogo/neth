@@ -1565,6 +1565,82 @@ pub const fn should_emit_elytra_game_event(check_fall_fly_ticks: i32) -> bool {
     check_fall_fly_ticks > 0 && check_fall_fly_ticks % 10 == 0
 }
 
+/// Calculates firework lifetime in ticks from flight duration and random bounds.
+///
+/// Mirrors vanilla `FireworkRocketEntity.java:62-70`:
+/// ```java
+/// int flightCount = 1;
+/// Fireworks fireworks = sourceItemStack.get(DataComponents.FIREWORKS);
+/// if (fireworks != null) {
+///    flightCount += fireworks.flightDuration();
+/// }
+/// this.lifetime = 10 * flightCount + this.random.nextInt(6) + this.random.nextInt(7);
+/// ```
+#[must_use]
+pub fn calculate_firework_lifetime(flight_duration: Option<u8>, rand_6: i32, rand_7: i32) -> u32 {
+    let mut flight_count = 1;
+    if let Some(duration) = flight_duration {
+        flight_count += duration as i32;
+    }
+    (10 * flight_count + rand_6 + rand_7).max(0) as u32
+}
+
+/// Calculates the new 3D velocity vector applied to an Elytra-gliding entity boosted by a firework rocket.
+///
+/// Mirrors vanilla `FireworkRocketEntity.java:128-139`:
+/// ```java
+/// Vec3 lookAngle = this.attachedToEntity.getLookAngle();
+/// double power = 1.5;
+/// double powerAdd = 0.1;
+/// Vec3 movement = this.attachedToEntity.getDeltaMovement();
+/// this.attachedToEntity.setDeltaMovement(
+///     movement.add(
+///         lookAngle.x * 0.1 + (lookAngle.x * 1.5 - movement.x) * 0.5,
+///         lookAngle.y * 0.1 + (lookAngle.y * 1.5 - movement.y) * 0.5,
+///         lookAngle.z * 0.1 + (lookAngle.z * 1.5 - movement.z) * 0.5
+///     )
+/// );
+/// ```
+#[must_use]
+pub fn calculate_elytra_firework_boost_velocity(
+    current_velocity: Vector3<f64>,
+    look_vector: Vector3<f64>,
+) -> Vector3<f64> {
+    Vector3::new(
+        current_velocity.x + look_vector.x * 0.1 + (look_vector.x * 1.5 - current_velocity.x) * 0.5,
+        current_velocity.y + look_vector.y * 0.1 + (look_vector.y * 1.5 - current_velocity.y) * 0.5,
+        current_velocity.z + look_vector.z * 0.1 + (look_vector.z * 1.5 - current_velocity.z) * 0.5,
+    )
+}
+
+/// Calculates direct firework explosion damage (e.g. to the attached flyer).
+///
+/// Mirrors vanilla `FireworkRocketEntity.java:226, 231`:
+/// `damageAmount = 5.0F + explosions.size() * 2;`
+#[must_use]
+pub fn calculate_firework_direct_damage(explosions_count: usize) -> f32 {
+    if explosions_count == 0 {
+        0.0
+    } else {
+        5.0 + (explosions_count as f32) * 2.0
+    }
+}
+
+/// Calculates radial firework explosion damage based on distance from the detonation center.
+///
+/// Mirrors vanilla `FireworkRocketEntity.java:234-253`:
+/// `float damage = damageAmount * (float)Math.sqrt((5.0 - this.distanceTo(target)) / 5.0);`
+#[must_use]
+pub fn calculate_firework_explosion_damage(explosions_count: usize, distance: f64) -> f32 {
+    if explosions_count == 0 || distance > 5.0 {
+        0.0
+    } else {
+        let damage_amount = 5.0 + (explosions_count as f32) * 2.0;
+        damage_amount * (((5.0 - distance) / 5.0).max(0.0) as f32).sqrt()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2554,6 +2630,72 @@ mod tests {
         // Tick 40: event AND damage
         assert!(should_emit_elytra_game_event(40));
         assert!(should_damage_elytra(40));
+    }
+
+    #[test]
+    fn test_firework_flight_duration_and_elytra_boost_parity() {
+        // Vanilla FireworkRocketEntity.java:62-70:
+        // flightCount = 1
+        // if (fireworks != null) flightCount += fireworks.flightDuration()
+        // lifetime = 10 * flightCount + rand(6) + rand(7)
+        // With rand(6) in [0, 5] and rand(7) in [0, 6], random term is [0, 11].
+
+        // Duration None: flightCount = 1 -> lifetime in [10, 21]
+        let lt_none_min = calculate_firework_lifetime(None, 0, 0);
+        let lt_none_max = calculate_firework_lifetime(None, 5, 6);
+        assert_eq!(lt_none_min, 10);
+        assert_eq!(lt_none_max, 21);
+
+        // Duration 1: flightCount = 1 + 1 = 2 -> lifetime in [20, 31]
+        let lt_1_min = calculate_firework_lifetime(Some(1), 0, 0);
+        let lt_1_max = calculate_firework_lifetime(Some(1), 5, 6);
+        assert_eq!(lt_1_min, 20);
+        assert_eq!(lt_1_max, 31);
+
+        // Duration 2: flightCount = 1 + 2 = 3 -> lifetime in [30, 41]
+        let lt_2_min = calculate_firework_lifetime(Some(2), 0, 0);
+        let lt_2_max = calculate_firework_lifetime(Some(2), 5, 6);
+        assert_eq!(lt_2_min, 30);
+        assert_eq!(lt_2_max, 41);
+
+        // Duration 3: flightCount = 1 + 3 = 4 -> lifetime in [40, 51]
+        let lt_3_min = calculate_firework_lifetime(Some(3), 0, 0);
+        let lt_3_max = calculate_firework_lifetime(Some(3), 5, 6);
+        assert_eq!(lt_3_min, 40);
+        assert_eq!(lt_3_max, 51);
+
+        // Vanilla FireworkRocketEntity.java:134-138:
+        // new_vel = current_vel + (look * 0.1 + (look * 1.5 - current_vel) * 0.5)
+        // = current_vel * 0.5 + look * 0.85
+        let current_vel = Vector3::new(0.0, 0.0, 0.0);
+        let look = Vector3::new(0.0, 1.0, 0.0);
+        let boosted = calculate_elytra_firework_boost_velocity(current_vel, look);
+        assert!((boosted.y - 0.85).abs() < 1e-6);
+        assert_eq!(boosted.x, 0.0);
+        assert_eq!(boosted.z, 0.0);
+
+        // Moving forward while looking forward
+        let current_forward = Vector3::new(0.0, 0.0, 1.0);
+        let look_forward = Vector3::new(0.0, 0.0, 1.0);
+        let boosted_forward = calculate_elytra_firework_boost_velocity(current_forward, look_forward);
+        // 1.0 * 0.5 + 1.0 * 0.85 = 1.35
+        assert!((boosted_forward.z - 1.35).abs() < 1e-6);
+
+        // Vanilla FireworkRocketEntity.java:226, 231, 251:
+        // Direct damage: 5.0 + explosions * 2
+        assert_eq!(calculate_firework_direct_damage(0), 0.0);
+        assert_eq!(calculate_firework_direct_damage(1), 7.0);
+        assert_eq!(calculate_firework_direct_damage(3), 11.0);
+
+        // Radial damage falloff: damageAmount * sqrt((5.0 - dist) / 5.0)
+        assert_eq!(calculate_firework_explosion_damage(0, 0.0), 0.0);
+        assert_eq!(calculate_firework_explosion_damage(1, 0.0), 7.0); // at center: full damage
+        assert_eq!(calculate_firework_explosion_damage(1, 5.0), 0.0); // at border (5.0m): 0 damage
+        assert_eq!(calculate_firework_explosion_damage(1, 6.0), 0.0); // beyond 5m: 0 damage
+
+        // At distance 3.75m: (5.0 - 3.75) / 5.0 = 1.25 / 5.0 = 0.25 -> sqrt(0.25) = 0.5 -> 7.0 * 0.5 = 3.5
+        let dmg_quarter = calculate_firework_explosion_damage(1, 3.75);
+        assert!((dmg_quarter - 3.5).abs() < 1e-5);
     }
 }
 
