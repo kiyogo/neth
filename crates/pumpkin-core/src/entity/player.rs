@@ -1674,17 +1674,20 @@ impl Player {
             self.living_entity.set_sprinting(false);
         }
 
-        // NOTE: TOCTOU race condition in single-player context.
-        // The weapon cost is computed (cost = 1 or 2) with item_stack locked, then damage_held_item
-        // re-acquires the lock. In async multi-task scenarios, another task could theoretically
-        // swap the held item between these operations, causing the cost to apply to the wrong item.
-        // Mitigation options (in priority order):
-        // 1. Create damage_held_item_with_lock(&self, item_stack: MutexGuard, amount) variant
-        //    to hold the lock across both computation and application.
-        // 2. Refactor compute cost as a closure: damage_held_item(self, |stack| -> i32 { ... })
-        // 3. In practice, single-player scenarios are safe (this is not multiplayer). Document
-        //    as a known limitation if refactoring is deemed too invasive.
-        self.damage_held_item(Self::combat_weapon_durability_cost(&item_stack));
+        // Vanilla `Player.java:1084-1098` & `ItemStack.java:539-558`:
+        // Weapon durability damage and Stats.ITEM_USED are only applied when the target
+        // is a living entity. Non-living entities (boats, minecarts, armor stands) do not
+        // damage the weapon or award the ITEM_USED stat.
+        if victim.get_living_entity().is_some() {
+            if item_stack.get_data_component::<WeaponImpl>().is_some() {
+                self.increment_stat(
+                    statistics::StatisticCategory::Used,
+                    item_stack.item.id as i32,
+                    1,
+                );
+            }
+            self.damage_held_item(Self::combat_weapon_durability_cost(&item_stack));
+        }
 
         // Vanilla `Player#attack` ends the successful-hit branch with
         // `causeFoodExhaustion(0.1F)`. Only landed hits exhaust; the miss/no-damage

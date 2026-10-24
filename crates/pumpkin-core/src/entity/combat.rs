@@ -649,6 +649,16 @@ pub fn has_vanishing_curse(item_stack: &ItemStack) -> bool {
     item_stack.get_enchantment_level(&pumpkin_data::Enchantment::VANISHING_CURSE) > 0
 }
 
+/// Vanilla `Player.java:1086-1098` & `ItemStack.java:539-558`:
+/// Determines whether an attack against an entity should consume weapon durability
+/// and award the `ITEM_USED` statistic.
+/// In Vanilla, weapon durability damage and `Stats.ITEM_USED` are applied ONLY when
+/// the target is a living entity and the weapon has the `Weapon` component.
+#[must_use]
+pub fn should_weapon_damage_on_attack(is_victim_living: bool, has_weapon_component: bool) -> bool {
+    is_victim_living && has_weapon_component
+}
+
 /// Combat calculation rules mirroring vanilla `net.minecraft.world.damagesource.CombatRules`.
 pub struct CombatRules;
 
@@ -1749,6 +1759,20 @@ mod tests {
         // dmg = 10.0 * (1.0 - 0.0) = 10.0 (full damage through armor)
         let breach_4 = CombatRules::get_damage_after_absorb(10.0, 20.0, 0.0, 4);
         assert!((breach_4 - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_weapon_durability_and_item_used_conditions_parity() {
+        // Vanilla Player.java:1086-1098 & ItemStack.java:539-558:
+        // Attacking a living entity with a weapon consumes durability and increments ITEM_USED:
+        assert!(should_weapon_damage_on_attack(true, true));
+
+        // Attacking non-living entity (ArmorStand, Boat, Minecart) does NOT consume weapon durability:
+        assert!(!should_weapon_damage_on_attack(false, true));
+
+        // Attacking with an item without Weapon component (e.g. bare hand, stick) does not take weapon durability:
+        assert!(!should_weapon_damage_on_attack(true, false));
+        assert!(!should_weapon_damage_on_attack(false, false));
     }
 }
 

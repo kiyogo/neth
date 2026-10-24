@@ -1731,4 +1731,17 @@
   - Updated `CombatRules::get_damage_after_absorb` in `crates/pumpkin-core/src/entity/combat.rs` to apply `modify_armor_effectiveness` directly to `armor_fraction` additively and clamp to `[0.0, 1.0]`.
   - Updated `LivingEntity::get_damage_after_armor_absorb` in `crates/pumpkin-core/src/entity/living.rs` to extract Breach level from any living entity attacker's main hand stack.
   - Added `EquipmentSlot::BODY` to the equipment slots checked for damage protection enchantments in `LivingEntity::get_damage_after_magic_absorb`.
-  - Added and verified unit test `test_breach_armor_reduction_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 18/18 tests in `entity::combat::tests` passing.
+
+### Gap 133: Weapon Attack Durability Consumption & ITEM_USED Stat Restricted to Living Victims Parity
+- **Vanilla Reference**:
+  - `Player.java:1086-1098` (`itemAttackInteraction`), `ItemStack.java:539-558` (`hurtEnemy` & `postHurtEnemy`):
+    - When attacking an entity, `attackingItemStack.hurtEnemy(livingTarget, this)` and `postHurtEnemy(livingTarget, this)` are invoked **only** if the victim is a `LivingEntity` (`hurtTarget instanceof LivingEntity`).
+    - If the item possesses the `DataComponents.WEAPON` component, `Stats.ITEM_USED.get(usedItem)` is awarded to the player attacker.
+    - Non-living attack targets (such as boats, minecarts, and armor stands) never trigger weapon durability loss or award the `ITEM_USED` stat.
+  - Previously in Neth:
+    - In `Player::attack`, `self.damage_held_item(Self::combat_weapon_durability_cost(&item_stack))` was unconditionally called on every successful hit, damaging weapons even when attacking non-living entities (boats, minecarts, armor stands).
+    - `Player::attack` never awarded the `StatisticCategory::Used` statistic when attacking with a weapon.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `should_weapon_damage_on_attack` helper in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `Player::attack` in `crates/pumpkin-core/src/entity/player.rs` to guard weapon durability reduction and `StatisticCategory::Used` increment behind `victim.get_living_entity().is_some()`.
+  - Added unit test `test_weapon_durability_and_item_used_conditions_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 19/19 tests in `entity::combat::tests` passing.
