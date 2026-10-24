@@ -1776,3 +1776,34 @@
   - Updated `LivingEntity::get_kill_credit` in `crates/pumpkin-core/src/entity/living.rs` to consistently use `self.entity.age` tick count and `is_kill_credit_active`.
   - Updated `LivingEntity::damage_with_context` to credit the owner of a tame animal/wolf as `last_hurt_by_player_id` when the tame entity damages a target.
   - Added unit test `test_kill_credit_timing_and_tame_wolf_owner_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 21/21 tests in `entity::combat::tests` passing.
+
+### Gap 136: Death Experience Drop Condition Parity & Player Death Experience Reward
+- **Vanilla Reference**:
+  - `LivingEntity.java:1529-1536` (`dropExperience`):
+    ```java
+    if (!this.wasExperienceConsumed()
+       && (
+          this.isAlwaysExperienceDropper()
+             || this.lastHurtByPlayerMemoryTime > 0 && this.shouldDropExperience() && level.getGameRules().get(GameRules.MOB_DROPS)
+       )) {
+       ExperienceOrb.award(level, this.position(), this.getExperienceReward(level, killer));
+    }
+    ```
+  - `Player.java:1610-1617` (`isAlwaysExperienceDropper` & `getBaseExperienceReward`):
+    - Players are always experience droppers (`isAlwaysExperienceDropper() == true`), bypassing the player-kill requirement and `mobDrops` gamerule.
+    - Player experience drop reward formula:
+      `!keepInventory && !isSpectator ? Math.min(this.experienceLevel * 7, 100) : 0`
+  - Previously in Neth:
+    - In `LivingEntity::drop_all_death_loot`, awarding experience was unconditionally guarded by `params.killed_by_player.unwrap_or(false) && world.level_info.load().game_rules.mob_drops`.
+    - Consequently, players who died from environmental damage (fall, lava, drowning, void, or mobs) never dropped experience orbs on death.
+    - If `mobDrops` was disabled, dying players also never dropped experience orbs.
+    - In `Player::get_experience_reward`, neither `keep_inventory` nor `is_spectator()` was checked, causing player death reward calculation to ignore gamerules and gamemode.
+    - `has_player_kill` in `LivingEntity::drop_all_death_loot` did not check `get_kill_credit()`, preventing tame wolf kills or delayed player kills from triggering player-kill drops/experience.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `should_entity_drop_experience` and `calculate_player_death_experience_reward` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `LivingEntity::drop_all_death_loot` in `crates/pumpkin-core/src/entity/living.rs` to:
+    - Incorporate `self.get_kill_credit()` in `has_player_kill`.
+    - Mirror vanilla `LivingEntity.dropExperience`: distinguish player always-dropper status from mob `shouldDropExperience` and `mobDrops` gamerule.
+  - Updated `Player::get_experience_reward` in `crates/pumpkin-core/src/entity/player.rs` to check `keep_inventory` and `is_spectator`.
+  - Added unit test `test_experience_drop_conditions_and_player_death_reward_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 22/22 tests in `entity::combat::tests` passing.
+

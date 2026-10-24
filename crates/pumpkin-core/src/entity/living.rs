@@ -34,6 +34,7 @@ use crate::entity::attributes::Modifier;
 use crate::entity::attributes::ModifierOperation;
 use crate::entity::combat::{
     CombatRules, CombatTracker, FallLocation, has_vanishing_curse, knockback_after_resistance,
+    should_entity_drop_experience,
 };
 use crate::entity::mob::equipment::DEFAULT_EQUIPMENT_DROP_CHANCE;
 use crate::entity::player::statistics::{CustomStatistic, StatisticCategory};
@@ -2564,13 +2565,15 @@ impl LivingEntity {
             let is_thundering = world.is_thundering();
 
             let has_player_kill =
-                killer.is_some_and(|c| c.get_entity().entity_type == &EntityType::PLAYER) || {
-                    let tracker = self
-                        .combat_tracker
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner);
-                    tracker.has_player_attacker()
-                };
+                killer.is_some_and(|c| c.get_entity().entity_type == &EntityType::PLAYER)
+                    || self.get_kill_credit().is_some_and(|k| k.get_player().is_some())
+                    || {
+                        let tracker = self
+                            .combat_tracker
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        tracker.has_player_attacker()
+                    };
 
             let mut params = LootContextParameters {
                 killed_by_player: Some(has_player_kill),
@@ -2649,11 +2652,19 @@ impl LivingEntity {
                 }
             }
 
-            // Award experience
-            if !absorbed_by_catalyst
-                && params.killed_by_player.unwrap_or(false)
-                && world.level_info.load().game_rules.mob_drops
-            {
+            // Award experience (Vanilla LivingEntity.java:1529-1536)
+            let is_always_dropper = dyn_self.get_player().is_some();
+            let should_drop = dyn_self.get_mob().is_none_or(|m| m.should_drop_experience());
+            let mob_drops = world.level_info.load().game_rules.mob_drops;
+            let was_killed_by_player = params.killed_by_player.unwrap_or(false);
+
+            if should_entity_drop_experience(
+                is_always_dropper,
+                was_killed_by_player,
+                should_drop,
+                mob_drops,
+                absorbed_by_catalyst,
+            ) {
                 let amount = dyn_self.get_experience_reward(killer);
                 if amount > 0 {
                     ExperienceOrbEntity::spawn(&world, self.entity.pos.load(), amount);

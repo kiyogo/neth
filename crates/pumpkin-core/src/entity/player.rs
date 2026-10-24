@@ -8069,9 +8069,12 @@ impl EntityBase for Player {
     }
 
     fn get_experience_reward(&self, _killer: Option<&dyn EntityBase>) -> u32 {
-        // vanilla: min(level * 7, 100)
+        // Vanilla Player.java:1610-1612:
+        // !keepInventory && !isSpectator ? Math.min(this.experienceLevel * 7, 100) : 0
         let level = self.experience_level.load(Ordering::Relaxed);
-        (level * 7).min(100) as u32
+        let keep_inventory = self.world().level_info.load().game_rules.keep_inventory;
+        let is_spectator = self.gamemode.load() == GameMode::Spectator;
+        combat::calculate_player_death_experience_reward(level, keep_inventory, is_spectator)
     }
 
     fn tick_in_void(&self, dyn_self: &dyn EntityBase) {

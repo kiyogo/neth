@@ -1214,6 +1214,51 @@ impl CombatTracker {
     }
 }
 
+/// Determines if an entity should drop experience orbs on death, mirroring vanilla
+/// `LivingEntity.dropExperience`, `Player.isAlwaysExperienceDropper`, and `Mob.shouldDropExperience`.
+///
+/// In vanilla:
+/// - If absorbed by a sculk catalyst (`wasExperienceConsumed`), no experience is dropped.
+/// - Players are always-droppers (`Player.isAlwaysExperienceDropper() == true`), bypassing the
+///   player-kill requirement and `mobDrops` gamerule.
+/// - Other living entities (mobs) require being killed by a player within 100 ticks (`lastHurtByPlayerMemoryTime > 0`),
+///   passing `shouldDropExperience()` (e.g. non-baby for animals), and having the `mobDrops` gamerule enabled.
+#[must_use]
+pub const fn should_entity_drop_experience(
+    is_always_dropper: bool,
+    was_killed_by_player: bool,
+    should_drop: bool,
+    mob_drops_gamerule: bool,
+    absorbed_by_catalyst: bool,
+) -> bool {
+    if absorbed_by_catalyst {
+        return false;
+    }
+    if is_always_dropper {
+        return true;
+    }
+    was_killed_by_player && should_drop && mob_drops_gamerule
+}
+
+/// Calculates the experience points dropped by a player on death, mirroring vanilla
+/// `Player.getBaseExperienceReward` (Player.java:1610-1612).
+///
+/// In vanilla:
+/// `!keepInventory && !isSpectator ? Math.min(this.experienceLevel * 7, 100) : 0`
+#[must_use]
+pub const fn calculate_player_death_experience_reward(
+    experience_level: i32,
+    keep_inventory: bool,
+    is_spectator: bool,
+) -> u32 {
+    if keep_inventory || is_spectator || experience_level <= 0 {
+        0
+    } else {
+        let reward = experience_level * 7;
+        if reward > 100 { 100 } else { reward as u32 }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1865,6 +1910,52 @@ mod tests {
         assert!(is_kill_credit_active(123, 50, 150)); // exactly 100 ticks ago (active)
         assert!(!is_kill_credit_active(123, 50, 151)); // 101 ticks ago (expired)
         assert!(!is_kill_credit_active(0, 50, 60)); // no attacker recorded (inactive)
+    }
+
+    #[test]
+    fn test_experience_drop_conditions_and_player_death_reward_parity() {
+        // 1. Player death experience reward formula (Player.java:1610-1612):
+        // !keepInventory && !isSpectator ? min(level * 7, 100) : 0
+        assert_eq!(calculate_player_death_experience_reward(0, false, false), 0);
+        assert_eq!(calculate_player_death_experience_reward(1, false, false), 7);
+        assert_eq!(calculate_player_death_experience_reward(5, false, false), 35);
+        assert_eq!(calculate_player_death_experience_reward(10, false, false), 70);
+        assert_eq!(calculate_player_death_experience_reward(14, false, false), 98);
+        assert_eq!(calculate_player_death_experience_reward(15, false, false), 100); // capped at 100
+        assert_eq!(calculate_player_death_experience_reward(100, false, false), 100);
+
+        // keepInventory prevents XP drop
+        assert_eq!(calculate_player_death_experience_reward(30, true, false), 0);
+        // Spectator mode prevents XP drop
+        assert_eq!(calculate_player_death_experience_reward(30, false, true), 0);
+        // Negative level guard
+        assert_eq!(calculate_player_death_experience_reward(-5, false, false), 0);
+
+        // 2. Experience drop condition parity (LivingEntity.java:1529-1536):
+        // !wasExperienceConsumed && (isAlwaysExperienceDropper || (lastHurtByPlayer && shouldDrop && mobDrops))
+
+        // Sculk catalyst absorption always suppresses XP drop
+        assert!(!should_entity_drop_experience(true, true, true, true, true));
+        assert!(!should_entity_drop_experience(false, true, true, true, true));
+
+        // Player (is_always_dropper = true):
+        // Drops XP even if killed by environment (was_killed_by_player = false) and mobDrops is false
+        assert!(should_entity_drop_experience(true, false, true, false, false));
+        assert!(should_entity_drop_experience(true, false, false, false, false));
+        assert!(should_entity_drop_experience(true, true, true, true, false));
+
+        // Mob (is_always_dropper = false):
+        // Valid player kill + should drop + mob drops enabled -> drops XP
+        assert!(should_entity_drop_experience(false, true, true, true, false));
+
+        // Mob killed without player (e.g. natural fall, fire, cactus) -> NO XP
+        assert!(!should_entity_drop_experience(false, false, true, true, false));
+
+        // Baby mob (should_drop = false) -> NO XP
+        assert!(!should_entity_drop_experience(false, true, false, true, false));
+
+        // mobDrops gamerule disabled -> NO XP
+        assert!(!should_entity_drop_experience(false, true, true, false, false));
     }
 }
 
