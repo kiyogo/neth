@@ -3145,3 +3145,27 @@
     - `pre_damage` deflects arrows when closed using `should_shulker_deflect_arrow`.
     - `on_damage` uses `should_shulker_teleport_on_low_health` and spawns duplicated Shulker with matching color on Shulker Bullet hit.
   - Added unit test `test_enderman_and_shulker_parity` in `combat.rs`. Total 56/56 tests passing in `entity::combat::tests`.
+
+## Gap 171: Creeper Fire Charge Ignition & Goat Target Exclusion, Fall Swell & Explosion Radius, Blaze Rain Sensitivity Parity
+- **Vanilla Reference**:
+  - `Creeper.java:210-228`:
+    - Khi tương tác với Creeper, ngoài `FLINT_AND_STEEL`, người chơi có thể dùng `FIRE_CHARGE` (ItemTag `#minecraft:creeper_igniters`) để châm ngòi nổ cưỡng bức (`ignite()`).
+    - Khi dùng `FIRE_CHARGE`: phát âm thanh `SoundEvents.FIRECHARGE_USE` (thay vì `FLINTANDSTEEL_USE`), pitch `random.nextFloat() * 0.4F + 0.8F`, tiêu hao 1 Fire Charge stack nếu không ở chế độ Creative.
+  - `Creeper.java:154-158`:
+    - `setTarget`: Creeper không bao giờ nhắm mục tiêu là Dê (`if (!(target instanceof Goat))`).
+  - `Creeper.java:89-92`:
+    - Khi rơi từ trên cao (`causeFallDamage`), Creeper tích lũy mức độ sưng nổ: `swell += (int)(fallDistance * 1.5)`, bị giới hạn ở `maxSwell - 5` (25/30 ticks). Khi rơi xuống từ trên cao, Creeper nổ nhanh hơn bình thường rất nhiều.
+  - `Creeper.java:232`:
+    - Bán kính nổ phóng to gấp 2 lần khi Creeper tích điện (`isPowered()`): `base_radius * 2.0`.
+  - `Blaze.java:114` & `LivingEntity.java:3162-3174`:
+    - Blaze nhạy cảm với nước (`isSensitiveToWater() == true`).
+    - Nhận 1.0 sát thương chết đuối (`DamageType::DROWN`) khi chạm nước hoặc khi đứng dưới trời mưa (`is_raining_at`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `is_creeper_igniter`, `calculate_creeper_ignite_sound_pitch`, `calculate_creeper_explosion_radius`, `calculate_creeper_fall_swell`, `can_creeper_target_entity`, and `should_blaze_take_water_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `CreeperEntity` in `crates/pumpkin-core/src/entity/mob/creeper.rs`:
+    - `mob_interact` supports `Item::FIRE_CHARGE` with `Sound::ItemFirechargeUse` and stack consumption.
+    - `set_mob_target` ignores `EntityType::GOAT`.
+    - `on_damage` uses `calculate_creeper_fall_swell`.
+    - `explode` uses `calculate_creeper_explosion_radius`.
+  - Updated `BlazeEntity::mob_tick` in `crates/pumpkin-core/src/entity/mob/blaze.rs` to check rain exposure (`is_raining_at`) and apply drown damage.
+  - Added unit test `test_creeper_and_blaze_parity` in `combat.rs`. Total 57/57 tests passing in `entity::combat::tests`.

@@ -3509,6 +3509,76 @@ pub fn can_shulker_duplicate(
     !is_closed && teleport_success && rand_float >= failure_chance
 }
 
+/// Determines whether an item can be used to ignite a Creeper.
+///
+/// Mirrors vanilla `ItemTags.CREEPER_IGNITERS` (`Creeper.java:212`):
+/// - `minecraft:flint_and_steel`
+/// - `minecraft:fire_charge`
+#[must_use]
+pub fn is_creeper_igniter(item_id: u16) -> bool {
+    item_id == pumpkin_data::item::Item::FLINT_AND_STEEL.id
+        || item_id == pumpkin_data::item::Item::FIRE_CHARGE.id
+}
+
+/// Calculates sound pitch when a Creeper is ignited with flint and steel or fire charge.
+///
+/// Mirrors vanilla `Creeper.java:214`:
+/// `this.random.nextFloat() * 0.4F + 0.8F`
+#[must_use]
+pub fn calculate_creeper_ignite_sound_pitch(rand_val: f32) -> f32 {
+    rand_val.mul_add(0.4, 0.8)
+}
+
+/// Calculates explosion radius of a Creeper scaled by charged state.
+///
+/// Mirrors vanilla `Creeper.java:232`:
+/// `float explosionMultiplier = this.isPowered() ? 2.0F : 1.0F;`
+#[must_use]
+pub fn calculate_creeper_explosion_radius(base_radius: f32, is_charged: bool) -> f32 {
+    if is_charged {
+        base_radius * 2.0
+    } else {
+        base_radius
+    }
+}
+
+/// Calculates swell accumulated by a Creeper from fall damage.
+///
+/// Mirrors vanilla `Creeper.java:89-92`:
+/// ```java
+/// this.swell += (int)(fallDistance * 1.5);
+/// if (this.swell > this.maxSwell - 5) {
+///    this.swell = this.maxSwell - 5;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_creeper_fall_swell(
+    current_swell: i32,
+    max_swell: i32,
+    fall_distance: f64,
+) -> i32 {
+    let added = (fall_distance * 1.5) as i32;
+    (current_swell + added).min(max_swell - 5).max(current_swell)
+}
+
+/// Checks whether a Creeper is allowed to target an entity.
+///
+/// Mirrors vanilla `Creeper.java:154-158`:
+/// `if (!(target instanceof Goat)) { super.setTarget(target); }`
+#[must_use]
+pub fn can_creeper_target_entity(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    entity_type != &pumpkin_data::entity::EntityType::GOAT
+}
+
+/// Checks whether Blaze should take water/rain drown damage.
+///
+/// Mirrors vanilla `LivingEntity.java:3162-3174` & `Blaze.java:114`:
+/// `this.isSensitiveToWater() && this.isInWaterOrRain()`
+#[must_use]
+pub const fn should_blaze_take_water_damage(touching_water: bool, raining: bool) -> bool {
+    touching_water || raining
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5521,6 +5591,41 @@ mod tests {
         assert!(!can_shulker_duplicate(true, true, 0.2, 0.5));  // closed cannot duplicate
         assert!(!can_shulker_duplicate(false, false, 0.2, 0.5)); // failed teleport cannot duplicate
         assert!(!can_shulker_duplicate(false, true, 0.2, 0.1));  // rand < failure_chance fails
+    }
+
+    #[test]
+    fn test_creeper_and_blaze_parity() {
+        // 1. Creeper igniters (Creeper.java:212, ItemTags.CREEPER_IGNITERS)
+        assert!(is_creeper_igniter(pumpkin_data::item::Item::FLINT_AND_STEEL.id));
+        assert!(is_creeper_igniter(pumpkin_data::item::Item::FIRE_CHARGE.id));
+        assert!(!is_creeper_igniter(pumpkin_data::item::Item::TORCH.id));
+
+        // 2. Creeper ignite sound pitch (Creeper.java:214)
+        // rand * 0.4 + 0.8
+        assert_eq!(calculate_creeper_ignite_sound_pitch(0.0), 0.8);
+        assert!((calculate_creeper_ignite_sound_pitch(1.0) - 1.2).abs() < 1e-6);
+
+        // 3. Creeper explosion radius multiplier (Creeper.java:232)
+        // Base 3: normal -> 3.0, charged (isPowered) -> 6.0
+        assert_eq!(calculate_creeper_explosion_radius(3.0, false), 3.0);
+        assert_eq!(calculate_creeper_explosion_radius(3.0, true), 6.0);
+
+        // 4. Creeper fall swell accumulation (Creeper.java:89-92)
+        // swell += (int)(fallDistance * 1.5), capped at maxSwell - 5 (25 for max 30)
+        assert_eq!(calculate_creeper_fall_swell(0, 30, 2.0), 3);
+        assert_eq!(calculate_creeper_fall_swell(10, 30, 10.0), 25); // 10 + 15 = 25 (capped)
+        assert_eq!(calculate_creeper_fall_swell(0, 30, 20.0), 25);  // 30 clamped to 25
+
+        // 5. Creeper target filtering (Creeper.java:154-158)
+        // Creeper never targets Goat
+        assert!(!can_creeper_target_entity(&pumpkin_data::entity::EntityType::GOAT));
+        assert!(can_creeper_target_entity(&pumpkin_data::entity::EntityType::PLAYER));
+        assert!(can_creeper_target_entity(&pumpkin_data::entity::EntityType::IRON_GOLEM));
+
+        // 6. Blaze water/rain sensitivity (LivingEntity.java:3162-3174, Blaze.java:114)
+        assert!(should_blaze_take_water_damage(true, false));  // touching water
+        assert!(should_blaze_take_water_damage(false, true));  // raining
+        assert!(!should_blaze_take_water_damage(false, false)); // dry
     }
 }
 

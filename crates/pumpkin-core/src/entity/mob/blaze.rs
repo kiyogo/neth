@@ -161,8 +161,14 @@ impl Mob for BlazeEntity {
                 .store(Vector3::new(vel.x, vel.y * 0.6, vel.z));
         }
 
-        if base_entity.touching_water.load(Ordering::Relaxed) {
-            caller.damage(caller, 1.0, DamageType::DROWN);
+        let world = base_entity.world.load_full();
+        let raining_at_feet = world.is_raining_at(&base_entity.block_pos.load());
+        let raining_at_head = world.is_raining_at(&base_entity.bounding_box.load().max_block_pos());
+        let is_raining = raining_at_feet || raining_at_head;
+        let touching_water = base_entity.touching_water.load(Ordering::Relaxed);
+
+        if crate::entity::combat::should_blaze_take_water_damage(touching_water, is_raining) {
+            caller.damage_with_context(caller, 1.0, DamageType::DROWN, None, None, None);
         }
 
         // Ambient sound

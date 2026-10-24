@@ -120,12 +120,10 @@ impl CreeperEntity {
 
     pub fn explode(&self) {
         let entity = &self.mob_entity.living_entity.entity;
-        let radius = self.explosion_radius.load(Ordering::Relaxed) as f32;
-        let multiplier = if self.charged.load(Ordering::Relaxed) {
-            2.0
-        } else {
-            1.0
-        };
+        let base_radius = self.explosion_radius.load(Ordering::Relaxed) as f32;
+        let is_charged = self.charged.load(Ordering::Relaxed);
+        let radius =
+            crate::entity::combat::calculate_creeper_explosion_radius(base_radius, is_charged);
         self.mob_entity
             .living_entity
             .dead
@@ -134,7 +132,7 @@ impl CreeperEntity {
         let pos = entity.pos.load();
         world.explode(
             pos,
-            radius * multiplier,
+            radius,
             crate::world::ExplosionInteraction::Mob,
         );
         // Vanilla Creeper.spawnLingeringCloud:
@@ -249,12 +247,24 @@ impl Mob for CreeperEntity {
     fn on_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) {
         if damage_type.id == DamageType::FALL.id {
             let fall_distance = self.mob_entity.living_entity.fall_distance.load();
-            let added_swell = (fall_distance * 1.5) as i32;
             let max_swell = self.fuse_time.load(Ordering::Relaxed);
             let current = self.current_fuse_time.load(Ordering::Relaxed);
-            let new_swell = (current + added_swell).min(max_swell - 5);
-            self.current_fuse_time.store(new_swell.max(current), Ordering::Relaxed);
+            let new_swell = crate::entity::combat::calculate_creeper_fall_swell(
+                current,
+                max_swell,
+                f64::from(fall_distance),
+            );
+            self.current_fuse_time.store(new_swell, Ordering::Relaxed);
         }
+    }
+
+    fn set_mob_target(&self, target: Option<Arc<dyn EntityBase>>) {
+        if let Some(ref t) = target {
+            if !crate::entity::combat::can_creeper_target_entity(t.get_entity().entity_type) {
+                return;
+            }
+        }
+        self.mob_entity.set_target(target);
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -297,27 +307,41 @@ impl Mob for CreeperEntity {
     }
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
-        if item_stack.item.id != Item::FLINT_AND_STEEL.id {
+        let item_id = item_stack.item.id;
+        if !crate::entity::combat::is_creeper_igniter(item_id) {
             return self.mob_entity.mob_interact(player, item_stack);
         }
 
         let entity = &self.mob_entity.living_entity.entity;
         let world = entity.world.load();
         let pos = entity.pos.load();
+        let pitch = crate::entity::combat::calculate_creeper_ignite_sound_pitch(
+            rand::random::<f32>(),
+        );
+
+        let sound = if item_id == Item::FIRE_CHARGE.id {
+            Sound::ItemFirechargeUse
+        } else {
+            Sound::ItemFlintandsteelUse
+        };
 
         world.play_sound_fine(
-            Sound::ItemFlintandsteelUse,
+            sound,
             SoundCategory::Hostile,
             &pos,
             1.0,
-            rand::random::<f32>() * 0.4 + 0.8,
+            pitch,
         );
 
         self.ignited.store(true, Ordering::Relaxed);
         entity.set_synced_data(pumpkin_data::tracked_data::creeper::IS_IGNITED, true);
 
         if player.gamemode.load() != pumpkin_util::GameMode::Creative {
-            let _ = item_stack.damage_item(1);
+            if item_id == Item::FIRE_CHARGE.id {
+                item_stack.item_count = item_stack.item_count.saturating_sub(1);
+            } else {
+                let _ = item_stack.damage_item(1);
+            }
         }
 
         true
