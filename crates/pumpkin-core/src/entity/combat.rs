@@ -2321,6 +2321,73 @@ pub fn is_entity_in_area_effect_cloud_radius(
     dist_sq <= ((radius * radius) as f64)
 }
 
+/// Calculates arrow damage based on impact velocity, base damage, and critical status.
+///
+/// Mirrors vanilla `AbstractArrow.java:434, 452-455`:
+/// ```java
+/// int damage = Mth.ceil(Mth.clamp(pow * arrowDamage, 0.0, 2.147483647E9));
+/// if (this.isCritArrow()) {
+///    long dmgIncrease = this.random.nextInt(damage / 2 + 2);
+///    damage = (int)Math.min(dmgIncrease + damage, 2147483647L);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_arrow_damage(
+    speed: f64,
+    base_damage: f64,
+    is_critical: bool,
+    crit_rng: u32,
+) -> i32 {
+    let raw = (speed * base_damage).clamp(0.0, i32::MAX as f64).ceil() as i32;
+    if is_critical {
+        let max_bonus = (raw / 2 + 2).max(1) as u32;
+        let bonus = (crit_rng % max_bonus) as i32;
+        raw.saturating_add(bonus)
+    } else {
+        raw
+    }
+}
+
+/// Calculates punch enchantment knockback impulse scaled by victim's knockback resistance.
+///
+/// Mirrors vanilla `AbstractArrow.java:517-518`:
+/// ```java
+/// double knockbackResistance = Math.max(0.0, 1.0 - mob.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+/// Vec3 movement = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * knockbackResistance);
+/// ```
+#[must_use]
+pub fn calculate_arrow_punch_knockback(punch_level: f64, victim_knockback_resistance: f64) -> f64 {
+    let resistance_factor = (1.0 - victim_knockback_resistance).max(0.0);
+    punch_level * 0.6 * resistance_factor
+}
+
+/// Determines whether a stuck arrow should be added to the victim mob's arrow count.
+///
+/// Mirrors vanilla `AbstractArrow.java:468-470`:
+/// `if (!this.level().isClientSide() && this.getPierceLevel() <= 0) { mob.setArrowCount(mob.getArrowCount() + 1); }`
+#[must_use]
+pub const fn should_arrow_stick_in_entity(pierce_level: u8) -> bool {
+    pierce_level == 0
+}
+
+/// Calculates sound pitch for arrow impact sound.
+///
+/// Mirrors vanilla `AbstractArrow.java:495, 539`:
+/// `1.2F / (this.random.nextFloat() * 0.2F + 0.9F)`
+#[must_use]
+pub fn calculate_arrow_hit_sound_pitch(rng_val: f32) -> f32 {
+    1.2 / (rng_val * 0.2 + 0.9)
+}
+
+/// Returns the vanilla duration of glowing effect from a spectral arrow (10 seconds = 200 ticks).
+///
+/// Mirrors vanilla `SpectralArrow.java:18`:
+/// `private static final int DEFAULT_DURATION = 200;`
+#[must_use]
+pub const fn get_spectral_arrow_duration() -> i32 {
+    200
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3802,6 +3869,39 @@ mod tests {
         // 4. Horizontal distance check (AreaEffectCloud.java:223-226)
         assert!(is_entity_in_area_effect_cloud_radius(10.0, 20.0, 12.0, 21.0, 3.0)); // dist_sq = 4 + 1 = 5 <= 9
         assert!(!is_entity_in_area_effect_cloud_radius(10.0, 20.0, 13.0, 21.0, 3.0)); // dist_sq = 9 + 1 = 10 > 9
+    }
+
+    #[test]
+    fn test_arrow_damage_punch_knockback_and_spectral_duration_parity() {
+        // 1. Arrow base damage & crit calculation (AbstractArrow.java:434, 452-455)
+        let non_crit_dmg = calculate_arrow_damage(3.0, 2.0, false, 0);
+        assert_eq!(non_crit_dmg, 6);
+
+        // Crit damage bonus: raw = 6, max_bonus = 6 / 2 + 2 = 5, bonus = 3 % 5 = 3 -> 9
+        let crit_dmg = calculate_arrow_damage(3.0, 2.0, true, 3);
+        assert_eq!(crit_dmg, 9);
+
+        // 2. Punch knockback with victim knockback resistance (AbstractArrow.java:517-518)
+        let kb_zero_res = calculate_arrow_punch_knockback(2.0, 0.0);
+        assert!((kb_zero_res - 1.2).abs() < 1e-6);
+
+        let kb_half_res = calculate_arrow_punch_knockback(2.0, 0.5);
+        assert!((kb_half_res - 0.6).abs() < 1e-6);
+
+        let kb_full_res = calculate_arrow_punch_knockback(2.0, 1.0);
+        assert_eq!(kb_full_res, 0.0);
+
+        // 3. Arrow stick condition based on pierce level (AbstractArrow.java:468-470)
+        assert!(should_arrow_stick_in_entity(0));
+        assert!(!should_arrow_stick_in_entity(1));
+        assert!(!should_arrow_stick_in_entity(4));
+
+        // 4. Hit sound pitch calculation (AbstractArrow.java:495, 539)
+        let pitch = calculate_arrow_hit_sound_pitch(0.5);
+        assert!((pitch - 1.2).abs() < 1e-6);
+
+        // 5. Spectral arrow default duration (SpectralArrow.java:18)
+        assert_eq!(get_spectral_arrow_duration(), 200);
     }
 }
 

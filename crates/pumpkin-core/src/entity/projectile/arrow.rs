@@ -221,7 +221,7 @@ impl ArrowEntity {
     const fn spectral_glowing_effect() -> pumpkin_data::potion::Effect {
         pumpkin_data::potion::Effect {
             effect_type: &pumpkin_data::effect::StatusEffect::GLOWING,
-            duration: 200,
+            duration: crate::entity::combat::get_spectral_arrow_duration(),
             amplifier: 0,
             ambient: false,
             show_particles: true,
@@ -878,7 +878,7 @@ impl EntityBase for ArrowEntity {
                 entity.set_synced_data(pumpkin_data::tracked_data::abstract_arrow::IN_GROUND, true);
 
                 // Play sound with vanilla pitch formula
-                let sound_pitch = 1.2 / (rand::random::<f32>() * 0.2 + 0.9);
+                let sound_pitch = crate::entity::combat::calculate_arrow_hit_sound_pitch(rand::random::<f32>());
                 let sound_packet = CSoundEffect::new(
                     IdOr::Id(Sound::EntityArrowHit as u16),
                     SoundCategory::Neutral,
@@ -909,16 +909,16 @@ impl EntityBase for ArrowEntity {
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
                     .push(target_entity_id);
 
-                // Calculate damage
+                // Calculate damage with vanilla formula & critical hit bonus
                 let velocity = entity.velocity.load();
                 let power = velocity.length();
-                let mut damage = (power * self.get_base_damage()).ceil() as i32;
-
-                // Apply critical hit bonus
-                if self.is_critical.load(Ordering::Relaxed) {
-                    let bonus = (rand::random::<u32>() % (damage.max(0) / 2 + 2) as u32) as i32;
-                    damage = damage.saturating_add(bonus);
-                }
+                let crit_rng = rand::random::<u32>();
+                let damage = crate::entity::combat::calculate_arrow_damage(
+                    power,
+                    self.get_base_damage(),
+                    self.is_critical.load(Ordering::Relaxed),
+                    crit_rng,
+                );
 
                 let is_enderman =
                     target.get_entity().entity_type == &pumpkin_data::entity::EntityType::ENDERMAN;
@@ -952,24 +952,34 @@ impl EntityBase for ArrowEntity {
                 }
 
                 if let Some(living) = target.get_living_entity() {
-                    // Vanilla AbstractArrow.java:469:
-                    // Increment stuck arrow count on hit
-                    living.set_arrow_count(living.get_arrow_count() + 1);
+                    // Vanilla AbstractArrow.java:468-470:
+                    // Only increment stuck arrow count if arrow has NO piercing
+                    if crate::entity::combat::should_arrow_stick_in_entity(pierce) {
+                        living.set_arrow_count(living.get_arrow_count() + 1);
+                    }
 
+                    // Vanilla AbstractArrow.java:517-522:
+                    // Punch knockback scales with victim's knockback resistance
                     if punch > 0 && damage_succeeded {
-                        let norm = Vector3::new(velocity.x, 0.0, velocity.z).normalize();
-                        let push_scale = f64::from(punch) * 0.6;
-                        target.get_entity().velocity.store(
-                            target.get_entity().velocity.load().add(&Vector3::new(
-                                norm.x * push_scale,
-                                0.1,
-                                norm.z * push_scale,
-                            )),
+                        let resistance = living.get_attribute_value(&pumpkin_data::attributes::Attributes::KNOCKBACK_RESISTANCE);
+                        let push_scale = crate::entity::combat::calculate_arrow_punch_knockback(
+                            f64::from(punch),
+                            resistance,
                         );
+                        if push_scale > 0.0 {
+                            let norm = Vector3::new(velocity.x, 0.0, velocity.z).normalize();
+                            target.get_entity().velocity.store(
+                                target.get_entity().velocity.load().add(&Vector3::new(
+                                    norm.x * push_scale,
+                                    0.1,
+                                    norm.z * push_scale,
+                                )),
+                            );
+                        }
                     }
 
                     // Play hit sound
-                    let sound_pitch = 1.2 / (rand::random::<f32>() * 0.2 + 0.9);
+                    let sound_pitch = crate::entity::combat::calculate_arrow_hit_sound_pitch(rand::random::<f32>());
                     let sound_packet = CSoundEffect::new(
                         IdOr::Id(Sound::EntityArrowHit as u16),
                         SoundCategory::Neutral,
@@ -980,6 +990,19 @@ impl EntityBase for ArrowEntity {
                     );
                     let chunk_pos = entity.chunk_pos.load();
                     world.broadcast_to_chunk(chunk_pos, &sound_packet);
+
+                    // Vanilla AbstractArrow.java:478-480:
+                    // Send ArrowHitPlayer game event packet to shooter if target is a different player
+                    if target.get_player().is_some()
+                        && let Some(owner_id_val) = owner_id
+                        && let Some(owner_player) = world.get_player_by_id(owner_id_val)
+                        && owner_id_val != target_entity_id
+                    {
+                        owner_player.try_send_client_packet(&pumpkin_protocol::java::client::play::CGameEvent::new(
+                            pumpkin_protocol::java::client::play::GameEvent::ArrowHitPlayer,
+                            0.0,
+                        ));
+                    }
 
                     if Self::should_apply_post_hurt_effects(damage_succeeded) {
                         let item_stack = self

@@ -2525,6 +2525,40 @@
   - Updated `AreaEffectCloudEntity::tick` in `crates/pumpkin-core/src/entity/area_effect_cloud.rs` to enforce vanilla discard check `age - wait_time >= duration`, radius shrinkage threshold `radius < 0.5`, 5-tick search cadence, and 2D cylindrical distance check.
   - Added unit test `test_lingering_potion_and_area_effect_cloud_parity` in `combat.rs`. Total 41/41 tests passing in `entity::combat::tests`.
 
+## Gap 156: Arrow Punch Knockback Resistance Scaling, Pierce Stuck Count Exemption & Player Hit Notification Parity
+- **Vanilla Reference**:
+  - `AbstractArrow.java:512-523`:
+    ```java
+    double knockbackResistance = Math.max(0.0, 1.0 - mob.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+    Vec3 movement = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * 0.6 * knockbackResistance);
+    if (movement.lengthSqr() > 0.0) {
+       mob.push(movement.x, 0.1, movement.z);
+    }
+    ```
+    - Arrow punch enchantment knockback impulse scales with victim's `KNOCKBACK_RESISTANCE` (`(1.0 - resistance).max(0.0)`).
+  - `AbstractArrow.java:468-470`:
+    ```java
+    if (!this.level().isClientSide() && this.getPierceLevel() <= 0) {
+       mob.setArrowCount(mob.getArrowCount() + 1);
+    }
+    ```
+    - Stuck arrow count is incremented ONLY when arrow does not pierce (`pierce_level <= 0`). Piercing arrows pass through without sticking into the victim.
+  - `AbstractArrow.java:478-480`:
+    ```java
+    if (mob instanceof Player && currentOwner instanceof ServerPlayer ownerPlayer && !this.isSilent() && mob != ownerPlayer) {
+       ownerPlayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.PLAY_ARROW_HIT_SOUND, 0.0F));
+    }
+    ```
+    - When an arrow hits another player, the shooter receives `ClientboundGameEventPacket.PLAY_ARROW_HIT_SOUND` (`GameEvent::ArrowHitPlayer`) to play the hit confirmation sound.
+  - `AbstractArrow.java:434, 452-455, 495, 539`, `SpectralArrow.java:18`:
+    - Damage formula `(speed * baseDamage).ceil()` + crit bonus `rng % (damage / 2 + 2)`.
+    - Sound pitch formula `1.2F / (rng * 0.2F + 0.9F)`.
+    - Spectral arrow duration: 200 ticks (10 seconds).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_arrow_damage`, `calculate_arrow_punch_knockback`, `should_arrow_stick_in_entity`, `calculate_arrow_hit_sound_pitch`, and `get_spectral_arrow_duration` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `ArrowEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/arrow.rs` to scale punch knockback with victim's `KNOCKBACK_RESISTANCE`, increment arrow count only if `should_arrow_stick_in_entity(pierce)`, send `CGameEvent::new(GameEvent::ArrowHitPlayer, 0.0)` to shooter when hitting another player, and use vanilla pitch formula.
+  - Added unit test `test_arrow_damage_punch_knockback_and_spectral_duration_parity` in `combat.rs`. Total 42/42 tests passing in `entity::combat::tests`.
+
 
 
 
