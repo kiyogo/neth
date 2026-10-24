@@ -49,7 +49,7 @@ pub struct TridentEntity {
 impl TridentEntity {
     const BASE_DAMAGE: f64 = 8.0;
     const AIR_INERTIA: f64 = 0.99;
-    const WATER_INERTIA: f64 = 0.9;
+    const WATER_INERTIA: f64 = 0.99;
     const GRAVITY: f64 = 0.05;
     const DESPAWN_TIME: u32 = 1200;
 
@@ -404,8 +404,15 @@ impl EntityBase for TridentEntity {
         if self.in_ground.load(Ordering::Relaxed) {
             let life = self.life.fetch_add(1, Ordering::Relaxed);
 
-            // Despawn after enough time
-            if life >= Self::DESPAWN_TIME {
+            // Vanilla ThrownTrident.java:212-217:
+            // Trident with Loyalty and allowed pickup does NOT despawn
+            let is_pickup_allowed = self.pickup == ArrowPickup::Allowed;
+            if crate::entity::combat::should_trident_despawn(
+                life,
+                Self::DESPAWN_TIME,
+                self.loyalty,
+                is_pickup_allowed,
+            ) {
                 entity.remove();
             }
             return;

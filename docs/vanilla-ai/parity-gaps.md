@@ -2886,3 +2886,49 @@
   - Refactored `damage_with_context` in `crates/pumpkin-core/src/entity/living.rs`: Totem death protection check is evaluated prior to emitting death sounds, completely suppressing spurious death sounds and `on_death` triggers when a Totem saves the entity.
   - Added helper functions `should_totem_prevent_death`, `should_play_death_sound`, `should_play_hurt_sound`, `is_entity_sensitive_to_water`, `should_take_cramming_damage`, `calculate_out_of_border_damage`, and `should_take_in_wall_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
   - Added unit test `test_totem_death_protection_water_sensitivity_and_suffocation_parity` in `combat.rs`. All 49/49 tests passing in `entity::combat::tests`.
+
+## Gap 164: Thrown Trident Water Drag & Loyalty Despawn Immunity, Splash Water Extinguish Campfire/Candle & Fishing Weather Parity
+- **Vanilla Reference**: `ThrownTrident.java:34, 212-222`, `AbstractThrownPotion.java:50-66, 124-135`, `CampfireBlock.java:97-104`, `FishingHook.java:298-306`:
+  - `ThrownTrident.java:220-222`:
+    ```java
+    @Override
+    protected float getWaterInertia() {
+       return 0.99F;
+    }
+    ```
+    - Trident là vũ khí chuyên dụng dưới nước, hệ số cản nước (`waterInertia`) là `0.99F` (thay vì `0.6F` như mũi tên bình thường hay `0.9F` như trước đây trong Neth).
+  - `ThrownTrident.java:212-217`:
+    ```java
+    @Override
+    protected void tickDespawn() {
+       int loyalty = this.entityData.get(ID_LOYALTY);
+       if (this.pickup != AbstractArrow.Pickup.ALLOWED || loyalty <= 0) {
+          super.tickDespawn();
+       }
+    }
+    ```
+    - Khi một cây Trident cắm vào khối và có phù phép `Loyalty > 0` đồng thời người ném cho phép nhặt (`pickup == Pickup.ALLOWED`), cây Trident TUYỆT ĐỐI KHÔNG BAO GIỜ bị biến mất/despawn sau 1200 ticks.
+  - `AbstractThrownPotion.java:124-135` & `CampfireBlock.java:97-104`:
+    - Khi bình thuốc nước (water splash potion) nổ trong phạm vi va chạm (AABB bán kính 4x2x4):
+      - Dập tắt các khối `FireBlock` và `SoulFireBlock` thành `Air`.
+      - Dập tắt `CampfireBlock` và `SoulCampfireBlock` đang cháy (`lit == true`), chuyển `lit` thành `false` và phát âm thanh `LevelEvent.SOUND_EXTINGUISH_FIRE` (event id `1009`).
+  - `FishingHook.java:298-306`:
+    ```java
+    int speed = 1;
+    BlockPos above = this.blockPosition().above();
+    if (this.random.nextFloat() < 0.25F && this.level().isRainingAt(above)) {
+       speed++;
+    }
+    if (this.random.nextFloat() < 0.5F && !this.level().canSeeSky(above)) {
+       speed--;
+    }
+    ```
+    - Tốc độ đếm nhịp câu cá (`fishingSpeed`): Cơ bản = 1 tick.
+    - Nếu trời mưa tại vị trí ngay trên phao câu (`isRainingAt(above)`): 25% cơ hội tăng tốc độ lên 2 (nhanh gấp đôi khi câu dưới mưa).
+    - Nếu vị trí trên phao bị che khuất không thấy trời (`!canSeeSky(above)`): 50% cơ hội giảm tốc độ về 0 (chậm gấp đôi khi câu trong nhà/hang động).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_trident_water_inertia`, `should_trident_despawn`, `calculate_fishing_tick_speed`, and `is_douseable_fire_or_campfire` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `WATER_INERTIA = 0.99` and integrated `should_trident_despawn` into `ThrownTrident::tick` in `crates/pumpkin-core/src/entity/projectile/trident.rs`.
+  - Updated `extinguish_fire` in `crates/pumpkin-core/src/entity/projectile/splash_potion.rs` to detect both `BlockId::CAMPFIRE` and `BlockId::SOUL_CAMPFIRE`, extinguish `lit` state to `false`, and broadcast chunk world event `1009` (`SOUND_EXTINGUISH_FIRE`).
+  - Added unit test `test_thrown_trident_water_inertia_loyalty_despawn_and_douse_parity` in `combat.rs`. Total 50/50 tests passing in `entity::combat::tests`.
+

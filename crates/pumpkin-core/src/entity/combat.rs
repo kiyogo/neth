@@ -2886,6 +2886,85 @@ pub const fn should_take_in_wall_damage(is_sleeping: bool, in_wall: bool) -> boo
 /// Vanilla in-wall suffocation damage amount (1.0F = 0.5 heart).
 pub const IN_WALL_DAMAGE: f32 = 1.0;
 
+/// Returns the water drag/inertia multiplier for thrown tridents (0.99F in vanilla).
+///
+/// Mirrors vanilla `ThrownTrident.java:34`, `ThrownTrident.java:220-222`:
+/// ```java
+/// private static final float WATER_INERTIA = 0.99F;
+/// @Override
+/// protected float getWaterInertia() {
+///    return 0.99F;
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_trident_water_inertia() -> f64 {
+    0.99
+}
+
+/// Determines whether a trident stuck in ground should despawn.
+///
+/// Mirrors vanilla `ThrownTrident.java:212-217`:
+/// ```java
+/// @Override
+/// public void tickDespawn() {
+///    int loyalty = this.entityData.get(ID_LOYALTY);
+///    if (this.pickup != AbstractArrow.Pickup.ALLOWED || loyalty <= 0) {
+///       super.tickDespawn();
+///    }
+/// }
+/// ```
+#[must_use]
+pub const fn should_trident_despawn(
+    life: u32,
+    max_despawn_ticks: u32,
+    loyalty: u8,
+    is_pickup_allowed: bool,
+) -> bool {
+    if is_pickup_allowed && loyalty > 0 {
+        false
+    } else {
+        life >= max_despawn_ticks
+    }
+}
+
+/// Calculates fishing tick speed based on raining weather and sky exposure.
+///
+/// Mirrors vanilla `FishingHook.java:298-306`:
+/// ```java
+/// int fishingSpeed = 1;
+/// BlockPos above = blockPos.above();
+/// if (this.random.nextFloat() < 0.25F && this.level().isRainingAt(above)) {
+///    fishingSpeed++;
+/// }
+/// if (this.random.nextFloat() < 0.5F && !this.level().canSeeSky(above)) {
+///    fishingSpeed--;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_fishing_tick_speed(
+    is_raining_at_hook: bool,
+    can_see_sky: bool,
+    rand_rain: f32,
+    rand_sky: f32,
+) -> i32 {
+    let mut speed = 1;
+    if rand_rain < 0.25 && is_raining_at_hook {
+        speed += 1;
+    }
+    if rand_sky < 0.5 && !can_see_sky {
+        speed -= 1;
+    }
+    speed
+}
+
+/// Determines if a block is doused by splash water bottles (fire and campfires).
+///
+/// Mirrors vanilla `AbstractThrownPotion.java:124-135`.
+#[must_use]
+pub fn is_douseable_fire_or_campfire(is_fire: bool, is_lit_campfire: bool, is_lit_candle: bool) -> bool {
+    is_fire || is_lit_campfire || is_lit_candle
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -4609,5 +4688,38 @@ mod tests {
         assert!(!should_take_in_wall_damage(true, true)); // sleeping suppresses in_wall
         assert!(!should_take_in_wall_damage(false, false));
     }
+
+    #[test]
+    fn test_thrown_trident_water_inertia_loyalty_despawn_and_douse_parity() {
+        // 1. Trident water inertia (ThrownTrident.java:34, 220-222)
+        assert_eq!(calculate_trident_water_inertia(), 0.99);
+
+        // 2. Trident Loyalty despawn immunity (ThrownTrident.java:212-217)
+        // With loyalty > 0 and pickup allowed, trident never despawns
+        assert!(!should_trident_despawn(1200, 1200, 1, true));
+        assert!(!should_trident_despawn(5000, 1200, 3, true));
+        // Without loyalty (loyalty == 0) and pickup allowed, it despawns at >= 1200
+        assert!(should_trident_despawn(1200, 1200, 0, true));
+        assert!(!should_trident_despawn(1199, 1200, 0, true));
+        // Disallowed pickup with loyalty still despawns
+        assert!(should_trident_despawn(1200, 1200, 1, false));
+
+        // 3. Fishing tick speed (FishingHook.java:298-306)
+        // Base speed = 1
+        assert_eq!(calculate_fishing_tick_speed(false, true, 0.5, 0.8), 1);
+        // Raining at hook with rand < 0.25 increases speed (+1)
+        assert_eq!(calculate_fishing_tick_speed(true, true, 0.1, 0.8), 2);
+        // No sky access with rand < 0.5 decreases speed (-1)
+        assert_eq!(calculate_fishing_tick_speed(false, false, 0.5, 0.2), 0);
+        // Both raining and no sky: 1 + 1 - 1 = 1
+        assert_eq!(calculate_fishing_tick_speed(true, false, 0.1, 0.2), 1);
+
+        // 4. Douse fire / campfire check (AbstractThrownPotion.java:124-135)
+        assert!(is_douseable_fire_or_campfire(true, false, false));
+        assert!(is_douseable_fire_or_campfire(false, true, false));
+        assert!(is_douseable_fire_or_campfire(false, false, true));
+        assert!(!is_douseable_fire_or_campfire(false, false, false));
+    }
 }
+
 

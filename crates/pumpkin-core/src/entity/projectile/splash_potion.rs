@@ -85,6 +85,24 @@ fn extinguish_fire(world: &Arc<crate::world::World>, hit_pos: Vector3<f64>) {
         let raw_block_id = state_id.to_block_id();
         if raw_block_id == BlockId::FIRE || raw_block_id == BlockId::SOUL_FIRE {
             world.set_block_state(&pos, air_state_id, BlockFlags::NOTIFY_ALL);
+        } else if raw_block_id == BlockId::CAMPFIRE || raw_block_id == BlockId::SOUL_CAMPFIRE {
+            let mut props =
+                pumpkin_data::block_properties::CampfireLikeProperties::from_state_id(state_id);
+            if props.r#lit {
+                props.r#lit = false;
+                let block = if raw_block_id == BlockId::CAMPFIRE {
+                    &pumpkin_data::Block::CAMPFIRE
+                } else {
+                    &pumpkin_data::Block::SOUL_CAMPFIRE
+                };
+                let new_state_id = props.to_state_id(block);
+                world.set_block_state(&pos, new_state_id, BlockFlags::NOTIFY_ALL);
+                let chunk_pos = to_chunk_pos(&Vector2::new(pos.0.x, pos.0.z));
+                world.broadcast_to_chunk(
+                    chunk_pos,
+                    &CWorldEvent::new(1009, pos, 0, false),
+                );
+            }
         }
     }
 }
