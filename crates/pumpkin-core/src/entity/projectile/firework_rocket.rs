@@ -367,8 +367,11 @@ impl EntityBase for FireworkRocketEntity {
         }
 
         if !attached_boost && !self.shot_at_angle.load(Ordering::Relaxed) {
-            velocity.x *= 1.15;
-            velocity.z *= 1.15;
+            let horiz_accel = crate::entity::combat::calculate_firework_horizontal_acceleration(
+                entity.horizontal_collision.load(Ordering::Relaxed),
+            );
+            velocity.x *= horiz_accel;
+            velocity.z *= horiz_accel;
             velocity.y += 0.04;
             entity.set_velocity(velocity);
         }

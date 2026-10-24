@@ -3118,6 +3118,113 @@ pub fn calculate_crossbow_loading_end_pitch(rand_val: f32) -> f32 {
     1.0 / (rand_val * 0.5 + 1.0) + 0.2
 }
 
+/// Calculates bow charge power based on draw duration in ticks.
+///
+/// Mirrors vanilla `BowItem.java:74-82`:
+/// ```java
+/// public static float getPowerForTime(final int timeHeld) {
+///    float pow = timeHeld / 20.0F;
+///    pow = (pow * pow + pow * 2.0F) / 3.0F;
+///    if (pow > 1.0F) {
+///       pow = 1.0F;
+///    }
+///    return pow;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_bow_power_for_time(time_held_ticks: i32) -> f32 {
+    let mut pow = (time_held_ticks as f32) / 20.0;
+    pow = (pow * pow + pow * 2.0) / 3.0;
+    if pow > 1.0 {
+        1.0
+    } else {
+        pow
+    }
+}
+
+/// Checks whether a bow has been drawn enough to release an arrow.
+///
+/// Mirrors vanilla `BowItem.java:35`:
+/// `if (pow < 0.1) return false;`
+#[must_use]
+pub const fn can_bow_release(power: f32) -> bool {
+    power >= 0.1
+}
+
+/// Calculates pitch for bow shoot sound.
+///
+/// Mirrors vanilla `BowItem.java:52`:
+/// `1.0F / (level.getRandom().nextFloat() * 0.4F + 1.2F) + pow * 0.5F`
+#[must_use]
+pub fn calculate_bow_sound_pitch(power: f32, rand_val: f32) -> f32 {
+    1.0 / (rand_val * 0.4 + 1.2) + power * 0.5
+}
+
+/// Calculates horizontal acceleration factor for firework rockets.
+///
+/// Mirrors vanilla `FireworkRocketEntity.java:152`:
+/// `double horizontalAcceleration = this.horizontalCollision ? 1.0 : 1.15;`
+#[must_use]
+pub const fn calculate_firework_horizontal_acceleration(has_horizontal_collision: bool) -> f64 {
+    if has_horizontal_collision {
+        1.0
+    } else {
+        1.15
+    }
+}
+
+/// Calculates durability repaired and remaining XP for Mending enchantment.
+///
+/// Mirrors vanilla `ExperienceOrb.java:296-308`:
+/// ```java
+/// int toRepairFromXpAmount = amount * 2;
+/// int repair = Math.min(toRepairFromXpAmount, itemStack.getDamageValue());
+/// int remaining = amount - repair * amount / toRepairFromXpAmount;
+/// ```
+#[must_use]
+pub const fn calculate_mending_repair(xp_amount: i32, current_damage: i32) -> (i32, i32) {
+    if xp_amount <= 0 || current_damage <= 0 {
+        return (0, xp_amount);
+    }
+    let to_repair = xp_amount * 2;
+    let repair = if current_damage < to_repair {
+        current_damage
+    } else {
+        to_repair
+    };
+    let remaining = xp_amount - (repair * xp_amount) / to_repair;
+    (repair, remaining)
+}
+
+/// Calculates Thorns damage and durability cost upon taking damage.
+///
+/// Mirrors vanilla `Enchantments.java:540-565`:
+/// - Activation chance: `level * 0.15F`
+/// - Damage: 1.0..=4.0 HP (or `level - 10` if level > 10)
+/// - Extra durability loss: 2
+#[must_use]
+pub fn calculate_thorns_damage(
+    level: u32,
+    rand_chance: f32,
+    rand_damage: f32,
+) -> Option<(f32, u32)> {
+    if level == 0 {
+        return None;
+    }
+    let chance = (level as f32) * 0.15;
+    if rand_chance < chance {
+        let dmg = if level > 10 {
+            (level - 10) as f32
+        } else {
+            1.0 + (rand_damage * 4.0).floor().min(3.0)
+        };
+        Some((dmg, 2))
+    } else {
+        None
+    }
+}
+
+
 
 
 #[cfg(test)]
@@ -4928,6 +5035,53 @@ mod tests {
         // 8. Crossbow loading end pitch (CrossbowItem.java:234)
         let load_end_pitch = calculate_crossbow_loading_end_pitch(0.0); // 1.0/1.0 + 0.2 = 1.2
         assert!((load_end_pitch - 1.2).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_bow_power_firework_mending_and_thorns_parity() {
+        // 1. Bow power calculation (BowItem.java:74-82)
+        assert_eq!(calculate_bow_power_for_time(0), 0.0);
+        let mid_power = calculate_bow_power_for_time(10); // pow = 0.5; (0.25 + 1.0)/3.0 = 1.25/3.0 ≈ 0.4166667
+        assert!((mid_power - (1.25 / 3.0)).abs() < 1e-5);
+        assert_eq!(calculate_bow_power_for_time(20), 1.0);
+        assert_eq!(calculate_bow_power_for_time(40), 1.0); // clamped at 1.0
+
+        // 2. Bow release threshold (BowItem.java:35)
+        assert!(!can_bow_release(0.09));
+        assert!(can_bow_release(0.10));
+        assert!(can_bow_release(1.0));
+
+        // 3. Bow shoot sound pitch (BowItem.java:52)
+        let bow_pitch = calculate_bow_sound_pitch(1.0, 0.0); // 1.0 / 1.2 + 0.5 ≈ 1.333
+        assert!((bow_pitch - (1.0 / 1.2 + 0.5)).abs() < 1e-5);
+
+        // 4. Firework horizontal collision acceleration (FireworkRocketEntity.java:152)
+        assert_eq!(calculate_firework_horizontal_acceleration(true), 1.0);  // with horizontal collision: no acceleration
+        assert_eq!(calculate_firework_horizontal_acceleration(false), 1.15); // without collision: 1.15 multiplier
+
+        // 5. Mending repair calculation (ExperienceOrb.java:296-308)
+        // 10 XP can repair up to 20 durability. Item has 20 damage -> full 20 repaired, 0 XP left
+        let (repaired1, remaining1) = calculate_mending_repair(10, 20);
+        assert_eq!(repaired1, 20);
+        assert_eq!(remaining1, 0);
+
+        // 10 XP can repair up to 20 durability. Item has 6 damage -> 6 repaired, 10 - (6 * 10) / 20 = 7 XP left
+        let (repaired2, remaining2) = calculate_mending_repair(10, 6);
+        assert_eq!(repaired2, 6);
+        assert_eq!(remaining2, 7);
+
+        // Item has 0 damage -> 0 repaired, all 10 XP left
+        let (repaired3, remaining3) = calculate_mending_repair(10, 0);
+        assert_eq!(repaired3, 0);
+        assert_eq!(remaining3, 10);
+
+        // 6. Thorns damage & durability loss (Enchantments.java:540-565)
+        // Level 3 Thorns: 45% chance
+        assert!(calculate_thorns_damage(3, 0.10, 0.5).is_some());
+        assert!(calculate_thorns_damage(3, 0.50, 0.5).is_none());
+        let (thorns_dmg, extra_durability) = calculate_thorns_damage(3, 0.10, 0.5).unwrap();
+        assert!(thorns_dmg >= 1.0 && thorns_dmg <= 4.0);
+        assert_eq!(extra_durability, 2); // 2 extra durability damage per trigger
     }
 }
 

@@ -2965,4 +2965,61 @@
   - Updated `ProjectileWeaponItem::shoot_projectiles` in `crates/pumpkin-core/src/item/items/projectile_weapon.rs` to use `calculate_multishot_spread_angle`.
   - Added unit test `test_fishing_rod_and_crossbow_multishot_parity` in `combat.rs`. Total 51/51 tests passing in `entity::combat::tests`.
 
+## Gap 166: Bow Power Curve & Release Threshold, Firework Horizontal Acceleration Collision Parity, Mending Recursive Chain Repair & Thorns Damage Parity
+- **Vanilla Reference**: `BowItem.java:34-35, 52, 74-82`, `FireworkRocketEntity.java:151-154`, `ExperienceOrb.java:296-314`, `Enchantments.java:540-565`:
+  - `BowItem.java:74-82`:
+    ```java
+    public static float getPowerForTime(final int timeHeld) {
+       float pow = timeHeld / 20.0F;
+       pow = (pow * pow + pow * 2.0F) / 3.0F;
+       if (pow > 1.0F) {
+          pow = 1.0F;
+       }
+       return pow;
+    }
+    ```
+    - Đường cong năng lượng bắn cung (`getPowerForTime`): Tăng phi tuyến tính đạt tối đa 1.0F sau 20 ticks.
+    - Ngưỡng nhả cung (`releaseUsing`): `if (pow < 0.1) return false;`. Trước đây Neth hardcode `use_ticks < 3`; nay đồng bộ chính xác theo `can_bow_release(power)` (`pow >= 0.1`).
+    - Cao độ âm thanh bắn cung: `1.0F / (random.nextFloat() * 0.4F + 1.2F) + pow * 0.5F`.
+  - `FireworkRocketEntity.java:151-154`:
+    ```java
+    if (!this.isShotAtAngle()) {
+       double horizontalAcceleration = this.horizontalCollision ? 1.0 : 1.15;
+       this.setDeltaMovement(this.getDeltaMovement().multiply(horizontalAcceleration, 1.0, horizontalAcceleration).add(0.0, 0.04, 0.0));
+    }
+    ```
+    - Khi pháo hoa đang bay thẳng lên, hệ số gia tốc phương ngang là 1.15 khi tự do, nhưng khi chạm tường (`horizontalCollision == true`), hệ số gia tốc là 1.0 (triệt tiêu gia tốc đẩy vào tường). Trước đây Neth luôn nhân 1.15 bất kể va chạm.
+  - `ExperienceOrb.java:296-314` (Mending Recursive Chain Repair):
+    ```java
+    private int repairPlayerItems(final ServerPlayer player, final int amount) {
+       Optional<EnchantedItemInUse> selected = EnchantmentHelper.getRandomItemWith(EnchantmentEffectComponents.REPAIR_WITH_XP, player, ItemStack::isDamaged);
+       if (selected.isPresent()) {
+          ...
+          int repair = Math.min(toRepairFromXpAmount, itemStack.getDamageValue());
+          itemStack.setDamageValue(itemStack.getDamageValue() - repair);
+          if (repair > 0) {
+             int remaining = amount - repair * amount / toRepairFromXpAmount;
+             if (remaining > 0) {
+                return this.repairPlayerItems(player, remaining);
+             }
+          }
+          return 0;
+       } else {
+          return amount;
+       }
+    }
+    ```
+    - Khi nhặt quả cầu kinh nghiệm lớn (XP orb), nếu món đồ Mending đầu tiên được sửa đầy mà vẫn còn dư XP (`remaining > 0`), Vanilla tiếp tục sửa đệ quy các món trang bị Mending bị hư hại khác của người chơi cho đến khi hết đồ hư hại hoặc hết XP. Trước đây Neth chỉ sửa 1 món rồi trả XP dư về thanh kinh nghiệm.
+  - `Enchantments.java:540-565` (Thorns):
+    - Xác suất kích hoạt: `level * 0.15F` (15% mỗi cấp, tối đa 45% ở Thorns III).
+    - Sát thương phản hồi: `1.0..=4.0` HP (hoặc `level - 10` nếu level > 10).
+    - Món giáp kích hoạt Thorns chịu thêm 2 điểm tiêu hao độ bền (`ChangeItemDamage(2.0F)`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_bow_power_for_time`, `can_bow_release`, `calculate_bow_sound_pitch`, `calculate_firework_horizontal_acceleration`, `calculate_mending_repair`, and `calculate_thorns_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `BowItem::release_bow`, `get_power_for_time`, and `shoot` in `crates/pumpkin-core/src/item/items/bow.rs`.
+  - Updated `FireworkRocketEntity::tick` in `crates/pumpkin-core/src/entity/projectile/firework_rocket.rs` to query `horizontal_collision`.
+  - Updated `Player::apply_mending_from_xp` in `crates/pumpkin-core/src/entity/player.rs` to compute durability/XP via `calculate_mending_repair` and recursively repair remaining damaged items.
+  - Added unit test `test_bow_power_firework_mending_and_thorns_parity` in `combat.rs`. Total 52/52 tests passing in `entity::combat::tests`.
+
+
 

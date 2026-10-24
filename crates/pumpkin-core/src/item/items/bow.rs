@@ -73,7 +73,7 @@ impl ItemBehaviour for BowItem {
 impl BowItem {
     /// The maximum number of ticks a bow can be drawn for
     pub const USE_DURATION: i32 = 72000;
-    const MAX_DRAW_DURATION: f32 = 20.0;
+    pub const MAX_DRAW_DURATION: i32 = 20;
     pub const ARROW_SPEED_MULTIPLIER: f32 = 3.0;
 
     /// Called when the player releases the bow
@@ -82,8 +82,9 @@ impl BowItem {
         let use_ticks = player.living_entity.item_use_time.load(Ordering::Relaxed);
         let use_ticks = Self::USE_DURATION - use_ticks;
 
-        // Check minimum draw time
-        if use_ticks < 3 {
+        // Calculate power and check minimum release threshold (BowItem.java:34-35)
+        let power = Self::get_power_for_time(use_ticks);
+        if !crate::entity::combat::can_bow_release(power) {
             return;
         }
 
@@ -103,9 +104,6 @@ impl BowItem {
             },
         );
         let infinite_projectile = projectile.item.id == Item::ARROW.id;
-
-        // Calculate power and fire
-        let power = Self::get_power_for_time(use_ticks);
 
         // Check for Infinity enchantment
         let has_infinity = weapon
@@ -154,12 +152,7 @@ impl BowItem {
     /// Calculate the power/charge of the bow based on time held
     #[must_use]
     pub fn get_power_for_time(time_held: i32) -> f32 {
-        let mut power = time_held as f32 / Self::MAX_DRAW_DURATION;
-        power = (power * power + power * 2.0) / 3.0;
-        if power > 1.0 {
-            power = 1.0;
-        }
-        power
+        crate::entity::combat::calculate_bow_power_for_time(time_held)
     }
 
     /// Creates projectile matching vanilla `ProjectileWeaponItem::createProjectile`.
@@ -209,7 +202,7 @@ impl BowItem {
             is_creative,
         );
 
-        let sound_pitch = 1.0 / (rand::random::<f32>() * 0.4 + 1.2) + power * 0.5;
+        let sound_pitch = crate::entity::combat::calculate_bow_sound_pitch(power, rand::random());
         let sound_packet = CSoundEffect::new(
             IdOr::Id(Sound::EntityArrowShoot as u16),
             SoundCategory::Neutral,

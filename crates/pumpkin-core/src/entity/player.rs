@@ -6415,12 +6415,13 @@ impl Player {
         let idx = rand::random::<u32>() as usize % candidates.len();
         let (slot_index, equipment_slot, mut stack) = candidates.swap_remove(idx);
 
-        let repaired = stack.repair_item(xp.saturating_mul(2));
+        let current_damage = stack.get_damage() as i32;
+        let (repaired, remaining_xp) = crate::entity::combat::calculate_mending_repair(xp, current_damage);
         if repaired <= 0 {
             return xp;
         }
-
-        let xp_used = (repaired + 1) / 2;
+        stack.repair_item(repaired);
+        let xp_used = xp.saturating_sub(remaining_xp);
 
         if let Some(player_arc) = self.world().get_player_by_uuid(self.gameprofile.id)
             && let Some(server) = self.world().server.upgrade()
@@ -6442,7 +6443,7 @@ impl Player {
         let updated_stack = stack.clone();
         self.inventory.set_slot(slot_index, updated_stack.clone());
 
-        xp = xp.saturating_sub(xp_used);
+        xp = remaining_xp;
 
         self.try_send_slot_set_packet(&CSetPlayerInventory::new(
             (slot_index as i32).into(),
@@ -6453,7 +6454,11 @@ impl Player {
         self.living_entity
             .send_equipment_changes(&[(equipment_slot, updated_stack)]);
 
-        xp
+        if xp > 0 {
+            self.apply_mending_from_xp(xp)
+        } else {
+            0
+        }
     }
 
     pub fn increment_screen_handler_sync_id(&self) {
