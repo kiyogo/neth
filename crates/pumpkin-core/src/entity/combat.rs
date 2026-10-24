@@ -1299,6 +1299,50 @@ pub const fn should_deal_default_knockback_and_hurt_anim(
     !has_no_knockback_tag && !fully_blocked
 }
 
+/// Action to perform for Wither Rose creation when an entity is killed by a Wither boss,
+/// mirroring vanilla `LivingEntity.createWitherRose` (LivingEntity.java:1494-1512).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WitherRosePlacementAction {
+    /// Place the Wither Rose block in the world.
+    PlaceBlock,
+    /// Drop the Wither Rose as an item entity.
+    DropItem,
+    /// Not killed by a Wither boss, no action.
+    None,
+}
+
+/// Determines if a Wither Rose can be placed at a block position, mirroring vanilla
+/// `WitherRoseBlock.mayPlaceOn` and `LivingEntity.createWitherRose`.
+///
+/// In vanilla:
+/// - Target block must be air.
+/// - Supporting block directly below must have `#minecraft:supports_wither_rose`.
+#[must_use]
+pub const fn can_place_wither_rose(
+    target_is_air: bool,
+    below_supports_wither_rose: bool,
+) -> bool {
+    target_is_air && below_supports_wither_rose
+}
+
+/// Determines the action for Wither Rose generation upon entity death, mirroring vanilla
+/// `LivingEntity.createWitherRose` (LivingEntity.java:1494-1512).
+#[must_use]
+pub const fn determine_wither_rose_action(
+    killer_is_wither: bool,
+    mob_griefing: bool,
+    can_place: bool,
+) -> WitherRosePlacementAction {
+    if !killer_is_wither {
+        return WitherRosePlacementAction::None;
+    }
+    if mob_griefing && can_place {
+        WitherRosePlacementAction::PlaceBlock
+    } else {
+        WitherRosePlacementAction::DropItem
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2037,6 +2081,43 @@ mod tests {
 
         // Fully blocked by shield: NO knockback or hurt animation
         assert!(!should_deal_default_knockback_and_hurt_anim(false, true));
+    }
+
+    #[test]
+    fn test_wither_rose_creation_parity() {
+        // Vanilla LivingEntity.java:1494-1512 createWitherRose:
+        // killer instanceof WitherBoss -> if mobGriefing && isAir && canSurvive -> PlaceBlock else DropItem
+
+        // 1. Killer is NOT a wither -> None
+        assert_eq!(
+            determine_wither_rose_action(false, true, true),
+            WitherRosePlacementAction::None
+        );
+
+        // 2. Killer IS a wither, mobGriefing enabled, can place (air above, supports_wither_rose below) -> PlaceBlock
+        assert!(can_place_wither_rose(true, true));
+        assert_eq!(
+            determine_wither_rose_action(true, true, true),
+            WitherRosePlacementAction::PlaceBlock
+        );
+
+        // 3. Killer IS a wither, mobGriefing enabled, but cannot place (target not air or below cannot support) -> DropItem
+        assert!(!can_place_wither_rose(false, true));
+        assert!(!can_place_wither_rose(true, false));
+        assert_eq!(
+            determine_wither_rose_action(true, true, false),
+            WitherRosePlacementAction::DropItem
+        );
+
+        // 4. Killer IS a wither, mobGriefing DISABLED -> always DropItem
+        assert_eq!(
+            determine_wither_rose_action(true, false, true),
+            WitherRosePlacementAction::DropItem
+        );
+        assert_eq!(
+            determine_wither_rose_action(true, false, false),
+            WitherRosePlacementAction::DropItem
+        );
     }
 }
 

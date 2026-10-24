@@ -33,7 +33,8 @@ use crate::entity::attributes::AttributeInstance;
 use crate::entity::attributes::Modifier;
 use crate::entity::attributes::ModifierOperation;
 use crate::entity::combat::{
-    CombatRules, CombatTracker, FallLocation, can_cause_mob_anger, has_vanishing_curse,
+    CombatRules, CombatTracker, FallLocation, WitherRosePlacementAction, can_cause_mob_anger,
+    can_place_wither_rose, determine_wither_rose_action, has_vanishing_curse,
     knockback_after_resistance, should_entity_drop_experience,
 };
 use crate::entity::mob::equipment::DEFAULT_EQUIPMENT_DROP_CHANCE;
@@ -2676,6 +2677,10 @@ impl LivingEntity {
                 self.drop_equipment(looting_level);
             }
 
+            // Vanilla LivingEntity.java:1480:
+            // this.createWitherRose(killer);
+            self.create_wither_rose(killer);
+
             // Broadcast death message if it's a player and the gamerule is enabled
             self.broadcast_death_message(&*dyn_self, damage_type, source, cause);
 
@@ -2753,6 +2758,49 @@ impl LivingEntity {
                 item.set_damage((max_damage - outer).max(0));
             }
             world.drop_stack(&block_pos, item);
+        }
+    }
+
+    /// Creates a Wither Rose when an entity is killed by a Wither boss, mirroring vanilla
+    /// `LivingEntity.createWitherRose` (LivingEntity.java:1494-1512).
+    pub fn create_wither_rose(&self, killer: Option<&dyn EntityBase>) {
+        let killer_is_wither = killer.is_some_and(|k| {
+            k.get_entity().entity_type == &pumpkin_data::entity::EntityType::WITHER
+        });
+        if !killer_is_wither {
+            return;
+        }
+
+        let world = self.entity.world.load();
+        let pos = self.entity.pos.load().to_block_pos();
+        let below_pos = BlockPos::new(pos.0.x, pos.0.y - 1, pos.0.z);
+
+        let target_is_air = world.get_block(&pos).is_air();
+        let below_supports = world
+            .get_block(&below_pos)
+            .has_tag(&tag::Block::MINECRAFT_SUPPORTS_WITHER_ROSE);
+
+        let can_place = can_place_wither_rose(target_is_air, below_supports);
+        let mob_griefing = world.level_info.load().game_rules.mob_griefing;
+
+        match determine_wither_rose_action(true, mob_griefing, can_place) {
+            WitherRosePlacementAction::PlaceBlock => {
+                world.set_block_state(
+                    &pos,
+                    pumpkin_data::Block::WITHER_ROSE.default_state.id,
+                    crate::world::BlockFlags::NOTIFY_ALL,
+                );
+            }
+            WitherRosePlacementAction::DropItem => {
+                world.drop_stack_at(
+                    self.entity.pos.load(),
+                    pumpkin_data::item_stack::ItemStack::new(
+                        1,
+                        &pumpkin_data::item::Item::WITHER_ROSE,
+                    ),
+                );
+            }
+            WitherRosePlacementAction::None => {}
         }
     }
 

@@ -1869,4 +1869,47 @@
   - In `LivingEntity::damage_with_context` in `crates/pumpkin-core/src/entity/living.rs`, relocated the `CHurtAnimation` and hurt actor event broadcast inside the `!damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_KNOCKBACK)` block, mirroring vanilla `LivingEntity.dealDefaultKnockback`.
   - Added unit test `test_hurt_animation_and_knockback_no_knockback_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 24/24 tests in `entity::combat::tests` passing.
 
+### Gap 139: Wither Rose Creation Upon Entity Death by Wither Boss Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:1480, 1494-1512` (`createWitherRose`) & `ServerPlayer.java:940`:
+    ```java
+    protected void createWitherRose(final @Nullable LivingEntity killer) {
+       if (this.level() instanceof ServerLevel serverLevel) {
+          boolean placed = false;
+          if (killer instanceof WitherBoss) {
+             if (serverLevel.getGameRules().get(GameRules.MOB_GRIEFING)) {
+                BlockPos pos = this.blockPosition();
+                BlockState state = Blocks.WITHER_ROSE.defaultBlockState();
+                if (this.level().getBlockState(pos).isAir() && state.canSurvive(this.level(), pos)) {
+                   this.level().setBlockAndUpdate(pos, state);
+                   placed = true;
+                }
+             }
+
+             if (!placed) {
+                ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), new ItemStack(Items.WITHER_ROSE));
+                this.level().addFreshEntity(itemEntity);
+             }
+          }
+       }
+    }
+    ```
+  - `WitherRoseBlock.java:35-37`:
+    ```java
+    @Override
+    protected boolean mayPlaceOn(final BlockState state, final BlockGetter level, final BlockPos pos) {
+       return state.is(BlockTags.SUPPORTS_WITHER_ROSE);
+    }
+    ```
+  - In vanilla Minecraft Java, whenever any living entity (including players) dies from damage credited to a Wither Boss:
+    - If `mobGriefing` is enabled and the death block position is air with a valid supporting block below (`#minecraft:supports_wither_rose`), a Wither Rose block is planted in the world.
+    - If placement fails or `mobGriefing` is disabled, a Wither Rose item stack is dropped at the death location.
+  - Previously in Neth:
+    - Neth lacked `createWitherRose` entirely; entities killed by a Wither boss never spawned or dropped Wither Roses.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `WitherRosePlacementAction` enum, `can_place_wither_rose`, and `determine_wither_rose_action` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Implemented `LivingEntity::create_wither_rose` in `crates/pumpkin-core/src/entity/living.rs` and integrated it into `drop_all_death_loot`.
+  - Added unit test `test_wither_rose_creation_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 25/25 tests in `entity::combat::tests` passing.
+
+
 
