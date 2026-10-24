@@ -3284,6 +3284,81 @@ pub const fn should_tnt_take_damage() -> bool {
     false
 }
 
+/// Calculates vertical velocity change for entities on top of a bubble column.
+///
+/// Mirrors vanilla `Entity.java:2945-2954` (`handleOnAboveBubbleColumn`):
+/// ```java
+/// if (dragDown) {
+///    yd = Math.max(-0.9, movement.y - 0.03);
+/// } else {
+///    yd = Math.min(1.8, movement.y + 0.1);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_entity_bubble_column_above_y(current_y: f64, drag_down: bool) -> f64 {
+    if drag_down {
+        (current_y - 0.03).max(-0.9)
+    } else {
+        (current_y + 0.1).min(1.8)
+    }
+}
+
+/// Calculates vertical velocity change for entities submerged inside a bubble column.
+///
+/// Mirrors vanilla `Entity.java:2980-2991` (`handleOnInsideBubbleColumn`):
+/// ```java
+/// if (dragDown) {
+///    yd = Math.max(-0.3, movement.y - 0.03);
+/// } else {
+///    yd = Math.min(0.7, movement.y + 0.06);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_entity_bubble_column_inside_y(current_y: f64, drag_down: bool) -> f64 {
+    if drag_down {
+        (current_y - 0.03).max(-0.3)
+    } else {
+        (current_y + 0.06).min(0.7)
+    }
+}
+
+/// Calculates vertical velocity impulse for boats on bubble columns when the timer reaches 0.
+///
+/// Mirrors vanilla `AbstractBoat.java:346-354` (`handleBubbleColumnEffect`):
+/// ```java
+/// if (dragDown) {
+///    this.setDeltaMovement(movement.add(0.0, -0.7, 0.0));
+/// } else {
+///    this.setDeltaMovement(movement.x, 0.6, movement.z);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_boat_bubble_column_effect_y(current_y: f64, drag_down: bool) -> f64 {
+    if drag_down {
+        current_y - 0.7
+    } else {
+        0.6
+    }
+}
+
+/// Damage inflicted on a turtle when struck by lightning.
+///
+/// Mirrors vanilla `Turtle.java:283-285` (`thunderHit`):
+/// `this.hurtServer(level, this.damageSources().lightningBolt(), Float.MAX_VALUE);`
+#[must_use]
+pub const fn get_turtle_thunder_hit_damage() -> f32 {
+    f32::MAX
+}
+
+/// Checks whether pig / villager converts to zombified piglin / witch upon lightning strike.
+///
+/// Mirrors vanilla `Pig.java:201` and `Villager.java:745`:
+/// `if (level.getDifficulty() != Difficulty.PEACEFUL)`
+#[must_use]
+pub const fn can_lightning_convert_mob(difficulty: pumpkin_util::Difficulty) -> bool {
+    !matches!(difficulty, pumpkin_util::Difficulty::Peaceful)
+}
+
 
 
 
@@ -5172,6 +5247,41 @@ mod tests {
 
         // 5. Primed TNT invulnerability (PrimedTnt.java:210-212)
         assert!(!should_tnt_take_damage());
+    }
+
+    #[test]
+    fn test_bubble_column_and_lightning_conversion_parity() {
+        // 1. Entity above bubble column (Entity.java:2945-2954)
+        // Drag down: (y - 0.03).max(-0.9)
+        assert!((calculate_entity_bubble_column_above_y(0.0, true) - (-0.03)).abs() < 1e-6);
+        assert!((calculate_entity_bubble_column_above_y(-1.0, true) - (-0.9)).abs() < 1e-6);
+        // Upwards: (y + 0.1).min(1.8)
+        assert!((calculate_entity_bubble_column_above_y(0.0, false) - 0.1).abs() < 1e-6);
+        assert!((calculate_entity_bubble_column_above_y(2.0, false) - 1.8).abs() < 1e-6);
+
+        // 2. Entity inside bubble column (Entity.java:2980-2991)
+        // Drag down: (y - 0.03).max(-0.3)
+        assert!((calculate_entity_bubble_column_inside_y(0.0, true) - (-0.03)).abs() < 1e-6);
+        assert!((calculate_entity_bubble_column_inside_y(-0.5, true) - (-0.3)).abs() < 1e-6);
+        // Upwards: (y + 0.06).min(0.7)
+        assert!((calculate_entity_bubble_column_inside_y(0.0, false) - 0.06).abs() < 1e-6);
+        assert!((calculate_entity_bubble_column_inside_y(1.0, false) - 0.7).abs() < 1e-6);
+
+        // 3. Boat bubble column effect (AbstractBoat.java:346-354)
+        // Drag down: y - 0.7
+        assert!((calculate_boat_bubble_column_effect_y(0.1, true) - (-0.6)).abs() < 1e-6);
+        // Upwards: fixed 0.6
+        assert!((calculate_boat_bubble_column_effect_y(0.0, false) - 0.6).abs() < 1e-6);
+        assert!((calculate_boat_bubble_column_effect_y(-0.5, false) - 0.6).abs() < 1e-6);
+
+        // 4. Turtle lightning hit damage (Turtle.java:283-285)
+        assert_eq!(get_turtle_thunder_hit_damage(), f32::MAX);
+
+        // 5. Lightning mob conversion difficulty gating (Pig.java:201, Villager.java:745)
+        assert!(!can_lightning_convert_mob(pumpkin_util::Difficulty::Peaceful));
+        assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Easy));
+        assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Normal));
+        assert!(can_lightning_convert_mob(pumpkin_util::Difficulty::Hard));
     }
 }
 

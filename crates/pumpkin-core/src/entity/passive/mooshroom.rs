@@ -393,7 +393,7 @@ impl Mob for MooshroomEntity {
 
     fn mob_on_lightning_strike(
         &self,
-        caller: &dyn EntityBase,
+        _caller: &dyn EntityBase,
         lightning: &crate::entity::lightning::LightningBoltEntity,
     ) {
         let lightning_uuid = lightning.get_entity().entity_uuid;
@@ -407,15 +407,17 @@ impl Mob for MooshroomEntity {
             self.last_lightning_bolt_uuid.store(Some(lightning_uuid));
             let entity = self.get_entity();
             let world = entity.world.load();
-            world.play_sound(
+            // Vanilla MushroomCow.java:90: this.playSound(SoundEvents.MOOSHROOM_CONVERT, 2.0F, 1.0F)
+            world.play_sound_fine(
                 Sound::EntityMooshroomConvert,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
+                2.0,
+                1.0,
             );
         }
-        self.mob_entity
-            .living_entity
-            .on_lightning_strike(caller, lightning);
+        // Vanilla MushroomCow.java:85-92 does NOT call super.thunderHit!
+        // Mooshrooms convert without taking damage or catching fire.
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

@@ -230,6 +230,24 @@ impl Mob for TurtleEntity {
         Some(self)
     }
 
+    fn mob_on_lightning_strike(
+        &self,
+        caller: &dyn EntityBase,
+        lightning: &crate::entity::lightning::LightningBoltEntity,
+    ) {
+        // Vanilla Turtle.java:283-285:
+        // this.hurtServer(level, this.damageSources().lightningBolt(), Float.MAX_VALUE);
+        let cause = lightning.get_cause();
+        self.mob_entity.living_entity.damage_with_context(
+            caller,
+            crate::entity::combat::get_turtle_thunder_hit_damage(),
+            pumpkin_data::damage::DamageType::LIGHTNING_BOLT,
+            None,
+            Some(lightning),
+            cause.as_deref().map(|p| p as &dyn EntityBase),
+        );
+    }
+
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
         let is_baby = entity.age.load(Ordering::Relaxed) < 0;

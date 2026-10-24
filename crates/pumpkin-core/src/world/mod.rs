@@ -994,6 +994,13 @@ impl World {
         }
     }
 
+    /// Broadcasts a raw entity status/event ID (such as boat sink 71 or boat launch 72).
+    /// Mirrors vanilla `ServerLevel.broadcastEntityEvent(entity, eventId)`.
+    pub fn broadcast_entity_status_id(&self, entity: &Entity, java_status: i8) {
+        let je_packet = CEntityStatus::new(entity.entity_id, java_status);
+        self.send_to_tracking_players_and_self(entity, &je_packet);
+    }
+
     /// Broadcasts a damage event to all players tracking the specified entity,
     /// and to the entity itself if it is a player.
     /// Matching Vanilla's `ServerLevel.broadcastDamageEvent(entity, source)`.

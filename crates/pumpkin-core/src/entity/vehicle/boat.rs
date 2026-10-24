@@ -17,6 +17,7 @@ use crate::server::Server;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::tag;
+use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_protocol::java::client::play::Metadata;
 
 use pumpkin_util::math::vector3::Vector3;
@@ -47,6 +48,9 @@ pub struct BoatEntity {
     movements: Mutex<VecDeque<BoatMovement>>,
     left_paddle_moving: AtomicBool,
     right_paddle_moving: AtomicBool,
+    bubble_time: AtomicCell<i32>,
+    is_above_bubble_column: AtomicBool,
+    bubble_column_direction_is_down: AtomicBool,
 }
 
 pub enum BoatKind {
@@ -84,6 +88,9 @@ impl BoatEntity {
             movements: Mutex::new(VecDeque::new()),
             left_paddle_moving: AtomicBool::new(false),
             right_paddle_moving: AtomicBool::new(false),
+            bubble_time: AtomicCell::new(0),
+            is_above_bubble_column: AtomicBool::new(false),
+            bubble_column_direction_is_down: AtomicBool::new(false),
         }
     }
 
@@ -98,6 +105,85 @@ impl BoatEntity {
             ],
             None,
         );
+    }
+
+    /// Handles bubble column contact from block collision or fluid interaction.
+    /// Mirrors vanilla `AbstractBoat.java:298-310` (`onAboveBubbleColumn`).
+    pub fn on_above_bubble_column(&self, drag_down: bool) {
+        self.is_above_bubble_column.store(true, Ordering::Relaxed);
+        self.bubble_column_direction_is_down
+            .store(drag_down, Ordering::Relaxed);
+        if self.bubble_time.load() == 0 {
+            self.set_bubble_time(60);
+        }
+    }
+
+    pub fn set_bubble_time(&self, time: i32) {
+        self.bubble_time.store(time);
+        self.vehicle.entity.set_synced_data(
+            pumpkin_data::tracked_data::boat::DATA_ID_BUBBLE_TIME,
+            VarInt(time),
+        );
+    }
+
+    #[must_use]
+    pub fn get_bubble_time(&self) -> i32 {
+        self.bubble_time.load()
+    }
+
+    /// Ticks bubble column timer and applies vertical impulse / passenger ejection.
+    /// Mirrors vanilla `AbstractBoat.java:311-355` (`tickBubbleColumn`).
+    pub fn tick_bubble_column(&self) {
+        if !self.is_above_bubble_column.load(Ordering::Relaxed) {
+            self.set_bubble_time(0);
+        }
+
+        let mut bubble_time = self.get_bubble_time();
+        if bubble_time > 0 {
+            bubble_time -= 1;
+            self.set_bubble_time(bubble_time);
+            let diff = 60 - bubble_time - 1;
+            if diff > 0 && bubble_time == 0 {
+                self.set_bubble_time(0);
+                let drag_down = self
+                    .bubble_column_direction_is_down
+                    .load(Ordering::Relaxed);
+                if drag_down {
+                    // Vanilla AbstractBoat.java:322: ejectPassengers() & broadcastEntityEvent 71
+                    let passengers = self
+                        .vehicle
+                        .entity
+                        .passengers
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .clone();
+                    for passenger in passengers.iter().rev() {
+                        self.vehicle
+                            .entity
+                            .remove_passenger(passenger.get_entity().entity_id);
+                    }
+                    self.vehicle
+                        .entity
+                        .world
+                        .load()
+                        .broadcast_entity_status_id(&self.vehicle.entity, 71);
+                } else {
+                    // Vanilla AbstractBoat.java:325: broadcastEntityEvent 72
+                    self.vehicle
+                        .entity
+                        .world
+                        .load()
+                        .broadcast_entity_status_id(&self.vehicle.entity, 72);
+                }
+
+                let mut vel = self.vehicle.entity.velocity.load();
+                vel.y =
+                    crate::entity::combat::calculate_boat_bubble_column_effect_y(vel.y, drag_down);
+                self.vehicle.entity.velocity.store(vel);
+            }
+
+            self.is_above_bubble_column.store(false, Ordering::Relaxed);
+        }
     }
 
     fn send_wobble_metadata(&self) {
@@ -275,12 +361,17 @@ impl EntityBase for BoatEntity {
             self.move_boat(caller, surface_offset);
         }
         self.apply_effects_from_blocks();
+        self.tick_bubble_column();
         entity.tick_block_collisions(caller);
         self.tick_passengers();
     }
 
     fn init_data_tracker(&self) {
         self.send_wobble_metadata();
+        self.vehicle.entity.set_synced_data(
+            pumpkin_data::tracked_data::boat::DATA_ID_BUBBLE_TIME,
+            VarInt(0),
+        );
     }
 
     fn can_hit(&self) -> bool {

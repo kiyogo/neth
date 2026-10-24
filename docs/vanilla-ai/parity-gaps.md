@@ -3047,6 +3047,56 @@
   - Updated `LightningBoltEntity::tick` in `crates/pumpkin-core/src/entity/lightning.rs` using lightning sound pitch and difficulty fire spawn helpers.
   - Added unit test `test_tnt_and_lightning_parity` in `combat.rs`. Total 53/53 tests passing in `entity::combat::tests`.
 
+## Gap 168: Mooshroom Thunder Hit Immunity & Sound, Turtle Lightning Death & Bowl, Copper Golem De-oxidation, Pig Conversion Equipment & Boat Bubble Column Parity
+- **Vanilla Reference**:
+  - `MushroomCow.java:85-92`:
+    ```java
+    @Override
+    public void thunderHit(final ServerLevel level, final LightningBolt lightningBolt) {
+       UUID lightningBoltUUID = lightningBolt.getUUID();
+       if (!lightningBoltUUID.equals(this.lastLightningBoltUUID)) {
+          this.setVariant(this.getVariant() == MushroomCow.Variant.RED ? MushroomCow.Variant.BROWN : MushroomCow.Variant.RED);
+          this.lastLightningBoltUUID = lightningBoltUUID;
+          this.playSound(SoundEvents.MOOSHROOM_CONVERT, 2.0F, 1.0F);
+       }
+    }
+    ```
+    - `MushroomCow` KHÔNG gọi `super.thunderHit` khi bị sét đánh! Mooshroom chỉ chuyển đổi variant (Red <-> Brown), không nhận 5.0 sát thương và không bị bốc cháy 8 giây.
+    - Phát âm thanh `MOOSHROOM_CONVERT` với volume 2.0F, pitch 1.0F.
+  - `Turtle.java:283-285` & `data/minecraft/loot_table/entities/turtle.json`:
+    ```java
+    @Override
+    public void thunderHit(final ServerLevel level, final LightningBolt lightningBolt) {
+       this.hurtServer(level, this.damageSources().lightningBolt(), Float.MAX_VALUE);
+    }
+    ```
+    - Rùa (Turtle) khi bị sét đánh nhận `Float.MAX_VALUE` sát thương từ `DamageType::LIGHTNING_BOLT` (chết ngay lập tức) và kích hoạt loot table rơi 1 cái tô (`minecraft:bowl`). Trước đây Neth chưa ghi đè `mob_on_lightning_strike` cho Turtle khiến nó chỉ nhận 5.0 sát thương và không chết.
+  - `CopperGolem.java:459-470`:
+    - Khi bị sét đánh, Copper Golem giảm mức độ oxy hóa lùi lại đúng **1 bậc** (`weatherState.previous()`, ví dụ Oxidized -> Weathered -> Exposed -> Unaffected), reset `nextWeatheringTick = -1`, và lọc trùng theo UUID tia sét. Trước đây Neth reset thẳng tuột về `Unaffected` trong 1 lần đánh.
+  - `Pig.java:200-205` & `Villager.java:744-758`:
+    - Chỉ chuyển hóa thành Zombified Piglin / Witch khi độ khó không phải là Peaceful (`can_lightning_convert_mob`).
+    - Zombified Piglin khi được tạo từ lợn bị sét đánh được trang bị thanh kiếm vàng `Item::GOLDEN_SWORD` ở tay chính và thiết lập `persistence_required = true` (không bị despawn).
+  - `Entity.java:2941-2954, 2976-2991` & `AbstractBoat.java:298-355`:
+    - Động lực học Bubble Column (cột bọt nước) cho Entity:
+      - Xoáy nước kéo xuống (`dragDown = true`): `yd = Math.max(-0.9, movement.y - 0.03)` trên mặt nước; `yd = Math.max(-0.3, movement.y - 0.03)` khi chìm bên trong.
+      - Cột bọt nước đẩy lên (`dragDown = false`): `yd = Math.min(1.8, movement.y + 0.1)` trên mặt nước; `yd = Math.min(0.7, movement.y + 0.06)` khi chìm bên trong.
+    - Cột bọt nước tác động lên thuyền (Boat):
+      - Đếm `bubble_time` từ 60 ticks.
+      - Khi bộ đếm về 0:
+        - Nếu `dragDown`: văng toàn bộ hành khách (`ejectPassengers()`), gửi event `BOAT_SINK` (71), xung lực vận tốc `vel.y -= 0.7`.
+        - Nếu đẩy lên: gửi event `BOAT_LAUNCH` (72), xung lực vận tốc `vel.y = 0.6`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_entity_bubble_column_above_y`, `calculate_entity_bubble_column_inside_y`, `calculate_boat_bubble_column_effect_y`, `get_turtle_thunder_hit_damage`, and `can_lightning_convert_mob` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `broadcast_entity_status_id` to `World` in `crates/pumpkin-core/src/world/mod.rs`.
+  - Updated `MooshroomEntity::mob_on_lightning_strike` in `crates/pumpkin-core/src/entity/passive/mooshroom.rs` (no damage/fire on convert, sound volume 2.0).
+  - Implemented `TurtleEntity::mob_on_lightning_strike` in `crates/pumpkin-core/src/entity/passive/turtle.rs` (`f32::MAX` lightning damage).
+  - Updated `CopperGolemEntity::mob_on_lightning_strike` in `crates/pumpkin-core/src/entity/passive/copper_golem.rs` (1 stage de-oxidation, UUID dedup).
+  - Updated `PigEntity::mob_on_lightning_strike` in `crates/pumpkin-core/src/entity/passive/pig.rs` (golden sword equipment & persistence).
+  - Updated `VillagerEntity::mob_on_lightning_strike` in `crates/pumpkin-core/src/entity/passive/villager/mod.rs`.
+  - Implemented bubble column tracking and physics in `BoatEntity` (`crates/pumpkin-core/src/entity/vehicle/boat.rs`).
+  - Added unit test `test_bubble_column_and_lightning_conversion_parity` in `combat.rs`. Total 54/54 tests passing in `entity::combat::tests`.
+
+
 
 
 

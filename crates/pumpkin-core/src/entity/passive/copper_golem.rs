@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicI32, AtomicI64, Ordering},
 };
 
+use crossbeam::atomic::AtomicCell;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -11,6 +12,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use uuid::Uuid;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -105,6 +107,7 @@ pub struct CopperGolemEntity {
     pub weather_state: AtomicI32,
     pub state: AtomicI32,
     pub next_weathering_tick: AtomicI64,
+    last_lightning_bolt_uuid: AtomicCell<Option<Uuid>>,
 }
 
 impl CopperGolemEntity {
@@ -115,6 +118,7 @@ impl CopperGolemEntity {
             weather_state: AtomicI32::new(WeatherState::Unaffected.id()),
             state: AtomicI32::new(CopperGolemState::Idle.id()),
             next_weathering_tick: AtomicI64::new(-1),
+            last_lightning_bolt_uuid: AtomicCell::new(None),
         };
         let mob_arc = Arc::new(golem);
         let mob_weak: Weak<dyn Mob> = {
@@ -263,7 +267,15 @@ impl Mob for CopperGolemEntity {
         caller: &dyn EntityBase,
         lightning: &crate::entity::lightning::LightningBoltEntity,
     ) {
-        self.set_weather_state(WeatherState::Unaffected);
+        let lightning_uuid = lightning.get_entity().entity_uuid;
+        if self.last_lightning_bolt_uuid.load() != Some(lightning_uuid) {
+            self.last_lightning_bolt_uuid.store(Some(lightning_uuid));
+            let weather_state = self.get_weather_state();
+            if weather_state != WeatherState::Unaffected {
+                self.next_weathering_tick.store(-1, Ordering::Relaxed);
+                self.set_weather_state(weather_state.previous());
+            }
+        }
         self.mob_entity
             .living_entity
             .on_lightning_strike(caller, lightning);

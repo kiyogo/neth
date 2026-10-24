@@ -4,6 +4,7 @@ use std::sync::{
 };
 
 use pumpkin_data::attributes::Attributes;
+use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::pig_sound_variant::PigSoundVariant;
 use pumpkin_data::pig_variant::PigVariant;
@@ -248,7 +249,7 @@ impl Mob for PigEntity {
         let entity = self.get_entity();
         let world = entity.world.load();
         let difficulty = world.level_info.load().difficulty;
-        if difficulty != pumpkin_util::Difficulty::Peaceful {
+        if crate::entity::combat::can_lightning_convert_mob(difficulty) {
             let pos = entity.pos.load();
             let new_entity = Entity::new(world.clone(), pos, &EntityType::ZOMBIFIED_PIGLIN);
             new_entity.yaw.store(entity.yaw.load());
@@ -256,6 +257,15 @@ impl Mob for PigEntity {
             new_entity.head_yaw.store(entity.head_yaw.load());
             let zombified =
                 crate::entity::mob::zombified_piglin::ZombifiedPiglinEntity::new(new_entity);
+            // Vanilla Pig.java:202-205 & ZombifiedPiglin.java: populate golden sword and persistence
+            zombified.mob_entity.set_item_slot(
+                &EquipmentSlot::MAIN_HAND,
+                ItemStack::new(1, &Item::GOLDEN_SWORD),
+            );
+            zombified
+                .mob_entity
+                .persistence_required
+                .store(true, Ordering::Relaxed);
             world.spawn_entity(zombified);
             entity.remove();
         } else {

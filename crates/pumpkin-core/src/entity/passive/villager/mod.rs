@@ -2599,7 +2599,7 @@ impl Mob for VillagerEntity {
         let entity = self.get_entity();
         let world = entity.world.load();
         let difficulty = world.level_info.load().difficulty;
-        if difficulty != pumpkin_util::Difficulty::Peaceful {
+        if crate::entity::combat::can_lightning_convert_mob(difficulty) {
             if let Some(player) = self.get_trading_player() {
                 player.close_handled_screen();
             }
