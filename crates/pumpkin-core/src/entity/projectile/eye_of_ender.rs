@@ -27,12 +27,6 @@ const TOO_FAR_DISTANCE: f64 = 12.0;
 /// Height offset used when the target is beyond [`TOO_FAR_DISTANCE`].
 const TOO_FAR_SIGNAL_HEIGHT: f64 = 8.0;
 
-/// The eye despawns after this many ticks.
-const MAX_LIFE: u32 = 80;
-
-/// Chance (1-in-5) the eye drops its item instead of playing the break effect.
-const SURVIVE_CHANCE: u32 = 5;
-
 pub struct EyeOfEnder {
     entity: Entity,
     item_stack: Mutex<ItemStack>,
@@ -75,8 +69,9 @@ impl EyeOfEnder {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(clamped_target);
         self.life.store(0, Ordering::Relaxed);
 
-        // 4-in-5 chance to survive (drop item); 1-in-5 plays the break effect.
-        let survive = !rand::random::<u32>().is_multiple_of(SURVIVE_CHANCE);
+        // Vanilla EyeOfEnder.java:84: surviveAfterDeath = random.nextInt(5) > 0
+        let rand_5 = rand::RngExt::random_range(&mut rand::rng(), 0..5);
+        let survive = crate::entity::combat::should_eye_of_ender_survive(rand_5);
         self.survive_after_death.store(survive, Ordering::Relaxed);
     }
 
@@ -146,7 +141,7 @@ impl EntityBase for EyeOfEnder {
 
         // Tick lifetime and handle expiry.
         let life = self.life.fetch_add(1, Ordering::Relaxed) + 1;
-        if life > MAX_LIFE {
+        if life > crate::entity::combat::get_eye_of_ender_max_life() {
             entity.play_sound(Sound::EntityEnderEyeDeath);
             entity.remove();
 

@@ -2659,6 +2659,51 @@ pub fn calculate_evoker_fangs_sound_pitch(pitch_rand: f32) -> f32 {
     pitch_rand * 0.2 + 0.85
 }
 
+/// Returns direct hit damage dealt by a Large Fireball projectile (6.0 HP).
+///
+/// Mirrors vanilla `LargeFireball.java:48`:
+/// `var6.hurtServer(serverLevel, damageSource, 6.0F);`
+#[must_use]
+pub const fn get_large_fireball_damage() -> f32 {
+    6.0
+}
+
+/// Checks whether a Large Fireball should cause griefing/fire based on gamerule mob_griefing.
+///
+/// Mirrors vanilla `LargeFireball.java:35`:
+/// `boolean grief = serverLevel.getGameRules().get(GameRules.MOB_GRIEFING);`
+#[must_use]
+pub const fn can_large_fireball_grief(mob_griefing: bool) -> bool {
+    mob_griefing
+}
+
+/// Determines whether an Eye of Ender survives after death (drops item instead of shattering).
+///
+/// Mirrors vanilla `EyeOfEnder.java:84`:
+/// `this.surviveAfterDeath = this.random.nextInt(5) > 0;`
+#[must_use]
+pub const fn should_eye_of_ender_survive(rand_5: i32) -> bool {
+    rand_5 > 0
+}
+
+/// Returns maximum flight ticks for an Eye of Ender before expiry (80 ticks = 4 seconds).
+///
+/// Mirrors vanilla `EyeOfEnder.java:103`:
+/// `if (this.life > 80)`
+#[must_use]
+pub const fn get_eye_of_ender_max_life() -> u32 {
+    80
+}
+
+/// Returns level event ID for Eye of Ender break particles (2003).
+///
+/// Mirrors vanilla `EyeOfEnder.java:109`:
+/// `this.level().levelEvent(2003, this.blockPosition(), 0);`
+#[must_use]
+pub const fn get_eye_of_ender_break_level_event() -> i32 {
+    2003
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4267,6 +4312,25 @@ mod tests {
         let pitch_high = calculate_evoker_fangs_sound_pitch(1.0);
         assert!((pitch_low - 0.85).abs() < 1e-6);
         assert!((pitch_high - 1.05).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_large_fireball_and_eye_of_ender_parity() {
+        // 1. Large Fireball hit damage & mob griefing check (LargeFireball.java:35, 48)
+        assert_eq!(get_large_fireball_damage(), 6.0);
+        assert!(can_large_fireball_grief(true));
+        assert!(!can_large_fireball_grief(false));
+
+        // 2. Eye of Ender survive logic (EyeOfEnder.java:84, 103, 109)
+        // 4 in 5 survive (rand_5 in 1..=4)
+        assert!(should_eye_of_ender_survive(1));
+        assert!(should_eye_of_ender_survive(2));
+        assert!(should_eye_of_ender_survive(3));
+        assert!(should_eye_of_ender_survive(4));
+        // 1 in 5 shatters (rand_5 == 0)
+        assert!(!should_eye_of_ender_survive(0));
+        assert_eq!(get_eye_of_ender_max_life(), 80);
+        assert_eq!(get_eye_of_ender_break_level_event(), 2003);
     }
 }
 

@@ -281,7 +281,7 @@ impl EntityBase for FireballEntity {
             let attacker_ref: &dyn EntityBase = owner.as_deref().unwrap_or(self);
             let _ = entity.damage_with_context(
                 attacker_ref,
-                6.0,
+                crate::entity::combat::get_large_fireball_damage(),
                 pumpkin_data::damage::DamageType::FIREBALL,
                 Some(hit_pos),
                 Some(self.get_entity()),
@@ -291,6 +291,8 @@ impl EntityBase for FireballEntity {
 
         let hit_pos = hit.hit_pos();
         let power = self.get_explosion_power();
-        world.explode_with_fire(hit_pos, power, true, crate::world::ExplosionInteraction::Mob);
+        let mob_griefing = world.level_info.load().game_rules.mob_griefing;
+        let create_fire = crate::entity::combat::can_large_fireball_grief(mob_griefing);
+        world.explode_with_fire(hit_pos, power, create_fire, crate::world::ExplosionInteraction::Mob);
     }
 }

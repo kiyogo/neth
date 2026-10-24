@@ -2765,6 +2765,56 @@
   - Updated `EvokerFangsEntity::tick` in `crates/pumpkin-core/src/entity/projectile/evoker_fangs.rs` to use `is_evoker_fangs_attack_tick`, `get_evoker_fangs_damage`, and apply vanilla sound pitch `calculate_evoker_fangs_sound_pitch`.
   - Added unit test `test_egg_snowball_ender_pearl_and_evoker_fangs_parity` in `combat.rs`. Total 46/46 tests passing in `entity::combat::tests`.
 
+## Gap 161: Large Fireball Mob Griefing Explosion & Eye of Ender Shatter Parity
+- **Vanilla Reference**:
+  - `LargeFireball.java:18-52`:
+    ```java
+    @Override
+    protected void onHit(final HitResult hitResult) {
+       super.onHit(hitResult);
+       if (this.level() instanceof ServerLevel serverLevel) {
+          boolean grief = serverLevel.getGameRules().get(GameRules.MOB_GRIEFING);
+          this.level().explode(this, this.getX(), this.getY(), this.getZ(), this.explosionPower, grief, Level.ExplosionInteraction.MOB);
+          this.discard();
+       }
+    }
+
+    @Override
+    protected void onHitEntity(final EntityHitResult hitResult) {
+       super.onHitEntity(hitResult);
+       if (this.level() instanceof ServerLevel serverLevel) {
+          Entity var6 = hitResult.getEntity();
+          Entity owner = this.getOwner();
+          DamageSource damageSource = this.damageSources().fireball(this, owner);
+          var6.hurtServer(serverLevel, damageSource, 6.0F);
+          EnchantmentHelper.doPostAttackEffects(serverLevel, var6, damageSource);
+       }
+    }
+    ```
+    - Direct entity hit inflicts 6.0 damage (`DamageType::FIREBALL`) and applies post attack enchantment effects.
+    - Large fireball explosion checks `mob_griefing` game rule: when disabled, explosion creates no fire and cannot destroy blocks.
+  - `EyeOfEnder.java:74-113`:
+    ```java
+    this.surviveAfterDeath = this.random.nextInt(5) > 0;
+    ...
+    if (this.life > 80 && !this.level().isClientSide()) {
+       this.playSound(SoundEvents.ENDER_EYE_DEATH, 1.0F, 1.0F);
+       this.discard();
+       if (this.surviveAfterDeath) {
+          this.level().addFreshEntity(new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), this.getItem()));
+       } else {
+          this.level().levelEvent(2003, this.blockPosition(), 0);
+       }
+    }
+    ```
+    - Eye of Ender has 4-in-5 (80%) chance to survive (`random.nextInt(5) > 0`) and drop as item, 1-in-5 (20%) chance to shatter with level event 2003.
+    - Flight duration before death is strictly 80 ticks (4 seconds).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `get_large_fireball_damage`, `can_large_fireball_grief`, `should_eye_of_ender_survive`, `get_eye_of_ender_max_life`, and `get_eye_of_ender_break_level_event` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `FireballEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/fireball.rs` to query `mob_griefing` game rule before igniting blocks on explosion, and use `get_large_fireball_damage`.
+  - Updated `EyeOfEnder` in `crates/pumpkin-core/src/entity/projectile/eye_of_ender.rs` to use `should_eye_of_ender_survive` and `get_eye_of_ender_max_life`.
+  - Added unit test `test_large_fireball_and_eye_of_ender_parity` in `combat.rs`. Total 47/47 tests passing in `entity::combat::tests`.
+
 
 
 
