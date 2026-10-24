@@ -5924,6 +5924,10 @@ impl Player {
             (EquipmentSlot::OFF_HAND, off_hand_item),
         ];
         self.living_entity.send_equipment_changes(equipment);
+        // Vanilla LivingEntity.java:2996:
+        // ((ServerLevel)this.level()).getChunkSource().sendToTrackingPlayers(this, new ClientboundEntityEventPacket(this, (byte)55));
+        self.world()
+            .send_entity_status(&self.living_entity.entity, EntityStatus::SwapHands, None);
         self.stop_using_item();
         self.reset_attack_cooldown();
     }

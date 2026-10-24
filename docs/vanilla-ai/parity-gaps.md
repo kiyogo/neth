@@ -2002,6 +2002,35 @@
   - Added arrow hit incrementation in `crates/pumpkin-core/src/entity/projectile/arrow.rs`.
   - Added unit test `test_stuck_projectiles_tracking_and_decay_parity` in `combat.rs`. Total 27/27 tests in `entity::combat::tests` passing.
 
+### Gap 142: Hand Swap Animation Broadcast & Entity Status (Byte 55) Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:2989-3002` (`handleHandSwap`):
+    ```java
+    private void handleHandSwap(final Map<EquipmentSlot, ItemStack> changedItems) {
+       ItemStack currentMainHand = changedItems.get(EquipmentSlot.MAINHAND);
+       ItemStack currentOffHand = changedItems.get(EquipmentSlot.OFFHAND);
+       if (currentMainHand != null
+          && currentOffHand != null
+          && ItemStack.matches(currentMainHand, this.lastEquipmentItems.get(EquipmentSlot.OFFHAND))
+          && ItemStack.matches(currentOffHand, this.lastEquipmentItems.get(EquipmentSlot.MAINHAND))) {
+          ((ServerLevel)this.level()).getChunkSource().sendToTrackingPlayers(this, new ClientboundEntityEventPacket(this, (byte)55));
+          changedItems.remove(EquipmentSlot.MAINHAND);
+          changedItems.remove(EquipmentSlot.OFFHAND);
+          this.lastEquipmentItems.put(EquipmentSlot.MAINHAND, currentMainHand.copy());
+          this.lastEquipmentItems.put(EquipmentSlot.OFFHAND, currentOffHand.copy());
+       }
+    }
+    ```
+  - In vanilla Minecraft Java:
+    - Whenever items are swapped between main hand and off hand (such as pressing the 'F' key), the server broadcasts `ClientboundEntityEventPacket(entity, (byte)55)` (`EntityStatus::SwapHands`).
+    - This triggers the visual hand swap item animation on all tracking clients.
+  - Previously in Neth:
+    - `Player::swap_item` only sent equipment slot changes and stopped using item, but never broadcasted `EntityStatus::SwapHands` (byte 55), leaving other players without the hand swap visual animation.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `is_equipment_hand_swap` helper and unit test `test_equipment_hand_swap_parity` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `EntityStatus::SwapHands` broadcast in `Player::swap_item` in `crates/pumpkin-core/src/entity/player.rs`. Total 28/28 tests in `entity::combat::tests` passing.
+
+
 
 
 

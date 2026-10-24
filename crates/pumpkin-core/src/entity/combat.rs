@@ -1402,6 +1402,22 @@ pub fn tick_stuck_projectile_counter(count: i32, current_timer: i32) -> (i32, i3
     }
 }
 
+/// Determines whether an equipment update represents a hand swap between main hand and off hand,
+/// mirroring Vanilla `LivingEntity.java:2989-3002`:
+/// ```java
+/// ItemStack.matches(currentMainHand, this.lastEquipmentItems.get(EquipmentSlot.OFFHAND))
+/// && ItemStack.matches(currentOffHand, this.lastEquipmentItems.get(EquipmentSlot.MAINHAND))
+/// ```
+#[must_use]
+pub fn is_equipment_hand_swap(
+    prev_main_item_id: u16,
+    prev_off_item_id: u16,
+    new_main_item_id: u16,
+    new_off_item_id: u16,
+) -> bool {
+    new_main_item_id == prev_off_item_id && new_off_item_id == prev_main_item_id
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2235,6 +2251,24 @@ mod tests {
         let (count, timer) = tick_stuck_projectile_counter(30, 0);
         assert_eq!(count, 29);
         assert_eq!(timer, 0);
+    }
+
+    #[test]
+    fn test_equipment_hand_swap_parity() {
+        // Vanilla LivingEntity.java:2989-3002:
+        // Hand swap occurs when newMain matches oldOff and newOff matches oldMain
+        let sword_id = 100u16;
+        let shield_id = 200u16;
+        let bow_id = 300u16;
+
+        // Perfect swap: Main(sword) & Off(shield) -> Main(shield) & Off(sword)
+        assert!(is_equipment_hand_swap(sword_id, shield_id, shield_id, sword_id));
+
+        // Not a swap: Main replaced with bow, offhand unchanged
+        assert!(!is_equipment_hand_swap(sword_id, shield_id, bow_id, shield_id));
+
+        // Not a swap: both hands become shield
+        assert!(!is_equipment_hand_swap(sword_id, shield_id, shield_id, shield_id));
     }
 }
 
