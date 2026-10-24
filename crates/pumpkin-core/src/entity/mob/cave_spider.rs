@@ -146,10 +146,13 @@ impl CustomSound for CaveSpiderEntity {
 impl Mob for CaveSpiderEntity {
     fn finalize_spawn(
         &self,
-        world: &Arc<crate::world::World>,
+        _world: &Arc<crate::world::World>,
         group_data: Option<super::spawn::SpawnGroupData>,
     ) -> Option<super::spawn::SpawnGroupData> {
-        super::spider::finalize_spider_spawn(&self.mob_entity, world, group_data)
+        // Vanilla CaveSpider.java:52-56:
+        // Cave spiders do not spawn skeleton jockeys or random hard difficulty effects.
+        self.mob_entity.finalize_spawn_base();
+        group_data
     }
 
     fn get_mob_entity(&self) -> &MobEntity {

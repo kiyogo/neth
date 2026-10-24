@@ -1150,6 +1150,11 @@ impl LivingEntity {
             return false;
         }
 
+        // Vanilla Spider.java:126-128, AbstractNautilus.java:462-464: Spiders and Nautiluses are immune to Poison
+        if crate::entity::combat::is_spider_or_nautilus_immune_to_poison(entity_type, effect.effect_type) {
+            return false;
+        }
+
         if entity_type.has_tag(&tag::EntityType::MINECRAFT_IMMUNE_TO_INFESTED) {
             effect.effect_type != &StatusEffect::INFESTED
         } else if entity_type.has_tag(&tag::EntityType::MINECRAFT_IMMUNE_TO_OOZING) {

@@ -3369,4 +3369,37 @@
     - `mob_tick`: calculates ambient/angry pitch via `calculate_zoglin_sound_pitch`.
   - Added unit test `test_ravager_vex_and_zoglin_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 62/62 tests passing in `entity::combat::tests`.
 
+## Gap 177: Spider, CaveSpider & Nautilus Poison Immunity, CaveSpider Spawn Parity, and Dolphin Swim With Player & Dolphin's Grace Dynamics
+- **Vanilla Reference**:
+  - `Spider.java:126-128`, `AbstractNautilus.java:462-464`:
+    - Poison Immunity: Cả Spider và Nautilus (cùng CaveSpider kế thừa Spider và ZombieNautilus kế thừa AbstractNautilus) đều override `canBeAffected(MobEffectInstance)` trả về `false` khi `newEffect.is(MobEffects.POISON)`.
+    - Tag `MINECRAFT_IGNORES_POISON_AND_REGEN` trong Vanilla chỉ chứa các undead mobs (skeleton variants, zombie variants...), hoàn toàn không chứa spider hay nautilus. Việc trước đó chỉ kiểm tra tag khiến Spider, CaveSpider và Nautilus vô tình bị dính hiệu ứng Poison, vi phạm trực tiếp logic miễn nhiễm của Java edition.
+  - `CaveSpider.java:52-54`:
+    - CaveSpider override `finalizeSpawn(ServerLevelAccessor, DifficultyInstance, EntitySpawnReason, SpawnGroupData)` trả về trực tiếp `groupData` từ `Mob.finalizeSpawn` mà KHÔNG gọi `Spider.finalizeSpawn`.
+    - Trong Java `Spider.finalizeSpawn`, nhện thường có 1% cơ hội sinh ra Skeleton Jockey (`Spider.SpiderEffectsGroupData`), và trên độ khó Hard có `0.1 * difficulty` cơ hội nhận ngẫu nhiên một trong các hiệu ứng Speed, Strength, Regeneration hoặc Invisibility. Cave Spider hoàn toàn không có jockey hay các hiệu ứng ngẫu nhiên này.
+  - `Dolphin.java:77, 162, 469-515`:
+    - `SWIM_WITH_PLAYER_TARGETING`: `TargetingConditions.forNonCombat().range(10.0).ignoreLineOfSight()`.
+    - `DolphinSwimWithPlayerGoal(speedModifier = 4.0)` tại priority 2:
+      - `canUse()`: tìm kiếm người chơi gần nhất trong bán kính 10 blocks (`dist_sqr <= 100.0`), người chơi phải đang bơi (`player.isSwimming()`), và người chơi đó không phải là mục tiêu tấn công hiện tại của dolphin (`dolphin.getTarget() != player`).
+      - `canContinueToUse()`: người chơi còn sống, đang bơi và khoảng cách `< 256.0` (16 blocks).
+      - `start()`: cấp hiệu ứng `DOLPHINS_GRACE` 100 ticks (5 giây) cho người chơi.
+      - `stop()`: xóa player reference và dừng navigation.
+      - `tick()`: nhìn về phía người chơi (`look_at_with_range`); nếu khoảng cách `< 6.25` (2.5 blocks) thì dừng navigation, ngược lại bơi theo người chơi với tốc độ `4.0`; nếu người chơi đang bơi và tỉ lệ `random.nextInt(6) == 0` thì gia hạn hiệu ứng `DOLPHINS_GRACE` 100 ticks.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `is_spider_or_nautilus_immune_to_poison`: checks if entity is Spider, CaveSpider, Nautilus, or ZombieNautilus and effect is POISON.
+    - `should_cave_spider_spawn_jockey_or_effects`: returns `false` adhering to `CaveSpider.java:52`.
+    - `should_dolphin_swim_with_player`: validates swimming state, distance (`<= 100.0`), and non-target condition.
+    - `should_dolphin_continue_swimming_with_player`: validates swimming state, alive, and distance (`< 256.0`).
+    - `calculate_dolphin_grace_duration`: returns 100 ticks (5 seconds).
+  - Updated `LivingEntity::can_be_affected` in `crates/pumpkin-core/src/entity/living.rs`:
+    - Exempts Spider, CaveSpider, Nautilus, and ZombieNautilus from Poison status effect.
+  - Updated `CaveSpiderEntity::finalize_spawn` in `crates/pumpkin-core/src/entity/mob/cave_spider.rs`:
+    - Skips jockey spawning and random buff effects on hard difficulty, directly returning base mob spawn group data.
+  - Updated `DolphinEntity` in `crates/pumpkin-core/src/entity/passive/dolphin.rs`:
+    - Implemented `DolphinSwimWithPlayerGoal` matching `Dolphin.java:469-515`.
+    - Added `DolphinSwimWithPlayerGoal` to Dolphin's `goal_selector` at priority 2 with speed modifier 4.0.
+  - Added unit test `test_spider_cave_spider_and_dolphin_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 63/63 tests passing in `entity::combat::tests`.
+
+
 

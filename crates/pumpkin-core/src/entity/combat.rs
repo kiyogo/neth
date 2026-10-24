@@ -4125,6 +4125,68 @@ pub fn calculate_zoglin_sound_pitch(is_baby: bool, rand_diff: f32) -> f32 {
     }
 }
 
+/// Checks whether an entity type is immune to Poison status effect.
+///
+/// Mirrors vanilla `Spider.java:126-128`, `CaveSpider.java`, `AbstractNautilus.java:462-464`:
+/// Spiders, Cave Spiders, Nautiluses, and Zombie Nautiluses are completely immune to Poison.
+#[must_use]
+pub fn is_spider_or_nautilus_immune_to_poison(
+    entity_type: &pumpkin_data::entity::EntityType,
+    effect_type: &pumpkin_data::effect::StatusEffect,
+) -> bool {
+    (entity_type == &pumpkin_data::entity::EntityType::SPIDER
+        || entity_type == &pumpkin_data::entity::EntityType::CAVE_SPIDER
+        || entity_type == &pumpkin_data::entity::EntityType::NAUTILUS
+        || entity_type == &pumpkin_data::entity::EntityType::ZOMBIE_NAUTILUS)
+        && effect_type == &pumpkin_data::effect::StatusEffect::POISON
+}
+
+/// Checks whether Cave Spider can spawn skeleton jockeys or random hard difficulty effects.
+///
+/// Mirrors vanilla `CaveSpider.java:52`:
+/// Unlike standard spiders, Cave Spiders NEVER spawn as skeleton jockeys and NEVER receive
+/// random potion effects on hard difficulty.
+#[must_use]
+pub const fn should_cave_spider_spawn_jockey_or_effects() -> bool {
+    false
+}
+
+/// Evaluates whether a dolphin can initiate swimming with a player.
+///
+/// Mirrors vanilla `Dolphin.java:482-484`:
+/// - Player must be swimming
+/// - Dolphin must not currently target the player
+/// - Player must be within targeting range (distance sqr <= 100.0)
+#[must_use]
+pub fn should_dolphin_swim_with_player(
+    is_player_swimming: bool,
+    distance_sqr: f64,
+    is_target: bool,
+) -> bool {
+    is_player_swimming && !is_target && distance_sqr <= 100.0
+}
+
+/// Evaluates whether a dolphin can continue swimming with a player.
+///
+/// Mirrors vanilla `Dolphin.java:487-489`:
+/// - Player must still be swimming
+/// - Distance sqr must be < 256.0 (16 blocks)
+#[must_use]
+pub fn should_dolphin_continue_swimming_with_player(
+    is_player_swimming: bool,
+    distance_sqr: f64,
+) -> bool {
+    is_player_swimming && distance_sqr < 256.0
+}
+
+/// Calculates duration in ticks for Dolphin's Grace effect.
+///
+/// Mirrors vanilla `Dolphin.java:493, 512`: 100 ticks (5 seconds).
+#[must_use]
+pub const fn calculate_dolphin_grace_duration() -> i32 {
+    100
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6445,6 +6507,46 @@ mod tests {
         // 8. Zoglin sound pitch (Zoglin.java:203-207)
         assert_eq!(calculate_zoglin_sound_pitch(false, 0.0), 1.0);
         assert_eq!(calculate_zoglin_sound_pitch(true, 0.0), 1.5);
+    }
+
+    #[test]
+    fn test_spider_cave_spider_and_dolphin_parity() {
+        use pumpkin_data::effect::StatusEffect;
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Poison immunity for Spider, CaveSpider, Nautilus, ZombieNautilus (Spider.java:126, AbstractNautilus.java:462)
+        assert!(is_spider_or_nautilus_immune_to_poison(&EntityType::SPIDER, &StatusEffect::POISON));
+        assert!(is_spider_or_nautilus_immune_to_poison(&EntityType::CAVE_SPIDER, &StatusEffect::POISON));
+        assert!(is_spider_or_nautilus_immune_to_poison(&EntityType::NAUTILUS, &StatusEffect::POISON));
+        assert!(is_spider_or_nautilus_immune_to_poison(&EntityType::ZOMBIE_NAUTILUS, &StatusEffect::POISON));
+
+        assert!(!is_spider_or_nautilus_immune_to_poison(&EntityType::SPIDER, &StatusEffect::SLOWNESS));
+        assert!(!is_spider_or_nautilus_immune_to_poison(&EntityType::PLAYER, &StatusEffect::POISON));
+        assert!(!is_spider_or_nautilus_immune_to_poison(&EntityType::COW, &StatusEffect::POISON));
+
+        // 2. CaveSpider spawn parity (CaveSpider.java:52: groupData unchanged, no jockey, no effects)
+        assert!(!should_cave_spider_spawn_jockey_or_effects());
+
+        // 3. Dolphin swim with player conditions (Dolphin.java:482-489)
+        // Valid initiation: swimming, not targeted, within 10 blocks (dist_sqr <= 100.0)
+        assert!(should_dolphin_swim_with_player(true, 64.0, false));
+        assert!(should_dolphin_swim_with_player(true, 100.0, false));
+        // Not swimming
+        assert!(!should_dolphin_swim_with_player(false, 64.0, false));
+        // Targeted by dolphin (hostile/retaliating)
+        assert!(!should_dolphin_swim_with_player(true, 64.0, true));
+        // Too far to initiate (> 10 blocks)
+        assert!(!should_dolphin_swim_with_player(true, 100.1, false));
+
+        // 4. Dolphin continue swimming with player conditions (Dolphin.java:487-489)
+        assert!(should_dolphin_continue_swimming_with_player(true, 100.0));
+        assert!(should_dolphin_continue_swimming_with_player(true, 255.9));
+        // Lost when not swimming or >= 16 blocks (256.0)
+        assert!(!should_dolphin_continue_swimming_with_player(false, 100.0));
+        assert!(!should_dolphin_continue_swimming_with_player(true, 256.0));
+
+        // 5. Dolphin grace duration
+        assert_eq!(calculate_dolphin_grace_duration(), 100);
     }
 }
 

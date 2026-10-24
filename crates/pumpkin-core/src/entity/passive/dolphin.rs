@@ -5,10 +5,12 @@ use std::sync::{
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
+use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::particle::Particle;
+use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::vector3::Vector3;
@@ -17,13 +19,15 @@ use rand::RngExt;
 use crate::entity::{
     Entity, EntityBase,
     ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
-    ai::pathfinder::Navigator,
+    ai::pathfinder::{Navigator, NavigatorGoal},
     ai::goal::{
+        Controls, Goal,
         avoid_entity::AvoidEntityGoal,
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal,
         melee_attack::MeleeAttackGoal, random_swimming::RandomSwimmingGoal,
         revenge::RevengeGoal, tempt::TemptGoal, try_find_water::TryFindWaterGoal,
     },
+    combat::calculate_dolphin_grace_duration,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
     player::Player,
@@ -98,8 +102,9 @@ impl DolphinEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-            // Vanilla Dolphin: 0 BreathAir & TryFindLiquid, 4 RandomSwimming(1.0) & RandomLookAround, 5 LookAtPlayer(6.0), 6 MeleeAttack(1.2), 9 Avoid(Guardian, 8.0)
+            // Vanilla Dolphin: 0 BreathAir & TryFindLiquid, 2 SwimWithPlayer(4.0), 2 Tempt, 4 RandomSwimming(1.0) & RandomLookAround, 5 LookAtPlayer(6.0), 6 MeleeAttack(1.2), 9 Avoid(Guardian, 8.0)
             goal_selector.add_goal(0, Box::new(TryFindWaterGoal));
+            goal_selector.add_goal(2, Box::new(DolphinSwimWithPlayerGoal::new(4.0)));
             goal_selector.add_goal(2, Box::new(TemptGoal::new(1.2, TEMPT_ITEMS, false)));
             goal_selector.add_goal(4, Box::new(RandomSwimmingGoal::new(1.0)));
             goal_selector.add_goal(4, Box::new(RandomLookAroundGoal::default()));
@@ -284,5 +289,147 @@ impl CustomSound for DolphinEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityDolphinHurt)
+    }
+}
+
+pub struct DolphinSwimWithPlayerGoal {
+    speed_modifier: f64,
+    player: Option<Arc<Player>>,
+}
+
+impl DolphinSwimWithPlayerGoal {
+    #[must_use]
+    pub fn new(speed_modifier: f64) -> Self {
+        Self {
+            speed_modifier,
+            player: None,
+        }
+    }
+}
+
+impl Goal for DolphinSwimWithPlayerGoal {
+    fn can_start(&mut self, mob: &dyn Mob) -> bool {
+        let mob_entity = mob.get_mob_entity();
+        let mob_pos = mob_entity.living_entity.entity.pos.load();
+        let world = mob_entity.living_entity.entity.world.load();
+        let current_target = mob_entity
+            .target
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let target_id = current_target.as_ref().map(|t| t.get_entity().entity_id);
+
+        let nearest_player = world.get_nearest_player(mob_pos, 10.0, |p| {
+            if !p.living_entity.is_part_of_game() {
+                return false;
+            }
+            if !p.is_swimming() {
+                return false;
+            }
+            if let Some(tid) = target_id {
+                if p.get_entity().entity_id == tid {
+                    return false;
+                }
+            }
+            true
+        });
+
+        if let Some(player) = nearest_player {
+            self.player = Some(player);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn should_continue(&mut self, mob: &dyn Mob) -> bool {
+        let Some(player) = &self.player else {
+            return false;
+        };
+
+        if !player.get_entity().is_alive() {
+            return false;
+        }
+
+        if !player.is_swimming() {
+            return false;
+        }
+
+        let mob_pos = mob.get_mob_entity().living_entity.entity.pos.load();
+        let player_pos = player.get_entity().pos.load();
+        let dist_sqr = mob_pos.squared_distance_to_vec(&player_pos);
+        dist_sqr < 256.0
+    }
+
+    fn start(&mut self, _mob: &dyn Mob) {
+        if let Some(player) = &self.player {
+            player.add_effect(Effect {
+                effect_type: &StatusEffect::DOLPHINS_GRACE,
+                duration: calculate_dolphin_grace_duration(),
+                amplifier: 0,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                blend: true,
+            });
+        }
+    }
+
+    fn stop(&mut self, mob: &dyn Mob) {
+        self.player = None;
+        mob.get_mob_entity()
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .stop();
+    }
+
+    fn tick(&mut self, mob: &dyn Mob) {
+        let Some(player) = &self.player else {
+            return;
+        };
+
+        let mob_entity = mob.get_mob_entity();
+        let mob_pos = mob_entity.living_entity.entity.pos.load();
+        let player_pos = player.get_entity().pos.load();
+
+        mob_entity
+            .look_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .look_at_with_range(
+                player_pos.x,
+                player.get_entity().get_eye_y(),
+                player_pos.z,
+                mob.get_max_head_rotation() + 20.0,
+                mob.get_max_look_pitch_change(),
+            );
+
+        let dist_sqr = mob_pos.squared_distance_to_vec(&player_pos);
+        let mut navigator = mob_entity
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        if dist_sqr < 6.25 {
+            navigator.stop();
+        } else {
+            navigator.set_progress(NavigatorGoal::new(mob_pos, player_pos, self.speed_modifier));
+        }
+
+        if player.is_swimming() && mob.get_random().random_range(0..6) == 0 {
+            player.add_effect(Effect {
+                effect_type: &StatusEffect::DOLPHINS_GRACE,
+                duration: calculate_dolphin_grace_duration(),
+                amplifier: 0,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                blend: true,
+            });
+        }
+    }
+
+    fn controls(&self) -> Controls {
+        Controls::MOVE | Controls::LOOK
     }
 }
