@@ -2573,6 +2573,92 @@ pub const fn get_llama_spit_air_drag() -> f32 {
     0.99
 }
 
+/// Calculates chicken hatch count from thrown egg impact based on vanilla probabilities.
+///
+/// Mirrors vanilla `ThrownEgg.java:70-74`:
+/// ```java
+/// if (this.random.nextInt(8) == 0) {
+///    int count = 1;
+///    if (this.random.nextInt(32) == 0) {
+///       count = 4;
+///    }
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_egg_hatch_count(rand_8: i32, rand_32: i32) -> u32 {
+    if rand_8 == 0 {
+        if rand_32 == 0 {
+            4
+        } else {
+            1
+        }
+    } else {
+        0
+    }
+}
+
+/// Returns damage dealt by snowball projectile (3.0 for Blaze, 0.0 for all others).
+///
+/// Mirrors vanilla `Snowball.java:58-59`:
+/// `int damage = entity instanceof Blaze ? 3 : 0;`
+#[must_use]
+pub const fn get_snowball_damage(is_blaze: bool) -> f32 {
+    if is_blaze {
+        3.0
+    } else {
+        0.0
+    }
+}
+
+/// Checks whether an Ender Pearl impact should spawn an Endermite.
+///
+/// Mirrors vanilla `ThrownEnderpearl.java:107`:
+/// `this.random.nextFloat() < 0.05F && level.isSpawningMonsters() && level.getLevelData().getDifficulty() != Difficulty.PEACEFUL`
+#[must_use]
+pub const fn should_ender_pearl_spawn_endermite(
+    chance_sample: f32,
+    is_spawning_monsters: bool,
+    difficulty: pumpkin_util::Difficulty,
+) -> bool {
+    chance_sample < 0.05 && is_spawning_monsters && !matches!(difficulty, pumpkin_util::Difficulty::Peaceful)
+}
+
+/// Returns self damage dealt to owner upon Ender Pearl teleportation (5.0 HP).
+///
+/// Mirrors vanilla `ThrownEnderpearl.java:125`:
+/// `newOwner.hurtServer(player.level(), this.damageSources().enderPearl(), 5.0F);`
+#[must_use]
+pub const fn get_ender_pearl_self_damage() -> f32 {
+    5.0
+}
+
+/// Returns base damage dealt by Evoker Fangs attack (6.0 HP).
+///
+/// Mirrors vanilla `EvokerFangs.java:110, 117`:
+/// `6.0F`
+#[must_use]
+pub const fn get_evoker_fangs_damage() -> f32 {
+    6.0
+}
+
+/// Checks whether the Evoker Fangs should deal attack damage on this tick.
+///
+/// Mirrors vanilla `EvokerFangs.java:89`:
+/// `if (this.warmupDelayTicks == -8)`
+#[must_use]
+pub const fn is_evoker_fangs_attack_tick(warmup_ticks: i32) -> bool {
+    warmup_ticks == -8
+}
+
+/// Calculates sound pitch for Evoker Fangs attack sound (0.85 .. 1.05).
+///
+/// Mirrors vanilla `EvokerFangs.java:138`:
+/// `this.random.nextFloat() * 0.2F + 0.85F`
+#[must_use]
+pub fn calculate_evoker_fangs_sound_pitch(pitch_rand: f32) -> f32 {
+    pitch_rand * 0.2 + 0.85
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4146,6 +4232,41 @@ mod tests {
         assert_eq!(get_llama_spit_damage(), 1.0);
         assert_eq!(get_llama_spit_gravity(), 0.06);
         assert_eq!(get_llama_spit_air_drag(), 0.99);
+    }
+
+    #[test]
+    fn test_egg_snowball_ender_pearl_and_evoker_fangs_parity() {
+        // 1. Egg hatching probability (ThrownEgg.java:70-74: 1/8 chance -> 1/32 gives 4, else 1)
+        assert_eq!(calculate_egg_hatch_count(0, 0), 4);
+        assert_eq!(calculate_egg_hatch_count(0, 1), 1);
+        assert_eq!(calculate_egg_hatch_count(0, 31), 1);
+        assert_eq!(calculate_egg_hatch_count(1, 0), 0);
+        assert_eq!(calculate_egg_hatch_count(7, 15), 0);
+
+        // 2. Snowball blaze damage parity (Snowball.java:58-59)
+        assert_eq!(get_snowball_damage(true), 3.0);
+        assert_eq!(get_snowball_damage(false), 0.0);
+
+        // 3. Ender Pearl Endermite spawn condition and self-damage (ThrownEnderpearl.java:107, 125)
+        assert!(should_ender_pearl_spawn_endermite(0.04, true, pumpkin_util::Difficulty::Normal));
+        assert!(should_ender_pearl_spawn_endermite(0.01, true, pumpkin_util::Difficulty::Hard));
+        // Over chance threshold (> 0.05)
+        assert!(!should_ender_pearl_spawn_endermite(0.06, true, pumpkin_util::Difficulty::Normal));
+        // Peaceful difficulty exemption (never spawn in peaceful)
+        assert!(!should_ender_pearl_spawn_endermite(0.01, true, pumpkin_util::Difficulty::Peaceful));
+        // Monsters not spawning
+        assert!(!should_ender_pearl_spawn_endermite(0.01, false, pumpkin_util::Difficulty::Normal));
+        assert_eq!(get_ender_pearl_self_damage(), 5.0);
+
+        // 4. Evoker Fangs damage, attack tick, and pitch (EvokerFangs.java:89, 110, 138)
+        assert_eq!(get_evoker_fangs_damage(), 6.0);
+        assert!(is_evoker_fangs_attack_tick(-8));
+        assert!(!is_evoker_fangs_attack_tick(-7));
+        assert!(!is_evoker_fangs_attack_tick(0));
+        let pitch_low = calculate_evoker_fangs_sound_pitch(0.0);
+        let pitch_high = calculate_evoker_fangs_sound_pitch(1.0);
+        assert!((pitch_low - 0.85).abs() < 1e-6);
+        assert!((pitch_high - 1.05).abs() < 1e-6);
     }
 }
 

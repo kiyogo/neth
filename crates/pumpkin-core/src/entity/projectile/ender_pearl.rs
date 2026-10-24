@@ -17,7 +17,6 @@ use pumpkin_util::math::vector3::Vector3;
 
 const GRAVITY: f64 = 0.03;
 const PARTICLE_COUNT: i32 = 32;
-const ENDERMITE_SPAWN_CHANCE: f32 = 0.05;
 
 pub struct EnderPearlEntity {
     pub thrown: ThrownItemEntity,
@@ -128,8 +127,13 @@ impl EntityBase for EnderPearlEntity {
                 living.health.load() > 0.0 && owner.get_entity().pose.load() != EntityPose::Sleeping
             })
         {
-            let should_spawn_endermite = rand::random::<f32>() < ENDERMITE_SPAWN_CHANCE;
-            if world.should_spawn_monsters() && should_spawn_endermite {
+            let difficulty = world.level_info.load().difficulty;
+            let should_spawn_endermite = crate::entity::combat::should_ender_pearl_spawn_endermite(
+                rand::random::<f32>(),
+                world.should_spawn_monsters(),
+                difficulty,
+            );
+            if should_spawn_endermite {
                 let entity = Entity::new(
                     world.clone(),
                     owner.get_entity().pos.load(),
@@ -160,7 +164,7 @@ impl EntityBase for EnderPearlEntity {
             // Deal 5 damage to owner
             owner.damage(
                 owner.as_ref(),
-                5.0,
+                crate::entity::combat::get_ender_pearl_self_damage(),
                 pumpkin_data::damage::DamageType::ENDER_PEARL,
             );
         }

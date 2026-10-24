@@ -12,6 +12,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
 use pumpkin_protocol::codec::item_stack_seralizer::ItemStackSerializer;
 use pumpkin_util::math::vector3::Vector3;
+use rand::RngExt;
 use uuid::Uuid;
 
 const MAX_EGG_HATCH_EVENT_SPAWNS: usize = 16;
@@ -147,12 +148,12 @@ impl EntityBase for EggEntity {
             Some(ActorEventID::Death),
         );
 
-        // Decide spawn count per probabilities:
-        // r == 0 -> spawn 4 (1/256)
-        // r in 1..31 -> spawn 1 (31/256)
-        // else -> 0
-        let r: u8 = rand::random(); // 0..=255
-        let mut to_spawn = if r == 0 { 4usize } else { usize::from(r < 32) };
+        // Decide spawn count per probabilities matching ThrownEgg.java:70-74:
+        // 1/8 chance to hatch, 1/32 chance among those to hatch 4 chicks
+        let mut rng = rand::rng();
+        let rand_8 = rng.random_range(0..8);
+        let rand_32 = rng.random_range(0..32);
+        let mut to_spawn = crate::entity::combat::calculate_egg_hatch_count(rand_8, rand_32) as usize;
         let mut hatching = to_spawn > 0;
         let mut hatching_type: &'static EntityType = &EntityType::CHICKEN;
 

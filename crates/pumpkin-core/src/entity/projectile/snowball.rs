@@ -83,7 +83,7 @@ impl EntityBase for SnowballEntity {
                 .owner_id
                 .and_then(|id| world.get_entity_by_id(id));
             let is_blaze = entity.get_entity().entity_type.id == EntityType::BLAZE.id;
-            let damage = if is_blaze { 3.0 } else { 0.0 }; // Only damage blazes
+            let damage = crate::entity::combat::get_snowball_damage(is_blaze);
 
             let attacker_ref: &dyn EntityBase = owner.as_deref().unwrap_or(self);
             let _ = entity.damage_with_context(

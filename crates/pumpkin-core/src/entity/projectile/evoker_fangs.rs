@@ -48,7 +48,7 @@ impl EntityBase for EvokerFangsEntity {
 
         let warmup = self.warmup_delay_ticks.fetch_sub(1, Ordering::Relaxed) - 1;
         if warmup < 0 {
-            if warmup == -8 {
+            if crate::entity::combat::is_evoker_fangs_attack_tick(warmup) {
                 let bb = entity.bounding_box.load().expand(0.2, 0.0, 0.2);
                 let candidates = world.get_all_at_box(&bb);
 
@@ -69,7 +69,7 @@ impl EntityBase for EvokerFangsEntity {
                         };
                         let _ = cand.damage_with_context(
                             cand.as_ref(),
-                            6.0,
+                            crate::entity::combat::get_evoker_fangs_damage(),
                             damage_type,
                             Some(entity.pos.load()),
                             Some(entity),
@@ -82,7 +82,14 @@ impl EntityBase for EvokerFangsEntity {
             if !self.sent_spike_event.swap(true, Ordering::SeqCst) {
                 world.send_entity_status(entity, EntityStatus::StartAttacking, None);
                 if !entity.silent.load(Ordering::Relaxed) {
-                    entity.play_sound(Sound::EntityEvokerFangsAttack);
+                    let pitch = crate::entity::combat::calculate_evoker_fangs_sound_pitch(rand::random::<f32>());
+                    world.play_sound_fine(
+                        Sound::EntityEvokerFangsAttack,
+                        pumpkin_data::sound::SoundCategory::Hostile,
+                        &entity.pos.load(),
+                        1.0,
+                        pitch,
+                    );
                 }
             }
 

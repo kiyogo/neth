@@ -2712,6 +2712,59 @@
   - Updated `LlamaSpitEntity` to utilize `get_llama_spit_damage`.
   - Added unit test `test_experience_bottle_shulker_bullet_and_llama_spit_parity` in `combat.rs`. Total 45/45 tests passing in `entity::combat::tests`.
 
+## Gap 160: Egg Hatching Probability, Snowball Blaze Damage, Ender Pearl Peaceful Endermite Exemption & Evoker Fangs Timing Parity
+- **Vanilla Reference**:
+  - `ThrownEgg.java:61-75`:
+    ```java
+    @Override
+    protected void onHitEntity(final EntityHitResult hitResult) {
+       super.onHitEntity(hitResult);
+       hitResult.getEntity().hurt(this.damageSources().thrown(this, this.getOwner()), 0.0F);
+    }
+
+    if (this.random.nextInt(8) == 0) {
+       int count = 1;
+       if (this.random.nextInt(32) == 0) {
+          count = 4;
+       }
+       for (int i = 0; i < count; i++) {
+          Chicken chicken = EntityTypes.CHICKEN.create(this.level(), EntitySpawnReason.TRIGGERED);
+          chicken.setAge(-24000);
+          ...
+       }
+    }
+    ```
+    - 1/8 (12.5%) chance to hatch chicks upon impact.
+    - 1/32 chance among hatches to produce 4 chicks simultaneously (1/256 total probability).
+    - Inflicts 0.0 damage (`DamageType::THROWN`) to trigger entity hit animations and aggression.
+  - `Snowball.java:58-60`:
+    ```java
+    Entity entity = hitResult.getEntity();
+    int damage = entity instanceof Blaze ? 3 : 0;
+    entity.hurt(this.damageSources().thrown(this, this.getOwner()), damage);
+    ```
+    - Deals 3.0 damage to Blazes and 0.0 to all other entities.
+  - `ThrownEnderpearl.java:107, 125`:
+    ```java
+    if (this.random.nextFloat() < 0.05F && level.isSpawningMonsters() && level.getLevelData().getDifficulty() != Difficulty.PEACEFUL) {
+       Endermite endermite = EntityTypes.ENDERMITE.create(level, EntitySpawnReason.TRIGGERED);
+       ...
+    }
+    newOwner.hurtServer(player.level(), this.damageSources().enderPearl(), 5.0F);
+    ```
+    - Endermites only spawn with 5% chance if monsters are allowed to spawn AND world difficulty is not Peaceful.
+    - Owner receives exactly 5.0 self damage upon teleportation.
+  - `EvokerFangs.java:88-103, 110, 117, 138`:
+    - Deals 6.0 damage (`DamageType::MAGIC` / `DamageType::INDIRECT_MAGIC`) when `warmupDelayTicks == -8` in expanded bounding box (+0.2, 0.0, +0.2).
+    - Sound pitch is `random.nextFloat() * 0.2F + 0.85F` (0.85 .. 1.05).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `calculate_egg_hatch_count`, `get_snowball_damage`, `should_ender_pearl_spawn_endermite`, `get_ender_pearl_self_damage`, `get_evoker_fangs_damage`, `is_evoker_fangs_attack_tick`, and `calculate_evoker_fangs_sound_pitch` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `EggEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/egg.rs` to compute hatch count strictly using `calculate_egg_hatch_count(0..8, 0..32)`.
+  - Updated `SnowballEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/snowball.rs` to use `get_snowball_damage`.
+  - Updated `EnderPearlEntity::on_hit` in `crates/pumpkin-core/src/entity/projectile/ender_pearl.rs` to strictly check Peaceful difficulty exemption before spawning Endermites, and use `get_ender_pearl_self_damage`.
+  - Updated `EvokerFangsEntity::tick` in `crates/pumpkin-core/src/entity/projectile/evoker_fangs.rs` to use `is_evoker_fangs_attack_tick`, `get_evoker_fangs_damage`, and apply vanilla sound pitch `calculate_evoker_fangs_sound_pitch`.
+  - Added unit test `test_egg_snowball_ender_pearl_and_evoker_fangs_parity` in `combat.rs`. Total 46/46 tests passing in `entity::combat::tests`.
+
 
 
 
