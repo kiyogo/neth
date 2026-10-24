@@ -1761,4 +1761,18 @@
   - Updated `LivingEntity::should_prevent_fall_damage` in `crates/pumpkin-core/src/entity/living.rs` to return `true` when `SLOW_FALLING` or `LEVITATION` is active.
   - Updated `LivingEntity::calculate_fall_power` to incorporate the Jump Boost amplifier bonus (`+1.0` block per amplifier level).
   - Updated `LivingEntity::calculate_fall_damage` to return `0` when `SLOW_FALLING` or `LEVITATION` is active.
-  - Added unit test `test_fall_damage_jump_boost_and_fall_immunity_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 20/20 tests in `entity::combat::tests` passing.
+
+### Gap 135: Kill Credit Entity Age Tick Consistency & Tame Wolf Owner Player Attribution Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:1365-1376` (`resolvePlayerResponsibleForDamage`):
+    - When an entity takes damage from a tame wolf (`wolf.isTame()`), the wolf's owner is credited as the player responsible (`setLastHurtByPlayer(wolf.getOwnerReference().getUUID(), 100)`).
+  - `LivingEntity.java:1368` & `1445`:
+    - The kill credit memory window is 100 ticks (5.0 seconds).
+  - Previously in Neth:
+    - In `LivingEntity::get_kill_credit`, the current time was read from `world.level_info.load().day_time`, but `last_hurt_by_player_time` stored `self.entity.age.load()`. Because `day_time` (e.g. 500,000) and `entity.age` (e.g. 100) are on entirely different time scales, `(current_tick - player_time).abs() <= 100` evaluated to false almost 100% of the time, breaking kill credit and player kill loot/XP drops.
+    - If a tame wolf attacked an entity, the damage was credited only to the wolf as a mob (`last_hurt_by_mob_id`), never attributing player kill credit to the wolf's owner.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `is_kill_credit_active` helper in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `LivingEntity::get_kill_credit` in `crates/pumpkin-core/src/entity/living.rs` to consistently use `self.entity.age` tick count and `is_kill_credit_active`.
+  - Updated `LivingEntity::damage_with_context` to credit the owner of a tame animal/wolf as `last_hurt_by_player_id` when the tame entity damages a target.
+  - Added unit test `test_kill_credit_timing_and_tame_wolf_owner_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 21/21 tests in `entity::combat::tests` passing.

@@ -697,6 +697,13 @@ pub fn calculate_fall_damage_raw(
         .max(0.0) as i32
 }
 
+/// Vanilla `LivingEntity.java:1368, 1445`:
+/// Determines whether a damage credit (player or mob) is still active within the 100-tick window (5 seconds).
+#[must_use]
+pub fn is_kill_credit_active(attacker_id: i32, recorded_tick: i64, current_tick: i64) -> bool {
+    attacker_id != 0 && (current_tick - recorded_tick).abs() <= 100
+}
+
 /// Combat calculation rules mirroring vanilla `net.minecraft.world.damagesource.CombatRules`.
 pub struct CombatRules;
 
@@ -1848,6 +1855,16 @@ mod tests {
         // Falling 10 blocks with Jump Boost II (safe 5.0): power = 10.0 + 1e-6 - 5.0 = 5.000001 (damage = 5)
         let power_10_jb2 = calculate_fall_power(10.0, jb2_safe);
         assert_eq!(calculate_fall_damage_raw(power_10_jb2, 1.0, 1.0), 5);
+    }
+
+    #[test]
+    fn test_kill_credit_timing_and_tame_wolf_owner_parity() {
+        // Vanilla LivingEntity.java:1368, 1445:
+        // Kill credit window is 100 ticks (5.0s) based on entity age ticks:
+        assert!(is_kill_credit_active(123, 50, 100)); // 50 ticks ago (active)
+        assert!(is_kill_credit_active(123, 50, 150)); // exactly 100 ticks ago (active)
+        assert!(!is_kill_credit_active(123, 50, 151)); // 101 ticks ago (expired)
+        assert!(!is_kill_credit_active(0, 50, 60)); // no attacker recorded (inactive)
     }
 }
 

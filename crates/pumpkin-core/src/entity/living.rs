@@ -322,12 +322,13 @@ impl LivingEntity {
     /// 3. Fall back to combat tracker's killer entry if available.
     pub fn get_kill_credit(&self) -> Option<Arc<dyn EntityBase>> {
         let world = self.entity.world.load();
-        let current_tick = world.level_info.load().day_time;
+        // Vanilla LivingEntity.java:1368 & 1445:
+        // Use the entity's age tick count consistently with last_hurt_by_player_time
+        let current_tick = self.entity.age.load(Relaxed) as i64;
 
         let player_id = self.last_hurt_by_player_id.load(Relaxed);
         let player_time = self.last_hurt_by_player_time.load(Relaxed);
-        if player_id != 0
-            && (current_tick - player_time).abs() <= 100
+        if crate::entity::combat::is_kill_credit_active(player_id, player_time, current_tick)
             && let Some(player) = world.get_entity_by_id(player_id)
         {
             return Some(player);
@@ -335,8 +336,7 @@ impl LivingEntity {
 
         let mob_id = self.last_hurt_by_mob_id.load(Relaxed);
         let mob_time = self.last_hurt_by_mob_time.load(Relaxed);
-        if mob_id != 0
-            && (current_tick - mob_time).abs() <= 100
+        if crate::entity::combat::is_kill_credit_active(mob_id, mob_time, current_tick)
             && let Some(mob) = world.get_entity_by_id(mob_id)
         {
             return Some(mob);
@@ -4132,6 +4132,17 @@ impl LivingEntity {
                 let current_tick = self.entity.age.load(Relaxed) as i64;
                 if attacker.get_player().is_some() {
                     self.last_hurt_by_player_id.store(attacker_id, Relaxed);
+                    self.last_hurt_by_player_time.store(current_tick, Relaxed);
+                } else if let Some(mob) = attacker.get_mob()
+                    && let Some(tamable) = mob.as_tamable()
+                    && tamable.is_tame()
+                    && let Some(owner_uuid) = tamable.get_owner()
+                    && let Some(owner_player) = world.get_player_by_uuid(owner_uuid)
+                {
+                    // Vanilla LivingEntity.java:1369-1372:
+                    // If damage was caused by a tame wolf/animal, credit the owner as last_hurt_by_player
+                    let owner_id = owner_player.get_entity().entity_id;
+                    self.last_hurt_by_player_id.store(owner_id, Relaxed);
                     self.last_hurt_by_player_time.store(current_tick, Relaxed);
                 } else if attacker.get_living_entity().is_some() {
                     self.last_hurt_by_mob_id.store(attacker_id, Relaxed);
