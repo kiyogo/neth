@@ -2030,6 +2030,38 @@
   - Added `is_equipment_hand_swap` helper and unit test `test_equipment_hand_swap_parity` in `crates/pumpkin-core/src/entity/combat.rs`.
   - Added `EntityStatus::SwapHands` broadcast in `Player::swap_item` in `crates/pumpkin-core/src/entity/player.rs`. Total 28/28 tests in `entity::combat::tests` passing.
 
+### Gap 143: Consumable Item Use Ticking, Eating/Drinking Sound & Particle Interval Parity
+- **Vanilla Reference**:
+  - `Consumable.java:119-124`:
+    ```java
+    public boolean shouldEmitParticlesAndSounds(final int useItemRemainingTicks) {
+       int itemUsedForTicks = this.consumeTicks() - useItemRemainingTicks;
+       int waitTicksBeforeUseEffects = (int)(this.consumeTicks() * 0.21875F);
+       boolean isValidTime = itemUsedForTicks > waitTicksBeforeUseEffects;
+       return isValidTime && useItemRemainingTicks % 4 == 0;
+    }
+    ```
+  - `Consumable.java:104-117` (`emitParticlesAndSounds`):
+    - Drink: volume `0.5`, pitch `Mth.randomBetween(random, 0.9F, 1.0F)`.
+    - Eat: volume `random.nextBoolean() ? 0.5F : 1.0F`, pitch `random.triangle(1.0F, 0.2F)`.
+    - Active ticking: spawns 5 item particles.
+    - Final completion (`onConsume`): spawns 16 item particles and plays sound.
+  - `PlaySoundConsumeEffect.java:27-30`:
+    - Plays custom sound configured on consumable effect at volume `1.0` and pitch `1.0`.
+  - In vanilla Minecraft Java:
+    - Eating/drinking items does not emit sounds immediately upon right clicking; it waits until after `0.21875` fraction of the duration (7 ticks for standard 32-tick food), then emits chewing/drinking sounds and 5 item particles every 4 ticks.
+    - Upon finishing consumption, it emits 16 particles and plays the final consume sound.
+  - Previously in Neth:
+    - Consumable item ticking only called `server.item_registry.on_use_tick` without emitting sound or particles at the vanilla intervals.
+    - `ConsumeEffect::PlaySound` was a no-op stub (`=> {}`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `should_emit_consumable_use_effects` and `calculate_consumable_sound_volume_and_pitch` helpers in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `play_sound_event_fine` supporting custom volume and pitch in `crates/pumpkin-core/src/world/mod.rs`.
+  - Added `emit_consumable_use_effects` and integrated eating/drinking ticking & completion sound and particles in `crates/pumpkin-core/src/entity/living.rs`.
+  - Implemented `ConsumeEffect::PlaySound` in `LivingEntity::apply_consumable_effects`.
+  - Added unit test `test_consumable_use_effects_and_sound_pitch_parity` in `combat.rs`. Total 29/29 tests in `entity::combat::tests` passing.
+
+
 
 
 

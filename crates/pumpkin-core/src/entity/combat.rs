@@ -1418,6 +1418,56 @@ pub fn is_equipment_hand_swap(
     new_main_item_id == prev_off_item_id && new_off_item_id == prev_main_item_id
 }
 
+/// Default consume duration in seconds in Vanilla MC (`Consumable.DEFAULT_CONSUME_SECONDS = 1.6F`).
+pub const DEFAULT_CONSUME_SECONDS: f32 = 1.6;
+/// Interval in ticks between consumable sound/particle emissions (`Consumable.CONSUME_EFFECTS_INTERVAL = 4`).
+pub const CONSUME_EFFECTS_INTERVAL: i32 = 4;
+/// Fractional progress required before emitting consumable use effects (`Consumable.CONSUME_EFFECTS_START_FRACTION = 0.21875F`).
+pub const CONSUME_EFFECTS_START_FRACTION: f32 = 0.21875;
+
+/// Computes whether eating/drinking particles and sound effects should be emitted
+/// on the current tick of item usage.
+///
+/// Mirrors vanilla `Consumable.shouldEmitParticlesAndSounds(useItemRemainingTicks)`:
+/// ```java
+/// int itemUsedForTicks = this.consumeTicks() - useItemRemainingTicks;
+/// int waitTicksBeforeUseEffects = (int)(this.consumeTicks() * 0.21875F);
+/// boolean isValidTime = itemUsedForTicks > waitTicksBeforeUseEffects;
+/// return isValidTime && useItemRemainingTicks % 4 == 0;
+/// ```
+#[must_use]
+pub const fn should_emit_consumable_use_effects(
+    consume_ticks: i32,
+    use_item_remaining_ticks: i32,
+) -> bool {
+    let item_used_for_ticks = consume_ticks - use_item_remaining_ticks;
+    let wait_ticks = (consume_ticks as f32 * CONSUME_EFFECTS_START_FRACTION) as i32;
+    let is_valid_time = item_used_for_ticks > wait_ticks;
+    is_valid_time && use_item_remaining_ticks % CONSUME_EFFECTS_INTERVAL == 0
+}
+
+/// Calculates volume and pitch for consumable eating/drinking sounds.
+///
+/// Mirrors vanilla `Consumable.emitParticlesAndSounds`:
+/// - Drink: volume 0.5, pitch in [0.9, 1.0] (`Mth.randomBetween(random, 0.9F, 1.0F)`)
+/// - Eat: volume 0.5 (50%) or 1.0 (50%), pitch triangle around 1.0 with deviation 0.2 (`random.triangle(1.0F, 0.2F)`)
+#[must_use]
+pub fn calculate_consumable_sound_volume_and_pitch(
+    is_drink: bool,
+    rand_bool: bool,
+    rand_val1: f32,
+    rand_val2: f32,
+) -> (f32, f32) {
+    if is_drink {
+        let pitch = 0.9 + (rand_val1.clamp(0.0, 1.0) * 0.1);
+        (0.5, pitch)
+    } else {
+        let volume = if rand_bool { 0.5 } else { 1.0 };
+        let pitch = 1.0 + (rand_val1.clamp(0.0, 1.0) - rand_val2.clamp(0.0, 1.0)) * 0.2;
+        (volume, pitch)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2269,6 +2319,69 @@ mod tests {
 
         // Not a swap: both hands become shield
         assert!(!is_equipment_hand_swap(sword_id, shield_id, shield_id, shield_id));
+    }
+
+    #[test]
+    fn test_consumable_use_effects_and_sound_pitch_parity() {
+        // Vanilla Consumable.java:119-124:
+        // Default consume: 1.6s * 20 = 32 ticks
+        // waitTicksBeforeUseEffects = (int)(32 * 0.21875) = 7 ticks
+        let consume_ticks = (DEFAULT_CONSUME_SECONDS * 20.0) as i32;
+        assert_eq!(consume_ticks, 32);
+
+        // Tick 32 (used = 0 <= 7): no effects
+        assert!(!should_emit_consumable_use_effects(consume_ticks, 32));
+        // Tick 28 (used = 4 <= 7): no effects
+        assert!(!should_emit_consumable_use_effects(consume_ticks, 28));
+        // Tick 25 (used = 7 <= 7): no effects
+        assert!(!should_emit_consumable_use_effects(consume_ticks, 25));
+
+        // Tick 24 (used = 8 > 7, 24 % 4 == 0): FIRST emit!
+        assert!(should_emit_consumable_use_effects(consume_ticks, 24));
+        // Tick 23 (23 % 4 != 0): no effects
+        assert!(!should_emit_consumable_use_effects(consume_ticks, 23));
+
+        // Every 4 ticks after start fraction:
+        assert!(should_emit_consumable_use_effects(consume_ticks, 20));
+        assert!(should_emit_consumable_use_effects(consume_ticks, 16));
+        assert!(should_emit_consumable_use_effects(consume_ticks, 12));
+        assert!(should_emit_consumable_use_effects(consume_ticks, 8));
+        assert!(should_emit_consumable_use_effects(consume_ticks, 4));
+        assert!(should_emit_consumable_use_effects(consume_ticks, 0));
+
+        // Fast food (e.g. dried kelp: 0.8s * 20 = 16 ticks, waitTicks = (int)(16 * 0.21875) = 3)
+        let fast_consume_ticks = 16;
+        assert!(!should_emit_consumable_use_effects(fast_consume_ticks, 16)); // used = 0 <= 3
+        assert!(should_emit_consumable_use_effects(fast_consume_ticks, 12));  // used = 4 > 3, 12 % 4 == 0
+        assert!(should_emit_consumable_use_effects(fast_consume_ticks, 8));
+        assert!(should_emit_consumable_use_effects(fast_consume_ticks, 4));
+
+        // Consumable sound volume and pitch parity:
+        // 1. Drink animation: fixed volume 0.5, pitch in [0.9, 1.0]
+        let (drink_vol_min, drink_pitch_min) =
+            calculate_consumable_sound_volume_and_pitch(true, false, 0.0, 0.0);
+        assert_eq!(drink_vol_min, 0.5);
+        assert!((drink_pitch_min - 0.9).abs() < 1e-6);
+
+        let (drink_vol_max, drink_pitch_max) =
+            calculate_consumable_sound_volume_and_pitch(true, true, 1.0, 0.0);
+        assert_eq!(drink_vol_max, 0.5);
+        assert!((drink_pitch_max - 1.0).abs() < 1e-6);
+
+        // 2. Eat animation: volume 0.5 (true) or 1.0 (false), pitch in [0.8, 1.2]
+        let (eat_vol_50, eat_pitch_center) =
+            calculate_consumable_sound_volume_and_pitch(false, true, 0.5, 0.5);
+        assert_eq!(eat_vol_50, 0.5);
+        assert!((eat_pitch_center - 1.0).abs() < 1e-6);
+
+        let (eat_vol_100, eat_pitch_max) =
+            calculate_consumable_sound_volume_and_pitch(false, false, 1.0, 0.0);
+        assert_eq!(eat_vol_100, 1.0);
+        assert!((eat_pitch_max - 1.2).abs() < 1e-6);
+
+        let (_, eat_pitch_min) =
+            calculate_consumable_sound_volume_and_pitch(false, false, 0.0, 1.0);
+        assert!((eat_pitch_min - 0.8).abs() < 1e-6);
     }
 }
 

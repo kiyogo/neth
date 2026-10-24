@@ -4516,18 +4516,29 @@ impl EntityBase for LivingEntity {
 
         self.tick_effects();
 
-        if let Some(player) = caller.get_player() {
-            let remaining_use_ticks = self.item_use_time.load(Ordering::Relaxed);
-            if remaining_use_ticks > 0 {
-                let item_in_use = self
-                    .item_in_use
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .clone();
-                if let Some(item) = item_in_use.as_ref() {
+        let remaining_use_ticks = self.item_use_time.load(Ordering::Relaxed);
+        if remaining_use_ticks > 0 {
+            let item_in_use = self
+                .item_in_use
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone();
+            if let Some(item) = item_in_use.as_ref() {
+                if let Some(player) = caller.get_player() {
                     server
                         .item_registry
                         .on_use_tick(item, player, remaining_use_ticks);
+                }
+
+                // Parity Gap 143: Consumable item use ticking effects (Consumable.java:119-124)
+                if let Some(consumable) = item.get_data_component::<ConsumableImpl>() {
+                    let consume_ticks = consumable.consume_ticks();
+                    if crate::entity::combat::should_emit_consumable_use_effects(
+                        consume_ticks,
+                        remaining_use_ticks,
+                    ) {
+                        self.emit_consumable_use_effects(item, consumable, 5);
+                    }
                 }
             }
         }
@@ -4553,6 +4564,11 @@ impl EntityBase for LivingEntity {
                         &self.entity.pos.load(),
                         -1,
                     );
+                }
+
+                // Parity Gap 143: Emit final consumption sound and 16 particles (Consumable.java:79)
+                if let Some(consumable) = item.get_data_component::<ConsumableImpl>() {
+                    self.emit_consumable_use_effects(item, consumable, 16);
                 }
 
                 self.apply_consumable_effects(caller, item);
@@ -4831,9 +4847,79 @@ impl LivingEntity {
                         );
                     }
                 }
-                ConsumeEffect::PlaySound(_) => {}
+                ConsumeEffect::PlaySound(sound_event) => {
+                    let sound_category = if self.entity.entity_type == &EntityType::PLAYER {
+                        SoundCategory::Players
+                    } else {
+                        SoundCategory::Neutral
+                    };
+                    let pos = self.entity.pos.load();
+                    self.entity.world.load().play_sound_event_fine(
+                        sound_event,
+                        sound_category,
+                        &pos,
+                        1.0,
+                        1.0,
+                    );
+                }
             }
         }
+    }
+
+    /// Emits consumable eating/drinking sounds and item particles.
+    ///
+    /// Mirrors vanilla `Consumable.emitParticlesAndSounds`:
+    /// ```java
+    /// if (this.hasConsumeParticles) {
+    ///     user.spawnItemParticles(itemStack, particleCount);
+    /// }
+    /// user.playSound(consumeSound, consumableVolume, consumablePitch);
+    /// ```
+    pub fn emit_consumable_use_effects(
+        &self,
+        item: &ItemStack,
+        consumable: &pumpkin_data::data_component_impl::ConsumableImpl,
+        particle_count: u32,
+    ) {
+        let is_drink = consumable.animation
+            == pumpkin_data::data_component_impl::ConsumeAnimation::Drink;
+        let mut rng = rand::rng();
+        let (volume, pitch) = crate::entity::combat::calculate_consumable_sound_volume_and_pitch(
+            is_drink,
+            rng.random_bool(0.5),
+            rng.random::<f32>(),
+            rng.random::<f32>(),
+        );
+
+        let sound_category = if self.entity.entity_type == &EntityType::PLAYER {
+            SoundCategory::Players
+        } else {
+            SoundCategory::Neutral
+        };
+
+        let pos = self.entity.pos.load();
+        self.entity.world.load().play_sound_event_fine(
+            &consumable.sound_event,
+            sound_category,
+            &pos,
+            volume,
+            pitch,
+        );
+
+        if consumable.consume_particles && particle_count > 0 {
+            // Vanilla LivingEntity.java:3550-3566:
+            // Particles spawn slightly in front of and around eye level
+            let eye_y = pos.y + self.entity.get_eye_height();
+            let particle_pos = Vector3::new(pos.x, eye_y - 0.2, pos.z);
+            self.entity.world.load().spawn_particles(
+                pumpkin_data::particle::Particle::Item,
+                particle_pos,
+                particle_count,
+                Vector3::new(0.18, 0.18, 0.18),
+                0.05,
+            );
+        }
+        let _ = item;
     }
 
     fn find_random_teleport_target(&self, diameter: f32) -> Option<Vector3<f64>> {

@@ -1683,13 +1683,26 @@ impl World {
         category: SoundCategory,
         position: &Vector3<f64>,
     ) {
+        self.play_sound_event_fine(sound, category, position, 1.0, 1.0);
+    }
+
+    pub fn play_sound_event_fine(
+        &self,
+        sound: &pumpkin_data::data_component_impl::IdOr<
+            pumpkin_data::data_component_impl::SoundEvent,
+        >,
+        category: SoundCategory,
+        position: &Vector3<f64>,
+        volume: f32,
+        pitch: f32,
+    ) {
         let seed = rng().random::<i64>();
         let packet = CSoundEffect::new(
             data_to_proto_sound(sound),
             category,
             position,
-            1.0,
-            1.0,
+            volume,
+            pitch,
             seed,
         );
         self.broadcast_sound_in_range(&packet, position, sound_event_audible_chunks(sound), None);
