@@ -1807,3 +1807,29 @@
   - Updated `Player::get_experience_reward` in `crates/pumpkin-core/src/entity/player.rs` to check `keep_inventory` and `is_spectator`.
   - Added unit test `test_experience_drop_conditions_and_player_death_reward_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 22/22 tests in `entity::combat::tests` passing.
 
+### Gap 137: Mob Anger Damage Resolution, Tag Exemptions (`#minecraft:no_anger`, `#minecraft:no_anger_from_wind_charge`) & Player-as-Mob-Attacker Parity
+- **Vanilla Reference**:
+  - `LivingEntity.java:1235-1236, 1357-1363`:
+    ```java
+    protected void resolveMobResponsibleForDamage(final DamageSource source) {
+       if (source.getEntity() instanceof LivingEntity livingSource
+          && !source.is(DamageTypeTags.NO_ANGER)
+          && (!source.is(DamageTypes.WIND_CHARGE) || !this.is(EntityTypeTags.NO_ANGER_FROM_WIND_CHARGE))) {
+          this.setLastHurtByMob(livingSource);
+       }
+    }
+    ```
+  - In vanilla Minecraft Java, `resolvePlayerResponsibleForDamage` and `resolveMobResponsibleForDamage` are independent, non-exclusive steps:
+    - Players are living entities (`Player instanceof LivingEntity`), so when a player attacks a living entity, both `setLastHurtByPlayer` and `setLastHurtByMob` are invoked.
+    - Mob retaliation/anger and revenge AI targets rely on `last_hurt_by_mob_id` to aggro against the attacker.
+    - Damage types with `#minecraft:no_anger` (e.g. `mob_attack_no_aggro`) must NOT trigger mob anger.
+    - `wind_charge` damage against victims with `#minecraft:no_anger_from_wind_charge` (e.g. Breeze) must NOT trigger mob anger.
+  - Previously in Neth:
+    - In `LivingEntity::damage_with_context`, player attacker handling was placed in an `if ... else if` structure before `last_hurt_by_mob_id`. When a player attacked an entity, the `if attacker.get_player().is_some()` branch consumed the event, completely bypassing `last_hurt_by_mob_id.store(...)`.
+    - Consequently, mobs attacked by players never registered the player in `last_hurt_by_mob_id`, breaking neutral mob revenge/anger AI targeting.
+    - `#minecraft:no_anger` and `#minecraft:no_anger_from_wind_charge` tag checks were absent.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added `can_cause_mob_anger` helper in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Updated `LivingEntity::damage_with_context` in `crates/pumpkin-core/src/entity/living.rs` to decouple player attribution and mob anger resolution into two distinct phases, ensuring living player attackers are recorded in `last_hurt_by_mob_id` while respecting `#minecraft:no_anger` and `#minecraft:no_anger_from_wind_charge`.
+  - Added unit test `test_mob_anger_resolution_and_tag_exemptions_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 23/23 tests in `entity::combat::tests` passing.
+

@@ -1259,6 +1259,32 @@ pub const fn calculate_player_death_experience_reward(
     }
 }
 
+/// Determines if an attacker and damage type should cause mob anger / set last_hurt_by_mob,
+/// mirroring vanilla `LivingEntity.resolveMobResponsibleForDamage` (LivingEntity.java:1357-1363).
+///
+/// In vanilla:
+/// - Attacker must be a LivingEntity (including Player).
+/// - Damage type must NOT have `#minecraft:no_anger`.
+/// - If damage type is `wind_charge`, the victim must NOT have `#minecraft:no_anger_from_wind_charge`.
+#[must_use]
+pub const fn can_cause_mob_anger(
+    attacker_is_living: bool,
+    has_no_anger_tag: bool,
+    is_wind_charge: bool,
+    victim_no_anger_from_wind_charge: bool,
+) -> bool {
+    if !attacker_is_living {
+        return false;
+    }
+    if has_no_anger_tag {
+        return false;
+    }
+    if is_wind_charge && victim_no_anger_from_wind_charge {
+        return false;
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1956,6 +1982,29 @@ mod tests {
 
         // mobDrops gamerule disabled -> NO XP
         assert!(!should_entity_drop_experience(false, true, true, false, false));
+    }
+
+    #[test]
+    fn test_mob_anger_resolution_and_tag_exemptions_parity() {
+        // Vanilla LivingEntity.java:1357-1363 resolveMobResponsibleForDamage:
+        // livingSource && !source.is(NO_ANGER) && (!source.is(WIND_CHARGE) || !this.is(NO_ANGER_FROM_WIND_CHARGE))
+
+        // 1. Living attacker + normal damage -> causes anger
+        assert!(can_cause_mob_anger(true, false, false, false));
+        assert!(can_cause_mob_anger(true, false, false, true));
+
+        // 2. Non-living attacker (lightning, dispenser, cactus) -> NO anger
+        assert!(!can_cause_mob_anger(false, false, false, false));
+
+        // 3. Damage with #minecraft:no_anger tag -> NO anger
+        assert!(!can_cause_mob_anger(true, true, false, false));
+        assert!(!can_cause_mob_anger(true, true, false, true));
+
+        // 4. Wind charge damage against entity with #minecraft:no_anger_from_wind_charge -> NO anger
+        assert!(!can_cause_mob_anger(true, false, true, true));
+
+        // 5. Wind charge damage against normal entity -> causes anger
+        assert!(can_cause_mob_anger(true, false, true, false));
     }
 }
 

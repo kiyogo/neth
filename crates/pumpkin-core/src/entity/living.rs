@@ -33,8 +33,8 @@ use crate::entity::attributes::AttributeInstance;
 use crate::entity::attributes::Modifier;
 use crate::entity::attributes::ModifierOperation;
 use crate::entity::combat::{
-    CombatRules, CombatTracker, FallLocation, has_vanishing_curse, knockback_after_resistance,
-    should_entity_drop_experience,
+    CombatRules, CombatTracker, FallLocation, can_cause_mob_anger, has_vanishing_curse,
+    knockback_after_resistance, should_entity_drop_experience,
 };
 use crate::entity::mob::equipment::DEFAULT_EQUIPMENT_DROP_CHANCE;
 use crate::entity::player::statistics::{CustomStatistic, StatisticCategory};
@@ -4141,6 +4141,8 @@ impl LivingEntity {
                     .store(self.entity.age.load(Relaxed), Relaxed);
 
                 let current_tick = self.entity.age.load(Relaxed) as i64;
+
+                // 1. Vanilla LivingEntity.java:1365-1376 (resolvePlayerResponsibleForDamage)
                 if attacker.get_player().is_some() {
                     self.last_hurt_by_player_id.store(attacker_id, Relaxed);
                     self.last_hurt_by_player_time.store(current_tick, Relaxed);
@@ -4150,12 +4152,29 @@ impl LivingEntity {
                     && let Some(owner_uuid) = tamable.get_owner()
                     && let Some(owner_player) = world.get_player_by_uuid(owner_uuid)
                 {
-                    // Vanilla LivingEntity.java:1369-1372:
                     // If damage was caused by a tame wolf/animal, credit the owner as last_hurt_by_player
                     let owner_id = owner_player.get_entity().entity_id;
                     self.last_hurt_by_player_id.store(owner_id, Relaxed);
                     self.last_hurt_by_player_time.store(current_tick, Relaxed);
-                } else if attacker.get_living_entity().is_some() {
+                }
+
+                // 2. Vanilla LivingEntity.java:1357-1363 (resolveMobResponsibleForDamage)
+                // Sets last_hurt_by_mob for all living attackers (including players), unless
+                // exempt by #minecraft:no_anger or wind_charge with #minecraft:no_anger_from_wind_charge.
+                let attacker_is_living = attacker.get_living_entity().is_some();
+                let has_no_anger_tag = damage_type.has_tag(&tag::DamageType::MINECRAFT_NO_ANGER);
+                let is_wind_charge = damage_type == pumpkin_data::damage::DamageType::WIND_CHARGE;
+                let victim_immune_wind_anger = self
+                    .entity
+                    .entity_type
+                    .has_tag(&tag::EntityType::MINECRAFT_NO_ANGER_FROM_WIND_CHARGE);
+
+                if can_cause_mob_anger(
+                    attacker_is_living,
+                    has_no_anger_tag,
+                    is_wind_charge,
+                    victim_immune_wind_anger,
+                ) {
                     self.last_hurt_by_mob_id.store(attacker_id, Relaxed);
                     self.last_hurt_by_mob_time.store(current_tick, Relaxed);
                 }
