@@ -3579,6 +3579,60 @@ pub const fn should_blaze_take_water_damage(touching_water: bool, raining: bool)
     touching_water || raining
 }
 
+/// Determines whether a Guardian / Elder Guardian inflicts thorns spike damage upon taking damage.
+///
+/// Mirrors vanilla `Guardian.java:311-317`:
+/// ```java
+/// if (!this.isMoving()
+///    && !source.is(DamageTypeTags.AVOIDS_GUARDIAN_THORNS)
+///    && !source.is(DamageTypes.THORNS)
+///    && source.getDirectEntity() instanceof LivingEntity cause) {
+///    cause.hurtServer(level, this.damageSources().thorns(this), 2.0F);
+/// }
+/// ```
+#[must_use]
+pub fn should_guardian_retaliate_thorns(
+    is_moving: bool,
+    damage_type: &pumpkin_data::damage::DamageType,
+    direct_attacker_is_living: bool,
+) -> bool {
+    use pumpkin_data::tag::Taggable;
+    if is_moving {
+        return false;
+    }
+    if damage_type == &pumpkin_data::damage::DamageType::THORNS {
+        return false;
+    }
+    if damage_type.has_tag(&pumpkin_data::tag::DamageType::MINECRAFT_AVOIDS_GUARDIAN_THORNS) {
+        return false;
+    }
+    direct_attacker_is_living
+}
+
+/// Vanilla Guardian thorns damage amount (2.0F).
+pub const GUARDIAN_THORNS_DAMAGE: f32 = 2.0;
+
+/// Calculates magic damage dealt by Guardian or Elder Guardian laser beam.
+///
+/// Mirrors vanilla `Guardian.java:403-410`:
+/// - Base: 1.0F
+/// - Hard difficulty bonus: +2.0F
+/// - Elder Guardian bonus: +2.0F
+#[must_use]
+pub fn calculate_guardian_laser_damage(
+    difficulty: pumpkin_util::Difficulty,
+    is_elder: bool,
+) -> f32 {
+    let mut damage = 1.0;
+    if difficulty == pumpkin_util::Difficulty::Hard {
+        damage += 2.0;
+    }
+    if is_elder {
+        damage += 2.0;
+    }
+    damage
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5626,6 +5680,69 @@ mod tests {
         assert!(should_blaze_take_water_damage(true, false));  // touching water
         assert!(should_blaze_take_water_damage(false, true));  // raining
         assert!(!should_blaze_take_water_damage(false, false)); // dry
+    }
+
+    #[test]
+    fn test_guardian_parity() {
+        // 1. Guardian thorns spikes retaliation (Guardian.java:311-317)
+        // Only retaliates when !isMoving(), !is(THORNS), !is(AVOIDS_GUARDIAN_THORNS), and direct attacker is LivingEntity
+        assert!(should_guardian_retaliate_thorns(
+            false,
+            &pumpkin_data::damage::DamageType::MOB_ATTACK,
+            true
+        ));
+        assert!(should_guardian_retaliate_thorns(
+            false,
+            &pumpkin_data::damage::DamageType::PLAYER_ATTACK,
+            true
+        ));
+
+        // When moving, spikes are retracted -> no retaliation
+        assert!(!should_guardian_retaliate_thorns(
+            true,
+            &pumpkin_data::damage::DamageType::PLAYER_ATTACK,
+            true
+        ));
+
+        // Damage type THORNS never triggers counter-thorns (infinite loop prevention)
+        assert!(!should_guardian_retaliate_thorns(
+            false,
+            &pumpkin_data::damage::DamageType::THORNS,
+            true
+        ));
+
+        // Non-living direct entity (e.g. arrow, dispenser projectile) does NOT take thorns
+        assert!(!should_guardian_retaliate_thorns(
+            false,
+            &pumpkin_data::damage::DamageType::ARROW,
+            false
+        ));
+
+        // Thorns damage constant is exactly 2.0F
+        assert_eq!(GUARDIAN_THORNS_DAMAGE, 2.0);
+
+        // 2. Guardian & Elder Guardian laser damage (Guardian.java:403-410)
+        // Base 1.0F; +2.0 Hard difficulty; +2.0 Elder Guardian
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Normal, false),
+            1.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Easy, false),
+            1.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, false),
+            3.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Normal, true),
+            3.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, true),
+            5.0
+        );
     }
 }
 

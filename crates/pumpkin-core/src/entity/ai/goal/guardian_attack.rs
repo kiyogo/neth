@@ -115,18 +115,23 @@ impl Goal for GuardianAttackGoal {
             // Complete laser blast
             let world = mob.get_entity().world.load();
             let difficulty = world.level_info.load().difficulty;
-            let mut magic_damage = 1.0f32;
-            if difficulty == pumpkin_util::Difficulty::Hard {
-                magic_damage += 2.0;
-            }
-            if self.is_elder {
-                magic_damage += 2.0;
-            }
+            let magic_damage = crate::entity::combat::calculate_guardian_laser_damage(difficulty, self.is_elder);
 
-            let base_damage = if self.is_elder { 8.0f32 } else { 6.0f32 };
-            let total_damage = base_damage + magic_damage;
+            let guardian_base = mob.get_entity();
 
-            target.damage(target.as_ref(), total_damage, DamageType::MAGIC);
+            // Vanilla Guardian.java:413-414:
+            // 1. Indirect magic damage
+            target.damage_with_context(
+                guardian_base,
+                magic_damage,
+                DamageType::INDIRECT_MAGIC,
+                Some(mob.get_entity().pos.load()),
+                Some(guardian_base),
+                Some(guardian_base),
+            );
+
+            // 2. Physical melee damage via doHurtTarget (mob.try_attack)
+            mob.get_mob_entity().try_attack(guardian_base, target.as_ref());
 
             // Reset laser beam and cooldown
             mob.get_entity()

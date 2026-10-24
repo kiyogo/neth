@@ -35,6 +35,11 @@ impl MoveControlTrait for GuardianMoveControl {
             let length = delta.length();
             if length < 1e-4 {
                 living.movement_input.store(Vector3::default());
+                if let Some(guardian) = mob.as_guardian() {
+                    guardian.set_moving(false);
+                } else if let Some(elder) = mob.as_elder_guardian() {
+                    elder.set_moving(false);
+                }
                 return;
             }
 
@@ -75,8 +80,19 @@ impl MoveControlTrait for GuardianMoveControl {
             if let Ok(mut look_control) = mob_entity.look_control.try_lock() {
                 look_control.look_at_with_range(new_look_x, new_look_y, new_look_z, 10.0, 40.0);
             }
+
+            if let Some(guardian) = mob.as_guardian() {
+                guardian.set_moving(true);
+            } else if let Some(elder) = mob.as_elder_guardian() {
+                elder.set_moving(true);
+            }
         } else {
             living.movement_input.store(Vector3::default());
+            if let Some(guardian) = mob.as_guardian() {
+                guardian.set_moving(false);
+            } else if let Some(elder) = mob.as_elder_guardian() {
+                elder.set_moving(false);
+            }
         }
     }
 

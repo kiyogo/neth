@@ -3169,3 +3169,46 @@
     - `explode` uses `calculate_creeper_explosion_radius`.
   - Updated `BlazeEntity::mob_tick` in `crates/pumpkin-core/src/entity/mob/blaze.rs` to check rain exposure (`is_raining_at`) and apply drown damage.
   - Added unit test `test_creeper_and_blaze_parity` in `combat.rs`. Total 57/57 tests passing in `entity::combat::tests`.
+
+## Gap 172: Guardian & Elder Guardian Thorns Spikes Moving State & Laser Beam Damage Separation Parity
+- **Vanilla Reference**:
+  - `Guardian.java:311-317`:
+    - Khi nhận sát thương:
+      ```java
+      if (!this.isMoving()
+         && !source.is(DamageTypeTags.AVOIDS_GUARDIAN_THORNS)
+         && !source.is(DamageTypes.THORNS)
+         && source.getDirectEntity() instanceof LivingEntity cause) {
+         cause.hurtServer(level, this.damageSources().thorns(this), 2.0F);
+      }
+      ```
+    - Chỉ phản đòn gai nhọn 2.0 Thorns damage khi:
+      - Guardian **không di chuyển** (`!this.isMoving()`) - khi bơi gai thu lại, khi dừng gai xòe ra.
+      - Nguồn sát thương không mang tag `#minecraft:avoids_guardian_thorns`.
+      - Nguồn sát thương không phải là `THORNS` (tránh vòng lặp phản đòn vô hạn).
+      - Thực thể tấn công trực tiếp (`directEntity`) là một `LivingEntity` (bắn tên, phóng lao từ xa không bị phản sát thương thorns).
+      - Attacker trong phản đòn gai là chính Guardian (không khiến victim tự tấn công mình).
+  - `Guardian.java:403-415` (GuardianAttackGoal tick):
+    - Khi tia laser tấn công hoàn tất (đủ 80 ticks):
+      ```java
+      float magicDamage = 1.0F;
+      if (this.guardian.level().getDifficulty() == Difficulty.HARD) {
+         magicDamage += 2.0F;
+      }
+      if (this.elder) {
+         magicDamage += 2.0F;
+      }
+      ServerLevel serverLevel = getServerLevel(this.guardian);
+      target.hurtServer(serverLevel, this.guardian.damageSources().indirectMagic(this.guardian, this.guardian), magicDamage);
+      this.guardian.doHurtTarget(serverLevel, target);
+      ```
+    - Sát thương chia làm 2 giai đoạn:
+      1. Đòn ma thuật gián tiếp (`DamageType::INDIRECT_MAGIC`): 1.0F base, +2.0 Hard difficulty, +2.0 Elder Guardian.
+      2. Đòn cận chiến vật lý (`doHurtTarget` / `DamageType::MOB_ATTACK`): 6.0 với Guardian, 8.0 với Elder Guardian, chịu giảm trừ bởi giáp và bùa bảo vệ.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions `should_guardian_retaliate_thorns`, `GUARDIAN_THORNS_DAMAGE`, and `calculate_guardian_laser_damage` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added `moving: AtomicBool` field and tracked data synchronization (`DATA_ID_MOVING`, `DATA_ID_ATTACK_TARGET`) with `is_moving()` and `set_moving()` methods in both `GuardianEntity` and `ElderGuardianEntity`.
+  - Updated `GuardianMoveControl` to set `moving` to `true` while swimming/navigating and `false` when stopped or target reached.
+  - Updated `on_damage` in both `GuardianEntity` and `ElderGuardianEntity` to retaliate thorns 2.0 only when spikes are extended (`!is_moving()`), direct attacker is living, and damage type is not thorns or exempt tag, passing Guardian as correct damager.
+  - Updated `GuardianAttackGoal` in `crates/pumpkin-core/src/entity/ai/goal/guardian_attack.rs` to separate indirect magic damage from physical melee damage via `try_attack`.
+  - Added unit test `test_guardian_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 58/58 tests passing in `entity::combat::tests`.

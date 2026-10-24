@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::attributes::Attributes;
@@ -7,6 +7,8 @@ use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tracked_data;
+use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_protocol::java::client::play::{CGameEvent, GameEvent};
 
 use pumpkin_util::math::vector3::Vector3;
@@ -28,6 +30,7 @@ use crate::entity::{
 pub struct ElderGuardianEntity {
     pub mob_entity: MobEntity,
     tick_count: AtomicI32,
+    pub moving: AtomicBool,
 }
 
 impl ElderGuardianEntity {
@@ -49,8 +52,18 @@ impl ElderGuardianEntity {
         let guardian = Self {
             mob_entity,
             tick_count: AtomicI32::new(0),
+            moving: AtomicBool::new(false),
         };
         let mob_arc = Arc::new(guardian);
+
+        mob_arc.mob_entity.living_entity.entity.set_synced_data(
+            tracked_data::elder_guardian::DATA_ID_MOVING,
+            false,
+        );
+        mob_arc.mob_entity.living_entity.entity.set_synced_data(
+            tracked_data::elder_guardian::DATA_ID_ATTACK_TARGET,
+            VarInt(0),
+        );
 
         // Vanilla Elder Guardian attributes: MAX_HEALTH = 80.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 8.0
         {
@@ -118,6 +131,21 @@ impl ElderGuardianEntity {
         };
 
         mob_arc
+    }
+
+    #[must_use]
+    pub fn is_moving(&self) -> bool {
+        self.moving.load(Ordering::Relaxed)
+    }
+
+    pub fn set_moving(&self, moving: bool) {
+        let old = self.moving.swap(moving, Ordering::Relaxed);
+        if old != moving {
+            self.mob_entity.living_entity.entity.set_synced_data(
+                tracked_data::elder_guardian::DATA_ID_MOVING,
+                moving,
+            );
+        }
     }
 }
 
@@ -227,11 +255,24 @@ impl Mob for ElderGuardianEntity {
         }
     }
 
-    fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
-        if let Some(src) = source
-            && let Some(living) = src.get_living_entity()
-        {
-            let _ = living.damage(src, 2.0, DamageType::THORNS);
+    fn on_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) {
+        let direct_living = source.and_then(|s| s.get_living_entity());
+        if crate::entity::combat::should_guardian_retaliate_thorns(
+            self.is_moving(),
+            &damage_type,
+            direct_living.is_some(),
+        ) {
+            if let Some(living) = direct_living {
+                let guardian_base = self as &dyn EntityBase;
+                let _ = living.damage_with_context(
+                    guardian_base,
+                    crate::entity::combat::GUARDIAN_THORNS_DAMAGE,
+                    DamageType::THORNS,
+                    None,
+                    Some(guardian_base),
+                    Some(guardian_base),
+                );
+            }
         }
     }
 }
