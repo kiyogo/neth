@@ -247,13 +247,9 @@ impl Mob for PolarBearEntity {
         Some(self)
     }
 
-    fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
-        self.write_ageable_nbt(nbt);
-    }
+    fn mob_write_nbt(&self, _nbt: &mut NbtCompound) {}
 
-    fn mob_read_nbt(&self, nbt: &NbtCompound) {
-        self.read_ageable_nbt(nbt);
-    }
+    fn mob_read_nbt(&self, _nbt: &NbtCompound) {}
 
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
@@ -341,3 +337,21 @@ impl CustomSound for PolarBearEntity {
         Some(Sound::EntityPolarBearHurt)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_polar_bear_warning_and_standing_conditions() {
+        // Vanilla PolarBear.PolarBearMeleeAttackGoal:
+        // canAttack: dist_sq > min_dist_sq && dist_sq <= max_dist_sq
+        // should_polar_bear_stand_and_warn: target_width = 1.0, wait_delay = 10
+        let target_width = 1.0f32;
+
+        // reach = (1.0 + 3.0)^2 = 16.0
+        assert!(crate::entity::combat::should_polar_bear_stand_and_warn(15.0, target_width, 10));
+        assert!(crate::entity::combat::should_polar_bear_stand_and_warn(10.0, target_width, 5));
+        assert!(!crate::entity::combat::should_polar_bear_stand_and_warn(17.0, target_width, 10));
+        assert!(!crate::entity::combat::should_polar_bear_stand_and_warn(15.0, target_width, 11));
+    }
+}
+

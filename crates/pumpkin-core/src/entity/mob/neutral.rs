@@ -286,7 +286,7 @@ pub trait NeutralMob: Mob {
 
     fn read_anger_nbt(&self, nbt: &NbtCompound) {
         self.set_anger_end_time(anger_end_time_from_nbt(nbt, self.world_age()));
-        let angry_at = nbt.get_uuid("angry_at");
+        let angry_at = nbt.get_uuid("angry_at").or_else(|| nbt.get_uuid("AngryAt"));
         self.get_neutral_data()
             .restore_target
             .store(angry_at.is_some(), Relaxed);

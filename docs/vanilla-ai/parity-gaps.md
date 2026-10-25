@@ -4027,6 +4027,37 @@
     - Added unit test `test_ocelot_trust_and_ageable`.
   - All unit tests verified and passing (79/79 tests in `entity::combat::tests`, `test_ocelot_trust_and_ageable`).
 
+## Gap 194: Bat Voice Pitch & Roosting Wake Conditions, Polar Bear Neutral Anger NBT & Standing Parity
+- **Vanilla Reference**:
+  - `Bat.java:66-68, 135-151, 198-208`:
+    - `getVoicePitch()`: Vanilla computes `super.getVoicePitch() * 0.95F` where living entity base voice pitch is `(rand_a - rand_b) * 0.2F + 1.0F`, giving range `[0.76, 1.14]` centered at `0.95`. Previously Neth hardcoded a static `0.95`.
+    - Roosting Wake Conditions (`tick_roosting`): A resting bat wakes up and takes flight if:
+      - The block above is no longer solid (`!above_state.is_solid_block()`), or
+      - A player is within 4.0 blocks distance (`player_distance < 4.0`).
+      - Upon taking damage (`on_damage`), the bat immediately wakes up and flies away.
+      - Takeoff sound (`Sound::EntityBatTakeoff`) and ambient sound use the dynamic voice pitch.
+  - `PolarBear.java:120-129, 176-181, 205-207`, `NeutralMob.java:34-56`:
+    - Polar Bear extends `NeutralMob` and `AgeableMob`.
+    - In Neth, `NeutralMob::read_anger_nbt` now supports legacy `AngryAt` fallback alongside modern `angry_at` UUID tag.
+    - Cleaned up `PolarBearEntity::mob_write_nbt` and `mob_read_nbt` to avoid duplicate ageable/neutral serialization (managed automatically by `Mob::write_custom_nbt` / `read_custom_nbt`).
+    - Standing on hind legs and growling warning sound conditions verified (`dist_sq > (width + 3.0)^2 && dist_sq <= (width + 5.0)^2`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `get_bat_voice_pitch(rand_a: f32, rand_b: f32) -> f32`.
+    - Added `should_bat_wake_from_resting(is_solid_above: bool, player_distance: Option<f64>) -> bool`.
+    - Added unit test `test_bat_and_polar_bear_parity`.
+  - Updated `BatEntity` in `crates/pumpkin-core/src/entity/mob/bat.rs`:
+    - `tick_ambient_sound` and `tick_roosting` / `on_damage` takeoff sounds now use `combat::get_bat_voice_pitch`.
+    - `tick_roosting` uses `combat::should_bat_wake_from_resting`.
+    - Added unit test `test_bat_voice_pitch_and_roosting_wake`.
+  - Updated `NeutralMob` in `crates/pumpkin-core/src/entity/mob/neutral.rs`:
+    - Supported both `angry_at` and `AngryAt` UUID in `read_anger_nbt`.
+  - Updated `PolarBearEntity` in `crates/pumpkin-core/src/entity/passive/polar_bear.rs`:
+    - Cleaned up redundant NBT calls.
+    - Added unit test `test_polar_bear_warning_and_standing_conditions`.
+  - All unit tests verified and passing (80/80 tests in `entity::combat::tests`, `test_bat_voice_pitch_and_roosting_wake`, and `test_polar_bear_warning_and_standing_conditions`).
+
+
 
 
 

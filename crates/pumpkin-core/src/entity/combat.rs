@@ -5304,6 +5304,24 @@ pub fn should_ocelot_avoid_player(is_trusting: bool) -> bool {
     !is_trusting
 }
 
+/// Calculates Bat voice pitch: ((rand_a - rand_b) * 0.2 + 1.0) * 0.95.
+///
+/// Mirrors vanilla `Bat.java:67`: `super.getVoicePitch() * 0.95F` where `super.getVoicePitch()`
+/// in `LivingEntity.java:386` is `(rand_a - rand_b) * 0.2F + 1.0F`.
+#[must_use]
+pub fn get_bat_voice_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    ((rand_a - rand_b) * 0.2 + 1.0) * 0.95
+}
+
+/// Checks whether a resting Bat should wake up and take flight.
+///
+/// Mirrors vanilla `Bat.java:135, 140, 147`: wakes if block above is not solid or player is within 4.0 blocks.
+#[must_use]
+pub fn should_bat_wake_from_resting(is_solid_above: bool, player_distance: Option<f64>) -> bool {
+    !is_solid_above || player_distance.is_some_and(|d| d < 4.0)
+}
+
+
 
 
 /// Represents the biome category for rabbit variant spawning and breeding mutation.
@@ -8537,7 +8555,29 @@ mod tests {
         assert!(should_ocelot_avoid_player(false));
         assert!(!should_ocelot_avoid_player(true));
     }
+
+    #[test]
+    fn test_bat_and_polar_bear_parity() {
+        // 1. Bat voice pitch: ((rand_a - rand_b) * 0.2 + 1.0) * 0.95 (Bat.java:67)
+        let pitch_neutral = get_bat_voice_pitch(0.5, 0.5);
+        assert!((pitch_neutral - 0.95).abs() < 1e-6);
+        let pitch_high = get_bat_voice_pitch(1.0, 0.0);
+        assert!((pitch_high - 1.14).abs() < 1e-6);
+        let pitch_low = get_bat_voice_pitch(0.0, 1.0);
+        assert!((pitch_low - 0.76).abs() < 1e-6);
+
+        // 2. Bat waking conditions (Bat.java:135, 140, 147)
+        // Solid above, no player nearby -> remains resting
+        assert!(!should_bat_wake_from_resting(true, None));
+        assert!(!should_bat_wake_from_resting(true, Some(5.0)));
+        // Solid above, player within 4 blocks -> wakes
+        assert!(should_bat_wake_from_resting(true, Some(3.9)));
+        // Non-solid above -> wakes regardless of players
+        assert!(should_bat_wake_from_resting(false, None));
+        assert!(should_bat_wake_from_resting(false, Some(10.0)));
+    }
 }
+
 
 
 

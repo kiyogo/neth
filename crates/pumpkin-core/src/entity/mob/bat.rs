@@ -89,12 +89,14 @@ impl BatEntity {
             self.ambient_sound_chance
                 .store(MIN_AMBIENT_SOUND_DELAY, Relaxed);
             if !self.is_roosting() || rand::random_range(0..4) == 0 {
+                let pitch =
+                    crate::entity::combat::get_bat_voice_pitch(rand::random(), rand::random());
                 world.play_sound_fine(
                     Sound::EntityBatAmbient,
                     SoundCategory::Ambient,
                     pos,
                     0.1,
-                    0.95,
+                    pitch,
                 );
             }
         }
@@ -103,7 +105,31 @@ impl BatEntity {
     fn tick_roosting(&self, world: &World, above_pos: &BlockPos, pos: &Vector3<f64>) {
         let entity = &self.mob_entity.living_entity.entity;
         let above_state = world.get_block_state(above_pos);
-        if above_state.is_solid_block() {
+        let player_dist = world
+            .get_closest_player(*pos, CLOSE_PLAYER_DISTANCE)
+            .map(|p| {
+                let p_pos = p.living_entity.entity.pos.load();
+                let dx = p_pos.x - pos.x;
+                let dy = p_pos.y - pos.y;
+                let dz = p_pos.z - pos.z;
+                (dx * dx + dy * dy + dz * dz).sqrt()
+            });
+
+        if crate::entity::combat::should_bat_wake_from_resting(
+            above_state.is_solid_block(),
+            player_dist,
+        ) {
+            self.set_roosting(false);
+            let pitch =
+                crate::entity::combat::get_bat_voice_pitch(rand::random(), rand::random());
+            world.play_sound_fine(
+                Sound::EntityBatTakeoff,
+                SoundCategory::Ambient,
+                pos,
+                0.1,
+                pitch,
+            );
+        } else {
             let rotate_head = {
                 let mut rng = rand::rng();
                 (rng.random_range(0u32..200) == 0).then(|| rng.random_range(0i32..360) as f32)
@@ -111,29 +137,6 @@ impl BatEntity {
             if let Some(head_yaw) = rotate_head {
                 entity.head_yaw.store(head_yaw);
             }
-
-            if world
-                .get_closest_player(*pos, CLOSE_PLAYER_DISTANCE)
-                .is_some()
-            {
-                self.set_roosting(false);
-                world.play_sound_fine(
-                    Sound::EntityBatTakeoff,
-                    SoundCategory::Ambient,
-                    pos,
-                    0.1,
-                    0.95,
-                );
-            }
-        } else {
-            self.set_roosting(false);
-            world.play_sound_fine(
-                Sound::EntityBatTakeoff,
-                SoundCategory::Ambient,
-                pos,
-                0.1,
-                0.95,
-            );
         }
     }
 
@@ -287,12 +290,14 @@ impl Mob for BatEntity {
             self.set_roosting(false);
             let entity = &self.mob_entity.living_entity.entity;
             let pos = entity.pos.load();
+            let pitch =
+                crate::entity::combat::get_bat_voice_pitch(rand::random(), rand::random());
             entity.world.load().play_sound_fine(
                 Sound::EntityBatTakeoff,
                 SoundCategory::Ambient,
                 &pos,
                 0.1,
-                0.95,
+                pitch,
             );
         }
     }
@@ -305,5 +310,21 @@ impl CustomSound for BatEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityBatHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_bat_voice_pitch_and_roosting_wake() {
+        // Vanilla Bat.java:67 getVoicePitch() = super.getVoicePitch() * 0.95F
+        let p_mid = crate::entity::combat::get_bat_voice_pitch(0.5, 0.5);
+        assert!((p_mid - 0.95).abs() < 1e-5);
+
+        // Vanilla Bat.java:135, 140, 147 waking condition
+        assert!(!crate::entity::combat::should_bat_wake_from_resting(true, None));
+        assert!(!crate::entity::combat::should_bat_wake_from_resting(true, Some(4.1)));
+        assert!(crate::entity::combat::should_bat_wake_from_resting(true, Some(3.9)));
+        assert!(crate::entity::combat::should_bat_wake_from_resting(false, None));
     }
 }
