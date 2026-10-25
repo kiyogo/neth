@@ -164,6 +164,46 @@ impl BreedGoal {
             }
         }
 
+        // Vanilla Wolf.java:271-285: inherit variant and collar color from parents, tame to owner
+        if let Some(wolf_a) = mob.as_wolf()
+            && let Some(wolf_b) = mate.cast_any().downcast_ref::<crate::entity::passive::wolf::WolfEntity>()
+            && let Some(baby_wolf) = baby.cast_any().downcast_ref::<crate::entity::passive::wolf::WolfEntity>()
+        {
+            let rand_variant = rand::random();
+            let rand_collar = rand::random();
+            let (variant_id, collar) = combat::select_wolf_baby_traits(
+                wolf_a.variant.load(std::sync::atomic::Ordering::Relaxed),
+                wolf_b.variant.load(std::sync::atomic::Ordering::Relaxed),
+                wolf_a.get_collar_color(),
+                wolf_b.get_collar_color(),
+                rand_variant,
+                rand_collar,
+            );
+            if let Some(variant) = pumpkin_data::wolf_variant::WolfVariant::all().get(variant_id as usize).copied() {
+                baby_wolf.set_variant(variant);
+            }
+            if wolf_a.is_tame() {
+                if let Some(owner) = wolf_a.get_owner() {
+                    TamableAnimal::tame(baby_wolf, owner);
+                    baby_wolf.set_collar_color(collar);
+                }
+            }
+        }
+
+        // Vanilla Fox.java:231-236: inherit variant from either parent (50/50)
+        if let Some(fox_a) = mob.as_fox()
+            && let Some(fox_b) = mate.cast_any().downcast_ref::<crate::entity::passive::fox::FoxEntity>()
+            && let Some(baby_fox) = baby.cast_any().downcast_ref::<crate::entity::passive::fox::FoxEntity>()
+        {
+            let rand_bool = rand::random();
+            let variant_id = combat::select_fox_baby_variant(
+                fox_a.get_variant().id(),
+                fox_b.get_variant().id(),
+                rand_bool,
+            );
+            baby_fox.set_variant(crate::entity::passive::fox::FoxVariant::from_id(variant_id));
+        }
+
         let world_full = entity.world.load_full();
         world_full.spawn_entity(baby);
 

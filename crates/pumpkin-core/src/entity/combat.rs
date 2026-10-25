@@ -4822,6 +4822,68 @@ pub const fn should_ocelot_despawn_when_far(is_trusting: bool, age_ticks: i32) -
     !is_trusting && age_ticks > 2400
 }
 
+/// Calculates the healing amount for a tamed wolf when fed food.
+///
+/// Mirrors vanilla `Wolf.java:mobInteract`:
+/// `heal(2.0F * (foodProperties != null ? foodProperties.nutrition() : 1.0F))`
+#[must_use]
+pub fn calculate_wolf_food_healing(nutrition: Option<u32>) -> f32 {
+    let nutrition = nutrition.unwrap_or(1) as f32;
+    2.0 * nutrition
+}
+
+/// Selects a baby wolf's variant and collar color from its parents.
+///
+/// Mirrors vanilla `Wolf.java:getBreedOffspring`:
+/// 50% chance to inherit variant and collar color from parent 1, 50% from parent 2.
+#[must_use]
+pub const fn select_wolf_baby_traits(
+    parent1_variant: u8,
+    parent2_variant: u8,
+    parent1_collar: u8,
+    parent2_collar: u8,
+    rand_variant: bool,
+    rand_collar: bool,
+) -> (u8, u8) {
+    let variant = if rand_variant {
+        parent1_variant
+    } else {
+        parent2_variant
+    };
+    let collar = if rand_collar {
+        parent1_collar
+    } else {
+        parent2_collar
+    };
+    (variant, collar)
+}
+
+/// Selects a baby fox's variant from its parents.
+///
+/// Mirrors vanilla `Fox.java:getBreedOffspring`:
+/// 50% chance to inherit variant from parent 1, 50% from parent 2.
+#[must_use]
+pub const fn select_fox_baby_variant(
+    parent1_variant: i32,
+    parent2_variant: i32,
+    rand_bool: bool,
+) -> i32 {
+    if rand_bool {
+        parent1_variant
+    } else {
+        parent2_variant
+    }
+}
+
+/// Calculates the safe fall distance for a Fox.
+///
+/// Mirrors vanilla `Fox.java:createAttributes`:
+/// Foxes have a base `SAFE_FALL_DISTANCE` of 5.0 blocks (standard is 3.0 blocks).
+#[must_use]
+pub const fn get_fox_safe_fall_distance() -> f64 {
+    5.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7543,6 +7605,35 @@ mod tests {
         assert!(!should_ocelot_despawn_when_far(true, 5000)); // Trusting ocelot never despawns
         assert!(!should_ocelot_despawn_when_far(false, 2400)); // Within 2400 ticks (2 min)
         assert!(should_ocelot_despawn_when_far(false, 2401)); // Untrusted despawns after 2400 ticks
+    }
+
+    #[test]
+    fn test_wolf_and_fox_parity() {
+        // 1. Wolf food nutrition scaling (Wolf.java:mobInteract: heal = 2.0 * nutrition)
+        // Cooked beef nutrition = 8 -> 16.0 HP heal
+        assert_eq!(calculate_wolf_food_healing(Some(8)), 16.0);
+        // Raw beef nutrition = 3 -> 6.0 HP heal
+        assert_eq!(calculate_wolf_food_healing(Some(3)), 6.0);
+        // Rotten flesh nutrition = 4 -> 8.0 HP heal
+        assert_eq!(calculate_wolf_food_healing(Some(4)), 8.0);
+        // Default / None -> 2.0 HP heal
+        assert_eq!(calculate_wolf_food_healing(None), 2.0);
+
+        // 2. Wolf baby traits inheritance (Wolf.java:getBreedOffspring)
+        let (var_a, col_a) = select_wolf_baby_traits(0, 1, 14, 11, true, true);
+        assert_eq!(var_a, 0);
+        assert_eq!(col_a, 14);
+
+        let (var_b, col_b) = select_wolf_baby_traits(0, 1, 14, 11, false, false);
+        assert_eq!(var_b, 1);
+        assert_eq!(col_b, 11);
+
+        // 3. Fox baby variant inheritance (Fox.java:getBreedOffspring)
+        assert_eq!(select_fox_baby_variant(0, 1, true), 0); // Red
+        assert_eq!(select_fox_baby_variant(0, 1, false), 1); // Snow
+
+        // 4. Fox safe fall distance attribute (Fox.java:createAttributes: 5.0 blocks)
+        assert_eq!(get_fox_safe_fall_distance(), 5.0);
     }
 }
 

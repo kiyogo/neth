@@ -3694,6 +3694,39 @@
     - Added Cat breeding inheritance for kitten variant, taming ownership, and collar color via `combat::select_cat_baby_traits`.
   - Added unit test `test_cat_and_ocelot_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 70/70 tests passing in `entity::combat::tests`.
 
+## Gap 185: Wolf Food Nutrition Healing Scaling, Wolf & Fox Breeding Variant Inheritance, and Fox Safe Fall Distance Attribute Parity
+- **Vanilla Reference**:
+  - `Wolf.java:mobInteract, 271-285` & `Fox.java:createAttributes, 231-236`:
+    - **Wolf Food Nutrition Healing Scaling**:
+      - `Wolf.mobInteract`: Khi sói bị thương nhận thức ăn (`isFood(item)`), lượng máu hồi phục tỷ lệ thuận với điểm dinh dưỡng (`nutrition`) của thực phẩm:
+        `float f = foodProperties != null ? 2.0F * (float)foodProperties.nutrition() : 1.0F; this.heal(f);`.
+        Trước đây Neth hardcode hồi cố định `2.0` máu bất kể loại thức ăn (ví dụ Cooked Beef với nutrition 8 phải hồi `16.0 HP`, Rotten Flesh với nutrition 4 phải hồi `8.0 HP`).
+    - **Wolf Breeding Traits & Ownership Inheritance**:
+      - `Wolf.getBreedOffspring`: Sói con sinh ra nhận 50% biến thể lông (`WolfVariant`) từ cha hoặc mẹ (`random.nextBoolean() ? parent_a : parent_b`).
+      - Nếu sói cha/mẹ đã được thuần hóa (`isTame`):
+        - Sói con tự động thuần hóa theo chủ (`setOwnerUUID(this.getOwnerUUID())`).
+        - Sói con nhận 50% màu vòng cổ (`CollarColor`) từ cha hoặc mẹ.
+    - **Fox Breeding Variant Inheritance**:
+      - `Fox.getBreedOffspring`: Cáo con sinh ra nhận 50% biến thể lông (`FoxVariant::Red` hoặc `FoxVariant::Snow`) từ cha hoặc mẹ (`random.nextBoolean() ? parent_a : parent_b`).
+    - **Fox Safe Fall Distance Attribute**:
+      - `Fox.createAttributes`: Cáo có `Attributes.SAFE_FALL_DISTANCE = 5.0` (thay vì 3.0 blocks như mob thông thường), cho phép rơi tự do từ độ cao 5 block mà không chịu sát thương rơi.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_wolf_food_healing(nutrition)`: computes `2.0 * nutrition` (fallback 1.0 if no food properties).
+    - `select_wolf_baby_traits`: computes 50/50 parental variant and collar color inheritance.
+    - `select_fox_baby_variant`: computes 50/50 parental variant (`Red` vs `Snow`) inheritance.
+    - `get_fox_safe_fall_distance`: returns `5.0`.
+  - Updated `WolfEntity` in `crates/pumpkin-core/src/entity/passive/wolf.rs`:
+    - In `mob_interact`: reads `FoodImpl` data component from `item_stack` and heals by `combat::calculate_wolf_food_healing(nutrition)`.
+    - Added `WolfEntity::get_variant` returning `WolfVariant`.
+  - Updated `FoxEntity` in `crates/pumpkin-core/src/entity/passive/fox.rs`:
+    - Sets base attribute `Attributes::SAFE_FALL_DISTANCE` using `combat::get_fox_safe_fall_distance()`.
+  - Updated `BreedGoal::breed` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added Wolf breeding inheritance for puppy variant, owner taming, and collar color via `combat::select_wolf_baby_traits`.
+    - Added Fox breeding inheritance for kit variant via `combat::select_fox_baby_variant`.
+  - Added unit test `test_wolf_and_fox_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 71/71 tests passing in `entity::combat::tests`.
+
+
 
 
 

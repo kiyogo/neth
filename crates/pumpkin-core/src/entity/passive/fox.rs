@@ -14,7 +14,7 @@ use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         avoid_entity::AvoidEntityGoal, breed::BreedGoal,
@@ -149,7 +149,7 @@ impl FoxEntity {
                 damage.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(fall) = attributes.get_mut(&Attributes::SAFE_FALL_DISTANCE.id) {
-                fall.base_value = 5.0;
+                fall.base_value = combat::get_fox_safe_fall_distance();
                 fall.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {

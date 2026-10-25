@@ -7,6 +7,7 @@ use crossbeam::atomic::AtomicCell;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::data_component_impl::FoodImpl;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::tag::{self, Taggable};
@@ -16,6 +17,7 @@ use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
 use rand::RngExt;
 
+use crate::entity::combat;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::living::LivingEntity;
 use crate::world::World;
@@ -519,8 +521,11 @@ impl Mob for WolfEntity {
                 && self.mob_entity.living_entity.health.load()
                     < self.mob_entity.living_entity.get_max_health()
             {
+                let food_comp = item_stack.get_data_component::<FoodImpl>();
+                let nutrition = food_comp.map(|f| f.nutrition.max(0) as u32);
+                let heal_amount = combat::calculate_wolf_food_healing(nutrition);
                 item_stack.decrement_unless_creative(player.gamemode.load(), 1);
-                self.mob_entity.living_entity.heal(2.0);
+                self.mob_entity.living_entity.heal(heal_amount);
                 self.play_eating_sound(ambient);
                 return true;
             }
@@ -694,6 +699,14 @@ impl WolfEntity {
             pumpkin_data::tracked_data::wolf::COLLAR_COLOR,
             VarInt(color as i32),
         );
+    }
+
+    pub fn get_variant(&self) -> WolfVariant {
+        let variant_id = self.variant.load(Ordering::Relaxed);
+        WolfVariant::all()
+            .get(variant_id as usize)
+            .copied()
+            .unwrap_or(WolfVariant::Pale)
     }
 
     pub fn set_variant(&self, variant: WolfVariant) {
