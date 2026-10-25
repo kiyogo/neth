@@ -4416,6 +4416,104 @@ pub fn calculate_frog_fall_damage_points(fall_distance: f64, damage_modifier: f3
     (base_damage - 5).max(0)
 }
 
+/// Determines the Frog variant based on biome tags when a Tadpole matures into a Frog.
+///
+/// Mirrors vanilla `FrogVariants.java:26-29`:
+/// - `#minecraft:spawns_warm_variant_frogs` -> `FrogVariant::Warm`
+/// - `#minecraft:spawns_cold_variant_frogs` -> `FrogVariant::Cold`
+/// - Fallback -> `FrogVariant::Temperate`
+#[must_use]
+pub fn determine_frog_variant_from_biome_tags(
+    is_warm: bool,
+    is_cold: bool,
+) -> pumpkin_data::frog_variant::FrogVariant {
+    use pumpkin_data::frog_variant::FrogVariant;
+
+    if is_warm {
+        FrogVariant::Warm
+    } else if is_cold {
+        FrogVariant::Cold
+    } else {
+        FrogVariant::Temperate
+    }
+}
+
+/// Calculates fall damage points for a Goat with the 10-point vanilla reduction.
+///
+/// Mirrors vanilla `Goat.java:79, 124-126`:
+/// ```java
+/// @Override
+/// protected int calculateFallDamage(final double fallDistance, final float damageModifier) {
+///    return super.calculateFallDamage(fallDistance, damageModifier) - 10;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_goat_fall_damage_points(fall_distance: f64, damage_modifier: f32) -> i32 {
+    let base_damage = ((fall_distance - 3.0).max(0.0) * damage_modifier as f64).ceil() as i32;
+    (base_damage - 10).max(0)
+}
+
+/// Evaluates whether a freshly spawned goat should be a Screaming Goat (2% chance).
+///
+/// Mirrors vanilla `Goat.java:80, 241`:
+/// `public static final double GOAT_SCREAMING_CHANCE = 0.02;`
+/// `this.setScreamingGoat(random.nextDouble() < 0.02);`
+#[must_use]
+pub fn should_spawn_screaming_goat(rand_f64: f64) -> bool {
+    rand_f64 < 0.02
+}
+
+/// Evaluates whether a baby goat bred from parents inherits the screaming trait.
+///
+/// Mirrors vanilla `Goat.java:156-158`:
+/// `boolean babyIsScreaming = (level.getRandom().nextBoolean() ? this : partner) instanceof Goat goat && goat.isScreamingGoat() || level.getRandom().nextDouble() < 0.02;`
+#[must_use]
+pub fn should_spawn_screaming_goat_from_parents(
+    parent_a_screaming: bool,
+    parent_b_screaming: bool,
+    rand_bool: bool,
+    rand_f64: f64,
+) -> bool {
+    (if rand_bool {
+        parent_a_screaming
+    } else {
+        parent_b_screaming
+    }) || rand_f64 < 0.02
+}
+
+/// Evaluates whether an adult goat spawns with only one horn (10% chance).
+///
+/// Mirrors vanilla `Goat.java:81, 243`:
+/// `public static final double UNIHORN_CHANCE = 0.1F;`
+/// `if (!this.isBaby() && random.nextFloat() < 0.1F) { ... }`
+#[must_use]
+pub fn should_goat_spawn_unihorn(is_baby: bool, rand_f32: f32) -> bool {
+    !is_baby && rand_f32 < 0.1
+}
+
+/// Selects which goat horn to drop upon ramming a solid snap block.
+///
+/// Returns `Some(true)` to drop the left horn, `Some(false)` to drop the right horn,
+/// or `None` if the goat has no remaining horns.
+///
+/// Mirrors vanilla `Goat.java:312-332`.
+#[must_use]
+pub fn select_goat_horn_to_drop(
+    has_left: bool,
+    has_right: bool,
+    rand_bool: bool,
+) -> Option<bool> {
+    if !has_left && !has_right {
+        None
+    } else if !has_left {
+        Some(false) // Only right horn remains, drop right
+    } else if !has_right {
+        Some(true) // Only left horn remains, drop left
+    } else {
+        Some(rand_bool) // Both remain, randomly drop left or right
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6916,6 +7014,58 @@ mod tests {
         assert_eq!(calculate_frog_fall_damage_points(10.0, 1.0), 2);
         // Fall distance 13.0: base damage 10, reduced by 5 -> 5
         assert_eq!(calculate_frog_fall_damage_points(13.0, 1.0), 5);
+    }
+
+    #[test]
+    fn test_tadpole_and_goat_parity() {
+        use pumpkin_data::frog_variant::FrogVariant;
+
+        // 1. Tadpole maturation variant determination (FrogVariants.java:26-29)
+        assert_eq!(determine_frog_variant_from_biome_tags(true, false), FrogVariant::Warm);
+        assert_eq!(determine_frog_variant_from_biome_tags(false, true), FrogVariant::Cold);
+        assert_eq!(determine_frog_variant_from_biome_tags(false, false), FrogVariant::Temperate);
+
+        // 2. Goat fall damage reduction (Goat.java:79, 124-126: damage - 10)
+        // Fall distance 3.0: 0 damage
+        assert_eq!(calculate_goat_fall_damage_points(3.0, 1.0), 0);
+        // Fall distance 13.0: base damage 10, reduced by 10 -> 0
+        assert_eq!(calculate_goat_fall_damage_points(13.0, 1.0), 0);
+        // Fall distance 15.0: base damage 12, reduced by 10 -> 2
+        assert_eq!(calculate_goat_fall_damage_points(15.0, 1.0), 2);
+        // Fall distance 18.0: base damage 15, reduced by 10 -> 5
+        assert_eq!(calculate_goat_fall_damage_points(18.0, 1.0), 5);
+
+        // 3. Screaming goat spawn chance (Goat.java:80, 241: 2% chance)
+        assert!(should_spawn_screaming_goat(0.01));
+        assert!(should_spawn_screaming_goat(0.0199));
+        assert!(!should_spawn_screaming_goat(0.02));
+        assert!(!should_spawn_screaming_goat(0.5));
+
+        // 4. Screaming goat breeding inheritance (Goat.java:156-158)
+        // Parent A screaming, selected -> true
+        assert!(should_spawn_screaming_goat_from_parents(true, false, true, 0.5));
+        // Parent B screaming, selected -> true
+        assert!(should_spawn_screaming_goat_from_parents(false, true, false, 0.5));
+        // Neither parent screaming, but random < 0.02 -> true
+        assert!(should_spawn_screaming_goat_from_parents(false, false, true, 0.01));
+        // Neither parent screaming and random >= 0.02 -> false
+        assert!(!should_spawn_screaming_goat_from_parents(false, false, true, 0.05));
+
+        // 5. Unihorn goat spawn chance (Goat.java:81, 243: 10% chance for adult)
+        assert!(should_goat_spawn_unihorn(false, 0.05));
+        assert!(!should_goat_spawn_unihorn(false, 0.1));
+        assert!(!should_goat_spawn_unihorn(true, 0.01)); // baby never spawns unihorn
+
+        // 6. Goat horn drop on collision (Goat.java:312-332)
+        // No horns remaining: returns None
+        assert_eq!(select_goat_horn_to_drop(false, false, true), None);
+        // Only right horn remaining: drops right (false)
+        assert_eq!(select_goat_horn_to_drop(false, true, true), Some(false));
+        // Only left horn remaining: drops left (true)
+        assert_eq!(select_goat_horn_to_drop(true, false, false), Some(true));
+        // Both horns remaining: randomly selects left or right
+        assert_eq!(select_goat_horn_to_drop(true, true, true), Some(true));
+        assert_eq!(select_goat_horn_to_drop(true, true, false), Some(false));
     }
 }
 

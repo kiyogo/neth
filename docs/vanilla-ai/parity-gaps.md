@@ -3483,6 +3483,49 @@
     - Updated `calculate_fall_damage` using `combat::calculate_frog_fall_damage_points`.
   - Added unit test `test_frog_tongue_eat_and_froglight_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 65/65 tests passing in `entity::combat::tests`.
 
+## Gap 180: Tadpole Maturation, Biome-Specific Frog Variant, Zero XP Drop, and Goat Horn Drop & Fall Damage Parity
+- **Vanilla Reference**:
+  - `Tadpole.java:49, 104-106, 213-247, 254-256`, `FrogVariants.java:26-29`:
+    - **Tadpole Maturation (`growUp`)**:
+      - Khi `age >= 0` (hoặc đạt đủ 24000 ticks lớn), nòng nọc trưởng thành và chuyển hóa thành Ếch (`FrogEntity`).
+      - Biến thể của Ếch phụ thuộc vào Biome mà nòng nọc đang sinh sống:
+        - Biome có tag `#minecraft:spawns_warm_variant_frogs`: biến thành Warm variant (`FrogVariant::Warm`).
+        - Biome có tag `#minecraft:spawns_cold_variant_frogs`: biến thành Cold variant (`FrogVariant::Cold`).
+        - Mặc định: biến thành Temperate variant (`FrogVariant::Temperate`).
+      - Khi lớn lên, phát âm thanh `SoundEvents.TADPOLE_GROW_UP` (volume 0.15, pitch 1.0) và loại bỏ thực thể nòng nọc cũ khỏi thế giới.
+    - **Zero XP Drop (`shouldDropExperience`)**:
+      - `Tadpole.shouldDropExperience() -> false`: Nòng nọc không rơi bất kỳ hạt kinh nghiệm nào khi bị tiêu diệt (`get_base_experience_reward = 0`).
+  - `Goat.java:79-84, 124-126, 243-246, 312-341`, `RamTarget.java:96-121`:
+    - **Goat Fall Damage Reduction**:
+      - `Goat.calculateFallDamage - 10`: Dê được giảm 10 điểm sát thương rơi tự do (tương đương rơi thêm 10 blocks mà không mất máu).
+    - **Screaming Goat & Unihorn Spawning Chance**:
+      - `GOAT_SCREAMING_CHANCE = 0.02`: 2% xác suất sinh ra dê la hét (Screaming Goat) khi sinh tự nhiên hoặc nhân giống.
+      - `UNIHORN_CHANCE = 0.1`: 10% xác suất dê trưởng thành sinh ra chỉ có 1 sừng (`DATA_HAS_LEFT_HORN` hoặc `DATA_HAS_RIGHT_HORN` bị gỡ bỏ).
+    - **Goat Horn Drop on Collision (`dropHorn`)**:
+      - Khi dê trưởng thành (`!isBaby()`) va chạm với khối thuộc tag `#minecraft:snaps_goat_horn` (ví dụ đá, quặng, log...):
+        - Nếu dê còn sừng, rơi ra 1 `minecraft:goat_horn` văng ra với vận tốc ngẫu nhiên (`deltaX = -0.2..0.2`, `deltaY = 0.3..0.7`, `deltaZ = -0.2..0.2`).
+        - Cập nhật tracked data của sừng bị rụng thành `false`.
+        - Phát âm thanh `SoundEvents.GOAT_HORN_BREAK` tại vị trí của dê.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `determine_frog_variant_from_biome_tags`: determines frog variant from `is_warm` and `is_cold` biome flags.
+    - `calculate_goat_fall_damage_points`: computes goat fall damage with 10-point reduction: `((fall_distance * modifier).ceil() - 10).max(0)`.
+    - `should_spawn_screaming_goat`: checks 2% chance for screaming goat.
+    - `should_spawn_screaming_goat_from_parents`: determines offspring screaming state with parent inheritance or 2% mutation.
+    - `should_goat_spawn_unihorn`: checks 10% chance for unihorn on adult goats.
+    - `select_goat_horn_to_drop`: chooses left/right horn to drop based on current horn status and random choice.
+  - Updated `TadpoleEntity` in `crates/pumpkin-core/src/entity/passive/tadpole.rs`:
+    - Implemented `grow_up` converting Tadpole to Frog with biome-specific variant and `EntityTadpoleGrowUp` sound.
+    - Overrode `get_base_experience_reward` returning 0.
+    - Updated `mob_tick` and `mob_interact` to trigger `grow_up` when `age >= 0`.
+  - Updated `GoatEntity` in `crates/pumpkin-core/src/entity/passive/goat.rs`:
+    - Initialized screaming goat (2%) and unihorn (10%) upon creation.
+    - Implemented `drop_horn` dropping `GOAT_HORN`, updating left/right tracked data, and playing `EntityGoatHornBreak`.
+    - Added collision detection in `mob_tick` against `#minecraft:snaps_goat_horn` blocks.
+    - Updated `calculate_fall_damage` using `combat::calculate_goat_fall_damage_points`.
+  - Added unit test `test_tadpole_and_goat_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 66/66 tests passing in `entity::combat::tests`.
+
+
 
 
 

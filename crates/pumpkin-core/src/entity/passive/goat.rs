@@ -3,6 +3,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
+use pumpkin_data::Block;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
@@ -11,6 +12,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::{position::BlockPos, vector3::Vector3};
 
 use crate::entity::{
     Entity, EntityBase,
@@ -20,7 +22,9 @@ use crate::entity::{
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
         tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
+    combat,
     custom_sound::CustomSound,
+    item::ItemEntity,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
     player::Player,
@@ -39,13 +43,25 @@ pub struct GoatEntity {
 
 impl GoatEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
+        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+        let is_screaming = combat::should_spawn_screaming_goat(rand::random_range(0.0..1.0));
+        let mut has_left = true;
+        let mut has_right = true;
+        if combat::should_goat_spawn_unihorn(is_baby, rand::random_range(0.0..1.0)) {
+            if rand::random() {
+                has_left = false;
+            } else {
+                has_right = false;
+            }
+        }
+
         let mob_entity = MobEntity::new(entity);
         let goat = Self {
             mob_entity,
             ageable_data: AgeableData::default(),
-            is_screaming: AtomicBool::new(false),
-            has_left_horn: AtomicBool::new(true),
-            has_right_horn: AtomicBool::new(true),
+            is_screaming: AtomicBool::new(is_screaming),
+            has_left_horn: AtomicBool::new(has_left),
+            has_right_horn: AtomicBool::new(has_right),
         };
         let mob_arc = Arc::new(goat);
         let mob_weak: Weak<dyn Mob> = {
@@ -142,6 +158,43 @@ impl GoatEntity {
             has_horn,
         );
     }
+
+    pub fn drop_horn(&self) -> bool {
+        if self.is_baby() {
+            return false;
+        }
+
+        let has_left = self.has_left_horn();
+        let has_right = self.has_right_horn();
+        let horn_to_drop = combat::select_goat_horn_to_drop(has_left, has_right, rand::random());
+        match horn_to_drop {
+            Some(true) => self.set_has_left_horn(false),
+            Some(false) => self.set_has_right_horn(false),
+            None => return false,
+        }
+
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        world.play_sound(
+            Sound::EntityGoatHornBreak,
+            SoundCategory::Neutral,
+            &pos,
+        );
+
+        let delta_x = rand::random_range(-0.2..0.2);
+        let delta_y = rand::random_range(0.3..0.7);
+        let delta_z = rand::random_range(-0.2..0.2);
+        let drop_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
+        drop_entity
+            .velocity
+            .store(Vector3::new(delta_x, delta_y, delta_z));
+        world.spawn_entity(Arc::new(ItemEntity::new(
+            drop_entity,
+            ItemStack::new(1, &Item::GOAT_HORN),
+        )));
+        true
+    }
 }
 
 impl AgeableMob for GoatEntity {
@@ -176,7 +229,7 @@ impl Mob for GoatEntity {
 
     /// Vanilla `Goat.calculateFallDamage`: fall damage is reduced by 10.
     fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
-        (self.mob_entity.living_entity.calculate_fall_damage(fall_distance, damage_modifier) - 10).max(0)
+        combat::calculate_goat_fall_damage_points(fall_distance, damage_modifier)
     }
 
     /// Vanilla `Goat.calculateFallDamage`: fall damage is reduced by 10.
@@ -216,6 +269,33 @@ impl Mob for GoatEntity {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
+        }
+
+        if !self.is_baby()
+            && (self.has_left_horn() || self.has_right_horn())
+            && entity.horizontal_collision.load(Ordering::Relaxed)
+        {
+            let world = entity.world.load();
+            let yaw_rad = entity.yaw.load().to_radians();
+            let look_dir_x = -yaw_rad.sin();
+            let look_dir_z = yaw_rad.cos();
+            let facing_pos = BlockPos::floored(
+                entity.pos.load().x + look_dir_x as f64,
+                f64::from(entity.block_pos.load().0.y),
+                entity.pos.load().z + look_dir_z as f64,
+            );
+            let facing_above = facing_pos.up();
+            let state_facing = world.get_block_state(&facing_pos);
+            let state_above = world.get_block_state(&facing_above);
+            let block_facing = Block::from_state_id(state_facing.id);
+            let block_above = Block::from_state_id(state_above.id);
+
+            let snaps_horn = block_facing.has_tag(&tag::Block::MINECRAFT_SNAPS_GOAT_HORN)
+                || block_above.has_tag(&tag::Block::MINECRAFT_SNAPS_GOAT_HORN);
+
+            if snaps_horn {
+                self.drop_horn();
+            }
         }
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {

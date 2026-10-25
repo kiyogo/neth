@@ -22,6 +22,7 @@ use crate::entity::{
         look_at_entity::LookAtEntityGoal, random_swimming::RandomSwimmingGoal, tempt::TemptGoal,
         try_find_water::TryFindWaterGoal,
     },
+    combat,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
     player::Player,
@@ -116,6 +117,40 @@ impl TadpoleEntity {
     pub const fn can_breathe_under_water(&self) -> bool {
         true
     }
+
+    /// Converts this Tadpole into a mature Frog with the biome-specific variant.
+    ///
+    /// Mirrors vanilla `Tadpole.java:238-247`:
+    /// `this.convertTo(EntityTypes.FROG, ...)`
+    pub fn grow_up(&self) {
+        let entity = self.get_entity();
+        if !entity.is_alive() {
+            return;
+        }
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        let block_pos = entity.block_pos.load();
+        let biome = world.get_biome(&block_pos);
+        let is_warm = biome.has_tag(&pumpkin_data::tag::WorldgenBiome::MINECRAFT_SPAWNS_WARM_VARIANT_FROGS);
+        let is_cold = biome.has_tag(&pumpkin_data::tag::WorldgenBiome::MINECRAFT_SPAWNS_COLD_VARIANT_FROGS);
+        let variant = combat::determine_frog_variant_from_biome_tags(is_warm, is_cold);
+
+        let frog = crate::entity::passive::frog::FrogEntity::new(Entity::new(
+            world.clone(),
+            pos,
+            &EntityType::FROG,
+        ));
+        frog.set_variant(variant);
+        world.play_sound_fine(
+            Sound::EntityTadpoleGrowUp,
+            SoundCategory::Neutral,
+            &pos,
+            0.15,
+            1.0,
+        );
+        world.spawn_entity(frog);
+        entity.remove();
+    }
 }
 
 impl AgeableMob for TadpoleEntity {
@@ -171,6 +206,11 @@ impl Mob for TadpoleEntity {
         false
     }
 
+    /// Vanilla `Tadpole.java:254-256`: `shouldDropExperience() -> false`.
+    fn get_base_experience_reward(&self) -> u32 {
+        0
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         self.ageable_ai_step();
 
@@ -179,23 +219,27 @@ impl Mob for TadpoleEntity {
             return;
         }
 
-        let in_water = entity.touching_water.load(std::sync::atomic::Ordering::Relaxed);
+        // Vanilla `Tadpole.java:233-235`: when age reaches adult threshold, mature into Frog
+        if entity.age.load(Ordering::Relaxed) >= 0 {
+            self.grow_up();
+            return;
+        }
 
-
+        let in_water = entity.touching_water.load(Ordering::Relaxed);
 
         // Flop on land (matching vanilla AbstractFish.aiStep)
         if !in_water {
             self.mob_entity.living_entity.movement_input.store(Vector3::new(0.0, 0.0, 0.0));
         }
 
-        if !in_water && entity.on_ground.load(std::sync::atomic::Ordering::Relaxed) {
+        if !in_water && entity.on_ground.load(Ordering::Relaxed) {
             let mut rng = rand::rng();
             let dx = (rng.random::<f32>() * 2.0 - 1.0) * 0.05;
             let dz = (rng.random::<f32>() * 2.0 - 1.0) * 0.05;
             let velo = entity.velocity.load();
             entity.set_velocity(Vector3::new(velo.x + dx as f64, 0.4, velo.z + dz as f64));
-            entity.on_ground.store(false, std::sync::atomic::Ordering::Relaxed);
-            if !entity.silent.load(std::sync::atomic::Ordering::Relaxed) {
+            entity.on_ground.store(false, Ordering::Relaxed);
+            if !entity.silent.load(Ordering::Relaxed) {
                 entity.world.load().play_sound_fine(
                     Sound::EntityTadpoleFlop,
                     SoundCategory::Neutral,
@@ -215,13 +259,15 @@ impl Mob for TadpoleEntity {
                 .living_entity
                 .entity
                 .age
-                .load(std::sync::atomic::Ordering::Relaxed);
+                .load(Ordering::Relaxed);
             let speedup = (-age / 10).max(1);
-            self.get_mob_entity()
+            let new_age = self
+                .get_mob_entity()
                 .living_entity
                 .entity
                 .age
-                .fetch_add(speedup, std::sync::atomic::Ordering::Relaxed);
+                .fetch_add(speedup, Ordering::Relaxed)
+                + speedup;
 
             let entity = self.get_entity();
             let world = entity.world.load();
@@ -233,7 +279,9 @@ impl Mob for TadpoleEntity {
                 7,
                 Particle::HappyVillager,
             );
-            world.play_sound(Sound::EntityTadpoleGrowUp, SoundCategory::Neutral, &pos);
+            if new_age >= 0 {
+                self.grow_up();
+            }
             return true;
         }
 
