@@ -6,7 +6,7 @@ use pumpkin_data::entity::EntityStatus;
 use rand::RngExt;
 
 use crate::entity::experience_orb::ExperienceOrbEntity;
-use crate::entity::{EntityBase, ai::pathfinder::NavigatorGoal, mob::Mob, r#type::from_type};
+use crate::entity::{EntityBase, ai::pathfinder::NavigatorGoal, combat, mob::Mob, r#type::from_type};
 
 use super::{Controls, Goal};
 
@@ -102,6 +102,37 @@ impl BreedGoal {
         let parent_pos = entity.pos.load();
         let baby = from_type(entity.entity_type, parent_pos, &world, Uuid::new_v4());
         baby.get_entity().set_age(-24000);
+
+        // Vanilla Axolotl.java:346-361: inherit variant from parents or 1/1200 rare blue mutation
+        if let Some(axolotl_a) = mob.as_axolotl()
+            && let Some(axolotl_b) = mate.cast_any().downcast_ref::<crate::entity::passive::axolotl::AxolotlEntity>()
+            && let Some(baby_axolotl) = baby.cast_any().downcast_ref::<crate::entity::passive::axolotl::AxolotlEntity>()
+        {
+            let rand_1200 = rand::random_range(0..1200);
+            let rand_bool = rand::random();
+            let variant = combat::select_axolotl_baby_variant(
+                axolotl_a.get_variant(),
+                axolotl_b.get_variant(),
+                rand_1200,
+                rand_bool,
+            );
+            baby_axolotl.set_variant(variant);
+        }
+
+        // Vanilla Goat.java:156-158: 2% screaming goat chance or inherited from parent
+        if let Some(goat_a) = mob.as_goat()
+            && let Some(goat_b) = mate.cast_any().downcast_ref::<crate::entity::passive::goat::GoatEntity>()
+            && let Some(baby_goat) = baby.cast_any().downcast_ref::<crate::entity::passive::goat::GoatEntity>()
+        {
+            let is_screaming = combat::should_spawn_screaming_goat_from_parents(
+                goat_a.is_screaming(),
+                goat_b.is_screaming(),
+                rand::random(),
+                rand::random_range(0.0..1.0),
+            );
+            baby_goat.set_screaming(is_screaming);
+        }
+
         let world_full = entity.world.load_full();
         world_full.spawn_entity(baby);
 

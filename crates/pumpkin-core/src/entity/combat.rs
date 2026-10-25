@@ -4514,6 +4514,67 @@ pub fn select_goat_horn_to_drop(
     }
 }
 
+/// Calculates fall damage points for an Allay.
+///
+/// Mirrors vanilla `Allay.java:179-180`: Allays are flying mobs that are completely
+/// immune to fall damage.
+#[must_use]
+pub const fn calculate_allay_fall_damage_points() -> i32 {
+    0
+}
+
+/// Checks whether an item can be used to duplicate an Allay.
+///
+/// Mirrors vanilla `Allay.java:285`:
+/// `interactionItem.is(ItemTags.DUPLICATES_ALLAYS)`
+#[must_use]
+pub fn is_allay_duplication_item(item: &pumpkin_data::item::Item) -> bool {
+    use pumpkin_data::tag::Taggable;
+    item.has_tag(&pumpkin_data::tag::Item::MINECRAFT_DUPLICATES_ALLAYS)
+        || item == &pumpkin_data::item::Item::AMETHYST_SHARD
+}
+
+/// Selects the baby Axolotl variant when breeding two parents.
+///
+/// Mirrors vanilla `Axolotl.java:313-315, 346-361`:
+/// - 1/1200 chance of rare Blue variant (`AxolotlVariant::Blue`).
+/// - Otherwise, 50% chance of inheriting variant from parent A, 50% from parent B.
+#[must_use]
+pub fn select_axolotl_baby_variant(
+    parent_a: crate::entity::passive::axolotl::AxolotlVariant,
+    parent_b: crate::entity::passive::axolotl::AxolotlVariant,
+    rand_1200: i32,
+    rand_parent_bool: bool,
+) -> crate::entity::passive::axolotl::AxolotlVariant {
+    use crate::entity::passive::axolotl::AxolotlVariant;
+    if rand_1200 == 0 {
+        AxolotlVariant::Blue
+    } else if rand_parent_bool {
+        parent_a
+    } else {
+        parent_b
+    }
+}
+
+/// Calculates the updated duration of the Regeneration buff granted to a player by an Axolotl.
+///
+/// Mirrors vanilla `Axolotl.java:490-499`:
+/// Adds 100 ticks (5s) to previous duration, capped at 2400 ticks (2 minutes).
+#[must_use]
+pub fn calculate_axolotl_player_regen_duration(current_duration_ticks: Option<i32>) -> i32 {
+    let previous = current_duration_ticks.unwrap_or(0);
+    (100 + previous).min(2400)
+}
+
+/// Determines whether an Axolotl can be seen or targeted as an enemy by hostile mobs.
+///
+/// Mirrors vanilla `Axolotl.java:474-476`:
+/// `return !this.isPlayingDead() && super.canBeSeenAsEnemy();`
+#[must_use]
+pub const fn can_axolotl_be_targeted(is_playing_dead: bool) -> bool {
+    !is_playing_dead
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7066,6 +7127,49 @@ mod tests {
         // Both horns remaining: randomly selects left or right
         assert_eq!(select_goat_horn_to_drop(true, true, true), Some(true));
         assert_eq!(select_goat_horn_to_drop(true, true, false), Some(false));
+    }
+
+    #[test]
+    fn test_allay_and_axolotl_parity() {
+        use crate::entity::passive::axolotl::AxolotlVariant;
+        use pumpkin_data::item::Item;
+
+        // 1. Allay fall damage immunity (Allay.java:179-180)
+        assert_eq!(calculate_allay_fall_damage_points(), 0);
+
+        // 2. Allay duplication item check (Allay.java:285)
+        assert!(is_allay_duplication_item(&Item::AMETHYST_SHARD));
+        assert!(!is_allay_duplication_item(&Item::DIAMOND));
+
+        // 3. Axolotl breeding variant inheritance (Axolotl.java:313-315, 346-361)
+        // 1/1200 chance of rare Blue variant
+        assert_eq!(
+            select_axolotl_baby_variant(AxolotlVariant::Lucy, AxolotlVariant::Wild, 0, true),
+            AxolotlVariant::Blue
+        );
+        // Inherit from parent A when rand_bool is true
+        assert_eq!(
+            select_axolotl_baby_variant(AxolotlVariant::Lucy, AxolotlVariant::Wild, 1, true),
+            AxolotlVariant::Lucy
+        );
+        // Inherit from parent B when rand_bool is false
+        assert_eq!(
+            select_axolotl_baby_variant(AxolotlVariant::Lucy, AxolotlVariant::Wild, 1, false),
+            AxolotlVariant::Wild
+        );
+
+        // 4. Axolotl regeneration buff duration calculation (Axolotl.java:490-499)
+        // Initial application (no previous effect): 100 ticks
+        assert_eq!(calculate_axolotl_player_regen_duration(None), 100);
+        // Stacking with existing 200 ticks: 300 ticks
+        assert_eq!(calculate_axolotl_player_regen_duration(Some(200)), 300);
+        // Stacking capped at 2400 ticks (2 minutes)
+        assert_eq!(calculate_axolotl_player_regen_duration(Some(2350)), 2400);
+        assert_eq!(calculate_axolotl_player_regen_duration(Some(2500)), 2400);
+
+        // 5. Axolotl play-dead enemy invisibility (Axolotl.java:474-476)
+        assert!(!can_axolotl_be_targeted(true));
+        assert!(can_axolotl_be_targeted(false));
     }
 }
 

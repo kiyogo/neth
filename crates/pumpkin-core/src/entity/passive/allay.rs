@@ -26,6 +26,7 @@ use crate::entity::{
         water_avoiding_random_flying::WaterAvoidingRandomFlyingGoal,
     },
     custom_sound::CustomSound,
+    combat,
     mob::{Mob, MobEntity},
     player::Player,
 };
@@ -250,6 +251,19 @@ impl Mob for AllayEntity {
         true
     }
 
+    /// Vanilla `Allay.java:179-180`: Allays are flying mobs that are completely immune to fall damage.
+    fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
+        combat::calculate_allay_fall_damage_points()
+    }
+
+    fn adjust_damage_amount(&self, amount: f32, damage_type: &DamageType) -> f32 {
+        if *damage_type == DamageType::FALL {
+            0.0
+        } else {
+            amount
+        }
+    }
+
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
         entity.set_synced_data(
@@ -265,7 +279,7 @@ impl Mob for AllayEntity {
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
         let item = item_stack.get_item();
 
-        if self.is_dancing() && self.can_duplicate() && item == &Item::AMETHYST_SHARD {
+        if self.is_dancing() && self.can_duplicate() && combat::is_allay_duplication_item(item) {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             self.set_can_duplicate(false);
             self.duplication_cooldown.store(6000, Ordering::Relaxed);
@@ -277,13 +291,15 @@ impl Mob for AllayEntity {
                 pos + Vector3::new(0.0, f64::from(entity.height()), 0.0),
                 Vector3::new(0.5, 0.5, 0.5),
                 1.0,
-                7,
+                3, // Vanilla Allay.java:79: NUM_OF_DUPLICATION_HEARTS = 3
                 Particle::Heart,
             );
-            world.play_sound(
-                Sound::EntityAllayAmbientWithoutItem,
+            world.play_sound_fine(
+                Sound::BlockAmethystBlockChime,
                 SoundCategory::Neutral,
                 &pos,
+                2.0,
+                1.0,
             );
 
             let new_allay = Self::new(Entity::new(world.clone(), pos, &EntityType::ALLAY));
@@ -331,7 +347,7 @@ impl Mob for AllayEntity {
             )]);
 
             self.owner.store(Some(player.gameprofile.id));
-            world.play_sound(Sound::EntityAllayItemGiven, SoundCategory::Neutral, &pos);
+            world.play_sound_fine(Sound::EntityAllayItemGiven, SoundCategory::Neutral, &pos, 2.0, 1.0);
 
             if item_to_give.item.id == Item::CAKE.id {
                 let block_pos = pos.to_block_pos();
@@ -386,7 +402,7 @@ impl Mob for AllayEntity {
                 ItemStack::EMPTY.clone(),
             )]);
 
-            world.play_sound(Sound::EntityAllayItemTaken, SoundCategory::Neutral, &pos);
+            world.play_sound_fine(Sound::EntityAllayItemTaken, SoundCategory::Neutral, &pos, 2.0, 1.0);
 
             let mut to_give = current_item.clone();
             let was_added = player.inventory().insert_stack_anywhere(&mut to_give);

@@ -25,6 +25,7 @@ use crate::entity::{
         wander_around::WanderAroundGoal,
     },
     custom_sound::CustomSound,
+    combat,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
     player::Player,
@@ -274,9 +275,16 @@ impl AxolotlEntity {
         use pumpkin_data::effect::StatusEffect;
         use pumpkin_data::potion::Effect;
 
+        // Vanilla Axolotl.java:490-499:
+        // Stacks 100 ticks (5s) with existing Regen duration, capped at 2400 ticks (2 min).
+        let current_duration = player
+            .get_effect(&StatusEffect::REGENERATION)
+            .map(|eff| eff.duration);
+        let new_duration = combat::calculate_axolotl_player_regen_duration(current_duration);
+
         player.add_effect(Effect {
             effect_type: &StatusEffect::REGENERATION,
-            duration: 100,
+            duration: new_duration,
             amplifier: 0,
             ambient: false,
             show_particles: true,
@@ -297,6 +305,12 @@ impl AxolotlEntity {
     #[must_use]
     pub const fn can_breathe_under_water(&self) -> bool {
         true
+    }
+
+    /// Vanilla `Axolotl.java:474-476`: While playing dead, axolotls cannot be targeted by hostile mobs.
+    #[must_use]
+    pub fn can_be_seen_as_enemy(&self) -> bool {
+        combat::can_axolotl_be_targeted(self.is_playing_dead())
     }
 }
 
@@ -375,6 +389,11 @@ impl Mob for AxolotlEntity {
 
     fn is_pushed_by_fluids(&self) -> bool {
         false
+    }
+
+    /// Vanilla `Axolotl.java:369-371`: Axolotls can be leashed.
+    fn can_be_leashed(&self) -> bool {
+        true
     }
 
     fn get_mob_entity(&self) -> &MobEntity {

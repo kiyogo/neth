@@ -3525,6 +3525,52 @@
     - Updated `calculate_fall_damage` using `combat::calculate_goat_fall_damage_points`.
   - Added unit test `test_tadpole_and_goat_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 66/66 tests passing in `entity::combat::tests`.
 
+## Gap 181: Allay Fall Damage Immunity & Duplication Parity, Axolotl Breeding Variant Inheritance, Play-Dead Enemy Invisibility & Player Regeneration Stacking Parity
+- **Vanilla Reference**:
+  - `Allay.java:79, 179-180, 285-290, 297, 305`:
+    - **Allay Fall Damage Immunity**:
+      - `Allay.checkFallDamage`: Allay là thực thể bay lượn, hoàn toàn miễn nhiễm với sát thương rơi tự do (`calculate_fall_damage = 0`, `adjust_damage_amount = 0.0` khi nhận `DamageType::FALL`).
+    - **Allay Duplication Audio, Particles & Tag**:
+      - Khi Allay đang nhảy múa (`isDancing()`) và người chơi dùng vật phẩm nhân bản (thuộc tag `#minecraft:duplicates_allays` hoặc Amethyst Shard):
+        - Phát âm thanh chuông thạch anh `SoundEvents.AMETHYST_BLOCK_CHIME` (volume 2.0, pitch 1.0) thay vì âm thanh ambient sai lệch.
+        - Phát 3 hạt tim (`Particle::Heart`, count = 3: `NUM_OF_DUPLICATION_HEARTS = 3`).
+        - Đặt thời gian hồi nhân bản 6000 ticks (5 phút).
+      - Âm thanh đưa/nhận vật phẩm `ALLAY_ITEM_GIVEN` và `ALLAY_ITEM_TAKEN`: phát với volume 2.0F.
+  - `Axolotl.java:313-315, 346-361, 369-371, 474-476, 490-499`:
+    - **Axolotl Breeding Variant Inheritance & Blue Mutation**:
+      - Khi ghép đôi 2 con Axolotl:
+        - Có 1/1200 xác suất (0.083%) đột biến sinh ra Axolotl biến thể Xanh Dương hiếm (`AxolotlVariant::Blue`).
+        - Nếu không đột biến, con nhận 50% biến thể từ cha hoặc 50% biến thể từ mẹ (`rand.nextBoolean() ? parent_a : parent_b`).
+    - **Axolotl Play-Dead Enemy Invisibility**:
+      - Khi Axolotl đang giả chết (`isPlayingDead()`):
+        - Các mob thù địch không thể nhắm mục tiêu hoặc tấn công Axolotl (`can_be_seen_as_enemy() -> false`).
+    - **Player Regeneration Stacking & Mining Fatigue Removal**:
+      - Khi Axolotl cùng người chơi tiêu diệt mục tiêu:
+        - Xóa bỏ hoàn toàn hiệu ứng `StatusEffect::MINING_FATIGUE` khỏi người chơi.
+        - Tặng thêm 100 ticks (5 giây) hiệu ứng `REGENERATION I`, cộng dồn trực tiếp vào thời gian Regen hiện tại của người chơi, tối đa 2400 ticks (2 phút).
+    - **Leashable**:
+      - `Axolotl.canBeLeashed() -> true`: Axolotl có thể được dắt bằng dây buộc (Lead).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_allay_fall_damage_points`: returns 0 for fall damage immunity.
+    - `is_allay_duplication_item`: verifies item against `#minecraft:duplicates_allays` or `Item::AMETHYST_SHARD`.
+    - `select_axolotl_baby_variant`: handles 1/1200 blue variant mutation and 50/50 parental inheritance.
+    - `calculate_axolotl_player_regen_duration`: stacks 100 ticks up to max 2400 ticks (2 minutes).
+    - `can_axolotl_be_targeted`: returns false when playing dead.
+  - Updated `AllayEntity` in `crates/pumpkin-core/src/entity/passive/allay.rs`:
+    - Overrode `calculate_fall_damage` (returning 0) and `adjust_damage_amount` (returning 0.0 on `DamageType::FALL`).
+    - Updated duplication logic: checks `combat::is_allay_duplication_item`, spawns 3 heart particles, and plays `Sound::BlockAmethystBlockChime` at volume 2.0.
+    - Updated `ItemGiven` and `ItemTaken` sound volumes to 2.0.
+  - Updated `AxolotlEntity` in `crates/pumpkin-core/src/entity/passive/axolotl.rs`:
+    - Added `can_be_seen_as_enemy` checking `combat::can_axolotl_be_targeted`.
+    - Overrode `can_be_leashed` returning `true`.
+    - Updated `apply_supporting_effects` to query player's active Regen duration and stack it up to 2400 ticks via `combat::calculate_axolotl_player_regen_duration`.
+  - Updated `BreedGoal::breed` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Integrated `combat::select_axolotl_baby_variant` for Axolotl breeding.
+    - Integrated `combat::should_spawn_screaming_goat_from_parents` for Goat breeding.
+  - Added unit test `test_allay_and_axolotl_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 67/67 tests passing in `entity::combat::tests`.
+
+
 
 
 
