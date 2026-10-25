@@ -257,6 +257,55 @@ impl BreedGoal {
             baby_llama.set_strength(strength);
         }
 
+        // Vanilla MushroomCow.java: getBreedOffspring - inherit variant and 1/1024 rare mutation
+        if let Some(mooshroom_a) = mob.as_mooshroom()
+            && let Some(mooshroom_b) = mate.cast_any().downcast_ref::<crate::entity::passive::mooshroom::MooshroomEntity>()
+            && let Some(baby_mooshroom) = baby.cast_any().downcast_ref::<crate::entity::passive::mooshroom::MooshroomEntity>()
+        {
+            let rand_1024 = rand::random_range(0..1024);
+            let rand_bool = rand::random();
+            let variant_id = combat::select_mooshroom_baby_variant(
+                mooshroom_a.get_variant().id(),
+                mooshroom_b.get_variant().id(),
+                rand_1024,
+                rand_bool,
+            );
+            baby_mooshroom.set_variant(crate::entity::passive::mooshroom::MooshroomVariant::from_id(variant_id));
+        }
+
+        // Vanilla Pig.java: getBreedOffspring - inherit variant and sound variant
+        if let Some(pig_a) = mob.as_pig()
+            && let Some(pig_b) = mate.cast_any().downcast_ref::<crate::entity::passive::pig::PigEntity>()
+            && let Some(baby_pig) = baby.cast_any().downcast_ref::<crate::entity::passive::pig::PigEntity>()
+        {
+            let rand_var = rand::random();
+            let rand_sound = rand::random();
+            let (var, sound) = combat::select_pig_baby_variant_and_sound(
+                pig_a.get_variant().id(),
+                pig_b.get_variant().id(),
+                pig_a.get_sound_variant() as u8,
+                pig_b.get_sound_variant() as u8,
+                rand_var,
+                rand_sound,
+            );
+            if let Some(pv) = pumpkin_data::pig_variant::PigVariant::from_id(var) {
+                baby_pig.set_variant(pv);
+            }
+            if let Some(psv) = pumpkin_data::pig_sound_variant::PigSoundVariant::from_id(sound) {
+                baby_pig.set_sound_variant(psv);
+            }
+        }
+
+        // Vanilla Sheep.java: getBreedOffspring & DyeColor.java: getMixedColor - inherit dye color
+        if let Some(sheep_a) = mob.as_sheep()
+            && let Some(sheep_b) = mate.cast_any().downcast_ref::<crate::entity::passive::sheep::SheepEntity>()
+            && let Some(baby_sheep) = baby.cast_any().downcast_ref::<crate::entity::passive::sheep::SheepEntity>()
+        {
+            let rand_bool = rand::random();
+            let baby_color = combat::get_mixed_sheep_color(sheep_a.get_color(), sheep_b.get_color(), rand_bool);
+            baby_sheep.set_color(baby_color);
+        }
+
         // Vanilla AbstractHorse.java: setOffspringAttributes - inherit health, jump, speed
         if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
             let parent_a_living = &mob.get_mob_entity().living_entity;

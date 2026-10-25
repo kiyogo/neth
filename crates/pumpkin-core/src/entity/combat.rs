@@ -5151,6 +5151,89 @@ pub fn should_skeleton_trap_despawn(is_trap: bool, trap_time: i32) -> bool {
     is_trap && trap_time >= 18000
 }
 
+/// Selects a baby mooshroom's variant based on parental variants and the 1/1024 mutation roll.
+///
+/// Mirrors vanilla `MushroomCow.java:getBreedOffspring`:
+/// - If parent variants are identical and `rand_1024 == 0`, mutates to the opposite variant
+///   (Red -> Brown, Brown -> Red).
+/// - Otherwise, 50% chance to inherit parent A's variant, 50% to inherit parent B's variant.
+#[must_use]
+pub const fn select_mooshroom_baby_variant(
+    parent_a_variant: i32,
+    parent_b_variant: i32,
+    rand_1024: i32,
+    rand_bool: bool,
+) -> i32 {
+    if parent_a_variant == parent_b_variant && rand_1024 == 0 {
+        if parent_a_variant == 1 { 0 } else { 1 }
+    } else if rand_bool {
+        parent_a_variant
+    } else {
+        parent_b_variant
+    }
+}
+
+/// Selects a baby pig's variant and sound variant based on parental inheritance.
+///
+/// Mirrors vanilla `Pig.java:getBreedOffspring`:
+/// - 50% chance to inherit variant from parent A, 50% from parent B.
+/// - 50% chance to inherit sound variant from parent A, 50% from parent B.
+#[must_use]
+pub const fn select_pig_baby_variant_and_sound(
+    parent_a_var: u8,
+    parent_b_var: u8,
+    parent_a_sound: u8,
+    parent_b_sound: u8,
+    rand_var: bool,
+    rand_sound: bool,
+) -> (u8, u8) {
+    let variant = if rand_var { parent_a_var } else { parent_b_var };
+    let sound = if rand_sound { parent_a_sound } else { parent_b_sound };
+    (variant, sound)
+}
+
+/// Computes the sheep offspring wool color based on vanilla dye mixing recipes or parental inheritance.
+///
+/// Mirrors vanilla `Sheep.java:getBreedOffspring` and `DyeColor.java:getMixedColor`:
+/// - Checks if the two parental colors can combine into a crafted dye color.
+///   - White (0) + Black (15) => Gray (7)
+///   - White (0) + Gray (7) => Light Gray (8)
+///   - White (0) + Red (14) => Pink (6)
+///   - White (0) + Green (13) => Lime (5)
+///   - White (0) + Blue (11) => Light Blue (3)
+///   - Red (14) + Yellow (4) => Orange (1)
+///   - Red (14) + Blue (11) => Purple (10)
+///   - Green (13) + Blue (11) => Cyan (9)
+///   - Purple (10) + Pink (6) => Magenta (2)
+/// - If not mixable, 50% chance to inherit parent A's color, 50% to inherit parent B's color.
+#[must_use]
+pub const fn get_mixed_sheep_color(color_a: u8, color_b: u8, rand_bool: bool) -> u8 {
+    let (min, max) = if color_a < color_b {
+        (color_a, color_b)
+    } else {
+        (color_b, color_a)
+    };
+
+    match (min, max) {
+        (0, 15) => 7,  // White + Black => Gray
+        (0, 7) => 8,   // White + Gray => Light Gray
+        (0, 14) => 6,  // White + Red => Pink
+        (0, 13) => 5,  // White + Green => Lime
+        (0, 11) => 3,  // White + Blue => Light Blue
+        (4, 14) => 1,  // Yellow + Red => Orange
+        (11, 14) => 10, // Blue + Red => Purple
+        (11, 13) => 9,  // Blue + Green => Cyan
+        (6, 10) => 2,   // Pink + Purple => Magenta
+        _ => {
+            if rand_bool {
+                color_a
+            } else {
+                color_b
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8038,6 +8121,57 @@ mod tests {
         assert!(should_skeleton_trap_despawn(true, 20000));
         assert!(!should_skeleton_trap_despawn(true, 17999));
         assert!(!should_skeleton_trap_despawn(false, 30000));
+    }
+
+    #[test]
+    fn test_mooshroom_pig_and_sheep_parity() {
+        // 1. Mooshroom 50/50 inheritance and 1/1024 mutation (MushroomCow.java:getBreedOffspring)
+        // Red (0) and Brown (1)
+        assert_eq!(select_mooshroom_baby_variant(0, 1, 500, true), 0);
+        assert_eq!(select_mooshroom_baby_variant(0, 1, 500, false), 1);
+        // Mutation when parents are the same:
+        // Red x Red with roll == 0 -> Brown (1)
+        assert_eq!(select_mooshroom_baby_variant(0, 0, 0, true), 1);
+        // Red x Red with roll != 0 -> Red (0)
+        assert_eq!(select_mooshroom_baby_variant(0, 0, 1, true), 0);
+        // Brown x Brown with roll == 0 -> Red (0)
+        assert_eq!(select_mooshroom_baby_variant(1, 1, 0, true), 0);
+        // Brown x Brown with roll != 0 -> Brown (1)
+        assert_eq!(select_mooshroom_baby_variant(1, 1, 1, true), 1);
+
+        // 2. Pig variant & sound variant inheritance (Pig.java:getBreedOffspring: 50/50)
+        let (var1, sound1) = select_pig_baby_variant_and_sound(0, 1, 0, 1, true, true);
+        assert_eq!(var1, 0);
+        assert_eq!(sound1, 0);
+        let (var2, sound2) = select_pig_baby_variant_and_sound(0, 1, 0, 1, false, false);
+        assert_eq!(var2, 1);
+        assert_eq!(sound2, 1);
+
+        // 3. Sheep wool color mixing & genetics (Sheep.java:getBreedOffspring & DyeColor.java:getMixedColor)
+        // White (0) + Black (15) => Gray (7)
+        assert_eq!(get_mixed_sheep_color(0, 15, true), 7);
+        assert_eq!(get_mixed_sheep_color(15, 0, false), 7);
+        // White (0) + Red (14) => Pink (6)
+        assert_eq!(get_mixed_sheep_color(0, 14, false), 6);
+        // Red (14) + Yellow (4) => Orange (1)
+        assert_eq!(get_mixed_sheep_color(14, 4, true), 1);
+        // Blue (11) + Green (13) => Cyan (9)
+        assert_eq!(get_mixed_sheep_color(11, 13, false), 9);
+        // Blue (11) + Red (14) => Purple (10)
+        assert_eq!(get_mixed_sheep_color(11, 14, true), 10);
+        // Purple (10) + Pink (6) => Magenta (2)
+        assert_eq!(get_mixed_sheep_color(10, 6, false), 2);
+        // Green (13) + White (0) => Lime (5)
+        assert_eq!(get_mixed_sheep_color(13, 0, true), 5);
+        // Blue (11) + White (0) => Light Blue (3)
+        assert_eq!(get_mixed_sheep_color(11, 0, true), 3);
+        // White (0) + Gray (7) => Light Gray (8)
+        assert_eq!(get_mixed_sheep_color(0, 7, false), 8);
+
+        // Non-mixable colors fallback to 50/50 parental color
+        // Red (14) + Black (15)
+        assert_eq!(get_mixed_sheep_color(14, 15, true), 14);
+        assert_eq!(get_mixed_sheep_color(14, 15, false), 15);
     }
 }
 

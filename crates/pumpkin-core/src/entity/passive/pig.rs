@@ -111,6 +111,11 @@ impl PigEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub fn get_variant(&self) -> PigVariant {
+        PigVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default()
+    }
+
     pub fn set_variant(&self, variant: PigVariant) {
         self.variant.store(variant.id(), Ordering::Relaxed);
         let entity = self.get_entity();
@@ -118,6 +123,11 @@ impl PigEntity {
             pumpkin_data::tracked_data::pig::DATA_VARIANT_ID,
             VarInt(variant.id() as i32),
         );
+    }
+
+    #[must_use]
+    pub fn get_sound_variant(&self) -> PigSoundVariant {
+        PigSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed)).unwrap_or_default()
     }
 
     pub fn set_sound_variant(&self, sound_variant: PigSoundVariant) {

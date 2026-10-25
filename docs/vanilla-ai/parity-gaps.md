@@ -3807,7 +3807,53 @@
     - Implemented `can_breathe_under_water() -> true` and `can_drown() -> false`.
   - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
     - Added Llama and Trader Llama variant and strength genetics inheritance.
-  - Added unit test `test_llama_food_and_genetics_and_skeleton_horse_trap_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 73/73 tests passing in `entity::combat::tests`.
+## Gap 188: Mooshroom Breeding Variant & Rare Mutation, Pig Variant & Sound Variant Inheritance, and Sheep Wool Color Genetics & Dye Blending Parity
+- **Vanilla Reference**:
+  - `MushroomCow.java:getBreedOffspring, getOffspringVariant, mobInteract, addAdditionalSaveData, readAdditionalSaveData`:
+    - **Mooshroom Breeding Variant Inheritance & Rare Mutation**:
+      - `MushroomCow.getOffspringVariant`:
+        - Nếu cả cha và mẹ cùng loại biến thể (`parent_a == parent_b`) và xúc xắc `random.nextInt(1024) == 0`: con sinh ra xảy ra đột biến biến thể hiếm sang màu đối diện (Red -> Brown, hoặc Brown -> Red).
+        - Nếu không đột biến: 50% cơ hội nhận biến thể lông từ cha, 50% từ mẹ (`random.nextBoolean() ? variant : mateVariant`).
+      - Trước đây Neth sinh con Mooshroom luôn mặc định ra Red (`MooshroomVariant::Red`), hoàn toàn không kế thừa từ cha mẹ hay có tỷ lệ đột biến 1/1024.
+    - **Brown Mooshroom Flower Feeding**:
+      - `MushroomCow.mobInteract`:
+        - Khi cho Brown Mooshroom trưởng thành ăn hoa nhỏ (`MINECRAFT_SMALL_FLOWERS`), nếu con bò ĐÃ CÓ hiệu ứng canh (`stewEffects != null`), nó sẽ từ chối tiêu hao thêm hoa và chỉ phát ra hạt khói (`Particle::Smoke`).
+        - Nếu chưa có hiệu ứng canh: tiêu hao 1 hoa, gán hiệu ứng, tạo hạt phép thuật (`Particle::Effect`), phát âm thanh `Sound::EntityMooshroomEat`.
+        - Hiệu ứng canh được lưu vào NBT (`stew_effects` / `EffectId`).
+  - `Pig.java:getBreedOffspring, addAdditionalSaveData, readAdditionalSaveData`:
+    - **Pig Variant & Sound Variant Inheritance**:
+      - `Pig.getBreedOffspring`: Heo con sinh ra kế thừa 50/50 biến thể ngoại hình (`PigVariant`) và 50/50 biến thể âm thanh (`PigSoundVariant`) từ cha hoặc mẹ.
+      - Trước đây Neth không kế thừa variant hay sound variant cho heo con khi sinh sản trong `BreedGoal`.
+  - `Sheep.java:getBreedOffspring` & `DyeColor.java:getMixedColor`:
+    - **Sheep Wool Color Genetics & Dye Mixing**:
+      - `Sheep.getBreedOffspring`: Cừu con sinh ra kế thừa màu lông bằng công thức pha màu vanilla:
+        - Kiểm tra xem màu của cha và mẹ có thể kết hợp (crafting dye mixing) thành màu mới không:
+          - White (0) + Black (15) => Gray (7)
+          - White (0) + Gray (7) => Light Gray (8)
+          - White (0) + Red (14) => Pink (6)
+          - White (0) + Green (13) => Lime (5)
+          - White (0) + Blue (11) => Light Blue (3)
+          - Red (14) + Yellow (4) => Orange (1)
+          - Red (14) + Blue (11) => Purple (10)
+          - Green (13) + Blue (11) => Cyan (9)
+          - Purple (10) + Pink (6) => Magenta (2)
+        - Nếu không pha được (hoặc cùng màu): 50% cơ hội nhận màu của cha, 50% cơ hội nhận màu của mẹ.
+      - Trước đây Neth sinh cừu con luôn có màu trắng mặc định (`White`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `select_mooshroom_baby_variant(parent_a, parent_b, rand_1024, rand_bool)`: handles 50/50 variant inheritance and 1/1024 rare mutation.
+    - `select_pig_baby_variant_and_sound(parent_a_var, parent_b_var, parent_a_sound, parent_b_sound, rand_var, rand_sound)`: handles 50/50 pig variant and sound variant inheritance.
+    - `get_mixed_sheep_color(color_a, color_b, rand_bool)`: handles vanilla 9-recipe dye color blending with 50/50 fallback.
+  - Updated `PigEntity` in `crates/pumpkin-core/src/entity/passive/pig.rs`:
+    - Added `get_variant(&self) -> PigVariant` and `get_sound_variant(&self) -> PigSoundVariant`.
+  - Updated `MooshroomEntity` in `crates/pumpkin-core/src/entity/passive/mooshroom.rs`:
+    - Handled flower feeding: prevents consuming flower if stew effect is already present (spawning smoke particles instead), and saves/loads `EffectId` in NBT.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added Mooshroom variant & 1/1024 mutation inheritance.
+    - Added Pig variant & sound variant inheritance.
+    - Added Sheep wool color dye mixing inheritance.
+  - Added unit test `test_mooshroom_pig_and_sheep_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 74/74 tests passing in `entity::combat::tests`.
+
 
 
 

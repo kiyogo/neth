@@ -379,11 +379,17 @@ impl Mob for MooshroomEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_string("Type", self.get_variant().as_str().to_string());
+        if let Some(effect) = self.stew_effect.load() {
+            nbt.put_int("EffectId", effect as i32);
+        }
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(variant_str) = nbt.get_string("Type") {
             self.set_variant(MooshroomVariant::from_name(variant_str));
+        }
+        if let Some(effect) = nbt.get_int("EffectId") {
+            self.stew_effect.store(Some(effect as u32));
         }
     }
 
@@ -503,19 +509,30 @@ impl Mob for MooshroomEntity {
             && !self.is_baby()
             && item.has_tag(&tag::Item::MINECRAFT_SMALL_FLOWERS)
         {
-            item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             let entity = self.get_entity();
             let world = entity.world.load();
             let pos = entity.pos.load();
-            self.stew_effect.store(Some(1));
-            world.play_sound(Sound::EntityMooshroomEat, SoundCategory::Neutral, &pos);
-            world.spawn_particle(
-                pos + Vector3::new(0.0, 0.5, 0.0),
-                Vector3::new(0.5, 0.5, 0.5),
-                0.0,
-                4,
-                Particle::Effect,
-            );
+            if self.stew_effect.load().is_some() {
+                // Vanilla MushroomCow.java:140-156: if already has stewEffects, send smoke particles without consuming
+                world.spawn_particle(
+                    pos + Vector3::new(0.0, 0.5, 0.0),
+                    Vector3::new(0.5, 0.0, 0.5),
+                    0.2,
+                    2,
+                    Particle::Smoke,
+                );
+            } else {
+                item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                self.stew_effect.store(Some(1));
+                world.play_sound(Sound::EntityMooshroomEat, SoundCategory::Neutral, &pos);
+                world.spawn_particle(
+                    pos + Vector3::new(0.0, 0.5, 0.0),
+                    Vector3::new(0.5, 0.0, 0.5),
+                    0.2,
+                    4,
+                    Particle::Effect,
+                );
+            }
             return true;
         }
 
