@@ -4324,6 +4324,98 @@ pub fn is_mob_leashable(entity_type: &pumpkin_data::entity::EntityType) -> bool 
     entity_type.category != &pumpkin_data::entity::MobCategory::MONSTER
 }
 
+/// Determines whether a Frog can eat the given entity.
+///
+/// Mirrors vanilla `Frog.java:315-317`:
+/// ```java
+/// public static boolean canEat(final LivingEntity entity) {
+///    return entity instanceof AbstractCubeMob cubeMob && cubeMob.getSize() != 1 ? false : entity.is(EntityTypeTags.FROG_FOOD);
+/// }
+/// ```
+#[must_use]
+pub fn can_frog_eat_entity(entity_type: &pumpkin_data::entity::EntityType, cube_size: i32) -> bool {
+    use pumpkin_data::entity::EntityType;
+
+    if entity_type == &EntityType::SLIME || entity_type == &EntityType::MAGMA_CUBE {
+        cube_size <= 1
+    } else {
+        false
+    }
+}
+
+/// Determines the drop item produced when a Frog swallows a victim entity.
+///
+/// Mirrors vanilla loot tables `slime.json` and `magma_cube.json`:
+/// - Slime (size 1) killed by Frog drops 1 Slimeball (`SLIME_BALL`).
+/// - Magma Cube (size 1) killed by Frog drops 1 Froglight corresponding to the Frog's variant:
+///   - Temperate -> Ochre Froglight (`OCHRE_FROGLIGHT`)
+///   - Warm -> Pearlescent Froglight (`PEARLESCENT_FROGLIGHT`)
+///   - Cold -> Verdant Froglight (`VERDANT_FROGLIGHT`)
+#[must_use]
+pub fn get_frog_drop_item(
+    victim_type: &pumpkin_data::entity::EntityType,
+    variant: pumpkin_data::frog_variant::FrogVariant,
+) -> Option<&'static pumpkin_data::item::Item> {
+    use pumpkin_data::entity::EntityType;
+    use pumpkin_data::frog_variant::FrogVariant;
+    use pumpkin_data::item::Item;
+
+    if victim_type == &EntityType::SLIME {
+        Some(&Item::SLIME_BALL)
+    } else if victim_type == &EntityType::MAGMA_CUBE {
+        match variant {
+            FrogVariant::Temperate => Some(&Item::OCHRE_FROGLIGHT),
+            FrogVariant::Warm => Some(&Item::PEARLESCENT_FROGLIGHT),
+            FrogVariant::Cold => Some(&Item::VERDANT_FROGLIGHT),
+        }
+    } else {
+        None
+    }
+}
+
+/// Calculates the pull velocity applied to the victim when a Frog uses its tongue.
+///
+/// Mirrors vanilla `ShootTongue.java:107`:
+/// `target.setDeltaMovement(target.position().vectorTo(body.position()).normalize().scale(0.75));`
+#[must_use]
+pub fn calculate_frog_tongue_pull_velocity(
+    target_pos: Vector3<f64>,
+    frog_pos: Vector3<f64>,
+) -> Vector3<f64> {
+    let diff = frog_pos - target_pos;
+    let len = (diff.x * diff.x + diff.y * diff.y + diff.z * diff.z).sqrt();
+    if len > 0.0 {
+        diff * (0.75 / len)
+    } else {
+        Vector3::new(0.0, 0.0, 0.0)
+    }
+}
+
+/// Determines whether a Frog is close enough to its target to initiate eating.
+///
+/// Mirrors vanilla `ShootTongue.java:25, 104`:
+/// `private static final float EATING_DISTANCE = 1.75F;`
+/// `if (target.distanceTo(body) < 1.75F) { ... }`
+#[must_use]
+pub fn should_frog_start_eating(distance: f64) -> bool {
+    distance < 1.75
+}
+
+/// Calculates fall damage points for a Frog with the 5-point vanilla reduction.
+///
+/// Mirrors vanilla `Frog.java:304-306`:
+/// ```java
+/// @Override
+/// protected int calculateFallDamage(final double fallDistance, final float damageModifier) {
+///    return super.calculateFallDamage(fallDistance, damageModifier) - 5;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_frog_fall_damage_points(fall_distance: f64, damage_modifier: f32) -> i32 {
+    let base_damage = ((fall_distance - 3.0).max(0.0) * damage_modifier as f64).ceil() as i32;
+    (base_damage - 5).max(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6759,6 +6851,71 @@ mod tests {
         assert!(is_mob_leashable(&EntityType::FROG));
         assert!(is_mob_leashable(&EntityType::CAT));
         assert!(is_mob_leashable(&EntityType::WOLF));
+    }
+
+    #[test]
+    fn test_frog_tongue_eat_and_froglight_parity() {
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::frog_variant::FrogVariant;
+        use pumpkin_data::item::Item;
+
+        // 1. Frog food consumption eligibility (Frog.java:315-317)
+        // Small Slime (size 1) can be eaten
+        assert!(can_frog_eat_entity(&EntityType::SLIME, 1));
+        // Medium / Large Slime (size 2, 4) cannot be eaten
+        assert!(!can_frog_eat_entity(&EntityType::SLIME, 2));
+        assert!(!can_frog_eat_entity(&EntityType::SLIME, 4));
+
+        // Small Magma Cube (size 1) can be eaten
+        assert!(can_frog_eat_entity(&EntityType::MAGMA_CUBE, 1));
+        // Medium / Large Magma Cube (size 2, 4) cannot be eaten
+        assert!(!can_frog_eat_entity(&EntityType::MAGMA_CUBE, 2));
+        assert!(!can_frog_eat_entity(&EntityType::MAGMA_CUBE, 4));
+
+        // Other mobs cannot be eaten by Frog
+        assert!(!can_frog_eat_entity(&EntityType::ZOMBIE, 1));
+        assert!(!can_frog_eat_entity(&EntityType::PLAYER, 1));
+        assert!(!can_frog_eat_entity(&EntityType::COW, 1));
+        assert!(!can_frog_eat_entity(&EntityType::BAT, 1));
+
+        // 2. Drop item when frog swallows victim (loot tables: slime.json, magma_cube.json)
+        // Slime always drops Slimeball regardless of variant
+        assert_eq!(get_frog_drop_item(&EntityType::SLIME, FrogVariant::Temperate).unwrap().id, Item::SLIME_BALL.id);
+        assert_eq!(get_frog_drop_item(&EntityType::SLIME, FrogVariant::Warm).unwrap().id, Item::SLIME_BALL.id);
+        assert_eq!(get_frog_drop_item(&EntityType::SLIME, FrogVariant::Cold).unwrap().id, Item::SLIME_BALL.id);
+
+        // Magma Cube drops variant-specific Froglight
+        assert_eq!(get_frog_drop_item(&EntityType::MAGMA_CUBE, FrogVariant::Temperate).unwrap().id, Item::OCHRE_FROGLIGHT.id);
+        assert_eq!(get_frog_drop_item(&EntityType::MAGMA_CUBE, FrogVariant::Warm).unwrap().id, Item::PEARLESCENT_FROGLIGHT.id);
+        assert_eq!(get_frog_drop_item(&EntityType::MAGMA_CUBE, FrogVariant::Cold).unwrap().id, Item::VERDANT_FROGLIGHT.id);
+
+        // Non-food yields no drop
+        assert!(get_frog_drop_item(&EntityType::ZOMBIE, FrogVariant::Temperate).is_none());
+
+        // 3. Frog tongue pull velocity (ShootTongue.java:107)
+        let frog_pos = Vector3::new(0.0, 64.0, 0.0);
+        let target_pos = Vector3::new(2.0, 64.0, 0.0);
+        let pull_vel = calculate_frog_tongue_pull_velocity(target_pos, frog_pos);
+        // Direction is (-1.0, 0.0, 0.0) scaled by 0.75
+        assert!((pull_vel.x - (-0.75)).abs() < 1e-6);
+        assert_eq!(pull_vel.y, 0.0);
+        assert_eq!(pull_vel.z, 0.0);
+
+        // 4. Frog eating distance threshold (ShootTongue.java:25, 104: dist < 1.75)
+        assert!(should_frog_start_eating(1.74));
+        assert!(should_frog_start_eating(1.0));
+        assert!(!should_frog_start_eating(1.75));
+        assert!(!should_frog_start_eating(2.0));
+
+        // 5. Frog fall damage reduction (Frog.java:304-306: damage - 5)
+        // Fall distance 3.0: 0 damage
+        assert_eq!(calculate_frog_fall_damage_points(3.0, 1.0), 0);
+        // Fall distance 8.0: base damage 5, reduced by 5 -> 0
+        assert_eq!(calculate_frog_fall_damage_points(8.0, 1.0), 0);
+        // Fall distance 10.0: base damage 7, reduced by 5 -> 2
+        assert_eq!(calculate_frog_fall_damage_points(10.0, 1.0), 2);
+        // Fall distance 13.0: base damage 10, reduced by 5 -> 5
+        assert_eq!(calculate_frog_fall_damage_points(13.0, 1.0), 5);
     }
 }
 

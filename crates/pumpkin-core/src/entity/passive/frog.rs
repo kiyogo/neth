@@ -5,23 +5,29 @@ use std::sync::{
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityPose, EntityType};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::codec::optional_int::OptionalInt;
 use pumpkin_protocol::codec::var_int::VarInt;
 
 use crate::entity::{
     Entity, EntityBase,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
+        Controls, Goal,
+        active_target::ActiveTargetGoal,
         breed::BreedGoal, escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, swim::SwimGoal, tempt::TemptGoal,
         wander_around::WanderAroundGoal,
     },
+    ai::pathfinder::NavigatorGoal,
+    combat,
     custom_sound::CustomSound,
+    item::ItemEntity,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
     player::Player,
@@ -94,14 +100,33 @@ impl FrogEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(1, EscapeDangerGoal::new(2.0));
-            goal_selector.add_goal(2, BreedGoal::new(1.0));
-            goal_selector.add_goal(3, Box::new(TemptGoal::new(1.25, FROG_FOOD, false)));
-            goal_selector.add_goal(4, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(2, Box::new(FrogEatGoal::new()));
+            goal_selector.add_goal(3, BreedGoal::new(1.0));
+            goal_selector.add_goal(4, Box::new(TemptGoal::new(1.25, FROG_FOOD, false)));
+            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
             goal_selector.add_goal(
-                5,
+                6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 6.0),
             );
-            goal_selector.add_goal(6, Box::new(RandomLookAroundGoal::default()));
+            goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
+        };
+
+        {
+            let mut target_selector = mob_arc
+                .mob_entity
+                .target_selector
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            target_selector.add_goal(
+                1,
+                ActiveTargetGoal::predicated(&mob_arc.mob_entity, 10, true, |living, _world| {
+                    combat::can_frog_eat_entity(
+                        living.entity.entity_type,
+                        living.entity.data.load(Ordering::Relaxed),
+                    )
+                }),
+            );
         };
 
         mob_arc
@@ -250,7 +275,7 @@ impl Mob for FrogEntity {
 
     /// Vanilla `Frog.calculateFallDamage`: fall damage is reduced by 5.
     fn calculate_fall_damage(&self, fall_distance: f64, damage_modifier: f32) -> i32 {
-        (self.mob_entity.living_entity.calculate_fall_damage(fall_distance, damage_modifier) - 5).max(0)
+        combat::calculate_frog_fall_damage_points(fall_distance, damage_modifier)
     }
 
     fn adjust_damage_amount(&self, amount: f32, damage_type: &DamageType) -> f32 {
@@ -269,5 +294,197 @@ impl CustomSound for FrogEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityFrogHurt)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrogEatState {
+    MoveToTarget,
+    CatchAnimation,
+    EatAnimation,
+    Done,
+}
+
+/// AI goal for Frog to shoot its tongue, pull and eat small slimes and magma cubes.
+///
+/// Mirrors vanilla `ShootTongue.java` & `FrogAi.java`.
+pub struct FrogEatGoal {
+    goal_control: Controls,
+    target: Option<Arc<dyn EntityBase>>,
+    state: FrogEatState,
+    eat_animation_timer: i32,
+    calculate_path_counter: i32,
+}
+
+impl Default for FrogEatGoal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FrogEatGoal {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            goal_control: Controls::MOVE.union(Controls::LOOK),
+            target: None,
+            state: FrogEatState::Done,
+            eat_animation_timer: 0,
+            calculate_path_counter: 0,
+        }
+    }
+}
+
+impl Goal for FrogEatGoal {
+    fn can_start(&mut self, mob: &dyn Mob) -> bool {
+        let Some(target) = mob.get_mob_entity().get_target() else {
+            return false;
+        };
+
+        if !target.get_entity().is_alive() {
+            return false;
+        }
+
+        let size = target.get_entity().data.load(Ordering::Relaxed);
+        if !combat::can_frog_eat_entity(target.get_entity().entity_type, size) {
+            return false;
+        }
+
+        self.target = Some(target);
+        self.state = FrogEatState::MoveToTarget;
+        self.calculate_path_counter = 10;
+        self.eat_animation_timer = 0;
+        true
+    }
+
+    fn should_continue(&mut self, _mob: &dyn Mob) -> bool {
+        let Some(target) = &self.target else {
+            return false;
+        };
+
+        if !target.get_entity().is_alive() {
+            return false;
+        }
+
+        self.state != FrogEatState::Done
+    }
+
+    fn start(&mut self, mob: &dyn Mob) {
+        if let Some(target) = &self.target {
+            let target_id = target.get_entity().entity_id;
+            if let Some(frog) = mob.as_frog() {
+                frog.tongue_target_id.store(target_id, Ordering::Relaxed);
+            }
+            mob.get_entity().set_synced_data(
+                pumpkin_data::tracked_data::frog::DATA_TONGUE_TARGET_ID,
+                OptionalInt(Some(target_id)),
+            );
+        }
+    }
+
+    fn stop(&mut self, mob: &dyn Mob) {
+        mob.get_entity().set_pose(EntityPose::Standing);
+        mob.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::frog::DATA_TONGUE_TARGET_ID,
+            OptionalInt(None),
+        );
+        if let Some(frog) = mob.as_frog() {
+            frog.tongue_target_id.store(-1, Ordering::Relaxed);
+        }
+        mob.get_mob_entity().set_target(None);
+        let mut navigator = mob
+            .get_mob_entity()
+            .navigator
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        navigator.stop();
+        self.target = None;
+        self.state = FrogEatState::Done;
+    }
+
+    fn should_run_every_tick(&self) -> bool {
+        true
+    }
+
+    fn tick(&mut self, mob: &dyn Mob) {
+        let Some(target) = &self.target else {
+            return;
+        };
+
+        let mob_entity = mob.get_mob_entity();
+        mob_entity
+            .look_control
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .look_at_entity_with_range(target, 45.0, 90.0);
+
+        let frog_pos = mob.get_entity().pos.load();
+        let target_pos = target.get_entity().pos.load();
+
+        match self.state {
+            FrogEatState::MoveToTarget => {
+                let dist = frog_pos.squared_distance_to_vec(&target_pos).sqrt();
+                if combat::should_frog_start_eating(dist) {
+                    let world = mob.get_entity().world.load();
+                    world.play_sound_fine(
+                        Sound::EntityFrogTongue,
+                        SoundCategory::Neutral,
+                        &frog_pos,
+                        2.0,
+                        1.0,
+                    );
+                    mob.get_entity().set_pose(EntityPose::UsingTongue);
+                    let pull_vel = combat::calculate_frog_tongue_pull_velocity(target_pos, frog_pos);
+                    target.get_entity().velocity.store(pull_vel);
+                    self.eat_animation_timer = 0;
+                    self.state = FrogEatState::CatchAnimation;
+                } else if self.calculate_path_counter <= 0 {
+                    let mut navigator = mob_entity
+                        .navigator
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    navigator.set_progress(NavigatorGoal::new(frog_pos, target_pos, 2.0));
+                    self.calculate_path_counter = 10;
+                } else {
+                    self.calculate_path_counter -= 1;
+                }
+            }
+            FrogEatState::CatchAnimation => {
+                self.eat_animation_timer += 1;
+                if self.eat_animation_timer >= 6 {
+                    self.state = FrogEatState::EatAnimation;
+                    let world = mob.get_entity().world.load();
+                    world.play_sound_fine(
+                        Sound::EntityFrogEat,
+                        SoundCategory::Neutral,
+                        &frog_pos,
+                        2.0,
+                        1.0,
+                    );
+
+                    let victim_type = target.get_entity().entity_type;
+                    let variant = mob.as_frog().map(|f| f.get_variant()).unwrap_or_default();
+                    if let Some(drop_item) = combat::get_frog_drop_item(victim_type, variant) {
+                        let drop_entity = Entity::new(world.clone(), target_pos, &EntityType::ITEM);
+                        world.spawn_entity(Arc::new(ItemEntity::new(
+                            drop_entity,
+                            ItemStack::new(1, drop_item),
+                        )));
+                    }
+                    target.get_entity().kill(target.as_ref());
+                }
+            }
+            FrogEatState::EatAnimation => {
+                self.eat_animation_timer += 1;
+                if self.eat_animation_timer >= 10 {
+                    self.state = FrogEatState::Done;
+                }
+            }
+            FrogEatState::Done => {}
+        }
+    }
+
+    fn controls(&self) -> Controls {
+        self.goal_control
     }
 }

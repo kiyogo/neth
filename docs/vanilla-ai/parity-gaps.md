@@ -3444,6 +3444,46 @@
     - Overrode `can_be_leashed` returning `true`.
   - Added unit test `test_squid_glow_squid_turtle_and_leash_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 64/64 tests passing in `entity::combat::tests`.
 
+## Gap 179: Frog Tongue Attack, Small Slime & Magma Cube Consumption, Froglight Drops, and Fall Damage Reduction Parity
+- **Vanilla Reference**:
+  - `Frog.java:80, 304-306, 315-317`, `ShootTongue.java:21-135`, `FrogAi.java:198-205`, `FrogAttackablesSensor.java:13-35`, loot tables `slime.json`, `magma_cube.json`:
+    - **Frog Food & Attack Target Selection**:
+      - `Frog.canEat(LivingEntity entity)`: Ếch chỉ có thể ăn các thực thể thuộc tag `#minecraft:frog_food` (`minecraft:slime` và `minecraft:magma_cube`) VỚI ĐIỀU KIỆN kích thước khối `cubeMob.getSize() == 1` (kích thước nhỏ nhất). Các slime hay magma cube cỡ vừa (size 2) hoặc lớn (size 4) và các mob khác không thể bị ếch ăn.
+      - `FrogAttackablesSensor`: quét mục tiêu con mồi trong bán kính 10 blocks (`TARGET_DETECTION_DISTANCE = 10.0F`).
+    - **Frog Tongue Attack & Catch Dynamics (`ShootTongue`)**:
+      - Khi tiếp cận mục tiêu trong khoảng cách `< 1.75` blocks (`EATING_DISTANCE = 1.75F`):
+        - Phát âm thanh `SoundEvents.FROG_TONGUE` tại vị trí Ếch (category Neutral, volume 2.0, pitch 1.0).
+        - Đặt tư thế của Ếch sang `EntityPose::UsingTongue`.
+        - Kéo mục tiêu về phía Ếch: `target.velocity = (frog.pos - target.pos).normalize() * 0.75`.
+        - Bắt đầu giai đoạn nuốt mồi (`CatchAnimation`).
+      - Sau 6 ticks nuốt mồi (`eatAnimationTimer >= 6`):
+        - Phát âm thanh `SoundEvents.FROG_EAT` tại vị trí Ếch (category Neutral, volume 2.0, pitch 1.0).
+        - Gây 10.0 sát thương tiêu diệt con mồi.
+        - Làm rơi vật phẩm tương ứng tại vị trí của con mồi:
+          - Nếu con mồi là Small Slime: rơi 1 `minecraft:slime_ball`.
+          - Nếu con mồi là Small Magma Cube: rơi 1 Froglight tương ứng với biến thể của Ếch:
+            - Biến thể Temperate (`FrogVariant::Temperate`): rơi 1 `minecraft:ochre_froglight`.
+            - Biến thể Warm (`FrogVariant::Warm`): rơi 1 `minecraft:pearlescent_froglight`.
+            - Biến thể Cold (`FrogVariant::Cold`): rơi 1 `minecraft:verdant_froglight`.
+      - Sau 10 ticks (`eatAnimationTimer >= 10`):
+        - Kết thúc hành vi, khôi phục tư thế Ếch về `EntityPose::Standing`, đặt lại `tongue_target_id = -1` và xóa mục tiêu.
+    - **Frog Fall Damage Reduction**:
+      - `Frog.calculateFallDamage(fallDistance, damageModifier) - 5`: Ếch được giảm trừ 5 điểm sát thương rơi tự do so với các mob thông thường.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `can_frog_eat_entity`: checks if entity is Slime or Magma Cube with `size <= 1`.
+    - `get_frog_drop_item`: maps victim type and frog variant to dropped item (`SLIME_BALL`, `OCHRE_FROGLIGHT`, `PEARLESCENT_FROGLIGHT`, `VERDANT_FROGLIGHT`).
+    - `calculate_frog_tongue_pull_velocity`: computes vector towards frog with factor 0.75.
+    - `should_frog_start_eating`: verifies distance threshold `< 1.75`.
+    - `calculate_frog_fall_damage_points`: computes fall damage points with 5-point reduction: `((fall_distance - 3.0) * modifier).ceil() - 5`.
+  - Updated `FrogEntity` in `crates/pumpkin-core/src/entity/passive/frog.rs`:
+    - Implemented `FrogEatGoal` mirroring vanilla `ShootTongue.java` with 3-phase state machine (`MoveToTarget`, `CatchAnimation`, `EatAnimation`), sound events `EntityFrogTongue` / `EntityFrogEat`, pose `UsingTongue`, victim pull velocity, item drop spawning, and victim destruction.
+    - Added `ActiveTargetGoal::predicated` in `target_selector` targeting edible small slimes / magma cubes.
+    - Registered `FrogEatGoal` in `goals_selector` at priority 2.
+    - Updated `calculate_fall_damage` using `combat::calculate_frog_fall_damage_points`.
+  - Added unit test `test_frog_tongue_eat_and_froglight_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 65/65 tests passing in `entity::combat::tests`.
+
+
 
 
 
