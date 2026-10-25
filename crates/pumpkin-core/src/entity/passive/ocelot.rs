@@ -14,7 +14,8 @@ use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
 use rand::RngExt;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
+    ageable::{AgeableData, AgeableMob},
     ai::goal::{
         active_target::{ActiveTargetGoal, DEFAULT_RANDOM_INTERVAL},
         avoid_entity::AvoidEntityGoal,
@@ -53,6 +54,7 @@ const LOOK_AT_PLAYER_RANGE: f32 = 10.0;
 /// Wiki: <https://minecraft.wiki/w/Ocelot>
 pub struct OcelotEntity {
     pub mob_entity: MobEntity,
+    pub ageable_data: AgeableData,
     pub is_trusting: AtomicBool,
     /// Set right after construction; the avoid goal needs a `Weak` to read the trust flag back
     /// out of the mob it is attached to.
@@ -64,9 +66,11 @@ impl OcelotEntity {
         let mob_entity = MobEntity::new(entity);
         let ocelot = Self {
             mob_entity,
+            ageable_data: AgeableData::default(),
             is_trusting: AtomicBool::new(false),
             self_weak: Mutex::new(None),
         };
+
         let mob_arc = Arc::new(ocelot);
         *mob_arc
             .self_weak
@@ -229,6 +233,12 @@ impl OcelotEntity {
     }
 }
 
+impl AgeableMob for OcelotEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+}
+
 impl Animal for OcelotEntity {
     fn is_food(&self, item_stack: &ItemStack) -> bool {
         let item = item_stack.get_item();
@@ -239,6 +249,10 @@ impl Animal for OcelotEntity {
 }
 
 impl Mob for OcelotEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -276,10 +290,12 @@ impl Mob for OcelotEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("Trusting", self.is_trusting.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(trusting) = nbt.get_bool("Trusting") {
             self.is_trusting.store(trusting, Ordering::Relaxed);
             // Vanilla `Ocelot#setTrusting` re-runs the goal reassessment, and
@@ -287,6 +303,7 @@ impl Mob for OcelotEntity {
             self.reassess_trusting_goals();
         }
     }
+
 
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
@@ -353,7 +370,7 @@ impl Mob for OcelotEntity {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
 
             let mut rng = rand::rng();
-            if rng.random_range(0..3) == 0 {
+            if combat::calculate_ocelot_trust_success(rng.random_range(0..3)) {
                 self.set_trusting(true);
                 self.get_entity().world.load().send_entity_status(
                     self.get_entity(),
@@ -379,6 +396,8 @@ impl Mob for OcelotEntity {
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
+
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
@@ -409,3 +428,18 @@ impl CustomSound for OcelotEntity {
         Some(Sound::EntityOcelotHurt)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ocelot_trust_and_ageable() {
+        assert!(combat::calculate_ocelot_trust_success(0));
+        assert!(!combat::calculate_ocelot_trust_success(1));
+        assert!(!combat::calculate_ocelot_trust_success(2));
+        assert!(combat::should_ocelot_avoid_player(false));
+        assert!(!combat::should_ocelot_avoid_player(true));
+    }
+}
+

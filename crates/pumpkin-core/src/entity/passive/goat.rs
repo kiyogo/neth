@@ -358,13 +358,14 @@ impl Mob for GoatEntity {
             return true;
         }
 
-        let ambient_sound = if self.is_screaming() {
-            Sound::EntityGoatScreamingAmbient
+        let eat_sound = if self.is_screaming() {
+            Sound::EntityGoatScreamingEat
         } else {
-            Sound::EntityGoatAmbient
+            Sound::EntityGoatEat
         };
-        self.animal_interact(player, item_stack, ambient_sound)
+        self.animal_interact(player, item_stack, eat_sound)
     }
+
 }
 
 impl CustomSound for GoatEntity {

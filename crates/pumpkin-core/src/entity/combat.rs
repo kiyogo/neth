@@ -5280,6 +5280,31 @@ pub fn should_frog_lay_spawn_block(is_pregnant: bool, is_on_ground: bool, is_in_
     is_pregnant && is_on_ground && !is_in_water
 }
 
+/// Calculates Goat eating sound pitch between 0.8 and 1.2.
+///
+/// Mirrors vanilla `Goat.java:208`: `Mth.randomBetween(this.level().getRandom(), 0.8F, 1.2F)`.
+#[must_use]
+pub fn get_goat_eat_sound_pitch(rand: f32) -> f32 {
+    0.8 + rand * 0.4
+}
+
+/// Calculates Ocelot trust feeding success chance (1 in 3, or 33.3%).
+///
+/// Mirrors vanilla `Ocelot.java:172`: `this.random.nextInt(3) == 0`.
+#[must_use]
+pub fn calculate_ocelot_trust_success(rand_3: u32) -> bool {
+    rand_3 == 0
+}
+
+/// Checks whether an Ocelot should avoid player entities.
+///
+/// Mirrors vanilla `Ocelot.java:219-220`: `!this.isTrusting()`.
+#[must_use]
+pub fn should_ocelot_avoid_player(is_trusting: bool) -> bool {
+    !is_trusting
+}
+
+
 
 /// Represents the biome category for rabbit variant spawning and breeding mutation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -8492,7 +8517,28 @@ mod tests {
         // Not pregnant -> cannot lay
         assert!(!should_frog_lay_spawn_block(false, true, false));
     }
+
+    #[test]
+    fn test_goat_eating_and_ocelot_trust_parity() {
+        // 1. Goat eat sound pitch (Goat.java:208: 0.8 to 1.2)
+        let pitch_low = get_goat_eat_sound_pitch(0.0);
+        assert!((pitch_low - 0.8).abs() < 1e-6);
+        let pitch_mid = get_goat_eat_sound_pitch(0.5);
+        assert!((pitch_mid - 1.0).abs() < 1e-6);
+        let pitch_high = get_goat_eat_sound_pitch(1.0);
+        assert!((pitch_high - 1.2).abs() < 1e-6);
+
+        // 2. Ocelot trust feeding chance (Ocelot.java:172: 1/3)
+        assert!(calculate_ocelot_trust_success(0));
+        assert!(!calculate_ocelot_trust_success(1));
+        assert!(!calculate_ocelot_trust_success(2));
+
+        // 3. Ocelot avoid player goal condition (Ocelot.java:219: !isTrusting)
+        assert!(should_ocelot_avoid_player(false));
+        assert!(!should_ocelot_avoid_player(true));
+    }
 }
+
 
 
 

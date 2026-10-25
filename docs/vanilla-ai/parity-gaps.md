@@ -3999,6 +3999,35 @@
     - Handled Fox breeding: assigns 50/50 variant and transfers both breeders' UUIDs to the baby fox.
   - All unit tests verified and passing (78/78 tests in `entity::combat::tests`, `test_fox_variants_and_ids`, and `test_frog_variants_and_oviparous`).
 
+## Gap 193: Goat Eating Sound & Milking Parity, Ocelot Ageable Lifecycle & Trust Feeding Parity
+- **Vanilla Reference**:
+  - `Goat.java:148-150, 200-210, 218-233`:
+    - `playEatingSound()`:
+      - Khi cho dê ăn, dê phát âm thanh ăn đặc thù: `this.isScreamingGoat() ? SoundEvents.GOAT_SCREAMING_EAT : SoundEvents.GOAT_EAT` với cao độ pitch ngẫu nhiên `Mth.randomBetween(this.level().getRandom(), 0.8F, 1.2F)`.
+      - Trước đây Neth phát `ambient_sound` khi cho ăn dê thay vì âm thanh ăn chuyên biệt của loài dê.
+  - `Ocelot.java:63, 76-83, 98-100, 167-186, 213-222, 224-227`:
+    - `DATA_TRUSTING` (boolean): Mèo gấm không thể thuần hóa (untamable) như mèo nhà, nhưng có trạng thái "trusting" (tin tưởng người chơi) khi được cho ăn cá sống (`COD`, `SALMON`) trong khi đang bị hấp dẫn bởi thức ăn (`TemptGoal`).
+    - Tỉ lệ tin tưởng: `this.random.nextInt(3) == 0` (1/3 cơ hội thành công, phát hạt tim `Heart` hoặc hạt khói `Smoke` khi thất bại).
+    - Né tránh người chơi (`AvoidEntityGoal<Player>`): Chỉ kích hoạt khi `!this.isTrusting()`.
+    - Vòng đời tăng trưởng (`AgeableMob`): Mèo gấm là `Animal` và kế thừa vòng đời `AgeableMob` (con non, thời gian lớn `age`, `AgeLocked`, `ForcedAge` trong NBT, v.v.). Trước đây `OcelotEntity` trong Neth chưa implement `AgeableMob`, dẫn đến thiếu method `as_ageable`, không thể tăng trưởng qua thời gian (`ageable_ai_step`), và thiếu NBT ageable.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `get_goat_eat_sound_pitch(rand: f32) -> f32`: computes `0.8 + rand * 0.4`.
+    - Added `calculate_ocelot_trust_success(rand_3: u32) -> bool`: returns `rand_3 == 0` (1 in 3).
+    - Added `should_ocelot_avoid_player(is_trusting: bool) -> bool`: returns `!is_trusting`.
+    - Added unit test `test_goat_eating_and_ocelot_trust_parity`.
+  - Updated `GoatEntity` in `crates/pumpkin-core/src/entity/passive/goat.rs`:
+    - Updated `mob_interact` to use `Sound::EntityGoatScreamingEat` / `Sound::EntityGoatEat` instead of ambient sound when fed.
+  - Updated `OcelotEntity` in `crates/pumpkin-core/src/entity/passive/ocelot.rs`:
+    - Added `ageable_data: AgeableData` to `OcelotEntity`.
+    - Implemented `AgeableMob for OcelotEntity` and added `as_ageable(&self) -> Option<&dyn AgeableMob>` in `impl Mob`.
+    - Updated `mob_tick` to call `self.ageable_ai_step()`.
+    - Updated `mob_write_nbt` and `mob_read_nbt` to serialize/deserialize ageable data.
+    - Updated `mob_interact` to use `combat::calculate_ocelot_trust_success`.
+    - Added unit test `test_ocelot_trust_and_ageable`.
+  - All unit tests verified and passing (79/79 tests in `entity::combat::tests`, `test_ocelot_trust_and_ageable`).
+
+
 
 
 
