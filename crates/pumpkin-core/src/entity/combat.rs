@@ -5063,6 +5063,94 @@ pub fn select_horse_baby_variant_and_markings(
     variant | (marking << 8)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LlamaFoodProperties {
+    pub heal: f32,
+    pub age_up_seconds: i32,
+    pub temper_increase: i32,
+    pub can_breed: bool,
+}
+
+/// Returns the feeding properties of an item when given to a Llama or Trader Llama.
+///
+/// Mirrors vanilla `Llama.java:handleEating`:
+/// - `Wheat`: heal 2.0, ageUp 10s, temper +3, can_breed: false
+/// - `Hay Block`: heal 10.0, ageUp 90s, temper +6, can_breed: true
+#[must_use]
+pub fn get_llama_food_properties(item_id: u16) -> Option<LlamaFoodProperties> {
+    use pumpkin_data::item::Item;
+    if item_id == Item::WHEAT.id {
+        Some(LlamaFoodProperties {
+            heal: 2.0,
+            age_up_seconds: 10,
+            temper_increase: 3,
+            can_breed: false,
+        })
+    } else if item_id == Item::HAY_BLOCK.id {
+        Some(LlamaFoodProperties {
+            heal: 10.0,
+            age_up_seconds: 90,
+            temper_increase: 6,
+            can_breed: true,
+        })
+    } else {
+        None
+    }
+}
+
+/// Calculates the inherited strength (1..5) for a baby llama based on parental strength.
+///
+/// Mirrors vanilla `Llama.java:getBreedOffspring`:
+#[must_use]
+pub fn calculate_llama_baby_strength(
+    parent_a_strength: i32,
+    parent_b_strength: i32,
+    rand_int: u32,
+    rand_float: f32,
+) -> i32 {
+    let max_strength = parent_a_strength.max(parent_b_strength).max(1) as u32;
+    let mut baby_strength = (rand_int % max_strength) as i32 + 1;
+    if rand_float < 0.03 {
+        baby_strength += 1;
+    }
+    baby_strength.clamp(1, 5)
+}
+
+/// Selects a baby llama's variant from its parents.
+///
+/// Mirrors vanilla `Llama.java:getBreedOffspring`:
+/// 50% chance to inherit variant from parent 1, 50% from parent 2.
+#[must_use]
+pub const fn select_llama_baby_variant(
+    parent_a_variant: i32,
+    parent_b_variant: i32,
+    rand_bool: bool,
+) -> i32 {
+    if rand_bool {
+        parent_a_variant
+    } else {
+        parent_b_variant
+    }
+}
+
+/// Evaluates whether a skeleton trap horse should trigger based on nearby player proximity.
+///
+/// Mirrors vanilla `SkeletonTrapGoal.java:canUse`:
+/// Triggers when an alive player is within 10 blocks (`distance < 10.0`).
+#[must_use]
+pub fn should_skeleton_trap_trigger(is_trap: bool, distance_to_player: f64) -> bool {
+    is_trap && distance_to_player < 10.0
+}
+
+/// Evaluates whether an un-triggered skeleton trap horse should despawn.
+///
+/// Mirrors vanilla `SkeletonHorse.java:tick`:
+/// Despawns after 18000 ticks (15 minutes).
+#[must_use]
+pub fn should_skeleton_trap_despawn(is_trap: bool, trap_time: i32) -> bool {
+    is_trap && trap_time >= 18000
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7903,6 +7991,53 @@ mod tests {
 
         let high_health = calculate_offspring_attribute(30.0, 30.0, 15.0, 30.0, 1.0, 1.0, 1.0);
         assert!(high_health >= 15.0 && high_health <= 30.0);
+    }
+
+    #[test]
+    fn test_llama_food_and_genetics_and_skeleton_horse_trap_parity() {
+        use pumpkin_data::item::Item;
+
+        // 1. Llama food feeding properties (Llama.java:handleEating)
+        let wheat = get_llama_food_properties(Item::WHEAT.id).unwrap();
+        assert_eq!(wheat.heal, 2.0);
+        assert_eq!(wheat.age_up_seconds, 10);
+        assert_eq!(wheat.temper_increase, 3);
+        assert!(!wheat.can_breed);
+
+        let hay = get_llama_food_properties(Item::HAY_BLOCK.id).unwrap();
+        assert_eq!(hay.heal, 10.0);
+        assert_eq!(hay.age_up_seconds, 90);
+        assert_eq!(hay.temper_increase, 6);
+        assert!(hay.can_breed);
+
+        assert!(get_llama_food_properties(Item::APPLE.id).is_none());
+        assert!(get_llama_food_properties(Item::SUGAR.id).is_none());
+        assert!(get_llama_food_properties(Item::GOLDEN_CARROT.id).is_none());
+
+        // 2. Llama baby strength inheritance (Llama.java:getBreedOffspring)
+        // Parent A strength 2, Parent B strength 4 -> max 4
+        // rand_int 2 -> (2 % 4) + 1 = 3
+        assert_eq!(calculate_llama_baby_strength(2, 4, 2, 0.5), 3);
+        // Mutation (rand_float < 0.03) -> 3 + 1 = 4
+        assert_eq!(calculate_llama_baby_strength(2, 4, 2, 0.01), 4);
+        // Clamped at 5
+        assert_eq!(calculate_llama_baby_strength(5, 5, 4, 0.01), 5);
+
+        // 3. Llama baby variant inheritance (Llama.java:getBreedOffspring: 50/50)
+        assert_eq!(select_llama_baby_variant(0, 3, true), 0);
+        assert_eq!(select_llama_baby_variant(0, 3, false), 3);
+
+        // 4. Skeleton horse trap trigger (SkeletonTrapGoal.java:canUse)
+        assert!(should_skeleton_trap_trigger(true, 9.9));
+        assert!(!should_skeleton_trap_trigger(true, 10.0));
+        assert!(!should_skeleton_trap_trigger(true, 15.0));
+        assert!(!should_skeleton_trap_trigger(false, 5.0));
+
+        // 5. Skeleton horse trap despawn (SkeletonHorse.java:tick)
+        assert!(should_skeleton_trap_despawn(true, 18000));
+        assert!(should_skeleton_trap_despawn(true, 20000));
+        assert!(!should_skeleton_trap_despawn(true, 17999));
+        assert!(!should_skeleton_trap_despawn(false, 30000));
     }
 }
 

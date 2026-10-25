@@ -26,7 +26,7 @@ use crate::entity::{
     player::Player,
 };
 
-const TEMPT_ITEMS: &[&Item] = &[&Item::ROTTEN_FLESH];
+const TEMPT_ITEMS: &[&Item] = &[&Item::RED_MUSHROOM];
 
 pub const FLAG_TAME: u8 = 2;
 pub const FLAG_SADDLE: u8 = 4;
@@ -156,8 +156,8 @@ impl AgeableMob for ZombieHorseEntity {
 }
 
 impl Animal for ZombieHorseEntity {
-    fn is_food(&self, _item_stack: &ItemStack) -> bool {
-        false
+    fn is_food(&self, item_stack: &ItemStack) -> bool {
+        item_stack.get_item() == &Item::RED_MUSHROOM
     }
 }
 
@@ -263,6 +263,49 @@ impl Mob for ZombieHorseEntity {
             return true;
         }
 
+        // Vanilla ZombieHorse.mobInteract:
+        // isFood = item == RED_MUSHROOM
+        if item == &Item::RED_MUSHROOM {
+            let living = &self.mob_entity.living_entity;
+            let current_health = living.get_health();
+            let max_health = living.get_max_health();
+            let mut used = false;
+
+            if current_health < max_health {
+                living.heal(3.0);
+                used = true;
+            }
+
+            if !self.is_tame() && self.temper.load(Ordering::Relaxed) < 100 {
+                self.temper.fetch_add(3, Ordering::Relaxed);
+                used = true;
+            }
+
+            if used {
+                item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                let entity = self.get_entity();
+                let world = entity.world.load();
+                world.play_sound(
+                    Sound::EntityZombieHorseEat,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                );
+                return true;
+            }
+        }
+
+        // Vanilla: if player holds an item and horse is untamed, it makes mad sound
+        if !item_stack.is_empty() && !self.is_tame() {
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            world.play_sound(
+                Sound::EntityZombieHorseAngry,
+                SoundCategory::Neutral,
+                &entity.pos.load(),
+            );
+            return true;
+        }
+
         if !self.is_baby() {
             let world = player.world();
             let ent = &self.mob_entity.living_entity.entity;
@@ -274,7 +317,7 @@ impl Mob for ZombieHorseEntity {
             }
         }
 
-        self.animal_interact(player, item_stack, Sound::EntityZombieHorseAmbient)
+        false
     }
 }
 

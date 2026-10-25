@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicI32, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
 };
 
 use crossbeam::atomic::AtomicCell;
@@ -13,7 +13,7 @@ use pumpkin_nbt::compound::NbtCompound;
 use uuid::Uuid;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         look_around::RandomLookAroundGoal,
@@ -38,6 +38,8 @@ pub struct SkeletonHorseEntity {
     pub flags: AtomicU8,
     pub temper: AtomicI32,
     pub owner: AtomicCell<Option<Uuid>>,
+    pub is_trap: AtomicBool,
+    pub trap_time: AtomicI32,
 }
 
 impl SkeletonHorseEntity {
@@ -49,6 +51,8 @@ impl SkeletonHorseEntity {
             flags: AtomicU8::new(0),
             temper: AtomicI32::new(0),
             owner: AtomicCell::new(None),
+            is_trap: AtomicBool::new(false),
+            trap_time: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(horse);
         let mob_weak: Weak<dyn Mob> = {
@@ -143,6 +147,24 @@ impl SkeletonHorseEntity {
     pub fn set_saddled(&self, val: bool) {
         self.set_flag(FLAG_SADDLE, val);
     }
+
+    #[must_use]
+    pub fn is_trap(&self) -> bool {
+        self.is_trap.load(Ordering::Relaxed)
+    }
+
+    pub fn set_trap(&self, trap: bool) {
+        self.is_trap.store(trap, Ordering::Relaxed);
+    }
+
+    #[must_use]
+    pub fn get_trap_time(&self) -> i32 {
+        self.trap_time.load(Ordering::Relaxed)
+    }
+
+    pub fn set_trap_time(&self, time: i32) {
+        self.trap_time.store(time, Ordering::Relaxed);
+    }
 }
 
 impl AgeableMob for SkeletonHorseEntity {
@@ -170,6 +192,8 @@ impl Mob for SkeletonHorseEntity {
         self.write_ageable_nbt(nbt);
         nbt.put_bool("Tame", self.is_tame());
         nbt.put_int("Temper", self.temper.load(Ordering::Relaxed));
+        nbt.put_bool("SkeletonTrap", self.is_trap());
+        nbt.put_int("SkeletonTrapTime", self.get_trap_time());
         if let Some(owner) = self.owner.load() {
             nbt.put_uuid("Owner", owner);
         }
@@ -177,6 +201,12 @@ impl Mob for SkeletonHorseEntity {
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         self.read_ageable_nbt(nbt);
+        if let Some(trap) = nbt.get_bool("SkeletonTrap") {
+            self.set_trap(trap);
+        }
+        if let Some(time) = nbt.get_int("SkeletonTrapTime") {
+            self.set_trap_time(time);
+        }
         if let Some(tame) = nbt.get_bool("Tame") {
             self.set_tame(tame);
         }
@@ -216,6 +246,24 @@ impl Mob for SkeletonHorseEntity {
             return;
         }
 
+        if self.is_trap() {
+            let time = self.trap_time.fetch_add(1, Ordering::Relaxed) + 1;
+            if combat::should_skeleton_trap_despawn(true, time) {
+                entity.remove();
+                return;
+            }
+
+            let pos = entity.pos.load();
+            let world = entity.world.load();
+            let nearby_players = world.get_nearby_players(pos, 10.0);
+            if !nearby_players.is_empty() {
+                self.set_trap(false);
+                self.set_tame(true);
+                entity.set_age(0);
+                world.play_sound(Sound::EntityLightningBoltThunder, SoundCategory::Weather, &pos);
+            }
+        }
+
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             let sound = if entity.touching_water.load(Ordering::Relaxed) {
                 Sound::EntitySkeletonHorseAmbientWater
@@ -248,9 +296,13 @@ impl Mob for SkeletonHorseEntity {
     }
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
+        if !self.is_tame() {
+            return false;
+        }
+
         let item = item_stack.get_item();
 
-        if self.is_tame() && item == &Item::SADDLE && !self.is_saddled() && !self.is_baby() {
+        if item == &Item::SADDLE && !self.is_saddled() && !self.is_baby() {
             self.set_saddled(true);
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             let entity = self.get_entity();
@@ -274,7 +326,7 @@ impl Mob for SkeletonHorseEntity {
             }
         }
 
-        self.animal_interact(player, item_stack, Sound::EntitySkeletonHorseAmbient)
+        false
     }
 }
 

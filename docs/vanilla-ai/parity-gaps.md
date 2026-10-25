@@ -3764,7 +3764,51 @@
   - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
     - In `find_mate`: allows cross-species mating for equines via `combat::can_equine_mate`.
     - In `breed`: creates Mule for Horse x Donkey cross-breeding, applies variant & markings inheritance for Horse offspring, and calculates offspring attributes (Health, Jump, Speed) using `combat::calculate_offspring_attribute`.
-  - Added unit test `test_equine_food_and_breeding_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 72/72 tests passing in `entity::combat::tests`.
+## Gap 187: Llama Food Nutrition & Genetics Breeding Parity, Skeleton Horse Trap Mechanics & Water Immunity, and Zombie Horse Undead Behavior Parity
+- **Vanilla Reference**:
+  - `Llama.java:handleEating, getBreedOffspring, setOffspringAttributes` & `TraderLlama.java:isTraderLlama, makeNewLlama`:
+    - **Llama Eating Properties & Temper Limit**:
+      - Llama KHÔNG ăn các loại thực phẩm của ngựa (Đường, Táo, Cà rốt, Golden Apple...).
+      - Llama chỉ ăn `Wheat` (hồi 2.0 HP, giảm thời gian lớn 10 giây/200 ticks, tăng temper +3, không kích hoạt sinh sản) và `Hay Block` (hồi 10.0 HP, giảm thời gian lớn 90 giây/1800 ticks, tăng temper +6, kích hoạt sinh sản `setInLove` nếu đã thuần hóa và là con trưởng thành).
+      - Điểm thuần hóa tối đa của Llama là `30` (thay vì 100 như ngựa thông thường).
+    - **Llama Genetics Breeding**:
+      - `select_llama_baby_variant`: Llama con nhận 50% biến thể màu lông (`LlamaVariant`) từ cha hoặc mẹ.
+      - `calculate_llama_baby_strength`: Llama con kế thừa sức chứa `strength` (1..5): lấy `max(parent_a, parent_b)`, và có 3% cơ hội đột biến tăng thêm 1 điểm (`+1`), kẹp tối đa 5 điểm.
+  - `SkeletonHorse.java:mobInteract, tick, addAdditionalSaveData, readAdditionalSaveData` & `SkeletonTrapGoal.java`:
+    - **Skeleton Horse Trap Mechanics**:
+      - Skeleton Horse hoang dã (`!isTamed()`) có thể là một Skeleton Trap (`isTrap = true`). Ngựa hoang dã không cho phép người chơi cưỡi để thuần hóa thông thường (`mobInteract` pass/từ chối).
+      - Bẫy đếm `trapTime` mỗi tick. Nếu vượt quá 18000 ticks (15 phút) mà không ai kích hoạt, bẫy sẽ tự động despawn.
+      - Khi có người chơi tiếp cận trong bán kính 10 blocks (`distanceToSqr(player) < 100.0`), bẫy kích hoạt: tạo tia sét, giải phóng bẫy, biến thành ngựa đã thuần hóa và triệu hồi Skeleton kỵ sĩ.
+    - **Water Breathing & Drowning Immunity**:
+      - Skeleton Horse và Zombie Horse là mob undead (thuộc `#minecraft:undead` và `#minecraft:can_breathe_under_water`), không bao giờ ngạt thở hoặc chết đuối dưới nước (`can_breathe_under_water = true`, `can_drown = false`).
+  - `ZombieHorse.java:mobInteract, isFood, addBehaviourGoals, canFallInLove, canAgeUp`:
+    - **Zombie Horse Food & Interact**:
+      - Thức ăn duy nhất của Zombie Horse là Nấm Đỏ (`ItemTags.ZOMBIE_HORSE_FOOD` / `minecraft:red_mushroom`).
+      - Ăn Nấm Đỏ giúp hồi 3.0 HP và tăng temper +3.
+      - Zombie Horse không thể sinh sản (`canFallInLove = false`) và con non không lớn lên bằng thức ăn (`canAgeUp = false`).
+      - Khi chưa thuần hóa (`!isTame`), nếu người chơi cầm vật phẩm khác và tương tác, Zombie Horse sẽ kêu giận dữ (`Sound::EntityZombieHorseAngry`) và từ chối.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `get_llama_food_properties(item_id)`: returns nutrition properties for Wheat and Hay Block.
+    - `calculate_llama_baby_strength(parent_a, parent_b, rand_int, rand_float)`: calculates offspring strength (1..5, max of parents + 3% mutation).
+    - `select_llama_baby_variant(parent_a, parent_b, rand_bool)`: handles 50/50 parental coat color inheritance.
+    - `should_skeleton_trap_trigger(is_trap, distance)`: checks trigger within 10 blocks.
+    - `should_skeleton_trap_despawn(is_trap, trap_time)`: checks despawn after 18000 ticks.
+  - Updated `LlamaEntity` in `crates/pumpkin-core/src/entity/passive/llama.rs` and `TraderLlamaEntity` in `trader_llama.rs`:
+    - Implemented nutrition eating for Wheat and Hay Block, baby growth particles (`HappyVillager`), temper clamp (max 30), and Hay Block love mode.
+  - Updated `SkeletonHorseEntity` in `crates/pumpkin-core/src/entity/passive/skeleton_horse.rs`:
+    - Added `is_trap` and `trap_time` fields, getters/setters, and NBT serialization (`SkeletonTrap`, `SkeletonTrapTime`).
+    - Implemented tick trap countdown (18000 ticks) and player proximity trigger (10 blocks).
+    - Restricted untamed mounting interaction.
+  - Updated `ZombieHorseEntity` in `crates/pumpkin-core/src/entity/passive/zombie_horse.rs`:
+    - Switched food and tempt goal to `Item::RED_MUSHROOM`.
+    - Handled Red Mushroom healing (3.0 HP) and temper increment (+3).
+    - Handled angry sound rejection when untamed and interacting with items.
+    - Implemented `can_breathe_under_water() -> true` and `can_drown() -> false`.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added Llama and Trader Llama variant and strength genetics inheritance.
+  - Added unit test `test_llama_food_and_genetics_and_skeleton_horse_trap_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 73/73 tests passing in `entity::combat::tests`.
+
 
 
 

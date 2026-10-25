@@ -233,6 +233,30 @@ impl BreedGoal {
             baby_horse.set_variant(variant);
         }
 
+        // Vanilla Llama.java: getBreedOffspring & setOffspringAttributes - inherit variant (50/50) and strength (max + 3% mutation)
+        if let Some(llama_a) = mob.as_llama()
+            && let Some(llama_b) = mate.cast_any().downcast_ref::<crate::entity::passive::llama::LlamaEntity>()
+            && let Some(baby_llama) = baby.cast_any().downcast_ref::<crate::entity::passive::llama::LlamaEntity>()
+        {
+            let rand_bool = rand::random();
+            let variant_id = combat::select_llama_baby_variant(
+                llama_a.get_variant().id(),
+                llama_b.get_variant().id(),
+                rand_bool,
+            );
+            baby_llama.set_variant(crate::entity::passive::llama::LlamaVariant::from_id(variant_id));
+
+            let rand_int = rand::random();
+            let rand_float = rand::random();
+            let strength = combat::calculate_llama_baby_strength(
+                llama_a.get_strength(),
+                llama_b.get_strength(),
+                rand_int,
+                rand_float,
+            );
+            baby_llama.set_strength(strength);
+        }
+
         // Vanilla AbstractHorse.java: setOffspringAttributes - inherit health, jump, speed
         if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
             let parent_a_living = &mob.get_mob_entity().living_entity;
