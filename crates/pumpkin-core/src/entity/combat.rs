@@ -5261,6 +5261,70 @@ pub fn is_special_oviparous_breeding(entity_type: &pumpkin_data::entity::EntityT
     entity_type == &EntityType::SNIFFER || entity_type == &EntityType::TURTLE
 }
 
+/// Represents the biome category for rabbit variant spawning and breeding mutation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RabbitBiomeSpawnType {
+    White,
+    Gold,
+    Normal,
+}
+
+/// Determines the baby rabbit variant based on parents and biome.
+///
+/// Mirrors vanilla `Rabbit.java:345-352` & `getRandomRabbitVariant`:
+/// - 95% (`rand_20 != 0`): 50% inherit parent_a, 50% inherit parent_b.
+/// - 5% (`rand_20 == 0`): Biome-based mutation:
+///   - White biome: 80% WHITE (1), 20% WHITE_SPLOTCHED (3)
+///   - Gold biome: 100% GOLD (4)
+///   - Normal biome: 50% BROWN (0), 40% SALT (5), 10% BLACK (2)
+#[must_use]
+pub fn select_rabbit_baby_variant(
+    parent_a: i32,
+    parent_b: i32,
+    rand_20: i32,
+    rand_bool: bool,
+    rand_100: i32,
+    biome_type: RabbitBiomeSpawnType,
+) -> i32 {
+    if rand_20 != 0 {
+        if rand_bool { parent_b } else { parent_a }
+    } else {
+        match biome_type {
+            RabbitBiomeSpawnType::White => {
+                if rand_100 < 80 { 1 } else { 3 }
+            }
+            RabbitBiomeSpawnType::Gold => 4,
+            RabbitBiomeSpawnType::Normal => {
+                if rand_100 < 50 {
+                    0
+                } else if rand_100 < 90 {
+                    5
+                } else {
+                    2
+                }
+            }
+        }
+    }
+}
+
+/// Calculates the sound pitch for Parrot eating seeds.
+///
+/// Mirrors vanilla `Parrot.java:266`:
+/// `1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.2F`
+#[must_use]
+pub fn get_parrot_eat_sound_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    1.0 + (rand_a - rand_b) * 0.2
+}
+
+/// Determines whether parrot taming succeeds (10% chance).
+///
+/// Mirrors vanilla `Parrot.java:271`:
+/// `this.random.nextInt(10) == 0`
+#[must_use]
+pub const fn calculate_parrot_tame_success(rand_10: u32) -> bool {
+    rand_10 == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8227,6 +8291,64 @@ mod tests {
         assert!((strider_pitch_high - 1.2).abs() < 1e-6);
         let strider_pitch_low = get_strider_eat_sound_pitch(0.0, 1.0);
         assert!((strider_pitch_low - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rabbit_and_parrot_parity() {
+        // 1. Rabbit breeding inheritance (Rabbit.java:345-352)
+        // 95% chance (rand_20 != 0): inherit parent_a or parent_b
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 1, false, 50, RabbitBiomeSpawnType::Normal),
+            0 // parent_a
+        );
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 1, true, 50, RabbitBiomeSpawnType::Normal),
+            1 // parent_b
+        );
+
+        // 5% chance (rand_20 == 0): mutation by biome
+        // Normal biome: <50 Brown (0), <90 Salt (5), >=90 Black (2)
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 10, RabbitBiomeSpawnType::Normal),
+            0
+        );
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 60, RabbitBiomeSpawnType::Normal),
+            5
+        );
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 95, RabbitBiomeSpawnType::Normal),
+            2
+        );
+
+        // White biome: <80 White (1), >=80 White Splotched (3)
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 50, RabbitBiomeSpawnType::White),
+            1
+        );
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 85, RabbitBiomeSpawnType::White),
+            3
+        );
+
+        // Gold biome: always Gold (4)
+        assert_eq!(
+            select_rabbit_baby_variant(0, 1, 0, false, 50, RabbitBiomeSpawnType::Gold),
+            4
+        );
+
+        // 2. Parrot taming success chance (Parrot.java:271: rand.nextInt(10) == 0)
+        assert!(calculate_parrot_tame_success(0));
+        assert!(!calculate_parrot_tame_success(1));
+        assert!(!calculate_parrot_tame_success(9));
+
+        // 3. Parrot eating seed sound pitch (Parrot.java:266: 1.0 + (rand - rand) * 0.2)
+        let pitch_neutral = get_parrot_eat_sound_pitch(0.5, 0.5);
+        assert!((pitch_neutral - 1.0).abs() < 1e-6);
+        let pitch_high = get_parrot_eat_sound_pitch(1.0, 0.0);
+        assert!((pitch_high - 1.2).abs() < 1e-6);
+        let pitch_low = get_parrot_eat_sound_pitch(0.0, 1.0);
+        assert!((pitch_low - 0.8).abs() < 1e-6);
     }
 }
 

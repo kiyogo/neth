@@ -3884,6 +3884,46 @@
     - In `mob_interact`: plays `Sound::EntityStriderEat` with pitch from `combat::get_strider_eat_sound_pitch`.
   - Added unit test `test_oviparous_and_special_breeding_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 75/75 tests passing in `entity::combat::tests`.
 
+## Gap 190: Rabbit Breeding Genetics & Biome Mutation, Parrot Seed Taming, Sitting & Sound Parity
+- **Vanilla Reference**:
+  - `Rabbit.java:342-358, 424-434`:
+    - `Rabbit.getBreedOffspring(level, partner)`:
+      - 95% cơ hội (`random.nextInt(20) != 0`): Thỏ con thừa hưởng 50/50 biến thể từ thỏ bố hoặc thỏ mẹ (`random.nextBoolean() ? rabbitPartner.getVariant() : this.getVariant()`).
+      - 5% cơ hội (`random.nextInt(20) == 0`): Thỏ con đột biến biến thể ngẫu nhiên dựa trên quần xã sinh vật (`getRandomRabbitVariant(level, pos)`):
+        - Quần xã tuyết/trắng (`SPAWNS_WHITE_RABBITS`): 80% Thỏ Trắng (id 1), 20% Thỏ Đốm Trắng (id 3).
+        - Quần xã sa mạc (`SPAWNS_GOLD_RABBITS`): 100% Thỏ Vàng (id 4).
+        - Quần xã thông thường: 50% Thỏ Nâu (id 0), 40% Thỏ Muối Tiêu (id 5), 10% Thỏ Đen (id 2).
+        - Tuyệt đối không đột biến ra Thỏ Sát Nhân (`EVIL`, id 99).
+      - Trước đây Neth hoàn toàn không xử lý biến thể cho thỏ con trong `BreedGoal`, con non sinh ra luôn nhận biến thể mặc định Nâu (0).
+  - `Parrot.java:252-298, 156-160`:
+    - Vẹt không thể sinh sản (`canBeABaby() -> false`, `isFood() -> false`).
+    - Thuần hóa bằng các loại hạt giống (`ItemTags.PARROT_FOOD`):
+      - Tiêu hao 1 item thức ăn (nếu không ở creative mode).
+      - Phát âm thanh `SoundEvents.PARROT_EAT` với cao độ `1.0 + (rand - rand) * 0.2`.
+      - Xác suất thuần hóa thành công là 1/10 (`random.nextInt(10) == 0`).
+      - Khi thành công: trở thành thú nuôi thuần hóa (`tame(player)`), phát hạt Tim (`EntityStatus::TamingSucceeded` / event byte 7).
+      - Khi thất bại: phát hạt Khói (`EntityStatus::TamingFailed` / event byte 6).
+    - Khi đã thuần hóa:
+      - Người chơi sở hữu click chuột phải khi vẹt ở dưới đất (`!isFlying`) sẽ chuyển đổi tư thế ngồi/đứng (`setOrderedToSit(!isOrderedToSit())`).
+    - Khi ăn thức ăn độc hại (`ItemTags.PARROT_POISONOUS_FOOD`, như Cookie):
+      - Nhận hiệu ứng Poison 900 ticks và chịu sát thương `Float.MAX_VALUE` chết ngay lập tức.
+    - Trước đây Neth chưa triển khai `TamableAnimal` cho `ParrotEntity`, không hỗ trợ thuần hóa bằng hạt giống và chuyển đổi tư thế ngồi.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `select_rabbit_baby_variant(parent_a, parent_b, rand_20, rand_bool, rand_100, biome_type) -> i32`: selects variant matching vanilla 95% inheritance and 5% biome mutation formula.
+    - `get_parrot_eat_sound_pitch(rand_a, rand_b) -> f32`: computes `1.0 + (rand_a - rand_b) * 0.2`.
+    - `calculate_parrot_tame_success(rand_10: u32) -> bool`: returns `rand_10 == 0` (10% chance).
+    - `RabbitBiomeSpawnType`: enum representing `White`, `Gold`, `Normal` biomes.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added Rabbit breeding genetics and mutation variant inheritance.
+  - Updated `ParrotEntity` in `crates/pumpkin-core/src/entity/passive/parrot.rs`:
+    - Added `ParrotVariant` enum (`RedBlue`, `Blue`, `Green`, `YellowBlue`, `Gray`).
+    - Implemented `TamableAnimal` and `Animal` (`is_food -> false`) for `ParrotEntity`.
+    - Added `SitWhenOrderedToGoal` and `FollowOwnerGoal` to Parrot goal selector.
+    - Implemented seed taming in `mob_interact` with 1/10 success rate, eating sound, heart/smoke particles, and sit/stand toggle.
+    - Added NBT serialization for Parrot variant and tamable status.
+  - Added unit test `test_rabbit_and_parrot_parity` in `crates/pumpkin-core/src/entity/combat.rs` and `test_parrot_variants_and_ids` in `parrot.rs`. Total 76/76 tests passing in `entity::combat::tests`.
+
 
 
 

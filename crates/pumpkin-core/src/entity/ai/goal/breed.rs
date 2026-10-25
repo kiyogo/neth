@@ -341,6 +341,25 @@ impl BreedGoal {
             baby_sheep.set_color(baby_color);
         }
 
+        // Vanilla Rabbit.java: getBreedOffspring - 95% inherit parent variant (50/50), 5% mutation
+        if let Some(rabbit_a) = mob.as_rabbit()
+            && let Some(rabbit_b) = mate.cast_any().downcast_ref::<crate::entity::passive::rabbit::RabbitEntity>()
+            && let Some(baby_rabbit) = baby.cast_any().downcast_ref::<crate::entity::passive::rabbit::RabbitEntity>()
+        {
+            let rand_20 = rand::random_range(0..20);
+            let rand_bool = rand::random();
+            let rand_100 = rand::random_range(0..100);
+            let variant_id = combat::select_rabbit_baby_variant(
+                rabbit_a.get_variant().id(),
+                rabbit_b.get_variant().id(),
+                rand_20,
+                rand_bool,
+                rand_100,
+                combat::RabbitBiomeSpawnType::Normal,
+            );
+            baby_rabbit.set_variant(crate::entity::passive::rabbit::RabbitVariant::from_id(variant_id));
+        }
+
         // Vanilla AbstractHorse.java: setOffspringAttributes - inherit health, jump, speed
         if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
             let parent_a_living = &mob.get_mob_entity().living_entity;

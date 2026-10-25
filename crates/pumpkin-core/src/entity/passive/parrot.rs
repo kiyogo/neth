@@ -1,24 +1,33 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::effect::StatusEffect;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
+use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
+use pumpkin_protocol::codec::var_int::VarInt;
 
 use crate::entity::{
     Entity, EntityBase,
     ai::control::flying_move_control::FlyingMoveControl,
-    ai::pathfinder::Navigator,
     ai::goal::{
-        escape_danger::EscapeDangerGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
-        water_avoiding_random_flying::WaterAvoidingRandomFlyingGoal,
+        escape_danger::EscapeDangerGoal, follow_owner::FollowOwnerGoal,
+        look_at_entity::LookAtEntityGoal, sit_when_ordered_to::SitWhenOrderedToGoal,
+        swim::SwimGoal, water_avoiding_random_flying::WaterAvoidingRandomFlyingGoal,
     },
+    ai::pathfinder::Navigator,
+    combat,
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
+    passive::{
+        animal::Animal,
+        tamable::{TamableAnimal, TamableData},
+    },
     player::Player,
 };
 
@@ -26,11 +35,42 @@ use crate::entity::{
 /// vanilla `Parrot.mobInteract`.
 const COOKIE_POISON_DURATION: i32 = 900;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[repr(i32)]
+pub enum ParrotVariant {
+    #[default]
+    RedBlue = 0,
+    Blue = 1,
+    Green = 2,
+    YellowBlue = 3,
+    Gray = 4,
+}
+
+impl ParrotVariant {
+    #[must_use]
+    pub const fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Blue,
+            2 => Self::Green,
+            3 => Self::YellowBlue,
+            4 => Self::Gray,
+            _ => Self::RedBlue,
+        }
+    }
+
+    #[must_use]
+    pub const fn id(self) -> i32 {
+        self as i32
+    }
+}
+
 /// Represents a Parrot, a passive flying mob that can mimic nearby mob sounds.
 ///
 /// Wiki: <https://minecraft.wiki/w/Parrot>
 pub struct ParrotEntity {
     pub mob_entity: MobEntity,
+    pub tamable_data: TamableData,
+    pub variant: AtomicI32,
 }
 
 impl ParrotEntity {
@@ -46,7 +86,12 @@ impl ParrotEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Navigator::flying();
 
-        let parrot = Self { mob_entity };
+        let variant = ParrotVariant::from_id(rand::random_range(0..5));
+        let parrot = Self {
+            mob_entity,
+            tamable_data: TamableData::default(),
+            variant: AtomicI32::new(variant.id()),
+        };
         let mob_arc = Arc::new(parrot);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -95,11 +140,48 @@ impl ParrotEntity {
                 1,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
             );
-            // Priority 2: ParrotWanderGoal (WaterAvoidingRandomFlyingGoal 1.0)
+            // Priority 2: SitWhenOrderedToGoal, FollowOwnerGoal, ParrotWanderGoal
+            goal_selector.add_goal(2, Box::new(SitWhenOrderedToGoal::new()));
+            goal_selector.add_goal(2, FollowOwnerGoal::new(1.0, 5.0, 1.0));
             goal_selector.add_goal(2, Box::new(WaterAvoidingRandomFlyingGoal::new(1.0)));
         };
 
         mob_arc
+            .mob_entity
+            .living_entity
+            .entity
+            .set_synced_data(
+                pumpkin_data::tracked_data::parrot::DATA_VARIANT_ID,
+                VarInt(variant.id()),
+            );
+
+        mob_arc
+    }
+
+    #[must_use]
+    pub fn get_variant(&self) -> ParrotVariant {
+        ParrotVariant::from_id(self.variant.load(Ordering::Relaxed))
+    }
+
+    pub fn set_variant(&self, variant: ParrotVariant) {
+        self.variant.store(variant.id(), Ordering::Relaxed);
+        self.mob_entity
+            .living_entity
+            .entity
+            .set_synced_data(
+                pumpkin_data::tracked_data::parrot::DATA_VARIANT_ID,
+                VarInt(variant.id()),
+            );
+    }
+
+    #[must_use]
+    pub fn is_flying(&self) -> bool {
+        !self
+            .mob_entity
+            .living_entity
+            .entity
+            .on_ground
+            .load(Ordering::Relaxed)
     }
 
     /// Feeds the parrot a cookie: it is poisoned and then killed, as in vanilla
@@ -133,6 +215,18 @@ impl ParrotEntity {
     }
 }
 
+impl Animal for ParrotEntity {
+    fn is_food(&self, _item_stack: &ItemStack) -> bool {
+        false
+    }
+}
+
+impl TamableAnimal for ParrotEntity {
+    fn get_tamable_data(&self) -> &TamableData {
+        &self.tamable_data
+    }
+}
+
 impl Mob for ParrotEntity {
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
@@ -144,6 +238,24 @@ impl Mob for ParrotEntity {
 
     fn as_parrot(&self) -> Option<&ParrotEntity> {
         Some(self)
+    }
+
+    fn as_tamable(&self) -> Option<&dyn TamableAnimal> {
+        Some(self)
+    }
+
+    fn as_animal(&self) -> Option<&dyn Animal> {
+        Some(self)
+    }
+
+    fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        nbt.put_int("Variant", self.get_variant().id());
+    }
+
+    fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        if let Some(variant_id) = nbt.get_int("Variant") {
+            self.set_variant(ParrotVariant::from_id(variant_id));
+        }
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -164,16 +276,56 @@ impl Mob for ParrotEntity {
     }
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
-        // Vanilla checks the poisonous food tag last, after taming, which isn't
-        // implemented yet. Nothing in `parrot_food` is also in
-        // `parrot_poisonous_food`, so the two branches can't be confused.
-        if !item_stack
-            .get_item()
-            .has_tag(&tag::Item::MINECRAFT_PARROT_POISONOUS_FOOD)
-        {
+        let item = item_stack.get_item();
+        let entity = &self.mob_entity.living_entity.entity;
+
+        // 1. Taming with parrot food (seeds) when untamed
+        if !self.is_tame() && item.has_tag(&tag::Item::MINECRAFT_PARROT_FOOD) {
+            item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+
+            if !entity.silent.load(Ordering::Relaxed) {
+                let pitch = combat::get_parrot_eat_sound_pitch(rand::random(), rand::random());
+                entity.world.load().play_sound_fine(
+                    Sound::EntityParrotEat,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                    1.0,
+                    pitch,
+                );
+            }
+
+            let rand_10 = rand::random_range(0..10);
+            if combat::calculate_parrot_tame_success(rand_10) {
+                Mob::tame(self, player);
+                TamableAnimal::tame(self, player.gameprofile.id);
+                self.spawn_taming_particles(true);
+                entity.world.load().send_entity_status(
+                    entity,
+                    EntityStatus::TamingSucceeded,
+                    Some(ActorEventID::TamingSucceeded),
+                );
+            } else {
+                self.spawn_taming_particles(false);
+                entity.world.load().send_entity_status(
+                    entity,
+                    EntityStatus::TamingFailed,
+                    Some(ActorEventID::TamingFailed),
+                );
+            }
+
+            return true;
+        }
+
+        // 2. Sitting/standing toggle when tamed and owned by player
+        if !item.has_tag(&tag::Item::MINECRAFT_PARROT_POISONOUS_FOOD) {
+            if !self.is_flying() && self.is_tame() && self.is_owned_by(&player.gameprofile.id) {
+                self.set_ordered_to_sit(!self.is_ordered_to_sit());
+                return true;
+            }
             return self.mob_entity.mob_interact(player, item_stack);
         }
 
+        // 3. Poisonous food (Cookie) kills parrot
         self.eat_cookie(player, item_stack);
         true
     }
@@ -191,7 +343,7 @@ impl CustomSound for ParrotEntity {
 
 #[cfg(test)]
 mod tests {
-    use super::COOKIE_POISON_DURATION;
+    use super::*;
     use pumpkin_data::item::Item;
     use pumpkin_data::tag::{self, Taggable};
 
@@ -208,10 +360,25 @@ mod tests {
     fn parrot_food_is_not_poisonous() {
         assert!(!Item::WHEAT_SEEDS.has_tag(&tag::Item::MINECRAFT_PARROT_POISONOUS_FOOD));
         assert!(!Item::COOKED_CHICKEN.has_tag(&tag::Item::MINECRAFT_PARROT_POISONOUS_FOOD));
+        assert!(Item::WHEAT_SEEDS.has_tag(&tag::Item::MINECRAFT_PARROT_FOOD));
     }
 
     #[test]
     fn poison_lasts_45_seconds() {
         assert_eq!(COOKIE_POISON_DURATION, 900);
+    }
+
+    #[test]
+    fn test_parrot_variants_and_ids() {
+        assert_eq!(ParrotVariant::from_id(0), ParrotVariant::RedBlue);
+        assert_eq!(ParrotVariant::from_id(1), ParrotVariant::Blue);
+        assert_eq!(ParrotVariant::from_id(2), ParrotVariant::Green);
+        assert_eq!(ParrotVariant::from_id(3), ParrotVariant::YellowBlue);
+        assert_eq!(ParrotVariant::from_id(4), ParrotVariant::Gray);
+        assert_eq!(ParrotVariant::RedBlue.id(), 0);
+        assert_eq!(ParrotVariant::Blue.id(), 1);
+        assert_eq!(ParrotVariant::Green.id(), 2);
+        assert_eq!(ParrotVariant::YellowBlue.id(), 3);
+        assert_eq!(ParrotVariant::Gray.id(), 4);
     }
 }
