@@ -133,6 +133,14 @@ impl BreedGoal {
             baby_goat.set_screaming(is_screaming);
         }
 
+        // Vanilla Panda.java:231-255: inherit Panda genes from parents
+        if let Some(panda_a) = mob.as_panda()
+            && let Some(panda_b) = mate.cast_any().downcast_ref::<crate::entity::passive::panda::PandaEntity>()
+            && let Some(baby_panda) = baby.cast_any().downcast_ref::<crate::entity::passive::panda::PandaEntity>()
+        {
+            baby_panda.set_gene_from_parents(panda_a, Some(panda_b));
+        }
+
         let world_full = entity.world.load_full();
         world_full.spawn_entity(baby);
 

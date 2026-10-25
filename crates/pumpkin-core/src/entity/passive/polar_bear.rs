@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
@@ -43,6 +43,7 @@ pub struct PolarBearEntity {
     pub ageable_data: AgeableData,
     pub neutral_data: NeutralData,
     pub standing: AtomicBool,
+    pub warning_sound_ticks: AtomicI32,
 }
 
 impl PolarBearEntity {
@@ -53,6 +54,7 @@ impl PolarBearEntity {
             ageable_data: AgeableData::default(),
             neutral_data: NeutralData::default(),
             standing: AtomicBool::new(false),
+            warning_sound_ticks: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(polar_bear);
         let mob_weak: Weak<dyn Mob> = {
@@ -189,6 +191,21 @@ impl PolarBearEntity {
             standing,
         );
     }
+
+    pub fn play_warning_sound(&self) {
+        if self.warning_sound_ticks.load(Ordering::Relaxed) <= 0 {
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            world.play_sound_fine(
+                Sound::EntityPolarBearWarning,
+                SoundCategory::Neutral,
+                &entity.pos.load(),
+                1.0,
+                1.0,
+            );
+            self.warning_sound_ticks.store(40, Ordering::Relaxed);
+        }
+    }
 }
 
 impl AgeableMob for PolarBearEntity {
@@ -250,6 +267,33 @@ impl Mob for PolarBearEntity {
             return;
         }
 
+        // Vanilla PolarBear.java:205-207: warningSoundTicks decrement
+        let warn_ticks = self.warning_sound_ticks.load(Ordering::Relaxed);
+        if warn_ticks > 0 {
+            self.warning_sound_ticks.store(warn_ticks - 1, Ordering::Relaxed);
+        }
+
+        // Vanilla PolarBear.PolarBearMeleeAttackGoal:
+        // When approaching target, rear up on hind legs and growl warning
+        let is_adult = entity.age.load(Ordering::Relaxed) >= 0;
+        if is_adult {
+            if let Some(target) = self.mob_entity.get_target() {
+                let my_pos = entity.pos.load();
+                let t_pos = target.get_entity().pos.load();
+                let dist_sq = my_pos.squared_distance_to(t_pos.x, t_pos.y, t_pos.z);
+                let bb = target.get_entity().bounding_box.load();
+                let target_width = (bb.max.x - bb.min.x) as f32;
+                if crate::entity::combat::should_polar_bear_stand_and_warn(dist_sq, target_width, 10) {
+                    self.set_standing(true);
+                    self.play_warning_sound();
+                } else if dist_sq > (target_width as f64 + 3.0).powi(2) && self.is_standing() {
+                    self.set_standing(false);
+                }
+            } else if self.is_standing() {
+                self.set_standing(false);
+            }
+        }
+
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             let sound = if entity.age.load(Ordering::Relaxed) < 0 {
                 Sound::EntityPolarBearAmbientBaby
@@ -264,6 +308,11 @@ impl Mob for PolarBearEntity {
                 1.0,
             );
         }
+    }
+
+    fn on_attack(&self, _target: &dyn EntityBase) {
+        // Vanilla PolarBear.java:314, 317, 327: lower hind legs on hit
+        self.set_standing(false);
     }
 
     fn mob_init_data_tracker(&self) {

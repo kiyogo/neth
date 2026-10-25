@@ -3610,6 +3610,53 @@
     - Updated `mob_interact`: heals 2.0 HP on cactus feeding and enforces 2-passenger capacity via `combat::can_camel_accept_passenger`.
   - Added unit test `test_bee_and_camel_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 68/68 tests passing in `entity::combat::tests`.
 
+## Gap 183: Polar Bear Attack Warning Stand & Sound Parity, Water Speed Parity, and Panda Genetics Breeding, Sneeze Slime Ball Drop & Variant Distribution Parity
+- **Vanilla Reference**:
+  - `PolarBear.java:176-181, 205-207, 239-241, 310-335`:
+    - **Polar Bear Attack Warning Stand & Roar**:
+      - `PolarBear.PolarBearMeleeAttackGoal`: Khi gấu bắc cực chuẩn bị tấn công mục tiêu (`distanceToSqr < (target.bbWidth + 3.0)^2` và `ticksUntilNextAttack <= 10`):
+        - Gấu đứng bằng 2 chân sau (`standing = true`, `setStanding(true)`).
+        - Gầm tiếng cảnh báo `SoundEvents.POLAR_BEAR_WARNING` qua `playWarningSound()`, hồi chiêu 40 ticks (`warningSoundTicks = 40`).
+      - Khi tấn công trúng (`canPerformAttack`) hoặc mục tiêu chạy xa hoặc dừng goal, gấu hạ 2 chân trước xuống đất (`setStanding(false)`).
+    - **Water Swimming Speed (`getWaterSlowDown`)**:
+      - `PolarBear.getWaterSlowDown() -> 0.98F`: Gấu bắc cực bơi trong nước nhanh hơn các mob thông thường (chỉ giảm tốc 2% thay vì 20%).
+    - **Baby Cub Panic & Alert**:
+      - Gấu con bị đánh chỉ hoảng sợ chạy (`PanicGoal` với `DamageTypeTags.PANIC_CAUSES`) và gọi mẹ bảo vệ (`alertOthers()`), không trả thù trực tiếp.
+  - `Panda.java:231-255, 446-455, 781-797` & `panda_sneeze.json`:
+    - **Panda Random Gene Distribution (`Panda.Gene.getRandom`)**:
+      - Phân bố 1/16: 0: Lazy (1/16), 1: Worried (1/16), 2: Playful (1/16), 4: Brown (1/16), 5: Weak (1/16), 6: Aggressive (1/16), còn lại (3, 7..15): Normal (10/16 = 5/8).
+    - **Panda Genetics Breeding & 1/32 Mutation (`setGeneFromParents`)**:
+      - Khi 2 Panda ghép đôi: con nhận 1 alen ngẫu nhiên từ cha và 1 alen ngẫu nhiên từ mẹ với xác suất 50/50.
+      - Có 1/32 xác suất (3.125%) đột biến gen chính (`mainGene`), và 1/32 xác suất đột biến gen ẩn (`hiddenGene`) thành một gen ngẫu nhiên.
+    - **Baby Panda Sneeze & 1/700 Slime Ball Drop**:
+      - Gấu trúc con có hành vi hắt xì:
+        - Gấu trúc yếu (`Weak`): tỷ lệ hắt xì 1/500 mỗi tick.
+        - Gấu trúc thường: tỷ lệ hắt xì 1/6000 mỗi tick.
+      - Chu kỳ hắt xì: đếm từ 1 đến 20 ticks (`sneezeCounter`):
+        - Tick 1: phát âm thanh `SoundEvents.PANDA_PRE_SNEEZE`.
+        - Tick > 20: phát âm thanh `SoundEvents.PANDA_SNEEZE`, làm giật mình các gấu trúc trưởng thành xung quanh trong phạm vi 10 block (`jumpFromGround()`).
+        - Theo loot table `panda_sneeze.json`: có đúng **1/700 cơ hội (0.143%)** rơi ra 1 `Item::SLIME_BALL` tại vị trí hắt xì!
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_panda_random_gene`: implements exact 1/16 gene distribution matching vanilla.
+    - `select_panda_baby_genes`: handles parental allele inheritance and 1/32 mutation rates for both main and hidden genes.
+    - `should_panda_sneeze`: evaluates tick chance for weak (1/500) and regular (1/6000) baby pandas.
+    - `should_panda_drop_slime_ball`: evaluates 1/700 gift loot chance for slime ball drops.
+    - `should_polar_bear_stand_and_warn`: checks `dist_sq < (width + 3.0)^2` and `ticks <= 10`.
+  - Updated `PolarBearEntity` in `crates/pumpkin-core/src/entity/passive/polar_bear.rs`:
+    - Added `warning_sound_ticks: AtomicI32` counter (40 ticks cooldown).
+    - Added `play_warning_sound` playing `Sound::EntityPolarBearWarning`.
+    - Updated `mob_tick`: decrements `warning_sound_ticks`, triggers standing and warning roar when target is close and attack is imminent, and lowers hind legs when far.
+    - Added `on_attack`: resets standing state to false upon attack execution.
+  - Updated `PandaEntity` in `crates/pumpkin-core/src/entity/passive/panda.rs`:
+    - Updated `PandaGene::random_gene()` using `combat::calculate_panda_random_gene`.
+    - Added `set_gene_from_parents` calling `combat::select_panda_baby_genes`.
+    - Updated `mob_tick`: handles sneeze counter progression (1..20), plays pre-sneeze and sneeze audio, scares nearby adult pandas, and spawns `Item::SLIME_BALL` on 1/700 chance.
+  - Updated `BreedGoal::breed` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added parental genetics inheritance for Panda breeding via `baby_panda.set_gene_from_parents(panda_a, Some(panda_b))`.
+  - Added unit test `test_polar_bear_and_panda_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 69/69 tests passing in `entity::combat::tests`.
+
+
 
 
 

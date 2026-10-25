@@ -4633,6 +4633,117 @@ pub const fn can_camel_accept_passenger(current_passenger_count: usize) -> bool 
     current_passenger_count < 2
 }
 
+/// Calculates the random Panda gene based on 1/16 distribution.
+///
+/// Mirrors vanilla `Panda.java:Gene.getRandom`:
+/// - 0: Lazy (1)
+/// - 1: Worried (2)
+/// - 2: Playful (3)
+/// - 4: Brown (4)
+/// - 5: Weak (5)
+/// - 6: Aggressive (6)
+/// - other (3, 7..15): Normal (0)
+#[must_use]
+pub const fn calculate_panda_random_gene(rand_16: u32) -> u8 {
+    match rand_16 % 16 {
+        0 => 1, // Lazy
+        1 => 2, // Worried
+        2 => 3, // Playful
+        4 => 4, // Brown
+        5 => 5, // Weak
+        6 => 6, // Aggressive
+        _ => 0, // Normal
+    }
+}
+
+/// Selects baby panda main and hidden genes from its parents,
+/// including parental allele combination and 1/32 mutation chances.
+///
+/// Mirrors vanilla `Panda.java:231-255` (`setGeneFromParents`):
+/// - Parent alleles are randomly chosen (main or hidden) with 50/50 probability.
+/// - When 2 parents exist, baby receives one allele from parent 1 and one from parent 2.
+/// - 1/32 chance each for main gene and hidden gene to mutate into a random gene.
+#[must_use]
+pub fn select_panda_baby_genes(
+    parent1_main: u8,
+    parent1_hidden: u8,
+    parent2_main: u8,
+    parent2_hidden: u8,
+    rand_swap_parents: bool,
+    rand_parent1_allele: bool,
+    rand_parent2_allele: bool,
+    rand_mutation_main: u32,
+    rand_mutation_hidden: u32,
+    mutation_gene_main: u8,
+    mutation_gene_hidden: u8,
+) -> (u8, u8) {
+    let p1_allele = if rand_parent1_allele {
+        parent1_main
+    } else {
+        parent1_hidden
+    };
+    let p2_allele = if rand_parent2_allele {
+        parent2_main
+    } else {
+        parent2_hidden
+    };
+
+    let (mut main, mut hidden) = if rand_swap_parents {
+        (p2_allele, p1_allele)
+    } else {
+        (p1_allele, p2_allele)
+    };
+
+    if rand_mutation_main % 32 == 0 {
+        main = mutation_gene_main;
+    }
+    if rand_mutation_hidden % 32 == 0 {
+        hidden = mutation_gene_hidden;
+    }
+
+    (main, hidden)
+}
+
+/// Determines whether a baby Panda should sneeze this tick.
+///
+/// Mirrors vanilla `Panda.java:PandaSneezeGoal.canUse`:
+/// Weak baby pandas sneeze every ~500 ticks, normal baby pandas every ~6000 ticks.
+#[must_use]
+pub const fn should_panda_sneeze(is_baby: bool, is_weak: bool, rand_val: u32) -> bool {
+    if !is_baby {
+        return false;
+    }
+    if is_weak {
+        rand_val % 500 == 0
+    } else {
+        rand_val % 6000 == 0
+    }
+}
+
+/// Determines whether a sneezing Panda drops a Slime Ball.
+///
+/// Mirrors vanilla `panda_sneeze.json` gift loot table:
+/// Slime ball has weight 1 out of 700 total entries (1/700 = ~0.143% chance).
+#[must_use]
+pub const fn should_panda_drop_slime_ball(rand_700: u32) -> bool {
+    rand_700 % 700 == 0
+}
+
+/// Determines whether a Polar Bear should rear up and play its warning roar before an attack.
+///
+/// Mirrors vanilla `PolarBear.java:315-325` (`PolarBearMeleeAttackGoal`):
+/// When the target is within `(target_width + 3.0)^2` distance and attack cooldown
+/// ticks remaining is <= 10.
+#[must_use]
+pub fn should_polar_bear_stand_and_warn(
+    target_distance_sq: f64,
+    target_width: f32,
+    ticks_until_attack: i32,
+) -> bool {
+    let reach = (target_width as f64 + 3.0).powi(2);
+    target_distance_sq < reach && ticks_until_attack <= 10
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7254,6 +7365,69 @@ mod tests {
         assert!(can_camel_accept_passenger(1));
         assert!(!can_camel_accept_passenger(2));
     }
+
+    #[test]
+    fn test_polar_bear_and_panda_parity() {
+        // 1. Panda random gene distribution (Panda.java:Gene.getRandom)
+        assert_eq!(calculate_panda_random_gene(0), 1); // Lazy
+        assert_eq!(calculate_panda_random_gene(1), 2); // Worried
+        assert_eq!(calculate_panda_random_gene(2), 3); // Playful
+        assert_eq!(calculate_panda_random_gene(3), 0); // Normal
+        assert_eq!(calculate_panda_random_gene(4), 4); // Brown
+        assert_eq!(calculate_panda_random_gene(5), 5); // Weak
+        assert_eq!(calculate_panda_random_gene(6), 6); // Aggressive
+        assert_eq!(calculate_panda_random_gene(7), 0); // Normal
+        assert_eq!(calculate_panda_random_gene(15), 0); // Normal
+
+        // 2. Panda genetics inheritance & mutation (Panda.java:231-255)
+        // No mutation, inherit parent1 allele (main) & parent2 allele (hidden)
+        let (main, hidden) = select_panda_baby_genes(
+            1, 2, // Parent 1: main=Lazy, hidden=Worried
+            3, 4, // Parent 2: main=Playful, hidden=Brown
+            false, // no swap
+            true,  // parent 1 picks main (Lazy)
+            false, // parent 2 picks hidden (Brown)
+            1, 1,  // no mutation
+            0, 0,
+        );
+        assert_eq!(main, 1); // Lazy
+        assert_eq!(hidden, 4); // Brown
+
+        // Mutation on main gene (1/32 chance)
+        let (mutated_main, unmutated_hidden) = select_panda_baby_genes(
+            1, 2, 3, 4, false, true, true,
+            0, // rand_mutation_main == 0 -> triggers mutation
+            1, // no hidden mutation
+            6, // mutate to Aggressive
+            0,
+        );
+        assert_eq!(mutated_main, 6);
+        assert_eq!(unmutated_hidden, 3);
+
+        // 3. Panda sneeze conditions (Panda.java:PandaSneezeGoal)
+        assert!(!should_panda_sneeze(false, false, 0)); // Adult never sneezes
+        assert!(should_panda_sneeze(true, true, 0)); // Weak baby sneezes at rand % 500 == 0
+        assert!(should_panda_sneeze(true, true, 500));
+        assert!(!should_panda_sneeze(true, true, 250));
+        assert!(should_panda_sneeze(true, false, 6000)); // Normal baby sneezes at rand % 6000 == 0
+        assert!(!should_panda_sneeze(true, false, 500));
+
+        // 4. Panda sneeze slime ball drop (panda_sneeze.json: 1/700 chance)
+        assert!(should_panda_drop_slime_ball(0));
+        assert!(should_panda_drop_slime_ball(700));
+        assert!(!should_panda_drop_slime_ball(1));
+        assert!(!should_panda_drop_slime_ball(699));
+
+        // 5. Polar bear attack warning stand & roar (PolarBear.java:315-325)
+        // target width = 0.6 -> reach = (0.6 + 3.0)^2 = 3.6^2 = 12.96
+        assert!(should_polar_bear_stand_and_warn(10.0, 0.6, 5));
+        assert!(should_polar_bear_stand_and_warn(12.0, 0.6, 10));
+        // Too far away (> 12.96)
+        assert!(!should_polar_bear_stand_and_warn(14.0, 0.6, 5));
+        // Ticks until attack > 10
+        assert!(!should_polar_bear_stand_and_warn(10.0, 0.6, 11));
+    }
 }
+
 
 

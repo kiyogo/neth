@@ -11,6 +11,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
 use crate::entity::{
@@ -22,6 +23,7 @@ use crate::entity::{
         tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
+    item::ItemEntity,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
     player::Player,
@@ -94,14 +96,8 @@ impl PandaGene {
 
     #[must_use]
     pub fn random_gene() -> Self {
-        let mut rng = rand::rng();
-        if rng.random_range(0..16) == 0 {
-            Self::from_id(rng.random_range(4..=6))
-        } else if rng.random_range(0..8) == 0 {
-            Self::from_id(rng.random_range(1..=3))
-        } else {
-            Self::Normal
-        }
+        let rand_16 = rand::random_range(0..16);
+        Self::from_id(crate::entity::combat::calculate_panda_random_gene(rand_16))
     }
 
     #[must_use]
@@ -329,8 +325,39 @@ impl PandaEntity {
         self.has_flag(FLAG_ROLL)
     }
 
-    pub fn set_rolling(&self, val: bool) {
-        self.set_flag(FLAG_ROLL, val);
+    pub fn set_gene_from_parents(&self, parent1: &Self, parent2: Option<&Self>) {
+        let mut rng = rand::rng();
+        let rand_swap = rng.random_bool(0.5);
+        let rand_p1 = rng.random_bool(0.5);
+        let rand_p2 = rng.random_bool(0.5);
+        let rand_mut_main = rng.random_range(0..32);
+        let rand_mut_hidden = rng.random_range(0..32);
+        let mut_main = PandaGene::random_gene().id();
+        let mut_hidden = PandaGene::random_gene().id();
+
+        let (p2_main, p2_hidden) = if let Some(p2) = parent2 {
+            (p2.get_main_gene().id(), p2.get_hidden_gene().id())
+        } else {
+            let rand_gene = PandaGene::random_gene().id();
+            (rand_gene, rand_gene)
+        };
+
+        let (new_main, new_hidden) = crate::entity::combat::select_panda_baby_genes(
+            parent1.get_main_gene().id(),
+            parent1.get_hidden_gene().id(),
+            p2_main,
+            p2_hidden,
+            rand_swap,
+            rand_p1,
+            rand_p2,
+            rand_mut_main,
+            rand_mut_hidden,
+            mut_main,
+            mut_hidden,
+        );
+
+        self.set_main_gene(PandaGene::from_id(new_main));
+        self.set_hidden_gene(PandaGene::from_id(new_hidden));
     }
 }
 
@@ -392,6 +419,77 @@ impl Mob for PandaEntity {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
+        }
+
+        // Vanilla Panda.java:446-455: Baby panda sneeze and slime ball drop
+        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+        if is_baby {
+            if !self.is_sneezing() {
+                let rand_val = rand::random_range(0..6000);
+                if crate::entity::combat::should_panda_sneeze(true, self.is_weak(), rand_val) {
+                    self.set_sneezing(true);
+                }
+            } else {
+                let cnt = self.sneeze_counter.fetch_add(1, Ordering::Relaxed) + 1;
+                entity.set_synced_data(
+                    pumpkin_data::tracked_data::panda::SNEEZE_COUNTER,
+                    VarInt(cnt),
+                );
+                if cnt == 1 {
+                    entity.world.load().play_sound_fine(
+                        Sound::EntityPandaPreSneeze,
+                        SoundCategory::Neutral,
+                        &entity.pos.load(),
+                        1.0,
+                        1.0,
+                    );
+                } else if cnt > 20 {
+                    self.set_sneezing(false);
+                    self.sneeze_counter.store(0, Ordering::Relaxed);
+                    entity.set_synced_data(
+                        pumpkin_data::tracked_data::panda::SNEEZE_COUNTER,
+                        VarInt(0),
+                    );
+
+                    let pos = entity.pos.load();
+                    let world = entity.world.load();
+                    world.play_sound_fine(
+                        Sound::EntityPandaSneeze,
+                        SoundCategory::Neutral,
+                        &pos,
+                        1.0,
+                        1.0,
+                    );
+
+                    // Vanilla Panda.java: afterSneeze scares nearby adult pandas (jump from ground)
+                    let bb = entity.bounding_box.load().expand(10.0, 10.0, 10.0);
+                    let nearby = world.get_entities_at_box(&bb);
+                    for other in nearby {
+                        if other.get_entity().entity_type == &EntityType::PANDA
+                            && other.get_entity().age.load(Ordering::Relaxed) >= 0
+                            && other.get_entity().on_ground.load(Ordering::Relaxed)
+                        {
+                            let vel = other.get_entity().velocity.load();
+                            other.get_entity().velocity.store(Vector3::new(vel.x, 0.42, vel.z));
+                        }
+                    }
+
+                    // Vanilla panda_sneeze.json: 1/700 chance to drop a Slime Ball
+                    if crate::entity::combat::should_panda_drop_slime_ball(rand::random_range(0..700)) {
+                        let delta_x = rand::random_range(-0.1..0.1);
+                        let delta_y = rand::random_range(0.2..0.4);
+                        let delta_z = rand::random_range(-0.1..0.1);
+                        let drop_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
+                        drop_entity
+                            .velocity
+                            .store(Vector3::new(delta_x, delta_y, delta_z));
+                        world.spawn_entity(Arc::new(ItemEntity::new(
+                            drop_entity,
+                            ItemStack::new(1, &Item::SLIME_BALL),
+                        )));
+                    }
+                }
+            }
         }
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
