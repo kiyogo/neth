@@ -3852,7 +3852,38 @@
     - Added Mooshroom variant & 1/1024 mutation inheritance.
     - Added Pig variant & sound variant inheritance.
     - Added Sheep wool color dye mixing inheritance.
-  - Added unit test `test_mooshroom_pig_and_sheep_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 74/74 tests passing in `entity::combat::tests`.
+## Gap 189: Oviparous & Special Breeding Mechanics (Sniffer Egg Laying, Turtle Gravid Egg Mechanics) and Strider Eating Sound & Immersion Parity
+- **Vanilla Reference**:
+  - `Sniffer.java:345-352`:
+    - `Sniffer.spawnChildFromBreeding(level, partner)`:
+      - Sniffer sinh sản KHÔNG spawn entity mob con trực tiếp!
+      - Nó đẻ ra một `ItemEntity` chứa `Items.SNIFFER_EGG` tại tọa độ của Sniffer.
+      - Phát âm thanh `SoundEvents.SNIFFER_EGG_PLOP` với cao độ ngẫu nhiên `(rand - rand) * 0.2 + 0.5`.
+      - Cập nhật thống kê `ANIMALS_BRED`, kích hoạt advancement criteria `bred` và `minecraft:sniffer`.
+      - Rơi 1..7 điểm kinh nghiệm (`ExperienceOrb`).
+      - Trước đây Neth xử lý Sniffer trong `BreedGoal` giống mob thông thường, tự động spawn entity con non ngay tại chỗ mà không gọi `spawn_child_from_breeding`.
+  - `Turtle.java:310-327`:
+    - `Turtle.TurtleBreedGoal`:
+      - Khi hai con rùa hoàn thành giao phối, chúng KHÔNG sinh ra rùa con ngay lập tức.
+      - Rùa mẹ được đánh dấu mang trứng `hasEgg = true` (`setHasEgg(true)`), rơi 1..7 kinh nghiệm, reset love ticks và cooldown 6000 ticks.
+      - Rùa mẹ mang trứng sau đó thực hiện mục tiêu tìm về bãi cát quê hương (`TurtleGoHomeGoal`) để đào cát đẻ trứng (`TurtleLayEggGoal`).
+      - Trước đây Neth xử lý rùa giao phối sinh ra rùa con trực tiếp thay vì đánh dấu `has_egg = true`.
+  - `Strider.java:422-434`:
+    - Khi Strider ăn thức ăn (`WARPED_FUNGUS`), nếu không câm (`!isSilent`), phát âm thanh `SoundEvents.STRIDER_EAT` với cao độ `1.0 + (rand - rand) * 0.2` (thay vì âm thanh `STRIDER_AMBIENT`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `get_sniffer_egg_plop_pitch(rand_a, rand_b)`: computes `(rand_a - rand_b) * 0.2 + 0.5`.
+    - `get_strider_eat_sound_pitch(rand_a, rand_b)`: computes `1.0 + (rand_a - rand_b) * 0.2`.
+    - `is_special_oviparous_breeding(entity_type)`: checks if entity is Sniffer or Turtle.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Delegated Sniffer breeding to `sniffer.spawn_child_from_breeding(mate)`.
+    - Handled Turtle breeding: sets `turtle.set_has_egg(true)`, awards statistics/advancements, drops XP, and returns without spawning baby turtle.
+  - Updated `SnifferEntity` in `crates/pumpkin-core/src/entity/passive/sniffer.rs`:
+    - Applied vanilla egg plop sound pitch via `combat::get_sniffer_egg_plop_pitch`.
+  - Updated `StriderEntity` in `crates/pumpkin-core/src/entity/passive/strider.rs`:
+    - In `mob_interact`: plays `Sound::EntityStriderEat` with pitch from `combat::get_strider_eat_sound_pitch`.
+  - Added unit test `test_oviparous_and_special_breeding_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 75/75 tests passing in `entity::combat::tests`.
+
 
 
 

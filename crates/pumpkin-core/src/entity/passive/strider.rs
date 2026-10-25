@@ -268,7 +268,26 @@ impl Mob for StriderEntity {
             }
         }
 
-        self.animal_interact(player, item_stack, Sound::EntityStriderAmbient)
+        let is_food = self.is_food(item_stack);
+        if is_food {
+            let entity = self.get_entity();
+            if !entity.silent.load(Ordering::Relaxed) {
+                let pos = entity.pos.load();
+                let pitch = crate::entity::combat::get_strider_eat_sound_pitch(
+                    rand::random(),
+                    rand::random(),
+                );
+                entity.world.load().play_sound_fine(
+                    Sound::EntityStriderEat,
+                    SoundCategory::Neutral,
+                    &pos,
+                    1.0,
+                    pitch,
+                );
+            }
+        }
+
+        self.animal_interact(player, item_stack, Sound::EntityStriderEat)
     }
 }
 

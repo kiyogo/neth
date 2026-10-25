@@ -5234,6 +5234,33 @@ pub const fn get_mixed_sheep_color(color_a: u8, color_b: u8, rand_bool: bool) ->
     }
 }
 
+/// Calculates the sound pitch for Sniffer egg plop on breeding.
+///
+/// Mirrors vanilla `Sniffer.java:350`:
+/// `(random.nextFloat() - random.nextFloat()) * 0.2F + 0.5F`
+#[must_use]
+pub fn get_sniffer_egg_plop_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    (rand_a - rand_b) * 0.2 + 0.5
+}
+
+/// Calculates the sound pitch for Strider eating sound.
+///
+/// Mirrors vanilla `Strider.java:432`:
+/// `1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.2F`
+#[must_use]
+pub fn get_strider_eat_sound_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    1.0 + (rand_a - rand_b) * 0.2
+}
+
+/// Checks if an entity type is oviparous or handles breeding specially (egg drop / gravid instead of spawning baby).
+///
+/// Mirrors vanilla `Sniffer.java:spawnChildFromBreeding` and `Turtle.java:TurtleBreedGoal`.
+#[must_use]
+pub fn is_special_oviparous_breeding(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    entity_type == &EntityType::SNIFFER || entity_type == &EntityType::TURTLE
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8172,6 +8199,34 @@ mod tests {
         // Red (14) + Black (15)
         assert_eq!(get_mixed_sheep_color(14, 15, true), 14);
         assert_eq!(get_mixed_sheep_color(14, 15, false), 15);
+    }
+
+    #[test]
+    fn test_oviparous_and_special_breeding_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Special oviparous breeding check (Sniffer egg drop & Turtle gravid egg)
+        assert!(is_special_oviparous_breeding(&EntityType::SNIFFER));
+        assert!(is_special_oviparous_breeding(&EntityType::TURTLE));
+        assert!(!is_special_oviparous_breeding(&EntityType::COW));
+        assert!(!is_special_oviparous_breeding(&EntityType::SHEEP));
+        assert!(!is_special_oviparous_breeding(&EntityType::PIG));
+
+        // 2. Sniffer egg plop sound pitch (Sniffer.java:350: (rand - rand) * 0.2 + 0.5)
+        let pitch_neutral = get_sniffer_egg_plop_pitch(0.5, 0.5);
+        assert!((pitch_neutral - 0.5).abs() < 1e-6);
+        let pitch_high = get_sniffer_egg_plop_pitch(1.0, 0.0);
+        assert!((pitch_high - 0.7).abs() < 1e-6);
+        let pitch_low = get_sniffer_egg_plop_pitch(0.0, 1.0);
+        assert!((pitch_low - 0.3).abs() < 1e-6);
+
+        // 3. Strider eat sound pitch (Strider.java:432: 1.0 + (rand - rand) * 0.2)
+        let strider_pitch_neutral = get_strider_eat_sound_pitch(0.5, 0.5);
+        assert!((strider_pitch_neutral - 1.0).abs() < 1e-6);
+        let strider_pitch_high = get_strider_eat_sound_pitch(1.0, 0.0);
+        assert!((strider_pitch_high - 1.2).abs() < 1e-6);
+        let strider_pitch_low = get_strider_eat_sound_pitch(0.0, 1.0);
+        assert!((strider_pitch_low - 0.8).abs() < 1e-6);
     }
 }
 

@@ -104,6 +104,41 @@ impl BreedGoal {
         mate.set_breeding_cooldown(6000);
 
         let parent_pos = entity.pos.load();
+
+        // Vanilla Sniffer.java:345-352: Sniffer drops a Sniffer Egg item instead of spawning a baby mob
+        if let Some(sniffer) = mob.as_sniffer() {
+            sniffer.spawn_child_from_breeding(mate);
+            return;
+        }
+
+        // Vanilla Turtle.java:310-327: Turtle becomes gravid with egg instead of spawning baby
+        if let Some(turtle) = mob.as_turtle() {
+            turtle.set_has_egg(true);
+            let breeder_id = mob_entity.breeder.load().or_else(|| mate.get_breeder());
+            if let Some(uuid) = breeder_id {
+                if let Some(player) = world.get_player_by_uuid(uuid) {
+                    player.increment_stat(
+                        pumpkin_data::statistic::StatisticCategory::Custom,
+                        pumpkin_data::statistic::CustomStatistic::AnimalsBred as i32,
+                        1,
+                    );
+                    player.trigger_advancement_criterion(
+                        pumpkin_data::advancement::Advancement::HUSBANDRY_BREED_AN_ANIMAL,
+                        "bred",
+                    );
+                    player.trigger_advancement_criterion(
+                        pumpkin_data::advancement::Advancement::HUSBANDRY_BRED_ALL_ANIMALS,
+                        "minecraft:turtle",
+                    );
+                }
+            }
+
+            let xp = rand::random_range(1..=7);
+            ExperienceOrbEntity::spawn(&world, parent_pos, xp);
+            world.send_entity_status(entity, EntityStatus::InLoveHearts, None);
+            return;
+        }
+
         let baby_type: &'static pumpkin_data::entity::EntityType =
             if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
                 combat::determine_equine_baby_type(entity.entity_type, mate.get_entity().entity_type)

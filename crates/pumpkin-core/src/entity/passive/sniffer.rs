@@ -343,7 +343,8 @@ impl SnifferEntity {
         let xp = rand::random_range(1..=7);
         ExperienceOrbEntity::spawn(&world, pos, xp);
 
-        world.play_sound(Sound::BlockSnifferEggPlop, SoundCategory::Neutral, &pos);
+        let pitch = crate::entity::combat::get_sniffer_egg_plop_pitch(rand::random(), rand::random());
+        world.play_sound_fine(Sound::BlockSnifferEggPlop, SoundCategory::Neutral, &pos, 1.0, pitch);
 
         self.mob_entity.reset_love_ticks();
         self.mob_entity
