@@ -3726,6 +3726,47 @@
     - Added Fox breeding inheritance for kit variant via `combat::select_fox_baby_variant`.
   - Added unit test `test_wolf_and_fox_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 71/71 tests passing in `entity::combat::tests`.
 
+## Gap 186: Equine Eating Nutrition, Baby Growth & Temper Mechanics, and Horse/Donkey Hybrid Mule Breeding Parity
+- **Vanilla Reference**:
+  - `AbstractHorse.java:handleEating, mobInteract, createOffspringAttribute` & `Horse.java:canMate, getBreedOffspring` & `Donkey.java:canMate, getBreedOffspring` & `Mule.java:canMate`:
+    - **Equine Eating Properties & Effects**:
+      - `AbstractHorse.handleEating`: Thức ăn cho ngựa/lừa/la có các tác động cụ thể:
+        - `Wheat`: hồi 2.0 HP, giảm thời gian lớn 20 giây (400 ticks), tăng điểm thuần hóa (`temper`) +3.
+        - `Sugar`: hồi 1.0 HP, giảm thời gian lớn 30 giây (600 ticks), tăng điểm thuần hóa +3.
+        - `Hay Block`: hồi 20.0 HP, giảm thời gian lớn 180 giây (3600 ticks), không tăng điểm thuần hóa.
+        - `Apple` & `Carrot`: hồi 3.0 HP, giảm thời gian lớn 60 giây (1200 ticks), tăng điểm thuần hóa +3.
+        - `Golden Carrot`: hồi 4.0 HP, giảm thời gian lớn 60 giây, tăng điểm thuần hóa +5, kích hoạt sinh sản (`setInLove(player)`) nếu đã thuần hóa và là con trưởng thành.
+        - `Golden Apple` & `Enchanted Golden Apple`: hồi 10.0 HP, giảm thời gian lớn 240 giây (4800 ticks), tăng điểm thuần hóa +10, kích hoạt sinh sản (`setInLove(player)`) nếu đã thuần hóa và là con trưởng thành.
+      - Trước đây Neth gọi thẳng `animal_interact`, khiến lúa mì và đường cũng kích hoạt `in_love`, không hồi máu theo đúng bảng dinh dưỡng, không đẩy nhanh quá trình lớn cho con non, và khiến con la vô sinh cũng vào chế độ in_love.
+    - **Equine Cross-Breeding Compatibility & Hybrid Mule**:
+      - `Horse.canMate` & `Donkey.canMate`:
+        - Ngựa có thể ghép đôi với Ngựa hoặc Lừa.
+        - Lừa có thể ghép đôi với Lừa hoặc Ngựa.
+        - La (`Mule`) là con lai vô sinh (`canMate` trả về false).
+        - Trước đây trong Neth, `BreedGoal::find_mate` lọc theo `c_entity.entity_type != my_type`, ngăn chặn hoàn toàn việc Ngựa ghép đôi với Lừa.
+      - `Horse.getBreedOffspring` & `Donkey.getBreedOffspring`:
+        - Khi lai `Horse x Donkey` (hoặc `Donkey x Horse`), con sinh ra là `EntityType::MULE`.
+        - Khi lai `Horse x Horse`:
+          - Biến thể màu lông (Variant 0..6): 4/9 từ cha, 4/9 từ mẹ, 1/9 đột biến ngẫu nhiên trong 7 kiểu màu.
+          - Vệt hoa văn (Markings 0..4): 2/5 từ cha, 2/5 từ mẹ, 1/5 đột biến ngẫu nhiên trong 5 kiểu hoa văn.
+    - **Equine Attribute Inheritance Formula**:
+      - `AbstractHorse.createOffspringAttribute`: Các chỉ số thể chất của con non (Max Health 15.0..30.0, Jump Strength 0.4..1.0, Movement Speed 0.1125..0.3375) được tính toán theo công thức Vanilla:
+        `babyQuality = (r1 + r2 + r3) / 3.0 - 0.5`, `newValue = average + range * babyQuality`, clamped và reflected vào min/max range.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `get_equine_food_properties(item_id)`: returns healing, baby growth reduction, temper increase, and breeding capability.
+    - `can_equine_mate(type_a, type_b)`: allows Horse and Donkey cross-mating while ensuring Mules remain sterile.
+    - `determine_equine_baby_type(parent_a, parent_b)`: resolves Horse x Donkey hybrid to Mule, and pure breeds to Horse or Donkey.
+    - `select_horse_baby_variant_and_markings`: implements 4/9 vs 4/9 vs 1/9 variant inheritance and 2/5 vs 2/5 vs 1/5 markings inheritance.
+    - `calculate_offspring_attribute`: implements vanilla Gaussian quality 3-point attribute calculation.
+  - Updated `HorseEntity`, `DonkeyEntity`, and `MuleEntity` in `crates/pumpkin-core/src/entity/passive/`:
+    - In `mob_interact`: reads `combat::get_equine_food_properties(item.id)`, applies healing, baby growth particles (`HappyVillager`), temper increase, and golden item love mode.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - In `find_mate`: allows cross-species mating for equines via `combat::can_equine_mate`.
+    - In `breed`: creates Mule for Horse x Donkey cross-breeding, applies variant & markings inheritance for Horse offspring, and calculates offspring attributes (Health, Jump, Speed) using `combat::calculate_offspring_attribute`.
+  - Added unit test `test_equine_food_and_breeding_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 72/72 tests passing in `entity::combat::tests`.
+
+
 
 
 

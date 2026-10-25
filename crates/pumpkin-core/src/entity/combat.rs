@@ -8,6 +8,7 @@ use pumpkin_data::data_component_impl::EnchantmentsImpl;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::tag;
 use pumpkin_data::tag::Taggable;
+use pumpkin_data::entity::EntityType;
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{
     attributes::Attributes,
@@ -4884,6 +4885,184 @@ pub const fn get_fox_safe_fall_distance() -> f64 {
     5.0
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EquineFoodProperties {
+    pub heal: f32,
+    pub age_up_seconds: i32,
+    pub temper_increase: i32,
+    pub can_breed: bool,
+}
+
+/// Returns the feeding properties of an item when given to an equine (Horse, Donkey, Mule, etc.).
+///
+/// Mirrors vanilla `AbstractHorse.java:handleEating`:
+/// - `Wheat`: heal 2.0, ageUp 20s, temper +3
+/// - `Sugar`: heal 1.0, ageUp 30s, temper +3
+/// - `Hay Block`: heal 20.0, ageUp 180s, temper 0
+/// - `Apple`: heal 3.0, ageUp 60s, temper +3
+/// - `Carrot`: heal 3.0, ageUp 60s, temper +3
+/// - `Golden Carrot`: heal 4.0, ageUp 60s, temper +5, can_breed: true
+/// - `Golden Apple` & `Enchanted Golden Apple`: heal 10.0, ageUp 240s, temper +10, can_breed: true
+#[must_use]
+pub fn get_equine_food_properties(item_id: u16) -> Option<EquineFoodProperties> {
+    use pumpkin_data::item::Item;
+    if item_id == Item::WHEAT.id {
+        Some(EquineFoodProperties {
+            heal: 2.0,
+            age_up_seconds: 20,
+            temper_increase: 3,
+            can_breed: false,
+        })
+    } else if item_id == Item::SUGAR.id {
+        Some(EquineFoodProperties {
+            heal: 1.0,
+            age_up_seconds: 30,
+            temper_increase: 3,
+            can_breed: false,
+        })
+    } else if item_id == Item::HAY_BLOCK.id {
+        Some(EquineFoodProperties {
+            heal: 20.0,
+            age_up_seconds: 180,
+            temper_increase: 0,
+            can_breed: false,
+        })
+    } else if item_id == Item::APPLE.id || item_id == Item::CARROT.id {
+        Some(EquineFoodProperties {
+            heal: 3.0,
+            age_up_seconds: 60,
+            temper_increase: 3,
+            can_breed: false,
+        })
+    } else if item_id == Item::GOLDEN_CARROT.id {
+        Some(EquineFoodProperties {
+            heal: 4.0,
+            age_up_seconds: 60,
+            temper_increase: 5,
+            can_breed: true,
+        })
+    } else if item_id == Item::GOLDEN_APPLE.id || item_id == Item::ENCHANTED_GOLDEN_APPLE.id {
+        Some(EquineFoodProperties {
+            heal: 10.0,
+            age_up_seconds: 240,
+            temper_increase: 10,
+            can_breed: true,
+        })
+    } else {
+        None
+    }
+}
+
+/// Checks whether two equines can mate with each other.
+///
+/// Mirrors vanilla `Horse.java:canMate` and `Donkey.java:canMate`:
+/// - Horse can mate with Horse or Donkey.
+/// - Donkey can mate with Donkey or Horse.
+/// - Mules are sterile hybrids and cannot mate with any equine (`Mule.java:canMate` returns false).
+#[must_use]
+pub fn can_equine_mate(type_a: &EntityType, type_b: &EntityType) -> bool {
+    let is_horse_or_donkey_a = *type_a == EntityType::HORSE || *type_a == EntityType::DONKEY;
+    let is_horse_or_donkey_b = *type_b == EntityType::HORSE || *type_b == EntityType::DONKEY;
+    is_horse_or_donkey_a && is_horse_or_donkey_b
+}
+
+/// Determines the offspring entity type when two equines breed.
+///
+/// Mirrors vanilla `Horse.java:getBreedOffspring` and `Donkey.java:getBreedOffspring`:
+/// - Horse x Donkey (or Donkey x Horse) -> Mule!
+/// - Horse x Horse -> Horse
+/// - Donkey x Donkey -> Donkey
+#[must_use]
+pub fn determine_equine_baby_type(parent_a: &EntityType, parent_b: &EntityType) -> &'static EntityType {
+    if (parent_a.id == EntityType::HORSE.id && parent_b.id == EntityType::DONKEY.id)
+        || (parent_a.id == EntityType::DONKEY.id && parent_b.id == EntityType::HORSE.id)
+    {
+        &EntityType::MULE
+    } else if parent_a.id == EntityType::DONKEY.id && parent_b.id == EntityType::DONKEY.id {
+        &EntityType::DONKEY
+    } else {
+        &EntityType::HORSE
+    }
+}
+
+/// Computes the inherited attribute (Max Health, Jump Strength, Movement Speed) for horse/donkey/mule offspring.
+///
+/// Mirrors vanilla `AbstractHorse.java:createOffspringAttribute`:
+#[must_use]
+pub fn calculate_offspring_attribute(
+    parent_a_val: f64,
+    parent_b_val: f64,
+    min_val: f64,
+    max_val: f64,
+    r1: f64,
+    r2: f64,
+    r3: f64,
+) -> f64 {
+    if max_val <= min_val {
+        return min_val;
+    }
+    let p_a = parent_a_val.clamp(min_val, max_val);
+    let p_b = parent_b_val.clamp(min_val, max_val);
+    let margin = 0.15 * (max_val - min_val);
+    let range = (p_a - p_b).abs() + margin * 2.0;
+    let average = (p_a + p_b) / 2.0;
+    let baby_quality = (r1 + r2 + r3) / 3.0 - 0.5;
+    let new_val = average + range * baby_quality;
+    if new_val > max_val {
+        let diff = new_val - max_val;
+        max_val - diff
+    } else if new_val < min_val {
+        let diff = min_val - new_val;
+        min_val + diff
+    } else {
+        new_val
+    }
+}
+
+/// Selects a baby horse's variant and markings based on parental genetics and mutation roll.
+///
+/// Mirrors vanilla `Horse.java:getBreedOffspring`:
+/// - `selectSkin = random.nextInt(9)` (0..8):
+///   - 0..3 (4/9 = 44.4%): parent A variant
+///   - 4..7 (4/9 = 44.4%): parent B variant
+///   - 8 (1/9 = 11.1%): random 0..6 variant
+/// - `selectMarking = random.nextInt(5)` (0..4):
+///   - 0..1 (2/5 = 40.0%): parent A markings
+///   - 2..3 (2/5 = 40.0%): parent B markings
+///   - 4 (1/5 = 20.0%): random 0..4 markings
+#[must_use]
+pub fn select_horse_baby_variant_and_markings(
+    parent_a_variant: i32,
+    parent_b_variant: i32,
+    rand_skin: u32,
+    rand_markings: u32,
+    rand_variant: u8,
+    rand_marking: u8,
+) -> i32 {
+    let parent_a_color = parent_a_variant & 0xFF;
+    let parent_b_color = parent_b_variant & 0xFF;
+    let parent_a_marking = (parent_a_variant >> 8) & 0xFF;
+    let parent_b_marking = (parent_b_variant >> 8) & 0xFF;
+
+    let variant = if rand_skin < 4 {
+        parent_a_color
+    } else if rand_skin < 8 {
+        parent_b_color
+    } else {
+        (rand_variant % 7) as i32
+    };
+
+    let marking = if rand_markings < 2 {
+        parent_a_marking
+    } else if rand_markings < 4 {
+        parent_b_marking
+    } else {
+        (rand_marking % 5) as i32
+    };
+
+    variant | (marking << 8)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7634,6 +7813,96 @@ mod tests {
 
         // 4. Fox safe fall distance attribute (Fox.java:createAttributes: 5.0 blocks)
         assert_eq!(get_fox_safe_fall_distance(), 5.0);
+    }
+
+    #[test]
+    fn test_equine_food_and_breeding_parity() {
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+
+        // 1. Equine food feeding properties (AbstractHorse.java:handleEating)
+        let wheat = get_equine_food_properties(Item::WHEAT.id).unwrap();
+        assert_eq!(wheat.heal, 2.0);
+        assert_eq!(wheat.age_up_seconds, 20);
+        assert_eq!(wheat.temper_increase, 3);
+        assert!(!wheat.can_breed);
+
+        let sugar = get_equine_food_properties(Item::SUGAR.id).unwrap();
+        assert_eq!(sugar.heal, 1.0);
+        assert_eq!(sugar.age_up_seconds, 30);
+        assert_eq!(sugar.temper_increase, 3);
+        assert!(!sugar.can_breed);
+
+        let hay = get_equine_food_properties(Item::HAY_BLOCK.id).unwrap();
+        assert_eq!(hay.heal, 20.0);
+        assert_eq!(hay.age_up_seconds, 180);
+        assert_eq!(hay.temper_increase, 0);
+        assert!(!hay.can_breed);
+
+        let golden_carrot = get_equine_food_properties(Item::GOLDEN_CARROT.id).unwrap();
+        assert_eq!(golden_carrot.heal, 4.0);
+        assert_eq!(golden_carrot.age_up_seconds, 60);
+        assert_eq!(golden_carrot.temper_increase, 5);
+        assert!(golden_carrot.can_breed);
+
+        let golden_apple = get_equine_food_properties(Item::GOLDEN_APPLE.id).unwrap();
+        assert_eq!(golden_apple.heal, 10.0);
+        assert_eq!(golden_apple.age_up_seconds, 240);
+        assert_eq!(golden_apple.temper_increase, 10);
+        assert!(golden_apple.can_breed);
+
+        assert!(get_equine_food_properties(Item::DIRT.id).is_none());
+
+        // 2. Equine mating compatibility (Horse.java:canMate, Donkey.java:canMate)
+        assert!(can_equine_mate(&EntityType::HORSE, &EntityType::HORSE));
+        assert!(can_equine_mate(&EntityType::HORSE, &EntityType::DONKEY));
+        assert!(can_equine_mate(&EntityType::DONKEY, &EntityType::HORSE));
+        assert!(can_equine_mate(&EntityType::DONKEY, &EntityType::DONKEY));
+        assert!(!can_equine_mate(&EntityType::MULE, &EntityType::HORSE));
+        assert!(!can_equine_mate(&EntityType::MULE, &EntityType::DONKEY));
+        assert!(!can_equine_mate(&EntityType::HORSE, &EntityType::COW));
+
+        // 3. Offspring entity type (Horse.java:getBreedOffspring, Donkey.java:getBreedOffspring)
+        assert_eq!(determine_equine_baby_type(&EntityType::HORSE, &EntityType::DONKEY), &EntityType::MULE);
+        assert_eq!(determine_equine_baby_type(&EntityType::DONKEY, &EntityType::HORSE), &EntityType::MULE);
+        assert_eq!(determine_equine_baby_type(&EntityType::HORSE, &EntityType::HORSE), &EntityType::HORSE);
+        assert_eq!(determine_equine_baby_type(&EntityType::DONKEY, &EntityType::DONKEY), &EntityType::DONKEY);
+
+        // 4. Horse variant and markings inheritance (Horse.java:getBreedOffspring)
+        // Parent A: variant 2 (Chestnut), marking 1 (White) -> 2 | (1 << 8) = 258
+        // Parent B: variant 5 (Gray), marking 3 (White Dots) -> 5 | (3 << 8) = 773
+        let parent_a = 2 | (1 << 8);
+        let parent_b = 5 | (3 << 8);
+
+        // rand_skin 0..3: inherit parent A variant (2)
+        // rand_markings 0..1: inherit parent A markings (1)
+        let baby_1 = select_horse_baby_variant_and_markings(parent_a, parent_b, 1, 0, 0, 0);
+        assert_eq!(baby_1 & 0xFF, 2);
+        assert_eq!((baby_1 >> 8) & 0xFF, 1);
+
+        // rand_skin 4..7: inherit parent B variant (5)
+        // rand_markings 2..3: inherit parent B markings (3)
+        let baby_2 = select_horse_baby_variant_and_markings(parent_a, parent_b, 6, 2, 0, 0);
+        assert_eq!(baby_2 & 0xFF, 5);
+        assert_eq!((baby_2 >> 8) & 0xFF, 3);
+
+        // rand_skin 8: random variant (mutation)
+        // rand_markings 4: random markings (mutation)
+        let baby_mut = select_horse_baby_variant_and_markings(parent_a, parent_b, 8, 4, 4, 2);
+        assert_eq!(baby_mut & 0xFF, 4); // variant 4 (Black)
+        assert_eq!((baby_mut >> 8) & 0xFF, 2); // markings 2 (Whitefield)
+
+        // 5. Equine offspring attribute inheritance (AbstractHorse.java:createOffspringAttribute)
+        // Average when quality = 0.0 ((0.5 + 0.5 + 0.5)/3 - 0.5 = 0.0)
+        let avg_health = calculate_offspring_attribute(20.0, 24.0, 15.0, 30.0, 0.5, 0.5, 0.5);
+        assert!((avg_health - 22.0).abs() < 1e-4);
+
+        // Quality clamped within range
+        let low_health = calculate_offspring_attribute(15.0, 15.0, 15.0, 30.0, 0.0, 0.0, 0.0);
+        assert!(low_health >= 15.0 && low_health <= 30.0);
+
+        let high_health = calculate_offspring_attribute(30.0, 30.0, 15.0, 30.0, 1.0, 1.0, 1.0);
+        assert!(high_health >= 15.0 && high_health <= 30.0);
     }
 }
 

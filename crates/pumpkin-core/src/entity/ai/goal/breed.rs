@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
+use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityStatus;
 use rand::RngExt;
 
@@ -47,7 +48,9 @@ impl BreedGoal {
             if c_entity.entity_uuid == my_uuid {
                 continue;
             }
-            if c_entity.entity_type != my_type {
+            let c_type = c_entity.entity_type;
+            let can_breed = c_type == my_type || combat::can_equine_mate(my_type, c_type);
+            if !can_breed {
                 continue;
             }
             if !candidate.is_in_love() || !candidate.is_breeding_ready() || candidate.is_panicking()
@@ -101,7 +104,13 @@ impl BreedGoal {
         mate.set_breeding_cooldown(6000);
 
         let parent_pos = entity.pos.load();
-        let baby = from_type(entity.entity_type, parent_pos, &world, Uuid::new_v4());
+        let baby_type: &'static pumpkin_data::entity::EntityType =
+            if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
+                combat::determine_equine_baby_type(entity.entity_type, mate.get_entity().entity_type)
+            } else {
+                entity.entity_type
+            };
+        let baby = from_type(baby_type, parent_pos, &world, Uuid::new_v4());
         baby.get_entity().set_age(-24000);
 
         // Vanilla Axolotl.java:346-361: inherit variant from parents or 1/1200 rare blue mutation
@@ -202,6 +211,85 @@ impl BreedGoal {
                 rand_bool,
             );
             baby_fox.set_variant(crate::entity::passive::fox::FoxVariant::from_id(variant_id));
+        }
+
+        // Vanilla Horse.java: getBreedOffspring - inherit variant and markings from parents
+        if let Some(horse_a) = mob.as_horse()
+            && let Some(horse_b) = mate.cast_any().downcast_ref::<crate::entity::passive::horse::HorseEntity>()
+            && let Some(baby_horse) = baby.cast_any().downcast_ref::<crate::entity::passive::horse::HorseEntity>()
+        {
+            let rand_skin = rand::random_range(0..9);
+            let rand_markings = rand::random_range(0..5);
+            let rand_variant = rand::random();
+            let rand_marking = rand::random();
+            let variant = combat::select_horse_baby_variant_and_markings(
+                horse_a.get_variant(),
+                horse_b.get_variant(),
+                rand_skin,
+                rand_markings,
+                rand_variant,
+                rand_marking,
+            );
+            baby_horse.set_variant(variant);
+        }
+
+        // Vanilla AbstractHorse.java: setOffspringAttributes - inherit health, jump, speed
+        if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
+            let parent_a_living = &mob.get_mob_entity().living_entity;
+            let parent_b_living = mate.get_mob().map(|m| &m.get_mob_entity().living_entity);
+            let baby_living = baby.get_mob().map(|m| &m.get_mob_entity().living_entity);
+
+            if let (Some(parent_b), Some(baby_l)) = (parent_b_living, baby_living) {
+                // MAX_HEALTH: 15.0 .. 30.0
+                let health_a = parent_a_living.get_attribute_base(&Attributes::MAX_HEALTH);
+                let health_b = parent_b.get_attribute_base(&Attributes::MAX_HEALTH);
+                let baby_health = combat::calculate_offspring_attribute(
+                    health_a,
+                    health_b,
+                    15.0,
+                    30.0,
+                    rand::random(),
+                    rand::random(),
+                    rand::random(),
+                );
+                baby_l.set_max_health(baby_health as f32);
+                baby_l.set_health(baby_health as f32);
+
+                // JUMP_STRENGTH: 0.4 .. 1.0
+                let jump_a = parent_a_living.get_attribute_base(&Attributes::JUMP_STRENGTH);
+                let jump_b = parent_b.get_attribute_base(&Attributes::JUMP_STRENGTH);
+                let baby_jump = combat::calculate_offspring_attribute(
+                    jump_a,
+                    jump_b,
+                    0.4,
+                    1.0,
+                    rand::random(),
+                    rand::random(),
+                    rand::random(),
+                );
+                let mut attr = baby_l.attributes.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+                if let Some(j) = attr.get_mut(&Attributes::JUMP_STRENGTH.id) {
+                    j.base_value = baby_jump;
+                    j.dirty.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+
+                // MOVEMENT_SPEED: 0.1125 .. 0.3375
+                let speed_a = parent_a_living.get_attribute_base(&Attributes::MOVEMENT_SPEED);
+                let speed_b = parent_b.get_attribute_base(&Attributes::MOVEMENT_SPEED);
+                let baby_speed = combat::calculate_offspring_attribute(
+                    speed_a,
+                    speed_b,
+                    0.1125,
+                    0.3375,
+                    rand::random(),
+                    rand::random(),
+                    rand::random(),
+                );
+                if let Some(s) = attr.get_mut(&Attributes::MOVEMENT_SPEED.id) {
+                    s.base_value = baby_speed;
+                    s.dirty.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
         }
 
         let world_full = entity.world.load_full();

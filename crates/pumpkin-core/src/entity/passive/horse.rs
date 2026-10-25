@@ -16,7 +16,7 @@ use rand::RngExt;
 use uuid::Uuid;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         breed::BreedGoal, escape_danger::EscapeDangerGoal, follow_parent::FollowParentGoal,
@@ -302,6 +302,63 @@ impl Mob for HorseEntity {
             return true;
         }
 
+        if let Some(props) = combat::get_equine_food_properties(item.id) {
+            let entity = self.get_entity();
+            let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+            let current_health = self.mob_entity.living_entity.health.load();
+            let max_health = self.mob_entity.living_entity.get_max_health();
+            let is_tame = self.is_tame();
+            let in_love = self.mob_entity.is_in_love();
+            let current_temper = self.temper.load(Ordering::Relaxed);
+
+            let mut item_used = false;
+
+            // 1. Healing
+            if current_health < max_health && props.heal > 0.0 {
+                self.mob_entity.living_entity.heal(props.heal);
+                item_used = true;
+            }
+
+            // 2. Baby age up
+            if is_baby && props.age_up_seconds > 0 {
+                let age = entity.age.load(Ordering::Relaxed);
+                let new_age = (age + props.age_up_seconds * 20).min(0);
+                entity.set_age(new_age);
+                let world = entity.world.load();
+                world.spawn_particle(
+                    entity.pos.load(),
+                    pumpkin_util::math::vector3::Vector3::new(0.0, 0.5, 0.0),
+                    1.0,
+                    5,
+                    pumpkin_data::particle::Particle::HappyVillager,
+                );
+                item_used = true;
+            }
+
+            // 3. Temper modification
+            if props.temper_increase > 0 && (!is_tame || item_used) && current_temper < 100 {
+                self.temper.store((current_temper + props.temper_increase).min(100), Ordering::Relaxed);
+                item_used = true;
+            }
+
+            // 4. In love breeding
+            if props.can_breed && is_tame && !is_baby && !in_love {
+                self.mob_entity.set_love_ticks(600, Some(player.gameprofile.id));
+                item_used = true;
+            }
+
+            if item_used {
+                item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                let world = entity.world.load();
+                world.play_sound(
+                    Sound::EntityHorseEat,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                );
+                return true;
+            }
+        }
+
         if !self.is_baby() && !self.is_food(item_stack) {
             let world = player.world();
             let ent = &self.mob_entity.living_entity.entity;
@@ -313,7 +370,7 @@ impl Mob for HorseEntity {
             }
         }
 
-        self.animal_interact(player, item_stack, Sound::EntityHorseAmbient)
+        false
     }
 }
 
