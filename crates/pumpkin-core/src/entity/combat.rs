@@ -4575,6 +4575,64 @@ pub const fn can_axolotl_be_targeted(is_playing_dead: bool) -> bool {
     !is_playing_dead
 }
 
+/// Calculates fall damage points for a Bee.
+///
+/// Mirrors vanilla `Bee.java:610-611`: Bees are flying mobs that are completely
+/// immune to fall damage.
+#[must_use]
+pub const fn calculate_bee_fall_damage_points() -> i32 {
+    0
+}
+
+/// Calculates drowning damage for a Bee submerged in water.
+///
+/// Mirrors vanilla `Bee.java:365-373`:
+/// Bees take 1.0 drowning damage each tick once submerged for more than 20 ticks (1s).
+#[must_use]
+pub const fn calculate_bee_underwater_damage(underwater_ticks: i32) -> f32 {
+    if underwater_ticks > 20 {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// Calculates the velocity impulse of a Camel dash.
+///
+/// Mirrors vanilla `Camel.java:305-317`:
+/// - Horizontal impulse factor: `22.2222 * jump_amount * movement_speed * block_speed_factor`
+/// - Vertical impulse factor: `1.4285 * jump_amount * jump_power`
+#[must_use]
+pub fn calculate_camel_dash_velocity(
+    yaw_rad: f32,
+    jump_amount: f32,
+    movement_speed: f64,
+    jump_power: f64,
+    block_speed_factor: f64,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+
+    let forward_x = -yaw_rad.sin() as f64;
+    let forward_z = yaw_rad.cos() as f64;
+    let horizontal_scale = 22.2222 * jump_amount as f64 * movement_speed * block_speed_factor;
+    let vertical_scale = 1.4285 * jump_amount as f64 * jump_power;
+
+    Vector3::new(
+        forward_x * horizontal_scale,
+        vertical_scale,
+        forward_z * horizontal_scale,
+    )
+}
+
+/// Determines whether a Camel can accept another rider/passenger.
+///
+/// Mirrors vanilla `Camel.java:565-567`:
+/// Camels have a maximum capacity of 2 passengers.
+#[must_use]
+pub const fn can_camel_accept_passenger(current_passenger_count: usize) -> bool {
+    current_passenger_count < 2
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7170,6 +7228,31 @@ mod tests {
         // 5. Axolotl play-dead enemy invisibility (Axolotl.java:474-476)
         assert!(!can_axolotl_be_targeted(true));
         assert!(can_axolotl_be_targeted(false));
+    }
+
+    #[test]
+    fn test_bee_and_camel_parity() {
+        // 1. Bee fall damage immunity (Bee.java:610-611)
+        assert_eq!(calculate_bee_fall_damage_points(), 0);
+
+        // 2. Bee drowning damage (Bee.java:365-373: 1.0 damage when underwater_ticks > 20)
+        assert_eq!(calculate_bee_underwater_damage(10), 0.0);
+        assert_eq!(calculate_bee_underwater_damage(20), 0.0);
+        assert_eq!(calculate_bee_underwater_damage(21), 1.0);
+        assert_eq!(calculate_bee_underwater_damage(40), 1.0);
+
+        // 3. Camel dash velocity impulse (Camel.java:305-317)
+        let vel = calculate_camel_dash_velocity(0.0, 1.0, 0.09, 0.42, 1.0);
+        // forward_z = cos(0) = 1.0; scale = 22.2222 * 1.0 * 0.09 * 1.0 = ~1.999998
+        assert!((vel.z - 2.0).abs() < 0.01);
+        assert_eq!(vel.x, 0.0);
+        // vertical = 1.4285 * 1.0 * 0.42 = ~0.59997
+        assert!((vel.y - 0.6).abs() < 0.01);
+
+        // 4. Camel passenger capacity (Camel.java:565-567: max 2 passengers)
+        assert!(can_camel_accept_passenger(0));
+        assert!(can_camel_accept_passenger(1));
+        assert!(!can_camel_accept_passenger(2));
     }
 }
 

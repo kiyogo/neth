@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicBool, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
@@ -38,6 +38,7 @@ pub struct CamelEntity {
     pub ageable_data: AgeableData,
     pub flags: AtomicU8,
     pub dashing: AtomicBool,
+    pub dash_cooldown: AtomicI32,
 }
 
 impl CamelEntity {
@@ -48,6 +49,7 @@ impl CamelEntity {
             ageable_data: AgeableData::default(),
             flags: AtomicU8::new(0),
             dashing: AtomicBool::new(false),
+            dash_cooldown: AtomicI32::new(0),
         };
 
         // Initialize attributes: Max Health = 32.0, Movement Speed = 0.09, Step Height = 1.5, Jump Strength = 0.42
@@ -142,6 +144,39 @@ impl CamelEntity {
         let entity = self.get_entity();
         entity.set_synced_data(pumpkin_data::tracked_data::camel::DASH, dashing);
     }
+
+    #[must_use]
+    pub fn get_dash_cooldown(&self) -> i32 {
+        self.dash_cooldown.load(Ordering::Relaxed)
+    }
+
+    pub fn set_dash_cooldown(&self, cooldown: i32) {
+        self.dash_cooldown.store(cooldown, Ordering::Relaxed);
+    }
+
+    pub fn execute_dash(&self, jump_amount: f32) {
+        let entity = self.get_entity();
+        let yaw = entity.yaw.load();
+        let movement_speed = self
+            .mob_entity
+            .living_entity
+            .get_attribute_value(&Attributes::MOVEMENT_SPEED);
+        let jump_power = self
+            .mob_entity
+            .living_entity
+            .get_attribute_value(&Attributes::JUMP_STRENGTH);
+        let block_speed_factor = 1.0;
+        let delta = crate::entity::combat::calculate_camel_dash_velocity(
+            yaw.to_radians(),
+            jump_amount,
+            movement_speed,
+            jump_power,
+            block_speed_factor,
+        );
+        entity.velocity.store(entity.velocity.load() + delta);
+        self.dash_cooldown.store(55, Ordering::Relaxed);
+        self.set_dashing(true);
+    }
 }
 
 impl AgeableMob for CamelEntity {
@@ -198,6 +233,33 @@ impl Mob for CamelEntity {
             return;
         }
 
+        // Vanilla Camel.tick:
+        // if (this.isDashing() && this.dashCooldown < 50 && (this.onGround() || this.isInLiquid() || this.isPassenger()))
+        //    this.setDashing(false);
+        if self.is_dashing()
+            && self.dash_cooldown.load(Ordering::Relaxed) < 50
+            && (entity.on_ground.load(Ordering::Relaxed)
+                || entity.touching_water.load(Ordering::Relaxed))
+        {
+            self.set_dashing(false);
+        }
+
+        let cd = self.dash_cooldown.load(Ordering::Relaxed);
+        if cd > 0 {
+            let new_cd = cd - 1;
+            self.dash_cooldown.store(new_cd, Ordering::Relaxed);
+            if new_cd == 0 {
+                let pos = entity.pos.load();
+                entity.world.load().play_sound_fine(
+                    Sound::EntityCamelDashReady,
+                    SoundCategory::Neutral,
+                    &pos,
+                    1.0,
+                    1.0,
+                );
+            }
+        }
+
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             entity.world.load().play_sound_fine(
                 Sound::EntityCamelAmbient,
@@ -229,6 +291,15 @@ impl Mob for CamelEntity {
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
         let item = item_stack.get_item();
 
+        if self.is_food(item_stack) {
+            let living = &self.mob_entity.living_entity;
+            let current_health = living.get_health();
+            let max_health = living.get_max_health();
+            if current_health < max_health {
+                living.heal(2.0);
+            }
+        }
+
         if item == &Item::SADDLE && !self.is_saddled() && !self.is_baby() {
             self.set_saddled(true);
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
@@ -243,13 +314,20 @@ impl Mob for CamelEntity {
         }
 
         if self.is_saddled() && !self.is_baby() && !self.is_food(item_stack) {
-            let world = player.world();
             let ent = &self.mob_entity.living_entity.entity;
-            if let Some(vehicle) = world.get_entity_by_id(ent.entity_id)
-                && let Some(passenger) = world.get_player_by_id(player.entity_id())
-            {
-                ent.add_passenger(vehicle, passenger as Arc<dyn EntityBase>);
-                return true;
+            let passengers = ent
+                .passengers
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if crate::entity::combat::can_camel_accept_passenger(passengers.len()) {
+                drop(passengers);
+                let world = player.world();
+                if let Some(vehicle) = world.get_entity_by_id(ent.entity_id)
+                    && let Some(passenger) = world.get_player_by_id(player.entity_id())
+                {
+                    ent.add_passenger(vehicle, passenger as Arc<dyn EntityBase>);
+                    return true;
+                }
             }
         }
 

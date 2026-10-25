@@ -86,6 +86,7 @@ pub struct BeeEntity {
     pub cannot_enter_hive_ticks: AtomicI32,
     pub crops_grown_since_pollination: AtomicI32,
     pub time_since_sting: AtomicI32,
+    pub under_water_ticks: AtomicI32,
 }
 
 impl BeeEntity {
@@ -110,6 +111,7 @@ impl BeeEntity {
             cannot_enter_hive_ticks: AtomicI32::new(0),
             crops_grown_since_pollination: AtomicI32::new(0),
             time_since_sting: AtomicI32::new(0),
+            under_water_ticks: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(bee);
 
@@ -326,14 +328,45 @@ impl Mob for BeeEntity {
         &self.mob_entity
     }
 
-    fn mob_tick(&self, _caller: &dyn EntityBase) {
+    fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
+        crate::entity::combat::calculate_bee_fall_damage_points()
+    }
+
+    fn adjust_damage_amount(
+        &self,
+        amount: f32,
+        damage_type: &pumpkin_data::damage::DamageType,
+    ) -> f32 {
+        if *damage_type == pumpkin_data::damage::DamageType::FALL {
+            0.0
+        } else {
+            amount
+        }
+    }
+
+    fn mob_tick(&self, caller: &dyn EntityBase) {
         self.ageable_ai_step();
+
+        let entity = self.get_entity();
+        // Vanilla Bee.customServerAiStep: if (this.isInWater()) this.underWaterTicks++; else this.underWaterTicks = 0;
+        // if (this.underWaterTicks > 20) this.hurtServer(level, this.damageSources().drown(), 1.0F);
+        if entity.touching_water.load(Ordering::Relaxed) {
+            let ticks = self.under_water_ticks.fetch_add(1, Ordering::Relaxed) + 1;
+            let damage_amt = crate::entity::combat::calculate_bee_underwater_damage(ticks);
+            if damage_amt > 0.0 {
+                self.mob_entity
+                    .living_entity
+                    .damage(caller, damage_amt, pumpkin_data::damage::DamageType::DROWN);
+            }
+        } else {
+            self.under_water_ticks.store(0, Ordering::Relaxed);
+        }
 
         // Vanilla Bee.aiStep: shouldRoll = isAngry() && !hasStung() && getTarget() != null && getTarget().distanceToSqr(this) < 4.0;
         let should_roll = is_angry(self)
             && !self.has_stung()
             && self.mob_entity.get_target().is_some_and(|target| {
-                let my_pos = self.get_entity().pos.load();
+                let my_pos = entity.pos.load();
                 let t_pos = target.get_entity().pos.load();
                 my_pos.squared_distance_to(t_pos.x, t_pos.y, t_pos.z) < 4.0
             });
@@ -380,18 +413,19 @@ impl Mob for BeeEntity {
             Difficulty::Hard => 360,
             _ => 0,
         };
-        if poison_duration > 0
-            && let Some(living) = target.get_living_entity()
-        {
-            living.add_effect(Effect {
-                effect_type: &StatusEffect::POISON,
-                duration: poison_duration,
-                amplifier: 0,
-                ambient: false,
-                show_particles: true,
-                show_icon: true,
-                blend: false,
-            });
+        if let Some(living) = target.get_living_entity() {
+            living.set_stinger_count(living.get_stinger_count() + 1);
+            if poison_duration > 0 {
+                living.add_effect(Effect {
+                    effect_type: &StatusEffect::POISON,
+                    duration: poison_duration,
+                    amplifier: 0,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    blend: false,
+                });
+            }
         }
         self.set_has_stung(true);
         self.stop_being_angry();

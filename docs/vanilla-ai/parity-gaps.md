@@ -3570,6 +3570,47 @@
     - Integrated `combat::should_spawn_screaming_goat_from_parents` for Goat breeding.
   - Added unit test `test_allay_and_axolotl_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 67/67 tests passing in `entity::combat::tests`.
 
+## Gap 182: Bee Fall Damage Immunity, Drowning in Water & Stinger Count Parity, and Camel Dash Velocity, Passenger Capacity & Dash Ready Audio Parity
+- **Vanilla Reference**:
+  - `Bee.java:230-247, 365-373, 601-603, 610-611`:
+    - **Bee Fall Damage Immunity**:
+      - `Bee.checkFallDamage`: Ong bay lượn hoàn toàn miễn nhiễm với sát thương rơi tự do (`calculate_fall_damage = 0`, `adjust_damage_amount = 0.0` khi nhận `DamageType::FALL`).
+    - **Bee Underwater Drowning**:
+      - `Bee.customServerAiStep`: Khi ong ở dưới nước (`isInWater()`), tăng biến đếm `underWaterTicks++`. Nếu thoát khỏi nước, reset `underWaterTicks = 0`.
+      - Khi `underWaterTicks > 20` (quá 1 giây chìm trong nước), mỗi tick nhận 1.0 sát thương chết đuối (`damageSources().drown()`).
+    - **Bee Stinger Count Incrementation**:
+      - `Bee.doHurtTarget`: Khi ong chích trúng mục tiêu sống (`LivingEntity`), số lượng ngòi cắm vào mục tiêu tăng thêm 1: `livingTarget.setStingerCount(livingTarget.getStingerCount() + 1)`.
+  - `Camel.java:305-317, 338-340, 565-567`:
+    - **Camel Dash Velocity Momentum Dynamics**:
+      - Khi người chơi cưỡi kích hoạt lướt (`Camel.executeRidersJump`):
+        - Xung lực ngang (`DASH_HORIZONTAL_MOMENTUM = 22.2222F`): `look_angle_xz * (22.2222 * jump_amount * movement_speed * block_speed_factor)`.
+        - Xung lực dọc (`DASH_VERTICAL_MOMENTUM = 1.4285F`): `1.4285 * jump_amount * jump_power`.
+        - Đặt `dashCooldown = 55` ticks và đồng bộ trạng thái `isDashing = true`.
+    - **Camel Dash Ready Audio & Reset**:
+      - Khi đếm lùi `dashCooldown` về 0: phát âm thanh `SoundEvents.CAMEL_DASH_READY` tại vị trí của lạc đà.
+      - Khi `isDashing()` và `dashCooldown < 50` và lạc đà tiếp đất (`onGround()`) hoặc chạm chất lỏng (`isInLiquid()`), dừng trạng thái lướt (`setDashing(false)`).
+    - **Camel Passenger Capacity & Food Healing**:
+      - Sức chứa: Cho phép tối đa 2 người cưỡi (`canAddPassenger -> passengers.size() <= 2`).
+      - Hồi phục: Cho ăn `Item::CACTUS` hồi 2.0 HP khi chưa đầy máu (`Camel.handleEating`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_bee_fall_damage_points`: returns 0.
+    - `calculate_bee_underwater_damage`: calculates drown damage when underwater ticks exceed 20.
+    - `calculate_camel_dash_velocity`: computes exact 3D velocity vectors based on yaw, jump amount, movement speed, jump power, and block speed factor.
+    - `can_camel_accept_passenger`: checks passenger count <= 2.
+  - Updated `BeeEntity` in `crates/pumpkin-core/src/entity/passive/bee.rs`:
+    - Added `under_water_ticks: AtomicI32` counter.
+    - Overrode `calculate_fall_damage` (returning 0) and `adjust_damage_amount` (returning 0.0 on `DamageType::FALL`).
+    - Updated `mob_tick`: ticks `under_water_ticks` in water and applies drowning damage when ticks > 20; resets to 0 on dry land.
+    - Updated `on_attack`: increments target's stinger count via `living.set_stinger_count(living.get_stinger_count() + 1)`.
+  - Updated `CamelEntity` in `crates/pumpkin-core/src/entity/passive/camel.rs`:
+    - Added `dash_cooldown: AtomicI32` counter.
+    - Added `get_dash_cooldown`, `set_dash_cooldown`, and `execute_dash` methods.
+    - Updated `mob_tick`: decrements `dash_cooldown`, resets dashing state on ground when cooldown < 50, and plays `Sound::EntityCamelDashReady` when cooldown hits 0.
+    - Updated `mob_interact`: heals 2.0 HP on cactus feeding and enforces 2-passenger capacity via `combat::can_camel_accept_passenger`.
+  - Added unit test `test_bee_and_camel_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 68/68 tests passing in `entity::combat::tests`.
+
+
 
 
 
