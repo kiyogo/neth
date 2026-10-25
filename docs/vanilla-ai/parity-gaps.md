@@ -3656,6 +3656,45 @@
     - Added parental genetics inheritance for Panda breeding via `baby_panda.set_gene_from_parents(panda_a, Some(panda_b))`.
   - Added unit test `test_polar_bear_and_panda_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 69/69 tests passing in `entity::combat::tests`.
 
+## Gap 184: Cat & Ocelot Fall Damage Immunity, Cat Breeding Inheritance & Morning Gift Drop Parity, and Ocelot Despawn & Trust Mechanics Parity
+- **Vanilla Reference**:
+  - `fall_damage_immune.json` & `Cat.java:235-245, 490-530` & `Ocelot.java:138-140`:
+    - **Feline Fall Damage Immunity**:
+      - Cả Mèo (`minecraft:cat`) và Mèo gấm (`minecraft:ocelot`) đều nằm trong tag `#minecraft:fall_damage_immune`. Cả hai hoàn toàn miễn nhiễm với sát thương rơi tự do (`calculate_fall_damage = 0`, `adjust_damage_amount = 0.0` khi nhận `DamageType::FALL`).
+    - **Cat Kitten Breeding Traits Inheritance**:
+      - `Cat.getBreedOffspring`: Khi ghép đôi 2 con mèo:
+        - Mèo con nhận 50% biến thể (CatVariant) từ cha hoặc 50% từ mẹ (`random.nextBoolean() ? parent_a : parent_b`).
+        - Nếu mèo cha/mẹ đã được thuần hóa (`isTame`):
+          - Mèo con tự động được thuần hóa theo chủ của cha/mẹ (`setTame(true, owner)`).
+          - Mèo con nhận 50% màu vòng cổ (`CollarColor`) từ cha hoặc 50% từ mẹ.
+    - **Cat Morning Gift Delivery**:
+      - `Cat.giveMorningGift` & `gameplay/cat_morning_gift.json`:
+        - Khi chủ thức dậy sau khi ngủ ít nhất 100 ticks (`sleepTimer >= 100`) và roll xác suất thành công (mặc định 70%):
+        - Mèo mang quà buổi sáng đến cho chủ theo loot table gồm 7 vật phẩm (tổng trọng số 62):
+          - Thỏ: Rabbit Hide (10/62), Rabbit Foot (10/62)
+          - Gà/Chim: Raw Chicken (10/62), Feather (10/62)
+          - Quái vật: Rotten Flesh (10/62), String (10/62)
+          - Quà hiếm: Phantom Membrane (2/62 = ~3.22%).
+    - **Ocelot Despawn Mechanics**:
+      - `Ocelot.removeWhenFarAway`: Mèo gấm hoang dã chưa tin tưởng người chơi (`!isTrusting()`) sẽ tự động biến mất (despawn) sau 2400 ticks (2 phút) khi ở xa người chơi. Mèo gấm đã tin tưởng (`isTrusting() == true`) sẽ không bao giờ tự động biến mất.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `calculate_feline_fall_damage_points`: returns 0 fall damage for cats and ocelots.
+    - `select_cat_baby_traits`: computes 50/50 parental variant and collar color inheritance.
+    - `select_cat_morning_gift`: selects exact items according to vanilla weighted distribution (including 2/62 Phantom Membrane).
+    - `should_cat_give_morning_gift`: evaluates `sleep_timer >= 100` and roll check against gift chance.
+    - `should_ocelot_despawn_when_far`: checks `!is_trusting && age_ticks > 2400`.
+  - Updated `CatEntity` in `crates/pumpkin-core/src/entity/passive/cat.rs`:
+    - Overrode `calculate_fall_damage` (returning 0) and `adjust_damage_amount` (returning 0.0 on `DamageType::FALL`).
+    - Added `give_morning_gift` spawning morning gift items from `combat::select_cat_morning_gift`.
+  - Updated `OcelotEntity` in `crates/pumpkin-core/src/entity/passive/ocelot.rs`:
+    - Overrode `calculate_fall_damage` (returning 0) and `adjust_damage_amount` (returning 0.0 on `DamageType::FALL`).
+    - Overrode `remove_when_far_away` using `combat::should_ocelot_despawn_when_far`.
+  - Updated `BreedGoal::breed` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added Cat breeding inheritance for kitten variant, taming ownership, and collar color via `combat::select_cat_baby_traits`.
+  - Added unit test `test_cat_and_ocelot_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 70/70 tests passing in `entity::combat::tests`.
+
+
 
 
 

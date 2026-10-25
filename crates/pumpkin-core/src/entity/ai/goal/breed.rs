@@ -6,6 +6,7 @@ use pumpkin_data::entity::EntityStatus;
 use rand::RngExt;
 
 use crate::entity::experience_orb::ExperienceOrbEntity;
+use crate::entity::passive::tamable::TamableAnimal;
 use crate::entity::{EntityBase, ai::pathfinder::NavigatorGoal, combat, mob::Mob, r#type::from_type};
 
 use super::{Controls, Goal};
@@ -139,6 +140,28 @@ impl BreedGoal {
             && let Some(baby_panda) = baby.cast_any().downcast_ref::<crate::entity::passive::panda::PandaEntity>()
         {
             baby_panda.set_gene_from_parents(panda_a, Some(panda_b));
+        }
+
+        // Vanilla Cat.java:235-245: inherit variant and collar color from parents
+        if let Some(cat_a) = mob.as_cat()
+            && let Some(cat_b) = mate.cast_any().downcast_ref::<crate::entity::passive::cat::CatEntity>()
+            && let Some(baby_cat) = baby.cast_any().downcast_ref::<crate::entity::passive::cat::CatEntity>()
+        {
+            let rand_variant = rand::random();
+            let rand_collar = rand::random();
+            let (variant, collar) = combat::select_cat_baby_traits(
+                cat_a.variant.load(std::sync::atomic::Ordering::Relaxed),
+                cat_b.variant.load(std::sync::atomic::Ordering::Relaxed),
+                cat_a.get_collar_color(),
+                cat_b.get_collar_color(),
+                rand_variant,
+                rand_collar,
+            );
+            baby_cat.set_variant(variant);
+            if cat_a.is_tame() {
+                baby_cat.set_tame(true, cat_a.get_owner());
+                baby_cat.set_collar_color(collar);
+            }
         }
 
         let world_full = entity.world.load_full();

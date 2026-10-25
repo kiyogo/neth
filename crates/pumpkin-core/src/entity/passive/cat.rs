@@ -407,6 +407,28 @@ impl CatEntity {
             &entity.pos.load(),
         );
     }
+
+    /// Vanilla `Cat.giveMorningGift` (Cat.java:490-530):
+    /// Spawns an item from `gameplay/cat_morning_gift.json` at the cat's location.
+    pub fn give_morning_gift(&self) {
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        let rand_val = rand::random_range(0..62);
+        let gift_item = crate::entity::combat::select_cat_morning_gift(rand_val);
+
+        let delta_x = rand::random_range(-0.1..0.1);
+        let delta_y = rand::random_range(0.2..0.4);
+        let delta_z = rand::random_range(-0.1..0.1);
+        let drop_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
+        drop_entity
+            .velocity
+            .store(pumpkin_util::math::vector3::Vector3::new(delta_x, delta_y, delta_z));
+        world.spawn_entity(Arc::new(crate::entity::item::ItemEntity::new(
+            drop_entity,
+            ItemStack::new(1, gift_item),
+        )));
+    }
 }
 
 impl CustomSound for CatEntity {
@@ -463,6 +485,22 @@ impl Mob for CatEntity {
 
     fn as_cat(&self) -> Option<&CatEntity> {
         Some(self)
+    }
+
+    fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
+        crate::entity::combat::calculate_feline_fall_damage_points()
+    }
+
+    fn adjust_damage_amount(
+        &self,
+        amount: f32,
+        damage_type: &pumpkin_data::damage::DamageType,
+    ) -> f32 {
+        if *damage_type == pumpkin_data::damage::DamageType::FALL {
+            0.0
+        } else {
+            amount
+        }
     }
 
     fn get_ambient_sound(&self) -> Option<pumpkin_data::sound::Sound> {

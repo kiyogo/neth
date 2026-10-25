@@ -251,6 +251,30 @@ impl Mob for OcelotEntity {
         Some(self)
     }
 
+    fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
+        crate::entity::combat::calculate_feline_fall_damage_points()
+    }
+
+    fn adjust_damage_amount(
+        &self,
+        amount: f32,
+        damage_type: &pumpkin_data::damage::DamageType,
+    ) -> f32 {
+        if *damage_type == pumpkin_data::damage::DamageType::FALL {
+            0.0
+        } else {
+            amount
+        }
+    }
+
+    fn remove_when_far_away(&self, _distance_sq: f64) -> bool {
+        let age_ticks = self.get_entity().age.load(Ordering::Relaxed);
+        crate::entity::combat::should_ocelot_despawn_when_far(
+            self.is_trusting.load(Ordering::Relaxed),
+            age_ticks,
+        )
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_bool("Trusting", self.is_trusting.load(Ordering::Relaxed));
     }

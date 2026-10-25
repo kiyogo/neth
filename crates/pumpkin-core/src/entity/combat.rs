@@ -4744,6 +4744,84 @@ pub fn should_polar_bear_stand_and_warn(
     target_distance_sq < reach && ticks_until_attack <= 10
 }
 
+/// Mirrors vanilla `fall_damage_immune.json`: Cats and Ocelots are completely
+/// immune to fall damage.
+#[must_use]
+pub const fn calculate_feline_fall_damage_points() -> i32 {
+    0
+}
+
+/// Selects a kitten's variant and collar color from its parents.
+///
+/// Mirrors vanilla `Cat.java:235-245` (`getBreedOffspring`):
+/// - 50% chance to inherit variant from parent 1, 50% from parent 2.
+/// - If parents are tamed, kitten inherits collar color (50% from parent 1, 50% from parent 2).
+#[must_use]
+pub const fn select_cat_baby_traits(
+    parent1_variant: u8,
+    parent2_variant: u8,
+    parent1_collar: u8,
+    parent2_collar: u8,
+    rand_variant: bool,
+    rand_collar: bool,
+) -> (u8, u8) {
+    let variant = if rand_variant {
+        parent1_variant
+    } else {
+        parent2_variant
+    };
+    let collar = if rand_collar {
+        parent1_collar
+    } else {
+        parent2_collar
+    };
+    (variant, collar)
+}
+
+/// Selects an item from the Cat morning gift loot table.
+///
+/// Mirrors vanilla `gameplay/cat_morning_gift.json`:
+/// Total weight = 62:
+/// - 10: Rabbit Hide
+/// - 10: Rabbit Foot
+/// - 10: Raw Chicken
+/// - 10: Feather
+/// - 10: Rotten Flesh
+/// - 10: String
+/// - 2: Phantom Membrane (rare gift, 2/62 = ~3.22%)
+#[must_use]
+pub fn select_cat_morning_gift(rand_62: u32) -> &'static pumpkin_data::item::Item {
+    use pumpkin_data::item::Item;
+    match rand_62 % 62 {
+        0..10 => &Item::RABBIT_HIDE,
+        10..20 => &Item::RABBIT_FOOT,
+        20..30 => &Item::CHICKEN,
+        30..40 => &Item::FEATHER,
+        40..50 => &Item::ROTTEN_FLESH,
+        50..60 => &Item::STRING,
+        _ => &Item::PHANTOM_MEMBRANE,
+    }
+}
+
+/// Determines whether a cat sleeping on a bed should deliver a morning gift.
+///
+/// Mirrors vanilla `Cat.java:500-505`:
+/// Owner must have slept for at least 100 ticks and random roll must succeed
+/// (default chance 0.7 = 70%).
+#[must_use]
+pub fn should_cat_give_morning_gift(sleep_timer: i32, rand_float: f32, gift_chance: f32) -> bool {
+    sleep_timer >= 100 && rand_float < gift_chance
+}
+
+/// Determines whether an untrusted Ocelot should despawn when far away from players.
+///
+/// Mirrors vanilla `Ocelot.java:138-140`:
+/// Untrusted ocelots despawn after 2400 ticks (2 minutes) when far away.
+#[must_use]
+pub const fn should_ocelot_despawn_when_far(is_trusting: bool, age_ticks: i32) -> bool {
+    !is_trusting && age_ticks > 2400
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7426,6 +7504,45 @@ mod tests {
         assert!(!should_polar_bear_stand_and_warn(14.0, 0.6, 5));
         // Ticks until attack > 10
         assert!(!should_polar_bear_stand_and_warn(10.0, 0.6, 11));
+    }
+
+    #[test]
+    fn test_cat_and_ocelot_parity() {
+        // 1. Feline fall damage immunity (fall_damage_immune.json)
+        assert_eq!(calculate_feline_fall_damage_points(), 0);
+
+        // 2. Cat kitten breeding traits inheritance (Cat.java:235-245)
+        let (var_a, col_a) = select_cat_baby_traits(1, 2, 14, 11, true, true);
+        assert_eq!(var_a, 1);
+        assert_eq!(col_a, 14);
+
+        let (var_b, col_b) = select_cat_baby_traits(1, 2, 14, 11, false, false);
+        assert_eq!(var_b, 2);
+        assert_eq!(col_b, 11);
+
+        // 3. Cat morning gift loot table (cat_morning_gift.json)
+        assert_eq!(select_cat_morning_gift(0).id, pumpkin_data::item::Item::RABBIT_HIDE.id);
+        assert_eq!(select_cat_morning_gift(15).id, pumpkin_data::item::Item::RABBIT_FOOT.id);
+        assert_eq!(select_cat_morning_gift(25).id, pumpkin_data::item::Item::CHICKEN.id);
+        assert_eq!(select_cat_morning_gift(35).id, pumpkin_data::item::Item::FEATHER.id);
+        assert_eq!(select_cat_morning_gift(45).id, pumpkin_data::item::Item::ROTTEN_FLESH.id);
+        assert_eq!(select_cat_morning_gift(55).id, pumpkin_data::item::Item::STRING.id);
+        // Phantom membrane is the rare gift at indices 60 and 61 (2/62)
+        assert_eq!(select_cat_morning_gift(60).id, pumpkin_data::item::Item::PHANTOM_MEMBRANE.id);
+        assert_eq!(select_cat_morning_gift(61).id, pumpkin_data::item::Item::PHANTOM_MEMBRANE.id);
+
+        // 4. Cat morning gift delivery conditions (Cat.java:500-505)
+        assert!(should_cat_give_morning_gift(100, 0.5, 0.7));
+        assert!(should_cat_give_morning_gift(150, 0.69, 0.7));
+        // Sleep timer too short (< 100 ticks)
+        assert!(!should_cat_give_morning_gift(99, 0.1, 0.7));
+        // Roll failed (>= 0.7)
+        assert!(!should_cat_give_morning_gift(100, 0.71, 0.7));
+
+        // 5. Ocelot despawn mechanics (Ocelot.java:138-140)
+        assert!(!should_ocelot_despawn_when_far(true, 5000)); // Trusting ocelot never despawns
+        assert!(!should_ocelot_despawn_when_far(false, 2400)); // Within 2400 ticks (2 min)
+        assert!(should_ocelot_despawn_when_far(false, 2401)); // Untrusted despawns after 2400 ticks
     }
 }
 
