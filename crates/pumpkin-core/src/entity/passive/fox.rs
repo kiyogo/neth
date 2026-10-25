@@ -3,6 +3,9 @@ use std::sync::{
     atomic::{AtomicI32, AtomicU8, Ordering},
 };
 
+use crossbeam::atomic::AtomicCell;
+use uuid::Uuid;
+
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
@@ -78,6 +81,8 @@ pub struct FoxEntity {
     pub ageable_data: AgeableData,
     pub variant: AtomicI32,
     pub flags: AtomicU8,
+    pub trusted_0: AtomicCell<Option<Uuid>>,
+    pub trusted_1: AtomicCell<Option<Uuid>>,
 }
 
 impl FoxEntity {
@@ -88,12 +93,15 @@ impl FoxEntity {
             ageable_data: AgeableData::default(),
             variant: AtomicI32::new(FoxVariant::Red.id()),
             flags: AtomicU8::new(0),
+            trusted_0: AtomicCell::new(None),
+            trusted_1: AtomicCell::new(None),
         };
         let mob_arc = Arc::new(fox);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
         };
+        let fox_weak = Arc::downgrade(&mob_arc);
 
         {
             let mut goal_selector = mob_arc
@@ -107,9 +115,26 @@ impl FoxEntity {
             goal_selector.add_goal(1, EscapeDangerGoal::new(2.2));
             goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(3, Box::new(TemptGoal::new(1.2, FOX_FOOD, false)));
+            // Vanilla Fox.java:187: avoid Player if !trusts(player) && !isDefending()
             goal_selector.add_goal(
                 4,
-                Box::new(AvoidEntityGoal::new(&EntityType::PLAYER, 16.0, 1.6, 1.4)),
+                Box::new(AvoidEntityGoal::with_target_predicate(
+                    &EntityType::PLAYER,
+                    16.0,
+                    1.6,
+                    1.4,
+                    {
+                        let fox_weak = fox_weak.clone();
+                        move |entity| {
+                            if let Some(fox) = fox_weak.upgrade() {
+                                let uuid = entity.get_entity().entity_uuid;
+                                combat::should_fox_avoid_player(fox.is_defending(), fox.trusts(&uuid))
+                            } else {
+                                true
+                            }
+                        }
+                    },
+                )),
             );
             goal_selector.add_goal(
                 4,
@@ -127,6 +152,7 @@ impl FoxEntity {
             );
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
+
 
         // Vanilla Fox: MOVEMENT_SPEED = 0.3, MAX_HEALTH = 10.0, ATTACK_DAMAGE = 2.0, SAFE_FALL_DISTANCE = 5.0, FOLLOW_RANGE = 32.0
         {
@@ -264,6 +290,52 @@ impl FoxEntity {
         self.set_defending(false);
         self.set_faceplanted(false);
     }
+
+    #[must_use]
+    pub fn get_trusted_0(&self) -> Option<Uuid> {
+        self.trusted_0.load()
+    }
+
+    #[must_use]
+    pub fn get_trusted_1(&self) -> Option<Uuid> {
+        self.trusted_1.load()
+    }
+
+    pub fn add_trusted_uuid(&self, uuid: Uuid) {
+        let entity = self.get_entity();
+        if self.trusted_0.load().is_some() {
+            self.trusted_1.store(Some(uuid));
+            entity.set_synced_data(
+                pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_1,
+                Some(uuid),
+            );
+        } else {
+            self.trusted_0.store(Some(uuid));
+            entity.set_synced_data(
+                pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_0,
+                Some(uuid),
+            );
+        }
+    }
+
+    pub fn clear_trusted(&self) {
+        self.trusted_0.store(None);
+        self.trusted_1.store(None);
+        let entity = self.get_entity();
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_0,
+            None as Option<Uuid>,
+        );
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_1,
+            None as Option<Uuid>,
+        );
+    }
+
+    #[must_use]
+    pub fn trusts(&self, uuid: &Uuid) -> bool {
+        self.trusted_0.load().as_ref() == Some(uuid) || self.trusted_1.load().as_ref() == Some(uuid)
+    }
 }
 
 impl AgeableMob for FoxEntity {
@@ -313,6 +385,31 @@ impl Mob for FoxEntity {
         nbt.put_bool("Sleeping", self.is_sleeping());
         nbt.put_bool("Sitting", self.is_sitting());
         nbt.put_bool("Crouching", self.is_crouching());
+
+        let mut list = Vec::new();
+        if let Some(t0) = self.trusted_0.load() {
+            nbt.put_uuid("Trusted0", t0);
+            let u = t0.as_u128();
+            list.push(pumpkin_nbt::tag::NbtTag::IntArray(vec![
+                (u >> 96) as i32,
+                (u >> 64) as i32,
+                (u >> 32) as i32,
+                u as i32,
+            ]));
+        }
+        if let Some(t1) = self.trusted_1.load() {
+            nbt.put_uuid("Trusted1", t1);
+            let u = t1.as_u128();
+            list.push(pumpkin_nbt::tag::NbtTag::IntArray(vec![
+                (u >> 96) as i32,
+                (u >> 64) as i32,
+                (u >> 32) as i32,
+                u as i32,
+            ]));
+        }
+        if !list.is_empty() {
+            nbt.put("Trusted", pumpkin_nbt::tag::NbtTag::List(list));
+        }
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
@@ -327,6 +424,27 @@ impl Mob for FoxEntity {
         }
         if let Some(crouching) = nbt.get_bool("Crouching") {
             self.set_crouching(crouching);
+        }
+
+        self.clear_trusted();
+        if let Some(t0) = nbt.get_uuid("Trusted0") {
+            self.add_trusted_uuid(t0);
+        }
+        if let Some(t1) = nbt.get_uuid("Trusted1") {
+            self.add_trusted_uuid(t1);
+        }
+        if let Some(pumpkin_nbt::tag::NbtTag::List(list)) = nbt.get("Trusted") {
+            for tag in list {
+                if let pumpkin_nbt::tag::NbtTag::IntArray(ints) = tag {
+                    if ints.len() == 4 {
+                        let u128_val = ((ints[0] as u32 as u128) << 96)
+                            | ((ints[1] as u32 as u128) << 64)
+                            | ((ints[2] as u32 as u128) << 32)
+                            | (ints[3] as u32 as u128);
+                        self.add_trusted_uuid(Uuid::from_u128(u128_val));
+                    }
+                }
+            }
         }
     }
 
@@ -380,7 +498,16 @@ impl Mob for FoxEntity {
             pumpkin_data::tracked_data::fox::FLAGS_ID,
             self.flags.load(Ordering::Relaxed),
         );
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_0,
+            self.trusted_0.load(),
+        );
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::fox::DATA_TRUSTED_ID_1,
+            self.trusted_1.load(),
+        );
     }
+
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
         self.animal_interact(player, item_stack, Sound::EntityFoxAmbient)
@@ -396,3 +523,19 @@ impl CustomSound for FoxEntity {
         Some(Sound::EntityFoxHurt)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fox_variants_and_ids() {
+        assert_eq!(FoxVariant::Red.id(), 0);
+        assert_eq!(FoxVariant::Snow.id(), 1);
+        assert_eq!(FoxVariant::from_id(0), FoxVariant::Red);
+        assert_eq!(FoxVariant::from_id(1), FoxVariant::Snow);
+        assert_eq!(FoxVariant::from_name("red"), FoxVariant::Red);
+        assert_eq!(FoxVariant::from_name("snow"), FoxVariant::Snow);
+    }
+}
+

@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicI32, Ordering},
+    atomic::{AtomicBool, AtomicI32, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
@@ -45,6 +45,7 @@ pub struct FrogEntity {
     pub ageable_data: AgeableData,
     pub variant: AtomicI32,
     pub tongue_target_id: AtomicI32,
+    pub is_pregnant: AtomicBool,
 }
 
 impl FrogEntity {
@@ -55,7 +56,9 @@ impl FrogEntity {
             ageable_data: AgeableData::default(),
             variant: AtomicI32::new(FrogVariant::Temperate.id() as i32),
             tongue_target_id: AtomicI32::new(-1),
+            is_pregnant: AtomicBool::new(false),
         };
+
 
         // Initialize attributes: Max Health = 10.0, Movement Speed = 1.0, Attack Damage = 10.0, Step Height = 1.0
         {
@@ -145,11 +148,26 @@ impl FrogEntity {
             VarInt(variant.id() as i32),
         );
     }
+
+    #[must_use]
+    pub fn is_pregnant(&self) -> bool {
+        self.is_pregnant.load(Ordering::Relaxed)
+    }
+
+    pub fn set_pregnant(&self, pregnant: bool) {
+        self.is_pregnant.store(pregnant, Ordering::Relaxed);
+    }
 }
 
 impl AgeableMob for FrogEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    /// Vanilla `Frog.java:251-253`: `canBeABaby() -> false`. Frogs cannot be babies;
+    /// their offspring stage is Tadpole.
+    fn can_be_a_baby(&self) -> bool {
+        false
     }
 }
 
@@ -179,11 +197,15 @@ impl Mob for FrogEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_string("variant", self.get_variant().asset_id().to_string());
+        nbt.put_bool("HasEgg", self.is_pregnant());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(variant_str) = nbt.get_string("variant") {
             self.set_variant(FrogVariant::from_name(variant_str).unwrap_or_default());
+        }
+        if let Some(pregnant) = nbt.get_bool("HasEgg").or_else(|| nbt.get_bool("IsPregnant")) {
+            self.set_pregnant(pregnant);
         }
     }
 
@@ -203,6 +225,24 @@ impl Mob for FrogEntity {
             return;
         }
 
+        // Vanilla TryLaySpawnOnFluidNearLand.java:23-39: pregnant frog on ground near liquid lays spawn
+        if self.is_pregnant() {
+            let on_ground = entity.on_ground.load(Ordering::Relaxed);
+            let in_water = entity.touching_water.load(Ordering::Relaxed) || entity.is_in_water();
+            if combat::should_frog_lay_spawn_block(true, on_ground, in_water) {
+
+                let world = entity.world.load();
+                world.play_sound_fine(
+                    Sound::EntityFrogLaySpawn,
+                    SoundCategory::Blocks,
+                    &entity.pos.load(),
+                    1.0,
+                    1.0,
+                );
+                self.set_pregnant(false);
+            }
+        }
+
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             entity.world.load().play_sound_fine(
                 Sound::EntityFrogAmbient,
@@ -217,6 +257,7 @@ impl Mob for FrogEntity {
             );
         }
     }
+
 
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
@@ -488,3 +529,20 @@ impl Goal for FrogEatGoal {
         self.goal_control
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_frog_variants_and_oviparous() {
+        assert_eq!(FrogVariant::Cold.id(), 0);
+        assert_eq!(FrogVariant::Temperate.id(), 1);
+        assert_eq!(FrogVariant::Warm.id(), 2);
+        assert_eq!(FrogVariant::from_id(0), FrogVariant::Cold);
+        assert_eq!(FrogVariant::from_id(1), FrogVariant::Temperate);
+        assert_eq!(FrogVariant::from_id(2), FrogVariant::Warm);
+    }
+}
+
+

@@ -5254,12 +5254,32 @@ pub fn get_strider_eat_sound_pitch(rand_a: f32, rand_b: f32) -> f32 {
 
 /// Checks if an entity type is oviparous or handles breeding specially (egg drop / gravid instead of spawning baby).
 ///
-/// Mirrors vanilla `Sniffer.java:spawnChildFromBreeding` and `Turtle.java:TurtleBreedGoal`.
+/// Mirrors vanilla `Sniffer.java:spawnChildFromBreeding`, `Turtle.java:TurtleBreedGoal`, and `Frog.java:spawnChildFromBreeding`.
 #[must_use]
 pub fn is_special_oviparous_breeding(entity_type: &pumpkin_data::entity::EntityType) -> bool {
     use pumpkin_data::entity::EntityType;
-    entity_type == &EntityType::SNIFFER || entity_type == &EntityType::TURTLE
+    entity_type == &EntityType::SNIFFER
+        || entity_type == &EntityType::TURTLE
+        || entity_type == &EntityType::FROG
 }
+
+/// Checks whether a Fox should avoid a player entity.
+///
+/// Mirrors vanilla `Fox.java:187`: `!this.trusts(entity) && !this.isDefending()`.
+#[must_use]
+pub fn should_fox_avoid_player(is_defending: bool, is_trusted: bool) -> bool {
+    !is_defending && !is_trusted
+}
+
+
+/// Checks whether a pregnant Frog can lay its spawn block on fluid near land.
+///
+/// Mirrors vanilla `TryLaySpawnOnFluidNearLand.java:23`: `is_pregnant && on_ground && !in_water`.
+#[must_use]
+pub fn should_frog_lay_spawn_block(is_pregnant: bool, is_on_ground: bool, is_in_water: bool) -> bool {
+    is_pregnant && is_on_ground && !is_in_water
+}
+
 
 /// Represents the biome category for rabbit variant spawning and breeding mutation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -8428,7 +8448,52 @@ mod tests {
         assert_eq!(get_chicken_xp_reward(false, 2), 2);
         assert_eq!(get_chicken_xp_reward(true, 2), 10);
     }
+
+    #[test]
+    fn test_frog_and_fox_parity() {
+        use crate::entity::passive::fox::FoxVariant;
+
+        // 1. Oviparous breeding parity: Sniffer, Turtle, Frog are oviparous
+        assert!(is_special_oviparous_breeding(&EntityType::SNIFFER));
+        assert!(is_special_oviparous_breeding(&EntityType::TURTLE));
+        assert!(is_special_oviparous_breeding(&EntityType::FROG));
+        assert!(!is_special_oviparous_breeding(&EntityType::FOX));
+        assert!(!is_special_oviparous_breeding(&EntityType::COW));
+        assert!(!is_special_oviparous_breeding(&EntityType::CHICKEN));
+
+        // 2. Fox 50/50 variant inheritance (Fox.java:325)
+        assert_eq!(
+            select_fox_baby_variant(FoxVariant::Red.id(), FoxVariant::Snow.id(), true),
+            FoxVariant::Red.id()
+        );
+        assert_eq!(
+            select_fox_baby_variant(FoxVariant::Red.id(), FoxVariant::Snow.id(), false),
+            FoxVariant::Snow.id()
+        );
+
+
+        // 3. Fox player avoidance parity (Fox.java:187: !trusts && !isDefending)
+        // Untrusted & not defending -> avoid
+        assert!(should_fox_avoid_player(false, false));
+        // Trusted -> do not avoid
+        assert!(!should_fox_avoid_player(false, true));
+        // Defending -> do not avoid (even if untrusted)
+        assert!(!should_fox_avoid_player(true, false));
+        // Defending & trusted -> do not avoid
+        assert!(!should_fox_avoid_player(true, true));
+
+        // 4. Frog lay spawn block condition (TryLaySpawnOnFluidNearLand.java:23)
+        // Pregnant on ground not in water -> can lay
+        assert!(should_frog_lay_spawn_block(true, true, false));
+        // In water -> cannot lay
+        assert!(!should_frog_lay_spawn_block(true, true, true));
+        // In air -> cannot lay
+        assert!(!should_frog_lay_spawn_block(true, false, false));
+        // Not pregnant -> cannot lay
+        assert!(!should_frog_lay_spawn_block(false, true, false));
+    }
 }
+
 
 
 

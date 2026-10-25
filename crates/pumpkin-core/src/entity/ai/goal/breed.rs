@@ -139,6 +139,35 @@ impl BreedGoal {
             return;
         }
 
+        // Vanilla Frog.java:250-260: Frog becomes pregnant instead of spawning baby mob
+        if let Some(frog) = mob.as_frog() {
+            frog.set_pregnant(true);
+            let breeder_id = mob_entity.breeder.load().or_else(|| mate.get_breeder());
+            if let Some(uuid) = breeder_id {
+                if let Some(player) = world.get_player_by_uuid(uuid) {
+                    player.increment_stat(
+                        pumpkin_data::statistic::StatisticCategory::Custom,
+                        pumpkin_data::statistic::CustomStatistic::AnimalsBred as i32,
+                        1,
+                    );
+                    player.trigger_advancement_criterion(
+                        pumpkin_data::advancement::Advancement::HUSBANDRY_BREED_AN_ANIMAL,
+                        "bred",
+                    );
+                    player.trigger_advancement_criterion(
+                        pumpkin_data::advancement::Advancement::HUSBANDRY_BRED_ALL_ANIMALS,
+                        "minecraft:frog",
+                    );
+                }
+            }
+
+            let xp = rand::random_range(1..=7);
+            ExperienceOrbEntity::spawn(&world, parent_pos, xp);
+            world.send_entity_status(entity, EntityStatus::InLoveHearts, None);
+            return;
+        }
+
+
         let baby_type: &'static pumpkin_data::entity::EntityType =
             if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
                 combat::determine_equine_baby_type(entity.entity_type, mate.get_entity().entity_type)
@@ -234,7 +263,7 @@ impl BreedGoal {
             }
         }
 
-        // Vanilla Fox.java:231-236: inherit variant from either parent (50/50)
+        // Vanilla Fox.java:870-885: Fox offspring inherits 50/50 variant and trusted breeders
         if let Some(fox_a) = mob.as_fox()
             && let Some(fox_b) = mate.cast_any().downcast_ref::<crate::entity::passive::fox::FoxEntity>()
             && let Some(baby_fox) = baby.cast_any().downcast_ref::<crate::entity::passive::fox::FoxEntity>()
@@ -246,7 +275,19 @@ impl BreedGoal {
                 rand_bool,
             );
             baby_fox.set_variant(crate::entity::passive::fox::FoxVariant::from_id(variant_id));
+
+            let breeder_a = mob_entity.breeder.load();
+            let breeder_b = mate.get_breeder();
+            if let Some(uuid_a) = breeder_a {
+                baby_fox.add_trusted_uuid(uuid_a);
+            }
+            if let Some(uuid_b) = breeder_b {
+                if Some(uuid_b) != breeder_a {
+                    baby_fox.add_trusted_uuid(uuid_b);
+                }
+            }
         }
+
 
         // Vanilla Horse.java: getBreedOffspring - inherit variant and markings from parents
         if let Some(horse_a) = mob.as_horse()

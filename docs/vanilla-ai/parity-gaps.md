@@ -3958,6 +3958,48 @@
     - Added 50/50 variant inheritance for Chicken and Cow.
   - Added unit test `test_chicken_and_cow_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 77/77 tests passing in `entity::combat::tests`.
 
+## Gap 192: Frog Oviparous Pregnancy Reproduction & Fox Trusted Entities Breeding Inheritance Parity
+- **Vanilla Reference**:
+  - `Frog.java:250-260`, `FrogAi.java:144-168`, `TryLaySpawnOnFluidNearLand.java:16-53`:
+    - `canBeABaby() -> false`: Ếch trưởng thành không bao giờ là con non (baby stage duy nhất của loài ếch là Nòng nọc - Tadpole).
+    - `spawnChildFromBreeding(level, partner)`:
+      - Ếch KHÔNG sinh con non trực tiếp (`from_type` với age -24000).
+      - Thay vào đó, ếch mẹ chuyển sang trạng thái mang thai / mang trứng (`getBrain().setMemory(MemoryModuleType.IS_PREGNANT, Unit.INSTANCE)`).
+      - Rơi 1..7 kinh nghiệm (XP orb), kích hoạt advancement `husbandry/breed_an_animal` và `husbandry/bred_all_animals`, phát hiệu ứng hạt tim.
+      - Ếch mang thai tìm vị trí cạn sát nước (`onGround && !isInWater`) và đẻ khối `Blocks.FROGSPAWN` tại bề mặt nước sát bờ, phát âm thanh `SoundEvents.FROG_LAY_SPAWN`, và xóa trạng thái `is_pregnant`.
+      - NBT: `HasEgg` (boolean).
+    - Trước đây Neth sinh ra ếch con thu nhỏ trực tiếp với age -24000, hoàn toàn sai lệch với cơ chế sinh sản đẻ trứng của Vanilla ếch.
+  - `Fox.java:120-125, 187, 325, 417-431, 436, 447, 870-885`:
+    - Tracked Data: `DATA_TRUSTED_ID_0` (index 20) và `DATA_TRUSTED_ID_1` (index 21) lưu `Optional<UUID>` của 2 đối tượng được tin tưởng.
+    - Cáo con khi sinh ra thừa hưởng danh sách Trusted Entities từ cả hai người chơi cho bố mẹ ăn (`animalLoveCause` và `partnerLoveCause`).
+    - Biến thể: Cáo con thừa hưởng 50/50 biến thể từ cáo bố hoặc mẹ (`Red` hoặc `Snow`).
+    - Né tránh người chơi (`AvoidEntityGoal`): Cáo bỏ chạy khỏi người chơi trong bán kính 16 khối TRỪ KHI người chơi đó nằm trong danh sách được tin tưởng (`Fox.this.trusts(entity)`) hoặc cáo đang ở trạng thái phòng thủ (`isDefending()`).
+    - NBT: `Trusted` (danh sách UUIDs) và `Trusted0` / `Trusted1`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `EntityType::FROG` to `is_special_oviparous_breeding`.
+    - Added `should_fox_avoid_player(is_defending, is_trusted) -> bool`.
+    - Added `should_frog_lay_spawn_block(is_pregnant, is_on_ground, is_in_water) -> bool`.
+    - Added unit test `test_frog_and_fox_parity`.
+  - Updated `FrogEntity` in `crates/pumpkin-core/src/entity/passive/frog.rs`:
+    - Added `is_pregnant: AtomicBool`, getter `is_pregnant(&self) -> bool`, and setter `set_pregnant(&self, bool)`.
+    - Overrode `can_be_a_baby(&self) -> bool { false }` in `impl AgeableMob for FrogEntity`.
+    - Handled `HasEgg` in `mob_write_nbt` and `mob_read_nbt`.
+    - Handled lay spawn block on fluid near land in `mob_tick`, playing `Sound::EntityFrogLaySpawn`.
+    - Added unit test `test_frog_variants_and_oviparous`.
+  - Updated `FoxEntity` in `crates/pumpkin-core/src/entity/passive/fox.rs`:
+    - Added `trusted_0` and `trusted_1` fields using `crossbeam::atomic::AtomicCell<Option<Uuid>>`.
+    - Added `get_trusted_0`, `get_trusted_1`, `add_trusted_uuid`, `clear_trusted`, and `trusts(&self, &Uuid) -> bool`.
+    - Registered and synced `DATA_TRUSTED_ID_0` and `DATA_TRUSTED_ID_1`.
+    - Implemented NBT serialization for `Trusted` int-array list and `Trusted0`/`Trusted1`.
+    - Updated `AvoidEntityGoal` for `Player` with predicate checking `should_fox_avoid_player`.
+    - Added unit test `test_fox_variants_and_ids`.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Handled Frog breeding: sets `frog.set_pregnant(true)`, awards stats & advancements, spawns 1..7 XP, emits heart particles, and returns without spawning baby frog.
+    - Handled Fox breeding: assigns 50/50 variant and transfers both breeders' UUIDs to the baby fox.
+  - All unit tests verified and passing (78/78 tests in `entity::combat::tests`, `test_fox_variants_and_ids`, and `test_frog_variants_and_oviparous`).
+
+
 
 
 
