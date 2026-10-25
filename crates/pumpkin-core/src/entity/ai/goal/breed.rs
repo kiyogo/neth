@@ -360,6 +360,38 @@ impl BreedGoal {
             baby_rabbit.set_variant(crate::entity::passive::rabbit::RabbitVariant::from_id(variant_id));
         }
 
+        // Vanilla Chicken.java: getBreedOffspring - 50/50 variant inheritance
+        if let Some(chicken_a) = mob.as_chicken()
+            && let Some(chicken_b) = mate.cast_any().downcast_ref::<crate::entity::passive::chicken::ChickenEntity>()
+            && let Some(baby_chicken) = baby.cast_any().downcast_ref::<crate::entity::passive::chicken::ChickenEntity>()
+        {
+            let rand_bool = rand::random();
+            let variant_id = combat::select_chicken_or_cow_baby_variant(
+                chicken_a.get_variant().id(),
+                chicken_b.get_variant().id(),
+                rand_bool,
+            );
+            if let Some(cv) = pumpkin_data::chicken_variant::ChickenVariant::from_id(variant_id) {
+                baby_chicken.set_variant(cv);
+            }
+        }
+
+        // Vanilla Cow.java: getBreedOffspring - 50/50 variant inheritance
+        if let Some(cow_a) = mob.as_cow()
+            && let Some(cow_b) = mate.cast_any().downcast_ref::<crate::entity::passive::cow::CowEntity>()
+            && let Some(baby_cow) = baby.cast_any().downcast_ref::<crate::entity::passive::cow::CowEntity>()
+        {
+            let rand_bool = rand::random();
+            let variant_id = combat::select_chicken_or_cow_baby_variant(
+                cow_a.get_variant().id(),
+                cow_b.get_variant().id(),
+                rand_bool,
+            );
+            if let Some(cv) = pumpkin_data::cow_variant::CowVariant::from_id(variant_id) {
+                baby_cow.set_variant(cv);
+            }
+        }
+
         // Vanilla AbstractHorse.java: setOffspringAttributes - inherit health, jump, speed
         if combat::can_equine_mate(entity.entity_type, mate.get_entity().entity_type) {
             let parent_a_living = &mob.get_mob_entity().living_entity;

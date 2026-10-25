@@ -3924,6 +3924,40 @@
     - Added NBT serialization for Parrot variant and tamable status.
   - Added unit test `test_rabbit_and_parrot_parity` in `crates/pumpkin-core/src/entity/combat.rs` and `test_parrot_variants_and_ids` in `parrot.rs`. Total 76/76 tests passing in `entity::combat::tests`.
 
+## Gap 191: Chicken Egg Laying Sound Pitch & Jockey Mechanics, Chicken & Cow 50/50 Breeding Variant Inheritance
+- **Vanilla Reference**:
+  - `Chicken.java:175-182` & `Cow.java:72-79`:
+    - `Chicken.getBreedOffspring(level, partner)`:
+      - `baby.setVariant(this.random.nextBoolean() ? this.getVariant() : partnerChicken.getVariant())`: gà con thừa hưởng 50/50 biến thể từ gà bố hoặc gà mẹ (`ChickenVariant`: Temperate, Warm, Cold).
+    - `Cow.getBreedOffspring(level, partner)`:
+      - `baby.setVariant(this.random.nextBoolean() ? this.getVariant() : partnerCow.getVariant())`: bò con thừa hưởng 50/50 biến thể từ bò bố hoặc bò mẹ (`CowVariant`: Temperate, Warm, Cold).
+    - Trước đây Neth hoàn toàn không xử lý biến thể cho gà con và bò con trong `BreedGoal`, con non sinh ra luôn nhận biến thể mặc định của biome thay vì thừa hưởng từ cha mẹ.
+  - `Chicken.java:75-80, 135-142, 199-201`:
+    - `isChickenJockey`: boolean.
+      - Nếu `isChickenJockey == true`, con gà KHÔNG BAO GIỜ đẻ trứng (`!this.isBaby() && !this.isChickenJockey() && --this.eggTime <= 0`).
+      - Khi chết, gà jockey rơi 10 kinh nghiệm (`this.isChickenJockey() ? 10 : super.getBaseExperienceReward(level)`), thay vì 1..3 XP của gà thông thường.
+      - Lưu/đọc NBT: `IsChickenJockey` boolean.
+    - Âm thanh đẻ trứng:
+      - `SoundEvents.CHICKEN_EGG`: âm lượng `1.0F`, cao độ ngẫu nhiên `(rand_a - rand_b) * 0.2F + 1.0F`.
+      - Trước đây Neth phát âm thanh đẻ trứng mặc định không có pitch ngẫu nhiên và không kiểm tra jockey.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Added helper functions in `crates/pumpkin-core/src/entity/combat.rs`:
+    - `select_chicken_or_cow_baby_variant(parent_a, parent_b, rand_bool) -> u8`: returns 50/50 parent variant.
+    - `get_chicken_egg_lay_sound_pitch(rand_a, rand_b) -> f32`: computes `(rand_a - rand_b) * 0.2 + 1.0`.
+    - `should_chicken_lay_egg(is_baby, is_jockey, egg_time) -> bool`: returns `!is_baby && !is_jockey && egg_time <= 0`.
+    - `get_chicken_xp_reward(is_jockey, default_xp) -> u32`: returns 10 if jockey, else default 1..3 XP.
+  - Updated `CowEntity` in `crates/pumpkin-core/src/entity/passive/cow.rs`:
+    - Added `get_variant(&self) -> CowVariant`.
+  - Updated `ChickenEntity` in `crates/pumpkin-core/src/entity/passive/chicken.rs`:
+    - Added `is_chicken_jockey: AtomicBool`, getter/setter `is_chicken_jockey` and `get_variant`.
+    - Updated NBT serialization to save/load `IsChickenJockey`.
+    - Updated `mob_tick`: guarded egg laying with `should_chicken_lay_egg` and played `Sound::EntityChickenEgg` with vanilla pitch.
+  - Updated `crates/pumpkin-core/src/entity/mob/mod.rs`:
+    - In `get_base_experience_reward`: handled chicken jockey rewarding 10 XP.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Added 50/50 variant inheritance for Chicken and Cow.
+  - Added unit test `test_chicken_and_cow_parity` in `crates/pumpkin-core/src/entity/combat.rs`. Total 77/77 tests passing in `entity::combat::tests`.
+
 
 
 

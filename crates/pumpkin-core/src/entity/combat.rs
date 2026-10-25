@@ -5325,6 +5325,54 @@ pub const fn calculate_parrot_tame_success(rand_10: u32) -> bool {
     rand_10 == 0
 }
 
+/// Determines baby variant for Chicken or Cow based on parents (50/50 inheritance).
+///
+/// Mirrors vanilla `Chicken.java:178` & `Cow.java:75`:
+/// `this.random.nextBoolean() ? this.getVariant() : partner.getVariant()`
+#[must_use]
+pub const fn select_chicken_or_cow_baby_variant(
+    parent_a: u8,
+    parent_b: u8,
+    rand_bool: bool,
+) -> u8 {
+    if rand_bool {
+        parent_a
+    } else {
+        parent_b
+    }
+}
+
+/// Calculates the sound pitch for Chicken laying an egg.
+///
+/// Mirrors vanilla `Chicken.java:137`:
+/// `(this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F`
+#[must_use]
+pub fn get_chicken_egg_lay_sound_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    (rand_a - rand_b) * 0.2 + 1.0
+}
+
+/// Determines whether a chicken is eligible to lay an egg.
+///
+/// Mirrors vanilla `Chicken.java:135`:
+/// `!this.isBaby() && !this.isChickenJockey() && --this.eggTime <= 0`
+#[must_use]
+pub const fn should_chicken_lay_egg(is_baby: bool, is_jockey: bool, egg_time: i32) -> bool {
+    !is_baby && !is_jockey && egg_time <= 0
+}
+
+/// Calculates experience dropped by chicken on death.
+///
+/// Mirrors vanilla `Chicken.java:199-201`:
+/// `this.isChickenJockey() ? 10 : super.getBaseExperienceReward(level)`
+#[must_use]
+pub const fn get_chicken_xp_reward(is_jockey: bool, default_xp: u32) -> u32 {
+    if is_jockey {
+        10
+    } else {
+        default_xp
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8349,6 +8397,36 @@ mod tests {
         assert!((pitch_high - 1.2).abs() < 1e-6);
         let pitch_low = get_parrot_eat_sound_pitch(0.0, 1.0);
         assert!((pitch_low - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_chicken_and_cow_parity() {
+        // 1. 50/50 Variant inheritance (Chicken.java:178 & Cow.java:75)
+        assert_eq!(select_chicken_or_cow_baby_variant(1, 2, true), 1);
+        assert_eq!(select_chicken_or_cow_baby_variant(1, 2, false), 2);
+
+        // 2. Chicken egg lay sound pitch (Chicken.java:137: 1.0 + (rand - rand) * 0.2)
+        let pitch_neutral = get_chicken_egg_lay_sound_pitch(0.5, 0.5);
+        assert!((pitch_neutral - 1.0).abs() < 1e-6);
+        let pitch_high = get_chicken_egg_lay_sound_pitch(1.0, 0.0);
+        assert!((pitch_high - 1.2).abs() < 1e-6);
+        let pitch_low = get_chicken_egg_lay_sound_pitch(0.0, 1.0);
+        assert!((pitch_low - 0.8).abs() < 1e-6);
+
+        // 3. Egg laying eligibility (Chicken.java:135)
+        // Adult non-jockey with time <= 0 can lay
+        assert!(should_chicken_lay_egg(false, false, 0));
+        assert!(should_chicken_lay_egg(false, false, -1));
+        // Adult with time > 0 cannot lay
+        assert!(!should_chicken_lay_egg(false, false, 100));
+        // Baby cannot lay
+        assert!(!should_chicken_lay_egg(true, false, 0));
+        // Chicken jockey cannot lay
+        assert!(!should_chicken_lay_egg(false, true, 0));
+
+        // 4. Chicken XP reward (Chicken.java:199-201)
+        assert_eq!(get_chicken_xp_reward(false, 2), 2);
+        assert_eq!(get_chicken_xp_reward(true, 2), 10);
     }
 }
 

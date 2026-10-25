@@ -2171,6 +2171,11 @@ pub trait Mob: EntityBase + Send + Sync {
 
     /// Calculates base experience reward, mirroring vanilla `Mob.getBaseExperienceReward`.
     fn get_base_experience_reward(&self) -> u32 {
+        if let Some(chicken) = self.as_chicken() {
+            let default_xp = rand::random_range(1..=3);
+            return crate::entity::combat::get_chicken_xp_reward(chicken.is_chicken_jockey(), default_xp);
+        }
+
         if self.as_animal().is_some()
             || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::DOLPHIN
             || self.get_entity().entity_type == &pumpkin_data::entity::EntityType::SQUID

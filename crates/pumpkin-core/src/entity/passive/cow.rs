@@ -100,6 +100,11 @@ impl CowEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub fn get_variant(&self) -> CowVariant {
+        CowVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default()
+    }
+
     pub fn set_variant(&self, variant: CowVariant) {
         self.variant.store(variant.id(), Ordering::Relaxed);
         let entity = self.get_entity();

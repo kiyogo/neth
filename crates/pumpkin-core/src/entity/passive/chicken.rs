@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicI32, AtomicU8, Ordering, Ordering::Relaxed},
+    atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering, Ordering::Relaxed},
 };
 
 use pumpkin_data::attributes::Attributes;
@@ -43,6 +43,7 @@ pub struct ChickenEntity {
     pub mob_entity: MobEntity,
     pub variant: AtomicU8,
     pub sound_variant: AtomicU8,
+    pub is_chicken_jockey: AtomicBool,
     egg_lay_time: AtomicI32,
     pub ageable_data: crate::entity::ageable::AgeableData,
 }
@@ -58,6 +59,7 @@ impl ChickenEntity {
             mob_entity,
             variant: AtomicU8::new(variant.id()),
             sound_variant: AtomicU8::new(ChickenSoundVariant::Classic as u8),
+            is_chicken_jockey: AtomicBool::new(false),
             egg_lay_time: AtomicI32::new(egg_lay_time),
             ageable_data: crate::entity::ageable::AgeableData::default(),
         };
@@ -108,6 +110,20 @@ impl ChickenEntity {
         };
 
         mob_arc
+    }
+
+    #[must_use]
+    pub fn get_variant(&self) -> ChickenVariant {
+        ChickenVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn is_chicken_jockey(&self) -> bool {
+        self.is_chicken_jockey.load(Ordering::Relaxed)
+    }
+
+    pub fn set_chicken_jockey(&self, is_jockey: bool) {
+        self.is_chicken_jockey.store(is_jockey, Ordering::Relaxed);
     }
 
     pub fn set_variant(&self, variant: ChickenVariant) {
@@ -182,6 +198,7 @@ impl Mob for ChickenEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        nbt.put_bool("IsChickenJockey", self.is_chicken_jockey());
         nbt.put_int("EggLayTime", self.egg_lay_time.load(Ordering::Relaxed));
         let variant =
             ChickenVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default();
@@ -196,6 +213,9 @@ impl Mob for ChickenEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        if let Some(jockey) = nbt.get_bool("IsChickenJockey") {
+            self.set_chicken_jockey(jockey);
+        }
         self.egg_lay_time
             .store(nbt.get_int("EggLayTime").unwrap_or(6000), Ordering::Relaxed);
         if let Some(variant_str) = nbt.get_string("variant")
@@ -254,7 +274,12 @@ impl Mob for ChickenEntity {
         if (!on_ground) && current_velocity.y < 0.0 {
             entity.set_velocity(current_velocity.multiply(1.0, 0.6, 1.0));
         }
-        if !self.is_baby() && self.egg_lay_time.fetch_sub(1, Ordering::Relaxed) <= 1 {
+        let egg_time = self.egg_lay_time.fetch_sub(1, Ordering::Relaxed) - 1;
+        if crate::entity::combat::should_chicken_lay_egg(
+            self.is_baby(),
+            self.is_chicken_jockey(),
+            egg_time,
+        ) {
             let next_time = rand::rng().random_range(6000..12000);
             let world = entity.world.load_full();
             let pos = entity.block_pos.load();
@@ -271,10 +296,16 @@ impl Mob for ChickenEntity {
                     .fire_blocking(&server, &mut drop_event);
             }
             if !drop_event.cancelled {
-                world.play_sound(
+                let pitch = crate::entity::combat::get_chicken_egg_lay_sound_pitch(
+                    rand::random(),
+                    rand::random(),
+                );
+                world.play_sound_fine(
                     Sound::EntityChickenEgg,
                     pumpkin_data::sound::SoundCategory::Neutral,
                     &entity.pos.load(),
+                    1.0,
+                    pitch,
                 );
                 world.drop_stack(&pos, ItemStack::new(1, &Item::EGG));
             }
