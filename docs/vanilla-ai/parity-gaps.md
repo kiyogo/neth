@@ -4057,6 +4057,42 @@
     - Added unit test `test_polar_bear_warning_and_standing_conditions`.
   - All unit tests verified and passing (80/80 tests in `entity::combat::tests`, `test_bat_voice_pitch_and_roosting_wake`, and `test_polar_bear_warning_and_standing_conditions`).
 
+## Gap 195: Llama Natural Strength Distribution & Chest Sounds, Trader Llama DespawnDelay & Sterile Parity
+- **Vanilla Reference**:
+  - `Llama.java:93-96, 225-230, 286, 296, 300-302, 315-317`:
+    - Natural Spawn Strength: Khi sinh ra tự nhiên, `maxStrength = random.nextFloat() < 0.04F ? 5 : 3; strength = 1 + random.nextInt(maxStrength);` (96% cơ hội sức mạnh 1..=3, 4% hiếm có sức mạnh 1..=5). Trước đây Neth random đều từ 1..=5.
+    - Chest Equip & Eating Sounds:
+      - Khi gắn rương lên Llama, phát `SoundEvents.LLAMA_CHEST` (`Sound::EntityLlamaChest`) với pitch `1.0 + (rand_a - rand_b) * 0.2` (trước đây Neth phát `Sound::EntityDonkeyChest`).
+      - Khi cho Llama ăn thức ăn, phát `SoundEvents.LLAMA_EAT` (`Sound::EntityLlamaEat`) với pitch `1.0 + (rand_a - rand_b) * 0.2` (trước đây Neth phát `Sound::EntityHorseEat`).
+    - Inventory Columns: Số cột hòm đồ của Llama: `hasChest() ? strength : 0` (1..=5 cột, mỗi cột 3 ô).
+  - `TraderLlama.java:28-29, 37-39, 53, 59, 71-73`:
+    - DespawnDelay: Mặc định `47999` ticks, được serialize và deserialize trong NBT qua khóa `DespawnDelay`. Trước đây Neth thiếu trường này trong `TraderLlamaEntity`.
+    - Sterile (Không thể phối giống): `TraderLlama` trong vanilla không thể phối giống (`canMate` trả về `false`). Không có `BreedGoal` trong goal selector, và khi ăn HayBlock chỉ hồi máu / tăng temper chứ không bao giờ rơi vào trạng thái `InLove`. Trong `BreedGoal::find_mate`, Trader Llama bị loại bỏ khỏi danh sách bạn tình hợp lệ.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `calculate_initial_llama_strength(rand_float: f32, rand_int: u32) -> i32`.
+    - Added `get_llama_sound_pitch(rand_a: f32, rand_b: f32) -> f32`.
+    - Added `get_llama_inventory_columns(has_chest: bool, strength: i32) -> i32`.
+    - Added `can_llama_mate(partner_is_llama: bool, is_trader_llama: bool) -> bool`.
+    - Added unit test `test_llama_and_trader_llama_parity`.
+  - Updated `LlamaEntity` in `crates/pumpkin-core/src/entity/passive/llama.rs`:
+    - Used `combat::calculate_initial_llama_strength` in `new`.
+    - Added `get_inventory_columns(&self) -> i32`.
+    - Updated `mob_interact` to use `Sound::EntityLlamaChest` and `Sound::EntityLlamaEat` with randomized pitch.
+    - Added unit test `test_llama_inventory_and_sound_parity`.
+  - Updated `TraderLlamaEntity` in `crates/pumpkin-core/src/entity/passive/trader_llama.rs`:
+    - Added `despawn_delay: AtomicI32` with default `47999`.
+    - Used `combat::calculate_initial_llama_strength` in `new`.
+    - Removed `BreedGoal` from `goals_selector`.
+    - Added `get_despawn_delay`, `set_despawn_delay`, and `get_inventory_columns`.
+    - Handled `DespawnDelay` in `mob_write_nbt` and `mob_read_nbt`.
+    - Updated `mob_interact` to use `Sound::EntityLlamaChest` and `Sound::EntityLlamaEat`, removed in-love breeding trigger.
+    - Added unit test `test_trader_llama_despawn_and_sterile_parity`.
+  - Updated `BreedGoal` in `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Excluded `EntityType::TRADER_LLAMA` from candidate selection.
+  - All unit tests verified and passing (81/81 tests in `entity::combat::tests`, `test_llama_inventory_and_sound_parity`, and `test_trader_llama_despawn_and_sterile_parity`).
+
+
 
 
 

@@ -19,7 +19,7 @@ use crate::entity::{
     Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
-        active_target::ActiveTargetGoal, breed::BreedGoal, escape_danger::EscapeDangerGoal,
+        active_target::ActiveTargetGoal, escape_danger::EscapeDangerGoal,
         follow_parent::FollowParentGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, ranged_attack::RangedAttackGoal, revenge::RevengeGoal,
         swim::SwimGoal, tempt::TemptGoal,
@@ -88,6 +88,7 @@ pub struct TraderLlamaEntity {
     pub has_chest: AtomicBool,
     pub temper: AtomicI32,
     pub owner: AtomicCell<Option<Uuid>>,
+    pub despawn_delay: AtomicI32,
 }
 
 impl TraderLlamaEntity {
@@ -95,7 +96,7 @@ impl TraderLlamaEntity {
         let mob_entity = MobEntity::new(entity);
         let mut rng = rand::rng();
         let variant = TraderLlamaVariant::random_variant();
-        let strength = rng.random_range(1..=5);
+        let strength = combat::calculate_initial_llama_strength(rng.random(), rng.random());
 
         let llama = Self {
             mob_entity,
@@ -107,6 +108,7 @@ impl TraderLlamaEntity {
             has_chest: AtomicBool::new(false),
             temper: AtomicI32::new(0),
             owner: AtomicCell::new(None),
+            despawn_delay: AtomicI32::new(47999),
         };
         let mob_arc = Arc::new(llama);
         let mob_weak: Weak<dyn Mob> = {
@@ -167,7 +169,6 @@ impl TraderLlamaEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(1, EscapeDangerGoal::new(2.0));
-            goal_selector.add_goal(2, BreedGoal::new(1.0));
             goal_selector.add_goal(
                 3,
                 Box::new(RangedAttackGoal::new(ranged_weak, 1.25, 40, 20.0)),
@@ -290,6 +291,22 @@ impl TraderLlamaEntity {
         entity.set_synced_data(pumpkin_data::tracked_data::trader_llama::DATA_ID_CHEST, val);
     }
 
+    /// Vanilla `TraderLlama.java:71-73`: `despawnDelay` getter and setter.
+    #[must_use]
+    pub fn get_despawn_delay(&self) -> i32 {
+        self.despawn_delay.load(Ordering::Relaxed)
+    }
+
+    pub fn set_despawn_delay(&self, delay: i32) {
+        self.despawn_delay.store(delay, Ordering::Relaxed);
+    }
+
+    /// Vanilla `Llama.java:300-302`: `hasChest() ? getStrength() : 0`.
+    #[must_use]
+    pub fn get_inventory_columns(&self) -> i32 {
+        combat::get_llama_inventory_columns(self.has_chest(), self.get_strength())
+    }
+
     pub fn spit(&self, target: &Arc<dyn EntityBase>) {
         let entity = self.get_entity();
         let world = entity.world.load_full();
@@ -352,6 +369,7 @@ impl Mob for TraderLlamaEntity {
         nbt.put_bool("ChestedHorse", self.has_chest());
         nbt.put_bool("Tame", self.is_tame());
         nbt.put_int("Temper", self.temper.load(Ordering::Relaxed));
+        nbt.put_int("DespawnDelay", self.despawn_delay.load(Ordering::Relaxed));
         if let Some(owner) = self.owner.load() {
             nbt.put_uuid("Owner", owner);
         }
@@ -373,6 +391,9 @@ impl Mob for TraderLlamaEntity {
         }
         if let Some(temper) = nbt.get_int("Temper") {
             self.temper.store(temper, Ordering::Relaxed);
+        }
+        if let Some(delay) = nbt.get_int("DespawnDelay") {
+            self.despawn_delay.store(delay, Ordering::Relaxed);
         }
         if let Some(owner) = nbt.get_uuid("Owner") {
             self.owner.store(Some(owner));
@@ -446,10 +467,13 @@ impl Mob for TraderLlamaEntity {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             let entity = self.get_entity();
             let world = entity.world.load();
-            world.play_sound(
-                Sound::EntityDonkeyChest,
+            let pitch = combat::get_llama_sound_pitch(rand::random(), rand::random());
+            world.play_sound_fine(
+                Sound::EntityLlamaChest,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
+                1.0,
+                pitch,
             );
             return true;
         }
@@ -476,7 +500,6 @@ impl Mob for TraderLlamaEntity {
             let current_health = self.mob_entity.living_entity.health.load();
             let max_health = self.mob_entity.living_entity.get_max_health();
             let is_tame = self.is_tame();
-            let in_love = self.mob_entity.is_in_love();
             let current_temper = self.temper.load(Ordering::Relaxed);
 
             let mut item_used = false;
@@ -509,19 +532,19 @@ impl Mob for TraderLlamaEntity {
                 item_used = true;
             }
 
-            // 4. In love breeding (Hay block for tamed adult trader llama)
-            if props.can_breed && is_tame && !is_baby && !in_love {
-                self.mob_entity.set_love_ticks(600, Some(player.gameprofile.id));
-                item_used = true;
-            }
+            // Vanilla TraderLlama.java:37-39: Trader Llamas cannot breed (canMate returns false),
+            // so feeding HayBlock heals/tempers but never sets in-love ticks.
 
             if item_used {
                 item_stack.decrement_unless_creative(player.gamemode.load(), 1);
                 let world = entity.world.load();
-                world.play_sound(
-                    Sound::EntityHorseEat,
+                let pitch = combat::get_llama_sound_pitch(rand::random(), rand::random());
+                world.play_sound_fine(
+                    Sound::EntityLlamaEat,
                     SoundCategory::Neutral,
                     &entity.pos.load(),
+                    1.0,
+                    pitch,
                 );
                 return true;
             }
@@ -557,3 +580,26 @@ impl CustomSound for TraderLlamaEntity {
         Some(Sound::EntityLlamaHurt)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicI32, Ordering};
+
+    #[test]
+    fn test_trader_llama_despawn_and_sterile_parity() {
+        // Vanilla TraderLlama.java:28-29 DEFAULT_DESPAWN_DELAY = 47999
+        let delay = AtomicI32::new(47999);
+        assert_eq!(delay.load(Ordering::Relaxed), 47999);
+        delay.store(100, Ordering::Relaxed);
+        assert_eq!(delay.load(Ordering::Relaxed), 100);
+
+        // Vanilla Llama.java:300-302 columns
+        assert_eq!(crate::entity::combat::get_llama_inventory_columns(true, 3), 3);
+        assert_eq!(crate::entity::combat::get_llama_inventory_columns(false, 3), 0);
+
+        // Vanilla TraderLlama.java:37-39 sterile
+        assert!(!crate::entity::combat::can_llama_mate(true, true));
+        assert!(crate::entity::combat::can_llama_mate(true, false));
+    }
+}
+

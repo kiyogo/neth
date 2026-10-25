@@ -98,7 +98,7 @@ impl LlamaEntity {
         let mob_entity = MobEntity::new(entity);
         let mut rng = rand::rng();
         let variant = LlamaVariant::random_variant();
-        let strength = rng.random_range(1..=5);
+        let strength = combat::calculate_initial_llama_strength(rng.random(), rng.random());
 
         let llama = Self {
             mob_entity,
@@ -331,6 +331,12 @@ impl LlamaEntity {
         entity.set_synced_data(pumpkin_data::tracked_data::llama::DATA_ID_CHEST, val);
     }
 
+    /// Vanilla `Llama.java:300-302`: `hasChest() ? getStrength() : 0`.
+    #[must_use]
+    pub fn get_inventory_columns(&self) -> i32 {
+        combat::get_llama_inventory_columns(self.has_chest(), self.get_strength())
+    }
+
     pub fn spit(&self, target: &Arc<dyn EntityBase>) {
         let entity = self.get_entity();
         let world = entity.world.load_full();
@@ -487,10 +493,13 @@ impl Mob for LlamaEntity {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             let entity = self.get_entity();
             let world = entity.world.load();
-            world.play_sound(
-                Sound::EntityDonkeyChest,
+            let pitch = combat::get_llama_sound_pitch(rand::random(), rand::random());
+            world.play_sound_fine(
+                Sound::EntityLlamaChest,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
+                1.0,
+                pitch,
             );
             return true;
         }
@@ -559,10 +568,13 @@ impl Mob for LlamaEntity {
             if item_used {
                 item_stack.decrement_unless_creative(player.gamemode.load(), 1);
                 let world = entity.world.load();
-                world.play_sound(
-                    Sound::EntityHorseEat,
+                let pitch = combat::get_llama_sound_pitch(rand::random(), rand::random());
+                world.play_sound_fine(
+                    Sound::EntityLlamaEat,
                     SoundCategory::Neutral,
                     &entity.pos.load(),
+                    1.0,
+                    pitch,
                 );
                 return true;
             }
@@ -598,3 +610,21 @@ impl CustomSound for LlamaEntity {
         Some(Sound::EntityLlamaHurt)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_llama_inventory_and_sound_parity() {
+        // Vanilla Llama.java:300-302: hasChest ? strength : 0
+        assert_eq!(crate::entity::combat::get_llama_inventory_columns(false, 3), 0);
+        assert_eq!(crate::entity::combat::get_llama_inventory_columns(true, 3), 3);
+        assert_eq!(crate::entity::combat::get_llama_inventory_columns(true, 5), 5);
+
+        // Vanilla Llama.java:93-96 strength distribution
+        let s_normal = crate::entity::combat::calculate_initial_llama_strength(0.5, 2);
+        assert!(s_normal >= 1 && s_normal <= 3);
+        let s_rare = crate::entity::combat::calculate_initial_llama_strength(0.01, 4);
+        assert_eq!(s_rare, 5);
+    }
+}
+

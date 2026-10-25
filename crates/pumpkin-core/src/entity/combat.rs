@@ -5321,6 +5321,48 @@ pub fn should_bat_wake_from_resting(is_solid_above: bool, player_distance: Optio
     !is_solid_above || player_distance.is_some_and(|d| d < 4.0)
 }
 
+/// Calculates natural spawn strength for Llama and Trader Llama.
+///
+/// Mirrors vanilla `Llama.java:93-96`:
+/// 4% chance of maxStrength 5 (1..=5), otherwise maxStrength 3 (1..=3).
+#[must_use]
+pub fn calculate_initial_llama_strength(rand_float: f32, rand_int: u32) -> i32 {
+    let max_strength = if rand_float < 0.04 { 5 } else { 3 };
+    1 + (rand_int % max_strength) as i32
+}
+
+/// Calculates sound pitch for Llama eating and chest equipping.
+///
+/// Mirrors vanilla `Llama.java:228, 296`:
+/// `1.0F + (random.nextFloat() - random.nextFloat()) * 0.2F`
+#[must_use]
+pub fn get_llama_sound_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    1.0 + (rand_a - rand_b) * 0.2
+}
+
+/// Calculates inventory columns for a chested Llama.
+///
+/// Mirrors vanilla `Llama.java:300-302`:
+/// Returns `strength` (clamped 1..=5) if it has a chest, else 0.
+#[must_use]
+pub fn get_llama_inventory_columns(has_chest: bool, strength: i32) -> i32 {
+    if has_chest {
+        strength.clamp(1, 5)
+    } else {
+        0
+    }
+}
+
+/// Checks if a llama is eligible to breed.
+///
+/// Mirrors vanilla `TraderLlama.java:37-39` and `Llama.java:315-317`:
+/// Trader Llamas are sterile and cannot mate.
+#[must_use]
+pub fn can_llama_mate(partner_is_llama: bool, is_trader_llama: bool) -> bool {
+    partner_is_llama && !is_trader_llama
+}
+
+
 
 
 
@@ -8576,7 +8618,46 @@ mod tests {
         assert!(should_bat_wake_from_resting(false, None));
         assert!(should_bat_wake_from_resting(false, Some(10.0)));
     }
+
+    #[test]
+    fn test_llama_and_trader_llama_parity() {
+        // 1. Initial spawn strength distribution (Llama.java:93-96)
+        // >= 0.04 -> maxStrength = 3 -> strength in 1..=3
+        let normal_low = calculate_initial_llama_strength(0.5, 0);
+        assert_eq!(normal_low, 1);
+        let normal_mid = calculate_initial_llama_strength(0.5, 1);
+        assert_eq!(normal_mid, 2);
+        let normal_high = calculate_initial_llama_strength(0.5, 2);
+        assert_eq!(normal_high, 3);
+        let normal_wrap = calculate_initial_llama_strength(0.5, 3);
+        assert_eq!(normal_wrap, 1);
+
+        // < 0.04 (4% rare) -> maxStrength = 5 -> strength in 1..=5
+        let rare_5 = calculate_initial_llama_strength(0.01, 4);
+        assert_eq!(rare_5, 5);
+
+        // 2. Sound pitch (Llama.java:228, 296)
+        let pitch_neutral = get_llama_sound_pitch(0.5, 0.5);
+        assert!((pitch_neutral - 1.0).abs() < 1e-6);
+        let pitch_high = get_llama_sound_pitch(1.0, 0.0);
+        assert!((pitch_high - 1.2).abs() < 1e-6);
+        let pitch_low = get_llama_sound_pitch(0.0, 1.0);
+        assert!((pitch_low - 0.8).abs() < 1e-6);
+
+        // 3. Inventory columns (Llama.java:300-302)
+        assert_eq!(get_llama_inventory_columns(false, 5), 0);
+        assert_eq!(get_llama_inventory_columns(true, 1), 1);
+        assert_eq!(get_llama_inventory_columns(true, 3), 3);
+        assert_eq!(get_llama_inventory_columns(true, 5), 5);
+        assert_eq!(get_llama_inventory_columns(true, 6), 5); // clamped
+
+        // 4. Mating eligibility (TraderLlama.java:37-39)
+        assert!(can_llama_mate(true, false));
+        assert!(!can_llama_mate(true, true));
+        assert!(!can_llama_mate(false, false));
+    }
 }
+
 
 
 

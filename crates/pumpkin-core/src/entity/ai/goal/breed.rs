@@ -49,6 +49,11 @@ impl BreedGoal {
                 continue;
             }
             let c_type = c_entity.entity_type;
+            if my_type == &pumpkin_data::entity::EntityType::TRADER_LLAMA
+                || c_type == &pumpkin_data::entity::EntityType::TRADER_LLAMA
+            {
+                continue;
+            }
             let can_breed = c_type == my_type || combat::can_equine_mate(my_type, c_type);
             if !can_breed {
                 continue;
