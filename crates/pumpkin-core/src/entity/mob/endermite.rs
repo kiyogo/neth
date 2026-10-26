@@ -146,9 +146,10 @@ impl Mob for EndermiteEntity {
         entity.head_yaw.store(yaw);
 
         // Vanilla aiStep: if (!this.isPersistenceRequired()) { this.life++; }
-        if !self.mob_entity.persistence_required.load(Ordering::Relaxed) {
+        let persistence = self.mob_entity.persistence_required.load(Ordering::Relaxed);
+        if !persistence {
             let life = self.lifetime.fetch_add(1, Ordering::Relaxed) + 1;
-            if life >= 2400 {
+            if crate::entity::combat::should_endermite_despawn(life, persistence) {
                 entity.remove();
                 return;
             }
@@ -167,5 +168,20 @@ impl Mob for EndermiteEntity {
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_endermite_despawn_and_xp_parity() {
+        assert_eq!(EndermiteEntity::XP_REWARD, 3);
+        assert_eq!(crate::entity::combat::ENDERMITE_LIFETIME_MAX, 2400);
+        assert!(crate::entity::combat::should_endermite_despawn(2400, false));
+        assert!(crate::entity::combat::should_endermite_despawn(2500, false));
+        assert!(!crate::entity::combat::should_endermite_despawn(2399, false));
+        assert!(!crate::entity::combat::should_endermite_despawn(3000, true));
     }
 }

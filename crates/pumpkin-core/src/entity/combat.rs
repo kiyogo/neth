@@ -5721,6 +5721,141 @@ pub fn calculate_armadillo_scared_damage(raw_damage: f32) -> f32 {
     ((raw_damage - 1.0) / 2.0).max(0.0)
 }
 
+/// Minimum ticks an Enderman remains aggressive after acquiring a target before it can de-aggro/teleport due to bright daylight.
+///
+/// Mirrors vanilla `Enderman.java:78, 248`:
+/// `private static final int MIN_DEAGGRESSION_TIME = 600;`
+pub const ENDERMAN_MIN_DEAGGRESSION_TIME: u64 = 600;
+
+/// Delay in ticks between playing creepy stare sound when looked at.
+///
+/// Mirrors vanilla `Enderman.java:77, 177`:
+/// `private static final int DELAY_BETWEEN_CREEPY_STARE_SOUND = 400;`
+pub const ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND: u64 = 400;
+
+/// Sound volume for Enderman stare sound.
+///
+/// Mirrors vanilla `Enderman.java:180`:
+/// `this.level().playLocalSound(..., SoundEvents.ENDERMAN_STARE, ..., 2.5F, 1.0F, false);`
+pub const ENDERMAN_STARE_SOUND_VOLUME: f32 = 2.5;
+
+/// Checks if an Enderman has held its target long enough (>= 600 ticks) to permit de-aggression in sunlight.
+///
+/// Mirrors vanilla `Enderman.java:248`:
+/// `this.tickCount >= this.targetChangeTime + 600`
+#[must_use]
+pub const fn can_enderman_deaggro_in_sunlight(current_tick: u64, target_change_time: u64) -> bool {
+    target_change_time == 0 || current_tick >= target_change_time + ENDERMAN_MIN_DEAGGRESSION_TIME
+}
+
+/// Evaluates whether an Enderman in daylight seeing sky should teleport away.
+///
+/// Mirrors vanilla `Enderman.java:249-250`:
+/// `float br = this.getLightLevelDependentMagicValue();`
+/// `if (br > 0.5F && level.canSeeSky(this.blockPosition()) && this.random.nextFloat() * 30.0F < (br - 0.4F) * 2.0F)`
+#[must_use]
+pub fn should_enderman_daylight_teleport(br: f32, rand_val: f32) -> bool {
+    br > 0.5 && rand_val * 30.0 < (br - 0.4) * 2.0
+}
+
+/// Checks if an Enderman should play its stare sound when gazed at.
+///
+/// Mirrors vanilla `Enderman.java:177-182`:
+/// `if (this.tickCount >= this.lastStareSound + 400) { if (!this.isSilent()) ... }`
+#[must_use]
+pub const fn should_enderman_play_stare_sound(
+    current_tick: u64,
+    last_stare_sound: u64,
+    is_silent: bool,
+) -> bool {
+    !is_silent && (last_stare_sound == 0 || current_tick >= last_stare_sound + ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND)
+}
+
+/// Calculates sound pitch for Blaze burning/crackling sound.
+///
+/// Mirrors vanilla `Blaze.java:100`:
+/// `this.random.nextFloat() * 0.7F + 0.3F`
+#[must_use]
+pub fn calculate_blaze_burn_pitch(rand_val: f32) -> f32 {
+    rand_val * 0.7 + 0.3
+}
+
+/// Calculates sound volume for Blaze burning/crackling sound.
+///
+/// Mirrors vanilla `Blaze.java:99`:
+/// `1.0F + this.random.nextFloat()`
+#[must_use]
+pub fn calculate_blaze_burn_volume(rand_val: f32) -> f32 {
+    1.0 + rand_val
+}
+
+/// Checks whether Blaze should play its ambient crackling burn sound (1/24 chance per tick).
+///
+/// Mirrors vanilla `Blaze.java:91`:
+/// `if (this.random.nextInt(24) == 0 && !this.isSilent())`
+#[must_use]
+pub const fn should_blaze_play_burn_sound(rand_int_24: u32, is_silent: bool) -> bool {
+    rand_int_24 == 0 && !is_silent
+}
+
+/// Calculates small fireball spread for Blaze shooting goal.
+///
+/// Mirrors vanilla `Blaze.java:231, 237`:
+/// `double sqd = Math.sqrt(Math.sqrt(distance)) * 0.5;`
+/// `2.297 * sqd`
+#[must_use]
+pub fn calculate_blaze_small_fireball_spread(distance_sq: f64) -> f64 {
+    2.297 * distance_sq.sqrt().sqrt() * 0.5
+}
+
+/// Calculates extra jump boost power for MagmaCube jumping from ground.
+///
+/// Mirrors vanilla `MagmaCube.java:96`:
+/// `float sizeJumpBoostPower = this.getSize() * 0.1F;`
+#[must_use]
+pub fn calculate_magma_cube_jump_boost(size: i32) -> f64 {
+    (size.max(1) as f64) * 0.1
+}
+
+/// Calculates vertical velocity for MagmaCube jumping in Lava.
+///
+/// Mirrors vanilla `MagmaCube.java:105`:
+/// `0.22F + this.getSize() * 0.05F`
+#[must_use]
+pub fn calculate_magma_cube_lava_jump_boost(size: i32) -> f64 {
+    0.22 + (size.max(1) as f64) * 0.05
+}
+
+/// Checks if a CubeMob should play its jump sound.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:289`:
+/// `return this.getSize() > 0;`
+#[must_use]
+pub const fn should_cube_mob_play_jump_sound(size: i32) -> bool {
+    size > 0
+}
+
+/// Number of ticks Silverfish continues waking up nearby infested block friends when hurt.
+///
+/// Mirrors vanilla `Silverfish.java:189`:
+/// `silverfish.wakeUpFriendsTicks = 20;`
+pub const SILVERFISH_WAKE_UP_FRIENDS_TICKS: i32 = 20;
+
+/// Maximum lifetime in ticks of an Endermite before despawning (2400 ticks = 2 minutes).
+///
+/// Mirrors vanilla `Endermite.java:82`:
+/// `if (this.life >= 2400) { this.discard(); }`
+pub const ENDERMITE_LIFETIME_MAX: i32 = 2400;
+
+/// Determines whether an Endermite should despawn based on lifetime and persistence.
+///
+/// Mirrors vanilla `Endermite.java:79-84`:
+/// `if (!this.isPersistenceRequired()) { this.life++; if (this.life >= 2400) this.discard(); }`
+#[must_use]
+pub const fn should_endermite_despawn(lifetime: i32, persistence_required: bool) -> bool {
+    !persistence_required && lifetime >= ENDERMITE_LIFETIME_MAX
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -9016,6 +9151,50 @@ mod tests {
         assert_eq!(calculate_armadillo_scared_damage(5.0), 2.0);
         assert_eq!(calculate_armadillo_scared_damage(11.0), 5.0);
         assert_eq!(calculate_armadillo_scared_damage(0.5), 0.0);
+    }
+
+    #[test]
+    fn test_hostile_mob_details_parity() {
+        // 1. Enderman de-aggression & stare constants and conditions (Enderman.java:77-78, 177-182, 248-254)
+        assert_eq!(ENDERMAN_MIN_DEAGGRESSION_TIME, 600);
+        assert_eq!(ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND, 400);
+        assert_eq!(ENDERMAN_STARE_SOUND_VOLUME, 2.5);
+        assert!(can_enderman_deaggro_in_sunlight(1000, 400));
+        assert!(can_enderman_deaggro_in_sunlight(1000, 0)); // No target change time
+        assert!(!can_enderman_deaggro_in_sunlight(999, 400)); // Within 600 ticks
+        assert!(should_enderman_daylight_teleport(1.0, 0.03));
+        assert!(!should_enderman_daylight_teleport(0.4, 0.01)); // br <= 0.5
+        assert!(should_enderman_play_stare_sound(500, 100, false));
+        assert!(!should_enderman_play_stare_sound(499, 100, false)); // Within 400 ticks
+        assert!(!should_enderman_play_stare_sound(500, 100, true)); // Silent
+
+        // 2. Blaze crackle burn sound and fireball spread (Blaze.java:91-103, 231-237)
+        assert!((calculate_blaze_burn_pitch(0.0) - 0.3).abs() < 1e-6);
+        assert!((calculate_blaze_burn_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert!((calculate_blaze_burn_volume(0.0) - 1.0).abs() < 1e-6);
+        assert!((calculate_blaze_burn_volume(1.0) - 2.0).abs() < 1e-6);
+        assert!(should_blaze_play_burn_sound(0, false));
+        assert!(!should_blaze_play_burn_sound(1, false));
+        assert!(!should_blaze_play_burn_sound(0, true));
+        let spread = calculate_blaze_small_fireball_spread(16.0); // distance = 4, sqrt(4) = 2, sqd = 1.0, spread = 2.297
+        assert!((spread - 2.297).abs() < 1e-6);
+
+        // 3. Magma Cube jump boosts and CubeMob jump sound (MagmaCube.java:96, 105; AbstractCubeMob.java:289)
+        assert_eq!(calculate_magma_cube_jump_boost(1), 0.1);
+        assert_eq!(calculate_magma_cube_jump_boost(2), 0.2);
+        assert_eq!(calculate_magma_cube_jump_boost(4), 0.4);
+        assert!((calculate_magma_cube_lava_jump_boost(1) - 0.27).abs() < 1e-6);
+        assert!((calculate_magma_cube_lava_jump_boost(4) - 0.42).abs() < 1e-6);
+        assert!(should_cube_mob_play_jump_sound(1));
+        assert!(!should_cube_mob_play_jump_sound(0));
+
+        // 4. Silverfish wake friends duration & Endermite lifetime (Silverfish.java:189, Endermite.java:82)
+        assert_eq!(SILVERFISH_WAKE_UP_FRIENDS_TICKS, 20);
+        assert_eq!(ENDERMITE_LIFETIME_MAX, 2400);
+        assert!(should_endermite_despawn(2400, false));
+        assert!(should_endermite_despawn(2500, false));
+        assert!(!should_endermite_despawn(2399, false));
+        assert!(!should_endermite_despawn(3000, true)); // persistence required
     }
 }
 

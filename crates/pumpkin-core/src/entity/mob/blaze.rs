@@ -181,6 +181,24 @@ impl Mob for BlazeEntity {
                 1.0,
             );
         }
+
+        // Crackling burn sound (Blaze.java:91-102)
+        if crate::entity::combat::should_blaze_play_burn_sound(
+            rand::random_range(0..24),
+            base_entity.silent.load(Ordering::Relaxed),
+        ) {
+            let pos = base_entity.pos.load();
+            let sound_pos = Vector3::new(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5);
+            let rand_vol = rand::random_range(0.0..1.0);
+            let rand_pitch = rand::random_range(0.0..1.0);
+            base_entity.world.load().play_sound_fine(
+                Sound::EntityBlazeBurn,
+                SoundCategory::Hostile,
+                &sound_pos,
+                crate::entity::combat::calculate_blaze_burn_volume(rand_vol),
+                crate::entity::combat::calculate_blaze_burn_pitch(rand_pitch),
+            );
+        }
     }
 
     fn get_base_experience_reward(&self) -> u32 {
@@ -218,5 +236,24 @@ impl Mob for BlazeEntity {
             ));
             entity.velocity_dirty.store(true, Ordering::SeqCst);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_blaze_burn_sound_and_fireball_spread_parity() {
+        assert_eq!(BlazeEntity::XP_REWARD, 10);
+        assert!((crate::entity::combat::calculate_blaze_burn_pitch(0.0) - 0.3).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_blaze_burn_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_blaze_burn_volume(0.0) - 1.0).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_blaze_burn_volume(1.0) - 2.0).abs() < 1e-6);
+        assert!(crate::entity::combat::should_blaze_play_burn_sound(0, false));
+        assert!(!crate::entity::combat::should_blaze_play_burn_sound(1, false));
+        assert!(!crate::entity::combat::should_blaze_play_burn_sound(0, true));
+        let spread = crate::entity::combat::calculate_blaze_small_fireball_spread(16.0);
+        assert!((spread - 2.297).abs() < 1e-6);
     }
 }

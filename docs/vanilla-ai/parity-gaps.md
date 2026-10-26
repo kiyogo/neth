@@ -4262,6 +4262,52 @@
     - Added unit test `test_armadillo_scared_damage_reduction`.
   - All unit tests verified and passing (85/85 tests in `entity::combat::tests`, and all passive mob unit tests).
 
+## Gap 200: Hostile Mob Details Parity (Enderman Daylight De-aggression & Stare Sound, Blaze Crackle Burn Sound & Small Fireball Spread, Slime/MagmaCube Jump Boosts & Sound Parity, Silverfish Wake-up Duration & Endermite Lifetime Parity)
+- **Vanilla Reference**:
+  - `Enderman.java:77-78, 84-85, 176-183, 247-254`:
+    - `customServerAiStep`: Trong ánh sáng ban ngày (`level.isBrightOutside()`), nếu Enderman đã giữ mục tiêu tối thiểu 600 ticks (`MIN_DEAGGRESSION_TIME = 600`, tương đương 30 giây kể từ `targetChangeTime`), có thể nhìn thấy bầu trời (`level.canSeeSky()`) và giá trị ánh sáng ma thuật `br > 0.5F`, nó có xác suất `random.nextFloat() * 30.0F < (br - 0.4F) * 2.0F` để xóa target (`setTarget(null)`) và dịch chuyển ngẫu nhiên đi nơi khác.
+    - `playStareSound`: Khi bị người chơi nhìn chằm chằm hoặc cập nhật trạng thái `DATA_CREEPY`, nếu chưa câm (`!isSilent()`) và đã qua ít nhất 400 ticks (`DELAY_BETWEEN_CREEPY_STARE_SOUND = 400`, 20 giây) kể từ lần phát âm thanh trước, phát `SoundEvents.ENDERMAN_STARE` với âm lượng lớn `2.5F` và pitch `1.0F`.
+  - `Blaze.java:90-103, 231-237`:
+    - `aiStep`: Blaze phát âm thanh lửa cháy lách tách `SoundEvents.BLAZE_BURN` với tỷ lệ 1/24 mỗi tick (`random.nextInt(24) == 0`) khi không câm, âm lượng `1.0F + random.nextFloat()` và pitch `random.nextFloat() * 0.7F + 0.3F`.
+    - `BlazeAttackGoal`: Khi bắn cầu lửa nhỏ `SmallFireball`, độ lệch hướng (triangular spread) tỉ lệ thuận với căn bậc 4 của khoảng cách: `spread = 2.297 * Math.sqrt(Math.sqrt(distance)) * 0.5`.
+  - `MagmaCube.java:94-99, 102-109` & `AbstractCubeMob.java:288-290`:
+    - `jumpFromGround`: MagmaCube nhận thêm lực đẩy nhảy tỉ lệ thuận với kích thước: `sizeJumpBoostPower = this.getSize() * 0.1F`.
+    - `jumpInLiquid(LAVA)`: Khi ở trong dung nham, vận tốc nhảy đứng của MagmaCube được đặt thành `0.22F + this.getSize() * 0.05F`.
+    - `doPlayJumpSound`: Khối CubeMob chỉ phát âm thanh nhảy khi `getSize() > 0`.
+  - `Silverfish.java:189` & `Endermite.java:79-84`:
+    - `Silverfish`: Khi bị dính sát thương, đặt `wakeUpFriendsTicks = 20` để tiếp tục đánh thức và phá vỡ các khối đá bị nhiễm (Infested Stone) xung quanh trong 20 ticks.
+    - `Endermite`: Trừ khi có yêu cầu tồn tại vĩnh viễn (`isPersistenceRequired()`, ví dụ được đặt tên), Endermite tự động biến mất (despawn) sau 2400 ticks (2 phút).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ENDERMAN_MIN_DEAGGRESSION_TIME = 600`, `ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND = 400`, `ENDERMAN_STARE_SOUND_VOLUME = 2.5`.
+    - Added `can_enderman_deaggro_in_sunlight(current_tick, target_change_time) -> bool`.
+    - Added `should_enderman_daylight_teleport(br: f32, rand_val: f32) -> bool`.
+    - Added `should_enderman_play_stare_sound(current_tick, last_stare_sound, is_silent) -> bool`.
+    - Added `calculate_blaze_burn_pitch(rand_val: f32) -> f32` (`rand * 0.7 + 0.3`) and `calculate_blaze_burn_volume(rand_val: f32) -> f32` (`1.0 + rand`).
+    - Added `should_blaze_play_burn_sound(rand_int_24: u32, is_silent: bool) -> bool`.
+    - Added `calculate_blaze_small_fireball_spread(distance_sq: f64) -> f64`.
+    - Added `calculate_magma_cube_jump_boost(size: i32) -> f64` and `calculate_magma_cube_lava_jump_boost(size: i32) -> f64`.
+    - Added `should_cube_mob_play_jump_sound(size: i32) -> bool`.
+    - Added `SILVERFISH_WAKE_UP_FRIENDS_TICKS = 20`.
+    - Added `ENDERMITE_LIFETIME_MAX = 2400` and `should_endermite_despawn(lifetime, persistence_required) -> bool`.
+    - Added unit test `test_hostile_mob_details_parity` (total 86/86 combat tests passing).
+  - Updated `EndermanEntity` in `crates/pumpkin-core/src/entity/mob/enderman.rs`:
+    - Added `target_change_time: AtomicCell<u64>` and `last_stare_sound: AtomicCell<u64>`.
+    - Updated `set_target`: tracks target acquisition timestamp and resets on target loss.
+    - Added `play_stare_sound(&self, tick_count: u64)` playing `Sound::EntityEndermanStare` at volume 2.5 after 400 ticks cooldown.
+    - Updated `mob_tick`: replaced static 1/60 roll with vanilla daylight formula checking 600 ticks de-aggression threshold and magic light level probability.
+    - Added unit test `test_enderman_sunlight_and_stare_parity`.
+  - Updated `BlazeEntity` in `crates/pumpkin-core/src/entity/mob/blaze.rs`:
+    - Added crackling burn sound playback (`Sound::EntityBlazeBurn`) at 1/24 tick rate with randomized volume (1.0..=2.0) and pitch (0.3..=1.0).
+    - Added unit test `test_blaze_burn_sound_and_fireball_spread_parity`.
+  - Updated `SilverfishEntity` in `crates/pumpkin-core/src/entity/mob/silverfish.rs`:
+    - Standardized friend wake-up ticks to `SILVERFISH_WAKE_UP_FRIENDS_TICKS` (20 ticks).
+    - Added unit test `test_silverfish_wake_up_and_xp_parity`.
+  - Updated `EndermiteEntity` in `crates/pumpkin-core/src/entity/mob/endermite.rs`:
+    - Enforced despawn condition via `should_endermite_despawn` at 2400 ticks.
+    - Added unit test `test_endermite_despawn_and_xp_parity`.
+  - All unit tests verified and passing (86/86 in `entity::combat::tests`, and 29/29 in `entity::mob`).
+
 
 
 

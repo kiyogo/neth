@@ -301,7 +301,7 @@ impl Mob for SilverfishEntity {
                 || damage_type.has_tag(&tag::DamageType::MINECRAFT_ALWAYS_TRIGGERS_SILVERFISH))
         {
             self.wake_up_friends_ticks
-                .store(to_goal_ticks(20), Ordering::Relaxed);
+                .store(to_goal_ticks(crate::entity::combat::SILVERFISH_WAKE_UP_FRIENDS_TICKS), Ordering::Relaxed);
         }
 
         true
@@ -309,5 +309,16 @@ impl Mob for SilverfishEntity {
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_silverfish_wake_up_and_xp_parity() {
+        assert_eq!(SilverfishEntity::XP_REWARD, 5);
+        assert_eq!(crate::entity::combat::SILVERFISH_WAKE_UP_FRIENDS_TICKS, 20);
     }
 }

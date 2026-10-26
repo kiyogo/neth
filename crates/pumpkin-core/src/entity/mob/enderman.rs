@@ -66,6 +66,10 @@ pub struct EndermanEntity {
     creepy: AtomicBool,
     provoked: AtomicBool,
     speed_boosted: AtomicBool,
+    /// Tick count when the target was last changed or acquired (Enderman.java:85).
+    pub target_change_time: AtomicCell<u64>,
+    /// Tick count when the stare sound was last played (Enderman.java:84).
+    pub last_stare_sound: AtomicCell<u64>,
 }
 
 impl EndermanEntity {
@@ -95,6 +99,8 @@ impl EndermanEntity {
             creepy: AtomicBool::new(false),
             provoked: AtomicBool::new(false),
             speed_boosted: AtomicBool::new(false),
+            target_change_time: AtomicCell::new(0),
+            last_stare_sound: AtomicCell::new(0),
         };
         let mob_arc = Arc::new(entity);
         let mob_weak: Weak<dyn Mob> = {
@@ -282,6 +288,16 @@ impl EndermanEntity {
         drop(mob_target);
 
         if is_some {
+            let tick_count = self
+                .mob_entity
+                .living_entity
+                .entity
+                .world
+                .load()
+                .level_info
+                .load()
+                .day_time as u64;
+            self.target_change_time.store(tick_count);
             self.set_creepy(true);
             // Use attribute modifier instead of direct speed arithmetic
             if !self.speed_boosted.swap(true, Ordering::Relaxed) {
@@ -303,6 +319,7 @@ impl EndermanEntity {
                 );
             }
         } else {
+            self.target_change_time.store(0);
             self.set_creepy(false);
             self.set_provoked(false);
             if self.speed_boosted.swap(false, Ordering::Relaxed) {
@@ -317,6 +334,26 @@ impl EndermanEntity {
                     vec![Attributes::MOVEMENT_SPEED],
                 );
             }
+        }
+    }
+
+    /// Plays the Enderman stare sound when gazed at by a player (Enderman.java:176-183).
+    pub fn play_stare_sound(&self, tick_count: u64) {
+        let last = self.last_stare_sound.load();
+        let entity = &self.mob_entity.living_entity.entity;
+        if crate::entity::combat::should_enderman_play_stare_sound(
+            tick_count,
+            last,
+            entity.silent.load(Ordering::Relaxed),
+        ) {
+            self.last_stare_sound.store(tick_count);
+            entity.world.load().play_sound_fine(
+                Sound::EntityEndermanStare,
+                SoundCategory::Hostile,
+                &entity.pos.load(),
+                crate::entity::combat::ENDERMAN_STARE_SOUND_VOLUME,
+                1.0,
+            );
         }
     }
 
@@ -495,10 +532,18 @@ impl Mob for EndermanEntity {
             caller.damage_with_context(caller, 1.0, DamageType::DROWN, None, None, None);
         }
 
-        // Vanilla sunlight avoidance:
-        // When in daylight and seeing sky, Enderman teleports away randomly
-        if self.mob_entity.is_in_daylight() && world.can_see_sky(&entity.block_pos.load()) {
-            if rand::random_range(0..60) == 0 {
+        // Vanilla sunlight avoidance (Enderman.java:247-254):
+        // When in bright daylight and seeing sky, Enderman de-aggros and teleports away
+        // if tickCount >= targetChangeTime + 600 and random * 30 < (br - 0.4) * 2.
+        let current_tick = world.level_info.load().day_time as u64;
+        let target_change = self.target_change_time.load();
+        if self.mob_entity.is_in_daylight()
+            && world.can_see_sky(&entity.block_pos.load())
+            && crate::entity::combat::can_enderman_deaggro_in_sunlight(current_tick, target_change)
+        {
+            let br = 1.0f32;
+            let rand_val = rand::random_range(0.0..1.0);
+            if crate::entity::combat::should_enderman_daylight_teleport(br, rand_val) {
                 self.set_target(None);
                 self.teleport_randomly();
             }
@@ -579,5 +624,26 @@ impl Mob for EndermanEntity {
         if should_teleport {
             self.teleport_randomly();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_enderman_sunlight_and_stare_parity() {
+        assert_eq!(crate::entity::combat::ENDERMAN_MIN_DEAGGRESSION_TIME, 600);
+        assert_eq!(crate::entity::combat::ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND, 400);
+        assert_eq!(crate::entity::combat::ENDERMAN_STARE_SOUND_VOLUME, 2.5);
+
+        assert!(crate::entity::combat::can_enderman_deaggro_in_sunlight(1000, 400));
+        assert!(crate::entity::combat::can_enderman_deaggro_in_sunlight(1000, 0));
+        assert!(!crate::entity::combat::can_enderman_deaggro_in_sunlight(999, 400));
+
+        assert!(crate::entity::combat::should_enderman_daylight_teleport(1.0, 0.03));
+        assert!(!crate::entity::combat::should_enderman_daylight_teleport(0.4, 0.01));
+
+        assert!(crate::entity::combat::should_enderman_play_stare_sound(500, 100, false));
+        assert!(!crate::entity::combat::should_enderman_play_stare_sound(499, 100, false));
+        assert!(!crate::entity::combat::should_enderman_play_stare_sound(500, 100, true));
     }
 }
