@@ -6250,6 +6250,57 @@ pub const SMALL_FIREBALL_DIRECT_DAMAGE: f32 = 5.0;
 pub const SMALL_FIREBALL_IGNITE_SECONDS: f32 = 5.0;
 pub const SMALL_FIREBALL_IGNITE_TICKS: u32 = 100;
 
+/// Maximum health for Vex entity (14.0 HP).
+///
+/// Mirrors vanilla Vex.java:82:
+/// .add(Attributes.MAX_HEALTH, 14.0)
+pub const VEX_DEFAULT_HEALTH: f32 = 14.0;
+
+/// Base attack damage for Vex entity (4.0 HP).
+///
+/// Mirrors vanilla Vex.java:82:
+/// .add(Attributes.ATTACK_DAMAGE, 4.0)
+pub const VEX_ATTACK_DAMAGE: f32 = 4.0;
+
+/// Experience reward dropped by a Vex on death (3 XP).
+///
+/// Mirrors vanilla Vex.java:49:
+/// 	his.xpReward = 3;
+pub const VEX_XP_REWARD: u32 = 3;
+
+/// Wing flap rotation speed in degrees per tick for Vex (45.836624 deg/tick).
+///
+/// Mirrors vanilla Vex.java:40:
+/// public static final float FLAP_DEGREES_PER_TICK = 45.836624F;
+pub const VEX_FLAP_DEGREES_PER_TICK: f32 = 45.836_624;
+
+/// Ticks per wing flap cycle for Vex (4 ticks).
+///
+/// Mirrors vanilla Vex.java:41:
+/// public static final int TICKS_PER_FLAP = Mth.ceil((float) (Math.PI * 5.0 / 4.0));
+pub const VEX_TICKS_PER_FLAP: u64 = 4;
+
+/// Interval in ticks between starve damage applications when Vex exceeds limited lifetime (20 ticks = 1s).
+///
+/// Mirrors vanilla Vex.java:65:
+/// 	his.limitedLifeTicks = 20; this.hurt(this.damageSources().starve(), 1.0F);
+pub const VEX_DECAY_DAMAGE_INTERVAL_TICKS: i32 = 20;
+
+/// Experience reward dropped by an Evoker on death (10 XP).
+///
+/// Mirrors vanilla Evoker.java:50:
+/// 	his.xpReward = 10;
+pub const EVOKER_XP_REWARD: u32 = 10;
+
+/// Calculates total limited lifetime ticks for a Vex summoned by an Evoker.
+///
+/// Mirrors vanilla Evoker.java:266:
+/// ex.setLimitedLife(20 * (30 + Evoker.this.random.nextInt(90)));
+#[must_use]
+pub const fn calculate_vex_summon_lifetime(rand_0_to_89: i32) -> i32 {
+    20 * (30 + rand_0_to_89)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8551,11 +8602,11 @@ mod tests {
         assert_eq!(get_vex_xp_reward(), 3);
 
         // 6. Vex flapping ticks (Vex.java:49, 64-66: tickCount % 4 == 0)
-        assert!(is_vex_flapping(0));
-        assert!(!is_vex_flapping(1));
+        assert!(is_vex_flapping(0u32));
+        assert!(!is_vex_flapping(1u32));
         assert!(!is_vex_flapping(2));
-        assert!(!is_vex_flapping(3));
-        assert!(is_vex_flapping(4));
+        assert!(!is_vex_flapping(3u32));
+        assert!(is_vex_flapping(4u32));
 
         // 7. Zoglin targeting & attack damage parity (Zoglin.java:69-70, 139)
         assert!(!can_zoglin_target_entity(&pumpkin_data::entity::EntityType::ZOGLIN));
@@ -9711,6 +9762,32 @@ mod tests {
         assert_eq!(SMALL_FIREBALL_DIRECT_DAMAGE, 5.0);
         assert_eq!(SMALL_FIREBALL_IGNITE_SECONDS, 5.0);
         assert_eq!(SMALL_FIREBALL_IGNITE_TICKS, 100);
+    }
+
+    #[test]
+    fn test_vex_and_evoker_parity() {
+        // 1. Vex constants & attributes (Vex.java:40-41, 49, 65, 82)
+        assert_eq!(VEX_DEFAULT_HEALTH, 14.0);
+        assert_eq!(VEX_ATTACK_DAMAGE, 4.0);
+        assert_eq!(VEX_XP_REWARD, 3);
+        assert!((VEX_FLAP_DEGREES_PER_TICK - 45.836_624).abs() < 1e-5);
+        assert_eq!(VEX_TICKS_PER_FLAP, 4);
+        assert_eq!(VEX_DECAY_DAMAGE_INTERVAL_TICKS, 20);
+
+        // Flapping tick check: tick % 4 == 0
+        assert!(is_vex_flapping(0u32));
+        assert!(is_vex_flapping(4u32));
+        assert!(is_vex_flapping(8u32));
+        assert!(!is_vex_flapping(1u32));
+        assert!(!is_vex_flapping(3u32));
+
+        // Summon lifetime calculation: 20 * (30 + rand(90)) => 600..2400 ticks (30..120s)
+        assert_eq!(calculate_vex_summon_lifetime(0), 600);
+        assert_eq!(calculate_vex_summon_lifetime(89), 2380);
+        assert_eq!(calculate_vex_summon_lifetime(45), 1500);
+
+        // 2. Evoker constants (Evoker.java:50)
+        assert_eq!(EVOKER_XP_REWARD, 10);
     }
 }
 

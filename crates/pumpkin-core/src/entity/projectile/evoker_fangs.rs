@@ -108,7 +108,39 @@ impl EntityBase for EvokerFangsEntity {
         None
     }
 
+    fn can_hit(&self) -> bool {
+        false
+    }
+
+    fn damage_with_context(
+        &self,
+        _caller: &dyn EntityBase,
+        _amount: f32,
+        _damage_type: DamageType,
+        _position: Option<pumpkin_util::math::vector3::Vector3<f64>>,
+        _source: Option<&dyn EntityBase>,
+        _cause: Option<&dyn EntityBase>,
+    ) -> bool {
+        // Vanilla EvokerFangs.java:166: Evoker Fangs are immune to damage
+        false
+    }
+
     fn cast_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_evoker_fangs_constants_and_immunity_parity() {
+        assert_eq!(get_evoker_fangs_damage(), 6.0);
+        assert!(is_evoker_fangs_attack_tick(-8));
+        assert!(!is_evoker_fangs_attack_tick(-7));
+        assert!(!is_evoker_fangs_attack_tick(0));
+        assert!((calculate_evoker_fangs_sound_pitch(0.0) - 0.85).abs() < 1e-6);
+        assert!((calculate_evoker_fangs_sound_pitch(1.0) - 1.05).abs() < 1e-6);
     }
 }

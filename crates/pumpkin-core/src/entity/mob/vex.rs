@@ -171,7 +171,7 @@ impl Mob for VexEntity {
         if self.has_limited_life.load(Ordering::Relaxed) {
             let ticks = self.limited_life_ticks.fetch_sub(1, Ordering::Relaxed);
             if ticks <= 1 {
-                self.limited_life_ticks.store(20, Ordering::Relaxed);
+                self.limited_life_ticks.store(crate::entity::combat::VEX_DECAY_DAMAGE_INTERVAL_TICKS, Ordering::Relaxed);
                 self.mob_entity
                     .living_entity
                     .damage_with_context(self, 1.0, DamageType::STARVE, None, None, None);
@@ -209,5 +209,22 @@ impl CustomSound for VexEntity {
 
     fn death_sound(&self) -> Option<Sound> {
         Some(Sound::EntityVexDeath)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_vex_constants_and_decay_parity() {
+        assert_eq!(VEX_DEFAULT_HEALTH, 14.0);
+        assert_eq!(VEX_ATTACK_DAMAGE, 4.0);
+        assert_eq!(VEX_XP_REWARD, 3);
+        assert_eq!(VEX_TICKS_PER_FLAP, 4);
+        assert_eq!(VEX_DECAY_DAMAGE_INTERVAL_TICKS, 20);
+        assert!(is_vex_flapping(12));
+        assert!(!is_vex_flapping(13));
+        assert_eq!(calculate_vex_summon_lifetime(30), 1200);
     }
 }

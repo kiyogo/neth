@@ -4398,3 +4398,34 @@ eck, part 1): nhận 100% full damage (damage).
     - Added unit test 	est_ender_dragon_combat_and_crystal_parity.
   - All unit tests verified and passing (88/88 in entity::combat::tests, 2/2 in entity::boss, 2/2 in entity::projectile).
 
+## Gap 203: Evoker Fangs Immunity, Vex Flapping & Decay, Llama Spit & Shulker Bullet Parity
+- **Vanilla Reference**: `EvokerFangs.java:31, 89, 131-137, 166`, `Vex.java:40-41, 49, 64-66, 82`, `Evoker.java:50, 266`, `LlamaSpit.java:37, 61, 67`, `ShulkerBullet.java:188, 281, 292`:
+  - `EvokerFangs.java`:
+    - `hurtServer`: Evoker Fangs hoan toan mien nhiem voi moi loai sat thuong ben ngoai (`hurtServer` tra ve false, `can_hit = false`).
+    - Gay 6.0 HP sat thuong phep xuyen giap tai tick -8 cua warmup (`is_evoker_fangs_attack_tick(-8)`).
+    - Am thanh `EVOKER_FANGS_ATTACK` voi volume 1.0, pitch `0.85F + 0.2F * random`.
+  - `Vex.java` & `Evoker.java`:
+    - Vex co mau co ban 14.0 HP, sat thuong tan cong 4.0 HP, roi 3 XP (`xpReward = 3`).
+    - `TICKS_PER_FLAP = 4`: Chu ky dap canh 4 ticks (`tickCount % 4 == 0`). Toc do xoay canh 45.836624 do/tick.
+    - `hasLimitedLife`: Khi het thoi gian song gioi han, moi 20 ticks (1 giay) chiu 1.0 sat thuong loai `STARVE` cho den chet (`VEX_DECAY_DAMAGE_INTERVAL_TICKS = 20`).
+    - Evoker trieu hoi Vex voi thoi gian song gioi han `20 * (30 + random.nextInt(90))` ticks (30..120 giay). Evoker roi 10 XP (`EVOKER_XP_REWARD = 10`).
+  - `LlamaSpit.java`:
+    - Trong luc `0.06`, luc can khong khi `0.99F`, gay 1.0 HP sat thuong va cham. Tu huy khi roi vao nuoc hoac cham block.
+  - `ShulkerBullet.java`:
+    - Gay 4.0 HP sat thuong `MOB_PROJECTILE` va gan hieu ung `Levitation` 200 ticks (10 giay). Tu huy trong do kho Peaceful.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `VEX_DEFAULT_HEALTH = 14.0`, `VEX_ATTACK_DAMAGE = 4.0`, `VEX_XP_REWARD = 3`, `VEX_FLAP_DEGREES_PER_TICK = 45.836_624`, `VEX_TICKS_PER_FLAP = 4`, `VEX_DECAY_DAMAGE_INTERVAL_TICKS = 20`, `EVOKER_XP_REWARD = 10`.
+    - Added `calculate_vex_summon_lifetime(rand_0_to_89) -> i32` and verified `is_vex_flapping(tick_count)`.
+    - Added unit test `test_vex_and_evoker_parity` (total 89/89 combat tests passing).
+  - Updated `EvokerFangsEntity` in `crates/pumpkin-core/src/entity/projectile/evoker_fangs.rs`:
+    - Implemented damage immunity (`can_hit = false`, `damage_with_context = false`).
+    - Added unit test `test_evoker_fangs_constants_and_immunity_parity`.
+  - Updated `VexEntity` in `crates/pumpkin-core/src/entity/mob/vex.rs`:
+    - Standardized decay damage interval to `VEX_DECAY_DAMAGE_INTERVAL_TICKS`.
+    - Added unit test `test_vex_constants_and_decay_parity`.
+  - Added unit test `test_llama_spit_constants_parity` in `crates/pumpkin-core/src/entity/projectile/llama_spit.rs`.
+  - Added unit test `test_shulker_bullet_damage_and_levitation_parity` in `crates/pumpkin-core/src/entity/projectile/shulker_bullet.rs`.
+  - Added unit test `test_eye_of_ender_constants_parity` in `crates/pumpkin-core/src/entity/projectile/eye_of_ender.rs`.
+  - All unit tests verified and passing (98/98 in test suite).
+

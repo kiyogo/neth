@@ -573,3 +573,17 @@ impl EntityBase for ShulkerBulletEntity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_shulker_bullet_damage_and_levitation_parity() {
+        assert_eq!(get_shulker_bullet_damage(), 4.0);
+        assert_eq!(get_shulker_bullet_levitation_duration(), 200);
+        assert!(should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Peaceful));
+        assert!(!should_shulker_bullet_despawn_in_peaceful(pumpkin_util::Difficulty::Easy));
+        assert_eq!(get_shulker_bullet_deflect_particle_count(), 15);
+    }
+}

@@ -104,3 +104,15 @@ impl EntityBase for LlamaSpitEntity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_llama_spit_constants_parity() {
+        assert_eq!(get_llama_spit_damage(), 1.0);
+        assert_eq!(get_llama_spit_gravity(), 0.06);
+        assert_eq!(get_llama_spit_air_drag(), 0.99);
+    }
+}

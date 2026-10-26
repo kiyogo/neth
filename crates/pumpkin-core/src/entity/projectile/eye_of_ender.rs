@@ -238,3 +238,16 @@ impl EntityBase for EyeOfEnder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_eye_of_ender_constants_parity() {
+        assert_eq!(get_eye_of_ender_max_life(), 80);
+        assert!(should_eye_of_ender_survive(1));
+        assert!(should_eye_of_ender_survive(4));
+        assert!(!should_eye_of_ender_survive(0));
+    }
+}
