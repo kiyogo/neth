@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Weak};
 
 use pumpkin_data::attributes::Attributes;
@@ -20,12 +20,16 @@ use crate::entity::{
 
 pub struct BreezeEntity {
     pub mob_entity: MobEntity,
+    pub whirl_sound_ticks: AtomicI32,
 }
 
 impl BreezeEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
-        let breeze = Self { mob_entity };
+        let breeze = Self {
+            mob_entity,
+            whirl_sound_ticks: AtomicI32::new(rand::random_range(1..=80)),
+        };
         let mob_arc = Arc::new(breeze);
 
         // Vanilla Breeze: MOVEMENT_SPEED = 0.63, MAX_HEALTH = 30.0, FOLLOW_RANGE = 24.0, ATTACK_DAMAGE = 3.0
@@ -133,11 +137,11 @@ impl Mob for BreezeEntity {
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         let entity = self.get_entity();
-        if !entity.silent.load(std::sync::atomic::Ordering::Relaxed)
-            && rand::random_range(0..80) == 0
-        {
-            let world = entity.world.load();
-            let sound = if entity.on_ground.load(std::sync::atomic::Ordering::Relaxed) {
+        let silent = entity.silent.load(Ordering::Relaxed);
+        let world = entity.world.load();
+
+        if !silent && rand::random_range(0..80) == 0 {
+            let sound = if entity.on_ground.load(Ordering::Relaxed) {
                 Sound::EntityBreezeIdleGround
             } else {
                 Sound::EntityBreezeIdleAir
@@ -149,6 +153,47 @@ impl Mob for BreezeEntity {
                 1.0,
                 1.0,
             );
+        }
+
+        // Vanilla Breeze whirl sound (Breeze.java:145-148, 190-194)
+        let whirl_cd = self.whirl_sound_ticks.load(Ordering::Relaxed);
+        if whirl_cd <= 0 {
+            self.whirl_sound_ticks
+                .store(rand::random_range(1..=80), Ordering::Relaxed);
+            if !silent {
+                let rand_pitch = rand::random_range(0.0..1.0);
+                let rand_vol = rand::random_range(0.0..1.0);
+                let pitch = crate::entity::combat::calculate_breeze_whirl_pitch(rand_pitch);
+                let volume = crate::entity::combat::calculate_breeze_whirl_volume(rand_vol);
+                world.play_sound_fine(
+                    Sound::EntityBreezeWhirl,
+                    SoundCategory::Hostile,
+                    &entity.pos.load(),
+                    volume,
+                    pitch,
+                );
+            }
+        } else {
+            self.whirl_sound_ticks
+                .store(whirl_cd - 1, Ordering::Relaxed);
+        }
+    }
+
+    fn on_damage(&self, damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        if damage_type.id == DamageType::FALL.id {
+            let fall_dist = self.mob_entity.living_entity.fall_distance.load();
+            if crate::entity::combat::should_breeze_play_fall_sound(fall_dist) {
+                let entity = self.get_entity();
+                if !entity.silent.load(Ordering::Relaxed) {
+                    entity.world.load().play_sound_fine(
+                        Sound::EntityBreezeLand,
+                        SoundCategory::Hostile,
+                        &entity.pos.load(),
+                        1.0,
+                        1.0,
+                    );
+                }
+            }
         }
     }
 
@@ -172,5 +217,19 @@ impl CustomSound for BreezeEntity {
 
     fn death_sound(&self) -> Option<Sound> {
         Some(Sound::EntityBreezeDeath)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_breeze_fall_and_whirl_parity() {
+        assert_eq!(crate::entity::combat::BREEZE_FALL_DISTANCE_SOUND_THRESHOLD, 3.0);
+        assert!(crate::entity::combat::should_breeze_play_fall_sound(3.1));
+        assert!(!crate::entity::combat::should_breeze_play_fall_sound(3.0));
+        assert!((crate::entity::combat::calculate_breeze_whirl_pitch(0.0) - 0.7).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_breeze_whirl_pitch(1.0) - 1.1).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_breeze_whirl_volume(0.0) - 0.8).abs() < 1e-6);
+        assert!((crate::entity::combat::calculate_breeze_whirl_volume(1.0) - 1.0).abs() < 1e-6);
     }
 }

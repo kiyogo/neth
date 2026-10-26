@@ -439,14 +439,12 @@ impl Goal for WardenSonicBoomGoal {
                     1.0,
                 );
 
-                target.damage(target.as_ref(), 10.0, DamageType::SONIC_BOOM);
+                target.damage(target.as_ref(), crate::entity::combat::SONIC_BOOM_DAMAGE, DamageType::SONIC_BOOM);
 
                 let knockback_res = target
                     .get_living_entity()
                     .map_or(0.0, |l| l.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE));
-                let factor = (1.0 - knockback_res).max(0.0);
-                let kb_h = 2.5 * factor;
-                let kb_v = 0.5 * factor;
+                let (kb_h, kb_v) = crate::entity::combat::calculate_sonic_boom_knockback(knockback_res);
                 let mut target_vel = target_entity.velocity.load();
                 target_vel.x += norm.x * kb_h;
                 target_vel.y += norm.y * kb_v;
@@ -935,5 +933,32 @@ impl Mob for WardenEntity {
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_warden_sonic_boom_constants_and_knockback_parity() {
+        assert_eq!(WardenEntity::XP_REWARD, 5);
+        assert_eq!(crate::entity::combat::SONIC_BOOM_DAMAGE, 10.0);
+        assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_XZ, 15.0);
+        assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_Y, 20.0);
+        assert_eq!(crate::entity::combat::SONIC_BOOM_HORIZONTAL_KNOCKBACK, 2.5);
+        assert_eq!(crate::entity::combat::SONIC_BOOM_VERTICAL_KNOCKBACK, 0.5);
+
+        let (kh, kv) = crate::entity::combat::calculate_sonic_boom_knockback(0.0);
+        assert_eq!(kh, 2.5);
+        assert_eq!(kv, 0.5);
+
+        let (kh_res, kv_res) = crate::entity::combat::calculate_sonic_boom_knockback(0.5);
+        assert_eq!(kh_res, 1.25);
+        assert_eq!(kv_res, 0.25);
+
+        let (kh_full, kv_full) = crate::entity::combat::calculate_sonic_boom_knockback(1.0);
+        assert_eq!(kh_full, 0.0);
+        assert_eq!(kv_full, 0.0);
     }
 }

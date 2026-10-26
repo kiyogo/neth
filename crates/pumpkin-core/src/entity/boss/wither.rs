@@ -43,7 +43,7 @@ use crate::{
     },
 };
 
-const INVULNERABLE_TICKS: i32 = 220;
+const INVULNERABLE_TICKS: i32 = crate::entity::combat::WITHER_INVULNERABLE_TICKS;
 
 pub struct WitherEntity {
     pub mob_entity: MobEntity,
@@ -191,7 +191,7 @@ impl WitherEntity {
     #[must_use]
     pub fn is_powered(&self) -> bool {
         let living = &self.mob_entity.living_entity;
-        living.health.load() <= living.get_max_health() / 2.0
+        crate::entity::combat::is_wither_powered(living.health.load(), living.get_max_health())
     }
 
     pub fn make_invulnerable(&self) {
@@ -673,12 +673,11 @@ impl Mob for WitherEntity {
             if src_type.has_tag(&tag::EntityType::MINECRAFT_WITHER_FRIENDS) {
                 return false;
             }
-            if self.is_powered()
-                && (src_type == &EntityType::ARROW
-                    || src_type == &EntityType::SPECTRAL_ARROW
-                    || src_type == &EntityType::WIND_CHARGE
-                    || src_type == &EntityType::BREEZE_WIND_CHARGE)
-            {
+            let is_proj = src_type == &EntityType::ARROW
+                || src_type == &EntityType::SPECTRAL_ARROW
+                || src_type == &EntityType::WIND_CHARGE
+                || src_type == &EntityType::BREEZE_WIND_CHARGE;
+            if crate::entity::combat::should_wither_deflect_projectile(self.is_powered(), is_proj) {
                 return false;
             }
         }
@@ -753,5 +752,27 @@ impl CustomSound for WitherEntity {
 
     fn death_sound(&self) -> Option<Sound> {
         Some(Sound::EntityWitherDeath)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wither_boss_constants_and_shield_parity() {
+        assert_eq!(INVULNERABLE_TICKS, 220);
+        assert_eq!(crate::entity::combat::WITHER_INVULNERABLE_TICKS, 220);
+        assert_eq!(crate::entity::combat::WITHER_MAX_HEALTH, 300.0);
+        assert_eq!(crate::entity::combat::WITHER_ARMOR_POINTS, 4.0);
+        assert_eq!(crate::entity::combat::WITHER_SPAWN_EXPLOSION_RADIUS, 7.0);
+
+        assert!(crate::entity::combat::is_wither_powered(150.0, 300.0));
+        assert!(crate::entity::combat::is_wither_powered(50.0, 300.0));
+        assert!(!crate::entity::combat::is_wither_powered(151.0, 300.0));
+
+        assert!(crate::entity::combat::should_wither_deflect_projectile(true, true));
+        assert!(!crate::entity::combat::should_wither_deflect_projectile(false, true));
+        assert!(!crate::entity::combat::should_wither_deflect_projectile(true, false));
     }
 }

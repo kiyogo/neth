@@ -4308,6 +4308,48 @@
     - Added unit test `test_endermite_despawn_and_xp_parity`.
   - All unit tests verified and passing (86/86 in `entity::combat::tests`, and 29/29 in `entity::mob`).
 
+## Gap 201: Boss & Mini-Boss Combat Details Parity (Breeze Fall Sound & Whirl Audio, Bogged Attack Intervals, Wither Invulnerable & Shield Immunity, Warden Sonic Boom Knockback Parity)
+- **Vanilla Reference**:
+  - `Breeze.java:47, 190-194, 274-280`:
+    - `causeFallDamage`: Khi Breeze rơi từ độ cao vượt quá 3.0 blocks (`fallDistance > 3.0`), nó phát âm thanh hạ cánh `SoundEvents.BREEZE_LAND` với volume 1.0 và pitch 1.0.
+    - `playWhirlSound`: Chu kỳ xoáy gió diễn ra ngẫu nhiên trong khoảng 1 đến 80 ticks (`soundTick = random.nextIntBetweenInclusive(1, 80)`), phát âm thanh `SoundEvents.BREEZE_WHIRL` với volume `0.8F + 0.2F * random.nextFloat()` và pitch `0.7F + 0.4F * random.nextFloat()`.
+  - `Bogged.java:36-38, 107-124`:
+    - `getArrow`: Bắn tên độc với hiệu ứng Poison 100 ticks (5 giây, `BOGGED_POISON_DURATION_TICKS = 100`).
+    - `getHardAttackInterval` & `getAttackInterval`: Khoảng thời gian giữa các phát bắn của Bogged là 50 ticks ở độ khó Hard và 70 ticks ở Normal/Easy (chậm hơn Skeleton thông thường 20/40 ticks).
+  - `WitherBoss.java:66, 262-276, 464-469, 510-517`:
+    - `INVULNERABLE_TICKS = 220`: Khi xuất hiện, Wither bất hoại trong 220 ticks (11 giây), hồi 10 HP mỗi 10 ticks, sau đó kích nổ bán kính 7.0 blocks.
+    - `isPowered()` (Wither Armor): Khi máu giảm xuống còn một nửa hoặc thấp hơn (`health <= maxHealth * 0.5`, 150.0 HP), Wither bật khiên năng lượng miễn nhiễm hoàn toàn với mọi loại tên bắn (`AbstractArrow`) và đạn gió (`WindCharge`).
+    - `WITHER_ARMOR_POINTS = 4.0`: Điểm giáp cơ bản của Wither.
+  - `SonicBoom.java:19-25, 79-84` & `Warden.java`:
+    - `SonicBoom`: Tấn công sóng âm gây 10.0 sát thương phép xuyên giáp trong phạm vi bán kính 15 blocks (ngang XZ) và 20 blocks (dọc Y).
+    - `knockback`: Gây lực đẩy lùi ngang `2.5 * (1.0 - target.knockbackResistance)` và đẩy lùi đứng `0.5 * (1.0 - target.knockbackResistance)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `BREEZE_FALL_DISTANCE_SOUND_THRESHOLD = 3.0` and `should_breeze_play_fall_sound(fall_distance) -> bool`.
+    - Added `calculate_breeze_whirl_pitch(rand_val) -> f32` and `calculate_breeze_whirl_volume(rand_val) -> f32`.
+    - Added `BOGGED_POISON_DURATION_TICKS = 100`, `BOGGED_HARD_ATTACK_INTERVAL = 50`, `BOGGED_DEFAULT_ATTACK_INTERVAL = 70`, and `calculate_bogged_attack_interval(is_hard) -> i32`.
+    - Added `WITHER_INVULNERABLE_TICKS = 220`, `WITHER_MAX_HEALTH = 300.0`, `WITHER_ARMOR_POINTS = 4.0`, `WITHER_SPAWN_EXPLOSION_RADIUS = 7.0`.
+    - Added `calculate_wither_invulnerable_progress(ticks_remaining) -> f32`, `is_wither_powered(health, max_health) -> bool`, and `should_wither_deflect_projectile(is_powered, is_projectile) -> bool`.
+    - Added `SONIC_BOOM_DAMAGE = 10.0`, `SONIC_BOOM_DISTANCE_XZ = 15.0`, `SONIC_BOOM_DISTANCE_Y = 20.0`, `SONIC_BOOM_HORIZONTAL_KNOCKBACK = 2.5`, `SONIC_BOOM_VERTICAL_KNOCKBACK = 0.5`.
+    - Added `calculate_sonic_boom_knockback(knockback_res) -> (f64, f64)` and `is_sonic_boom_in_range(dx, dy, dz) -> bool`.
+    - Added unit test `test_boss_and_mini_boss_combat_details_parity` (total 87/87 combat tests passing).
+  - Updated `BreezeEntity` in `crates/pumpkin-core/src/entity/mob/breeze.rs`:
+    - Added `whirl_sound_ticks: AtomicI32` counter.
+    - Updated `mob_tick`: plays `Sound::EntityBreezeWhirl` with vanilla volume and pitch formula on 1..=80 ticks cooldown.
+    - Added `on_damage`: plays `Sound::EntityBreezeLand` on fall damage exceeding 3.0 blocks.
+    - Added unit test `test_breeze_fall_and_whirl_parity`.
+  - Updated `BoggedSkeletonEntity` in `crates/pumpkin-core/src/entity/mob/skeleton/bogged.rs`:
+    - Standardized attack interval via `calculate_bogged_attack_interval` (50 ticks on hard, 70 ticks otherwise).
+    - Standardized tipped arrow poison duration using `BOGGED_POISON_DURATION_TICKS`.
+    - Added unit test `test_bogged_poison_and_interval_parity`.
+  - Updated `WitherEntity` in `crates/pumpkin-core/src/entity/boss/wither.rs`:
+    - Standardized powered threshold via `is_wither_powered` and projectile deflection via `should_wither_deflect_projectile`.
+    - Added unit test `test_wither_boss_constants_and_shield_parity`.
+  - Updated `WardenEntity` in `crates/pumpkin-core/src/entity/mob/warden.rs`:
+    - Standardized Sonic Boom damage to `SONIC_BOOM_DAMAGE` and knockback computation to `calculate_sonic_boom_knockback`.
+    - Added unit test `test_warden_sonic_boom_constants_and_knockback_parity`.
+  - All unit tests verified and passing (87/87 in `entity::combat::tests`, 32/32 in `entity::mob`, 1/1 in `entity::boss`).
+
 
 
 

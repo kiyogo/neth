@@ -124,11 +124,8 @@ impl Mob for BoggedSkeletonEntity {
 
     fn get_min_attack_interval(&self) -> Option<i32> {
         let world = self.get_entity().world.load();
-        if world.get_difficulty() == pumpkin_util::Difficulty::Hard {
-            Some(50)
-        } else {
-            Some(70)
-        }
+        let is_hard = world.get_difficulty() == pumpkin_util::Difficulty::Hard;
+        Some(crate::entity::combat::calculate_bogged_attack_interval(is_hard))
     }
 
     fn get_arrow_projectile(&self) -> Option<ItemStack> {
@@ -138,7 +135,7 @@ impl Mob for BoggedSkeletonEntity {
         let poison_effect = StatusEffectInstance {
             effect_id: Cow::Borrowed("minecraft:poison"),
             amplifier: 0,
-            duration: 100,
+            duration: crate::entity::combat::BOGGED_POISON_DURATION_TICKS,
             ambient: false,
             show_particles: true,
             show_icon: true,
@@ -187,5 +184,17 @@ impl Mob for BoggedSkeletonEntity {
     fn populate_default_equipment_enchantments(&self, difficulty: &RegionalDifficulty) {
         self.entity
             .populate_default_equipment_enchantments(difficulty);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_bogged_poison_and_interval_parity() {
+        assert_eq!(crate::entity::combat::BOGGED_POISON_DURATION_TICKS, 100);
+        assert_eq!(crate::entity::combat::BOGGED_HARD_ATTACK_INTERVAL, 50);
+        assert_eq!(crate::entity::combat::BOGGED_DEFAULT_ATTACK_INTERVAL, 70);
+        assert_eq!(crate::entity::combat::calculate_bogged_attack_interval(true), 50);
+        assert_eq!(crate::entity::combat::calculate_bogged_attack_interval(false), 70);
     }
 }

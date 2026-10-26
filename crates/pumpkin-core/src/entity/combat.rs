@@ -5856,6 +5856,171 @@ pub const fn should_endermite_despawn(lifetime: i32, persistence_required: bool)
     !persistence_required && lifetime >= ENDERMITE_LIFETIME_MAX
 }
 
+/// Minimum fall distance in blocks before Breeze plays its landing sound.
+///
+/// Mirrors vanilla `Breeze.java:47, 275`:
+/// `private static final float FALL_DISTANCE_SOUND_TRIGGER_THRESHOLD = 3.0F;`
+pub const BREEZE_FALL_DISTANCE_SOUND_THRESHOLD: f32 = 3.0;
+
+/// Checks if a Breeze should play its landing sound upon fall damage.
+///
+/// Mirrors vanilla `Breeze.java:275-276`:
+/// `if (fallDistance > 3.0) { this.playSound(SoundEvents.BREEZE_LAND, 1.0F, 1.0F); }`
+#[must_use]
+pub const fn should_breeze_play_fall_sound(fall_distance: f32) -> bool {
+    fall_distance > BREEZE_FALL_DISTANCE_SOUND_THRESHOLD
+}
+
+/// Calculates sound pitch for Breeze whirling sound.
+///
+/// Mirrors vanilla `Breeze.java:191`:
+/// `float pitch = 0.7F + 0.4F * this.random.nextFloat();`
+#[must_use]
+pub fn calculate_breeze_whirl_pitch(rand_val: f32) -> f32 {
+    0.7 + 0.4 * rand_val
+}
+
+/// Calculates sound volume for Breeze whirling sound.
+///
+/// Mirrors vanilla `Breeze.java:192`:
+/// `float volume = 0.8F + 0.2F * this.random.nextFloat();`
+#[must_use]
+pub fn calculate_breeze_whirl_volume(rand_val: f32) -> f32 {
+    0.8 + 0.2 * rand_val
+}
+
+/// Duration in ticks of the Poison status effect applied by Bogged arrows (100 ticks = 5 seconds).
+///
+/// Mirrors vanilla `Bogged.java:110`:
+/// `arrow.addEffect(new MobEffectInstance(MobEffects.POISON, 100));`
+pub const BOGGED_POISON_DURATION_TICKS: i32 = 100;
+
+/// Ranged attack interval for Bogged on Hard difficulty (50 ticks).
+///
+/// Mirrors vanilla `Bogged.java:118`:
+/// `protected int getHardAttackInterval() { return 50; }`
+pub const BOGGED_HARD_ATTACK_INTERVAL: i32 = 50;
+
+/// Ranged attack interval for Bogged on Normal/Easy difficulty (70 ticks).
+///
+/// Mirrors vanilla `Bogged.java:123`:
+/// `protected int getAttackInterval() { return 70; }`
+pub const BOGGED_DEFAULT_ATTACK_INTERVAL: i32 = 70;
+
+/// Calculates ranged attack interval for Bogged skeleton depending on difficulty.
+#[must_use]
+pub const fn calculate_bogged_attack_interval(is_hard: bool) -> i32 {
+    if is_hard {
+        BOGGED_HARD_ATTACK_INTERVAL
+    } else {
+        BOGGED_DEFAULT_ATTACK_INTERVAL
+    }
+}
+
+/// Invulnerability duration in ticks when Wither is summoned (220 ticks = 11 seconds).
+///
+/// Mirrors vanilla `WitherBoss.java:66`:
+/// `private static final int INVULNERABLE_TICKS = 220;`
+pub const WITHER_INVULNERABLE_TICKS: i32 = 220;
+
+/// Maximum base health for Wither Boss.
+///
+/// Mirrors vanilla `WitherBoss.java:512`:
+/// `add(Attributes.MAX_HEALTH, 300.0)`
+pub const WITHER_MAX_HEALTH: f32 = 300.0;
+
+/// Base armor attribute points for Wither Boss.
+///
+/// Mirrors vanilla `WitherBoss.java:516`:
+/// `add(Attributes.ARMOR, 4.0)`
+pub const WITHER_ARMOR_POINTS: f64 = 4.0;
+
+/// Explosion radius when Wither finishes its invulnerable charging phase.
+///
+/// Mirrors vanilla `WitherBoss.java:266`:
+/// `level.explode(this, this.getX(), this.getEyeY(), this.getZ(), 7.0F, false, Level.ExplosionInteraction.MOB);`
+pub const WITHER_SPAWN_EXPLOSION_RADIUS: f32 = 7.0;
+
+/// Calculates bossbar progress during Wither invulnerability countdown.
+///
+/// Mirrors vanilla `WitherBoss.java:264`:
+/// `this.bossEvent.setProgress(1.0F - newCount / 220.0F);`
+#[must_use]
+pub fn calculate_wither_invulnerable_progress(ticks_remaining: i32) -> f32 {
+    (1.0 - (ticks_remaining as f32) / (WITHER_INVULNERABLE_TICKS as f32)).clamp(0.0, 1.0)
+}
+
+/// Checks whether Wither has entered its powered Wither Armor phase (health <= half of max).
+///
+/// Mirrors vanilla `WitherBoss.java:211` & `isPowered()`:
+/// `return this.getHealth() <= this.getMaxHealth() / 2.0F;`
+#[must_use]
+pub const fn is_wither_powered(health: f32, max_health: f32) -> bool {
+    health <= max_health * 0.5
+}
+
+/// Determines whether Wither completely deflects projectiles when powered with Wither Armor.
+///
+/// Mirrors vanilla `WitherBoss.java:464-469`:
+/// `if (this.isPowered()) { if (directEntity instanceof AbstractArrow || directEntity instanceof WindCharge) return false; }`
+#[must_use]
+pub const fn should_wither_deflect_projectile(is_powered: bool, is_projectile: bool) -> bool {
+    is_powered && is_projectile
+}
+
+/// Magic damage dealt by Warden Sonic Boom attack.
+///
+/// Mirrors vanilla `SonicBoom.java:79`:
+/// `target.hurtServer(level, level.damageSources().sonicBoom(body), 10.0F)`
+pub const SONIC_BOOM_DAMAGE: f32 = 10.0;
+
+/// Maximum horizontal range (XZ distance) for Warden Sonic Boom.
+///
+/// Mirrors vanilla `SonicBoom.java:19`:
+/// `private static final int DISTANCE_XZ = 15;`
+pub const SONIC_BOOM_DISTANCE_XZ: f64 = 15.0;
+
+/// Maximum vertical range (Y distance) for Warden Sonic Boom.
+///
+/// Mirrors vanilla `SonicBoom.java:20`:
+/// `private static final int DISTANCE_Y = 20;`
+pub const SONIC_BOOM_DISTANCE_Y: f64 = 20.0;
+
+/// Base horizontal knockback applied by Warden Sonic Boom before resistance.
+///
+/// Mirrors vanilla `SonicBoom.java:22`:
+/// `private static final double KNOCKBACK_HORIZONTAL = 2.5;`
+pub const SONIC_BOOM_HORIZONTAL_KNOCKBACK: f64 = 2.5;
+
+/// Base vertical knockback applied by Warden Sonic Boom before resistance.
+///
+/// Mirrors vanilla `SonicBoom.java:21`:
+/// `private static final double KNOCKBACK_VERTICAL = 0.5;`
+pub const SONIC_BOOM_VERTICAL_KNOCKBACK: f64 = 0.5;
+
+/// Calculates horizontal and vertical knockback applied by Warden Sonic Boom accounting for target's knockback resistance.
+///
+/// Mirrors vanilla `SonicBoom.java:80-81`:
+/// `double knockbackVertical = 0.5 * (1.0 - target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));`
+/// `double knockbackHorizontal = 2.5 * (1.0 - target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));`
+#[must_use]
+pub fn calculate_sonic_boom_knockback(knockback_resistance: f64) -> (f64, f64) {
+    let factor = (1.0 - knockback_resistance).max(0.0);
+    (
+        SONIC_BOOM_HORIZONTAL_KNOCKBACK * factor,
+        SONIC_BOOM_VERTICAL_KNOCKBACK * factor,
+    )
+}
+
+/// Checks whether a target position is within Warden Sonic Boom targeting cylinder range (15m horizontal, 20m vertical).
+///
+/// Mirrors vanilla `SonicBoom.java:44`:
+/// `body.closerThan(target, 15.0, 20.0)`
+#[must_use]
+pub fn is_sonic_boom_in_range(dx: f64, dy: f64, dz: f64) -> bool {
+    (dx * dx + dz * dz).sqrt() <= SONIC_BOOM_DISTANCE_XZ && dy.abs() <= SONIC_BOOM_DISTANCE_Y
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -9195,6 +9360,59 @@ mod tests {
         assert!(should_endermite_despawn(2500, false));
         assert!(!should_endermite_despawn(2399, false));
         assert!(!should_endermite_despawn(3000, true)); // persistence required
+    }
+
+    #[test]
+    fn test_boss_and_mini_boss_combat_details_parity() {
+        // 1. Breeze fall threshold and whirl sound (Breeze.java:47, 191-192, 275)
+        assert_eq!(BREEZE_FALL_DISTANCE_SOUND_THRESHOLD, 3.0);
+        assert!(should_breeze_play_fall_sound(3.1));
+        assert!(!should_breeze_play_fall_sound(3.0));
+        assert!((calculate_breeze_whirl_pitch(0.0) - 0.7).abs() < 1e-6);
+        assert!((calculate_breeze_whirl_pitch(1.0) - 1.1).abs() < 1e-6);
+        assert!((calculate_breeze_whirl_volume(0.0) - 0.8).abs() < 1e-6);
+        assert!((calculate_breeze_whirl_volume(1.0) - 1.0).abs() < 1e-6);
+
+        // 2. Bogged poison duration and attack intervals (Bogged.java:110, 118, 123)
+        assert_eq!(BOGGED_POISON_DURATION_TICKS, 100);
+        assert_eq!(BOGGED_HARD_ATTACK_INTERVAL, 50);
+        assert_eq!(BOGGED_DEFAULT_ATTACK_INTERVAL, 70);
+        assert_eq!(calculate_bogged_attack_interval(true), 50);
+        assert_eq!(calculate_bogged_attack_interval(false), 70);
+
+        // 3. Wither boss invulnerability, health and shield (WitherBoss.java:66, 264, 464-469, 512, 516)
+        assert_eq!(WITHER_INVULNERABLE_TICKS, 220);
+        assert_eq!(WITHER_MAX_HEALTH, 300.0);
+        assert_eq!(WITHER_ARMOR_POINTS, 4.0);
+        assert_eq!(WITHER_SPAWN_EXPLOSION_RADIUS, 7.0);
+        assert_eq!(calculate_wither_invulnerable_progress(220), 0.0);
+        assert_eq!(calculate_wither_invulnerable_progress(0), 1.0);
+        assert_eq!(calculate_wither_invulnerable_progress(110), 0.5);
+        assert!(is_wither_powered(150.0, 300.0));
+        assert!(is_wither_powered(100.0, 300.0));
+        assert!(!is_wither_powered(151.0, 300.0));
+        assert!(should_wither_deflect_projectile(true, true));
+        assert!(!should_wither_deflect_projectile(false, true));
+        assert!(!should_wither_deflect_projectile(true, false));
+
+        // 4. Warden Sonic Boom damage, ranges and knockback (SonicBoom.java:19-22, 79-84)
+        assert_eq!(SONIC_BOOM_DAMAGE, 10.0);
+        assert_eq!(SONIC_BOOM_DISTANCE_XZ, 15.0);
+        assert_eq!(SONIC_BOOM_DISTANCE_Y, 20.0);
+        assert_eq!(SONIC_BOOM_HORIZONTAL_KNOCKBACK, 2.5);
+        assert_eq!(SONIC_BOOM_VERTICAL_KNOCKBACK, 0.5);
+        let (kh, kv) = calculate_sonic_boom_knockback(0.0);
+        assert_eq!(kh, 2.5);
+        assert_eq!(kv, 0.5);
+        let (kh_res, kv_res) = calculate_sonic_boom_knockback(0.5);
+        assert_eq!(kh_res, 1.25);
+        assert_eq!(kv_res, 0.25);
+        let (kh_full, kv_full) = calculate_sonic_boom_knockback(1.0);
+        assert_eq!(kh_full, 0.0);
+        assert_eq!(kv_full, 0.0);
+        assert!(is_sonic_boom_in_range(10.0, 15.0, 10.0)); // sqrt(200) = 14.14 <= 15, dy = 15 <= 20
+        assert!(!is_sonic_boom_in_range(12.0, 15.0, 12.0)); // sqrt(288) = 16.97 > 15
+        assert!(!is_sonic_boom_in_range(5.0, 21.0, 5.0)); // dy = 21 > 20
     }
 }
 
