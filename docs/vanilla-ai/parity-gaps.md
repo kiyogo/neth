@@ -4138,6 +4138,44 @@
     - Added unit test `test_strider_ridden_speed_and_sounds`.
   - All unit tests verified and passing (82/82 tests in `entity::combat::tests`, `test_glow_squid_dark_ticks_and_nbt`, `test_squid_ink_trigger`, and `test_strider_ridden_speed_and_sounds`).
 
+---
+
+## Gap 197: Dolphin Data Tracker & Moistness, Pufferfish Scale & Poison Sting Parity
+
+- **Vanilla Reference**:
+  - `Dolphin.java:75-79, 120-141, 311-324`:
+    - `DATA_GOT_FISH`: id 18 (`pumpkin_data::tracked_data::dolphin::GOT_FISH`), boolean.
+    - `DATA_MOISTNESS_LEVEL`: id 19 (`pumpkin_data::tracked_data::dolphin::MOISTNESS_LEVEL`), int.
+    - Hằng số vanilla: `TOTAL_AIR_SUPPLY = 4800;` (4 phút nín thở), `TOTAL_MOISTNESS_LEVEL = 2400;` (2 phút giữ ẩm trên cạn).
+    - `mobInteract`: chấp nhận toàn bộ cá thuộc tag `ItemTags.FISHES` (`tag::Item::MINECRAFT_FISHES`, bao gồm Cod, Salmon, Tropical Fish, và Pufferfish).
+    - NBT: `GotFish` (boolean) và `Moistness` (int).
+  - `Pufferfish.java:41-43, 52-55, 83, 142-145, 155-160, 181-191`:
+    - `PUFF_STATE`: id data tracker cho trạng thái phồng (0: Small, 1: Mid, 2: Full).
+    - Kích thước (`refreshDimensions`): tỷ lệ scale theo state: 0 -> 0.5F, 1 -> 0.7F, 2 -> 1.0F.
+    - Sát thương chích (`touch` / `playerTouch`): `1 + puff_state` damage (1.0 cho Small, 2.0 cho Mid, 3.0 cho Full).
+    - Hiệu ứng độc (`MobEffects.POISON`): thời lượng `60 * puff_state` ticks (0s cho Small, 3s cho Mid, 6s cho Full) ở amplifier 0.
+    - NBT: `PuffState` được clamped `Math.min(val, 2).max(0)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `get_dolphin_total_air_supply() -> i32` (4800).
+    - Added `get_dolphin_total_moistness() -> i32` (2400).
+    - Added `calculate_pufferfish_poison_duration(puff_state: i32) -> i32`.
+    - Added `calculate_pufferfish_sting_damage(puff_state: i32) -> f32`.
+    - Added `calculate_pufferfish_scale(puff_state: i32) -> f32`.
+    - Added unit test `test_dolphin_and_pufferfish_parity`.
+  - Updated `DolphinEntity` in `crates/pumpkin-core/src/entity/passive/dolphin.rs`:
+    - Synced `GOT_FISH` and `MOISTNESS_LEVEL` with data tracker via `set_got_fish` and `set_moistness_level`.
+    - Implemented `mob_init_data_tracker`, `mob_write_nbt`, and `mob_read_nbt` for `GotFish` and `Moistness`.
+    - Handled `tag::Item::MINECRAFT_FISHES` and `Item::PUFFERFISH` in `mob_interact`.
+    - Added unit test `test_dolphin_data_tracker_and_moistness`.
+  - Updated `PufferfishEntity` in `crates/pumpkin-core/src/entity/passive/pufferfish.rs`:
+    - Implemented `mob_init_data_tracker` synchronizing `tracked_data::pufferfish::PUFF_STATE`.
+    - Integrated `combat::calculate_pufferfish_scale`, `calculate_pufferfish_sting_damage`, and `calculate_pufferfish_poison_duration`.
+    - Clamped NBT `PuffState` in `mob_read_nbt`.
+    - Added unit test `test_pufferfish_scales_and_sting`.
+  - All unit tests verified and passing (83/83 tests in `entity::combat::tests`, `test_dolphin_data_tracker_and_moistness`, and `test_pufferfish_scales_and_sting`).
+
+
 
 
 

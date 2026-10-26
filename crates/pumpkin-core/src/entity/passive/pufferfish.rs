@@ -152,11 +152,7 @@ impl PufferfishEntity {
 
     pub fn refresh_dimensions(&self) {
         let entity = &self.mob_entity.living_entity.entity;
-        let scale = match self.get_puff_state() {
-            PuffState::Small => 0.5,
-            PuffState::Mid => 0.7,
-            PuffState::Full => 1.0,
-        };
+        let scale = crate::entity::combat::calculate_pufferfish_scale(self.get_puff_state().id());
 
         let dimensions = EntityDimensions {
             width: entity.entity_type.dimension[0] * scale,
@@ -236,9 +232,10 @@ impl PufferfishEntity {
 
     fn touch(&self, caller: &dyn EntityBase, mob: &dyn EntityBase) {
         let puff_state = self.get_puff_state();
+        let damage = crate::entity::combat::calculate_pufferfish_sting_damage(puff_state.id());
         if mob.damage_with_context(
             mob,
-            (1 + puff_state.id()) as f32,
+            damage,
             DamageType::MOB_ATTACK,
             None,
             Some(caller),
@@ -276,6 +273,14 @@ impl Mob for PufferfishEntity {
 
     fn as_pufferfish(&self) -> Option<&PufferfishEntity> {
         Some(self)
+    }
+
+    fn mob_init_data_tracker(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_synced_data(
+            tracked_data::pufferfish::PUFF_STATE,
+            VarInt(self.get_puff_state().id()),
+        );
     }
 
     fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
@@ -338,9 +343,10 @@ impl Mob for PufferfishEntity {
         }
 
         let caller: &dyn EntityBase = self;
+        let damage = crate::entity::combat::calculate_pufferfish_sting_damage(puff_state.id());
         if player.damage_with_context(
             &**player,
-            (1 + puff_state.id()) as f32,
+            damage,
             DamageType::MOB_ATTACK,
             None,
             Some(caller),
@@ -359,7 +365,7 @@ impl Mob for PufferfishEntity {
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(state_id) = nbt.get_int("PuffState") {
-            self.set_puff_state(PuffState::from_id(state_id));
+            self.set_puff_state(PuffState::from_id(state_id.clamp(0, 2)));
         }
     }
 }
@@ -374,14 +380,38 @@ impl CustomSound for PufferfishEntity {
     }
 }
 
-const fn poison(puff_state: PuffState) -> Effect {
+fn poison(puff_state: PuffState) -> Effect {
     Effect {
         effect_type: &StatusEffect::POISON,
-        duration: 60 * puff_state.id(),
+        duration: crate::entity::combat::calculate_pufferfish_poison_duration(puff_state.id()),
         amplifier: 0,
         ambient: false,
         show_particles: true,
         show_icon: true,
         blend: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pufferfish_scales_and_sting() {
+        assert_eq!(crate::entity::combat::calculate_pufferfish_scale(0), 0.5);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_scale(1), 0.7);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_scale(2), 1.0);
+
+        assert_eq!(crate::entity::combat::calculate_pufferfish_sting_damage(0), 1.0);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_sting_damage(1), 2.0);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_sting_damage(2), 3.0);
+
+        assert_eq!(crate::entity::combat::calculate_pufferfish_poison_duration(0), 0);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_poison_duration(1), 60);
+        assert_eq!(crate::entity::combat::calculate_pufferfish_poison_duration(2), 120);
+
+        let mut nbt = NbtCompound::new();
+        nbt.put_int("PuffState", 2);
+        assert_eq!(nbt.get_int("PuffState"), Some(2));
     }
 }

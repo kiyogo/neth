@@ -5403,6 +5403,55 @@ pub fn should_squid_squirt_ink(has_attacker: bool) -> bool {
     has_attacker
 }
 
+/// Returns total air supply for Dolphin (4800 ticks = 4 minutes).
+///
+/// Mirrors vanilla `Dolphin.java:78`:
+/// `public static final int TOTAL_AIR_SUPPLY = 4800;`
+#[must_use]
+pub const fn get_dolphin_total_air_supply() -> i32 {
+    4800
+}
+
+/// Returns total moistness level for Dolphin (2400 ticks = 2 minutes).
+///
+/// Mirrors vanilla `Dolphin.java:79`:
+/// `private static final int TOTAL_MOISTNESS_LEVEL = 2400;`
+#[must_use]
+pub const fn get_dolphin_total_moistness() -> i32 {
+    2400
+}
+
+/// Calculates Pufferfish sting poison duration in ticks.
+///
+/// Mirrors vanilla `Pufferfish.java:143, 160`:
+/// `60 * puffState` ticks.
+#[must_use]
+pub fn calculate_pufferfish_poison_duration(puff_state: i32) -> i32 {
+    (60 * puff_state).max(0)
+}
+
+/// Calculates Pufferfish sting attack damage.
+///
+/// Mirrors vanilla `Pufferfish.java:142, 155`:
+/// `1 + puffState` damage.
+#[must_use]
+pub fn calculate_pufferfish_sting_damage(puff_state: i32) -> f32 {
+    (1 + puff_state) as f32
+}
+
+/// Calculates Pufferfish hitbox scale based on inflation state.
+///
+/// Mirrors vanilla `Pufferfish.java:185-191`:
+/// state 0 -> 0.5, state 1 -> 0.7, state 2 -> 1.0.
+#[must_use]
+pub fn calculate_pufferfish_scale(puff_state: i32) -> f32 {
+    match puff_state {
+        0 => 0.5,
+        1 => 0.7,
+        _ => 1.0,
+    }
+}
+
 
 
 
@@ -8720,6 +8769,26 @@ mod tests {
         // 3. Squid ink trigger (Squid.java:180)
         assert!(should_squid_squirt_ink(true));
         assert!(!should_squid_squirt_ink(false));
+    }
+
+    #[test]
+    fn test_dolphin_and_pufferfish_parity() {
+        // Dolphin air supply & moistness (Dolphin.java:78-79)
+        assert_eq!(get_dolphin_total_air_supply(), 4800);
+        assert_eq!(get_dolphin_total_moistness(), 2400);
+
+        // Pufferfish poison duration & damage (Pufferfish.java:142-143, 185-191)
+        assert_eq!(calculate_pufferfish_poison_duration(0), 0);
+        assert_eq!(calculate_pufferfish_poison_duration(1), 60);
+        assert_eq!(calculate_pufferfish_poison_duration(2), 120);
+
+        assert_eq!(calculate_pufferfish_sting_damage(0), 1.0);
+        assert_eq!(calculate_pufferfish_sting_damage(1), 2.0);
+        assert_eq!(calculate_pufferfish_sting_damage(2), 3.0);
+
+        assert_eq!(calculate_pufferfish_scale(0), 0.5);
+        assert_eq!(calculate_pufferfish_scale(1), 0.7);
+        assert_eq!(calculate_pufferfish_scale(2), 1.0);
     }
 }
 

@@ -12,7 +12,9 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
@@ -148,6 +150,23 @@ impl DolphinEntity {
 
     pub fn set_got_fish(&self, val: bool) {
         self.got_fish.store(val, Ordering::Relaxed);
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::dolphin::GOT_FISH,
+            val,
+        );
+    }
+
+    #[must_use]
+    pub fn moistness_level(&self) -> i32 {
+        self.moistness_level.load(Ordering::Relaxed)
+    }
+
+    pub fn set_moistness_level(&self, val: i32) {
+        self.moistness_level.store(val, Ordering::Relaxed);
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::dolphin::MOISTNESS_LEVEL,
+            VarInt(val),
+        );
     }
 }
 
@@ -159,12 +178,24 @@ impl Mob for DolphinEntity {
 
     /// `Dolphin.increaseAirSupply`.
     fn increase_air_supply(&self, _current: i32) -> i32 {
-        4800
+        crate::entity::combat::get_dolphin_total_air_supply()
+    }
+
+    fn mob_init_data_tracker(&self) {
+        let entity = self.get_entity();
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::dolphin::GOT_FISH,
+            self.got_fish(),
+        );
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::dolphin::MOISTNESS_LEVEL,
+            VarInt(self.moistness_level()),
+        );
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_bool("GotFish", self.got_fish());
-        nbt.put_int("Moistness", self.moistness_level.load(Ordering::Relaxed));
+        nbt.put_int("Moistness", self.moistness_level());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
@@ -172,7 +203,7 @@ impl Mob for DolphinEntity {
             self.set_got_fish(got_fish);
         }
         if let Some(moistness) = nbt.get_int("Moistness") {
-            self.moistness_level.store(moistness, Ordering::Relaxed);
+            self.set_moistness_level(moistness);
         }
     }
 
@@ -221,9 +252,10 @@ impl Mob for DolphinEntity {
                 .air_supply
                 .store(self.max_air_supply(), Ordering::Relaxed);
         } else if entity.is_in_water_or_rain() {
-            self.moistness_level.store(2400, Ordering::Relaxed);
+            self.set_moistness_level(crate::entity::combat::get_dolphin_total_moistness());
         } else {
             let moist = self.moistness_level.fetch_sub(1, Ordering::Relaxed) - 1;
+            self.set_moistness_level(moist);
             if moist <= 0 {
                 self.mob_entity
                     .living_entity
@@ -259,7 +291,10 @@ impl Mob for DolphinEntity {
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
         let item = item_stack.get_item();
-        if TEMPT_ITEMS.iter().any(|i| i.id == item.id) {
+        if item.has_tag(&tag::Item::MINECRAFT_FISHES)
+            || TEMPT_ITEMS.iter().any(|i| i.id == item.id)
+            || item == &Item::PUFFERFISH
+        {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             self.set_got_fish(true);
             self.mob_entity.living_entity.heal(2.0);
@@ -431,5 +466,22 @@ impl Goal for DolphinSwimWithPlayerGoal {
 
     fn controls(&self) -> Controls {
         Controls::MOVE | Controls::LOOK
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dolphin_data_tracker_and_moistness() {
+        let mut nbt = NbtCompound::new();
+        nbt.put_bool("GotFish", true);
+        nbt.put_int("Moistness", 1200);
+        assert_eq!(nbt.get_bool("GotFish"), Some(true));
+        assert_eq!(nbt.get_int("Moistness"), Some(1200));
+
+        assert_eq!(crate::entity::combat::get_dolphin_total_air_supply(), 4800);
+        assert_eq!(crate::entity::combat::get_dolphin_total_moistness(), 2400);
     }
 }
