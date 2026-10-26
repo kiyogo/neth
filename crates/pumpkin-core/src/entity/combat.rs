@@ -5632,6 +5632,95 @@ pub const fn get_chicken_xp_reward(is_jockey: bool, default_xp: u32) -> u32 {
     }
 }
 
+/// Calculates fall damage taken by a parrot.
+///
+/// Mirrors vanilla `Parrot.java:293-294`:
+/// Parrots override `checkFallDamage` with a no-op, taking 0 fall damage points.
+#[must_use]
+pub const fn calculate_parrot_fall_damage() -> i32 {
+    0
+}
+
+/// Checks whether parrots take fall damage.
+///
+/// Mirrors vanilla `Parrot.java:293-294`:
+/// Always false.
+#[must_use]
+pub const fn should_parrot_take_fall_damage() -> bool {
+    false
+}
+
+pub const RABBIT_STROLL_SPEED_MOD: f64 = 0.6;
+pub const RABBIT_BREED_SPEED_MOD: f64 = 0.8;
+pub const RABBIT_FOLLOW_SPEED_MOD: f64 = 1.0;
+pub const RABBIT_FLEE_SPEED_MOD: f64 = 2.2;
+pub const RABBIT_ATTACK_SPEED_MOD: f64 = 1.4;
+pub const RABBIT_EVIL_ARMOR: f64 = 8.0;
+pub const RABBIT_EVIL_ATTACK_POWER_MODIFIER: f64 = 5.0;
+pub const RABBIT_DEFAULT_ATTACK_POWER: f64 = 3.0;
+
+/// Determines sound pitch for Killer Bunny attack.
+///
+/// Mirrors vanilla `Rabbit.java:319`:
+/// `(this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.0F`
+#[must_use]
+pub fn calculate_rabbit_attack_pitch(rand_a: f32, rand_b: f32) -> f32 {
+    (rand_a - rand_b) * 0.2 + 1.0
+}
+
+/// Checks if rabbit variant is the Killer Bunny (Evil).
+///
+/// Mirrors vanilla `Rabbit.java:324-326`:
+/// `this.getVariant() == Rabbit.Variant.EVIL ? SoundSource.HOSTILE : SoundSource.NEUTRAL`
+#[must_use]
+pub const fn is_rabbit_evil(variant_id: i32) -> bool {
+    variant_id == 99
+}
+
+pub const AXOLOTL_REHYDRATE_AIR_SUPPLY: i32 = 1800;
+pub const AXOLOTL_TOTAL_AIR_SUPPLY: i32 = 6000;
+
+/// Calculates new air supply after Axolotl rehydration.
+///
+/// Mirrors vanilla `Axolotl.java:273-276`:
+/// `int newAirSupply = this.getAirSupply() + 1800; Math.min(newAirSupply, this.getMaxAirSupply());`
+#[must_use]
+pub const fn calculate_axolotl_rehydrate_air(current_air: i32, max_air: i32) -> i32 {
+    let new_air = current_air + AXOLOTL_REHYDRATE_AIR_SUPPLY;
+    if new_air > max_air {
+        max_air
+    } else {
+        new_air
+    }
+}
+
+/// Determines whether an Axolotl should emit ambient sounds.
+///
+/// Mirrors vanilla `Axolotl.java:169-173`:
+/// Silent while playing dead (`if (!this.isPlayingDead()) super.playAmbientSound()`).
+#[must_use]
+pub const fn should_axolotl_play_ambient_sound(is_playing_dead: bool, is_silent: bool) -> bool {
+    !is_playing_dead && !is_silent
+}
+
+/// Calculates sound pitch for Sniffer eating food.
+///
+/// Mirrors vanilla `Sniffer.java:360`:
+/// `Mth.randomBetween(this.level().getRandom(), 0.8F, 1.2F)`
+#[must_use]
+pub fn calculate_sniffer_eat_pitch(rand_val: f32) -> f32 {
+    0.8 + rand_val * 0.4
+}
+
+/// Calculates reduced damage received by an Armadillo when hidden in its shell.
+///
+/// Mirrors vanilla `Armadillo.java:279-283`:
+/// `damage = (damage - 1.0F) / 2.0F`
+#[must_use]
+pub fn calculate_armadillo_scared_damage(raw_damage: f32) -> f32 {
+    ((raw_damage - 1.0) / 2.0).max(0.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -8886,6 +8975,47 @@ mod tests {
 
         // 4. Cat feeding health (Cat.java:425)
         assert_eq!(get_cat_food_healing(), 1.0);
+    }
+
+    #[test]
+    fn test_passive_mob_details_parity() {
+        // 1. Parrot fall damage immunity (Parrot.java:293-294)
+        assert_eq!(calculate_parrot_fall_damage(), 0);
+        assert!(!should_parrot_take_fall_damage());
+
+        // 2. Rabbit speed mods and evil bunny properties (Rabbit.java:82-95, 317-326)
+        assert_eq!(RABBIT_STROLL_SPEED_MOD, 0.6);
+        assert_eq!(RABBIT_BREED_SPEED_MOD, 0.8);
+        assert_eq!(RABBIT_FOLLOW_SPEED_MOD, 1.0);
+        assert_eq!(RABBIT_FLEE_SPEED_MOD, 2.2);
+        assert_eq!(RABBIT_ATTACK_SPEED_MOD, 1.4);
+        assert_eq!(RABBIT_EVIL_ARMOR, 8.0);
+        assert_eq!(RABBIT_EVIL_ATTACK_POWER_MODIFIER, 5.0);
+        assert_eq!(RABBIT_DEFAULT_ATTACK_POWER, 3.0);
+        assert!(is_rabbit_evil(99));
+        assert!(!is_rabbit_evil(0));
+        let pitch = calculate_rabbit_attack_pitch(0.5, 0.5);
+        assert!((pitch - 1.0).abs() < 1e-6);
+
+        // 3. Axolotl rehydration and ambient sound (Axolotl.java:169-173, 273-276)
+        assert_eq!(AXOLOTL_TOTAL_AIR_SUPPLY, 6000);
+        assert_eq!(AXOLOTL_REHYDRATE_AIR_SUPPLY, 1800);
+        assert_eq!(calculate_axolotl_rehydrate_air(0, 6000), 1800);
+        assert_eq!(calculate_axolotl_rehydrate_air(5000, 6000), 6000);
+        assert!(should_axolotl_play_ambient_sound(false, false));
+        assert!(!should_axolotl_play_ambient_sound(true, false)); // playing dead
+        assert!(!should_axolotl_play_ambient_sound(false, true)); // silent
+
+        // 4. Sniffer eating pitch (Sniffer.java:360: 0.8 .. 1.2)
+        assert!((calculate_sniffer_eat_pitch(0.0) - 0.8).abs() < 1e-6);
+        assert!((calculate_sniffer_eat_pitch(1.0) - 1.2).abs() < 1e-6);
+        assert!((calculate_sniffer_eat_pitch(0.5) - 1.0).abs() < 1e-6);
+
+        // 5. Armadillo scared damage reduction (Armadillo.java:279-283)
+        assert_eq!(calculate_armadillo_scared_damage(1.0), 0.0);
+        assert_eq!(calculate_armadillo_scared_damage(5.0), 2.0);
+        assert_eq!(calculate_armadillo_scared_damage(11.0), 5.0);
+        assert_eq!(calculate_armadillo_scared_damage(0.5), 0.0);
     }
 }
 

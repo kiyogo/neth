@@ -312,6 +312,14 @@ impl AxolotlEntity {
     pub fn can_be_seen_as_enemy(&self) -> bool {
         combat::can_axolotl_be_targeted(self.is_playing_dead())
     }
+
+    /// Vanilla `Axolotl.java:273-276`: Adds 1800 air ticks up to max air supply (6000).
+    pub fn rehydrate(&self) {
+        let current_air = self.mob_entity.living_entity.breath.air_supply.load(Ordering::Relaxed);
+        let max_air = self.max_air_supply();
+        let new_air = combat::calculate_axolotl_rehydrate_air(current_air, max_air);
+        self.mob_entity.living_entity.breath.set_air_supply(self, new_air);
+    }
 }
 
 impl AgeableMob for AxolotlEntity {
@@ -354,7 +362,7 @@ impl Mob for AxolotlEntity {
 
     /// Axolotl.getMaxAirSupply.
     fn max_air_supply(&self) -> i32 {
-        6000
+        combat::AXOLOTL_TOTAL_AIR_SUPPLY
     }
 
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
@@ -417,7 +425,10 @@ impl Mob for AxolotlEntity {
             return;
         }
 
-        if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
+        // Vanilla Axolotl.java:169-173: Do not play ambient sound while playing dead
+        if combat::should_axolotl_play_ambient_sound(self.is_playing_dead(), entity.silent.load(Ordering::Relaxed))
+            && rand::random_range(0..100) == 0
+        {
             let sound = if entity.touching_water.load(Ordering::Relaxed) {
                 Sound::EntityAxolotlIdleWater
             } else {
@@ -535,5 +546,22 @@ impl CustomSound for AxolotlEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityAxolotlHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_axolotl_rehydrate_and_play_dead_silence() {
+        assert_eq!(combat::calculate_axolotl_rehydrate_air(0, 6000), 1800);
+        assert_eq!(combat::calculate_axolotl_rehydrate_air(5000, 6000), 6000);
+        assert_eq!(combat::calculate_axolotl_rehydrate_air(6000, 6000), 6000);
+
+        // Ambient sound conditions (Axolotl.java:169-173)
+        assert!(combat::should_axolotl_play_ambient_sound(false, false));
+        assert!(!combat::should_axolotl_play_ambient_sound(true, false));
+        assert!(!combat::should_axolotl_play_ambient_sound(false, true));
     }
 }

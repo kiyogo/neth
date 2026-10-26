@@ -4214,6 +4214,54 @@
     - Added unit test `test_cat_food_healing`.
   - All unit tests verified and passing (84/84 tests in `entity::combat::tests`, `test_wolf_tail_and_armor_repair`, `test_fox_ticks_since_eaten`, and `test_cat_food_healing`).
 
+---
+
+## Gap 199: Parrot Fall Damage Immunity, Rabbit Evil Sound Category & Attack Sound, Axolotl Play Dead Silence & Rehydrate, Sniffer Eating Pitch, Armadillo Scared Damage Parity
+
+- **Vanilla Reference**:
+  - `Parrot.java:293-294`:
+    - `checkFallDamage` rỗng (`// No-op`), Parrots miễn nhiễm hoàn toàn với sát thương rơi (0 fall damage points).
+  - `Rabbit.java:82-95, 317-326`:
+    - Tốc độ chuẩn: `STROLL_SPEED_MOD = 0.6`, `BREED_SPEED_MOD = 0.8`, `FOLLOW_SPEED_MOD = 1.0`, `FLEE_SPEED_MOD = 2.2`, `ATTACK_SPEED_MOD = 1.4`.
+    - `ARMOR` cho Killer Bunny: 8.0. `ATTACK_DAMAGE`: 3.0 base + 5.0 modifier (`EVIL_ATTACK_POWER_MODIFIER`) = 8.0.
+    - `getSoundSource`: trả về `SoundSource.HOSTILE` nếu là Evil Rabbit (`Variant::EVIL`), ngược lại `SoundSource.NEUTRAL`.
+    - `playAttackSound`: Killer Bunny phát âm thanh `SoundEvents.RABBIT_ATTACK` với pitch `(rand - rand) * 0.2 + 1.0` khi tấn công mục tiêu.
+  - `Axolotl.java:169-173, 273-276`:
+    - `playAmbientSound`: không phát âm thanh ambient khi đang giả chết (`if (!this.isPlayingDead()) super.playAmbientSound()`).
+    - `rehydrate()`: cộng 1800 ticks air supply (`REHYDRATE_AIR_SUPPLY = 1800`), giới hạn ở `max_air_supply` (6000).
+  - `Sniffer.java:360`:
+    - `playEatingSound`: phát âm thanh `SoundEvents.SNIFFER_EAT` với pitch ngẫu nhiên `Mth.randomBetween(random, 0.8F, 1.2F)`.
+  - `Armadillo.java:279-283`:
+    - `hurtServer`: khi cuộn tròn (`isScared`), sát thương nhận vào bị giảm theo công thức: `(damage - 1.0F) / 2.0F`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `calculate_parrot_fall_damage() -> i32` (0) and `should_parrot_take_fall_damage() -> bool` (false).
+    - Added Rabbit speed constants: `RABBIT_STROLL_SPEED_MOD`, `RABBIT_BREED_SPEED_MOD`, `RABBIT_FOLLOW_SPEED_MOD`, `RABBIT_FLEE_SPEED_MOD`, `RABBIT_ATTACK_SPEED_MOD`, `RABBIT_EVIL_ARMOR`, `RABBIT_EVIL_ATTACK_POWER_MODIFIER`, `RABBIT_DEFAULT_ATTACK_POWER`.
+    - Added `calculate_rabbit_attack_pitch(rand_a: f32, rand_b: f32) -> f32` and `is_rabbit_evil(variant_id: i32) -> bool`.
+    - Added `AXOLOTL_REHYDRATE_AIR_SUPPLY = 1800` and `AXOLOTL_TOTAL_AIR_SUPPLY = 6000`.
+    - Added `calculate_axolotl_rehydrate_air(current_air: i32, max_air: i32) -> i32` and `should_axolotl_play_ambient_sound(is_playing_dead: bool, is_silent: bool) -> bool`.
+    - Added `calculate_sniffer_eat_pitch(rand_val: f32) -> f32` (0.8..=1.2).
+    - Added `calculate_armadillo_scared_damage(raw_damage: f32) -> f32`.
+    - Added unit test `test_passive_mob_details_parity`.
+  - Updated `ParrotEntity` in `crates/pumpkin-core/src/entity/passive/parrot.rs`:
+    - Implemented `calculate_fall_damage` returning 0 and `adjust_damage_amount` canceling `DamageType::FALL`.
+    - Added unit test `test_parrot_fall_damage_immunity`.
+  - Updated `RabbitEntity` in `crates/pumpkin-core/src/entity/passive/rabbit.rs`:
+    - Added `get_sound_category(&self) -> SoundCategory` using `SoundCategory::Hostile` for Evil rabbit and `SoundCategory::Neutral` for normal rabbits.
+    - Implemented `on_attack` playing `Sound::EntityRabbitAttack` for Killer Bunny with vanilla attack pitch.
+    - Added unit test `test_rabbit_variants_and_evil_sound_category`.
+  - Updated `AxolotlEntity` in `crates/pumpkin-core/src/entity/passive/axolotl.rs`:
+    - Guarded ambient sound playback with `should_axolotl_play_ambient_sound` to silence playing dead axolotls.
+    - Added `rehydrate(&self)` restoring 1800 air supply up to `AXOLOTL_TOTAL_AIR_SUPPLY`.
+    - Added unit test `test_axolotl_rehydrate_and_play_dead_silence`.
+  - Updated `SnifferEntity` in `crates/pumpkin-core/src/entity/passive/sniffer.rs`:
+    - Randomized `Sound::EntitySnifferEat` pitch between 0.8 and 1.2 on feeding interaction.
+    - Added unit test `test_sniffer_eating_sound_pitch_and_constants`.
+  - Updated `ArmadilloEntity` in `crates/pumpkin-core/src/entity/passive/armadillo.rs`:
+    - Standardized shell-reduced damage using `calculate_armadillo_scared_damage`.
+    - Added unit test `test_armadillo_scared_damage_reduction`.
+  - All unit tests verified and passing (85/85 tests in `entity::combat::tests`, and all passive mob unit tests).
+
 
 
 

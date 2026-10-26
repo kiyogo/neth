@@ -473,10 +473,22 @@ impl Mob for SnifferEntity {
         let is_baby = self.get_entity().age.load(std::sync::atomic::Ordering::Relaxed) < 0;
         let is_food = self.is_food(item_stack);
         let res = self.animal_interact(player, item_stack, Sound::EntitySnifferEat);
-        if res && is_baby && is_food {
-            player.trigger_advancement(
-                crate::entity::player::advancement::trigger::AdvancementTrigger::FeedSnifflet,
+        if res && is_food {
+            // Vanilla Sniffer.java:360: Eating sound pitch is randomized between 0.8 and 1.2
+            let entity = self.get_entity();
+            let pitch = crate::entity::combat::calculate_sniffer_eat_pitch(rand::random());
+            entity.world.load().play_sound_fine(
+                Sound::EntitySnifferEat,
+                SoundCategory::Neutral,
+                &entity.pos.load(),
+                1.0,
+                pitch,
             );
+            if is_baby {
+                player.trigger_advancement(
+                    crate::entity::player::advancement::trigger::AdvancementTrigger::FeedSnifflet,
+                );
+            }
         }
         res
     }
@@ -489,5 +501,24 @@ impl CustomSound for SnifferEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntitySnifferHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sniffer_eating_sound_pitch_and_constants() {
+        assert_eq!(SNIFFER_BABY_START_AGE, -48000);
+        assert_eq!(DIGGING_DROP_SEED_OFFSET_TICKS, 120);
+
+        let pitch_low = crate::entity::combat::calculate_sniffer_eat_pitch(0.0);
+        let pitch_high = crate::entity::combat::calculate_sniffer_eat_pitch(1.0);
+        let pitch_mid = crate::entity::combat::calculate_sniffer_eat_pitch(0.5);
+
+        assert!((pitch_low - 0.8).abs() < 1e-6);
+        assert!((pitch_high - 1.2).abs() < 1e-6);
+        assert!((pitch_mid - 1.0).abs() < 1e-6);
     }
 }

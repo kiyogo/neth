@@ -356,7 +356,7 @@ impl Mob for ArmadilloEntity {
 
     fn modify_incoming_damage(&self, amount: f32, _damage_type: DamageType) -> f32 {
         if self.is_scared() {
-            (amount - 1.0).max(0.0) / 2.0
+            crate::entity::combat::calculate_armadillo_scared_damage(amount)
         } else {
             amount
         }
@@ -481,7 +481,7 @@ impl Mob for ArmadilloEntity {
 
     fn adjust_damage_amount(&self, amount: f32, _damage_type: &DamageType) -> f32 {
         if self.is_scared() {
-            ((amount - 1.0) / 2.0).max(0.0)
+            crate::entity::combat::calculate_armadillo_scared_damage(amount)
         } else {
             amount
         }
@@ -499,5 +499,24 @@ impl CustomSound for ArmadilloEntity {
         } else {
             Sound::EntityArmadilloHurt
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_armadillo_scared_damage_reduction() {
+        assert_eq!(ArmadilloState::from_id(0), ArmadilloState::Idle);
+        assert_eq!(ArmadilloState::from_id(1), ArmadilloState::Rolling);
+        assert_eq!(ArmadilloState::from_id(2), ArmadilloState::Scared);
+        assert_eq!(ArmadilloState::from_id(3), ArmadilloState::Unrolling);
+
+        // Vanilla Armadillo.java:279-283: damage = (damage - 1.0F) / 2.0F
+        assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(1.0), 0.0);
+        assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(5.0), 2.0);
+        assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(11.0), 5.0);
+        assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(0.0), 0.0);
     }
 }

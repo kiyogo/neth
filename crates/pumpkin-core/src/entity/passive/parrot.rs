@@ -329,6 +329,23 @@ impl Mob for ParrotEntity {
         self.eat_cookie(player, item_stack);
         true
     }
+
+    /// Vanilla `Parrot.java:293-294`: Parrots take zero fall damage.
+    fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
+        combat::calculate_parrot_fall_damage()
+    }
+
+    fn adjust_damage_amount(
+        &self,
+        amount: f32,
+        damage_type: &DamageType,
+    ) -> f32 {
+        if *damage_type == DamageType::FALL {
+            0.0
+        } else {
+            amount
+        }
+    }
 }
 
 impl CustomSound for ParrotEntity {
@@ -380,5 +397,11 @@ mod tests {
         assert_eq!(ParrotVariant::Green.id(), 2);
         assert_eq!(ParrotVariant::YellowBlue.id(), 3);
         assert_eq!(ParrotVariant::Gray.id(), 4);
+    }
+
+    #[test]
+    fn test_parrot_fall_damage_immunity() {
+        assert_eq!(combat::calculate_parrot_fall_damage(), 0);
+        assert!(!combat::should_parrot_take_fall_damage());
     }
 }

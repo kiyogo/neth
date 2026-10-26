@@ -24,6 +24,7 @@ use crate::entity::{
         tempt::TemptGoal, water_avoiding_random_stroll::WaterAvoidingRandomStrollGoal,
     },
     custom_sound::CustomSound,
+    combat,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
     player::Player,
@@ -174,6 +175,16 @@ impl RabbitEntity {
         RabbitVariant::from_id(self.variant.load(Ordering::Relaxed))
     }
 
+    /// Vanilla `Rabbit.java:324-326`: Killer Bunny uses HOSTILE sound source, others use NEUTRAL.
+    #[must_use]
+    pub fn get_sound_category(&self) -> SoundCategory {
+        if combat::is_rabbit_evil(self.variant.load(Ordering::Relaxed)) {
+            SoundCategory::Hostile
+        } else {
+            SoundCategory::Neutral
+        }
+    }
+
     pub fn set_variant(&self, variant: RabbitVariant) {
         self.variant.store(variant.id(), Ordering::Relaxed);
         let entity = self.get_entity();
@@ -304,10 +315,25 @@ impl Mob for RabbitEntity {
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             entity.world.load().play_sound_fine(
                 Sound::EntityRabbitAmbient,
-                SoundCategory::Neutral,
+                self.get_sound_category(),
                 &entity.pos.load(),
                 1.0,
                 1.0,
+            );
+        }
+    }
+
+    /// Vanilla `Rabbit.java:317-321`: Killer Bunny plays rabbit attack sound.
+    fn on_attack(&self, _target: &dyn EntityBase) {
+        if self.get_variant() == RabbitVariant::Evil {
+            let entity = self.get_entity();
+            let pitch = combat::calculate_rabbit_attack_pitch(rand::random(), rand::random());
+            entity.world.load().play_sound_fine(
+                Sound::EntityRabbitAttack,
+                SoundCategory::Hostile,
+                &entity.pos.load(),
+                1.0,
+                pitch,
             );
         }
     }
@@ -336,5 +362,32 @@ impl CustomSound for RabbitEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityRabbitHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rabbit_variants_and_evil_sound_category() {
+        assert_eq!(RabbitVariant::from_id(0), RabbitVariant::Brown);
+        assert_eq!(RabbitVariant::from_id(1), RabbitVariant::White);
+        assert_eq!(RabbitVariant::from_id(2), RabbitVariant::Black);
+        assert_eq!(RabbitVariant::from_id(3), RabbitVariant::WhiteSplotched);
+        assert_eq!(RabbitVariant::from_id(4), RabbitVariant::Gold);
+        assert_eq!(RabbitVariant::from_id(5), RabbitVariant::Salt);
+        assert_eq!(RabbitVariant::from_id(99), RabbitVariant::Evil);
+
+        assert!(combat::is_rabbit_evil(RabbitVariant::Evil.id()));
+        assert!(!combat::is_rabbit_evil(RabbitVariant::Brown.id()));
+        assert!(!combat::is_rabbit_evil(RabbitVariant::White.id()));
+
+        // Speed constants
+        assert_eq!(combat::RABBIT_STROLL_SPEED_MOD, 0.6);
+        assert_eq!(combat::RABBIT_BREED_SPEED_MOD, 0.8);
+        assert_eq!(combat::RABBIT_FOLLOW_SPEED_MOD, 1.0);
+        assert_eq!(combat::RABBIT_FLEE_SPEED_MOD, 2.2);
+        assert_eq!(combat::RABBIT_ATTACK_SPEED_MOD, 1.4);
     }
 }
