@@ -148,10 +148,21 @@ impl EntityBase for WitherSkullEntity {
                 .owner_id
                 .and_then(|id| world.get_entity_by_id(id));
 
+            let has_living_owner = shooter
+                .as_ref()
+                .and_then(|s| s.get_living_entity())
+                .is_some();
+            let amount = crate::entity::combat::calculate_wither_skull_damage(has_living_owner);
+            let damage_type = if has_living_owner {
+                DamageType::WITHER_SKULL
+            } else {
+                DamageType::MAGIC
+            };
+
             let damaged = entity.damage_with_context(
                 entity.as_ref(),
-                8.0,
-                DamageType::WITHER_SKULL,
+                amount,
+                damage_type,
                 Some(hit_pos),
                 Some(self),
                 shooter.as_deref(),
@@ -193,5 +204,19 @@ impl EntityBase for WitherSkullEntity {
 
         // Vanilla WitherSkull.java:98: discard projectile after exploding
         self.get_entity().remove();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_wither_skull_damage_and_effect_parity() {
+        assert_eq!(calculate_wither_skull_damage(true), 8.0);
+        assert_eq!(calculate_wither_skull_damage(false), 5.0);
+        assert_eq!(get_wither_skull_inertia(true), 0.73);
+        assert_eq!(get_wither_skull_inertia(false), 0.95);
+        assert_eq!(get_wither_skull_kill_heal_amount(), 5.0);
     }
 }

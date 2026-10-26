@@ -4350,24 +4350,51 @@
     - Added unit test `test_warden_sonic_boom_constants_and_knockback_parity`.
   - All unit tests verified and passing (87/87 in `entity::combat::tests`, 32/32 in `entity::mob`, 1/1 in `entity::boss`).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Gap 202: Ender Dragon Boss Combat & Projectiles Parity (Dragon Parts Damage & Crystal Healing, Wither Skull Magic vs Living Damage & Resistance, Wind Charge Direct Damage & Offsets, Small Fireball Ignite)
+- **Vanilla Reference**: EnderDragon.java:61, 365, 372-389, 446-460, 522-550, 819, 840, WitherSkull.java:49, 62-74, AbstractWindCharge.java:73, 90, WindCharge.java:23, 25, BreezeWindCharge.java:15, SmallFireball.java:41-43:
+  - EnderDragon.java:
+    - calculate_dragon_part_damage:
+      - Khi đánh trúng Đầu (head, part 0) hoặc Cổ (
+eck, part 1): nhận 100% full damage (damage).
+      - Khi đánh trúng các bộ phận khác (thân, cánh, đuôi): sát thương bị giảm theo công thức Vanilla: damage / 4.0F + Math.min(damage, 1.0F). Sát thương dưới 0.01F bị triệt tiêu hoàn toàn.
+    - checkCrystals:
+      - Khi kết nối với End Crystal, rồng chỉ hồi 1.0 HP mỗi 10 ticks (	ickCount % 10 == 0 && health < maxHealth). Trước đây Neth hồi 1.0 HP mỗi tick (nhanh gấp 10 lần Vanilla).
+      - Khi End Crystal đang hồi máu cho rồng bị phá hủy, rồng chịu 10.0 HP sát thương nổ vào đầu (hurt(level, head, explosion(crystal, player), 10.0F)).
+    - knockBack & hurt (Player collision):
+      - Va chạm trực diện với Đầu hoặc Cổ gây 10.0 HP sát thương (ENDER_DRAGON_HEAD_COLLISION_DAMAGE = 10.0).
+      - Cánh quét (wing sweep) đẩy lùi theo công thức xd / dd * 4.0, 0.2F, zd / dd * 4.0 (với vận tốc thẳng đứng 0.2F) và gây 5.0 HP sát thương khi không ở trạng thái ngồi (ENDER_DRAGON_WING_DAMAGE = 5.0).
+    - sittingDamageReceived: Khi sát thương tích lũy ở trạng thái đậu/ngồi vượt quá 25% max health (50.0 HP trên 200.0 HP), rồng tự động cất cánh (Takeoff).
+    - 	ickDeath: Quá trình chết kéo dài 200 ticks. Từ tick 151 đến 199, mỗi 5 ticks rớt 8% tổng kinh nghiệm; tại tick 200 rớt 20% còn lại (tổng 12000 XP cho lần giết đầu, 500 XP cho các lần sau).
+  - WitherSkull.java:
+    - Khi bắn ra bởi sinh vật sống (owner instanceof LivingEntity): gây 8.0 HP sát thương loại WITHER_SKULL. Nếu nạn nhân bị hạ gục, hồi 5.0 HP cho shooter.
+    - Khi không có living owner (bắn từ dispenser hoặc bẫy): gây 5.0 HP sát thương phép (DamageType::MAGIC).
+    - Đầu lâu xanh nguy hiểm (dangerous = true): giảm blast resistance của các khối phá hủy được xuống tối đa 0.8F (Math.min(0.8F, resistance)).
+  - WindCharge.java & BreezeWindCharge.java:
+    - WindCharge có bán kính nổ 1.2F, thời gian chống phản xạ ban đầu (no-deflect) là 5 ticks.
+    - BreezeWindCharge có bán kính nổ 3.0F.
+    - Sát thương va chạm trực diện (direct hit) là 1.0 HP (WIND_CHARGE_DIRECT_DAMAGE = 1.0).
+    - Độ lệch tâm nổ khi va chạm khối: dịch chuyển theo pháp tuyến mặt chạm với tỉ lệ 0.25 (WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET = 0.25).
+  - SmallFireball.java:
+    - Sát thương va chạm trực tiếp là 5.0 HP (SMALL_FIREBALL_DIRECT_DAMAGE = 5.0).
+    - Gây cháy đối tượng trong 5.0 giây (100 ticks).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants ENDER_DRAGON_MAX_HEALTH = 200.0, ENDER_DRAGON_HEAD_COLLISION_DAMAGE = 10.0, ENDER_DRAGON_WING_DAMAGE = 5.0, ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE = 10.0, ENDER_DRAGON_CRYSTAL_HEAL_INTERVAL_TICKS = 10, ENDER_DRAGON_SITTING_DAMAGE_TAKEOFF_THRESHOLD = 50.0, ENDER_DRAGON_DEATH_MAX_TICKS = 200, ENDER_DRAGON_FIRST_KILL_XP = 12000, ENDER_DRAGON_RESPAWN_KILL_XP = 500.
+    - Added calculate_dragon_part_damage, should_dragon_crystal_heal, calculate_dragon_wing_knockback, should_dragon_takeoff_from_sitting_damage, calculate_dragon_death_xp.
+    - Added WITHER_SKULL_LIVING_DAMAGE = 8.0, WITHER_SKULL_MAGIC_DAMAGE = 5.0, WITHER_SKULL_DANGEROUS_MAX_RESISTANCE = 0.8, calculate_wither_skull_damage, calculate_wither_skull_block_resistance.
+    - Added WIND_CHARGE_DIRECT_DAMAGE = 1.0, WIND_CHARGE_EXPLOSION_POWER = 1.2, BREEZE_WIND_CHARGE_EXPLOSION_POWER = 3.0, WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN = 5, WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET = 0.25.
+    - Added LARGE_FIREBALL_DIRECT_DAMAGE = 6.0, SMALL_FIREBALL_DIRECT_DAMAGE = 5.0, SMALL_FIREBALL_IGNITE_SECONDS = 5.0, SMALL_FIREBALL_IGNITE_TICKS = 100.
+    - Added unit test 	est_dragon_wither_skull_wind_charge_fireball_parity.
+  - Updated WitherSkullEntity in crates/pumpkin-core/src/entity/projectile/wither_skull.rs:
+    - Supports magic damage fallback when owner is absent or non-living via calculate_wither_skull_damage.
+    - Added unit test 	est_wither_skull_damage_and_effect_parity.
+  - Updated WindChargeEntity in crates/pumpkin-core/src/entity/projectile/wind_charge.rs:
+    - Standardized explosion power, deflect cooldown, normal offset, and direct hit damage.
+    - Added unit test 	est_wind_charge_entity_constants_parity.
+  - Updated EnderDragonEntity in crates/pumpkin-core/src/entity/boss/ender_dragon.rs:
+    - Synchronized crystal heal rate to vanilla 10-tick interval (should_dragon_crystal_heal).
+    - Implemented head & neck direct collision damage (10.0 HP) and wing sweep knockback + damage in handle_player_collisions.
+    - Standardized part damage reduction via calculate_dragon_part_damage and sitting takeoff check via should_dragon_takeoff_from_sitting_damage.
+    - Added unit test 	est_ender_dragon_combat_and_crystal_parity.
+  - All unit tests verified and passing (88/88 in entity::combat::tests, 2/2 in entity::boss, 2/2 in entity::projectile).
 

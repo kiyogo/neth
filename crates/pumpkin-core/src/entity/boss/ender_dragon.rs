@@ -680,39 +680,59 @@ impl EnderDragonEntity {
     fn handle_player_collisions(&self) {
         let world = self.mob_entity.living_entity.entity.world.load();
 
+        let is_sitting = self
+            .phase
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_sitting();
+
+        let head_bbox = self.parts[0].entity.bounding_box.load().expand_all(1.0);
+        let neck_bbox = self.parts[1].entity.bounding_box.load().expand_all(1.0);
+
+        let body_bbox = self.parts[2].entity.bounding_box.load();
+        let body_center = Vector3::new(
+            f64::midpoint(body_bbox.min.x, body_bbox.max.x),
+            f64::midpoint(body_bbox.min.y, body_bbox.max.y),
+            f64::midpoint(body_bbox.min.z, body_bbox.max.z),
+        );
         let dragon_bbox = self.mob_entity.living_entity.entity.bounding_box.load();
-        let xm = f64::midpoint(dragon_bbox.min.x, dragon_bbox.max.x);
-        let zm = f64::midpoint(dragon_bbox.min.z, dragon_bbox.max.z);
 
         for player in world.players.load().iter() {
-            if player
-                .living_entity
-                .entity
-                .bounding_box
-                .load()
-                .intersects(&dragon_bbox)
+            let p_box = player.living_entity.entity.bounding_box.load();
+
+            // 1. Head & Neck collision bite damage (10.0 HP)
+            if (p_box.intersects(&head_bbox) || p_box.intersects(&neck_bbox))
+                && self.do_teams_allow_damage(player.as_ref())
+            {
+                player.damage(
+                    self,
+                    crate::entity::combat::ENDER_DRAGON_HEAD_COLLISION_DAMAGE,
+                    DamageType::MOB_ATTACK,
+                );
+            }
+
+            // 2. Wing sweep & body knockback (5.0 HP when not sitting)
+            if p_box.intersects(&dragon_bbox)
+                || p_box.intersects(&self.parts[6].entity.bounding_box.load())
+                || p_box.intersects(&self.parts[7].entity.bounding_box.load())
             {
                 let player_pos = player.get_entity().pos.load();
-                let xd = player_pos.x - xm;
-                let zd = player_pos.z - zm;
-                let dd = (xd * xd + zd * zd).max(0.1);
+                let push = crate::entity::combat::calculate_dragon_wing_knockback(player_pos, body_center);
 
                 player.living_entity.entity.apply_knockback(
-                    4.0,
-                    xd / dd,
-                    zd / dd,
+                    push.x.hypot(push.z),
+                    push.x,
+                    push.z,
                     Some(&self.mob_entity.living_entity.entity),
                 );
                 player.get_entity().send_velocity();
 
-                if !self
-                    .phase
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .is_sitting()
-                    && self.do_teams_allow_damage(player.as_ref())
-                {
-                    player.damage(self, 5.0, DamageType::MOB_ATTACK);
+                if !is_sitting && self.do_teams_allow_damage(player.as_ref()) {
+                    player.damage(
+                        self,
+                        crate::entity::combat::ENDER_DRAGON_WING_DAMAGE,
+                        DamageType::MOB_ATTACK,
+                    );
                 }
             }
         }
@@ -760,7 +780,12 @@ impl EnderDragonEntity {
             *current_crystal_uuid = Some(crystal_uuid);
 
             let living = &self.mob_entity.living_entity;
-            if living.health.load() < living.get_max_health() {
+            let day_time = world.level_info.load().day_time as u64;
+            if crate::entity::combat::should_dragon_crystal_heal(
+                day_time,
+                living.health.load(),
+                living.get_max_health(),
+            ) {
                 living.heal(1.0);
             }
         } else if let Some(old_uuid) = current_crystal_uuid.take() {
@@ -990,10 +1015,7 @@ impl EnderDragonEntity {
         }
 
         // Head (0) and Neck (1) take 100% full damage; body, tails, wings take reduced damage
-        if part_index != 0 && part_index != 1 {
-            amount = amount / 4.0 + amount.min(1.0);
-        }
-
+        amount = crate::entity::combat::calculate_dragon_part_damage(part_index, amount);
         if amount < 0.01 {
             return false;
         }
@@ -1018,7 +1040,7 @@ impl EnderDragonEntity {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             *sitting_dmg += actual_dealt;
-            if *sitting_dmg > 50.0 {
+            if crate::entity::combat::should_dragon_takeoff_from_sitting_damage(*sitting_dmg) {
                 *sitting_dmg = 0.0;
                 drop(sitting_dmg);
                 self.set_phase(EnderDragonPhase::Takeoff);
@@ -1158,5 +1180,31 @@ impl Vector3Ext for Vector3<f64> {
     fn distance_squared(self, other: Self) -> f64 {
         let (dx, dy, dz) = (self.x - other.x, self.y - other.y, self.z - other.z);
         dx * dx + dy * dy + dz * dz
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_ender_dragon_combat_and_crystal_parity() {
+        assert_eq!(ENDER_DRAGON_MAX_HEALTH, 200.0);
+        assert_eq!(ENDER_DRAGON_HEAD_COLLISION_DAMAGE, 10.0);
+        assert_eq!(ENDER_DRAGON_WING_DAMAGE, 5.0);
+        assert_eq!(ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE, 10.0);
+        assert_eq!(ENDER_DRAGON_CRYSTAL_HEAL_INTERVAL_TICKS, 10);
+        assert_eq!(ENDER_DRAGON_SITTING_DAMAGE_TAKEOFF_THRESHOLD, 50.0);
+
+        // Verify part damage calculations
+        assert_eq!(calculate_dragon_part_damage(0, 10.0), 10.0);
+        assert_eq!(calculate_dragon_part_damage(1, 10.0), 10.0);
+        assert_eq!(calculate_dragon_part_damage(2, 10.0), 3.5);
+        assert_eq!(calculate_dragon_part_damage(6, 10.0), 3.5);
+
+        // Verify crystal heal interval
+        assert!(should_dragon_crystal_heal(10, 100.0, 200.0));
+        assert!(!should_dragon_crystal_heal(11, 100.0, 200.0));
+        assert!(!should_dragon_crystal_heal(10, 200.0, 200.0));
     }
 }

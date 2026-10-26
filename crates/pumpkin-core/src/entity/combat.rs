@@ -6021,6 +6021,235 @@ pub fn is_sonic_boom_in_range(dx: f64, dy: f64, dz: f64) -> bool {
     (dx * dx + dz * dz).sqrt() <= SONIC_BOOM_DISTANCE_XZ && dy.abs() <= SONIC_BOOM_DISTANCE_Y
 }
 
+/// Maximum health for Ender Dragon (200.0 HP = 100 hearts).
+///
+/// Mirrors vanilla `EnderDragon.java:840`:
+/// `.add(Attributes.MAX_HEALTH, 200.0)`
+pub const ENDER_DRAGON_MAX_HEALTH: f32 = 200.0;
+
+/// Mob attack damage dealt by Ender Dragon head/neck direct collision (10.0 HP).
+///
+/// Mirrors vanilla `EnderDragon.java:389`:
+/// `target.hurtServer(level, damageSource, 10.0F);`
+pub const ENDER_DRAGON_HEAD_COLLISION_DAMAGE: f32 = 10.0;
+
+/// Attack damage dealt by Ender Dragon wing sweep (5.0 HP).
+///
+/// Mirrors vanilla `EnderDragon.java:379`:
+/// `entity.hurtServer(serverLevel, damageSource, 5.0F);`
+pub const ENDER_DRAGON_WING_DAMAGE: f32 = 5.0;
+
+/// Damage dealt to Ender Dragon when a healing End Crystal is destroyed (10.0 HP explosion).
+///
+/// Mirrors vanilla `EnderDragon.java:819`:
+/// `this.hurt(level, this.head, this.damageSources().explosion(crystal, player), 10.0F);`
+pub const ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE: f32 = 10.0;
+
+/// Interval in ticks between Ender Dragon healing from an active End Crystal (10 ticks = 0.5s).
+///
+/// Mirrors vanilla `EnderDragon.java:365`:
+/// `else if (this.tickCount % 10 == 0 && this.getHealth() < this.getMaxHealth())`
+pub const ENDER_DRAGON_CRYSTAL_HEAL_INTERVAL_TICKS: u64 = 10;
+
+/// Allowed damage percentage the Ender Dragon can take while sitting before taking off (25% = 50 HP).
+///
+/// Mirrors vanilla `EnderDragon.java:61, 458-460`:
+/// `private static final float SITTING_ALLOWED_DAMAGE_PERCENTAGE = 0.25F;`
+/// `if (this.sittingDamageReceived > 0.25F * this.getMaxHealth())`
+pub const ENDER_DRAGON_SITTING_DAMAGE_TAKEOFF_THRESHOLD: f32 = 50.0;
+
+/// Total death animation duration for Ender Dragon before removal (200 ticks = 10s).
+///
+/// Mirrors vanilla `EnderDragon.java:547`:
+/// `if (this.dragonDeathTime >= 200)`
+pub const ENDER_DRAGON_DEATH_MAX_TICKS: i32 = 200;
+
+/// Experience awarded for the first dragon kill in a world.
+///
+/// Mirrors vanilla `EnderDragon.java:525`:
+/// `xpCount = 12000;`
+pub const ENDER_DRAGON_FIRST_KILL_XP: u32 = 12000;
+
+/// Experience awarded for subsequent dragon kills in a world.
+///
+/// Mirrors vanilla `EnderDragon.java:522`:
+/// `int xpCount = 500;`
+pub const ENDER_DRAGON_RESPAWN_KILL_XP: u32 = 500;
+
+/// Calculates damage dealt to the Ender Dragon based on which body part was struck.
+///
+/// Head (part 0) and Neck (part 1) take 100% full damage.
+/// All other parts (body, wings, tails) take reduced damage: `damage / 4.0 + min(damage, 1.0)`.
+/// If reduced damage is less than 0.01, it is negated (returns 0.0).
+///
+/// Mirrors vanilla `EnderDragon.java:446-452`:
+/// ```java
+/// if (part != this.head && part != this.neck) {
+///     damage = damage / 4.0F + Math.min(damage, 1.0F);
+/// }
+/// if (damage < 0.01F) {
+///     return false;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_dragon_part_damage(part_index: usize, incoming_damage: f32) -> f32 {
+    let damage = if part_index == 0 || part_index == 1 {
+        incoming_damage
+    } else {
+        incoming_damage / 4.0 + incoming_damage.min(1.0)
+    };
+
+    if damage < 0.01 { 0.0 } else { damage }
+}
+
+/// Checks whether the Ender Dragon should heal 1.0 HP from its nearest crystal on this tick.
+///
+/// Mirrors vanilla `EnderDragon.java:365`:
+/// `else if (this.tickCount % 10 == 0 && this.getHealth() < this.getMaxHealth()) { this.setHealth(this.getHealth() + 1.0F); }`
+#[must_use]
+pub const fn should_dragon_crystal_heal(tick_count: u64, current_health: f32, max_health: f32) -> bool {
+    tick_count % ENDER_DRAGON_CRYSTAL_HEAL_INTERVAL_TICKS == 0 && current_health < max_health
+}
+
+/// Calculates the knockback push vector applied by the Ender Dragon's wing sweep.
+///
+/// Mirrors vanilla `EnderDragon.java:372-376`:
+/// ```java
+/// double xd = entity.getX() - xm;
+/// double zd = entity.getZ() - zm;
+/// double dd = Math.max(xd * xd + zd * zd, 0.1);
+/// entity.push(xd / dd * 4.0, 0.2F, zd / dd * 4.0);
+/// ```
+#[must_use]
+pub fn calculate_dragon_wing_knockback(player_pos: Vector3<f64>, body_pos: Vector3<f64>) -> Vector3<f64> {
+    let xd = player_pos.x - body_pos.x;
+    let zd = player_pos.z - body_pos.z;
+    let dd = (xd * xd + zd * zd).max(0.1);
+    Vector3::new(xd / dd * 4.0, 0.2, zd / dd * 4.0)
+}
+
+/// Checks whether the dragon accumulated enough damage while sitting to trigger takeoff.
+///
+/// Mirrors vanilla `EnderDragon.java:458-460`:
+/// `if (this.sittingDamageReceived > 0.25F * this.getMaxHealth())`
+#[must_use]
+pub const fn should_dragon_takeoff_from_sitting_damage(sitting_damage_received: f32) -> bool {
+    sitting_damage_received > ENDER_DRAGON_SITTING_DAMAGE_TAKEOFF_THRESHOLD
+}
+
+/// Calculates the experience orb drop quantity during dragon death animation.
+///
+/// Mirrors vanilla `EnderDragon.java:528-550`:
+/// - Between tick 151 and 199, every 5 ticks: 8% of total XP.
+/// - At tick 200: 20% of total XP.
+#[must_use]
+pub fn calculate_dragon_death_xp(death_ticks: i32, has_previously_killed: bool) -> u32 {
+    let total_xp = if has_previously_killed {
+        ENDER_DRAGON_RESPAWN_KILL_XP
+    } else {
+        ENDER_DRAGON_FIRST_KILL_XP
+    };
+
+    if death_ticks >= ENDER_DRAGON_DEATH_MAX_TICKS {
+        (total_xp as f32 * 0.2) as u32
+    } else if death_ticks > 150 && death_ticks % 5 == 0 {
+        (total_xp as f32 * 0.08) as u32
+    } else {
+        0
+    }
+}
+
+/// Direct hit damage of Wither Skull when shot by a living entity (Wither Boss / Player / Mob).
+///
+/// Mirrors vanilla `WitherSkull.java:64`:
+/// `wasHurt = var8.hurtServer(serverLevel, damageSource, 8.0F);`
+pub const WITHER_SKULL_LIVING_DAMAGE: f32 = 8.0;
+
+/// Direct hit damage of Wither Skull when not shot by a living entity (dispenser, etc.).
+///
+/// Mirrors vanilla `WitherSkull.java:73`:
+/// `wasHurt = var8.hurtServer(serverLevel, this.damageSources().magic(), 5.0F);`
+pub const WITHER_SKULL_MAGIC_DAMAGE: f32 = 5.0;
+
+/// Maximum blast resistance for destroyable blocks against a dangerous (blue) Wither Skull.
+///
+/// Mirrors vanilla `WitherSkull.java:49`:
+/// `return this.isDangerous() && WitherBoss.canDestroy(block) ? Math.min(0.8F, resistance) : resistance;`
+pub const WITHER_SKULL_DANGEROUS_MAX_RESISTANCE: f32 = 0.8;
+
+/// Calculates the direct damage dealt by a Wither Skull depending on whether it has a living owner.
+///
+/// Mirrors vanilla `WitherSkull.java:62-74`.
+#[must_use]
+pub const fn calculate_wither_skull_damage(has_living_owner: bool) -> f32 {
+    if has_living_owner {
+        WITHER_SKULL_LIVING_DAMAGE
+    } else {
+        WITHER_SKULL_MAGIC_DAMAGE
+    }
+}
+
+/// Calculates effective explosion resistance of a block against a Wither Skull.
+///
+/// Mirrors vanilla `WitherSkull.java:49`.
+#[must_use]
+pub fn calculate_wither_skull_block_resistance(is_dangerous: bool, can_destroy: bool, default_resistance: f32) -> f32 {
+    if is_dangerous && can_destroy {
+        default_resistance.min(WITHER_SKULL_DANGEROUS_MAX_RESISTANCE)
+    } else {
+        default_resistance
+    }
+}
+
+/// Direct entity hit damage for a regular player/dispenser Wind Charge (1.0 HP).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:73`:
+/// `if (entity.hurtServer(serverLevel, source, 1.0F))`
+pub const WIND_CHARGE_DIRECT_DAMAGE: f32 = 1.0;
+
+/// Explosion power / radius for a player thrown Wind Charge (1.2F).
+///
+/// Mirrors vanilla `WindCharge.java:23, 62`:
+/// `private static final float RADIUS = 1.2F;`
+pub const WIND_CHARGE_EXPLOSION_POWER: f32 = 1.2;
+
+/// Explosion power / radius for a Breeze thrown Wind Charge (3.0F).
+///
+/// Mirrors vanilla `BreezeWindCharge.java:15, 30`:
+/// `private static final float RADIUS = 3.0F;`
+pub const BREEZE_WIND_CHARGE_EXPLOSION_POWER: f32 = 3.0;
+
+/// Default deflect cooldown ticks for player Wind Charge (5 ticks).
+///
+/// Mirrors vanilla `WindCharge.java:25`:
+/// `private int noDeflectTicks = 5;`
+pub const WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN: u8 = 5;
+
+/// Normal offset scale for block hit explosion on wind charges (0.25).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:90`:
+/// `Vec3 scaledNormal = Vec3.atLowerCornerOf(collisionNormal).multiply(0.25, 0.25, 0.25);`
+pub const WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET: f64 = 0.25;
+
+/// Direct entity hit damage for Large Fireball (6.0 HP).
+///
+/// Mirrors vanilla `LargeFireball.java:48`:
+/// `var6.hurtServer(serverLevel, damageSource, 6.0F);`
+pub const LARGE_FIREBALL_DIRECT_DAMAGE: f32 = 6.0;
+
+/// Direct entity hit damage for Small Fireball (5.0 HP).
+///
+/// Mirrors vanilla `SmallFireball.java:43`:
+/// `if (!var7.hurtServer(serverLevel, damageSource, 5.0F))`
+pub const SMALL_FIREBALL_DIRECT_DAMAGE: f32 = 5.0;
+
+/// Ignite duration in seconds when hit by Small Fireball (5.0s = 100 ticks).
+///
+/// Mirrors vanilla `SmallFireball.java:41`:
+/// `var7.igniteForSeconds(5.0F);`
+pub const SMALL_FIREBALL_IGNITE_SECONDS: f32 = 5.0;
+pub const SMALL_FIREBALL_IGNITE_TICKS: u32 = 100;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -9413,6 +9642,75 @@ mod tests {
         assert!(is_sonic_boom_in_range(10.0, 15.0, 10.0)); // sqrt(200) = 14.14 <= 15, dy = 15 <= 20
         assert!(!is_sonic_boom_in_range(12.0, 15.0, 12.0)); // sqrt(288) = 16.97 > 15
         assert!(!is_sonic_boom_in_range(5.0, 21.0, 5.0)); // dy = 21 > 20
+    }
+
+    #[test]
+    fn test_dragon_wither_skull_wind_charge_fireball_parity() {
+        // 1. Ender Dragon health, damage, parts, takeoff and death (EnderDragon.java:61, 379, 389, 446-460, 522-550, 819, 840)
+        assert_eq!(ENDER_DRAGON_MAX_HEALTH, 200.0);
+        assert_eq!(ENDER_DRAGON_HEAD_COLLISION_DAMAGE, 10.0);
+        assert_eq!(ENDER_DRAGON_WING_DAMAGE, 5.0);
+        assert_eq!(ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE, 10.0);
+        assert_eq!(ENDER_DRAGON_CRYSTAL_HEAL_INTERVAL_TICKS, 10);
+        assert_eq!(ENDER_DRAGON_SITTING_DAMAGE_TAKEOFF_THRESHOLD, 50.0);
+        assert_eq!(ENDER_DRAGON_DEATH_MAX_TICKS, 200);
+        assert_eq!(ENDER_DRAGON_FIRST_KILL_XP, 12000);
+        assert_eq!(ENDER_DRAGON_RESPAWN_KILL_XP, 500);
+
+        // Part damage: Head(0) and Neck(1) full damage; others reduced damage: d/4 + min(d, 1)
+        assert_eq!(calculate_dragon_part_damage(0, 12.0), 12.0); // Head
+        assert_eq!(calculate_dragon_part_damage(1, 8.0), 8.0);   // Neck
+        assert_eq!(calculate_dragon_part_damage(2, 12.0), 4.0);  // Body: 12/4 + 1 = 4
+        assert_eq!(calculate_dragon_part_damage(6, 0.4), 0.5);   // Wing: 0.4/4 + 0.4 = 0.5
+        assert_eq!(calculate_dragon_part_damage(3, 0.005), 0.0); // Negated under 0.01
+
+        // Crystal heal check: every 10 ticks when health < max_health
+        assert!(should_dragon_crystal_heal(10, 150.0, 200.0));
+        assert!(should_dragon_crystal_heal(20, 0.0, 200.0));
+        assert!(!should_dragon_crystal_heal(15, 150.0, 200.0));
+        assert!(!should_dragon_crystal_heal(10, 200.0, 200.0));
+
+        // Sitting damage takeoff check
+        assert!(should_dragon_takeoff_from_sitting_damage(50.1));
+        assert!(!should_dragon_takeoff_from_sitting_damage(50.0));
+        assert!(!should_dragon_takeoff_from_sitting_damage(20.0));
+
+        // Wing knockback formula: xd / dd * 4.0, 0.2, zd / dd * 4.0
+        let push = calculate_dragon_wing_knockback(Vector3::new(4.0, 65.0, 0.0), Vector3::new(0.0, 65.0, 0.0));
+        assert!((push.x - 1.0).abs() < 1e-6); // xd = 4, dd = 16, xd/dd*4 = 4/16*4 = 1.0
+        assert_eq!(push.y, 0.2);
+        assert_eq!(push.z, 0.0);
+
+        // Dragon death experience drops
+        assert_eq!(calculate_dragon_death_xp(160, false), 960); // 12000 * 0.08
+        assert_eq!(calculate_dragon_death_xp(160, true), 40);   // 500 * 0.08
+        assert_eq!(calculate_dragon_death_xp(200, false), 2400); // 12000 * 0.2
+        assert_eq!(calculate_dragon_death_xp(200, true), 100);  // 500 * 0.2
+        assert_eq!(calculate_dragon_death_xp(140, false), 0);   // Not yet 150
+        assert_eq!(calculate_dragon_death_xp(162, false), 0);   // Not % 5
+
+        // 2. Wither Skull damage and resistance (WitherSkull.java:49, 64, 73)
+        assert_eq!(WITHER_SKULL_LIVING_DAMAGE, 8.0);
+        assert_eq!(WITHER_SKULL_MAGIC_DAMAGE, 5.0);
+        assert_eq!(WITHER_SKULL_DANGEROUS_MAX_RESISTANCE, 0.8);
+        assert_eq!(calculate_wither_skull_damage(true), 8.0);
+        assert_eq!(calculate_wither_skull_damage(false), 5.0);
+        assert_eq!(calculate_wither_skull_block_resistance(true, true, 6.0), 0.8);
+        assert_eq!(calculate_wither_skull_block_resistance(true, false, 6.0), 6.0);
+        assert_eq!(calculate_wither_skull_block_resistance(false, true, 6.0), 6.0);
+
+        // 3. Wind Charge explosion power, damage and offsets (WindCharge.java:23, 25; BreezeWindCharge.java:15; AbstractWindCharge.java:73, 90)
+        assert_eq!(WIND_CHARGE_DIRECT_DAMAGE, 1.0);
+        assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
+        assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
+        assert_eq!(WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN, 5);
+        assert_eq!(WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET, 0.25);
+
+        // 4. Fireball direct damages and ignite duration (LargeFireball.java:48; SmallFireball.java:41, 43)
+        assert_eq!(LARGE_FIREBALL_DIRECT_DAMAGE, 6.0);
+        assert_eq!(SMALL_FIREBALL_DIRECT_DAMAGE, 5.0);
+        assert_eq!(SMALL_FIREBALL_IGNITE_SECONDS, 5.0);
+        assert_eq!(SMALL_FIREBALL_IGNITE_TICKS, 100);
     }
 }
 

@@ -24,8 +24,8 @@ use crate::{
     world::{BlockInteraction, Explosion, SimpleExplosionDamageCalculator},
 };
 
-const DEFAULT_DEFLECT_COOLDOWN: u8 = 5;
-const JUMP_SCALE: f64 = 0.25;
+const DEFAULT_DEFLECT_COOLDOWN: u8 = crate::entity::combat::WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN;
+const JUMP_SCALE: f64 = crate::entity::combat::WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET;
 const DEFLECTED_ACCELERATION_POWER: f64 = 0.1;
 pub const WIND_CHARGE_GRAVITY: f64 = 0.0;
 
@@ -99,12 +99,12 @@ impl WindChargeEntity {
     pub fn create_explosion(&self, position: Vector3<f64>) {
         let (power, calculator, sound) = match self.kind {
             WindChargeKind::Normal { .. } => (
-                1.2,
+                crate::entity::combat::WIND_CHARGE_EXPLOSION_POWER,
                 WIND_CHARGE_EXPLOSION_DAMAGE_CALCULATOR.clone(),
                 Sound::EntityWindChargeWindBurst,
             ),
             WindChargeKind::Breeze => (
-                3.0,
+                crate::entity::combat::BREEZE_WIND_CHARGE_EXPLOSION_POWER,
                 BREEZE_WIND_CHARGE_EXPLOSION_DAMAGE_CALCULATOR.clone(),
                 Sound::EntityBreezeWindBurst,
             ),
@@ -211,7 +211,7 @@ impl EntityBase for WindChargeEntity {
 
             let _ = entity.damage_with_context(
                 entity.as_ref(),
-                1.0,
+                crate::entity::combat::WIND_CHARGE_DIRECT_DAMAGE,
                 DamageType::WIND_CHARGE,
                 Some(hit_pos),
                 Some(self.get_entity()),
@@ -224,5 +224,20 @@ impl EntityBase for WindChargeEntity {
             hit_pos
         };
         self.create_explosion(explosion_pos);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_wind_charge_entity_constants_parity() {
+        assert_eq!(DEFAULT_DEFLECT_COOLDOWN, 5);
+        assert_eq!(JUMP_SCALE, 0.25);
+        assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
+        assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
+        assert_eq!(WIND_CHARGE_DIRECT_DAMAGE, 1.0);
     }
 }
