@@ -5362,6 +5362,47 @@ pub fn can_llama_mate(partner_is_llama: bool, is_trader_llama: bool) -> bool {
     partner_is_llama && !is_trader_llama
 }
 
+/// Calculates Strider ridden speed based on suffocating (cold) state and steering boost.
+///
+/// Mirrors vanilla `Strider.java:273-275`:
+/// `(float)(base_speed * (is_suffocating ? 0.35F : 0.55F) * boost_factor)`
+#[must_use]
+pub fn calculate_strider_ridden_speed(
+    base_speed: f64,
+    is_suffocating: bool,
+    boost_factor: f32,
+) -> f32 {
+    let steering_mod = if is_suffocating { 0.35 } else { 0.55 };
+    ((base_speed * steering_mod) as f32) * boost_factor
+}
+
+/// Checks if a Strider should make its happy sound when being tempted.
+///
+/// Mirrors vanilla `Strider.java:303-304`:
+/// `if (this.isBeingTempted() && this.random.nextInt(140) == 0)`
+#[must_use]
+pub fn should_strider_be_happy(is_tempted: bool, rand_val: u32) -> bool {
+    is_tempted && rand_val == 0
+}
+
+/// Checks if a Strider should make its retreat sound when panicking.
+///
+/// Mirrors vanilla `Strider.java:305-306`:
+/// `else if (this.isPanicking() && this.random.nextInt(60) == 0)`
+#[must_use]
+pub fn should_strider_retreat(is_panicking: bool, rand_val: u32) -> bool {
+    is_panicking && rand_val == 0
+}
+
+/// Checks if a squid (regular or glow) should squirt ink when hurt.
+///
+/// Mirrors vanilla `Squid.java:180`:
+/// Squid only squirts ink when damaged by an attacker mob (`getLastHurtByMob() != null`).
+#[must_use]
+pub fn should_squid_squirt_ink(has_attacker: bool) -> bool {
+    has_attacker
+}
+
 
 
 
@@ -8655,6 +8696,30 @@ mod tests {
         assert!(can_llama_mate(true, false));
         assert!(!can_llama_mate(true, true));
         assert!(!can_llama_mate(false, false));
+    }
+
+    #[test]
+    fn test_glow_squid_and_strider_parity() {
+        // 1. Strider ridden speed (Strider.java:273-275)
+        let warm_speed = calculate_strider_ridden_speed(0.175, false, 1.0);
+        let cold_speed = calculate_strider_ridden_speed(0.175, true, 1.0);
+        assert!((warm_speed - (0.175 * 0.55) as f32).abs() < 1e-6);
+        assert!((cold_speed - (0.175 * 0.35) as f32).abs() < 1e-6);
+        let boosted = calculate_strider_ridden_speed(0.175, false, 1.5);
+        assert!((boosted - (0.175 * 0.55 * 1.5) as f32).abs() < 1e-6);
+
+        // 2. Strider tick sounds (Strider.java:303-306)
+        assert!(should_strider_be_happy(true, 0));
+        assert!(!should_strider_be_happy(true, 1));
+        assert!(!should_strider_be_happy(false, 0));
+
+        assert!(should_strider_retreat(true, 0));
+        assert!(!should_strider_retreat(true, 1));
+        assert!(!should_strider_retreat(false, 0));
+
+        // 3. Squid ink trigger (Squid.java:180)
+        assert!(should_squid_squirt_ink(true));
+        assert!(!should_squid_squirt_ink(false));
     }
 }
 

@@ -6,6 +6,8 @@ use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_util::math::wrap_degrees;
 use rand::RngExt;
@@ -61,6 +63,20 @@ impl GlowSquidEntity {
 
         Arc::new(glow_squid)
     }
+
+    #[must_use]
+    pub fn get_dark_ticks_remaining(&self) -> i32 {
+        self.dark_ticks_remaining.load(Ordering::Relaxed)
+    }
+
+    pub fn set_dark_ticks(&self, ticks: i32) {
+        self.dark_ticks_remaining.store(ticks, Ordering::Relaxed);
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::glow_squid::DATA_DARK_TICKS_REMAINING,
+            VarInt(ticks),
+        );
+    }
 }
 
 impl Mob for GlowSquidEntity {
@@ -106,19 +122,44 @@ impl Mob for GlowSquidEntity {
         true
     }
 
+    fn mob_init_data_tracker(&self) {
+        let entity = self.get_entity();
+        entity.set_synced_data(
+            pumpkin_data::tracked_data::glow_squid::DATA_DARK_TICKS_REMAINING,
+            VarInt(self.get_dark_ticks_remaining()),
+        );
+    }
+
+    fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        nbt.put_int("DarkTicksRemaining", self.get_dark_ticks_remaining());
+    }
+
+    fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        if let Some(ticks) = nbt.get_int("DarkTicksRemaining") {
+            self.set_dark_ticks(ticks);
+        }
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
         combat::get_squid_xp_reward(rand::rng().random_range(0..3))
     }
 
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
-        self.dark_ticks_remaining.store(100, Ordering::Relaxed);
+        // Vanilla GlowSquid.java:94-101: dark ticks set to 100 on damage
+        self.set_dark_ticks(100);
+
+        // Vanilla Squid.java:180: ink squirt only triggers when attacked by an entity
+        if !combat::should_squid_squirt_ink(_source.is_some()) {
+            return;
+        }
+
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.silent.load(Ordering::Relaxed) {
             entity.world.load().play_sound_fine(
                 Sound::EntityGlowSquidSquirt,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
-                1.0,
+                0.4,
                 1.0,
             );
         }
@@ -160,8 +201,9 @@ impl Mob for GlowSquidEntity {
         let mut rng = rand::rng();
 
         // Glow particles when not in dark ticks
-        if self.dark_ticks_remaining.load(Ordering::Relaxed) > 0 {
-            self.dark_ticks_remaining.fetch_sub(1, Ordering::Relaxed);
+        let dark_ticks = self.get_dark_ticks_remaining();
+        if dark_ticks > 0 {
+            self.set_dark_ticks(dark_ticks - 1);
         } else if rng.random_range(0..2) == 0 {
             let pos = entity.pos.load();
             let dx = (rng.random::<f64>() * 2.0 - 1.0) * 0.4;
@@ -301,5 +343,19 @@ impl CustomSound for GlowSquidEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityGlowSquidHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_glow_squid_dark_ticks_and_nbt() {
+        let mut nbt = NbtCompound::new();
+        nbt.put_int("DarkTicksRemaining", 100);
+        assert_eq!(nbt.get_int("DarkTicksRemaining"), Some(100));
+        assert!(combat::should_squid_squirt_ink(true));
+        assert!(!combat::should_squid_squirt_ink(false));
     }
 }

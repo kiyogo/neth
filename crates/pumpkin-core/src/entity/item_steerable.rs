@@ -6,6 +6,10 @@ pub trait ItemSteerable: Send + Sync {
     fn boost(&self) -> bool;
 
     fn as_any(&self) -> &dyn Any;
+
+    fn get_steerable_speed(&self) -> f32 {
+        0.0
+    }
 }
 
 #[derive(Default)]

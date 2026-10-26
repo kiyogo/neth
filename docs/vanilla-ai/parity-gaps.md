@@ -4092,6 +4092,53 @@
     - Excluded `EntityType::TRADER_LLAMA` from candidate selection.
   - All unit tests verified and passing (81/81 tests in `entity::combat::tests`, `test_llama_inventory_and_sound_parity`, and `test_trader_llama_despawn_and_sterile_parity`).
 
+---
+
+## Gap 196: Glow Squid Dark Ticks & NBT, Squid Squirt Trigger & Volume, Strider Ridden Speed & Mood Sounds
+
+- **Vanilla Reference**:
+  - `GlowSquid.java:27, 42, 71-100`:
+    - `DATA_DARK_TICKS_REMAINING` (`SynchedEntityData.defineId(GlowSquid.class, EntityDataSerializers.INT)`): Data tracker id 18 cho `DarkTicksRemaining`.
+    - NBT: `DarkTicksRemaining` (int). Lưu và đọc số ticks mực phát sáng còn tối lại.
+    - `hurtServer`: khi bị thương, luôn set `dark_ticks = 100` (`this.setDarkTicks(100)`).
+    - `aiStep`: mỗi tick nếu `dark_ticks > 0` thì giảm 1 (`this.setDarkTicks(darkTicks - 1)`). Chỉ phát hạt phát quang (`ParticleTypes.GLOW`) khi không trong dark ticks.
+  - `Squid.java:93-95, 180`:
+    - `hurtServer`: mực chỉ xịt mực khi bị tấn công bởi một thực thể khác (`this.getLastHurtByMob() != null`). Không tự động xịt mực khi chết cháy, ngạt thở hay rơi vào void.
+    - `getSoundVolume`: âm thanh xịt mực `SoundEvents.SQUID_SQUIRT` và `SoundEvents.GLOW_SQUID_SQUIRT` có volume `0.4F` (thay vì 1.0F).
+  - `Strider.java:263, 273-275, 303-307, 354-356`:
+    - Tốc độ cưỡi (`getRiddenSpeed`): `(float)(base_speed * (is_suffocating ? 0.35F : 0.55F) * boost_factor)`.
+    - Steering boost tick: `this.steering.tickBoost()` được tick mỗi tick để đếm ngược boost time.
+    - Mood sounds: Trong `tick()`, nếu đang bị dụ bằng nấm biến dị (`isBeingTempted()`) thì có 1/140 cơ hội mỗi tick phát `SoundEvents.STRIDER_HAPPY`; nếu đang hoảng loạn tháo chạy (`isPanicking()`) thì có 1/60 cơ hội mỗi tick phát `SoundEvents.STRIDER_RETREAT`.
+    - Ambient sound: chỉ phát `STRIDER_AMBIENT` khi không hoảng loạn và không bị dụ (`!this.isPanicking() && !this.isBeingTempted()`).
+    - Ăn nấm: loại bỏ việc phát âm thanh `EntityStriderEat` trùng lặp 2 lần khi tương tác cho ăn.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `calculate_strider_ridden_speed(base_speed: f64, is_suffocating: bool, boost_factor: f32) -> f32`.
+    - Added `should_strider_be_happy(is_tempted: bool, rand_val: u32) -> bool`.
+    - Added `should_strider_retreat(is_panicking: bool, rand_val: u32) -> bool`.
+    - Added `should_squid_squirt_ink(has_attacker: bool) -> bool`.
+    - Added unit test `test_glow_squid_and_strider_parity`.
+  - Updated `ItemSteerable` in `crates/pumpkin-core/src/entity/item_steerable.rs`:
+    - Added `get_steerable_speed(&self) -> f32`.
+  - Updated `GlowSquidEntity` in `crates/pumpkin-core/src/entity/passive/glow_squid.rs`:
+    - Added `get_dark_ticks_remaining(&self) -> i32` and `set_dark_ticks(&self, ticks: i32)`.
+    - Synced `pumpkin_data::tracked_data::glow_squid::DATA_DARK_TICKS_REMAINING` with `VarInt`.
+    - Implemented `mob_init_data_tracker`, `mob_write_nbt`, and `mob_read_nbt` for `DarkTicksRemaining`.
+    - In `on_damage`, always set dark ticks to 100, and only squirt ink when attacked with sound volume 0.4.
+    - In `mob_tick`, decrement dark ticks when > 0 and only emit glow particles when dark ticks == 0.
+    - Added unit test `test_glow_squid_dark_ticks_and_nbt`.
+  - Updated `SquidEntity` in `crates/pumpkin-core/src/entity/passive/squid.rs`:
+    - In `on_damage`, only squirt ink when attacked with sound volume 0.4.
+    - Added unit test `test_squid_ink_trigger`.
+  - Updated `StriderEntity` in `crates/pumpkin-core/src/entity/passive/strider.rs`:
+    - Added `get_ridden_speed(&self) -> f32`, `is_being_tempted(&self) -> bool`, and `is_panicking(&self) -> bool`.
+    - In `mob_tick`, tick `self.steering.tick_boost()`, play `Sound::EntityStriderHappy` (1/140) when tempted, `Sound::EntityStriderRetreat` (1/60) when panicking, and only play ambient sound when neither panicking nor tempted.
+    - Implemented `get_steerable_speed` in `ItemSteerable`.
+    - Removed duplicate `EntityStriderEat` sound playback in `mob_interact`.
+    - Added unit test `test_strider_ridden_speed_and_sounds`.
+  - All unit tests verified and passing (82/82 tests in `entity::combat::tests`, `test_glow_squid_dark_ticks_and_nbt`, `test_squid_ink_trigger`, and `test_strider_ridden_speed_and_sounds`).
+
+
 
 
 

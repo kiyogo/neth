@@ -109,13 +109,18 @@ impl Mob for SquidEntity {
     }
 
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        // Vanilla Squid.java:180: ink squirt only triggers when attacked by an entity
+        if !combat::should_squid_squirt_ink(_source.is_some()) {
+            return;
+        }
+
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.silent.load(Ordering::Relaxed) {
             entity.world.load().play_sound_fine(
                 Sound::EntitySquidSquirt,
                 SoundCategory::Neutral,
                 &entity.pos.load(),
-                1.0,
+                0.4,
                 1.0,
             );
         }
@@ -281,5 +286,16 @@ impl CustomSound for SquidEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntitySquidHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_squid_ink_trigger() {
+        assert!(combat::should_squid_squirt_ink(true));
+        assert!(!combat::should_squid_squirt_ink(false));
     }
 }

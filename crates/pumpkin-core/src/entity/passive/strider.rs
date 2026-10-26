@@ -8,6 +8,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use rand::RngExt;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -90,6 +91,37 @@ impl StriderEntity {
         };
 
         mob_arc
+    }
+
+    #[must_use]
+    pub fn get_ridden_speed(&self) -> f32 {
+        let base_speed = self
+            .mob_entity
+            .living_entity
+            .get_attribute_value(&Attributes::MOVEMENT_SPEED);
+        crate::entity::combat::calculate_strider_ridden_speed(
+            base_speed,
+            self.is_suffocating(),
+            self.steering.boost_factor(),
+        )
+    }
+
+    #[must_use]
+    pub fn is_being_tempted(&self) -> bool {
+        self.mob_entity
+            .goals_selector
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_running::<TemptGoal>()
+    }
+
+    #[must_use]
+    pub fn is_panicking(&self) -> bool {
+        self.mob_entity
+            .goals_selector
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_running::<EscapeDangerGoal>()
     }
 
     #[must_use]
@@ -216,19 +248,44 @@ impl Mob for StriderEntity {
                     || block_down.id == pumpkin_data::Block::LAVA.id
             };
         self.set_suffocating(!in_warm_blocks);
+        self.steering.tick_boost();
 
-        if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
-            entity.world.load().play_sound_fine(
-                Sound::EntityStriderAmbient,
-                SoundCategory::Neutral,
-                &entity.pos.load(),
-                1.0,
-                if entity.age.load(Ordering::Relaxed) < 0 {
-                    1.25
-                } else {
-                    1.0
-                },
-            );
+        let is_tempted = self.is_being_tempted();
+        let is_panicking = self.is_panicking();
+
+        if !entity.silent.load(Ordering::Relaxed) {
+            let mut rng = rand::rng();
+            // Vanilla Strider.java:303-307: happy when tempted (1/140), retreat when panicking (1/60)
+            if crate::entity::combat::should_strider_be_happy(is_tempted, rng.random_range(0..140)) {
+                entity.world.load().play_sound_fine(
+                    Sound::EntityStriderHappy,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                    1.0,
+                    1.0,
+                );
+            } else if crate::entity::combat::should_strider_retreat(is_panicking, rng.random_range(0..60)) {
+                entity.world.load().play_sound_fine(
+                    Sound::EntityStriderRetreat,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                    1.0,
+                    1.0,
+                );
+            } else if !is_panicking && !is_tempted && rng.random_range(0..100) == 0 {
+                // Vanilla Strider.java:354-356: ambient only when not panicking and not tempted
+                entity.world.load().play_sound_fine(
+                    Sound::EntityStriderAmbient,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                    1.0,
+                    if entity.age.load(Ordering::Relaxed) < 0 {
+                        1.25
+                    } else {
+                        1.0
+                    },
+                );
+            }
         }
     }
 
@@ -268,25 +325,6 @@ impl Mob for StriderEntity {
             }
         }
 
-        let is_food = self.is_food(item_stack);
-        if is_food {
-            let entity = self.get_entity();
-            if !entity.silent.load(Ordering::Relaxed) {
-                let pos = entity.pos.load();
-                let pitch = crate::entity::combat::get_strider_eat_sound_pitch(
-                    rand::random(),
-                    rand::random(),
-                );
-                entity.world.load().play_sound_fine(
-                    Sound::EntityStriderEat,
-                    SoundCategory::Neutral,
-                    &pos,
-                    1.0,
-                    pitch,
-                );
-            }
-        }
-
         self.animal_interact(player, item_stack, Sound::EntityStriderEat)
     }
 }
@@ -299,6 +337,10 @@ impl ItemSteerable for StriderEntity {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn get_steerable_speed(&self) -> f32 {
+        self.get_ridden_speed()
+    }
 }
 
 impl CustomSound for StriderEntity {
@@ -308,5 +350,23 @@ impl CustomSound for StriderEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityStriderHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_strider_ridden_speed_and_sounds() {
+        let warm_speed = crate::entity::combat::calculate_strider_ridden_speed(0.175, false, 1.0);
+        let cold_speed = crate::entity::combat::calculate_strider_ridden_speed(0.175, true, 1.0);
+        assert!(warm_speed > cold_speed);
+        assert!((warm_speed - 0.09625).abs() < 1e-5);
+        assert!((cold_speed - 0.06125).abs() < 1e-5);
+
+        assert!(crate::entity::combat::should_strider_be_happy(true, 0));
+        assert!(!crate::entity::combat::should_strider_be_happy(false, 0));
+        assert!(crate::entity::combat::should_strider_retreat(true, 0));
+        assert!(!crate::entity::combat::should_strider_retreat(false, 0));
     }
 }
