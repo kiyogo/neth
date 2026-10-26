@@ -5452,6 +5452,70 @@ pub fn calculate_pufferfish_scale(puff_state: i32) -> f32 {
     }
 }
 
+/// Calculates wolf tail rotation angle based on state and health.
+///
+/// Mirrors vanilla `Wolf.java:532-540`:
+/// - Angry: 1.5393804F (~88.2 degrees)
+/// - Tame: (0.55F - damageRatio * 0.4F) * PI
+/// - Wild: PI / 5.0 (~36 degrees)
+#[must_use]
+pub fn calculate_wolf_tail_angle(is_angry: bool, is_tame: bool, health: f32, max_health: f32) -> f32 {
+    if is_angry {
+        1.539_380_4
+    } else if is_tame {
+        let max_h = if max_health <= 0.0 { 40.0 } else { max_health };
+        let damage_ratio = ((max_h - health) / max_h).clamp(0.0, 1.0);
+        (0.55 - damage_ratio * 0.4) * std::f32::consts::PI
+    } else {
+        std::f32::consts::PI / 5.0
+    }
+}
+
+/// Calculates repair amount per Armadillo Scute on Wolf Armor (12.5% of max durability).
+///
+/// Mirrors vanilla `Wolf.java:475`:
+/// `int repairUnit = (int)(armor.getMaxDamage() * 0.125F);`
+#[must_use]
+pub fn calculate_wolf_armor_repair_amount(max_damage: i32) -> i32 {
+    ((max_damage as f32) * 0.125) as i32
+}
+
+/// Checks whether a wolf's armor can be repaired with an armadillo scute.
+///
+/// Mirrors vanilla `Wolf.java:467-471`:
+/// Requires the wolf to be in sitting pose, wearing body armor, and the armor to be damaged.
+#[must_use]
+pub fn can_repair_wolf_armor(is_sitting: bool, is_damaged: bool, has_armor: bool) -> bool {
+    is_sitting && is_damaged && has_armor
+}
+
+/// Returns minimum ticks a fox must hold food in mouth before consuming it (600 ticks = 30 seconds).
+///
+/// Mirrors vanilla `Fox.java:132, 217`:
+/// `private static final int MIN_TICKS_BEFORE_EAT = 600;`
+#[must_use]
+pub const fn get_fox_min_ticks_before_eat() -> i32 {
+    600
+}
+
+/// Checks if a fox is eligible to eat its held food item.
+///
+/// Mirrors vanilla `Fox.java:216-217`:
+/// `if (this.canEat(itemInMouth) && this.ticksSinceEaten > 600)`
+#[must_use]
+pub fn can_fox_eat_item(is_food: bool, ticks_since_eaten: i32) -> bool {
+    is_food && ticks_since_eaten > 600
+}
+
+/// Returns health restored when feeding a tamed cat (1.0 HP = half a heart).
+///
+/// Mirrors vanilla `Cat.java:425`:
+/// `this.feed(player, hand, itemStack, 1.0F, 1.0F);`
+#[must_use]
+pub const fn get_cat_food_healing() -> f32 {
+    1.0
+}
+
 
 
 
@@ -8789,6 +8853,39 @@ mod tests {
         assert_eq!(calculate_pufferfish_scale(0), 0.5);
         assert_eq!(calculate_pufferfish_scale(1), 0.7);
         assert_eq!(calculate_pufferfish_scale(2), 1.0);
+    }
+
+    #[test]
+    fn test_wolf_fox_and_cat_parity() {
+        // 1. Wolf tail angle (Wolf.java:532-540)
+        let angry_angle = calculate_wolf_tail_angle(true, false, 8.0, 8.0);
+        assert!((angry_angle - 1.539_380_4).abs() < 1e-6);
+
+        let wild_angle = calculate_wolf_tail_angle(false, false, 8.0, 8.0);
+        assert!((wild_angle - std::f32::consts::PI / 5.0).abs() < 1e-6);
+
+        let full_health_angle = calculate_wolf_tail_angle(false, true, 40.0, 40.0);
+        assert!((full_health_angle - 0.55 * std::f32::consts::PI).abs() < 1e-6);
+
+        let half_health_angle = calculate_wolf_tail_angle(false, true, 20.0, 40.0);
+        assert!((half_health_angle - 0.35 * std::f32::consts::PI).abs() < 1e-6);
+
+        // 2. Wolf armor repair (Wolf.java:467-475)
+        assert_eq!(calculate_wolf_armor_repair_amount(64), 8);
+        assert_eq!(calculate_wolf_armor_repair_amount(100), 12);
+        assert!(can_repair_wolf_armor(true, true, true));
+        assert!(!can_repair_wolf_armor(false, true, true)); // not sitting
+        assert!(!can_repair_wolf_armor(true, false, true)); // not damaged
+        assert!(!can_repair_wolf_armor(true, true, false)); // no armor
+
+        // 3. Fox eating timer (Fox.java:132, 216-217)
+        assert_eq!(get_fox_min_ticks_before_eat(), 600);
+        assert!(can_fox_eat_item(true, 601));
+        assert!(!can_fox_eat_item(true, 600));
+        assert!(!can_fox_eat_item(false, 601));
+
+        // 4. Cat feeding health (Cat.java:425)
+        assert_eq!(get_cat_food_healing(), 1.0);
     }
 }
 

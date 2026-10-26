@@ -237,6 +237,18 @@ impl WolfEntity {
         }
         flags
     }
+
+    #[must_use]
+    pub fn get_tail_angle(&self) -> f32 {
+        let max_health = self.mob_entity.living_entity.get_max_health();
+        let health = self.mob_entity.living_entity.health.load();
+        combat::calculate_wolf_tail_angle(
+            self.is_angry(),
+            self.is_tame(),
+            health,
+            max_health,
+        )
+    }
 }
 
 impl AgeableMob for WolfEntity {
@@ -622,17 +634,41 @@ impl Mob for WolfEntity {
 
                 // Repair wolf armor with armadillo scute
                 if item.id == Item::ARMADILLO_SCUTE.id && !current_armor.is_empty() {
-                    item_stack.decrement_unless_creative(player.gamemode.load(), 1);
-                    let pos = self.get_entity().pos.load();
-                    self.get_entity().world.load().play_sound(
-                        pumpkin_data::sound::Sound::ItemWolfArmorRepair,
-                        pumpkin_data::sound::SoundCategory::Neutral,
-                        &pos,
-                    );
-                    player.trigger_advancement(
-                        crate::entity::player::advancement::trigger::AdvancementTrigger::RepairWolfArmor,
-                    );
-                    return true;
+                    let is_sitting = self.is_in_sitting_pose();
+                    let current_damage = current_armor.get_damage();
+                    let is_damaged = current_damage > 0;
+                    if combat::can_repair_wolf_armor(is_sitting, is_damaged, true) {
+                        let max_damage = current_armor.get_max_damage().unwrap_or(0);
+                        let repair_unit = combat::calculate_wolf_armor_repair_amount(max_damage);
+                        let mut repaired_armor = current_armor.clone();
+                        repaired_armor.repair_item(repair_unit);
+                        {
+                            let mut equip = self
+                                .mob_entity
+                                .living_entity
+                                .entity_equipment
+                                .lock()
+                                .unwrap_or_else(std::sync::PoisonError::into_inner);
+                            equip
+                                .equipment
+                                .insert(pumpkin_data::data_component_impl::EquipmentSlot::BODY, repaired_armor.clone());
+                        }
+                        self.mob_entity.living_entity.send_equipment_changes(&[(
+                            pumpkin_data::data_component_impl::EquipmentSlot::BODY,
+                            repaired_armor,
+                        )]);
+                        item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                        let pos = self.get_entity().pos.load();
+                        self.get_entity().world.load().play_sound(
+                            pumpkin_data::sound::Sound::ItemWolfArmorRepair,
+                            pumpkin_data::sound::SoundCategory::Neutral,
+                            &pos,
+                        );
+                        player.trigger_advancement(
+                            crate::entity::player::advancement::trigger::AdvancementTrigger::RepairWolfArmor,
+                        );
+                        return true;
+                    }
                 }
 
                 let parent_interaction = self.animal_interact(player, item_stack, ambient);
@@ -684,6 +720,22 @@ impl CustomSound for WolfEntity {
         let sound_variant = WolfSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
             .unwrap_or_default();
         Some(sound_variant.hurt_sound(is_baby))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wolf_tail_and_armor_repair() {
+        assert!(combat::can_repair_wolf_armor(true, true, true));
+        assert!(!combat::can_repair_wolf_armor(false, true, true));
+        assert!(!combat::can_repair_wolf_armor(true, false, true));
+        assert_eq!(combat::calculate_wolf_armor_repair_amount(64), 8);
+
+        let tail = combat::calculate_wolf_tail_angle(false, true, 40.0, 40.0);
+        assert!((tail - 0.55 * std::f32::consts::PI).abs() < 1e-5);
     }
 }
 

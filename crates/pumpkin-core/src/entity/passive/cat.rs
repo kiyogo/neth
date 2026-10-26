@@ -668,7 +668,7 @@ impl Mob for CatEntity {
                         < self.mob_entity.living_entity.get_max_health()
                 {
                     item_stack.decrement_unless_creative(player.gamemode.load(), 1);
-                    self.mob_entity.living_entity.heal(2.0);
+                    self.mob_entity.living_entity.heal(crate::entity::combat::get_cat_food_healing());
                     self.play_eating_sound();
                     return true;
                 }
@@ -715,5 +715,12 @@ impl Mob for CatEntity {
         }
 
         self.mob_entity.mob_interact(player, item_stack)
+    }
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_cat_food_healing() {
+        assert_eq!(crate::entity::combat::get_cat_food_healing(), 1.0);
     }
 }

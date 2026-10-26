@@ -83,6 +83,7 @@ pub struct FoxEntity {
     pub flags: AtomicU8,
     pub trusted_0: AtomicCell<Option<Uuid>>,
     pub trusted_1: AtomicCell<Option<Uuid>>,
+    pub ticks_since_eaten: AtomicI32,
 }
 
 impl FoxEntity {
@@ -95,6 +96,7 @@ impl FoxEntity {
             flags: AtomicU8::new(0),
             trusted_0: AtomicCell::new(None),
             trusted_1: AtomicCell::new(None),
+            ticks_since_eaten: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(fox);
         let mob_weak: Weak<dyn Mob> = {
@@ -187,6 +189,15 @@ impl FoxEntity {
         mob_arc.mob_entity.set_can_pick_up_loot(true);
 
         mob_arc
+    }
+
+    #[must_use]
+    pub fn get_ticks_since_eaten(&self) -> i32 {
+        self.ticks_since_eaten.load(Ordering::Relaxed)
+    }
+
+    pub fn set_ticks_since_eaten(&self, ticks: i32) {
+        self.ticks_since_eaten.store(ticks, Ordering::Relaxed);
     }
 
     #[must_use]
@@ -382,6 +393,7 @@ impl Mob for FoxEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_string("Type", self.get_variant().as_str().to_string());
+        nbt.put_int("TicksSinceEaten", self.get_ticks_since_eaten());
         nbt.put_bool("Sleeping", self.is_sleeping());
         nbt.put_bool("Sitting", self.is_sitting());
         nbt.put_bool("Crouching", self.is_crouching());
@@ -415,6 +427,9 @@ impl Mob for FoxEntity {
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(variant_str) = nbt.get_string("Type") {
             self.set_variant(FoxVariant::from_name(variant_str));
+        }
+        if let Some(ticks) = nbt.get_int("TicksSinceEaten") {
+            self.set_ticks_since_eaten(ticks);
         }
         if let Some(sleeping) = nbt.get_bool("Sleeping") {
             self.set_sleeping(sleeping);
@@ -462,6 +477,62 @@ impl Mob for FoxEntity {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
+        }
+
+        // Vanilla Fox.java:213-220: held food consumption after 600 ticks
+        let item_in_mouth = {
+            let equip = self
+                .mob_entity
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equip
+                .equipment
+                .get(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND)
+                .cloned()
+                .unwrap_or_else(|| ItemStack::EMPTY.clone())
+        };
+
+        if !item_in_mouth.is_empty()
+            && (self.is_food(&item_in_mouth) || item_in_mouth.item.has_tag(&tag::Item::MINECRAFT_FOX_FOOD))
+        {
+            let ticks = self.ticks_since_eaten.fetch_add(1, Ordering::Relaxed) + 1;
+            if combat::can_fox_eat_item(true, ticks) {
+                self.ticks_since_eaten.store(0, Ordering::Relaxed);
+                self.mob_entity.living_entity.heal(2.0);
+                let mut remaining = item_in_mouth;
+                remaining.decrement(1);
+                {
+                    let mut equip = self
+                        .mob_entity
+                        .living_entity
+                        .entity_equipment
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    if remaining.is_empty() {
+                        equip.equipment.remove(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND);
+                    } else {
+                        equip.equipment.insert(pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND, remaining.clone());
+                    }
+                }
+                self.mob_entity.living_entity.send_equipment_changes(&[(
+                    pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
+                    remaining,
+                )]);
+                let entity = self.get_entity();
+                if !entity.is_silent() {
+                    entity.world.load().play_sound_fine(
+                        Sound::EntityFoxEat,
+                        SoundCategory::Neutral,
+                        &entity.pos.load(),
+                        1.0,
+                        1.0,
+                    );
+                }
+            }
+        } else {
+            self.ticks_since_eaten.store(0, Ordering::Relaxed);
         }
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
@@ -527,6 +598,18 @@ impl CustomSound for FoxEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_fox_ticks_since_eaten() {
+        assert_eq!(combat::get_fox_min_ticks_before_eat(), 600);
+        assert!(!combat::can_fox_eat_item(true, 600));
+        assert!(combat::can_fox_eat_item(true, 601));
+        assert!(!combat::can_fox_eat_item(false, 601));
+
+        let mut nbt = NbtCompound::new();
+        nbt.put_int("TicksSinceEaten", 350);
+        assert_eq!(nbt.get_int("TicksSinceEaten"), Some(350));
+    }
 
     #[test]
     fn test_fox_variants_and_ids() {

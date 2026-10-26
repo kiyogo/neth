@@ -4175,6 +4175,46 @@
     - Added unit test `test_pufferfish_scales_and_sting`.
   - All unit tests verified and passing (83/83 tests in `entity::combat::tests`, `test_dolphin_data_tracker_and_moistness`, and `test_pufferfish_scales_and_sting`).
 
+---
+
+## Gap 198: Wolf Armor Repair Validation & Durability Reduction, Tail Angle, Fox Food Delay, Cat Healing Parity
+
+- **Vanilla Reference**:
+  - `Wolf.java:467-478, 532-540`:
+    - `can_repair_wolf_armor`: chỉ khi chó đang ngồi (`isInSittingPose()`), đang mặc giáp sói (`isWearingBodyArmor()`), và giáp đã bị hư hại (`damage > 0`).
+    - Sửa giáp: mỗi Armadillo Scute hồi phục `(int)(armor.getMaxDamage() * 0.125F)` durability (1/8 độ bền tối đa) và trừ trực tiếp điểm hư hại của giáp.
+    - Đuôi chó (`getTailAngle`):
+      - Khi tức giận (`isAngry`): `1.5393804F` (~88.2°).
+      - Khi thuần hóa (`isTame`): `(0.55F - damageRatio * 0.4F) * PI` (với `damageRatio = (maxHealth - health) / maxHealth`).
+      - Khi hoang dã: `PI / 5.0` (~36°).
+  - `Fox.java:132, 213-220`:
+    - `MIN_TICKS_BEFORE_EAT = 600` (30 giây). Khi cáo ngậm thức ăn trong mồm (`EquipmentSlot.MAINHAND`), nó đếm số tick ngậm. Sau 600 ticks, cáo tiêu thụ 1 item thức ăn, hồi phục 2.0 HP, phát âm thanh `SoundEvents.FOX_EAT` và reset bộ đếm về 0.
+    - NBT: `TicksSinceEaten` (int).
+  - `Cat.java:423-426`:
+    - Khi mèo đã thuần hóa bị thương và được chủ cho ăn cá (`ItemTags.CAT_FOOD`), mèo hồi phục `1.0F` HP (nửa tim), thay vì 2.0F.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `calculate_wolf_tail_angle(is_angry: bool, is_tame: bool, health: f32, max_health: f32) -> f32`.
+    - Added `calculate_wolf_armor_repair_amount(max_damage: i32) -> i32`.
+    - Added `can_repair_wolf_armor(is_sitting: bool, is_damaged: bool, has_armor: bool) -> bool`.
+    - Added `get_fox_min_ticks_before_eat() -> i32` (600).
+    - Added `can_fox_eat_item(is_food: bool, ticks_since_eaten: i32) -> bool`.
+    - Added `get_cat_food_healing() -> f32` (1.0).
+    - Added unit test `test_wolf_fox_and_cat_parity`.
+  - Updated `WolfEntity` in `crates/pumpkin-core/src/entity/passive/wolf.rs`:
+    - Added `get_tail_angle(&self) -> f32`.
+    - Fixed wolf armor repair: verified sitting pose, armor damage, reduced armor damage value by 12.5% max durability, synced equipment changes, and triggered advancement.
+    - Added unit test `test_wolf_tail_and_armor_repair`.
+  - Updated `FoxEntity` in `crates/pumpkin-core/src/entity/passive/fox.rs`:
+    - Added `ticks_since_eaten: AtomicI32` with getters/setters and NBT persistence (`TicksSinceEaten`).
+    - In `mob_tick`, tracked ticks holding food in mainhand, consumed food after 600 ticks with 2.0 HP heal and `EntityFoxEat` sound.
+    - Added unit test `test_fox_ticks_since_eaten`.
+  - Updated `CatEntity` in `crates/pumpkin-core/src/entity/passive/cat.rs`:
+    - Adjusted feeding healing to `combat::get_cat_food_healing()` (1.0 HP).
+    - Added unit test `test_cat_food_healing`.
+  - All unit tests verified and passing (84/84 tests in `entity::combat::tests`, `test_wolf_tail_and_armor_repair`, `test_fox_ticks_since_eaten`, and `test_cat_food_healing`).
+
+
 
 
 
