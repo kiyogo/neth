@@ -5234,7 +5234,10 @@ pub fn get_squid_xp_reward(rand_0_to_2: i32) -> u32 {
 pub fn is_mob_leashable(entity_type: &pumpkin_data::entity::EntityType) -> bool {
     use pumpkin_data::entity::EntityType;
 
-    if entity_type == &EntityType::ZOGLIN {
+    if entity_type == &EntityType::ZOGLIN
+        || entity_type == &EntityType::HOGLIN
+        || entity_type == &EntityType::ZOMBIE_HORSE
+    {
         return true;
     }
     if entity_type == &EntityType::SQUID
@@ -13163,5 +13166,53 @@ mod tests {
         assert_eq!(ENDERMAN_FOLLOW_RANGE, 64.0);
         assert_eq!(ENDERMAN_STEP_HEIGHT, 1.0);
         assert_eq!(ENDERMAN_XP_REWARD, 5);
+    }
+
+    #[test]
+    fn test_passive_farm_and_pet_animals_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // Leashing parity tests (Vanilla Mob.canBeLeashed / Animal.java)
+        assert!(is_mob_leashable(&EntityType::COW));
+        assert!(is_mob_leashable(&EntityType::MOOSHROOM));
+        assert!(is_mob_leashable(&EntityType::PIG));
+        assert!(is_mob_leashable(&EntityType::SHEEP));
+        assert!(is_mob_leashable(&EntityType::CHICKEN));
+        assert!(is_mob_leashable(&EntityType::RABBIT));
+        assert!(is_mob_leashable(&EntityType::HORSE));
+        assert!(is_mob_leashable(&EntityType::DONKEY));
+        assert!(is_mob_leashable(&EntityType::MULE));
+        assert!(is_mob_leashable(&EntityType::SKELETON_HORSE));
+        assert!(is_mob_leashable(&EntityType::ZOMBIE_HORSE));
+        assert!(is_mob_leashable(&EntityType::CAMEL));
+        assert!(is_mob_leashable(&EntityType::LLAMA));
+        assert!(is_mob_leashable(&EntityType::WOLF));
+        assert!(is_mob_leashable(&EntityType::CAT));
+        assert!(is_mob_leashable(&EntityType::OCELOT));
+        assert!(is_mob_leashable(&EntityType::FOX));
+        assert!(is_mob_leashable(&EntityType::POLAR_BEAR));
+        assert!(is_mob_leashable(&EntityType::HOGLIN));
+        assert!(is_mob_leashable(&EntityType::ZOGLIN));
+
+        // Non-leashable exceptions
+        assert!(!is_mob_leashable(&EntityType::PANDA));
+        assert!(!is_mob_leashable(&EntityType::BAT));
+        assert!(!is_mob_leashable(&EntityType::VILLAGER));
+        assert!(!is_mob_leashable(&EntityType::WANDERING_TRADER));
+        assert!(!is_mob_leashable(&EntityType::TURTLE));
+        assert!(!is_mob_leashable(&EntityType::ZOMBIE));
+
+        // Equine & Fox attribute constants
+        assert_eq!(CAMEL_MAX_HEALTH, 32.0);
+        assert_eq!(CAMEL_MOVEMENT_SPEED, 0.09);
+        assert_eq!(CAMEL_JUMP_STRENGTH, 0.42);
+        assert_eq!(CAMEL_STEP_HEIGHT, 1.5);
+        assert_eq!(CHESTED_HORSE_BASE_MOVEMENT_SPEED, 0.175);
+        assert_eq!(CHESTED_HORSE_JUMP_STRENGTH, 0.5);
+        assert_eq!(SKELETON_HORSE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(ZOMBIE_HORSE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(FOX_MAX_HEALTH, 10.0);
+        assert_eq!(FOX_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(FOX_SAFE_FALL_DISTANCE, 5.0);
     }
 }

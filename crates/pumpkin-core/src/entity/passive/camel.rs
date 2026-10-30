@@ -56,32 +56,26 @@ impl CamelEntity {
         };
 
         // Initialize attributes: Max Health = 32.0, Movement Speed = 0.09, Step Height = 1.5, Jump Strength = 0.42
-        {
-            let mut attributes = camel
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 32.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.09;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.5;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(jump) = attributes.get_mut(&Attributes::JUMP_STRENGTH.id) {
-                jump.base_value = 0.42;
-                jump.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        camel.mob_entity.living_entity.health.store(32.0);
+        camel.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            crate::entity::combat::CAMEL_MAX_HEALTH,
+        );
+        camel.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            crate::entity::combat::CAMEL_MOVEMENT_SPEED,
+        );
+        camel.mob_entity.living_entity.set_attribute_base(
+            &Attributes::STEP_HEIGHT,
+            crate::entity::combat::CAMEL_STEP_HEIGHT,
+        );
+        camel.mob_entity.living_entity.set_attribute_base(
+            &Attributes::JUMP_STRENGTH,
+            crate::entity::combat::CAMEL_JUMP_STRENGTH,
+        );
+        camel
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::CAMEL_MAX_HEALTH as f32);
 
         let mob_arc = Arc::new(camel);
         let mob_weak: Weak<dyn Mob> = {
@@ -138,6 +132,10 @@ impl CamelEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        true
+    }
+
     pub fn is_dashing(&self) -> bool {
         self.dashing.load(Ordering::Relaxed)
     }

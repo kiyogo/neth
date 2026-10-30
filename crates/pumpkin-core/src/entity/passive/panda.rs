@@ -132,6 +132,10 @@ pub struct PandaEntity {
 }
 
 impl PandaEntity {
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
     pub const XP_REWARD: u32 = combat::PANDA_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {

@@ -107,6 +107,32 @@ impl FoxEntity {
         };
         let fox_weak = Arc::downgrade(&mob_arc);
 
+        // Vanilla Fox.java:createAttributes()
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            crate::entity::combat::FOX_MAX_HEALTH,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            crate::entity::combat::FOX_BASE_MOVEMENT_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::ATTACK_DAMAGE,
+            crate::entity::combat::FOX_BASE_ATTACK_DAMAGE,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::SAFE_FALL_DISTANCE,
+            crate::entity::combat::FOX_SAFE_FALL_DISTANCE,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::FOLLOW_RANGE,
+            crate::entity::combat::FOX_FOLLOW_RANGE,
+        );
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::FOX_MAX_HEALTH as f32);
+
         {
             let mut goal_selector = mob_arc
                 .mob_entity
@@ -194,6 +220,10 @@ impl FoxEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        true
+    }
+
     pub fn get_ticks_since_eaten(&self) -> i32 {
         self.ticks_since_eaten.load(Ordering::Relaxed)
     }

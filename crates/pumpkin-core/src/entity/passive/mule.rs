@@ -50,6 +50,10 @@ pub struct MuleEntity {
 }
 
 impl MuleEntity {
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        true
+    }
     pub const XP_REWARD: u32 = combat::ABSTRACT_HORSE_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {

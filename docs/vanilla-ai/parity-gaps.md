@@ -5783,3 +5783,31 @@ eck, part 1): nhận 100% full damage (damage).
     - `SpiderEntity` (`crates/pumpkin-core/src/entity/mob/spider.rs`)
     - `CaveSpiderEntity` (`crates/pumpkin-core/src/entity/mob/cave_spider.rs`)
   - All 39 unit tests verified and passing across the Hostile Overworld Mob suites.
+
+### Gap 238: Passive / Farm / Pet Animals Family (Cow, Mooshroom, Pig, Sheep, Chicken, Rabbit, Horse, Donkey, Mule, Skeleton Horse, Zombie Horse, Camel, Llama, Wolf, Cat, Ocelot, Fox, Panda, Polar Bear) Attributes, Equine Properties & Comprehensive Leashing Parity
+- **Vanilla Reference**:
+  - `Animal.java:createAnimalAttributes, canBeLeashed`:
+    - Động vật mặc định kế thừa `Mob.canBeLeashed() -> true`, ngoại lệ: `Panda.java:canBeLeashed() -> false`.
+    - Quái vật ngoại lệ được phép leashed trong Vanilla: `Hoglin.java:canBeLeashed() -> true`, `Zoglin.java:canBeLeashed() -> true`, `ZombieHorse.java:canBeLeashed() -> true` (kế thừa `AbstractHorse`).
+  - `Camel.java:createAttributes`:
+    - Base Attributes: `MAX_HEALTH = 32.0`, `MOVEMENT_SPEED = 0.09`, `JUMP_STRENGTH = 0.42`, `STEP_HEIGHT = 1.5`, `canBeLeashed() -> true`.
+  - `Fox.java:createAttributes`:
+    - Base Attributes: `MAX_HEALTH = 10.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 2.0`, `SAFE_FALL_DISTANCE = 5.0`, `FOLLOW_RANGE = 32.0`, `canBeLeashed() -> true`.
+  - `Horse.java, AbstractHorse.java, Donkey.java, Mule.java, SkeletonHorse.java, ZombieHorse.java`:
+    - Equine properties: `CHESTED_HORSE_BASE_MOVEMENT_SPEED = 0.175`, `CHESTED_HORSE_JUMP_STRENGTH = 0.5`, `SKELETON_HORSE_MOVEMENT_SPEED = 0.2`, `ZOMBIE_HORSE_MOVEMENT_SPEED = 0.2`, `canBeLeashed() -> true`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Fixed `is_mob_leashable` parity bug: Added `HOGLIN` and `ZOMBIE_HORSE` to explicitly allowed leashable mob exceptions alongside `ZOGLIN`.
+    - Added unit test `test_passive_farm_and_pet_animals_parity`.
+  - Updated `CamelEntity` in `crates/pumpkin-core/src/entity/passive/camel.rs`:
+    - Converted attribute initialization to `set_attribute_base` (Max Health 32.0, Speed 0.09, Step Height 1.5, Jump Strength 0.42).
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+  - Updated `FoxEntity` in `crates/pumpkin-core/src/entity/passive/fox.rs`:
+    - Initialized base attributes via `set_attribute_base` in `new()` (Max Health 10.0, Speed 0.3, Attack Damage 2.0, Safe Fall Distance 5.0, Follow Range 32.0).
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+  - Implemented `can_be_leashed(&self) -> bool { true }` across all passive farm & pet animal entities:
+    - `CowEntity`, `MooshroomEntity`, `PigEntity`, `SheepEntity`, `ChickenEntity`, `RabbitEntity`.
+    - `HorseEntity`, `DonkeyEntity`, `MuleEntity`, `SkeletonHorseEntity`, `ZombieHorseEntity`, `LlamaEntity`.
+    - `WolfEntity`, `CatEntity`, `OcelotEntity`, `PolarBearEntity`.
+  - Implemented `can_be_leashed(&self) -> bool { false }` in `PandaEntity` (`crates/pumpkin-core/src/entity/passive/panda.rs`), matching vanilla `Panda.java:canBeLeashed() -> false`.
+  - All 21 unit tests verified and passing across Cow, Horse, Camel, Fox, and Panda test suites.
