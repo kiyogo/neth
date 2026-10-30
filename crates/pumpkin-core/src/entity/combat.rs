@@ -14936,4 +14936,17 @@ mod tests {
 
 
 
+    #[test]
+    fn test_turtle_egg_constants_and_trampling_parity() {
+        use crate::block::blocks::turtle_egg::TurtleEggBlock;
+
+        assert_eq!(TurtleEggBlock::MAX_HATCH_LEVEL, 2);
+        assert_eq!(TurtleEggBlock::MIN_EGGS, 1);
+        assert_eq!(TurtleEggBlock::MAX_EGGS, 4);
+        assert_eq!(TurtleEggBlock::STEP_DESTROY_RANDOMNESS, 100);
+        assert_eq!(TurtleEggBlock::FALL_DESTROY_RANDOMNESS, 3);
+        assert_eq!(TurtleEggBlock::BABY_TURTLE_AGE, -24000);
+        assert_eq!(TurtleEggBlock::EVENT_TURTLE_EGG_PLACED, 2012);
+    }
+
 }

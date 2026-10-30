@@ -6521,3 +6521,24 @@ otDir * 0.4F, max = 0.2F).
     - Exported constant EVENT_WATER_EVAPORATE = 2009 on WetSpongeBlock.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_sponge_depth_limits_and_evaporation_parity.
+
+
+### Gap 264: Turtle Egg Crack Stages, Trampling Probability, Hatching Time & Egg Count Parity
+- **Vanilla Reference**:
+  - TurtleEggBlock.java:35-43, 50-87, 89-113, 123-134, 171-180:
+    - MAX_HATCH_LEVEL = 2: 3 crack states (0 = intact, 1 = cracked, 2 = about to hatch).
+    - MIN_EGGS = 1, MAX_EGGS = 4: 1 to 4 eggs per block.
+    - STEP_DESTROY_RANDOMNESS = 100: 1 in 100 chance per step to break/decrease an egg when not sneaking/stepping carefully.
+    - FALL_DESTROY_RANDOMNESS = 3: 1 in 3 chance on fall landed upon to break/decrease an egg (non-zombie).
+    - BABY_TURTLE_AGE = -24000: Spawned baby turtles start at age -24000 ticks (20 minutes).
+    - EVENT_TURTLE_EGG_PLACED = 2012: Level event 2012 when placed on sand.
+    - Sound pitch & volume: olume 0.7F, pitch 0.9F + random * 0.2F for crack, hatch, and break sounds.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/turtle_egg.rs:
+    - Exported constants MAX_HATCH_LEVEL = 2, MIN_EGGS = 1, MAX_EGGS = 4, STEP_DESTROY_RANDOMNESS = 100, FALL_DESTROY_RANDOMNESS = 3, BABY_TURTLE_AGE = -24000, and EVENT_TURTLE_EGG_PLACED = 2012.
+    - Corrected sound playback in decrease_eggs, 
+andom_tick (crack & hatch), and roken to use centered block position with olume 0.7 and pitch 0.9 + random * 0.2.
+    - Replaced hardcoded step and fall randomness values with named constants STEP_DESTROY_RANDOMNESS and FALL_DESTROY_RANDOMNESS.
+    - Replaced hardcoded baby age -24000 with BABY_TURTLE_AGE.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_turtle_egg_constants_and_trampling_parity.

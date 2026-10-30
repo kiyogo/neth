@@ -27,6 +27,13 @@ type TurtleEggProperties = TurtleEggLikeProperties;
 pub struct TurtleEggBlock;
 
 impl TurtleEggBlock {
+    pub const MAX_HATCH_LEVEL: i32 = 2;
+    pub const MIN_EGGS: i32 = 1;
+    pub const MAX_EGGS: i32 = 4;
+    pub const STEP_DESTROY_RANDOMNESS: u32 = 100;
+    pub const FALL_DESTROY_RANDOMNESS: u32 = 3;
+    pub const BABY_TURTLE_AGE: i32 = -24000;
+    pub const EVENT_TURTLE_EGG_PLACED: i32 = 2012;
     #[must_use]
     pub fn is_sand(world: &dyn BlockAccessor, pos: &BlockPos) -> bool {
         world.get_block(pos).has_tag(&tag::Block::MINECRAFT_SAND)
@@ -58,10 +65,13 @@ impl TurtleEggBlock {
         state_id: BlockStateId,
         block: &Block,
     ) {
-        world.play_sound(
+        let pitch = 0.9 + rand::random::<f32>() * 0.2;
+        world.play_sound_fine(
             Sound::EntityTurtleEggBreak,
             SoundCategory::Blocks,
-            &pos.to_f64(),
+            &pos.to_centered_f64(),
+            0.7,
+            pitch,
         );
 
         let props = TurtleEggProperties::from_state_id(state_id);
@@ -144,7 +154,7 @@ impl BlockBehaviour for TurtleEggBlock {
                 args.state.id,
                 args.block,
                 args.entity,
-                100,
+                Self::STEP_DESTROY_RANDOMNESS,
             );
         }
     }
@@ -163,7 +173,7 @@ impl BlockBehaviour for TurtleEggBlock {
             ));
             let (block, state) = args.world.get_block_and_state(&pos);
             if block == &Block::TURTLE_EGG {
-                Self::destroy_egg(args.world, &pos, state.id, block, args.entity, 3);
+                Self::destroy_egg(args.world, &pos, state.id, block, args.entity, Self::FALL_DESTROY_RANDOMNESS);
             }
         }
     }
@@ -184,19 +194,25 @@ impl BlockBehaviour for TurtleEggBlock {
                 BlockFlags::NOTIFY_ALL,
             );
 
-            args.world.play_sound(
+            let pitch = 0.9 + rand::random::<f32>() * 0.2;
+            args.world.play_sound_fine(
                 Sound::EntityTurtleEggCrack,
                 SoundCategory::Blocks,
-                &args.position.to_f64(),
+                &args.position.to_centered_f64(),
+                0.7,
+                pitch,
             );
         } else {
             args.world
                 .break_block(args.position, None, BlockFlags::SKIP_DROPS);
 
-            args.world.play_sound(
+            let pitch = 0.9 + rand::random::<f32>() * 0.2;
+            args.world.play_sound_fine(
                 Sound::EntityTurtleEggHatch,
                 SoundCategory::Blocks,
-                &args.position.to_f64(),
+                &args.position.to_centered_f64(),
+                0.7,
+                pitch,
             );
 
             if args.world.level_info.load().game_rules.spawn_mobs {
@@ -208,7 +224,7 @@ impl BlockBehaviour for TurtleEggBlock {
                     );
                     let turtle =
                         from_type(&EntityType::TURTLE, spawn_pos, args.world, Uuid::new_v4());
-                    turtle.get_entity().set_age(-24000);
+                    turtle.get_entity().set_age(Self::BABY_TURTLE_AGE);
                     args.world.spawn_entity_non_save(turtle);
                 }
             }
@@ -216,13 +232,14 @@ impl BlockBehaviour for TurtleEggBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        {
-            args.world.play_sound(
-                Sound::EntityTurtleEggBreak,
-                SoundCategory::Blocks,
-                &args.position.to_f64(),
-            );
-        }
+        let pitch = 0.9 + rand::random::<f32>() * 0.2;
+        args.world.play_sound_fine(
+            Sound::EntityTurtleEggBreak,
+            SoundCategory::Blocks,
+            &args.position.to_centered_f64(),
+            0.7,
+            pitch,
+        );
     }
 }
 
