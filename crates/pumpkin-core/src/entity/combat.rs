@@ -15209,4 +15209,16 @@ mod tests {
         assert_eq!(CrafterBlockEntity::INVENTORY_SIZE, 9);
     }
 
+    #[test]
+    fn test_lightning_rod_constants_and_power_parity() {
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::SPARK_CYCLE, 200);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+    }
+
 }

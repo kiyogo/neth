@@ -6742,3 +6742,19 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants `CONTAINER_SIZE = 9`, `CONTAINER_WIDTH = 3`, `CONTAINER_HEIGHT = 3`, and `INVENTORY_SIZE = 9`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_crafter_constants_and_timing_parity`.
+
+
+### Gap 276: Lightning Rod Activation Ticks, Attract Range & Electric Spark Event Parity
+- **Vanilla Reference**:
+  - LightningRodBlock.java:27-35, 75-90:
+    - `ACTIVATION_TICKS = 8`: Lightning strike powers the rod for 8 ticks (4 redstone ticks).
+    - `RANGE = 128`: Attracts lightning strikes within 128 blocks radius.
+    - `SPARK_CYCLE = 200`: Ambient spark cycle during thunderstorms.
+    - Level event: `3002` (`WorldEvent::ParticlesElectricSpark`) emitted on lightning strike with axis parameter.
+    - Weak signal is 15 when powered; strong signal is 15 exclusively in the facing direction (`facing == direction`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/lightning_rod.rs`:
+    - Exported constants `ACTIVATION_TICKS = 8`, `RANGE = 128`, `EVENT_LIGHTNING_STRIKE = 3002`, `SPARK_CYCLE = 200`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Standardized signal getters to use `POWER_ON` and `POWER_OFF`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_lightning_rod_constants_and_power_parity`.

@@ -20,6 +20,8 @@ impl LightningRodBlock {
     pub const RANGE: i32 = 128;
     pub const EVENT_LIGHTNING_STRIKE: u16 = 3002;
     pub const SPARK_CYCLE: u32 = 200;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
 
     pub fn trigger(world: &Arc<World>, pos: &BlockPos) {
         let (block, state_id) = world.get_block_and_state_id(pos);
@@ -66,16 +68,16 @@ impl BlockBehaviour for LightningRodBlock {
 
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LightningRodLikeProperties::from_state_id(args.state.id);
-        if props.powered { 15 } else { 0 }
+        if props.powered { Self::POWER_ON } else { Self::POWER_OFF }
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LightningRodLikeProperties::from_state_id(args.state.id);
         // It emits strong power only in its facing direction (the direction pointing outward)
         if props.powered && props.facing.to_block_direction() == args.direction {
-            15
+            Self::POWER_ON
         } else {
-            0
+            Self::POWER_OFF
         }
     }
 
