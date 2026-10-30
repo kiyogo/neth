@@ -6758,3 +6758,17 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized signal getters to use `POWER_ON` and `POWER_OFF`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_lightning_rod_constants_and_power_parity`.
+
+
+### Gap 277: Observer Block Pulse Duration, Delay & Output Direction Parity
+- **Vanilla Reference**:
+  - ObserverBlock.java:45-75, 90-105:
+    - `PULSE_DURATION = 2`: Emits a 2-game-tick pulse (1 redstone tick).
+    - `DETECTION_DELAY = 2`: 2-game-tick delay upon observing an update in front before activating.
+    - Power output: 15 when powered; only outputs to the opposite block from facing direction.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/observer.rs`:
+    - Exported constants `PULSE_DURATION = 2`, `DETECTION_DELAY = 2`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Standardized schedule tick calls and power getters to use named constants.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_observer_pulse_duration_and_power_parity`.

@@ -15221,4 +15221,14 @@ mod tests {
         assert_eq!(LightningRodBlock::POWER_OFF, 0);
     }
 
+    #[test]
+    fn test_observer_pulse_duration_and_power_parity() {
+        use crate::block::blocks::redstone::observer::ObserverBlock;
+
+        assert_eq!(ObserverBlock::PULSE_DURATION, 2);
+        assert_eq!(ObserverBlock::DETECTION_DELAY, 2);
+        assert_eq!(ObserverBlock::POWER_ON, 15);
+        assert_eq!(ObserverBlock::POWER_OFF, 0);
+    }
+
 }

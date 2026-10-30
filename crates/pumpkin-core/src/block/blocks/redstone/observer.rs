@@ -61,7 +61,7 @@ impl BlockBehaviour for ObserverBlock {
                 BlockFlags::NOTIFY_LISTENERS,
             );
             args.world
-                .schedule_block_tick(args.block, *args.position, 2, TickPriority::Normal);
+                .schedule_block_tick(args.block, *args.position, Self::PULSE_DURATION, TickPriority::Normal);
         }
         Self::update_neighbors(args.world, args.block, args.position, props);
     }
@@ -91,9 +91,9 @@ impl BlockBehaviour for ObserverBlock {
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = ObserverLikeProperties::from_state_id(args.state.id);
         if props.facing.to_block_direction() == args.direction && props.powered {
-            15
+            Self::POWER_ON
         } else {
-            0
+            Self::POWER_OFF
         }
     }
 
@@ -114,6 +114,11 @@ impl BlockBehaviour for ObserverBlock {
 }
 
 impl ObserverBlock {
+    pub const PULSE_DURATION: u32 = 2;
+    pub const DETECTION_DELAY: u32 = 2;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
     fn update_neighbors(
         world: &Arc<World>,
         block: &Block,
@@ -128,6 +133,6 @@ impl ObserverBlock {
     }
 
     fn schedule_tick(world: &World, block_pos: &BlockPos) {
-        world.schedule_block_tick(&Block::OBSERVER, *block_pos, 2, TickPriority::Normal);
+        world.schedule_block_tick(&Block::OBSERVER, *block_pos, Self::DETECTION_DELAY, TickPriority::Normal);
     }
 }
