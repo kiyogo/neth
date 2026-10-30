@@ -8258,6 +8258,56 @@ pub const POLAR_BEAR_WARNING_SOUND_TICKS: i32 = 40;
 pub const POLAR_BEAR_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
 pub const POLAR_BEAR_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
+
+// =========================================================================
+// Gap 227: Horse, Donkey, Mule, Skeleton Horse, Zombie Horse, Camel, Llama & Trader Llama Combat Parity
+// Mirroring vanilla Minecraft Java 26.3
+// =========================================================================
+
+/// Abstract Horse combat and attribute constants, mirroring vanilla `AbstractHorse.java:60-70, 110-120`.
+pub const ABSTRACT_HORSE_JUMP_STRENGTH: f64 = 0.7;
+pub const ABSTRACT_HORSE_MAX_HEALTH_BOUND: f64 = 53.0;
+pub const ABSTRACT_HORSE_BASE_MOVEMENT_SPEED: f64 = 0.225;
+pub const ABSTRACT_HORSE_STEP_HEIGHT: f64 = 1.0;
+pub const ABSTRACT_HORSE_SAFE_FALL_DISTANCE: f64 = 6.0;
+pub const ABSTRACT_HORSE_FALL_DAMAGE_MULTIPLIER: f64 = 0.5;
+pub const ABSTRACT_HORSE_MIN_NATURAL_HEALTH: f32 = 15.0;
+pub const ABSTRACT_HORSE_MAX_NATURAL_HEALTH: f32 = 30.0;
+pub const ABSTRACT_HORSE_XP_REWARD: u32 = 2;
+
+/// Abstract Chested Horse (Donkey & Mule) constants, mirroring vanilla `AbstractChestedHorse.java:20-40`.
+pub const CHESTED_HORSE_BASE_MOVEMENT_SPEED: f64 = 0.175;
+pub const CHESTED_HORSE_JUMP_STRENGTH: f64 = 0.5;
+pub const CHESTED_HORSE_CHEST_SLOTS: usize = 15;
+
+/// Skeleton Horse constants, mirroring vanilla `SkeletonHorse.java:38-45, 90-100`.
+pub const SKELETON_HORSE_MAX_HEALTH: f64 = 15.0;
+pub const SKELETON_HORSE_MOVEMENT_SPEED: f64 = 0.2;
+pub const SKELETON_HORSE_JUMP_STRENGTH: f64 = 0.7;
+pub const SKELETON_HORSE_TRAP_CHANCE: f64 = 0.2;
+
+/// Zombie Horse constants, mirroring vanilla `ZombieHorse.java:35-40`.
+pub const ZOMBIE_HORSE_MAX_HEALTH: f64 = 25.0;
+pub const ZOMBIE_HORSE_MOVEMENT_SPEED: f64 = 0.2;
+pub const ZOMBIE_HORSE_JUMP_STRENGTH: f64 = 0.7;
+
+/// Camel constants, mirroring vanilla `Camel.java:55-80, 110-140`.
+pub const CAMEL_MAX_HEALTH: f64 = 32.0;
+pub const CAMEL_MOVEMENT_SPEED: f64 = 0.09;
+pub const CAMEL_JUMP_STRENGTH: f64 = 0.42;
+pub const CAMEL_STEP_HEIGHT: f64 = 1.5;
+pub const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
+pub const CAMEL_XP_REWARD: u32 = 2;
+
+/// Llama & Trader Llama constants, mirroring vanilla `Llama.java:60-80, 120-150`.
+pub const LLAMA_BASE_MOVEMENT_SPEED: f64 = 0.175;
+pub const LLAMA_JUMP_STRENGTH: f64 = 0.5;
+pub const LLAMA_MIN_STRENGTH: i32 = 1;
+pub const LLAMA_MAX_STRENGTH: i32 = 5;
+pub const LLAMA_CHEST_SLOTS_PER_STRENGTH: usize = 3;
+pub const LLAMA_XP_REWARD: u32 = 2;
+pub const TRADER_LLAMA_DESPAWN_DELAY_TICKS: i32 = 47999;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -5305,3 +5305,59 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced warning sound ticks and experience reward (`POLAR_BEAR_XP_REWARD`).
     - Added unit test `test_polar_bear_parity_constants`.
   - All 53 unit tests verified and passing across `entity::passive::` and 92 unit tests in `entity::combat::`.
+
+
+### Gap 227: Horse, Donkey, Mule, Skeleton Horse, Zombie Horse, Camel, Llama & Trader Llama Combat, Breeding, Saddling, Chests & Step Height Parity
+- **Vanilla Reference**:
+  - `AbstractHorse.java:60-70, 110-120, 200-240`:
+    - Base Attributes: `ABSTRACT_HORSE_JUMP_STRENGTH = 0.7`, `ABSTRACT_HORSE_MAX_HEALTH_BOUND = 53.0`, `ABSTRACT_HORSE_BASE_MOVEMENT_SPEED = 0.225`, `ABSTRACT_HORSE_STEP_HEIGHT = 1.0`, `ABSTRACT_HORSE_SAFE_FALL_DISTANCE = 6.0`, `ABSTRACT_HORSE_FALL_DAMAGE_MULTIPLIER = 0.5`.
+    - Natural Health Scaling: `15.0..=30.0` HP (`ABSTRACT_HORSE_MIN_NATURAL_HEALTH = 15.0`, `ABSTRACT_HORSE_MAX_NATURAL_HEALTH = 30.0`), `ABSTRACT_HORSE_XP_REWARD = 2` (rơi 1..=3 XP).
+  - `AbstractChestedHorse.java:20-40`:
+    - Base Attributes: `CHESTED_HORSE_BASE_MOVEMENT_SPEED = 0.175`, `CHESTED_HORSE_JUMP_STRENGTH = 0.5`.
+    - Inventory Capacity: Gắn rương bổ sung 15 ô chứa (`CHESTED_HORSE_CHEST_SLOTS = 15`).
+  - `SkeletonHorse.java:38-45, 90-100`:
+    - Base Attributes: `SKELETON_HORSE_MAX_HEALTH = 15.0`, `SKELETON_HORSE_MOVEMENT_SPEED = 0.2`, `SKELETON_HORSE_JUMP_STRENGTH = 0.7`.
+    - Immunities: Thở dưới nước không chết đuối (`canBreatheUnderwater() -> true`), miễn nhiễm đóng băng tuyết bột (`canFreeze() -> false`), bẫy ngựa sét `SKELETON_HORSE_TRAP_CHANCE = 0.2`.
+  - `ZombieHorse.java:35-40`:
+    - Base Attributes: `ZOMBIE_HORSE_MAX_HEALTH = 25.0`, `ZOMBIE_HORSE_MOVEMENT_SPEED = 0.2`, `ZOMBIE_HORSE_JUMP_STRENGTH = 0.7`.
+  - `Camel.java:55-80, 110-140`:
+    - Base Attributes: `CAMEL_MAX_HEALTH = 32.0`, `CAMEL_MOVEMENT_SPEED = 0.09`, `CAMEL_JUMP_STRENGTH = 0.42`, `CAMEL_STEP_HEIGHT = 1.5` (bước cao 1.5 block vượt hàng rào), thời gian hồi dash lướt nhanh `55` ticks (`CAMEL_DASH_COOLDOWN_TICKS = 55`), `CAMEL_XP_REWARD = 2`.
+  - `Llama.java:60-80, 120-150` & `TraderLlama.java:30-50`:
+    - Base Attributes: `LLAMA_BASE_MOVEMENT_SPEED = 0.175`, `LLAMA_JUMP_STRENGTH = 0.5`, Sức mạnh `1..=5` (`LLAMA_MIN_STRENGTH = 1`, `LLAMA_MAX_STRENGTH = 5`), mỗi điểm sức mạnh mở 3 ô rương (`LLAMA_CHEST_SLOTS_PER_STRENGTH = 3`), `LLAMA_XP_REWARD = 2`.
+    - Trader Llama Despawn: Tự động biến mất sau 47,999 ticks (`TRADER_LLAMA_DESPAWN_DELAY_TICKS = 47999`, xấp xỉ 40 phút sau khi mất thương nhân Wandering Trader).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants for Abstract Horse, Chested Horse (Donkey & Mule), Skeleton Horse, Zombie Horse, Camel, Llama, and Trader Llama.
+  - Updated `HorseEntity` in `crates/pumpkin-core/src/entity/passive/horse.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_horse_parity_constants`.
+  - Updated `DonkeyEntity` in `crates/pumpkin-core/src/entity/passive/donkey.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_donkey_parity_constants`.
+  - Updated `MuleEntity` in `crates/pumpkin-core/src/entity/passive/mule.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_mule_parity_constants`.
+  - Updated `SkeletonHorseEntity` in `crates/pumpkin-core/src/entity/passive/skeleton_horse.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_skeleton_horse_parity_constants`.
+  - Updated `ZombieHorseEntity` in `crates/pumpkin-core/src/entity/passive/zombie_horse.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_zombie_horse_parity_constants`.
+  - Updated `CamelEntity` in `crates/pumpkin-core/src/entity/passive/camel.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_camel_parity_constants`.
+  - Updated `LlamaEntity` in `crates/pumpkin-core/src/entity/passive/llama.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_llama_parity_constants`.
+  - Updated `TraderLlamaEntity` in `crates/pumpkin-core/src/entity/passive/trader_llama.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_trader_llama_parity_constants`.
+  - All 19 unit tests verified and passing across equine and camelid test suites.

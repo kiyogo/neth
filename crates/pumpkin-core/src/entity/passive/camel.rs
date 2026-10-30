@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
@@ -42,6 +43,8 @@ pub struct CamelEntity {
 }
 
 impl CamelEntity {
+    pub const XP_REWARD: u32 = combat::CAMEL_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let camel = Self {
@@ -193,6 +196,14 @@ impl Animal for CamelEntity {
 }
 
 impl Mob for CamelEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -350,5 +361,20 @@ impl CustomSound for CamelEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityCamelHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_camel_parity_constants() {
+        assert_eq!(CamelEntity::XP_REWARD, 2);
+        assert_eq!(combat::CAMEL_MAX_HEALTH, 32.0);
+        assert_eq!(combat::CAMEL_MOVEMENT_SPEED, 0.09);
+        assert_eq!(combat::CAMEL_STEP_HEIGHT, 1.5);
+        assert_eq!(combat::CAMEL_JUMP_STRENGTH, 0.42);
+        assert_eq!(combat::CAMEL_DASH_COOLDOWN_TICKS, 55);
     }
 }

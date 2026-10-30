@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicI32, AtomicU8, Ordering},
@@ -43,6 +44,8 @@ pub struct ZombieHorseEntity {
 }
 
 impl ZombieHorseEntity {
+    pub const XP_REWARD: u32 = combat::ABSTRACT_HORSE_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let horse = Self {
@@ -59,39 +62,31 @@ impl ZombieHorseEntity {
         };
 
         // Vanilla ZombieHorse: MAX_HEALTH = 25.0, MOVEMENT_SPEED = 0.225, JUMP_STRENGTH = 0.7, STEP_HEIGHT = 1.0, SAFE_FALL_DISTANCE = 6.0, FALL_DAMAGE_MULTIPLIER = 0.5
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 25.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.225;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(jump) = attributes.get_mut(&Attributes::JUMP_STRENGTH.id) {
-                jump.base_value = 0.7;
-                jump.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.0;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(safe_fall) = attributes.get_mut(&Attributes::SAFE_FALL_DISTANCE.id) {
-                safe_fall.base_value = 6.0;
-                safe_fall.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(fall_mult) = attributes.get_mut(&Attributes::FALL_DAMAGE_MULTIPLIER.id) {
-                fall_mult.base_value = 0.5;
-                fall_mult.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(25.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::ZOMBIE_HORSE_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::ZOMBIE_HORSE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::JUMP_STRENGTH,
+                combat::ZOMBIE_HORSE_JUMP_STRENGTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::STEP_HEIGHT,
+                combat::ABSTRACT_HORSE_STEP_HEIGHT,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::SAFE_FALL_DISTANCE,
+                combat::ABSTRACT_HORSE_SAFE_FALL_DISTANCE,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::FALL_DAMAGE_MULTIPLIER,
+                combat::ABSTRACT_HORSE_FALL_DAMAGE_MULTIPLIER,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::ZOMBIE_HORSE_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -162,6 +157,14 @@ impl Animal for ZombieHorseEntity {
 }
 
 impl Mob for ZombieHorseEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -328,5 +331,18 @@ impl CustomSound for ZombieHorseEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityZombieHorseHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zombie_horse_parity_constants() {
+        assert_eq!(ZombieHorseEntity::XP_REWARD, 2);
+        assert_eq!(combat::ZOMBIE_HORSE_MAX_HEALTH, 25.0);
+        assert_eq!(combat::ZOMBIE_HORSE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(combat::ZOMBIE_HORSE_JUMP_STRENGTH, 0.7);
     }
 }
