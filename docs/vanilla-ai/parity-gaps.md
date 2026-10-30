@@ -4515,3 +4515,41 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward` returning `WITCH_XP_REWARD` (5 XP).
     - Added unit test `test_witch_constants_and_xp_parity`.
   - All unit tests verified and passing (29/29 in illager/raider test suite, 94/94 in combat suite).
+
+
+## Gap 206: Golem Family Combat & Mechanics Parity (Iron Golem & Snow Golem)
+- **Vanilla Reference**: `IronGolem.java:48, 99-103, 189-204, 219, 228, 230, 240, 273`, `SnowGolem.java:62, 92-96, 128-137`, `Crackiness.java:5-18`, `Snowball.java:46`, `AbstractGolem.java`:
+  - `IronGolem.java`:
+    - Base Attributes: `MAX_HEALTH = 100.0`, `MOVEMENT_SPEED = 0.25`, `KNOCKBACK_RESISTANCE = 1.0`, `ATTACK_DAMAGE = 15.0`, `STEP_HEIGHT = 1.0`.
+    - Random Attack Damage: `float damage = (int)attackDamage > 0 ? attackDamage / 2.0F + this.random.nextInt((int)attackDamage) : attackDamage;`. Voi base 15.0, sat thuong nam trong khoang `[7.5, 21.5]`.
+    - Fling Velocity: `double scale = Math.max(0.0, 1.0 - knockbackResistance); target.setDeltaMovement(target.getDeltaMovement().add(0.0, 0.4F * scale, 0.0));`.
+    - Repair Ingot: Hoi 25.0 HP (`IRON_INGOT_HEAL_AMOUNT = 25`), am thanh repair co pitch `1.0 + (rand1 - rand2) * 0.2` (khoang `[0.8, 1.2]`).
+    - Crackiness tiers (`Crackiness.GOLEM`): None (> 75%), Low (50%..=75%), Medium (25%..=50%), High (<= 25%).
+    - Animations & Ticks: `attackAnimationTick = 10` (EntityStatus::StartAttacking, byte 4), `offerFlowerTick = 400` (byte 11 / byte 34).
+    - Target Exemption: Tu dong tan cong quai vat ngoai tru Creeper (`!(target instanceof Creeper)`).
+    - XP drop: `xpReward = 0` (AbstractGolem / Mob default).
+  - `SnowGolem.java`:
+    - Base Attributes: `MAX_HEALTH = 4.0`, `MOVEMENT_SPEED = 0.2`.
+    - Ranged Attack: Ban Snowball voi velocity `1.6`, inaccuracy `12.0`, shoot sound pitch `0.4 / (rand * 0.4 + 0.8)` (khoang `[0.333, 0.5]`).
+    - Snowball Entity Hit Damage (`Snowball.java:46`): Gay 3.0 HP damage truc tiep len Blaze, 0.0 HP damage len cac mob khac.
+    - Water Sensitivity & Melting: Nhan 1.0 HP drown damage khi cham nuoc/mua; nhan 1.0 HP on_fire damage khi o biome nong (`temperature > 1.0` hoac `EnvironmentAttributes.SNOW_GOLEM_MELTS`).
+    - Shearing: Dung keo cat qua bi de hien mat golem tuyet that (`PUMPKIN_FLAG = 16`).
+    - XP drop: `xpReward = 0` (AbstractGolem / Mob default).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `IRON_GOLEM_MAX_HEALTH = 100.0`, `IRON_GOLEM_BASE_MOVEMENT_SPEED = 0.25`, `IRON_GOLEM_KNOCKBACK_RESISTANCE = 1.0`, `IRON_GOLEM_BASE_ATTACK_DAMAGE = 15.0`, `IRON_GOLEM_STEP_HEIGHT = 1.0`, `IRON_GOLEM_IRON_INGOT_HEAL_AMOUNT = 25.0`, `IRON_GOLEM_ATTACK_ANIMATION_TICKS = 10`, `IRON_GOLEM_OFFER_FLOWER_TICKS = 400`, `IRON_GOLEM_FLING_UPWARD_VELOCITY = 0.4`, `IRON_GOLEM_XP_REWARD = 0`.
+    - Added constants `SNOW_GOLEM_MAX_HEALTH = 4.0`, `SNOW_GOLEM_BASE_MOVEMENT_SPEED = 0.2`, `SNOW_GOLEM_SHOOT_VELOCITY = 1.6`, `SNOW_GOLEM_SHOOT_INACCURACY = 12.0`, `SNOW_GOLEM_MELT_DAMAGE = 1.0`, `SNOW_GOLEM_XP_REWARD = 0`.
+    - Updated `test_iron_golem_and_snow_golem_parity`.
+  - Updated `crates/pumpkin-core/src/entity/passive/iron_golem.rs`:
+    - Implemented `modify_applied_attack_damage` using `calculate_iron_golem_attack_damage`.
+    - Updated `on_attack` with `target.sync_velocity`, `target.velocity_dirty`, and `self.trigger_attack_animation()`.
+    - Implemented `get_base_experience_reward` returning `IRON_GOLEM_XP_REWARD` (0 XP).
+    - Replaced hardcoded heal amount with `IRON_GOLEM_IRON_INGOT_HEAL_AMOUNT`.
+    - Added unit test `test_iron_golem_combat_fling_and_crackiness_parity`.
+  - Updated `crates/pumpkin-core/src/entity/passive/snow_golem.rs`:
+    - Updated attributes in `new()` with `SNOW_GOLEM_MAX_HEALTH` and `SNOW_GOLEM_BASE_MOVEMENT_SPEED`.
+    - Updated `throw_snowball` with `SNOW_GOLEM_SHOOT_VELOCITY` and `SNOW_GOLEM_SHOOT_INACCURACY`.
+    - Updated `mob_tick` with `SNOW_GOLEM_MELT_DAMAGE`.
+    - Implemented `get_base_experience_reward` returning `SNOW_GOLEM_XP_REWARD` (0 XP).
+    - Added unit test `test_snow_golem_constants_and_shearing_parity`.
+  - All unit tests verified and passing (7/7 in golem suite, 95/95 in combat suite).

@@ -3360,6 +3360,74 @@ pub const fn can_lightning_convert_mob(difficulty: pumpkin_util::Difficulty) -> 
     !matches!(difficulty, pumpkin_util::Difficulty::Peaceful)
 }
 
+// ============================================================================
+// Golem Family Parity Constants (Iron Golem & Snow Golem)
+// ============================================================================
+
+/// Base max health for an Iron Golem (100.0 HP / 50 hearts).
+/// Mirrors vanilla `IronGolem.java:99` (`Attributes.MAX_HEALTH, 100.0`).
+pub const IRON_GOLEM_MAX_HEALTH: f32 = 100.0;
+
+/// Base movement speed for an Iron Golem.
+/// Mirrors vanilla `IronGolem.java:100` (`Attributes.MOVEMENT_SPEED, 0.25`).
+pub const IRON_GOLEM_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+/// Knockback resistance for an Iron Golem (1.0 = 100% immune to normal knockback).
+/// Mirrors vanilla `IronGolem.java:101` (`Attributes.KNOCKBACK_RESISTANCE, 1.0`).
+pub const IRON_GOLEM_KNOCKBACK_RESISTANCE: f32 = 1.0;
+
+/// Base attack damage for an Iron Golem before random spread.
+/// Mirrors vanilla `IronGolem.java:102` (`Attributes.ATTACK_DAMAGE, 15.0`).
+pub const IRON_GOLEM_BASE_ATTACK_DAMAGE: f32 = 15.0;
+
+/// Step height for an Iron Golem.
+/// Mirrors vanilla `IronGolem.java:103` (`Attributes.STEP_HEIGHT, 1.0`).
+pub const IRON_GOLEM_STEP_HEIGHT: f32 = 1.0;
+
+/// Health restored when repairing an Iron Golem with an Iron Ingot (25.0 HP).
+/// Mirrors vanilla `IronGolem.java:48` (`IRON_INGOT_HEAL_AMOUNT = 25`).
+pub const IRON_GOLEM_IRON_INGOT_HEAL_AMOUNT: f32 = 25.0;
+
+/// Attack animation duration in ticks (10 ticks = 0.5s).
+/// Mirrors vanilla `IronGolem.java:189,228` (`attackAnimationTick = 10`).
+pub const IRON_GOLEM_ATTACK_ANIMATION_TICKS: i32 = 10;
+
+/// Offer flower duration in ticks (400 ticks = 20s).
+/// Mirrors vanilla `IronGolem.java:230,240` (`offerFlowerTick = 400`).
+pub const IRON_GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
+
+/// Upward velocity multiplier added on target hit before knockback resistance scaling.
+/// Mirrors vanilla `IronGolem.java:199` (`0.4F * scale`).
+pub const IRON_GOLEM_FLING_UPWARD_VELOCITY: f64 = 0.4;
+
+/// Base experience reward dropped by Iron Golem on death (0 XP).
+/// Mirrors vanilla `AbstractGolem.java` / `Mob.java` (default `xpReward = 0`).
+pub const IRON_GOLEM_XP_REWARD: u32 = 0;
+
+/// Base max health for a Snow Golem (4.0 HP / 2 hearts).
+/// Mirrors vanilla `SnowGolem.java:62` (`Attributes.MAX_HEALTH, 4.0`).
+pub const SNOW_GOLEM_MAX_HEALTH: f32 = 4.0;
+
+/// Base movement speed for a Snow Golem.
+/// Mirrors vanilla `SnowGolem.java:62` (`Attributes.MOVEMENT_SPEED, 0.2F`).
+pub const SNOW_GOLEM_BASE_MOVEMENT_SPEED: f64 = 0.2;
+
+/// Snowball projectile velocity shot by Snow Golem (1.6 blocks/sec scale).
+/// Mirrors vanilla `SnowGolem.java:130` (`projectile.shoot(..., 1.6F, 12.0F)`).
+pub const SNOW_GOLEM_SHOOT_VELOCITY: f64 = 1.6;
+
+/// Snowball projectile inaccuracy (spread angle in degrees: 12.0).
+/// Mirrors vanilla `SnowGolem.java:137` (`rangedAttackUncertainty = 12.0F`).
+pub const SNOW_GOLEM_SHOOT_INACCURACY: f64 = 12.0;
+
+/// Damage taken by Snow Golem when melting in warm biomes or touching water/rain (1.0 HP).
+/// Mirrors vanilla `SnowGolem.java:93,98`.
+pub const SNOW_GOLEM_MELT_DAMAGE: f32 = 1.0;
+
+/// Base experience reward dropped by Snow Golem on death (0 XP).
+/// Mirrors vanilla `AbstractGolem.java` / `Mob.java` (default `xpReward = 0`).
+pub const SNOW_GOLEM_XP_REWARD: u32 = 0;
+
 /// Calculates attack damage dealt by an Iron Golem with random spread.
 ///
 /// Mirrors vanilla `IronGolem.java:193`:
@@ -8450,6 +8518,25 @@ mod tests {
 
     #[test]
     fn test_iron_golem_and_snow_golem_parity() {
+        // 0. Golem constants parity (IronGolem.java & SnowGolem.java)
+        assert_eq!(IRON_GOLEM_MAX_HEALTH, 100.0);
+        assert_eq!(IRON_GOLEM_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(IRON_GOLEM_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(IRON_GOLEM_BASE_ATTACK_DAMAGE, 15.0);
+        assert_eq!(IRON_GOLEM_STEP_HEIGHT, 1.0);
+        assert_eq!(IRON_GOLEM_IRON_INGOT_HEAL_AMOUNT, 25.0);
+        assert_eq!(IRON_GOLEM_ATTACK_ANIMATION_TICKS, 10);
+        assert_eq!(IRON_GOLEM_OFFER_FLOWER_TICKS, 400);
+        assert_eq!(IRON_GOLEM_FLING_UPWARD_VELOCITY, 0.4);
+        assert_eq!(IRON_GOLEM_XP_REWARD, 0);
+
+        assert_eq!(SNOW_GOLEM_MAX_HEALTH, 4.0);
+        assert_eq!(SNOW_GOLEM_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(SNOW_GOLEM_SHOOT_VELOCITY, 1.6);
+        assert_eq!(SNOW_GOLEM_SHOOT_INACCURACY, 12.0);
+        assert_eq!(SNOW_GOLEM_MELT_DAMAGE, 1.0);
+        assert_eq!(SNOW_GOLEM_XP_REWARD, 0);
+
         // 1. Iron Golem attack damage random formula (IronGolem.java:193)
         // With base_attack = 14.0: damage = 7.0 + random.nextInt(14) (range 7.0 to 20.0)
         let min_dmg = calculate_iron_golem_attack_damage(14.0, 0);
