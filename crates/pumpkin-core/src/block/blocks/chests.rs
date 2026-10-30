@@ -541,6 +541,25 @@ impl BlockBehaviour for CopperChestBlock {
 #[pumpkin_block("minecraft:trapped_chest")]
 pub struct TrappedChestBlock;
 
+impl TrappedChestBlock {
+    pub const MIN_POWER: u8 = 0;
+    pub const MAX_POWER: u8 = 15;
+
+    #[must_use]
+    pub const fn calculate_signal(open_count: usize) -> u8 {
+        if open_count > Self::MAX_POWER as usize {
+            Self::MAX_POWER
+        } else {
+            open_count as u8
+        }
+    }
+
+    #[must_use]
+    pub const fn emits_strong_power(direction: BlockDirection) -> bool {
+        matches!(direction, BlockDirection::Up)
+    }
+}
+
 impl BlockBehaviour for TrappedChestBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         on_place_chest_impl(&args)
@@ -588,13 +607,13 @@ impl BlockBehaviour for TrappedChestBlock {
             0
         };
 
-        viewer_count.min(15) as u8
+        Self::calculate_signal(viewer_count as usize)
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         // Strong power emitted to the block beneath the trapped chest
         // The block below queries with direction Up (from below looking up at the chest)
-        if args.direction == BlockDirection::Up {
+        if Self::emits_strong_power(args.direction) {
             self.get_weak_redstone_power(args)
         } else {
             0

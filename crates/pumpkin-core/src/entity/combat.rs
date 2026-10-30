@@ -15330,4 +15330,33 @@ mod tests {
         assert_eq!(RedstoneLamp::get_light_emission(true), 15);
         assert_eq!(RedstoneLamp::get_light_emission(false), 0);
     }
+
+    #[test]
+    fn test_trapped_chest_viewer_count_signal_and_direction_parity() {
+        use crate::block::blocks::chests::TrappedChestBlock;
+        use crate::block::entities::trapped_chest::TrappedChestBlockEntity;
+        use pumpkin_data::BlockDirection;
+
+        assert_eq!(TrappedChestBlock::MIN_POWER, 0);
+        assert_eq!(TrappedChestBlock::MAX_POWER, 15);
+        assert_eq!(TrappedChestBlockEntity::MIN_POWER, 0);
+        assert_eq!(TrappedChestBlockEntity::MAX_POWER, 15);
+        assert!(TrappedChestBlockEntity::EMITS_REDSTONE);
+
+        // Viewer count to signal strength clamping (0..=15)
+        assert_eq!(TrappedChestBlock::calculate_signal(0), 0);
+        assert_eq!(TrappedChestBlock::calculate_signal(1), 1);
+        assert_eq!(TrappedChestBlock::calculate_signal(7), 7);
+        assert_eq!(TrappedChestBlock::calculate_signal(15), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(16), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(100), 15);
+
+        // Strong power direction (only Up, powering the block underneath)
+        assert!(TrappedChestBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::North));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::South));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::East));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::West));
+    }
 }

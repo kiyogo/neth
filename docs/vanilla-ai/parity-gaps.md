@@ -6839,3 +6839,19 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Replaced hardcoded schedule tick delay with `Self::DELAY`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_redstone_lamp_delay_and_light_emission_parity`.
+
+### Gap 282: Trapped Chest Viewer Count to Power Clamping & Direction Parity
+- **Vanilla Reference**:
+  - TrappedChestBlock.java:23-45, TrappedChestBlockEntity.java:18-35:
+    - Signal source: `isSignalSource = true`.
+    - Weak power formula: `ownSignal(state, level, pos) = clamp(ChestBlockEntity.getOpenCount(level, pos), 0, 15)`.
+    - Strong power direction: `getDirectSignal = direction == Direction.UP ? getSignal(level, pos, direction) : 0`. Trapped chest only strongly powers the solid block directly beneath it (which queries with `Direction.UP`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/chests.rs`:
+    - Exported constants `MIN_POWER = 0` and `MAX_POWER = 15`.
+    - Exported helpers `calculate_signal(open_count: usize) -> u8` and `emits_strong_power(direction: BlockDirection) -> bool`.
+    - Refactored `get_weak_redstone_power` and `get_strong_redstone_power` to use named helpers.
+  - Updated `crates/pumpkin-core/src/block/entities/trapped_chest.rs`:
+    - Exported constants `MIN_POWER = 0` and `MAX_POWER = 15`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_trapped_chest_viewer_count_signal_and_direction_parity`.

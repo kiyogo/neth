@@ -25,6 +25,8 @@ impl TrappedChestBlockEntity {
     pub const LID_ANIMATION_EVENT_TYPE: u8 = 1;
     pub const ID: &'static str = "minecraft:trapped_chest";
     pub const EMITS_REDSTONE: bool = true;
+    pub const MIN_POWER: u8 = 0;
+    pub const MAX_POWER: u8 = 15;
 }
 
 // Apply macros to generate trait implementations
