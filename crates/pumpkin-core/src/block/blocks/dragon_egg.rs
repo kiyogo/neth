@@ -16,32 +16,44 @@ use std::sync::Arc;
 pub struct DragonEggBlock;
 
 impl DragonEggBlock {
-    // DragonEggBlock.getDelayAfterPlace
-    const DELAY_AFTER_PLACE: u32 = 5;
-    const TELEPORT_RADIUS_XZ: i32 = 16;
-    const TELEPORT_RADIUS_Y: i32 = 8;
+    pub const DELAY_AFTER_PLACE: u32 = 5;
+    pub const HORIZONTAL_TELEPORT_RADIUS: i32 = 16;
+    pub const VERTICAL_TELEPORT_RADIUS: i32 = 8;
+    pub const TELEPORT_ATTEMPTS: usize = 1000;
+    pub const EVENT_DRAGON_EGG_TELEPORT: u32 = 2015;
+    pub const DUST_COLOR: i32 = -16777216;
 
-    fn teleport(world: &Arc<World>, pos: &BlockPos) {
-        for _ in 0..1000 {
-            let test_pos = pos.add(
-                rng().random_range(0..Self::TELEPORT_RADIUS_XZ)
-                    - rng().random_range(0..Self::TELEPORT_RADIUS_XZ),
-                rng().random_range(0..Self::TELEPORT_RADIUS_Y)
-                    - rng().random_range(0..Self::TELEPORT_RADIUS_Y),
-                rng().random_range(0..Self::TELEPORT_RADIUS_XZ)
-                    - rng().random_range(0..Self::TELEPORT_RADIUS_XZ),
-            );
+    #[must_use]
+    pub const fn pack_teleport_difference(pos: &BlockPos, target: &BlockPos) -> i32 {
+        pos.pack_difference_in_position(
+            target,
+            Self::HORIZONTAL_TELEPORT_RADIUS,
+            Self::VERTICAL_TELEPORT_RADIUS,
+            Self::HORIZONTAL_TELEPORT_RADIUS,
+        )
+    }
+
+    pub fn teleport(world: &Arc<World>, pos: &BlockPos) {
+        for _ in 0..Self::TELEPORT_ATTEMPTS {
+            let offset_x = rng().random_range(0..Self::HORIZONTAL_TELEPORT_RADIUS)
+                - rng().random_range(0..Self::HORIZONTAL_TELEPORT_RADIUS);
+            let offset_y = rng().random_range(0..Self::VERTICAL_TELEPORT_RADIUS)
+                - rng().random_range(0..Self::VERTICAL_TELEPORT_RADIUS);
+            let offset_z = rng().random_range(0..Self::HORIZONTAL_TELEPORT_RADIUS)
+                - rng().random_range(0..Self::HORIZONTAL_TELEPORT_RADIUS);
+
+            let test_pos = pos.add(offset_x, offset_y, offset_z);
+
+            // Bounds check inside build height (-64 to 319 for overworld)
+            if test_pos.0.y < -64 || test_pos.0.y >= 320 {
+                continue;
+            }
 
             let state = world.get_block_state(&test_pos);
             let below_state = world.get_block_state(&test_pos.down());
 
             if state.is_air() && !below_state.is_air() {
-                let packed_diff = pos.pack_difference_in_position(
-                    &test_pos,
-                    Self::TELEPORT_RADIUS_XZ,
-                    Self::TELEPORT_RADIUS_Y,
-                    Self::TELEPORT_RADIUS_XZ,
-                );
+                let packed_diff = Self::pack_teleport_difference(pos, &test_pos);
                 world.sync_world_event(WorldEvent::ParticlesDragonEggTeleport, *pos, packed_diff);
                 let current_state = world.get_block_state(pos);
                 world.set_block_state(

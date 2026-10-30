@@ -6563,3 +6563,22 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Spawned baby sniffer with `BABY_SNIFFER_AGE` when hatching completes.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sniffer_egg_hatching_and_boost_parity`.
+
+
+### Gap 266: Dragon Egg Teleport Distance, Particle & Fall Parity
+- **Vanilla Reference**:
+  - DragonEggBlock.java:23-76:
+    - `HORIZONTAL_TELEPORT_RADIUS = 16`: Random offset ranges up to 16 blocks horizontally (`random.nextInt(16) - random.nextInt(16)`).
+    - `VERTICAL_TELEPORT_RADIUS = 8`: Random offset ranges up to 8 blocks vertically (`random.nextInt(8) - random.nextInt(8)`).
+    - `TELEPORT_ATTEMPTS = 1000`: 1,000 attempts to find a valid air destination block with non-air block beneath.
+    - `EVENT_DRAGON_EGG_TELEPORT = 2015`: Emits level event 2015 (`WorldEvent::ParticlesDragonEggTeleport`) at source block with `packedDiff` parameter.
+    - `BlockUtil.packDifferenceInPosition`: Packs difference between `pos` and `testPos` as `((xDiff + xRadius) & 0xFF) << 16 | ((yDiff + yRadius) & 0xFF) << 8 | ((zDiff + zRadius) & 0xFF)`.
+    - `DELAY_AFTER_PLACE = 5`: Falling block delay ticks.
+    - `DUST_COLOR = -16777216`: Falling particle color `0xFF000000`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/dragon_egg.rs`:
+    - Exported public constants `DELAY_AFTER_PLACE = 5`, `HORIZONTAL_TELEPORT_RADIUS = 16`, `VERTICAL_TELEPORT_RADIUS = 8`, `TELEPORT_ATTEMPTS = 1000`, `EVENT_DRAGON_EGG_TELEPORT = 2015`, and `DUST_COLOR = -16777216`.
+    - Exported helper function `pack_teleport_difference(pos, target)` implementing vanilla's `BlockUtil.packDifferenceInPosition` formula.
+    - Enforced valid world build height bounds checking (`-64..320`) before teleporting.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_dragon_egg_constants_and_teleport_packing_parity`.

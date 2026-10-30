@@ -14971,4 +14971,30 @@ mod tests {
         assert_eq!(SnifferEggBlock::get_hatch_delay(true, 299), 4299);
     }
 
+    #[test]
+    fn test_dragon_egg_constants_and_teleport_packing_parity() {
+        use crate::block::blocks::dragon_egg::DragonEggBlock;
+        use pumpkin_util::math::position::BlockPos;
+        use pumpkin_util::math::vector3::Vector3;
+
+        assert_eq!(DragonEggBlock::DELAY_AFTER_PLACE, 5);
+        assert_eq!(DragonEggBlock::HORIZONTAL_TELEPORT_RADIUS, 16);
+        assert_eq!(DragonEggBlock::VERTICAL_TELEPORT_RADIUS, 8);
+        assert_eq!(DragonEggBlock::TELEPORT_ATTEMPTS, 1000);
+        assert_eq!(DragonEggBlock::EVENT_DRAGON_EGG_TELEPORT, 2015);
+        assert_eq!(DragonEggBlock::DUST_COLOR, -16777216);
+
+        // Same position (zero difference)
+        let pos = BlockPos(Vector3::new(100, 64, 100));
+        let packed_zero = DragonEggBlock::pack_teleport_difference(&pos, &pos);
+        let expected_zero = (16 << 16) | (8 << 8) | 16;
+        assert_eq!(packed_zero, expected_zero);
+
+        // Target with offsets: +10 X, +4 Y, -5 Z
+        let target = BlockPos(Vector3::new(110, 68, 95));
+        let packed = DragonEggBlock::pack_teleport_difference(&pos, &target);
+        let expected = (26 << 16) | (12 << 8) | 11;
+        assert_eq!(packed, expected);
+    }
+
 }
