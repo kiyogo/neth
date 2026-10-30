@@ -44,17 +44,15 @@ impl BlockBehaviour for ComparatorBlock {
             ModeComparator::Subtract => ModeComparator::Compare,
         };
 
-        let pitch = match props.mode {
-            ModeComparator::Subtract => 0.55,
-            ModeComparator::Compare => 0.5,
-        };
+        let is_subtract = props.mode == ModeComparator::Subtract;
+        let pitch = ComparatorBlock::get_click_pitch(is_subtract);
 
         args.world.play_sound_raw_expect(
             args.player,
             Sound::BlockComparatorClick as u16,
             SoundCategory::Blocks,
             &args.position.to_centered_f64(),
-            0.3,
+            ComparatorBlock::CLICK_VOLUME,
             pitch,
         );
 
@@ -273,11 +271,42 @@ impl RedstoneGateBlock<ComparatorLikeProperties> for ComparatorBlock {
     }
 
     fn get_update_delay_internal(&self, _state_id: BlockStateId, _block: &Block) -> u32 {
-        2 // Vanilla Delay
+        Self::DELAY
     }
 }
 
 impl ComparatorBlock {
+    pub const DELAY: u32 = 2;
+    pub const CLICK_VOLUME: f32 = 0.3;
+    pub const CLICK_PITCH_COMPARE: f32 = 0.5;
+    pub const CLICK_PITCH_SUBTRACT: f32 = 0.55;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub const fn calculate_comparator_signal(
+        input_signal: u8,
+        side_signal: u8,
+        is_subtract: bool,
+    ) -> u8 {
+        if input_signal == 0 || side_signal > input_signal {
+            0
+        } else if is_subtract {
+            input_signal - side_signal
+        } else {
+            input_signal
+        }
+    }
+
+    #[must_use]
+    pub const fn get_click_pitch(is_subtract: bool) -> f32 {
+        if is_subtract {
+            Self::CLICK_PITCH_SUBTRACT
+        } else {
+            Self::CLICK_PITCH_COMPARE
+        }
+    }
+
     fn calculate_output_signal(
         &self,
         world: &World,
@@ -297,11 +326,7 @@ impl ComparatorBlock {
         }
 
         let props = ComparatorLikeProperties::from_state_id(state.id);
-        if props.mode == ModeComparator::Subtract {
-            power - sub_power
-        } else {
-            power
-        }
+        Self::calculate_comparator_signal(power, sub_power, props.mode == ModeComparator::Subtract)
     }
 
     fn get_attached_itemframe_level(

@@ -15248,4 +15248,39 @@ mod tests {
         assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
     }
 
+    #[test]
+    fn test_comparator_modes_sound_and_delay_parity() {
+        use crate::block::blocks::redstone::comparator::ComparatorBlock;
+
+        assert_eq!(ComparatorBlock::DELAY, 2);
+        assert_eq!(ComparatorBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_COMPARE, 0.5);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_SUBTRACT, 0.55);
+        assert_eq!(ComparatorBlock::POWER_ON, 15);
+        assert_eq!(ComparatorBlock::POWER_OFF, 0);
+
+        // Sound pitches
+        assert_eq!(ComparatorBlock::get_click_pitch(false), 0.5);
+        assert_eq!(ComparatorBlock::get_click_pitch(true), 0.55);
+
+        // Signal calculations:
+        // Input 0 => 0
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 5, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 5, true), 0);
+
+        // Side > Input => 0
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(8, 10, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(8, 10, true), 0);
+
+        // Compare mode: input >= side => input
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 5, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 0, false), 15);
+
+        // Subtract mode: input >= side => input - side
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 5, true), 5);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 7, true), 8);
+    }
+
 }

@@ -6787,3 +6787,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported calculation helper `calculate_delay_ticks(delay)`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_repeater_delay_scaling_and_constants_parity`.
+
+
+### Gap 279: Comparator Mode Calculation (Compare vs Subtract), Sound Pitch & Delay Parity
+- **Vanilla Reference**:
+  - ComparatorBlock.java:33-50, 75-90:
+    - Delay: `DELAY = 2` game ticks (1 redstone tick).
+    - Sound on mode toggle: `SoundEvents.COMPARATOR_CLICK`, volume 0.3F; pitch is 0.55F when switched to `Subtract` mode, and 0.5F when switched to `Compare` mode.
+    - Signal logic:
+      - If input signal is 0 or side signal > input signal: output = 0.
+      - In Subtract mode: `input - side`.
+      - In Compare mode: `input`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/comparator.rs`:
+    - Exported constants `DELAY = 2`, `CLICK_VOLUME = 0.3`, `CLICK_PITCH_COMPARE = 0.5`, `CLICK_PITCH_SUBTRACT = 0.55`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported helpers `calculate_comparator_signal(input, side, is_subtract)` and `get_click_pitch(is_subtract)`.
+    - Standardized schedule tick calls and sound playback to use named constants.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_comparator_modes_sound_and_delay_parity`.
