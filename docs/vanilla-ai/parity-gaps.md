@@ -6904,3 +6904,24 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported `LISTENER_RANGE = 8` on `SculkSensorBlockEntity` and `LISTENER_RANGE = 16` on `CalibratedSculkSensorBlockEntity`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sculk_sensor_timing_range_and_calibration_parity`.
+
+### Gap 285: Redstone Torch Burnout Logic, Burnout Ticks, Max Toggles & Inversion Delay Parity
+- **Vanilla Reference**:
+  - RedstoneTorchBlock.java:27-45, 115-135:
+    - Burnout tracking:
+      - `RECENT_TOGGLE_TIMER = 60` ticks: Sliding window of recent toggles per block pos.
+      - `MAX_RECENT_TOGGLES = 8`: Toggling 8 times within 60 ticks puts the torch into burnout.
+      - `RESTART_DELAY = 160` ticks (8.0 seconds): Duration a burnt-out torch stays deactivated before attempting to restart.
+      - `TOGGLE_DELAY = 2` ticks (1 redstone tick): Inversion tick delay when receiving/losing power from neighbor block.
+      - `BURNOUT_EVENT = 1502`: Event ID for playing torch burnout smoke and fizz sound.
+    - Signal directionality:
+      - Floor torch: outputs weak power in all directions except upwards towards query from below (`direction != Direction.Up`).
+      - Wall torch: outputs weak power in all directions except towards its supporting attached face (`direction != facing`).
+      - Strong power: only downwards (`direction == Direction.Down`, powering the block directly above it).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/redstone_torch.rs`:
+    - Exported constants `RECENT_TOGGLE_TIMER = 60`, `MAX_RECENT_TOGGLES = 8`, `RESTART_DELAY = 160`, `TOGGLE_DELAY = 2`, `BURNOUT_EVENT = 1502`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported helpers `is_burnt_out(recent_toggles)`, `can_output_weak_power(is_wall_torch, wall_facing, direction)`, and `emits_strong_power(direction)`.
+    - Refactored `on_neighbor_update`, `get_weak_redstone_power`, and `get_strong_redstone_power` to use named constants and helpers.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_redstone_torch_burnout_delays_and_signals_parity`.

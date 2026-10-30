@@ -15451,4 +15451,46 @@ mod tests {
         assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::Down));
         assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::North));
     }
+
+    #[test]
+    fn test_redstone_torch_burnout_delays_and_signals_parity() {
+        use crate::block::blocks::redstone::redstone_torch::RedstoneTorchBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::BlockDirection;
+
+        assert_eq!(RedstoneTorchBlock::RECENT_TOGGLE_TIMER, 60);
+        assert_eq!(RedstoneTorchBlock::MAX_RECENT_TOGGLES, 8);
+        assert_eq!(RedstoneTorchBlock::RESTART_DELAY, 160);
+        assert_eq!(RedstoneTorchBlock::TOGGLE_DELAY, 2);
+        assert_eq!(RedstoneTorchBlock::BURNOUT_EVENT, 1502);
+        assert_eq!(RedstoneTorchBlock::POWER_ON, 15);
+        assert_eq!(RedstoneTorchBlock::POWER_OFF, 0);
+
+        // Burnout threshold check
+        assert!(!RedstoneTorchBlock::is_burnt_out(0));
+        assert!(!RedstoneTorchBlock::is_burnt_out(7));
+        assert!(RedstoneTorchBlock::is_burnt_out(8));
+        assert!(RedstoneTorchBlock::is_burnt_out(10));
+
+        // Floor torch weak power (outputs everywhere except Up towards query from below)
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::North));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::South));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::East));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::West));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Down));
+        assert!(!RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Up));
+
+        // Wall torch weak power (attached facing North -> outputs everywhere except into its attached face North)
+        assert!(!RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::North));
+        assert!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::South));
+        assert!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::East));
+        assert!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::West));
+        assert!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::Up));
+        assert!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::Down));
+
+        // Strong power: only Down (powering the block directly above it)
+        assert!(RedstoneTorchBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::North));
+    }
 }

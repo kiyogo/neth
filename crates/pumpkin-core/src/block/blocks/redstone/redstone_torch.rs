@@ -33,6 +33,43 @@ use super::get_redstone_power;
 
 pub struct RedstoneTorchBlock;
 
+impl RedstoneTorchBlock {
+    pub const RECENT_TOGGLE_TIMER: i64 = 60;
+    pub const MAX_RECENT_TOGGLES: usize = 8;
+    pub const RESTART_DELAY: u32 = 160;
+    pub const TOGGLE_DELAY: u32 = 2;
+    pub const BURNOUT_EVENT: i32 = 1502;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub const fn is_burnt_out(recent_toggles: usize) -> bool {
+        recent_toggles >= Self::MAX_RECENT_TOGGLES
+    }
+
+    #[must_use]
+    pub fn can_output_weak_power(
+        is_wall_torch: bool,
+        wall_facing: Option<pumpkin_data::block_properties::HorizontalFacing>,
+        direction: BlockDirection,
+    ) -> bool {
+        if is_wall_torch {
+            if let Some(facing) = wall_facing {
+                direction != facing.to_block_direction()
+            } else {
+                true
+            }
+        } else {
+            direction != BlockDirection::Up
+        }
+    }
+
+    #[must_use]
+    pub const fn emits_strong_power(direction: BlockDirection) -> bool {
+        matches!(direction, BlockDirection::Down)
+    }
+}
+
 impl BlockMetadata for RedstoneTorchBlock {
     fn ids() -> Box<[BlockId]> {
         [BlockId::REDSTONE_TORCH, BlockId::REDSTONE_WALL_TORCH].into()
@@ -152,7 +189,7 @@ impl BlockBehaviour for RedstoneTorchBlock {
                     args.world.schedule_block_tick(
                         args.block,
                         *args.position,
-                        2,
+                        Self::TOGGLE_DELAY,
                         TickPriority::Normal,
                     );
                 }
@@ -162,7 +199,7 @@ impl BlockBehaviour for RedstoneTorchBlock {
                     args.world.schedule_block_tick(
                         args.block,
                         *args.position,
-                        2,
+                        Self::TOGGLE_DELAY,
                         TickPriority::Normal,
                     );
                 }
@@ -177,33 +214,33 @@ impl BlockBehaviour for RedstoneTorchBlock {
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         if args.block == &Block::REDSTONE_WALL_TORCH {
             let props = RWallTorchProps::from_state_id(args.state.id);
-            if props.lit && args.direction != props.facing.to_block_direction() {
-                return 15;
+            if props.lit && Self::can_output_weak_power(true, Some(props.facing), args.direction) {
+                return Self::POWER_ON;
             }
         } else if args.block == &Block::REDSTONE_TORCH {
             let props = RTorchProps::from_state_id(args.state.id);
-            if props.lit && args.direction != BlockDirection::Up {
-                return 15;
+            if props.lit && Self::can_output_weak_power(false, None, args.direction) {
+                return Self::POWER_ON;
             }
         }
-        0
+        Self::POWER_OFF
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
-        if args.direction == BlockDirection::Down {
+        if Self::emits_strong_power(args.direction) {
             if args.block == &Block::REDSTONE_WALL_TORCH {
                 let props = RWallTorchProps::from_state_id(args.state.id);
                 if props.lit {
-                    return 15;
+                    return Self::POWER_ON;
                 }
             } else if args.block == &Block::REDSTONE_TORCH {
                 let props = RTorchProps::from_state_id(args.state.id);
                 if props.lit {
-                    return 15;
+                    return Self::POWER_ON;
                 }
             }
         }
-        0
+        Self::POWER_OFF
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
