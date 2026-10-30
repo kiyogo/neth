@@ -5579,3 +5579,40 @@ eck, part 1): nhận 100% full damage (damage).
     - Added unit test `test_snow_golem_parity_constants`.
   - All 25 unit tests verified and passing across utility mob test suites.
 
+
+### Gap 233: Illager, Raid & Witch Family Parity (Pillager, Vindicator, Evoker, Ravager, Witch, Illusioner)
+- **Vanilla Reference**:
+  - `Pillager.java:85-89`:
+    - Base Attributes: `MAX_HEALTH = 24.0`, `MOVEMENT_SPEED = 0.35`, `ATTACK_DAMAGE = 5.0`, `FOLLOW_RANGE = 32.0`, `xpReward = 5`.
+  - `Vindicator.java:90-94`:
+    - Base Attributes: `MAX_HEALTH = 24.0`, `MOVEMENT_SPEED = 0.35`, `ATTACK_DAMAGE = 5.0`, `FOLLOW_RANGE = 12.0`, `xpReward = 5`.
+    - Mechanic: Johnny tag or aggressive target finding, axe weapon.
+  - `Evoker.java:50, 73`:
+    - Base Attributes: `MAX_HEALTH = 24.0`, `MOVEMENT_SPEED = 0.5`, `FOLLOW_RANGE = 12.0`, `xpReward = 10`.
+    - Mechanic: Fangs attack (`EvokerFangs`), Vex summoning, Wololo sheep color changing.
+  - `Witch.java:108`:
+    - Base Attributes: `MAX_HEALTH = 26.0`, `MOVEMENT_SPEED = 0.25`, `xpReward = 5`.
+    - Mechanic: Drinking potions (healing, fire resistance, swiftness, water breathing) and throwing splash potions (poison, weakness, slowness, harming).
+  - `Ravager.java:60, 70, 99-106`:
+    - Base Attributes: `MAX_HEALTH = 100.0`, `MOVEMENT_SPEED = 0.3`, `KNOCKBACK_RESISTANCE = 0.75`, `ATTACK_DAMAGE = 12.0`, `ATTACK_KNOCKBACK = 1.5`, `FOLLOW_RANGE = 32.0`, `STEP_HEIGHT = 1.0`, `xpReward = 20`.
+    - Mechanic: Roar attack with stun duration of 40 ticks (`STUN_DURATION_TICKS = 40`), destroying leaves and crops when charging.
+  - `Illusioner.java:53, 81`:
+    - Base Attributes: `MAX_HEALTH = 32.0`, `MOVEMENT_SPEED = 0.5`, `FOLLOW_RANGE = 18.0`, `xpReward = 5`.
+    - Mechanic: Blindness spell, illusion duplicates, bow attacks.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `PILLAGER_MAX_HEALTH`, `PILLAGER_MOVEMENT_SPEED`, `PILLAGER_ATTACK_DAMAGE`, `PILLAGER_FOLLOW_RANGE`, `PILLAGER_XP_REWARD`.
+    - Added constants `VINDICATOR_MAX_HEALTH`, `VINDICATOR_MOVEMENT_SPEED`, `VINDICATOR_ATTACK_DAMAGE`, `VINDICATOR_FOLLOW_RANGE`, `VINDICATOR_XP_REWARD`.
+    - Added constants `EVOKER_MAX_HEALTH`, `EVOKER_BASE_MOVEMENT_SPEED`, `EVOKER_FOLLOW_RANGE`, `EVOKER_XP_REWARD`.
+    - Added constants `WITCH_MAX_HEALTH`, `WITCH_MOVEMENT_SPEED`, `WITCH_XP_REWARD`.
+    - Added constants `RAVAGER_MAX_HEALTH`, `RAVAGER_BASE_MOVEMENT_SPEED`, `RAVAGER_KNOCKBACK_RESISTANCE`, `RAVAGER_ATTACK_DAMAGE`, `RAVAGER_ATTACK_KNOCKBACK`, `RAVAGER_FOLLOW_RANGE`, `RAVAGER_STEP_HEIGHT`, `RAVAGER_STUN_DURATION_TICKS`, `RAVAGER_XP_REWARD`.
+    - Added constants `ILLUSIONER_MAX_HEALTH`, `ILLUSIONER_MOVEMENT_SPEED`, `ILLUSIONER_FOLLOW_RANGE`, `ILLUSIONER_XP_REWARD`.
+    - Added unit test `test_illager_family_parity`.
+  - Updated `PillagerEntity` in `crates/pumpkin-core/src/entity/mob/pillager.rs`:
+    - Converted base attributes initialization to `set_attribute_base` (Follow Range, Movement Speed, Attack Damage, Max Health).
+  - Updated `RavagerEntity` in `crates/pumpkin-core/src/entity/mob/ravager.rs`:
+    - Converted base attributes initialization to `set_attribute_base` (Max Health, Movement Speed, Knockback Resistance, Attack Damage, Attack Knockback, Follow Range, Step Height).
+  - Updated `IllusionerEntity` in `crates/pumpkin-core/src/entity/mob/illusioner.rs`:
+    - Converted base attributes initialization to `set_attribute_base` (Max Health, Movement Speed, Follow Range).
+    - Fixed f32 cast in `set_health`.
+  - Verified 17/17 tests passing for illagers and raid mobs.

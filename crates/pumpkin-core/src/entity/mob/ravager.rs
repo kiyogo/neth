@@ -55,42 +55,34 @@ impl RavagerEntity {
         };
 
         // Vanilla Ravager: MAX_HEALTH = 100.0, MOVEMENT_SPEED = 0.3, KNOCKBACK_RESISTANCE = 0.75, ATTACK_DAMAGE = 12.0, ATTACK_KNOCKBACK = 1.5, FOLLOW_RANGE = 32.0, STEP_HEIGHT = 1.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = f64::from(crate::entity::combat::RAVAGER_MAX_HEALTH);
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = crate::entity::combat::RAVAGER_BASE_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(kb) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
-                kb.base_value = crate::entity::combat::RAVAGER_KNOCKBACK_RESISTANCE;
-                kb.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = f64::from(crate::entity::combat::RAVAGER_ATTACK_DAMAGE);
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(attack_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
-                attack_kb.base_value = crate::entity::combat::RAVAGER_ATTACK_KNOCKBACK;
-                attack_kb.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(range) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                range.base_value = crate::entity::combat::RAVAGER_FOLLOW_RANGE;
-                range.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = crate::entity::combat::RAVAGER_STEP_HEIGHT;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::RAVAGER_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::RAVAGER_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::KNOCKBACK_RESISTANCE, crate::entity::combat::RAVAGER_KNOCKBACK_RESISTANCE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::RAVAGER_ATTACK_DAMAGE));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_KNOCKBACK, crate::entity::combat::RAVAGER_ATTACK_KNOCKBACK);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::RAVAGER_FOLLOW_RANGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::RAVAGER_STEP_HEIGHT);
         mob_arc
             .mob_entity
             .living_entity

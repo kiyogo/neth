@@ -51,31 +51,26 @@ impl PillagerEntity {
         });
 
         // Vanilla Pillager: MOVEMENT_SPEED = 0.35, MAX_HEALTH = 24.0, ATTACK_DAMAGE = 5.0, FOLLOW_RANGE = 32.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 24.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.35;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 5.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 32.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(24.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::PILLAGER_MAX_HEALTH);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::PILLAGER_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::PILLAGER_ATTACK_DAMAGE));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::PILLAGER_FOLLOW_RANGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::PILLAGER_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();

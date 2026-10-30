@@ -40,27 +40,22 @@ impl IllusionerEntity {
         let mob_arc = Arc::new(illusioner);
 
         // Vanilla Illusioner: MOVEMENT_SPEED = 0.5, FOLLOW_RANGE = 18.0, MAX_HEALTH = 32.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 32.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.5;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 18.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(32.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::ILLUSIONER_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::ILLUSIONER_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::ILLUSIONER_FOLLOW_RANGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::ILLUSIONER_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();

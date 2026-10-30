@@ -12754,4 +12754,48 @@ mod tests {
         assert_eq!(SNOW_GOLEM_BASE_MOVEMENT_SPEED, 0.2);
         assert_eq!(SNOW_GOLEM_XP_REWARD, 0);
     }
+    #[test]
+    fn test_illager_family_parity() {
+        // Pillager (Pillager.java:85-89)
+        assert_eq!(PILLAGER_MAX_HEALTH, 24.0);
+        assert_eq!(PILLAGER_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PILLAGER_ATTACK_DAMAGE, 5.0);
+        assert_eq!(PILLAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(PILLAGER_XP_REWARD, 5);
+
+        // Vindicator (Vindicator.java:90-94)
+        assert_eq!(VINDICATOR_MAX_HEALTH, 24.0);
+        assert_eq!(VINDICATOR_MOVEMENT_SPEED, 0.35);
+        assert_eq!(VINDICATOR_ATTACK_DAMAGE, 5.0);
+        assert_eq!(VINDICATOR_FOLLOW_RANGE, 12.0);
+        assert_eq!(VINDICATOR_XP_REWARD, 5);
+
+        // Evoker (Evoker.java:50, 73)
+        assert_eq!(EVOKER_MAX_HEALTH, 24.0);
+        assert_eq!(EVOKER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(EVOKER_FOLLOW_RANGE, 12.0);
+        assert_eq!(EVOKER_XP_REWARD, 10);
+
+        // Witch (Witch.java:108)
+        assert_eq!(WITCH_MAX_HEALTH, 26.0);
+        assert_eq!(WITCH_MOVEMENT_SPEED, 0.25);
+        assert_eq!(WITCH_XP_REWARD, 5);
+
+        // Ravager (Ravager.java:60, 70, 99-106)
+        assert_eq!(RAVAGER_MAX_HEALTH, 100.0);
+        assert_eq!(RAVAGER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(RAVAGER_KNOCKBACK_RESISTANCE, 0.75);
+        assert_eq!(RAVAGER_ATTACK_DAMAGE, 12.0);
+        assert_eq!(RAVAGER_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(RAVAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(RAVAGER_STEP_HEIGHT, 1.0);
+        assert_eq!(RAVAGER_STUN_DURATION_TICKS, 40);
+        assert_eq!(RAVAGER_XP_REWARD, 20);
+
+        // Illusioner (Illusioner.java:53, 81)
+        assert_eq!(ILLUSIONER_MAX_HEALTH, 32.0);
+        assert_eq!(ILLUSIONER_MOVEMENT_SPEED, 0.5);
+        assert_eq!(ILLUSIONER_FOLLOW_RANGE, 18.0);
+        assert_eq!(ILLUSIONER_XP_REWARD, 5);
+    }
 }
