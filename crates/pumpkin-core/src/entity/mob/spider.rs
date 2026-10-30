@@ -10,6 +10,10 @@ use pumpkin_util::difficulty::Difficulty;
 use rand::RngExt;
 use uuid::Uuid;
 
+use crate::entity::combat::{
+    SPIDER_BASE_ATTACK_DAMAGE, SPIDER_BASE_MOVEMENT_SPEED, SPIDER_LEAP_VELOCITY,
+    SPIDER_MAX_HEALTH, SPIDER_XP_REWARD,
+};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -43,14 +47,14 @@ impl SpiderEntity {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 16.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, SPIDER_MAX_HEALTH as f64);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 2.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, SPIDER_BASE_ATTACK_DAMAGE as f64);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.3);
-        mob_entity.living_entity.health.store(16.0);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, SPIDER_BASE_MOVEMENT_SPEED);
+        mob_entity.living_entity.health.store(SPIDER_MAX_HEALTH);
 
         let spider = Self {
             mob_entity,
@@ -90,7 +94,7 @@ impl SpiderEntity {
                     },
                 )),
             );
-            goal_selector.add_goal(3, Box::new(LeapAtTargetGoal::new(0.4)));
+            goal_selector.add_goal(3, Box::new(LeapAtTargetGoal::new(SPIDER_LEAP_VELOCITY)));
             goal_selector.add_goal(4, SpiderAttackGoal::new(1.0, false));
             goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.8)));
             goal_selector.add_goal(
@@ -241,5 +245,24 @@ impl Mob for SpiderEntity {
                 1.0,
             );
         }
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        SPIDER_XP_REWARD
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_spider_combat_and_climbing_parity() {
+        assert_eq!(SPIDER_MAX_HEALTH, 16.0);
+        assert_eq!(SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(SPIDER_XP_REWARD, 5);
+        assert_eq!(SPIDER_LEAP_VELOCITY, 0.4);
     }
 }

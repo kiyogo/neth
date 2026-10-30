@@ -4558,6 +4558,81 @@ pub fn calculate_zoglin_sound_pitch(is_baby: bool, rand_diff: f32) -> f32 {
 
 /// Checks whether an entity type is immune to Poison status effect.
 ///
+/// Spider max health (16.0 HP).
+///
+/// Mirrors vanilla `Spider.java:90`:
+/// `return Monster.createMonsterAttributes().add(Attributes.MAX_HEALTH, 16.0).add(Attributes.MOVEMENT_SPEED, 0.3F);`
+pub const SPIDER_MAX_HEALTH: f32 = 16.0;
+
+/// Spider base attack damage (2.0 HP).
+///
+/// Mirrors vanilla `Monster.java` / `Spider.java`:
+pub const SPIDER_BASE_ATTACK_DAMAGE: f32 = 2.0;
+
+/// Spider base movement speed (0.3).
+///
+/// Mirrors vanilla `Spider.java:90`:
+pub const SPIDER_BASE_MOVEMENT_SPEED: f64 = 0.3;
+
+/// Spider experience reward (5 XP).
+///
+/// Mirrors vanilla `Spider.java` / `Monster.java`:
+pub const SPIDER_XP_REWARD: u32 = 5;
+
+/// Spider leap upward/forward velocity power (0.4).
+///
+/// Mirrors vanilla `Spider.java:60`:
+/// `this.goalSelector.addGoal(3, new LeapAtTargetGoal(this, 0.4F));`
+pub const SPIDER_LEAP_VELOCITY: f32 = 0.4;
+
+/// Cave Spider max health (12.0 HP).
+///
+/// Mirrors vanilla `CaveSpider.java:26`:
+/// `return Spider.createAttributes().add(Attributes.MAX_HEALTH, 12.0);`
+pub const CAVE_SPIDER_MAX_HEALTH: f32 = 12.0;
+
+/// Cave Spider base attack damage (2.0 HP).
+///
+/// Mirrors vanilla `Spider.java` / `CaveSpider.java`:
+pub const CAVE_SPIDER_BASE_ATTACK_DAMAGE: f32 = 2.0;
+
+/// Cave Spider base movement speed (0.3).
+///
+/// Mirrors vanilla `Spider.java` / `CaveSpider.java`:
+pub const CAVE_SPIDER_BASE_MOVEMENT_SPEED: f64 = 0.3;
+
+/// Cave Spider experience reward (5 XP).
+///
+/// Mirrors vanilla `CaveSpider.java` / `Monster.java`:
+pub const CAVE_SPIDER_XP_REWARD: u32 = 5;
+
+/// Duration in ticks of the Poison effect applied by Cave Spider on Normal difficulty (140 ticks = 7 seconds).
+///
+/// Mirrors vanilla `CaveSpider.java:35, 41`:
+/// `poisonTime = 7; livingEntity.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTime * 20, 0), this);`
+pub const CAVE_SPIDER_POISON_NORMAL_TICKS: i32 = 140;
+
+/// Duration in ticks of the Poison effect applied by Cave Spider on Hard difficulty (300 ticks = 15 seconds).
+///
+/// Mirrors vanilla `CaveSpider.java:37, 41`:
+/// `poisonTime = 15; livingEntity.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTime * 20, 0), this);`
+pub const CAVE_SPIDER_POISON_HARD_TICKS: i32 = 300;
+
+/// Calculates poison effect duration in ticks applied by Cave Spider based on world difficulty.
+///
+/// Mirrors vanilla `CaveSpider.java:33-40`:
+/// - Easy or Peaceful: 0 ticks (no poison)
+/// - Normal: 7 * 20 = 140 ticks
+/// - Hard: 15 * 20 = 300 ticks
+#[must_use]
+pub const fn calculate_cave_spider_poison_duration(difficulty: pumpkin_util::Difficulty) -> i32 {
+    match difficulty {
+        pumpkin_util::Difficulty::Normal => CAVE_SPIDER_POISON_NORMAL_TICKS,
+        pumpkin_util::Difficulty::Hard => CAVE_SPIDER_POISON_HARD_TICKS,
+        _ => 0,
+    }
+}
+
 /// Mirrors vanilla `Spider.java:126-128`, `CaveSpider.java`, `AbstractNautilus.java:462-464`:
 /// Spiders, Cave Spiders, Nautiluses, and Zombie Nautiluses are completely immune to Poison.
 #[must_use]
@@ -9457,6 +9532,23 @@ mod tests {
     fn test_spider_cave_spider_and_dolphin_parity() {
         use pumpkin_data::effect::StatusEffect;
         use pumpkin_data::entity::EntityType;
+
+        // Spider and CaveSpider constants & poison duration parity (Spider.java:60, 90, CaveSpider.java:26, 33-40)
+        assert_eq!(SPIDER_MAX_HEALTH, 16.0);
+        assert_eq!(SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(SPIDER_XP_REWARD, 5);
+        assert_eq!(SPIDER_LEAP_VELOCITY, 0.4);
+        assert_eq!(CAVE_SPIDER_MAX_HEALTH, 12.0);
+        assert_eq!(CAVE_SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(CAVE_SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(CAVE_SPIDER_XP_REWARD, 5);
+        assert_eq!(CAVE_SPIDER_POISON_NORMAL_TICKS, 140);
+        assert_eq!(CAVE_SPIDER_POISON_HARD_TICKS, 300);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Peaceful), 0);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Easy), 0);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Normal), 140);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Hard), 300);
 
         // 1. Poison immunity for Spider, CaveSpider, Nautilus, ZombieNautilus (Spider.java:126, AbstractNautilus.java:462)
         assert!(is_spider_or_nautilus_immune_to_poison(&EntityType::SPIDER, &StatusEffect::POISON));

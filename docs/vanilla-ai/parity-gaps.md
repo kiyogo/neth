@@ -4766,3 +4766,34 @@ eck, part 1): nhận 100% full damage (damage).
     - Updated unit test `test_bogged_poison_and_interval_parity`.
   - Updated `SkeletonEntityBase::new_wither` in `crates/pumpkin-core/src/entity/mob/skeleton/mod.rs` with `WITHER_SKELETON_BASE_ATTACK_DAMAGE` (4.0 HP).
   - All unit tests verified and passing (11/11 in skeleton suite, 99/99 in combat suite).
+
+## Gap 213: Spider & Cave Spider Combat, Poison Duration, Jockey & Wall Climbing Parity
+- **Vanilla Reference**: `Spider.java:50-65, 89-94, 126-128, 142-167`, `CaveSpider.java:25-28, 33-42, 50-55`:
+  - `Spider.java`:
+    - Base Attributes: `MAX_HEALTH = 16.0` (`SPIDER_MAX_HEALTH`), `MOVEMENT_SPEED = 0.3` (`SPIDER_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 2.0` (`SPIDER_BASE_ATTACK_DAMAGE`), `xpReward = 5` (`SPIDER_XP_REWARD`).
+    - Leap Attack: `LeapAtTargetGoal(this, 0.4F)` (`SPIDER_LEAP_VELOCITY = 0.4`).
+    - Climbing: `isClimbing()` kiểm tra flag bit 0 của `DATA_FLAGS_ID` (1 = climbing). Spider di chuyển theo phương thẳng đứng khi va chạm khối rắn.
+    - Immunity: Hoàn toàn miễn nhiễm hiệu ứng Poison (`canBeAffected(MobEffectInstance) -> effect != MobEffects.POISON`). Không bị làm chậm bởi `COBWEB`.
+    - Jockey / Effects: Khi spawn có tỉ lệ trở thành Spider Jockey (Skeleton cưỡi) và ở độ khó Hard có thể nhận hiệu ứng ngẫu nhiên (Speed, Strength, Regeneration, Invisibility).
+  - `CaveSpider.java`:
+    - Base Attributes: `MAX_HEALTH = 12.0` (`CAVE_SPIDER_MAX_HEALTH`), `MOVEMENT_SPEED = 0.3` (`CAVE_SPIDER_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 2.0` (`CAVE_SPIDER_BASE_ATTACK_DAMAGE`), `xpReward = 5` (`CAVE_SPIDER_XP_REWARD`).
+    - Poison Attack (`doHurtTarget`): Khi tấn công trúng mục tiêu, gây hiệu ứng Poison:
+      - Normal difficulty: 7 giây = 140 ticks (`CAVE_SPIDER_POISON_NORMAL_TICKS = 140`).
+      - Hard difficulty: 15 giây = 300 ticks (`CAVE_SPIDER_POISON_HARD_TICKS = 300`).
+      - Easy / Peaceful difficulty: 0 ticks (không gây poison).
+    - Jockey & Effects Immunity: `finalizeSpawn` trả về `groupData` trực tiếp, **không bao giờ** sinh jockey hay hiệu ứng ngẫu nhiên (`should_cave_spider_spawn_jockey_or_effects() -> false`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `SPIDER_MAX_HEALTH = 16.0`, `SPIDER_BASE_ATTACK_DAMAGE = 2.0`, `SPIDER_BASE_MOVEMENT_SPEED = 0.3`, `SPIDER_XP_REWARD = 5`, `SPIDER_LEAP_VELOCITY = 0.4`, `CAVE_SPIDER_MAX_HEALTH = 12.0`, `CAVE_SPIDER_BASE_ATTACK_DAMAGE = 2.0`, `CAVE_SPIDER_BASE_MOVEMENT_SPEED = 0.3`, `CAVE_SPIDER_XP_REWARD = 5`, `CAVE_SPIDER_POISON_NORMAL_TICKS = 140`, `CAVE_SPIDER_POISON_HARD_TICKS = 300`.
+    - Added helpers `calculate_cave_spider_poison_duration(difficulty: Difficulty) -> i32`, `is_spider_or_nautilus_immune_to_poison(entity_type: &EntityType, effect: &StatusEffect) -> bool`, and `should_cave_spider_spawn_jockey_or_effects() -> bool`.
+    - Updated unit tests `test_spider_cave_spider_and_dolphin_parity` in `combat.rs`.
+  - Updated `SpiderEntity` in `crates/pumpkin-core/src/entity/mob/spider.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Added poison immunity verification and unit test `test_spider_combat_and_attributes_parity`.
+  - Updated `CaveSpiderEntity` in `crates/pumpkin-core/src/entity/mob/cave_spider.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Applied vanilla difficulty-based poison duration via `calculate_cave_spider_poison_duration`.
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Added unit test `test_cave_spider_poison_and_attributes_parity`.
+  - All unit tests verified and passing (5/5 in spider suite, 99/99 in combat suite).

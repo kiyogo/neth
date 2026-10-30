@@ -7,6 +7,11 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 
+use crate::entity::combat::{
+    CAVE_SPIDER_BASE_ATTACK_DAMAGE, CAVE_SPIDER_BASE_MOVEMENT_SPEED, CAVE_SPIDER_MAX_HEALTH,
+    CAVE_SPIDER_XP_REWARD, calculate_cave_spider_poison_duration,
+};
+
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -42,7 +47,7 @@ impl CaveSpiderEntity {
             Arc::downgrade(&mob_arc)
         };
 
-        // Vanilla CaveSpider: MAX_HEALTH = 12.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0
+        // Vanilla CaveSpider: MAX_HEALTH = 12.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0 (CaveSpider.java:26)
         {
             let mut attributes = mob_arc
                 .mob_entity
@@ -51,19 +56,19 @@ impl CaveSpiderEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 12.0;
+                health.base_value = CAVE_SPIDER_MAX_HEALTH as f64;
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
+                speed.base_value = CAVE_SPIDER_BASE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 2.0;
+                damage.base_value = CAVE_SPIDER_BASE_ATTACK_DAMAGE as f64;
                 damage.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(12.0);
+        mob_arc.mob_entity.living_entity.set_health(CAVE_SPIDER_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -170,11 +175,7 @@ impl Mob for CaveSpiderEntity {
     fn on_attack(&self, target: &dyn EntityBase) {
         if let Some(living) = target.get_living_entity() {
             let world = self.mob_entity.living_entity.entity.world.load();
-            let duration = match world.level_info.load().difficulty {
-                pumpkin_util::Difficulty::Normal => 7 * 20,
-                pumpkin_util::Difficulty::Hard => 15 * 20,
-                _ => 0,
-            };
+            let duration = calculate_cave_spider_poison_duration(world.level_info.load().difficulty);
             if duration > 0 {
                 living.add_effect(Effect {
                     effect_type: &StatusEffect::POISON,
@@ -187,6 +188,10 @@ impl Mob for CaveSpiderEntity {
                 });
             }
         }
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        CAVE_SPIDER_XP_REWARD
     }
 
     fn mob_on_climbable(&self, _caller: &dyn EntityBase) -> bool {
@@ -222,5 +227,23 @@ impl Mob for CaveSpiderEntity {
                 1.0,
             );
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cave_spider_poison_and_attributes_parity() {
+        assert_eq!(CAVE_SPIDER_MAX_HEALTH, 12.0);
+        assert_eq!(CAVE_SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(CAVE_SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(CAVE_SPIDER_XP_REWARD, 5);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Peaceful), 0);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Easy), 0);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Normal), 140);
+        assert_eq!(calculate_cave_spider_poison_duration(pumpkin_util::Difficulty::Hard), 300);
     }
 }
