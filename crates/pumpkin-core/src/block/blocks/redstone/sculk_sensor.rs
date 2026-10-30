@@ -46,7 +46,58 @@ fn sculk_sensor_phase(block: &Block, state_id: BlockStateId) -> SculkSensorPhase
 
 impl SculkSensorBlock {
     pub const ACTIVE_TICKS: u32 = 30;
+    pub const ACTIVE_TICKS_REGULAR: u32 = 30;
+    pub const ACTIVE_TICKS_CALIBRATED: u32 = 10;
     pub const COOLDOWN_TICKS: u32 = 10;
+    pub const LISTENER_RANGE_REGULAR: u32 = 8;
+    pub const LISTENER_RANGE_CALIBRATED: u32 = 16;
+
+    #[must_use]
+    pub fn get_active_ticks(block_id: BlockId) -> u32 {
+        if block_id == BlockId::CALIBRATED_SCULK_SENSOR {
+            Self::ACTIVE_TICKS_CALIBRATED
+        } else {
+            Self::ACTIVE_TICKS_REGULAR
+        }
+    }
+
+    #[must_use]
+    pub fn get_listener_range(block_id: BlockId) -> u32 {
+        if block_id == BlockId::CALIBRATED_SCULK_SENSOR {
+            Self::LISTENER_RANGE_CALIBRATED
+        } else {
+            Self::LISTENER_RANGE_REGULAR
+        }
+    }
+
+    #[must_use]
+    pub fn get_redstone_strength_for_distance(distance: f32, listener_radius: u32) -> u8 {
+        let power_scale = 15.0 / listener_radius as f64;
+        let power = 15.0 - (power_scale * distance as f64).floor();
+        (power as i32).clamp(1, 15) as u8
+    }
+
+    #[must_use]
+    pub fn can_output_weak_power(
+        block_id: BlockId,
+        facing: Option<HorizontalFacing>,
+        direction: BlockDirection,
+    ) -> bool {
+        if block_id == BlockId::CALIBRATED_SCULK_SENSOR {
+            if let Some(f) = facing {
+                direction != horizontal_facing_to_dir(f)
+            } else {
+                true
+            }
+        } else {
+            true
+        }
+    }
+
+    #[must_use]
+    pub const fn emits_strong_power(direction: BlockDirection) -> bool {
+        matches!(direction, BlockDirection::Up)
+    }
     pub fn trigger(world: &Arc<World>, pos: &BlockPos, block: &Block, power: u8) {
         if block.id == BlockId::SCULK_SENSOR {
             let state = world.get_block_state(pos);
@@ -65,7 +116,7 @@ impl SculkSensorBlock {
                 props.power = power;
                 world.set_block_state(pos, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
                 world.update_neighbors(pos, None);
-                world.schedule_block_tick(block, *pos, 30, TickPriority::Normal);
+                world.schedule_block_tick(block, *pos, Self::ACTIVE_TICKS_REGULAR, TickPriority::Normal);
                 Self::notify_nearby_shriekers(world, pos);
             }
         } else if block.id == BlockId::CALIBRATED_SCULK_SENSOR {
@@ -100,7 +151,7 @@ impl SculkSensorBlock {
                 props.power = power;
                 world.set_block_state(pos, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
                 world.update_neighbors(pos, None);
-                world.schedule_block_tick(block, *pos, 30, TickPriority::Normal);
+                world.schedule_block_tick(block, *pos, Self::ACTIVE_TICKS_CALIBRATED, TickPriority::Normal);
                 Self::notify_nearby_shriekers(world, pos);
             }
         }
@@ -158,6 +209,14 @@ impl BlockBehaviour for SculkSensorBlock {
         true
     }
 
+    fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
+        if Self::emits_strong_power(args.direction) {
+            self.get_weak_redstone_power(args)
+        } else {
+            0
+        }
+    }
+
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         if args.block.id == BlockId::SCULK_SENSOR {
             let props = SculkSensorLikeProperties::from_state_id(args.state.id);
@@ -168,7 +227,9 @@ impl BlockBehaviour for SculkSensorBlock {
             }
         } else if args.block.id == BlockId::CALIBRATED_SCULK_SENSOR {
             let props = CalibratedSculkSensorLikeProperties::from_state_id(args.state.id);
-            if props.sculk_sensor_phase == SculkSensorPhase::Active {
+            if props.sculk_sensor_phase == SculkSensorPhase::Active
+                && Self::can_output_weak_power(args.block.id, Some(props.facing), args.direction)
+            {
                 props.power
             } else {
                 0
@@ -223,7 +284,7 @@ impl BlockBehaviour for SculkSensorBlock {
                     args.world.schedule_block_tick(
                         args.block,
                         *args.position,
-                        10,
+                        Self::COOLDOWN_TICKS,
                         TickPriority::Normal,
                     );
                 }
@@ -252,7 +313,7 @@ impl BlockBehaviour for SculkSensorBlock {
                     args.world.schedule_block_tick(
                         args.block,
                         *args.position,
-                        10,
+                        Self::COOLDOWN_TICKS,
                         TickPriority::Normal,
                     );
                 }

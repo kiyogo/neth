@@ -50,6 +50,7 @@ impl BlockEntity for CalibratedSculkSensorBlockEntity {
 
 impl CalibratedSculkSensorBlockEntity {
     pub const ID: &'static str = "minecraft:calibrated_sculk_sensor";
+    pub const LISTENER_RANGE: u32 = 16;
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {

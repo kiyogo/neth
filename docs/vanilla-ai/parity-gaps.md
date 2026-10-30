@@ -6876,3 +6876,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Refactored `on_projectile_hit` to use exported helpers and named constants.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_target_block_timing_precision_and_power_parity`.
+
+### Gap 284: Calibrated & Regular Sculk Sensor Frequency, Detection Radius, Cooldown & Vibration Phase Parity
+- **Vanilla Reference**:
+  - SculkSensorBlock.java:45-57, 176-198, CalibratedSculkSensorBlock.java:45-65:
+    - Active ticks:
+      - Regular sculk sensor: `ACTIVE_TICKS = 30` (1.5 seconds).
+      - Calibrated sculk sensor: `getActiveTicks() = 10` (0.5 seconds).
+    - Cooldown ticks: `COOLDOWN_TICKS = 10` (0.5 seconds).
+    - Vibration listener radius:
+      - Regular sculk sensor: `LISTENER_RANGE = 8` blocks.
+      - Calibrated sculk sensor: `LISTENER_RANGE = 16` blocks (double range).
+    - Redstone strength for distance:
+      - Calculated via `VibrationSystem.getRedstoneStrengthForDistance(distance, radius)`:
+        `powerScale = 15.0 / radius`, `power = max(1, 15 - floor(powerScale * distance))`.
+    - Signal directionality:
+      - Regular sculk sensor: outputs weak power in all directions. Strongly powers block underneath (`direction == Direction.UP`).
+      - Calibrated sculk sensor: `direction != facing ? power : 0`. It does NOT output signal to the input (calibrated facing) side, but outputs to the remaining 5 directions. Strongly powers block underneath (`direction == Direction.UP`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs`:
+    - Fixed calibrated sculk sensor active duration from 30 ticks to 10 ticks (`Self::ACTIVE_TICKS_CALIBRATED`).
+    - Implemented `get_strong_redstone_power` emitting signal to the block beneath when `direction == BlockDirection::Up`.
+    - Implemented directional filtering in `get_weak_redstone_power` for calibrated sensors (`can_output_weak_power`).
+    - Exported constants `ACTIVE_TICKS = 30`, `ACTIVE_TICKS_REGULAR = 30`, `ACTIVE_TICKS_CALIBRATED = 10`, `COOLDOWN_TICKS = 10`, `LISTENER_RANGE_REGULAR = 8`, and `LISTENER_RANGE_CALIBRATED = 16`.
+    - Exported helpers `get_active_ticks(block_id)`, `get_listener_range(block_id)`, `get_redstone_strength_for_distance(distance, radius)`, `can_output_weak_power(block_id, facing, direction)`, and `emits_strong_power(direction)`.
+  - Updated `crates/pumpkin-core/src/block/entities/sculk_sensor.rs` and `calibrated_sculk_sensor.rs`:
+    - Exported `LISTENER_RANGE = 8` on `SculkSensorBlockEntity` and `LISTENER_RANGE = 16` on `CalibratedSculkSensorBlockEntity`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sculk_sensor_timing_range_and_calibration_parity`.

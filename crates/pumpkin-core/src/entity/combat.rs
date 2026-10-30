@@ -15397,4 +15397,58 @@ mod tests {
         let edge_hit = Vector3::new(10.99, 64.5, -20.0);
         assert_eq!(TargetBlock::calculate_hit_power(&edge_hit, &block_pos), 1);
     }
+
+    #[test]
+    fn test_sculk_sensor_timing_range_and_calibration_parity() {
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use crate::block::entities::calibrated_sculk_sensor::CalibratedSculkSensorBlockEntity;
+        use crate::block::entities::sculk_sensor::SculkSensorBlockEntity;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // Active and Cooldown durations
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+
+        // Block entity listener ranges
+        assert_eq!(SculkSensorBlockEntity::LISTENER_RANGE, 8);
+        assert_eq!(CalibratedSculkSensorBlockEntity::LISTENER_RANGE, 16);
+
+        // Variant-based active ticks & listener ranges
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::SCULK_SENSOR), 30);
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::CALIBRATED_SCULK_SENSOR), 10);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::SCULK_SENSOR), 8);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::CALIBRATED_SCULK_SENSOR), 16);
+
+        // Redstone strength based on vibration distance:
+        // Regular (radius 8):
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 8), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(4.0, 8), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 8), 1);
+
+        // Calibrated (radius 16):
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 16), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 16), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(16.0, 16), 1);
+
+        // Calibrated directional output filtering:
+        // Facing North => no output to North, outputs to all other directions
+        assert!(!SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::North));
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::South));
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::East));
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::West));
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::Up));
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::CALIBRATED_SCULK_SENSOR, Some(HorizontalFacing::North), BlockDirection::Down));
+
+        // Regular sensor outputs in all directions
+        assert!(SculkSensorBlock::can_output_weak_power(BlockId::SCULK_SENSOR, None, BlockDirection::North));
+
+        // Strong power direction (powers block beneath)
+        assert!(SculkSensorBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::North));
+    }
 }
