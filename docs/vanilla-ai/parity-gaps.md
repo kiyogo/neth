@@ -5050,3 +5050,49 @@ eck, part 1): nhận 100% full damage (damage).
     - Replaced hardcoded attribute values, explosion power, attack intervals, wander range, and sounds with combat constants.
     - Added unit test test_ghast_combat_and_flight_parity.
   - All unit tests verified and passing across blaze, ghast, and combat test suites.
+
+### Gap 221: Witch, Evoker, Vindicator & Raider Combat, Spells, Potions & Raid Parity
+- **Vanilla Reference**:
+  - Witch.java:48-55, 61-76, 107-109, 121-173, 209-220, 223-274, 281-283:
+    - Base Attributes: MAX_HEALTH = 26.0 (WITCH_MAX_HEALTH), MOVEMENT_SPEED = 0.25 (WITCH_MOVEMENT_SPEED), xpReward = 5 (WITCH_XP_REWARD).
+    - Drinking speed penalty: SPEED_MODIFIER_DRINKING = -0.25 (ADD_VALUE) (WITCH_DRINKING_SPEED_MODIFIER = -0.25).
+    - Drinking duration: 32 ticks (WITCH_DRINKING_DURATION_TICKS = 32). Pitch: 0.8 + rand * 0.4.
+    - Magic resistance: Immune to self damage (damageSource.getEntity() == this -> 0.0), takes 15% damage from DamageTypeTags.WITCH_RESISTANT_TO (damage *= 0.15F, WITCH_MAGIC_DAMAGE_ABSORPTION_FACTOR = 0.15).
+    - Ranged Attack: interval 60 ticks (WITCH_RANGED_ATTACK_INTERVAL = 60), max range 10.0 (WITCH_RANGED_ATTACK_MAX_RANGE = 10.0), uncertainty 8.0 (WITCH_RANGED_ATTACK_UNCERTAINTY = 8.0).
+    - Throw velocity: dist <= 2.0 ? 0.45F : 0.75F (WITCH_CLOSE_THROW_SPEED = 0.45, WITCH_FAR_THROW_SPEED = 0.75, WITCH_CLOSE_THROW_DIST_THRESHOLD = 2.0). Helper: calculate_witch_throw_speed.
+    - Raid: canBeLeader() -> false.
+  - Evoker.java:48-52, 72-74, 125, 133-174, 228-286, 288-364, SpellcasterIllager.java:220:
+    - Base Attributes: MAX_HEALTH = 24.0 (EVOKER_MAX_HEALTH), MOVEMENT_SPEED = 0.5 (EVOKER_BASE_MOVEMENT_SPEED), FOLLOW_RANGE = 12.0 (EVOKER_FOLLOW_RANGE), xpReward = 10 (EVOKER_XP_REWARD).
+    - Fangs Attack Spell: Warmup 20 ticks (EVOKER_FANGS_CAST_WARMUP = 20), casting time 40 ticks (EVOKER_FANGS_CASTING_TIME = 40), interval 100 ticks (EVOKER_FANGS_CASTING_INTERVAL = 100). Concentric ring threshold distanceToSqr(target) < 9.0 (3.0 blocks, EVOKER_FANGS_RING_RANGE_SQ = 9.0, fixing 81.0 disparity in Neth), 16 straight line fangs (EVOKER_FANGS_LINE_COUNT = 16).
+    - Summon Spell: Warmup 20 ticks (EVOKER_SUMMON_CAST_WARMUP = 20), casting time 100 ticks (EVOKER_SUMMON_CASTING_TIME = 100), interval 340 ticks (EVOKER_SUMMON_CASTING_INTERVAL = 340), summons 3 Vexes (EVOKER_SUMMON_VEX_COUNT = 3) with lifetime 20 * (30 + rand(90)) ticks (600..2380 ticks).
+    - Wololo Spell: Warmup 40 ticks (EVOKER_WOLOLO_CAST_WARMUP = 40), casting time 60 ticks (EVOKER_WOLOLO_CASTING_TIME = 60), interval 140 ticks (EVOKER_WOLOLO_CASTING_INTERVAL = 140). Search radius 16.0 blocks horizontal (EVOKER_WOLOLO_SEARCH_RADIUS_XZ = 16.0), 4.0 blocks vertical (EVOKER_WOLOLO_SEARCH_RADIUS_Y = 4.0). Converts Blue sheep (DyeColor.BLUE = 11) to Red (DyeColor.RED = 14).
+  - Vindicator.java:50-55, 60-77, 89-95, 182-205, 207-222:
+    - Base Attributes: MAX_HEALTH = 24.0 (VINDICATOR_MAX_HEALTH), MOVEMENT_SPEED = 0.35 (VINDICATOR_MOVEMENT_SPEED), ATTACK_DAMAGE = 5.0 (VINDICATOR_ATTACK_DAMAGE), FOLLOW_RANGE = 12.0 (VINDICATOR_FOLLOW_RANGE), xpReward = 5 (VINDICATOR_XP_REWARD).
+    - Raid door breaking: door break time 6 (VINDICATOR_BREAK_DOOR_TIME = 6), random check interval 10 (VINDICATOR_BREAK_DOOR_CHANCE_INTERVAL = 10).
+    - Johnny easter egg: VINDICATOR_JOHNNY_TAG = "Johnny", attacks all living entities except fellow illagers/raiders.
+  - Raider.java:46-55, 64-68, 92, 312:
+    - Village raid stroll speed: 1.05 (RAIDER_MOVE_THROUGH_VILLAGE_SPEED = 1.05).
+    - Hold ground hostile check radius: 10.0 (RAIDER_HOLD_GROUND_RADIUS = 10.0).
+    - Periodic raid join interval: 20 ticks (RAIDER_JOIN_RAID_CHECK_INTERVAL_TICKS = 20).
+    - Patrol banner search radius: 16.0 horizontal, 4.0 vertical (RAIDER_PATROL_BANNER_SEARCH_XZ = 16.0, RAIDER_PATROL_BANNER_SEARCH_Y = 4.0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants for Evoker, Vindicator, Witch, Raider.
+    - Added helper calculate_witch_throw_speed.
+    - Expanded unit tests in test_vex_and_evoker_parity, test_vindicator_and_witch_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/evoker.rs:
+    - Fixed ring fangs range check from 81.0 to EVOKER_FANGS_RING_RANGE_SQ (9.0).
+    - Implemented get_base_experience_reward returning EVOKER_XP_REWARD.
+    - Replaced hardcoded attribute and spell values with constants.
+    - Added unit test test_evoker_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/mob/vindicator.rs:
+    - Synchronized door breaking and combat constants.
+    - Updated unit test test_vindicator_johnny_and_xp_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/witch.rs:
+    - Replaced hardcoded values with constants.
+    - Used calculate_witch_throw_speed and WITCH_RANGED_ATTACK_UNCERTAINTY.
+    - Updated unit test test_witch_constants_and_xp_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/raider.rs:
+    - Synchronized patrol banner search box with constants.
+    - Added unit test test_raider_parity_constants.
+  - All 13 unit tests verified and passing across evoker, vindicator, witch, raider, and combat suites.

@@ -7303,11 +7303,79 @@ pub const VEX_TICKS_PER_FLAP: u64 = 4;
 /// 	his.limitedLifeTicks = 20; this.hurt(this.damageSources().starve(), 1.0F);
 pub const VEX_DECAY_DAMAGE_INTERVAL_TICKS: i32 = 20;
 
+/// Evoker base max health (24.0 HP / 12 hearts).
+/// Mirrors vanilla `Evoker.java:73` (`Attributes.MAX_HEALTH, 24.0`).
+pub const EVOKER_MAX_HEALTH: f32 = 24.0;
+
+/// Evoker base movement speed (0.5).
+/// Mirrors vanilla `Evoker.java:73` (`Attributes.MOVEMENT_SPEED, 0.5`).
+pub const EVOKER_BASE_MOVEMENT_SPEED: f64 = 0.5;
+
+/// Evoker follow range (12.0 blocks).
+/// Mirrors vanilla `Evoker.java:73` (`Attributes.FOLLOW_RANGE, 12.0`).
+pub const EVOKER_FOLLOW_RANGE: f64 = 12.0;
+
 /// Experience reward dropped by an Evoker on death (10 XP).
 ///
 /// Mirrors vanilla Evoker.java:50:
-/// 	his.xpReward = 10;
+/// this.xpReward = 10;
 pub const EVOKER_XP_REWARD: u32 = 10;
+
+/// Evoker fangs spell warmup ticks (20 ticks = 1.0s).
+/// Mirrors vanilla `SpellcasterIllager.java:220` (`return 20;`).
+pub const EVOKER_FANGS_CAST_WARMUP: i32 = 20;
+
+/// Evoker fangs spell total casting time (40 ticks = 2.0s).
+/// Mirrors vanilla `Evoker.java:136` (`return 40;`).
+pub const EVOKER_FANGS_CASTING_TIME: i32 = 40;
+
+/// Evoker fangs spell cooldown interval (100 ticks = 5.0s).
+/// Mirrors vanilla `Evoker.java:141` (`return 100;`).
+pub const EVOKER_FANGS_CASTING_INTERVAL: i32 = 100;
+
+/// Maximum squared distance for concentric ring fangs attack (9.0 sq blocks = 3.0 blocks).
+/// Mirrors vanilla `Evoker.java:150` (`distanceToSqr(target) < 9.0`).
+pub const EVOKER_FANGS_RING_RANGE_SQ: f64 = 9.0;
+
+/// Number of fangs summoned in a straight line attack (16 fangs).
+/// Mirrors vanilla `Evoker.java:161` (`for (int i = 0; i < 16; i++)`).
+pub const EVOKER_FANGS_LINE_COUNT: usize = 16;
+
+/// Evoker summon vex spell warmup ticks (20 ticks = 1.0s).
+/// Mirrors vanilla `SpellcasterIllager.java:220` (`return 20;`).
+pub const EVOKER_SUMMON_CAST_WARMUP: i32 = 20;
+
+/// Evoker summon vex spell total casting time (100 ticks = 5.0s).
+/// Mirrors vanilla `Evoker.java:245` (`return 100;`).
+pub const EVOKER_SUMMON_CASTING_TIME: i32 = 100;
+
+/// Evoker summon vex spell cooldown interval (340 ticks = 17.0s).
+/// Mirrors vanilla `Evoker.java:250` (`return 340;`).
+pub const EVOKER_SUMMON_CASTING_INTERVAL: i32 = 340;
+
+/// Number of Vexes summoned per cast by an Evoker (3).
+/// Mirrors vanilla `Evoker.java:258` (`for (int i = 0; i < 3; i++)`).
+pub const EVOKER_SUMMON_VEX_COUNT: usize = 3;
+
+/// Evoker Wololo spell warmup ticks (40 ticks = 2.0s).
+/// Mirrors vanilla `Evoker.java:342` (`return 40;`).
+pub const EVOKER_WOLOLO_CAST_WARMUP: i32 = 40;
+
+/// Evoker Wololo spell total casting time (60 ticks = 3.0s).
+/// Mirrors vanilla `Evoker.java:347` (`return 60;`).
+pub const EVOKER_WOLOLO_CASTING_TIME: i32 = 60;
+
+/// Evoker Wololo spell cooldown interval (140 ticks = 7.0s).
+/// Mirrors vanilla `Evoker.java:352` (`return 140;`).
+pub const EVOKER_WOLOLO_CASTING_INTERVAL: i32 = 140;
+
+/// Horizontal search radius for blue sheep target during Wololo spell (16.0 blocks).
+/// Mirrors vanilla `Evoker.java:312` (`inflate(16.0, 4.0, 16.0)`).
+pub const EVOKER_WOLOLO_SEARCH_RADIUS_XZ: f64 = 16.0;
+
+/// Vertical search radius for blue sheep target during Wololo spell (4.0 blocks).
+/// Mirrors vanilla `Evoker.java:312` (`inflate(16.0, 4.0, 16.0)`).
+pub const EVOKER_WOLOLO_SEARCH_RADIUS_Y: f64 = 4.0;
 
 /// Calculates total limited lifetime ticks for a Vex summoned by an Evoker.
 ///
@@ -7567,6 +7635,14 @@ pub const VINDICATOR_FOLLOW_RANGE: f64 = 12.0;
 pub const VINDICATOR_XP_REWARD: u32 = 5;
 pub const VINDICATOR_JOHNNY_TAG: &str = "Johnny";
 
+/// Maximum door breaking duration for Vindicator during raids (6).
+/// Mirrors vanilla `Vindicator.java:184` (`super(mob, 6, ...)`).
+pub const VINDICATOR_BREAK_DOOR_TIME: i32 = 6;
+
+/// Random tick delay check for Vindicator door breaking (10).
+/// Mirrors vanilla `Vindicator.java:197` (`random.nextInt(reducedTickDelay(10)) == 0`).
+pub const VINDICATOR_BREAK_DOOR_CHANCE_INTERVAL: i32 = 10;
+
 /// Illusioner combat and attribute constants, mirroring vanilla `Illusioner.java:45-47, 53, 80-82, 238, 260, 270`.
 pub const ILLUSIONER_MAX_HEALTH: f64 = 32.0;
 pub const ILLUSIONER_MOVEMENT_SPEED: f64 = 0.5;
@@ -7582,6 +7658,73 @@ pub const ILLUSIONER_ILLUSION_SPREAD: i32 = 3;
 pub const WITCH_MAX_HEALTH: f64 = 26.0;
 pub const WITCH_MOVEMENT_SPEED: f64 = 0.25;
 pub const WITCH_XP_REWARD: u32 = 5;
+
+/// Movement speed modifier applied to Witch while drinking potions (-0.25).
+/// Mirrors vanilla `Witch.java:49-51` (`new AttributeModifier(..., -0.25, Operation.ADD_VALUE)`).
+pub const WITCH_DRINKING_SPEED_MODIFIER: f64 = -0.25;
+
+/// Potion use duration in ticks for Witch (32 ticks = 1.6s).
+/// Mirrors vanilla `Witch.java:153` (`this.usingTime = this.getMainHandItem().getUseDuration(this)`).
+pub const WITCH_DRINKING_DURATION_TICKS: i32 = 32;
+
+/// Witch damage reduction factor for magic damage types (0.15 = 85% damage reduction).
+/// Mirrors vanilla `Witch.java:216` (`damage *= 0.15F`).
+pub const WITCH_MAGIC_DAMAGE_ABSORPTION_FACTOR: f32 = 0.15;
+
+/// Witch ranged attack cooldown interval (60 ticks = 3.0s).
+/// Mirrors vanilla `Witch.java:69` (`new RangedAttackGoal(this, 1.0, 60, 10.0F)`).
+pub const WITCH_RANGED_ATTACK_INTERVAL: i32 = 60;
+
+/// Witch ranged attack maximum range (10.0 blocks).
+/// Mirrors vanilla `Witch.java:69` (`new RangedAttackGoal(this, 1.0, 60, 10.0F)`).
+pub const WITCH_RANGED_ATTACK_MAX_RANGE: f32 = 10.0;
+
+/// Witch ranged attack throw inaccuracy / uncertainty (8.0).
+/// Mirrors vanilla `Witch.java:273` (`return 8.0F;`).
+pub const WITCH_RANGED_ATTACK_UNCERTAINTY: f32 = 8.0;
+
+/// Witch close throw speed (0.45).
+/// Mirrors vanilla `Witch.java:257` (`dist <= 2.0 ? 0.45F : 0.75F`).
+pub const WITCH_CLOSE_THROW_SPEED: f32 = 0.45;
+
+/// Witch far throw speed (0.75).
+/// Mirrors vanilla `Witch.java:257` (`dist <= 2.0 ? 0.45F : 0.75F`).
+pub const WITCH_FAR_THROW_SPEED: f32 = 0.75;
+
+/// Distance threshold separating close and far splash potion throws for Witch (2.0 blocks).
+/// Mirrors vanilla `Witch.java:257` (`dist <= 2.0 ? 0.45F : 0.75F`).
+pub const WITCH_CLOSE_THROW_DIST_THRESHOLD: f64 = 2.0;
+
+/// Calculates throw speed for a splash potion launched by a Witch.
+/// Mirrors vanilla `Witch.java:257`.
+#[must_use]
+pub const fn calculate_witch_throw_speed(distance: f64) -> f32 {
+    if distance <= WITCH_CLOSE_THROW_DIST_THRESHOLD {
+        WITCH_CLOSE_THROW_SPEED
+    } else {
+        WITCH_FAR_THROW_SPEED
+    }
+}
+
+/// Raider movement speed through village during raids (1.05).
+/// Mirrors vanilla `Raider.java:66` (`new RaiderMoveThroughVillageGoal(this, 1.05F, 1)`).
+pub const RAIDER_MOVE_THROUGH_VILLAGE_SPEED: f32 = 1.05;
+
+/// Radius of hold ground goal for patrolling raiders (10.0 blocks).
+/// Mirrors vanilla `Vindicator.java:67`, `Pillager.java:98` (`new Raider.HoldGroundAttackGoal(this, 10.0F)`).
+pub const RAIDER_HOLD_GROUND_RADIUS: f32 = 10.0;
+
+/// Interval in ticks between periodic checks for joining active raids (20 ticks = 1s).
+/// Mirrors vanilla `Raider.java:92` (`this.level().getGameTime() % 20L == 0L`).
+pub const RAIDER_JOIN_RAID_CHECK_INTERVAL_TICKS: u64 = 20;
+
+/// Horizontal search radius for ominous banner when raider seeks to become leader (16.0 blocks).
+/// Mirrors vanilla `Raider.java:312` (`inflate(16.0, 4.0, 16.0)`).
+pub const RAIDER_PATROL_BANNER_SEARCH_XZ: f64 = 16.0;
+
+/// Vertical search radius for ominous banner when raider seeks to become leader (4.0 blocks).
+/// Mirrors vanilla `Raider.java:312` (`inflate(16.0, 4.0, 16.0)`).
+pub const RAIDER_PATROL_BANNER_SEARCH_Y: f64 = 4.0;
 
 /// Determines whether a target entity is valid for Johnny Vindicator attack,
 /// mirroring vanilla `Vindicator.java:207-210`:
@@ -11356,8 +11499,25 @@ mod tests {
         assert_eq!(calculate_vex_summon_lifetime(89), 2380);
         assert_eq!(calculate_vex_summon_lifetime(45), 1500);
 
-        // 2. Evoker constants (Evoker.java:50)
+        // 2. Evoker constants & spells (Evoker.java:50, 73, 136, 141, 150, 161, 245, 250, 258, 312, 342, 347, 352)
+        assert_eq!(EVOKER_MAX_HEALTH, 24.0);
+        assert_eq!(EVOKER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(EVOKER_FOLLOW_RANGE, 12.0);
         assert_eq!(EVOKER_XP_REWARD, 10);
+        assert_eq!(EVOKER_FANGS_CAST_WARMUP, 20);
+        assert_eq!(EVOKER_FANGS_CASTING_TIME, 40);
+        assert_eq!(EVOKER_FANGS_CASTING_INTERVAL, 100);
+        assert_eq!(EVOKER_FANGS_RING_RANGE_SQ, 9.0);
+        assert_eq!(EVOKER_FANGS_LINE_COUNT, 16);
+        assert_eq!(EVOKER_SUMMON_CAST_WARMUP, 20);
+        assert_eq!(EVOKER_SUMMON_CASTING_TIME, 100);
+        assert_eq!(EVOKER_SUMMON_CASTING_INTERVAL, 340);
+        assert_eq!(EVOKER_SUMMON_VEX_COUNT, 3);
+        assert_eq!(EVOKER_WOLOLO_CAST_WARMUP, 40);
+        assert_eq!(EVOKER_WOLOLO_CASTING_TIME, 60);
+        assert_eq!(EVOKER_WOLOLO_CASTING_INTERVAL, 140);
+        assert_eq!(EVOKER_WOLOLO_SEARCH_RADIUS_XZ, 16.0);
+        assert_eq!(EVOKER_WOLOLO_SEARCH_RADIUS_Y, 4.0);
     }
 
     #[test]
@@ -11518,10 +11678,32 @@ mod tests {
         assert_eq!(invisibility.duration, 1200);
         assert_eq!(invisibility.amplifier, 0);
 
-        // 4. Witch constants (Witch.java:55, 107-109)
+        assert_eq!(VINDICATOR_BREAK_DOOR_TIME, 6);
+        assert_eq!(VINDICATOR_BREAK_DOOR_CHANCE_INTERVAL, 10);
+
+        // 3. Raider common constants (Raider.java:66, 92, 312, Vindicator.java:67)
+        assert_eq!(RAIDER_MOVE_THROUGH_VILLAGE_SPEED, 1.05);
+        assert_eq!(RAIDER_HOLD_GROUND_RADIUS, 10.0);
+        assert_eq!(RAIDER_JOIN_RAID_CHECK_INTERVAL_TICKS, 20);
+        assert_eq!(RAIDER_PATROL_BANNER_SEARCH_XZ, 16.0);
+        assert_eq!(RAIDER_PATROL_BANNER_SEARCH_Y, 4.0);
+
+        // 4. Witch constants (Witch.java:49-51, 55, 69, 107-109, 153, 216, 257, 273)
         assert_eq!(WITCH_MAX_HEALTH, 26.0);
         assert_eq!(WITCH_MOVEMENT_SPEED, 0.25);
         assert_eq!(WITCH_XP_REWARD, 5);
+        assert_eq!(WITCH_DRINKING_SPEED_MODIFIER, -0.25);
+        assert_eq!(WITCH_DRINKING_DURATION_TICKS, 32);
+        assert_eq!(WITCH_MAGIC_DAMAGE_ABSORPTION_FACTOR, 0.15);
+        assert_eq!(WITCH_RANGED_ATTACK_INTERVAL, 60);
+        assert_eq!(WITCH_RANGED_ATTACK_MAX_RANGE, 10.0);
+        assert_eq!(WITCH_RANGED_ATTACK_UNCERTAINTY, 8.0);
+        assert_eq!(WITCH_CLOSE_THROW_SPEED, 0.45);
+        assert_eq!(WITCH_FAR_THROW_SPEED, 0.75);
+        assert_eq!(WITCH_CLOSE_THROW_DIST_THRESHOLD, 2.0);
+        assert_eq!(calculate_witch_throw_speed(1.5), 0.45);
+        assert_eq!(calculate_witch_throw_speed(2.0), 0.45);
+        assert_eq!(calculate_witch_throw_speed(2.5), 0.75);
     }
 
     #[test]

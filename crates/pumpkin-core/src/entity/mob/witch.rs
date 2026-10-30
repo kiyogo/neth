@@ -14,6 +14,12 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::tracked_data;
 
 use crate::entity::attributes::{Modifier, ModifierOperation};
+use crate::entity::combat::{
+    WITCH_DRINKING_DURATION_TICKS,
+    WITCH_DRINKING_SPEED_MODIFIER, WITCH_MAGIC_DAMAGE_ABSORPTION_FACTOR, WITCH_MAX_HEALTH,
+    WITCH_MOVEMENT_SPEED, WITCH_RANGED_ATTACK_INTERVAL, WITCH_RANGED_ATTACK_MAX_RANGE,
+    WITCH_RANGED_ATTACK_UNCERTAINTY, WITCH_XP_REWARD, calculate_witch_throw_speed,
+};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -68,11 +74,11 @@ impl WitchEntity {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 26.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, WITCH_MAX_HEALTH);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.25);
-        mob_entity.living_entity.health.store(26.0);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, WITCH_MOVEMENT_SPEED);
+        mob_entity.living_entity.health.store(WITCH_MAX_HEALTH as f32);
 
         let witch = Self {
             mob_entity,
@@ -105,7 +111,7 @@ impl WitchEntity {
             goal_selector.add_goal(1, Box::new(SwimGoal::default()));
             goal_selector.add_goal(
                 2,
-                Box::new(RangedAttackGoal::new(ranged_weak, 1.0, 60, 10.0)),
+                Box::new(RangedAttackGoal::new(ranged_weak, 1.0, WITCH_RANGED_ATTACK_INTERVAL, WITCH_RANGED_ATTACK_MAX_RANGE)),
             );
             goal_selector.add_goal(2, Box::new(WaterAvoidingRandomStrollGoal::new(1.0)));
             goal_selector.add_goal(3, Box::new(RaiderMoveThroughVillageGoal::new(1.05)));
@@ -194,10 +200,10 @@ impl WitchEntity {
         let splash = SplashPotionEntity::new_shot(splash_entity, entity);
         splash.set_item_stack(potion_stack);
 
-        let speed = if dist <= 2.0 { 0.45 } else { 0.75 };
+        let speed = f64::from(calculate_witch_throw_speed(dist));
         let yo = dist * 0.2;
 
-        splash.thrown.set_velocity(xd, yd + yo, zd, speed, 8.0);
+        splash.thrown.set_velocity(xd, yd + yo, zd, speed, f64::from(WITCH_RANGED_ATTACK_UNCERTAINTY));
 
         if !entity.silent.load(Ordering::Relaxed) {
             let rand_pitch: f32 = rand::random();
@@ -354,12 +360,12 @@ impl Mob for WitchEntity {
                 drop(equipment);
                 living.send_equipment_changes(&[(EquipmentSlot::MAIN_HAND, stack)]);
 
-                self.using_time.store(32, Ordering::Relaxed);
+                self.using_time.store(WITCH_DRINKING_DURATION_TICKS, Ordering::Relaxed);
                 self.set_drinking_potion(true);
                 living.update_attribute(&Attributes::MOVEMENT_SPEED, |inst| {
                     inst.add_or_replace_modifier(Modifier {
                         id: "minecraft:drinking".to_string(),
-                        amount: -0.25,
+                        amount: WITCH_DRINKING_SPEED_MODIFIER,
                         operation: ModifierOperation::Add,
                         permanent: false,
                     });
@@ -422,11 +428,21 @@ impl Raider for WitchEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn test_witch_constants_and_xp_parity() {
-        assert_eq!(crate::entity::combat::WITCH_MAX_HEALTH, 26.0);
-        assert_eq!(crate::entity::combat::WITCH_MOVEMENT_SPEED, 0.25);
-        assert_eq!(crate::entity::combat::WITCH_XP_REWARD, 5);
+        assert_eq!(WITCH_MAX_HEALTH, 26.0);
+        assert_eq!(WITCH_MOVEMENT_SPEED, 0.25);
+        assert_eq!(WITCH_XP_REWARD, 5);
+        assert_eq!(WITCH_DRINKING_SPEED_MODIFIER, -0.25);
+        assert_eq!(WITCH_DRINKING_DURATION_TICKS, 32);
+        assert_eq!(WITCH_MAGIC_DAMAGE_ABSORPTION_FACTOR, 0.15);
+        assert_eq!(WITCH_RANGED_ATTACK_INTERVAL, 60);
+        assert_eq!(WITCH_RANGED_ATTACK_MAX_RANGE, 10.0);
+        assert_eq!(WITCH_RANGED_ATTACK_UNCERTAINTY, 8.0);
+        assert_eq!(calculate_witch_throw_speed(1.5), 0.45);
+        assert_eq!(calculate_witch_throw_speed(2.0), 0.45);
+        assert_eq!(calculate_witch_throw_speed(2.5), 0.75);
     }
 }

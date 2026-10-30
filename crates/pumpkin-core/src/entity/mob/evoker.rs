@@ -9,6 +9,14 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::vector3::Vector3;
 
+use crate::entity::combat::{
+    EVOKER_BASE_MOVEMENT_SPEED, EVOKER_FANGS_CASTING_INTERVAL, EVOKER_FANGS_CASTING_TIME,
+    EVOKER_FANGS_CAST_WARMUP, EVOKER_FANGS_LINE_COUNT, EVOKER_FANGS_RING_RANGE_SQ,
+    EVOKER_FOLLOW_RANGE, EVOKER_MAX_HEALTH, EVOKER_SUMMON_CASTING_INTERVAL,
+    EVOKER_SUMMON_CASTING_TIME, EVOKER_SUMMON_CAST_WARMUP, EVOKER_SUMMON_VEX_COUNT,
+    EVOKER_WOLOLO_CASTING_INTERVAL, EVOKER_WOLOLO_CASTING_TIME, EVOKER_WOLOLO_CAST_WARMUP,
+    EVOKER_WOLOLO_SEARCH_RADIUS_XZ, EVOKER_WOLOLO_SEARCH_RADIUS_Y, EVOKER_XP_REWARD,
+};
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
@@ -75,27 +83,19 @@ impl EvokerEntity {
         let mob_arc = Arc::new(evoker);
 
         // Vanilla Evoker: MOVEMENT_SPEED = 0.5, FOLLOW_RANGE = 12.0, MAX_HEALTH = 24.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 24.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.5;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 12.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(24.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(EVOKER_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, EVOKER_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, EVOKER_FOLLOW_RANGE);
+        mob_arc.mob_entity.living_entity.set_health(EVOKER_MAX_HEALTH);
 
         let mob_weak: Weak<Self> = Arc::downgrade(&mob_arc);
         let mob_interface_weak: Weak<dyn Mob> = {
@@ -252,6 +252,10 @@ impl Mob for EvokerEntity {
             );
         }
     }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        EVOKER_XP_REWARD
+    }
 }
 
 impl CustomSound for EvokerEntity {
@@ -366,16 +370,16 @@ impl Goal for EvokerAttackSpellGoal {
     }
 
     fn start(&mut self, _mob: &dyn Mob) {
-        self.warmup_delay = 20;
+        self.warmup_delay = EVOKER_FANGS_CAST_WARMUP;
         if let Some(evoker) = self.evoker.upgrade() {
-            evoker.set_spell_casting_time(40);
+            evoker.set_spell_casting_time(EVOKER_FANGS_CASTING_TIME);
             let age = evoker
                 .mob_entity
                 .living_entity
                 .entity
                 .age
                 .load(Ordering::Relaxed);
-            self.next_attack_tick = age + 100;
+            self.next_attack_tick = age + EVOKER_FANGS_CASTING_INTERVAL;
             evoker.set_is_casting_spell(IllagerSpell::Fangs);
             evoker
                 .mob_entity
@@ -411,7 +415,7 @@ impl Goal for EvokerAttackSpellGoal {
             let world = evoker_ent.world.load();
             let evoker_id = evoker_ent.entity_id;
 
-            if dist_sq < 81.0 {
+            if dist_sq < EVOKER_FANGS_RING_RANGE_SQ {
                 // Close range: concentric rings around Evoker
                 for i in 0..5 {
                     let angle = angle_towards_target + (i as f32) * std::f32::consts::PI * 0.4;
@@ -448,7 +452,7 @@ impl Goal for EvokerAttackSpellGoal {
                 }
             } else {
                 // Long range: line of fangs towards target
-                for i in 0..16 {
+                for i in 0..EVOKER_FANGS_LINE_COUNT {
                     let reach = 1.25 * ((i + 1) as f64);
                     let spawn_x = evoker_pos.x + (angle_towards_target.cos() as f64) * reach;
                     let spawn_z = evoker_pos.z + (angle_towards_target.sin() as f64) * reach;
@@ -525,16 +529,16 @@ impl Goal for EvokerSummonSpellGoal {
     }
 
     fn start(&mut self, _mob: &dyn Mob) {
-        self.warmup_delay = 20;
+        self.warmup_delay = EVOKER_SUMMON_CAST_WARMUP;
         if let Some(evoker) = self.evoker.upgrade() {
-            evoker.set_spell_casting_time(100);
+            evoker.set_spell_casting_time(EVOKER_SUMMON_CASTING_TIME);
             let age = evoker
                 .mob_entity
                 .living_entity
                 .entity
                 .age
                 .load(Ordering::Relaxed);
-            self.next_attack_tick = age + 340;
+            self.next_attack_tick = age + EVOKER_SUMMON_CASTING_INTERVAL;
             evoker.set_is_casting_spell(IllagerSpell::SummonVex);
             evoker
                 .mob_entity
@@ -556,7 +560,7 @@ impl Goal for EvokerSummonSpellGoal {
             let world = evoker_ent.world.load();
             let evoker_pos = evoker_ent.pos.load();
 
-            for _ in 0..3 {
+            for _ in 0..EVOKER_SUMMON_VEX_COUNT {
                 let offset_x = (rand::random::<i32>() % 5 - 2) as f64;
                 let offset_z = (rand::random::<i32>() % 5 - 2) as f64;
                 let spawn_pos = Vector3::new(
@@ -614,7 +618,7 @@ impl Goal for EvokerWololoSpellGoal {
         }
 
         // Find blue sheep within 16 blocks
-        let bb = entity.bounding_box.load().expand(16.0, 4.0, 16.0);
+        let bb = entity.bounding_box.load().expand(EVOKER_WOLOLO_SEARCH_RADIUS_XZ, EVOKER_WOLOLO_SEARCH_RADIUS_Y, EVOKER_WOLOLO_SEARCH_RADIUS_XZ);
         let world = entity.world.load();
         let candidates = world.get_entities_at_box(&bb);
 
@@ -644,16 +648,16 @@ impl Goal for EvokerWololoSpellGoal {
     }
 
     fn start(&mut self, _mob: &dyn Mob) {
-        self.warmup_delay = 40;
+        self.warmup_delay = EVOKER_WOLOLO_CAST_WARMUP;
         if let Some(evoker) = self.evoker.upgrade() {
-            evoker.set_spell_casting_time(60);
+            evoker.set_spell_casting_time(EVOKER_WOLOLO_CASTING_TIME);
             let age = evoker
                 .mob_entity
                 .living_entity
                 .entity
                 .age
                 .load(Ordering::Relaxed);
-            self.next_attack_tick = age + 140;
+            self.next_attack_tick = age + EVOKER_WOLOLO_CASTING_INTERVAL;
             evoker.set_is_casting_spell(IllagerSpell::Wololo);
             evoker
                 .mob_entity
@@ -690,7 +694,7 @@ impl Goal for EvokerWololoSpellGoal {
             };
 
             let world = evoker_ent.world.load();
-            let bb = evoker_ent.bounding_box.load().expand(16.0, 4.0, 16.0);
+            let bb = evoker_ent.bounding_box.load().expand(EVOKER_WOLOLO_SEARCH_RADIUS_XZ, EVOKER_WOLOLO_SEARCH_RADIUS_Y, EVOKER_WOLOLO_SEARCH_RADIUS_XZ);
             let candidates = world.get_entities_at_box(&bb);
 
             for cand in candidates {
@@ -705,5 +709,32 @@ impl Goal for EvokerWololoSpellGoal {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_evoker_parity_constants() {
+        assert_eq!(EVOKER_MAX_HEALTH, 24.0);
+        assert_eq!(EVOKER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(EVOKER_FOLLOW_RANGE, 12.0);
+        assert_eq!(EVOKER_XP_REWARD, 10);
+        assert_eq!(EVOKER_FANGS_CAST_WARMUP, 20);
+        assert_eq!(EVOKER_FANGS_CASTING_TIME, 40);
+        assert_eq!(EVOKER_FANGS_CASTING_INTERVAL, 100);
+        assert_eq!(EVOKER_FANGS_RING_RANGE_SQ, 9.0);
+        assert_eq!(EVOKER_FANGS_LINE_COUNT, 16);
+        assert_eq!(EVOKER_SUMMON_CAST_WARMUP, 20);
+        assert_eq!(EVOKER_SUMMON_CASTING_TIME, 100);
+        assert_eq!(EVOKER_SUMMON_CASTING_INTERVAL, 340);
+        assert_eq!(EVOKER_SUMMON_VEX_COUNT, 3);
+        assert_eq!(EVOKER_WOLOLO_CAST_WARMUP, 40);
+        assert_eq!(EVOKER_WOLOLO_CASTING_TIME, 60);
+        assert_eq!(EVOKER_WOLOLO_CASTING_INTERVAL, 140);
+        assert_eq!(EVOKER_WOLOLO_SEARCH_RADIUS_XZ, 16.0);
+        assert_eq!(EVOKER_WOLOLO_SEARCH_RADIUS_Y, 4.0);
     }
 }

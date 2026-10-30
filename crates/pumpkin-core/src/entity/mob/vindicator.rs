@@ -9,6 +9,11 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 
+use crate::entity::combat::{
+    VINDICATOR_ATTACK_DAMAGE, VINDICATOR_BREAK_DOOR_CHANCE_INTERVAL, VINDICATOR_BREAK_DOOR_TIME,
+    VINDICATOR_FOLLOW_RANGE, VINDICATOR_JOHNNY_TAG, VINDICATOR_MAX_HEALTH,
+    VINDICATOR_MOVEMENT_SPEED, VINDICATOR_XP_REWARD,
+};
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
@@ -55,31 +60,23 @@ impl VindicatorEntity {
         let mob_arc = Arc::new(vindicator);
 
         // Vanilla Vindicator: MOVEMENT_SPEED = 0.35, FOLLOW_RANGE = 12.0, MAX_HEALTH = 24.0, ATTACK_DAMAGE = 5.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 24.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.35;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 5.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 12.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(24.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, VINDICATOR_MAX_HEALTH);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, VINDICATOR_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(VINDICATOR_ATTACK_DAMAGE));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, VINDICATOR_FOLLOW_RANGE);
+        mob_arc.mob_entity.living_entity.set_health(VINDICATOR_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -241,12 +238,14 @@ mod tests {
 
     #[test]
     fn test_vindicator_johnny_and_xp_parity() {
-        assert_eq!(crate::entity::combat::VINDICATOR_MAX_HEALTH, 24.0);
-        assert_eq!(crate::entity::combat::VINDICATOR_MOVEMENT_SPEED, 0.35);
-        assert_eq!(crate::entity::combat::VINDICATOR_ATTACK_DAMAGE, 5.0);
-        assert_eq!(crate::entity::combat::VINDICATOR_FOLLOW_RANGE, 12.0);
-        assert_eq!(crate::entity::combat::VINDICATOR_XP_REWARD, 5);
-        assert_eq!(crate::entity::combat::VINDICATOR_JOHNNY_TAG, "Johnny");
+        assert_eq!(VINDICATOR_MAX_HEALTH, 24.0);
+        assert_eq!(VINDICATOR_MOVEMENT_SPEED, 0.35);
+        assert_eq!(VINDICATOR_ATTACK_DAMAGE, 5.0);
+        assert_eq!(VINDICATOR_FOLLOW_RANGE, 12.0);
+        assert_eq!(VINDICATOR_XP_REWARD, 5);
+        assert_eq!(VINDICATOR_JOHNNY_TAG, "Johnny");
+        assert_eq!(VINDICATOR_BREAK_DOOR_TIME, 6);
+        assert_eq!(VINDICATOR_BREAK_DOOR_CHANCE_INTERVAL, 10);
 
         // Johnny targets non-illagers
         assert!(crate::entity::combat::is_johnny_targetable(&EntityType::ZOMBIE));

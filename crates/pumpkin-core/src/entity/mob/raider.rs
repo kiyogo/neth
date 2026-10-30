@@ -14,6 +14,11 @@ use pumpkin_util::text::TextComponent;
 use crate::entity::ai::goal::{Controls, Goal};
 use crate::entity::ai::pathfinder::NavigatorGoal;
 use crate::entity::mob::Mob;
+use crate::entity::combat::{
+    RAIDER_HOLD_GROUND_RADIUS, RAIDER_JOIN_RAID_CHECK_INTERVAL_TICKS,
+    RAIDER_MOVE_THROUGH_VILLAGE_SPEED, RAIDER_PATROL_BANNER_SEARCH_XZ,
+    RAIDER_PATROL_BANNER_SEARCH_Y,
+};
 use crate::entity::mob::patrol::{PatrolData, PatrollingMonster};
 
 #[must_use]
@@ -224,7 +229,7 @@ impl Goal for ObtainRaidLeaderBannerGoal {
         // Check if dropped banner nearby
         let entity = mob.get_entity();
         let world = entity.world.load();
-        let bb = entity.bounding_box.load().expand(16.0, 4.0, 16.0);
+        let bb = entity.bounding_box.load().expand(RAIDER_PATROL_BANNER_SEARCH_XZ, RAIDER_PATROL_BANNER_SEARCH_Y, RAIDER_PATROL_BANNER_SEARCH_XZ);
         let nearby = world.get_entities_at_box(&bb);
 
         nearby
@@ -247,7 +252,7 @@ impl Goal for ObtainRaidLeaderBannerGoal {
         let entity = mob.get_entity();
         let pos = entity.pos.load();
         let world = entity.world.load();
-        let bb = entity.bounding_box.load().expand(16.0, 4.0, 16.0);
+        let bb = entity.bounding_box.load().expand(RAIDER_PATROL_BANNER_SEARCH_XZ, RAIDER_PATROL_BANNER_SEARCH_Y, RAIDER_PATROL_BANNER_SEARCH_XZ);
         let nearby = world.get_entities_at_box(&bb);
 
         for cand in nearby {
@@ -384,3 +389,17 @@ impl Goal for RaiderMoveThroughVillageGoal {
 }
 
 pub use crate::entity::ai::goal::pathfind_to_raid::PathfindToRaidGoal;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_raider_parity_constants() {
+        assert_eq!(RAIDER_MOVE_THROUGH_VILLAGE_SPEED, 1.05);
+        assert_eq!(RAIDER_HOLD_GROUND_RADIUS, 10.0);
+        assert_eq!(RAIDER_JOIN_RAID_CHECK_INTERVAL_TICKS, 20);
+        assert_eq!(RAIDER_PATROL_BANNER_SEARCH_XZ, 16.0);
+        assert_eq!(RAIDER_PATROL_BANNER_SEARCH_Y, 4.0);
+    }
+}
