@@ -13,9 +13,10 @@ use pumpkin_protocol::bedrock::client::CUpdateBlock;
 use pumpkin_protocol::java::client::play::CBlockUpdate;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
+use crossbeam::atomic::AtomicCell;
 use std::sync::{
     Arc,
-    atomic::{AtomicU16, Ordering},
+    atomic::{AtomicBool, AtomicU16, Ordering},
 };
 
 use crate::{
@@ -28,14 +29,37 @@ use crate::{
 pub struct FallingEntity {
     entity: Entity,
     block_state_id: AtomicU16,
+    fall_distance: AtomicCell<f32>,
+    hurt_entities: AtomicBool,
+    fall_damage_per_distance: AtomicCell<f32>,
+    fall_damage_max: AtomicCell<f32>,
 }
 
 impl FallingEntity {
-    pub const fn new(entity: Entity, block_state_id: BlockStateId) -> Self {
+    pub fn new(entity: Entity, block_state_id: BlockStateId) -> Self {
+        let block = Block::from_state_id(block_state_id);
+        let is_anvil = block.has_tag(&tag::Block::MINECRAFT_ANVIL);
+        let hurt_entities = is_anvil;
+        let fall_damage_per_distance = if is_anvil {
+            crate::entity::combat::ANVIL_FALL_DAMAGE_PER_DISTANCE
+        } else {
+            0.0
+        };
         Self {
             entity,
             block_state_id: AtomicU16::new(block_state_id.as_u16()),
+            fall_distance: AtomicCell::new(0.0),
+            hurt_entities: AtomicBool::new(hurt_entities),
+            fall_damage_per_distance: AtomicCell::new(fall_damage_per_distance),
+            fall_damage_max: AtomicCell::new(crate::entity::combat::FALLING_BLOCK_DEFAULT_MAX_DAMAGE),
         }
+    }
+
+    /// Mirrors vanilla FallingBlockEntity.setHurtsEntities(float, int).
+    pub fn set_hurts_entities(&self, damage_per_distance: f32, damage_max: f32) {
+        self.hurt_entities.store(true, Ordering::Relaxed);
+        self.fall_damage_per_distance.store(damage_per_distance);
+        self.fall_damage_max.store(damage_max);
     }
 
     /// Sets the block state encoded in this entity's spawn packet.
@@ -87,6 +111,31 @@ impl EntityBase for FallingEntity {
         let velo = entity.velocity.load();
         if entity.on_ground.load(Ordering::Relaxed) {
             entity.velocity.store(velo.multiply(0.7, -0.5, 0.7));
+            let fall_dist = self.fall_distance.swap(0.0);
+            if self.hurt_entities.load(Ordering::Relaxed) && fall_dist > 1.0 {
+                let damage = crate::entity::combat::calculate_falling_block_damage(
+                    fall_dist,
+                    self.fall_damage_per_distance.load(),
+                    self.fall_damage_max.load(),
+                );
+                if damage > 0.0 {
+                    let world = entity.world.load();
+                    let bb = entity.bounding_box.load();
+                    let victims = world.get_entities_at_box(&bb);
+                    for victim in victims {
+                        if victim.get_entity().entity_id != entity.entity_id {
+                            let _ = victim.damage_with_context(
+                                caller,
+                                damage,
+                                DamageType::FALLING_ANVIL,
+                                Some(entity.pos.load()),
+                                Some(caller),
+                                None,
+                            );
+                        }
+                    }
+                }
+            }
             let world = entity.world.load();
             let landing_pos = self.entity.block_pos.load();
             let mut state_id =
@@ -161,6 +210,10 @@ impl EntityBase for FallingEntity {
             }
         }
 
+        if !entity.on_ground.load(Ordering::Relaxed) && velo.y < 0.0 {
+            self.fall_distance.store(self.fall_distance.load() + (-velo.y as f32));
+        }
+
         entity.velocity.store(velo.multiply(0.98, 0.98, 0.98));
     }
 
@@ -188,7 +241,7 @@ impl EntityBase for FallingEntity {
     }
 
     fn get_gravity(&self) -> f64 {
-        0.04
+        crate::entity::combat::FALLING_BLOCK_DEFAULT_GRAVITY
     }
 
     // TODO: Bedrock spawn metadata lacks the block variant (renders grey while falling)

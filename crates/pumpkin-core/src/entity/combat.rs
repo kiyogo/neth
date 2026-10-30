@@ -3395,6 +3395,143 @@ pub const fn should_tnt_take_damage() -> bool {
     false
 }
 
+/// Default fuse time in ticks for Primed TNT (80 ticks = 4.0s).
+/// Mirrors vanilla `PrimedTnt.java:31`:
+/// `public static final short DEFAULT_FUSE_TIME = 80;`
+pub const TNT_DEFAULT_FUSE_TICKS: u32 = 80;
+
+/// Default explosion power for Primed TNT (4.0).
+/// Mirrors vanilla `PrimedTnt.java:33`:
+/// `private static final float DEFAULT_EXPLOSION_POWER = 4.0F;`
+pub const TNT_DEFAULT_EXPLOSION_POWER: f32 = 4.0;
+
+/// Default gravity acceleration for Primed TNT (0.04).
+/// Mirrors vanilla `PrimedTnt.java:64`:
+/// `protected double getDefaultGravity() { return 0.04; }`
+pub const TNT_DEFAULT_GRAVITY: f64 = 0.04;
+
+/// Default gravity acceleration for Falling Block entities (0.04).
+/// Mirrors vanilla `FallingBlockEntity.java:54`:
+/// `protected double getDefaultGravity() { return 0.04; }`
+pub const FALLING_BLOCK_DEFAULT_GRAVITY: f64 = 0.04;
+
+/// Default maximum fall damage cap for falling blocks (40.0 HP).
+/// Mirrors vanilla `FallingBlockEntity.java:38`:
+/// `private static final int DEFAULT_MAX_FALL_DAMAGE = 40;`
+pub const FALLING_BLOCK_DEFAULT_MAX_DAMAGE: f32 = 40.0;
+
+/// Anvil fall damage per block fallen (2.0 HP per distance block above 1.0).
+/// Mirrors vanilla `FallingBlockEntity.java:140`:
+pub const ANVIL_FALL_DAMAGE_PER_DISTANCE: f32 = 2.0;
+
+/// Pointed dripstone fall damage per block fallen (6.0 HP per distance block above 1.0).
+/// Mirrors vanilla `FallingBlockEntity.java:140`:
+pub const DRIPSTONE_FALL_DAMAGE_PER_DISTANCE: f32 = 6.0;
+
+/// Calculates damage dealt to entities hit by a falling block (e.g. Anvil or Dripstone).
+///
+/// Mirrors vanilla `FallingBlockEntity.java:140`:
+/// `float damage = (float)Math.min(Math.floor((fallDistance - 1.0F) * this.fallDamagePerDistance), this.fallDamageMax);`
+#[must_use]
+pub fn calculate_falling_block_damage(
+    fall_distance: f32,
+    damage_per_distance: f32,
+    max_damage: f32,
+) -> f32 {
+    if fall_distance <= 1.0 || damage_per_distance <= 0.0 {
+        return 0.0;
+    }
+    let dmg = ((fall_distance - 1.0) * damage_per_distance).floor();
+    dmg.min(max_damage).max(0.0)
+}
+
+/// Default lifespan of Experience Orbs and Item Entities (6000 ticks = 5 minutes).
+/// Mirrors vanilla `ExperienceOrb.java:36` and `ItemEntity.java:44`:
+/// `private static final int LIFETIME = 6000;`
+pub const EXPERIENCE_ORB_LIFETIME: u32 = 6000;
+pub const ITEM_ENTITY_LIFETIME: u32 = 6000;
+
+/// Experience Orb gravity acceleration (0.03).
+/// Mirrors vanilla `ExperienceOrb.java:93`:
+/// `protected double getDefaultGravity() { return 0.03; }`
+pub const EXPERIENCE_ORB_DEFAULT_GRAVITY: f64 = 0.03;
+
+/// Item Entity default gravity acceleration (0.04).
+/// Mirrors vanilla `ItemEntity.java:60`:
+/// `protected double getDefaultGravity() { return 0.04; }`
+pub const ITEM_ENTITY_DEFAULT_GRAVITY: f64 = 0.04;
+
+/// Maximum follow distance for Experience Orbs to home in on a player (8.0 blocks).
+/// Mirrors vanilla `ExperienceOrb.java:38`:
+/// `private static final int MAX_FOLLOW_DIST = 8;`
+pub const EXPERIENCE_ORB_MAX_FOLLOW_DIST: f64 = 8.0;
+
+/// Squared maximum follow distance for Experience Orbs (64.0 = 8.0^2).
+pub const EXPERIENCE_ORB_MAX_FOLLOW_DIST_SQ: f64 = 64.0;
+
+/// Calculates velocity pull impulse for an Experience Orb following a player.
+///
+/// Mirrors vanilla `ExperienceOrb.java:142-149`:
+/// ```java
+/// Vec3 delta = new Vec3(player.getX() - this.getX(), player.getY() + player.getEyeHeight() / 2.0 - this.getY(), player.getZ() - this.getZ());
+/// double length = delta.lengthSqr();
+/// double power = 1.0 - Math.sqrt(length) / 8.0;
+/// this.setDeltaMovement(this.getDeltaMovement().add(delta.normalize().scale(power * power * 0.1)));
+/// ```
+#[must_use]
+pub fn calculate_experience_orb_follow_pull(
+    orb_pos: Vector3<f64>,
+    player_pos: Vector3<f64>,
+    player_eye_height: f64,
+) -> Option<Vector3<f64>> {
+    let target_y = player_pos.y + player_eye_height * 0.5;
+    let delta = Vector3::new(
+        player_pos.x - orb_pos.x,
+        target_y - orb_pos.y,
+        player_pos.z - orb_pos.z,
+    );
+    let dist_sq = delta.length_squared();
+    if dist_sq >= EXPERIENCE_ORB_MAX_FOLLOW_DIST_SQ || dist_sq <= 1e-6 {
+        return None;
+    }
+    let dist = dist_sq.sqrt();
+    let power = 1.0 - (dist / EXPERIENCE_ORB_MAX_FOLLOW_DIST);
+    if power <= 0.0 {
+        return None;
+    }
+    let scale = power * power * 0.1;
+    Some(delta.normalize() * scale)
+}
+
+/// Returns the Experience Orb value tier mapping.
+/// Mirrors vanilla `ExperienceOrb.java:231-255`:
+#[must_use]
+pub const fn get_experience_orb_split_value(max_value: u32) -> u32 {
+    if max_value >= 2477 {
+        2477
+    } else if max_value >= 1237 {
+        1237
+    } else if max_value >= 617 {
+        617
+    } else if max_value >= 307 {
+        307
+    } else if max_value >= 149 {
+        149
+    } else if max_value >= 73 {
+        73
+    } else if max_value >= 37 {
+        37
+    } else if max_value >= 17 {
+        17
+    } else if max_value >= 7 {
+        7
+    } else if max_value >= 3 {
+        3
+    } else {
+        1
+    }
+}
+
 /// Calculates vertical velocity change for entities on top of a bubble column.
 ///
 /// Mirrors vanilla `Entity.java:2945-2954` (`handleOnAboveBubbleColumn`):
@@ -13461,5 +13598,59 @@ mod tests {
         assert_eq!(SHULKER_BULLET_SPEED, 0.15);
         assert_eq!(get_shulker_bullet_damage(), 4.0);
         assert_eq!(get_shulker_bullet_levitation_duration(), 200);
+    }
+
+    #[test]
+    fn test_item_tnt_falling_block_and_experience_orb_parity() {
+        // 1. Primed TNT constants & short fuse calculation (PrimedTnt.java:31, 33, 64, 183-185)
+        assert_eq!(TNT_DEFAULT_FUSE_TICKS, 80);
+        assert_eq!(TNT_DEFAULT_EXPLOSION_POWER, 4.0);
+        assert_eq!(TNT_DEFAULT_GRAVITY, 0.04);
+        assert!(!should_tnt_take_damage());
+        assert_eq!(calculate_tnt_short_fuse(80, 0), 10);
+        assert_eq!(calculate_tnt_short_fuse(80, 19), 29);
+
+        // 2. Falling Block constants & anvil fall damage (FallingBlockEntity.java:38, 54, 140)
+        assert_eq!(FALLING_BLOCK_DEFAULT_GRAVITY, 0.04);
+        assert_eq!(FALLING_BLOCK_DEFAULT_MAX_DAMAGE, 40.0);
+        assert_eq!(ANVIL_FALL_DAMAGE_PER_DISTANCE, 2.0);
+        assert_eq!(DRIPSTONE_FALL_DAMAGE_PER_DISTANCE, 6.0);
+        assert_eq!(calculate_falling_block_damage(1.0, 2.0, 40.0), 0.0);
+        assert_eq!(calculate_falling_block_damage(2.0, 2.0, 40.0), 2.0);
+        assert_eq!(calculate_falling_block_damage(6.0, 2.0, 40.0), 10.0);
+        assert_eq!(calculate_falling_block_damage(25.0, 2.0, 40.0), 40.0); // capped at max damage
+
+        // 3. Item Entity & Experience Orb Lifespan & Gravity (ItemEntity.java:44, 60 & ExperienceOrb.java:36, 93)
+        assert_eq!(ITEM_ENTITY_LIFETIME, 6000);
+        assert_eq!(ITEM_ENTITY_DEFAULT_GRAVITY, 0.04);
+        assert_eq!(EXPERIENCE_ORB_LIFETIME, 6000);
+        assert_eq!(EXPERIENCE_ORB_DEFAULT_GRAVITY, 0.03);
+        assert_eq!(EXPERIENCE_ORB_MAX_FOLLOW_DIST, 8.0);
+        assert_eq!(EXPERIENCE_ORB_MAX_FOLLOW_DIST_SQ, 64.0);
+
+        // 4. Experience Orb value splitting tiers (ExperienceOrb.java:231-255)
+        assert_eq!(get_experience_orb_split_value(5000), 2477);
+        assert_eq!(get_experience_orb_split_value(2477), 2477);
+        assert_eq!(get_experience_orb_split_value(2000), 1237);
+        assert_eq!(get_experience_orb_split_value(1000), 617);
+        assert_eq!(get_experience_orb_split_value(500), 307);
+        assert_eq!(get_experience_orb_split_value(200), 149);
+        assert_eq!(get_experience_orb_split_value(100), 73);
+        assert_eq!(get_experience_orb_split_value(50), 37);
+        assert_eq!(get_experience_orb_split_value(20), 17);
+        assert_eq!(get_experience_orb_split_value(10), 7);
+        assert_eq!(get_experience_orb_split_value(5), 3);
+        assert_eq!(get_experience_orb_split_value(2), 1);
+
+        // 5. Experience Orb player follow pull (ExperienceOrb.java:142-149)
+        let orb = Vector3::new(0.0, 64.0, 0.0);
+        let player = Vector3::new(4.0, 64.0, 0.0);
+        let pull = calculate_experience_orb_follow_pull(orb, player, 1.8);
+        assert!(pull.is_some());
+        let p = pull.unwrap();
+        assert!(p.x > 0.0); // accelerates towards player X
+        // Out of range (>= 8.0 blocks)
+        let far_player = Vector3::new(9.0, 64.0, 0.0);
+        assert!(calculate_experience_orb_follow_pull(orb, far_player, 1.8).is_none());
     }
 }

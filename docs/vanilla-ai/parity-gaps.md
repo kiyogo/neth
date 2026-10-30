@@ -5903,3 +5903,45 @@ eck, part 1): nhận 100% full damage (damage).
     - In `crates/pumpkin-core/src/entity/projectile/wither_skull.rs`: replaced `entity.as_ref()` with `shooter.as_deref().unwrap_or(self)` as caller.
     - In `crates/pumpkin-core/src/entity/projectile/wind_charge.rs`: replaced `entity.as_ref()` with `owner.as_deref().unwrap_or(self)` as caller.
   - All unit tests verified and passing across the entire projectile test suite.
+
+### Gap 241: Item, Falling Block, Primed TNT & Experience Orb Physics, Lifespan, Player Attraction, Anvil Damage & Splitting Parity
+- **Vanilla Reference**:
+  - ItemEntity.java:44, 60, 160-180:
+    - LIFETIME = 6000 (5 minutes in ticks).
+    - getDefaultGravity() = 0.04.
+    - getAirDrag() = 0.98F.
+  - FallingBlockEntity.java:38, 54, 140, 258-280:
+    - getDefaultGravity() = 0.04, getAirDrag() = 0.98F.
+    - allDamageMax = 40 HP.
+    - Anvil fall damage per block: 2.0 (ANVIL_FALL_DAMAGE_PER_DISTANCE). Pointed dripstone: 6.0 (DRIPSTONE_FALL_DAMAGE_PER_DISTANCE).
+    - Damage formula: (fallDistance - 1.0) * damagePerDistance floored, capped at allDamageMax.
+    - Falling anvil damage deals DamageType::FALLING_ANVIL to overlapping entities.
+  - PrimedTnt.java:31, 33, 64:
+    - DEFAULT_FUSE_TIME = 80 ticks (4 seconds).
+    - DEFAULT_EXPLOSION_POWER = 4.0F.
+    - getDefaultGravity() = 0.04.
+  - ExperienceOrb.java:36, 38, 93, 142-149, 231-255:
+    - LIFETIME = 6000 (5 minutes in ticks).
+    - MAX_FOLLOW_DIST = 8.0 blocks (dist_sq < 64.0).
+    - Player attraction target: player.getY() + player.getEyeHeight() * 0.5.
+    - Follow acceleration: delta.normalize() * (power * power * 0.1), where power = 1.0 - dist / 8.0.
+    - getDefaultGravity() = 0.03.
+    - Orb value splitting tiers: [2477, 1237, 617, 307, 149, 73, 37, 17, 7, 3, 1].
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants TNT_DEFAULT_FUSE_TICKS, TNT_DEFAULT_EXPLOSION_POWER, TNT_DEFAULT_GRAVITY, FALLING_BLOCK_DEFAULT_GRAVITY, FALLING_BLOCK_DEFAULT_MAX_DAMAGE, ANVIL_FALL_DAMAGE_PER_DISTANCE, DRIPSTONE_FALL_DAMAGE_PER_DISTANCE, EXPERIENCE_ORB_LIFETIME, ITEM_ENTITY_LIFETIME, EXPERIENCE_ORB_DEFAULT_GRAVITY, ITEM_ENTITY_DEFAULT_GRAVITY, EXPERIENCE_ORB_MAX_FOLLOW_DIST, EXPERIENCE_ORB_MAX_FOLLOW_DIST_SQ.
+    - Added helper functions calculate_falling_block_damage, calculate_experience_orb_follow_pull, get_experience_orb_split_value.
+    - Added unit test 	est_item_tnt_falling_block_and_experience_orb_parity.
+  - Updated crates/pumpkin-core/src/entity/experience_orb.rs:
+    - Implemented player homing/attraction in 	ick() towards player eye/chest height within 8.0 blocks quadratic falloff.
+    - Updated get_gravity and 
+ound_to_orb_size tiers.
+  - Updated crates/pumpkin-core/src/entity/falling.rs:
+    - Added all_distance, hurt_entities, all_damage_per_distance, all_damage_max fields to FallingEntity.
+    - Implemented set_hurts_entities and landing damage calculation dealing DamageType::FALLING_ANVIL to entities within bounding box when falling distance > 1.0 block.
+    - Updated get_gravity to FALLING_BLOCK_DEFAULT_GRAVITY.
+  - Updated crates/pumpkin-core/src/entity/tnt.rs:
+    - Replaced hardcoded values with TNT_DEFAULT_FUSE_TICKS, TNT_DEFAULT_EXPLOSION_POWER, TNT_DEFAULT_GRAVITY.
+  - Updated crates/pumpkin-core/src/entity/item.rs:
+    - Replaced hardcoded constants with ITEM_ENTITY_LIFETIME, ITEM_ENTITY_DEFAULT_GRAVITY.
+  - All unit tests verified and passing across the falling block, experience orb, and combat test suites.

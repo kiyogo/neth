@@ -123,29 +123,7 @@ impl ExperienceOrbEntity {
     }
 
     const fn round_to_orb_size(value: u32) -> u32 {
-        if value >= 2477 {
-            2477
-        } else if value >= 1237 {
-            1237
-        } else if value >= 617 {
-            617
-        } else if value >= 307 {
-            307
-        } else if value >= 149 {
-            149
-        } else if value >= 73 {
-            73
-        } else if value >= 37 {
-            37
-        } else if value >= 17 {
-            17
-        } else if value >= 7 {
-            7
-        } else if value >= 3 {
-            3
-        } else {
-            1
-        }
+        crate::entity::combat::get_experience_orb_split_value(value)
     }
 }
 
@@ -216,6 +194,35 @@ impl EntityBase for ExperienceOrbEntity {
         let original_velo = entity.velocity.load();
 
         let mut velo = original_velo;
+
+        // Vanilla ExperienceOrb.java:128-150: follow nearby player within 8 blocks
+        let world = entity.world.load();
+        let orb_pos = entity.pos.load();
+        let mut nearest_player: Option<Arc<Player>> = None;
+        let mut min_dist_sq = crate::entity::combat::EXPERIENCE_ORB_MAX_FOLLOW_DIST_SQ;
+
+        for player in world.players.load().iter() {
+            let p_ent = &player.living_entity.entity;
+            if p_ent.is_alive() && player.gamemode.load() != pumpkin_util::GameMode::Spectator {
+                let dist_sq = orb_pos.squared_distance_to_vec(&p_ent.pos.load());
+                if dist_sq < min_dist_sq {
+                    min_dist_sq = dist_sq;
+                    nearest_player = Some(player.clone());
+                }
+            }
+        }
+
+        if let Some(player) = nearest_player {
+            let p_pos = player.living_entity.entity.pos.load();
+            let eye_h = player.living_entity.entity.get_eye_height();
+            if let Some(pull) = crate::entity::combat::calculate_experience_orb_follow_pull(
+                orb_pos,
+                p_pos,
+                f64::from(eye_h),
+            ) {
+                velo = velo + pull;
+            }
+        }
 
         let no_physics = !self
             .entity
@@ -332,7 +339,7 @@ impl EntityBase for ExperienceOrbEntity {
         None
     }
     fn get_gravity(&self) -> f64 {
-        0.03
+        crate::entity::combat::EXPERIENCE_ORB_DEFAULT_GRAVITY
     }
 
     fn cast_any(&self) -> &dyn std::any::Any {

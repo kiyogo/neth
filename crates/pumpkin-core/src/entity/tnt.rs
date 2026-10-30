@@ -33,9 +33,9 @@ pub struct TNTEntity {
 
 impl TNTEntity {
     /// Vanilla `PrimedTnt.DEFAULT_FUSE_TIME`.
-    pub const DEFAULT_FUSE: u32 = 80;
+    pub const DEFAULT_FUSE: u32 = crate::entity::combat::TNT_DEFAULT_FUSE_TICKS;
     /// Vanilla `PrimedTnt.DEFAULT_EXPLOSION_POWER`.
-    pub const DEFAULT_POWER: f32 = 4.0;
+    pub const DEFAULT_POWER: f32 = crate::entity::combat::TNT_DEFAULT_EXPLOSION_POWER;
 
     pub const fn new(entity: Entity, power: f32, fuse: u32) -> Self {
         Self {
@@ -180,7 +180,7 @@ impl EntityBase for TNTEntity {
     }
 
     fn get_gravity(&self) -> f64 {
-        0.04
+        crate::entity::combat::TNT_DEFAULT_GRAVITY
     }
 
     // TODO: currently Bedrock has no fuse metadata, so the TNT doesn't blink.

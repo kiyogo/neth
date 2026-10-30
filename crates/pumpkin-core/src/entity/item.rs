@@ -85,7 +85,7 @@ impl Drop for ItemMergeReservation<'_> {
 }
 
 /// Vanilla `ItemEntity.LIFETIME`.
-const LIFETIME: u32 = 6000; // 5 minutes in ticks
+const LIFETIME: u32 = crate::entity::combat::ITEM_ENTITY_LIFETIME; // 5 minutes in ticks
 /// Vanilla `ItemEntity.merge(to, from, 64)`: cap on top of `getMaxStackSize`.
 const MERGE_MAX_COUNT: u8 = 64;
 
@@ -821,7 +821,7 @@ impl EntityBase for ItemEntity {
     }
 
     fn get_gravity(&self) -> f64 {
-        0.04
+        crate::entity::combat::ITEM_ENTITY_DEFAULT_GRAVITY
     }
 
     fn bedrock_y_offset(&self) -> f64 {
