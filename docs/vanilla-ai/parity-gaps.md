@@ -4637,3 +4637,30 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `calculate_drowned_trident_uncertainty` and `DROWNED_TRIDENT_SHOOT_VELOCITY`.
     - Added unit test `test_drowned_trident_combat_and_uncertainty_parity`.
   - All unit tests verified and passing (11/11 in zombie family suite, 99/99 in combat suite).
+
+
+## Gap 209: Ravager Stun, Roar & Shield Disabling Parity
+- **Vanilla Reference**: `Ravager.java:50, 55-56, 62, 82-88, 139-145, 157, 166, 184-196, 203-212, 250-254`:
+  - `Ravager.java`:
+    - Base Attributes: `MAX_HEALTH = 100.0`, `MOVEMENT_SPEED = 0.3` (tang len `0.35` khi pursue target), `KNOCKBACK_RESISTANCE = 0.75`, `ATTACK_DAMAGE = 12.0`, `ATTACK_KNOCKBACK = 1.5`, `FOLLOW_RANGE = 32.0`, `STEP_HEIGHT = 1.0`, `XP_REWARD = 20`.
+    - Shield Block Response (`blockedByItem`):
+      - 50% xac suat (`RAVAGER_STUN_CHANCE = 0.5`): Bị choáng trong `40 ticks` (`RAVAGER_STUN_DURATION_TICKS = 40`), phat am thanh `RAVAGER_STUNNED`, broadcast byte 39, va muc tieu defender day Ravager ra xa (`defender.push(this)`).
+      - 50% xac suat con lai: Phản đòn đẩy lùi cực mạnh lên defender (`strongKnockback(defender)`).
+      - Đồng bộ vận tốc ngay lập tức: `defender.syncVelocity = true` va `ravager.syncVelocity = true`.
+    - Roar Mechanism (`roar`):
+      - Khi het 40 ticks choang, phat am thanh `RAVAGER_ROAR`, kich hoat bo dem `roarTick = 20` (`RAVAGER_ROAR_DURATION_TICKS = 20`).
+      - Khi `roarTick == 10` (`RAVAGER_ROAR_BURST_TICK = 10`): Phat no song xung kich voi ban kinh 4.0 blocks (`RAVAGER_ROAR_RADIUS = 4.0`).
+      - Roar Damage & Target Parity (`Ravager.java:204-209`):
+        - Chi co illager (`AbstractIllager`) duoc mien nhiem sat thuong roar `6.0 HP` (`RAVAGER_ROAR_DAMAGE = 6.0`).
+        - NHUNG Illager VẪN BỊ ĐẨY LÙI (`strongKnockback`) boi con song am thanh (sua loi logic cu bo qua hoan toan illager trong phan don knockback).
+        - Player nhan sat thuong roar 6.0 HP nhung KHONG bi day lui boi `strongKnockback`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `RAVAGER_MAX_HEALTH = 100.0`, `RAVAGER_BASE_MOVEMENT_SPEED = 0.3`, `RAVAGER_ATTACK_MOVEMENT_SPEED = 0.35`, `RAVAGER_KNOCKBACK_RESISTANCE = 0.75`, `RAVAGER_ATTACK_DAMAGE = 12.0`, `RAVAGER_ATTACK_KNOCKBACK = 1.5`, `RAVAGER_FOLLOW_RANGE = 32.0`, `RAVAGER_STEP_HEIGHT = 1.0`, `RAVAGER_XP_REWARD = 20`, `RAVAGER_ATTACK_DURATION_TICKS = 10`, `RAVAGER_STUN_DURATION_TICKS = 40`, `RAVAGER_ROAR_DURATION_TICKS = 20`, `RAVAGER_ROAR_BURST_TICK = 10`, `RAVAGER_ROAR_RADIUS = 4.0`, `RAVAGER_ROAR_DAMAGE = 6.0`, `RAVAGER_STUN_CHANCE = 0.5`.
+    - Updated `test_ravager_vex_and_zoglin_parity`.
+  - Updated `RavagerEntity` in `crates/pumpkin-core/src/entity/mob/ravager.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Fixed roar parity: Illagers receive knockback even though immune to damage.
+    - Synced velocity updates with `sync_velocity` and `velocity_dirty` on defender and ravager.
+    - Added unit test `test_ravager_combat_stun_and_roar_parity`.
+  - All unit tests verified and passing (4/4 in ravager suite, 99/99 in combat suite).

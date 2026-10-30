@@ -4247,6 +4247,74 @@ pub fn is_magma_cube_damage_negated(damage_type: &pumpkin_data::damage::DamageTy
     )
 }
 
+// ============================================================================
+// Ravager Parity Constants
+// ============================================================================
+
+/// Base max health for a Ravager (100.0 HP / 50 hearts).
+/// Mirrors vanilla `Ravager.java:82` (`Attributes.MAX_HEALTH, 100.0`).
+pub const RAVAGER_MAX_HEALTH: f32 = 100.0;
+
+/// Base movement speed for a Ravager (0.3).
+/// Mirrors vanilla `Ravager.java:83` (`Attributes.MOVEMENT_SPEED, 0.3`).
+pub const RAVAGER_BASE_MOVEMENT_SPEED: f64 = 0.3;
+
+/// Movement speed for a Ravager when pursuing a target (0.35).
+/// Mirrors vanilla `Ravager.java:50,143` (`ATTACK_MOVEMENT_SPEED = 0.35`).
+pub const RAVAGER_ATTACK_MOVEMENT_SPEED: f64 = 0.35;
+
+/// Knockback resistance for a Ravager (0.75 = 75% resistance).
+/// Mirrors vanilla `Ravager.java:84` (`Attributes.KNOCKBACK_RESISTANCE, 0.75`).
+pub const RAVAGER_KNOCKBACK_RESISTANCE: f64 = 0.75;
+
+/// Base melee attack damage for a Ravager (12.0 HP / 6 hearts).
+/// Mirrors vanilla `Ravager.java:85` (`Attributes.ATTACK_DAMAGE, 12.0`).
+pub const RAVAGER_ATTACK_DAMAGE: f32 = 12.0;
+
+/// Attack knockback bonus for a Ravager (1.5).
+/// Mirrors vanilla `Ravager.java:86` (`Attributes.ATTACK_KNOCKBACK, 1.5`).
+pub const RAVAGER_ATTACK_KNOCKBACK: f64 = 1.5;
+
+/// Follow range for a Ravager (32.0 blocks).
+/// Mirrors vanilla `Ravager.java:87` (`Attributes.FOLLOW_RANGE, 32.0`).
+pub const RAVAGER_FOLLOW_RANGE: f64 = 32.0;
+
+/// Step height for a Ravager (1.0 block).
+/// Mirrors vanilla `Ravager.java:88` (`Attributes.STEP_HEIGHT, 1.0`).
+pub const RAVAGER_STEP_HEIGHT: f64 = 1.0;
+
+/// Base experience reward dropped by a Ravager on death (20 XP).
+/// Mirrors vanilla `Ravager.java:62` (`this.xpReward = 20`).
+pub const RAVAGER_XP_REWARD: u32 = 20;
+
+/// Attack animation duration in ticks (10 ticks / 0.5s).
+/// Mirrors vanilla `Ravager.java:55` (`ATTACK_DURATION = 10`).
+pub const RAVAGER_ATTACK_DURATION_TICKS: i32 = 10;
+
+/// Stun duration in ticks when blocked by shield with 50% chance (40 ticks / 2s).
+/// Mirrors vanilla `Ravager.java:56` (`STUN_DURATION = 40`).
+pub const RAVAGER_STUN_DURATION_TICKS: i32 = 40;
+
+/// Total roar countdown duration in ticks (20 ticks / 1s).
+/// Mirrors vanilla `Ravager.java:166` (`this.roarTick = 20`).
+pub const RAVAGER_ROAR_DURATION_TICKS: i32 = 20;
+
+/// Tick at which roar attack wave bursts (10 ticks / 0.5s).
+/// Mirrors vanilla `Ravager.java:157` (`if (this.roarTick == 10) { this.roar(); }`).
+pub const RAVAGER_ROAR_BURST_TICK: i32 = 10;
+
+/// Radius of Ravager roar attack box expansion (4.0 blocks).
+/// Mirrors vanilla `Ravager.java:203` (`this.getBoundingBox().inflate(4.0)`).
+pub const RAVAGER_ROAR_RADIUS: f64 = 4.0;
+
+/// Roar mob attack damage dealt to non-illagers (6.0 HP / 3 hearts).
+/// Mirrors vanilla `Ravager.java:205` (`entity.hurtServer(level, ..., 6.0F)`).
+pub const RAVAGER_ROAR_DAMAGE: f32 = 6.0;
+
+/// Probability of being stunned when blocked by shield (0.5 = 50%).
+/// Mirrors vanilla `Ravager.java:186` (`if (this.random.nextDouble() < 0.5)`).
+pub const RAVAGER_STUN_CHANCE: f64 = 0.5;
+
 /// Calculates target movement speed for Ravager based on mobility state and target presence.
 ///
 /// Mirrors vanilla `Ravager.java:139-145`:
@@ -9093,6 +9161,24 @@ mod tests {
 
     #[test]
     fn test_ravager_vex_and_zoglin_parity() {
+        // 0. Ravager constants parity (Ravager.java)
+        assert_eq!(RAVAGER_MAX_HEALTH, 100.0);
+        assert_eq!(RAVAGER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(RAVAGER_ATTACK_MOVEMENT_SPEED, 0.35);
+        assert_eq!(RAVAGER_KNOCKBACK_RESISTANCE, 0.75);
+        assert_eq!(RAVAGER_ATTACK_DAMAGE, 12.0);
+        assert_eq!(RAVAGER_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(RAVAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(RAVAGER_STEP_HEIGHT, 1.0);
+        assert_eq!(RAVAGER_XP_REWARD, 20);
+        assert_eq!(RAVAGER_ATTACK_DURATION_TICKS, 10);
+        assert_eq!(RAVAGER_STUN_DURATION_TICKS, 40);
+        assert_eq!(RAVAGER_ROAR_DURATION_TICKS, 20);
+        assert_eq!(RAVAGER_ROAR_BURST_TICK, 10);
+        assert_eq!(RAVAGER_ROAR_RADIUS, 4.0);
+        assert_eq!(RAVAGER_ROAR_DAMAGE, 6.0);
+        assert_eq!(RAVAGER_STUN_CHANCE, 0.5);
+
         // 1. Ravager target movement speed (Ravager.java:139-145)
         assert_eq!(calculate_ravager_target_speed(true, false), 0.0);
         assert_eq!(calculate_ravager_target_speed(true, true), 0.0);

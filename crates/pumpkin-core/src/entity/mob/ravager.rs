@@ -63,35 +63,38 @@ impl RavagerEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 100.0;
+                health.base_value = f64::from(crate::entity::combat::RAVAGER_MAX_HEALTH);
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
+                speed.base_value = crate::entity::combat::RAVAGER_BASE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(kb) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
-                kb.base_value = 0.75;
+                kb.base_value = crate::entity::combat::RAVAGER_KNOCKBACK_RESISTANCE;
                 kb.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 12.0;
+                damage.base_value = f64::from(crate::entity::combat::RAVAGER_ATTACK_DAMAGE);
                 damage.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(attack_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
-                attack_kb.base_value = 1.5;
+                attack_kb.base_value = crate::entity::combat::RAVAGER_ATTACK_KNOCKBACK;
                 attack_kb.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(range) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                range.base_value = 32.0;
+                range.base_value = crate::entity::combat::RAVAGER_FOLLOW_RANGE;
                 range.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.0;
+                step.base_value = crate::entity::combat::RAVAGER_STEP_HEIGHT;
                 step.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(100.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::RAVAGER_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -180,6 +183,8 @@ impl RavagerEntity {
         vel.y += push_y;
         vel.z += push_z.clamp(-2.0, 2.0);
         target_entity.set_velocity(vel);
+        target_entity.sync_velocity.store(true, Ordering::SeqCst);
+        target_entity.velocity_dirty.store(true, Ordering::SeqCst);
     }
 
     pub fn roar(&self) {
@@ -195,17 +200,17 @@ impl RavagerEntity {
             if target_entity.entity_id == my_id {
                 continue;
             }
-            if crate::entity::combat::is_illager_immune_to_ravager_roar(target_entity.entity_type) {
-                continue;
-            }
-
             if let Some(living) = target.get_living_entity() {
                 if !living.entity.is_alive() {
                     continue;
                 }
-                target.damage(target.as_ref(), 6.0, DamageType::MOB_ATTACK);
+                // Illagers are immune to roar damage, but still get knocked back (Ravager.java:204-209)
+                let is_illager = crate::entity::combat::is_illager_immune_to_ravager_roar(target_entity.entity_type);
+                if !is_illager {
+                    target.damage(target.as_ref(), crate::entity::combat::RAVAGER_ROAR_DAMAGE, DamageType::MOB_ATTACK);
+                }
 
-                // Vanilla Ravager.java:233: if (!(entity instanceof Player)) { this.strongKnockback(entity); }
+                // Vanilla Ravager.java:207: if (!(entity instanceof Player)) { this.strongKnockback(entity); }
                 if crate::entity::combat::should_ravager_roar_knockback_target(
                     target_entity.entity_type == &EntityType::PLAYER,
                 ) {
@@ -364,12 +369,16 @@ impl Mob for RavagerEntity {
 
     fn on_blocked_by_shield(&self, defender: &dyn EntityBase, _fully_blocked: bool) {
         if self.roar_tick.load(Ordering::Relaxed) == 0 {
-            if rand::random::<f32>() < 0.5 {
+            if rand::random::<f64>() < crate::entity::combat::RAVAGER_STUN_CHANCE {
                 self.stun();
                 defender.push(&self.mob_entity.living_entity.entity);
+                self.mob_entity.living_entity.entity.sync_velocity.store(true, Ordering::SeqCst);
+                self.mob_entity.living_entity.entity.velocity_dirty.store(true, Ordering::SeqCst);
             } else {
                 self.strong_knockback(defender);
             }
+            defender.get_entity().sync_velocity.store(true, Ordering::SeqCst);
+            defender.get_entity().velocity_dirty.store(true, Ordering::SeqCst);
         }
     }
 
@@ -413,3 +422,54 @@ impl Raider for RavagerEntity {
         Sound::EntityRavagerCelebrate
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        RAVAGER_ATTACK_DAMAGE, RAVAGER_ATTACK_DURATION_TICKS, RAVAGER_ATTACK_KNOCKBACK,
+        RAVAGER_ATTACK_MOVEMENT_SPEED, RAVAGER_BASE_MOVEMENT_SPEED, RAVAGER_FOLLOW_RANGE,
+        RAVAGER_KNOCKBACK_RESISTANCE, RAVAGER_MAX_HEALTH, RAVAGER_ROAR_BURST_TICK,
+        RAVAGER_ROAR_DAMAGE, RAVAGER_ROAR_DURATION_TICKS, RAVAGER_ROAR_RADIUS,
+        RAVAGER_STEP_HEIGHT, RAVAGER_STUN_CHANCE, RAVAGER_STUN_DURATION_TICKS,
+        RAVAGER_XP_REWARD, calculate_ravager_target_speed,
+        is_illager_immune_to_ravager_roar, should_ravager_roar_knockback_target,
+    };
+
+    #[test]
+    fn test_ravager_combat_stun_and_roar_parity() {
+        assert_eq!(RAVAGER_MAX_HEALTH, 100.0);
+        assert_eq!(RAVAGER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(RAVAGER_ATTACK_MOVEMENT_SPEED, 0.35);
+        assert_eq!(RAVAGER_KNOCKBACK_RESISTANCE, 0.75);
+        assert_eq!(RAVAGER_ATTACK_DAMAGE, 12.0);
+        assert_eq!(RAVAGER_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(RAVAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(RAVAGER_STEP_HEIGHT, 1.0);
+        assert_eq!(RAVAGER_XP_REWARD, 20);
+
+        assert_eq!(RAVAGER_ATTACK_DURATION_TICKS, 10);
+        assert_eq!(RAVAGER_STUN_DURATION_TICKS, 40);
+        assert_eq!(RAVAGER_ROAR_DURATION_TICKS, 20);
+        assert_eq!(RAVAGER_ROAR_BURST_TICK, 10);
+        assert_eq!(RAVAGER_ROAR_RADIUS, 4.0);
+        assert_eq!(RAVAGER_ROAR_DAMAGE, 6.0);
+        assert_eq!(RAVAGER_STUN_CHANCE, 0.5);
+
+        // Target speed states
+        assert_eq!(calculate_ravager_target_speed(true, false), 0.0);
+        assert_eq!(calculate_ravager_target_speed(true, true), 0.0);
+        assert_eq!(calculate_ravager_target_speed(false, true), 0.35);
+        assert_eq!(calculate_ravager_target_speed(false, false), 0.3);
+
+        // Roar targets
+        assert!(!should_ravager_roar_knockback_target(true)); // Player not pushed
+        assert!(should_ravager_roar_knockback_target(false)); // Other mobs pushed
+
+        // Illagers immune to roar damage
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::PILLAGER));
+        assert!(is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::VINDICATOR));
+        assert!(!is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::VILLAGER));
+        assert!(!is_illager_immune_to_ravager_roar(&pumpkin_data::entity::EntityType::PLAYER));
+    }
+}
+
