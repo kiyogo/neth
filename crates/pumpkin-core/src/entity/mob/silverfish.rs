@@ -51,26 +51,18 @@ impl SilverfishEntity {
         let mob_weak = Arc::downgrade(&mob_arc);
 
         // Vanilla Silverfish: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 1.0
-        {
-            let mut attributes = mob_arc
-                .entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = f64::from(SILVERFISH_MAX_HEALTH);
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = SILVERFISH_BASE_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = f64::from(SILVERFISH_BASE_ATTACK_DAMAGE);
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(SILVERFISH_MAX_HEALTH));
+        mob_arc
+            .entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, SILVERFISH_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(SILVERFISH_BASE_ATTACK_DAMAGE));
         mob_arc.entity.living_entity.set_health(SILVERFISH_MAX_HEALTH);
 
         {
@@ -323,10 +315,14 @@ mod tests {
     #[test]
     fn test_silverfish_wake_up_and_xp_parity() {
         assert_eq!(SilverfishEntity::XP_REWARD, SILVERFISH_XP_REWARD);
+        assert_eq!(SilverfishEntity::XP_REWARD, 5);
         assert_eq!(SILVERFISH_WAKE_UP_FRIENDS_TICKS, 20);
         assert_eq!(SILVERFISH_MERGE_INTERVAL_TICKS, 10);
         assert_eq!(SILVERFISH_MAX_HEALTH, 8.0);
         assert_eq!(SILVERFISH_BASE_MOVEMENT_SPEED, 0.25);
         assert_eq!(SILVERFISH_BASE_ATTACK_DAMAGE, 1.0);
+        assert_eq!(crate::entity::combat::SILVERFISH_WAKE_UP_SEARCH_XZ, 10);
+        assert_eq!(crate::entity::combat::SILVERFISH_WAKE_UP_SEARCH_Y, 5);
+        assert_eq!(crate::entity::combat::SILVERFISH_STEP_SOUND_VOLUME, 0.15);
     }
 }

@@ -43,26 +43,18 @@ impl EndermiteEntity {
         };
 
         // Vanilla Endermite: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 2.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = f64::from(ENDERMITE_MAX_HEALTH);
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = ENDERMITE_BASE_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = f64::from(ENDERMITE_BASE_ATTACK_DAMAGE);
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(ENDERMITE_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, ENDERMITE_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(ENDERMITE_BASE_ATTACK_DAMAGE));
         mob_arc.mob_entity.living_entity.set_health(ENDERMITE_MAX_HEALTH);
 
         {
@@ -186,6 +178,7 @@ mod tests {
         assert_eq!(ENDERMITE_MAX_HEALTH, 8.0);
         assert_eq!(ENDERMITE_BASE_MOVEMENT_SPEED, 0.25);
         assert_eq!(ENDERMITE_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(crate::entity::combat::ENDERMITE_STEP_SOUND_VOLUME, 0.15);
         assert!(should_endermite_despawn(2400, false));
         assert!(should_endermite_despawn(2500, false));
         assert!(!should_endermite_despawn(2399, false));

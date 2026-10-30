@@ -5216,3 +5216,38 @@ eck, part 1): nhận 100% full damage (damage).
   - Updated crates/pumpkin-core/src/entity/mob/piglin_brute.rs:
     - Converted attribute initialization to set_attribute_base.
   - All 12 unit tests verified and passing across piglin, hoglin, zoglin, and combat suites.
+
+
+### Gap 225: Creeper, Silverfish & Endermite Combat, Fusion, Infestation & Explosions Parity
+- **Vanilla Reference**:
+  - `Creeper.java:51-52, 78, 87-95, 212, 232, 241-258`:
+    - Base Attributes: `MAX_HEALTH = 20.0` (`CREEPER_MAX_HEALTH`), `MOVEMENT_SPEED = 0.25` (`CREEPER_BASE_MOVEMENT_SPEED`), `xpReward = 5` (`CREEPER_XP_REWARD`).
+    - Explosion Swell & Fuse: `DEFAULT_MAX_SWELL = 30` (30 ticks = 1.5s fuse, `CREEPER_DEFAULT_FUSE`), `DEFAULT_EXPLOSION_RADIUS = 3` (`CREEPER_DEFAULT_EXPLOSION_RADIUS`). Powered/Charged creeper multiplier = 2.0x (`CREEPER_POWERED_EXPLOSION_MULTIPLIER = 2.0`) dẫn tới bán kính nổ 6.0 blocks.
+    - Fall Damage Swell Surge: `causeFallDamage` tăng swell bất ngờ `swell += (int)(fallDistance * 1.5)`, bị chặn ở `maxSwell - 5` (25 ticks) tạo hiệu ứng phát nổ cực nhanh khi rơi xuống người chơi (`calculate_creeper_fall_swell`).
+    - Feline Avoidance: Tránh Mèo (Cat) và Ocelot trong phạm vi 6.0 blocks (`CREEPER_AVOID_FELINE_DISTANCE = 6.0`), tốc độ đi bộ 1.0 (`CREEPER_AVOID_FELINE_WALK_SPEED`), tốc độ chạy 1.2 (`CREEPER_AVOID_FELINE_SPRINT_SPEED`).
+    - Lingering Cloud on Explosion: Tạo hiệu ứng đám mây lưu đọng khi có hiệu ứng thuốc với bán kính ban đầu 2.5 (`CREEPER_CLOUD_RADIUS = 2.5`), thu nhỏ -0.5 mỗi lần trúng (`CREEPER_CLOUD_RADIUS_ON_USE = -0.5`), wait time 10 ticks (`CREEPER_CLOUD_WAIT_TIME = 10`), thời gian tồn tại 300 ticks (`CREEPER_CLOUD_DURATION = 300`), hệ số thời gian hiệu ứng 0.25x (`CREEPER_CLOUD_POTION_DURATION_SCALE = 0.25`).
+  - `Silverfish.java:53, 78, 126-231`:
+    - Base Attributes: `MAX_HEALTH = 8.0` (`SILVERFISH_MAX_HEALTH`), `MOVEMENT_SPEED = 0.25` (`SILVERFISH_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 1.0` (`SILVERFISH_BASE_ATTACK_DAMAGE`), `xpReward = 5` (`SILVERFISH_XP_REWARD`).
+    - Wake Up Friends: Tìm kiếm đồng loại ẩn trong các khối đá bị nhiễm (Infested Stone) theo hộp giới hạn XZ: 10 blocks, Y: 5 blocks (`SILVERFISH_WAKE_UP_SEARCH_XZ = 10`, `SILVERFISH_WAKE_UP_SEARCH_Y = 5`), thời gian hồi giữa các đợt gọi 20 ticks (`SILVERFISH_WAKE_UP_FRIENDS_TICKS = 20`).
+    - Infestation / Merge with Stone: Chu kỳ kiểm tra 10 ticks (`SILVERFISH_MERGE_INTERVAL_TICKS = 10`), tỷ lệ 1/10 mỗi chu kỳ nhập vào các khối đá tương thích khi mob griefing bật.
+    - Sound Volume: Âm thanh bước chân volume 0.15 (`SILVERFISH_STEP_SOUND_VOLUME = 0.15`).
+  - `Endermite.java:30, 36, 52, 77, 121-128`:
+    - Base Attributes: `MAX_HEALTH = 8.0` (`ENDERMITE_MAX_HEALTH`), `MOVEMENT_SPEED = 0.25` (`ENDERMITE_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 2.0` (`ENDERMITE_BASE_ATTACK_DAMAGE`), `xpReward = 3` (`ENDERMITE_XP_REWARD`).
+    - Ender Pearl Spawn Chance: 5% tỷ lệ xuất hiện từ việc người chơi ném ngọc Ender (`ENDER_PEARL_ENDERMITE_SPAWN_CHANCE = 0.05`).
+    - Lifetime & Despawn: `MAX_LIFE = 2400` ticks (2 phút = 120 giây, `ENDERMITE_LIFETIME_MAX = 2400`). Tự động biến mất sau 2400 ticks nếu `!isPersistenceRequired()`.
+    - Sound Volume: Âm thanh bước chân volume 0.15 (`ENDERMITE_STEP_SOUND_VOLUME = 0.15`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `CREEPER_MAX_HEALTH`, `CREEPER_BASE_MOVEMENT_SPEED`, `CREEPER_DEFAULT_FUSE`, `CREEPER_DEFAULT_EXPLOSION_RADIUS`, `CREEPER_POWERED_EXPLOSION_MULTIPLIER`, `CREEPER_AVOID_FELINE_DISTANCE`, `CREEPER_AVOID_FELINE_WALK_SPEED`, `CREEPER_AVOID_FELINE_SPRINT_SPEED`, `CREEPER_CLOUD_RADIUS`, `CREEPER_CLOUD_RADIUS_ON_USE`, `CREEPER_CLOUD_WAIT_TIME`, `CREEPER_CLOUD_DURATION`, `CREEPER_CLOUD_POTION_DURATION_SCALE`.
+    - Added constants `SILVERFISH_WAKE_UP_SEARCH_XZ`, `SILVERFISH_WAKE_UP_SEARCH_Y`, `SILVERFISH_STEP_SOUND_VOLUME`, `ENDERMITE_STEP_SOUND_VOLUME`.
+  - Updated `CreeperEntity` in `crates/pumpkin-core/src/entity/mob/creeper.rs`:
+    - Converted attribute initialization to `set_attribute_base` using combat constants.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD` (5 XP).
+    - Updated constants and unit tests `test_creeper_parity_constants`.
+  - Updated `SilverfishEntity` in `crates/pumpkin-core/src/entity/mob/silverfish.rs`:
+    - Converted attribute initialization to `set_attribute_base` using combat constants.
+    - Synced wake up search ranges and step sound volumes in unit test `test_silverfish_wake_up_and_xp_parity`.
+  - Updated `EndermiteEntity` in `crates/pumpkin-core/src/entity/mob/endermite.rs`:
+    - Converted attribute initialization to `set_attribute_base` using combat constants.
+    - Synced step sound volume in unit test `test_endermite_despawn_and_xp_parity`.
+  - All 7 unit tests verified and passing across creeper, silverfish, endermite, and combat suites with 0 warnings.

@@ -3899,6 +3899,60 @@ pub fn can_shulker_duplicate(
     !is_closed && teleport_success && rand_float >= failure_chance
 }
 
+/// Creeper base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla `Creeper.java:78` (`Attributes.MAX_HEALTH, 20.0`).
+pub const CREEPER_MAX_HEALTH: f32 = 20.0;
+
+/// Creeper base movement speed (0.25).
+/// Mirrors vanilla `Creeper.java:78` (`Attributes.MOVEMENT_SPEED, 0.25`).
+pub const CREEPER_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+/// Creeper default fuse duration in ticks (30 ticks = 1.5 seconds).
+/// Mirrors vanilla `Creeper.java:51`:
+/// `private static final short DEFAULT_MAX_SWELL = 30;`
+pub const CREEPER_DEFAULT_FUSE: i32 = 30;
+
+/// Creeper default explosion radius in blocks (3 blocks).
+/// Mirrors vanilla `Creeper.java:52`:
+/// `private static final byte DEFAULT_EXPLOSION_RADIUS = 3;`
+pub const CREEPER_DEFAULT_EXPLOSION_RADIUS: i32 = 3;
+
+/// Charged Creeper explosion radius multiplier (2.0x = 6 blocks).
+/// Mirrors vanilla `Creeper.java:232`:
+/// `float explosionMultiplier = this.isPowered() ? 2.0F : 1.0F;`
+pub const CREEPER_POWERED_EXPLOSION_MULTIPLIER: f32 = 2.0;
+
+/// Creeper experience reward on death (5 XP).
+/// Mirrors vanilla `Monster.java:55` (`this.xpReward = 5`).
+pub const CREEPER_XP_REWARD: u32 = 5;
+
+/// Creeper avoid feline (Cat/Ocelot) distance in blocks (6.0 blocks).
+/// Mirrors vanilla `Creeper.java:67-68`:
+/// `new AvoidEntityGoal<>(this, Ocelot.class, 6.0F, 1.0, 1.2)`
+pub const CREEPER_AVOID_FELINE_DISTANCE: f32 = 6.0;
+pub const CREEPER_AVOID_FELINE_WALK_SPEED: f64 = 1.0;
+pub const CREEPER_AVOID_FELINE_SPRINT_SPEED: f64 = 1.2;
+
+/// Creeper lingering effect cloud parameters on explosion.
+/// Mirrors vanilla `Creeper.java:241-258`.
+pub const CREEPER_CLOUD_RADIUS: f32 = 2.5;
+pub const CREEPER_CLOUD_RADIUS_ON_USE: f32 = -0.5;
+pub const CREEPER_CLOUD_WAIT_TIME: i32 = 10;
+pub const CREEPER_CLOUD_DURATION: i32 = 300;
+pub const CREEPER_CLOUD_POTION_DURATION_SCALE: f32 = 0.25;
+
+/// Silverfish wake up friends search radius horizontal and vertical.
+/// Mirrors vanilla `Silverfish.java:209-211`:
+/// `yOff <= 5 && yOff >= -5 ... xOff <= 10 ... zOff <= 10`
+pub const SILVERFISH_WAKE_UP_SEARCH_XZ: i32 = 10;
+pub const SILVERFISH_WAKE_UP_SEARCH_Y: i32 = 5;
+
+/// Silverfish / Endermite step sound volume (0.15).
+/// Mirrors vanilla `Silverfish.java:78` and `Endermite.java:77`:
+/// `this.playSound(SoundEvents...._STEP, 0.15F, 1.0F);`
+pub const SILVERFISH_STEP_SOUND_VOLUME: f32 = 0.15;
+pub const ENDERMITE_STEP_SOUND_VOLUME: f32 = 0.15;
+
 /// Determines whether an item can be used to ignite a Creeper.
 ///
 /// Mirrors vanilla `ItemTags.CREEPER_IGNITERS` (`Creeper.java:212`):

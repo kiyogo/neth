@@ -28,8 +28,15 @@ use crate::entity::{
     player::Player,
 };
 
-const DEFAULT_FUSE_TIME: i32 = 30;
-const DEFAULT_EXPLOSION_RADIUS: i32 = 3;
+use crate::entity::combat::{
+    CREEPER_AVOID_FELINE_DISTANCE, CREEPER_AVOID_FELINE_SPRINT_SPEED,
+    CREEPER_AVOID_FELINE_WALK_SPEED, CREEPER_BASE_MOVEMENT_SPEED, CREEPER_DEFAULT_EXPLOSION_RADIUS,
+    CREEPER_DEFAULT_FUSE, CREEPER_MAX_HEALTH, CREEPER_POWERED_EXPLOSION_MULTIPLIER,
+    CREEPER_XP_REWARD,
+};
+
+const DEFAULT_FUSE_TIME: i32 = CREEPER_DEFAULT_FUSE;
+const DEFAULT_EXPLOSION_RADIUS: i32 = CREEPER_DEFAULT_EXPLOSION_RADIUS;
 
 pub struct CreeperEntity {
     pub mob_entity: MobEntity,
@@ -43,15 +50,17 @@ pub struct CreeperEntity {
 }
 
 impl CreeperEntity {
+    pub const XP_REWARD: u32 = CREEPER_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(CREEPER_MAX_HEALTH));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.25);
-        mob_entity.living_entity.health.store(20.0);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, CREEPER_BASE_MOVEMENT_SPEED);
+        mob_entity.living_entity.health.store(CREEPER_MAX_HEALTH);
 
         let entity = Self {
             mob_entity,
@@ -197,6 +206,10 @@ impl Mob for CreeperEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
@@ -383,5 +396,29 @@ impl CreeperEntity {
 
     pub fn set_explosion_radius(&self, radius: i32) {
         self.explosion_radius.store(radius, Ordering::Relaxed);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_creeper_parity_constants() {
+        assert_eq!(CreeperEntity::XP_REWARD, 5);
+        assert_eq!(CREEPER_MAX_HEALTH, 20.0);
+        assert_eq!(CREEPER_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(CREEPER_DEFAULT_FUSE, 30);
+        assert_eq!(CREEPER_DEFAULT_EXPLOSION_RADIUS, 3);
+        assert_eq!(CREEPER_POWERED_EXPLOSION_MULTIPLIER, 2.0);
+        assert_eq!(CREEPER_AVOID_FELINE_DISTANCE, 6.0);
+        assert_eq!(CREEPER_AVOID_FELINE_WALK_SPEED, 1.0);
+        assert_eq!(CREEPER_AVOID_FELINE_SPRINT_SPEED, 1.2);
+        assert_eq!(crate::entity::combat::CREEPER_CLOUD_RADIUS, 2.5);
+        assert_eq!(crate::entity::combat::CREEPER_CLOUD_RADIUS_ON_USE, -0.5);
+        assert_eq!(crate::entity::combat::CREEPER_CLOUD_WAIT_TIME, 10);
+        assert_eq!(crate::entity::combat::CREEPER_CLOUD_DURATION, 300);
+        assert_eq!(crate::entity::combat::CREEPER_CLOUD_POTION_DURATION_SCALE, 0.25);
     }
 }
