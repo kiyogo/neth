@@ -844,7 +844,10 @@ impl Goal for DrownedSwimUpGoal {
 mod tests {
     use crate::entity::combat::{
         calculate_drowned_trident_uncertainty, DROWNED_STEP_HEIGHT,
-        DROWNED_TRIDENT_SHOOT_VELOCITY,
+        DROWNED_NAUTILUS_SHELL_CHANCE, DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS,
+        DROWNED_TRIDENT_ATTACK_RANGE, DROWNED_TRIDENT_ROLL_THRESHOLD,
+        DROWNED_TRIDENT_SHOOT_VELOCITY, DROWNED_WEAPON_CHANCE, DROWNED_WEAPON_ROLL_MAX,
+        DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE,
     };
 
     #[test]
@@ -857,6 +860,15 @@ mod tests {
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Easy), 14.0);
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Normal), 10.0);
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Hard), 6.0);
+
+        // Vanilla equipment and spawning chances (Drowned.java:69, 70, 95, 200-203)
+        assert_eq!(DROWNED_NAUTILUS_SHELL_CHANCE, 0.03);
+        assert_eq!(DROWNED_WEAPON_CHANCE, 0.10);
+        assert_eq!(DROWNED_TRIDENT_ROLL_THRESHOLD, 10);
+        assert_eq!(DROWNED_WEAPON_ROLL_MAX, 16);
+        assert_eq!(DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE, 0.5);
+        assert_eq!(DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS, 40);
+        assert_eq!(DROWNED_TRIDENT_ATTACK_RANGE, 10.0);
     }
 }
 

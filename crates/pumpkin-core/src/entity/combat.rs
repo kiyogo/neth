@@ -3416,6 +3416,41 @@ pub const DROWNED_TRIDENT_SHOOT_VELOCITY: f64 = 1.6;
 /// Mirrors vanilla `Drowned.java:82` (`Attributes.STEP_HEIGHT, 1.0`).
 pub const DROWNED_STEP_HEIGHT: f64 = 1.0;
 
+/// Drowned nautilus shell offhand chance (3%).
+/// Mirrors vanilla `Drowned.java:69, 113`:
+/// `public static final float NAUTILUS_SHELL_CHANCE = 0.03F;`
+pub const DROWNED_NAUTILUS_SHELL_CHANCE: f32 = 0.03;
+
+/// Drowned weapon hold chance (10%).
+/// Mirrors vanilla `Drowned.java:200`:
+/// `if (random.nextFloat() > 0.9)`
+pub const DROWNED_WEAPON_CHANCE: f32 = 0.10;
+
+/// Drowned trident weapon roll threshold (10 out of 16 = 62.5%).
+/// Mirrors vanilla `Drowned.java:201-203`:
+/// `int rand = random.nextInt(16); if (rand < 10) ... TRIDENT ... else ... FISHING_ROD`
+pub const DROWNED_TRIDENT_ROLL_THRESHOLD: u32 = 10;
+pub const DROWNED_WEAPON_ROLL_MAX: u32 = 16;
+
+/// Drowned zombie nautilus jockey chance when holding trident (50%).
+/// Mirrors vanilla `Drowned.java:70, 120`:
+/// `private static final float ZOMBIE_NAUTILUS_JOCKEY_CHANCE = 0.5F;`
+pub const DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE: f32 = 0.5;
+
+/// Drowned trident attack interval (40 ticks = 2 seconds).
+/// Mirrors vanilla `Drowned.java:95`:
+/// `new Drowned.DrownedTridentAttackGoal(this, 1.0, 40, 10.0F)`
+pub const DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS: i32 = 40;
+
+/// Drowned trident attack range (10.0 blocks).
+/// Mirrors vanilla `Drowned.java:95`:
+pub const DROWNED_TRIDENT_ATTACK_RANGE: f32 = 10.0;
+
+/// Husk conversion sound event ID (1041).
+/// Mirrors vanilla `Husk.java:84`:
+/// `LevelEvent.SOUND_HUSK_TO_ZOMBIE_CONVERT = 1041;`
+pub const HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID: i32 = 1041;
+
 /// Calculates the projectile inaccuracy (spread angle in degrees) when a Drowned throws a Trident.
 ///
 /// Mirrors vanilla `Drowned.java:323-327` and `RangedAttackMob.java:23-28`:
@@ -11002,5 +11037,15 @@ mod tests {
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Easy), 14.0);
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Normal), 10.0);
         assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Hard), 6.0);
+
+        // 5. Extended Husk & Drowned Parity (Husk.java:84, Drowned.java:69, 70, 95, 200-203)
+        assert_eq!(HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID, 1041);
+        assert_eq!(DROWNED_NAUTILUS_SHELL_CHANCE, 0.03);
+        assert_eq!(DROWNED_WEAPON_CHANCE, 0.10);
+        assert_eq!(DROWNED_TRIDENT_ROLL_THRESHOLD, 10);
+        assert_eq!(DROWNED_WEAPON_ROLL_MAX, 16);
+        assert_eq!(DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE, 0.5);
+        assert_eq!(DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS, 40);
+        assert_eq!(DROWNED_TRIDENT_ATTACK_RANGE, 10.0);
     }
 }

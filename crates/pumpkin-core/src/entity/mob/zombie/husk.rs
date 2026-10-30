@@ -275,7 +275,8 @@ impl Mob for HuskEntity {
 #[cfg(test)]
 mod tests {
     use crate::entity::combat::{
-        calculate_husk_hunger_duration, HUSK_UNARMED_HUNGER_BASE_TICKS,
+        calculate_husk_hunger_duration, HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID,
+        HUSK_UNARMED_HUNGER_BASE_TICKS,
         ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS,
     };
 
@@ -289,6 +290,7 @@ mod tests {
 
         assert_eq!(ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS, 600);
         assert_eq!(ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, 300);
+        assert_eq!(HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID, 1041);
     }
 }
 

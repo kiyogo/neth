@@ -4839,3 +4839,39 @@ eck, part 1): nhận 100% full damage (damage).
     - Registered `SPAWN_REINFORCEMENTS` at `0.0`.
     - Updated unit test `test_zombified_piglin_anger_speed_parity`.
   - All unit tests verified and passing across piglin, piglin_brute, zombified_piglin, and combat suites.
+
+## Gap 215: Husk & Drowned Variants Combat, Sun Sensitivity, Water Conversion & Hunger Effect Parity
+- **Vanilla Reference**:
+  - `Husk.java:33-35, 42-44, 67-75, 78-90`:
+    - Sun Sensitivity: `isSunSensitive() -> false`. Husk hoàn toàn không bị cháy nắng ban ngày (`burns_in_daylight() -> false`).
+    - Unarmed Hunger Effect (`doHurtTarget`): Khi tấn công bằng tay không (`getMainHandItem().isEmpty()`), gây hiệu ứng `MobEffects.HUNGER` trong `140 * (int)difficulty` ticks (`HUSK_UNARMED_HUNGER_BASE_TICKS = 140` ticks = 7 giây per level: Peaceful 0s, Easy 7s = 140t, Normal 14s = 280t, Hard 21s = 420t).
+    - Water Conversion: `convertsInWater() -> true`. Sau 600 ticks chìm trong nước (`ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS = 600`), bắt đầu rung lắc 300 ticks (`ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS = 300`) rồi biến thành `EntityTypes.ZOMBIE` và phát âm thanh chuyển đổi 1041 (`HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID = 1041`).
+    - Baby Dimensions: `EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.825F)`.
+  - `Drowned.java:69-73, 83-85, 93-100, 109-136, 199-207, 211-218, 319-327`:
+    - Base Attributes: Kế thừa Zombie (`MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 3.0`, `ARMOR = 2.0`), cộng thêm `Attributes.STEP_HEIGHT = 1.0` (`DROWNED_STEP_HEIGHT = 1.0`).
+    - Spawning Equipment:
+      - 10% cơ hội cầm vũ khí (`DROWNED_WEAPON_CHANCE = 0.10`): trong đó 10/16 (62.5%) là Trident (`DROWNED_TRIDENT_ROLL_THRESHOLD = 10`, `DROWNED_WEAPON_ROLL_MAX = 16`), 6/16 (37.5%) là Fishing Rod.
+      - 3% cơ hội cầm Nautilus Shell ở tay phụ (`DROWNED_NAUTILUS_SHELL_CHANCE = 0.03`), có đảm bảo drop (`setGuaranteedDrop`).
+      - 50% cơ hội spawn cưỡi Zombie Nautilus jockey khi cầm Trident và là adult (`DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE = 0.5`).
+    - Ranged Trident Attack:
+      - Projectile shoot velocity: `1.6` (`DROWNED_TRIDENT_SHOOT_VELOCITY = 1.6`).
+      - Attack range: `10.0 blocks` (`DROWNED_TRIDENT_ATTACK_RANGE = 10.0`).
+      - Attack interval: `40 ticks` = 2 giây (`DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS = 40`).
+      - Inaccuracy/Uncertainty theo độ khó: Easy 14.0, Normal 10.0, Hard 6.0 (`calculate_drowned_trident_uncertainty`).
+    - Water Conversion: `convertsInWater() -> false` (Drowned không chuyển đổi tiếp).
+    - Item Swap Protection: Không bao giờ thay thế `Items.NAUTILUS_SHELL` ở tay phụ bằng item khác (`canReplaceCurrentItem`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `DROWNED_NAUTILUS_SHELL_CHANCE = 0.03`, `DROWNED_WEAPON_CHANCE = 0.10`, `DROWNED_TRIDENT_ROLL_THRESHOLD = 10`, `DROWNED_WEAPON_ROLL_MAX = 16`, `DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE = 0.5`, `DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS = 40`, `DROWNED_TRIDENT_ATTACK_RANGE = 10.0`, `HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID = 1041`.
+    - Updated unit test `test_zombie_family_combat_and_conversion_parity`.
+  - Updated `HuskEntity` in `crates/pumpkin-core/src/entity/mob/zombie/husk.rs`:
+    - Verified daylight burning immunity (`burns_in_daylight() -> false`).
+    - Synced unarmed hunger application with `calculate_husk_hunger_duration`.
+    - Synced water conversion timing and sound event ID.
+    - Updated unit test `test_husk_hunger_duration_and_daylight_immunity_parity`.
+  - Updated `DrownedEntity` in `crates/pumpkin-core/src/entity/mob/zombie/drowned.rs`:
+    - Synced step height (1.0) and amphibious navigation.
+    - Synced equipment roll chances for Trident, Fishing Rod, and Nautilus Shell offhand.
+    - Verified nautilus shell swap immunity (`can_replace_current_item`).
+    - Updated unit test `test_drowned_trident_combat_and_uncertainty_parity`.
+  - All unit tests verified and passing across husk, drowned, and zombie family test suites.
