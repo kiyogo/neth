@@ -14949,4 +14949,26 @@ mod tests {
         assert_eq!(TurtleEggBlock::EVENT_TURTLE_EGG_PLACED, 2012);
     }
 
+    #[test]
+    fn test_sniffer_egg_hatching_and_boost_parity() {
+        use crate::block::blocks::sniffer_egg::SnifferEggBlock;
+
+        assert_eq!(SnifferEggBlock::MAX_HATCH_LEVEL, 2);
+        assert_eq!(SnifferEggBlock::REGULAR_HATCH_TIME_TICKS, 24000);
+        assert_eq!(SnifferEggBlock::BOOSTED_HATCH_TIME_TICKS, 12000);
+        assert_eq!(SnifferEggBlock::RANDOM_HATCH_OFFSET_TICKS, 300);
+        assert_eq!(SnifferEggBlock::EVENT_SNIFFER_EGG_BOOST, 3009);
+        assert_eq!(SnifferEggBlock::BABY_SNIFFER_AGE, -24000);
+
+        // Regular (non-boosted) delay = 24000 / 3 = 8000 ticks per stage
+        assert_eq!(SnifferEggBlock::get_hatch_delay(false, 0), 8000);
+        assert_eq!(SnifferEggBlock::get_hatch_delay(false, 150), 8150);
+        assert_eq!(SnifferEggBlock::get_hatch_delay(false, 299), 8299);
+
+        // Boosted delay (on moss block tag) = 12000 / 3 = 4000 ticks per stage
+        assert_eq!(SnifferEggBlock::get_hatch_delay(true, 0), 4000);
+        assert_eq!(SnifferEggBlock::get_hatch_delay(true, 150), 4150);
+        assert_eq!(SnifferEggBlock::get_hatch_delay(true, 299), 4299);
+    }
+
 }

@@ -6542,3 +6542,24 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Replaced hardcoded baby age -24000 with BABY_TURTLE_AGE.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_turtle_egg_constants_and_trampling_parity.
+
+
+### Gap 265: Sniffer Egg Hatching Time, Speedup On Moss & Particle Parity
+- **Vanilla Reference**:
+  - SnifferEggBlock.java:27-32, 50-78:
+    - `MAX_HATCH_LEVEL = 2`: 3 hatch stages (0 = fresh, 1 = cracked, 2 = ready to hatch).
+    - `REGULAR_HATCH_TIME_TICKS = 24000`: Normal hatching time is 24,000 ticks (20 minutes); progression tick delay per stage is `24000 / 3 = 8000` ticks + random offset `0..300`.
+    - `BOOSTED_HATCH_TIME_TICKS = 12000`: When placed on a block with tag `BlockTags.SNIFFER_EGG_HATCH_BOOST` (e.g. moss block), hatching time is halved to 12,000 ticks (10 minutes); progression delay per stage is `12000 / 3 = 4000` ticks + random offset `0..300`.
+    - `RANDOM_HATCH_OFFSET_TICKS = 300`: Random tick jitter up to 300 ticks added to each stage delay.
+    - `EVENT_SNIFFER_EGG_BOOST = 3009`: Level event 3009 (`WorldEvent::ParticlesEggCrack`) broadcasted when placed on boosted block.
+    - Hatching outcome: destroys block without drops, plays `SoundEvents.SNIFFER_EGG_HATCH` at centered position (`volume 0.7F, pitch 0.9F + random * 0.2F`), and spawns a baby sniffer entity (`age = -24000`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/sniffer_egg.rs`:
+    - Exported constants `MAX_HATCH_LEVEL = 2`, `REGULAR_HATCH_TIME_TICKS = 24000`, `BOOSTED_HATCH_TIME_TICKS = 12000`, `RANDOM_HATCH_OFFSET_TICKS = 300`, `EVENT_SNIFFER_EGG_BOOST = 3009`, and `BABY_SNIFFER_AGE = -24000`.
+    - Replaced hardcoded test delay (100 / 200 ticks) with accurate vanilla calculation `(hatch_time / 3) + random_offset`.
+    - Updated boost check to check block tag `tag::Block::MINECRAFT_SNIFFER_EGG_HATCH_BOOST` instead of only matching `BlockId::MOSS_BLOCK`.
+    - Emitted `WorldEvent::ParticlesEggCrack` (3009) upon placement on boosted blocks.
+    - Emitted accurate sound volumes and pitches (`0.7` volume, `0.9 + random * 0.2` pitch) centered at the block position.
+    - Spawned baby sniffer with `BABY_SNIFFER_AGE` when hatching completes.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sniffer_egg_hatching_and_boost_parity`.
