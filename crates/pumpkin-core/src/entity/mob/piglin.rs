@@ -18,6 +18,10 @@ use pumpkin_nbt::tag::NbtTag;
 use pumpkin_util::math::boundingbox::EntityDimensions;
 use pumpkin_util::math::position::BlockPos;
 
+use crate::entity::combat::{
+    PIGLIN_ATTACK_DAMAGE, PIGLIN_CONVERSION_TIME_TICKS, PIGLIN_MAX_HEALTH, PIGLIN_MOVEMENT_SPEED,
+    PIGLIN_XP_REWARD, calculate_piglin_experience_reward,
+};
 use crate::entity::item::ItemEntity;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::mob::equipment as mob_equipment;
@@ -42,9 +46,9 @@ pub struct PiglinEntity {
 }
 
 impl PiglinEntity {
-    pub const CONVERSION_TIME: i32 = 300;
+    pub const CONVERSION_TIME: i32 = PIGLIN_CONVERSION_TIME_TICKS;
     pub const INVENTORY_SIZE: usize = 8;
-    pub const XP_REWARD: u32 = 5;
+    pub const XP_REWARD: u32 = PIGLIN_XP_REWARD;
     pub const AMBIENT_SOUND_INTERVAL: i32 = 80;
     /// `CrossbowItem.getDefaultProjectileRange`.
     const CROSSBOW_PROJECTILE_RANGE: i32 = 8;
@@ -84,19 +88,19 @@ impl PiglinEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 16.0;
+                health.base_value = PIGLIN_MAX_HEALTH;
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.35;
+                speed.base_value = PIGLIN_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 5.0;
+                damage.base_value = PIGLIN_ATTACK_DAMAGE;
                 damage.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(16.0);
+        mob_arc.mob_entity.living_entity.set_health(PIGLIN_MAX_HEALTH as f32);
 
         mob_arc.mob_entity.set_can_pick_up_loot(true);
         mob_arc.mob_entity.init_brain(mob_arc.as_ref());
@@ -843,7 +847,7 @@ impl Mob for PiglinEntity {
     }
 
     fn get_base_experience_reward(&self) -> u32 {
-        Self::XP_REWARD
+        calculate_piglin_experience_reward(self.is_baby())
     }
 }
 
@@ -888,5 +892,16 @@ mod tests {
         assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
         assert_eq!(effect.duration, 200);
         assert_eq!(effect.amplifier, 0);
+
+        // Experience reward parity: adult drops 5 XP, baby drops 0 XP (LivingEntity.java:1533)
+        assert_eq!(calculate_piglin_experience_reward(false), 5);
+        assert_eq!(calculate_piglin_experience_reward(true), 0);
+
+        // Spawn mechanics parity (Piglin.java:75-81, 345)
+        assert_eq!(crate::entity::combat::PIGLIN_PROBABILITY_OF_SPAWNING_AS_BABY, 0.2);
+        assert_eq!(crate::entity::combat::PIGLIN_CHANCE_OF_WEARING_EACH_ARMOUR_ITEM, 0.1);
+        assert_eq!(crate::entity::combat::PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW, 0.5);
+        assert_eq!(crate::entity::combat::PIGLIN_CROSSBOW_ATTACK_SPEED, 1.6);
+        assert_eq!(crate::entity::combat::PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN, 10);
     }
 }

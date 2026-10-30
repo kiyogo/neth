@@ -10,6 +10,14 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 
 use crate::entity::ai::util::goal_utils;
+use crate::entity::combat::{
+    ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS, ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS,
+    ZOMBIFIED_PIGLIN_ALERT_RANGE_Y, ZOMBIFIED_PIGLIN_ARMOR, ZOMBIFIED_PIGLIN_ATTACK_DAMAGE,
+    ZOMBIFIED_PIGLIN_BASE_SPEED, ZOMBIFIED_PIGLIN_FOLLOW_RANGE,
+    ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS, ZOMBIFIED_PIGLIN_MAX_HEALTH,
+    ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE, ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY,
+    ZOMBIFIED_PIGLIN_XP_REWARD,
+};
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
@@ -28,7 +36,8 @@ use crate::entity::{
 use crate::world::World;
 
 /// Vanilla `ALERT_INTERVAL`: 4 to 6 seconds.
-const ALERT_INTERVAL: std::ops::RangeInclusive<i32> = 80..=120;
+const ALERT_INTERVAL: std::ops::RangeInclusive<i32> =
+    ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS..=ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS;
 
 pub struct ZombifiedPiglinEntity {
     pub mob_entity: MobEntity,
@@ -39,26 +48,32 @@ pub struct ZombifiedPiglinEntity {
 }
 
 impl ZombifiedPiglinEntity {
-    pub const XP_REWARD: u32 = 5;
+    pub const XP_REWARD: u32 = ZOMBIFIED_PIGLIN_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, ZOMBIFIED_PIGLIN_MAX_HEALTH);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FOLLOW_RANGE, 35.0);
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, ZOMBIFIED_PIGLIN_FOLLOW_RANGE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, ZOMBIFIED_PIGLIN_BASE_SPEED);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 5.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, ZOMBIFIED_PIGLIN_ATTACK_DAMAGE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ARMOR, 2.0);
-        mob_entity.living_entity.health.store(20.0);
+            .set_attribute_base(&Attributes::ARMOR, ZOMBIFIED_PIGLIN_ARMOR);
+        mob_entity
+            .living_entity
+            .set_attribute_base(
+                &Attributes::SPAWN_REINFORCEMENTS,
+                ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE,
+            );
+        mob_entity.living_entity.health.store(ZOMBIFIED_PIGLIN_MAX_HEALTH as f32);
 
         let piglin = Self {
             mob_entity,
@@ -293,5 +308,22 @@ mod tests {
         // Baby angry speed: stays base 0.23 (babies do not gain speed modifier in vanilla)
         let baby_angry_speed = crate::entity::combat::calculate_zombified_piglin_speed(base_speed, true, true);
         assert_eq!(baby_angry_speed, base_speed);
+
+        // Attributes parity (ZombifiedPiglin.java:61-67, 80-85, 225)
+        assert_eq!(ZOMBIFIED_PIGLIN_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_BASE_SPEED, 0.23);
+        assert_eq!(ZOMBIFIED_PIGLIN_ATTACK_DAMAGE, 5.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ARMOR, 2.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE, 0.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_RANGE_Y, 10.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS, 80);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS, 120);
+        assert_eq!(ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY, 20);
+        assert_eq!(ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS, 8.0);
+
+        // Baby experience reward parity (2.5x base = 12 XP)
+        let baby_xp = (ZOMBIFIED_PIGLIN_XP_REWARD as f32 * 2.5) as u32;
+        assert_eq!(baby_xp, 12);
     }
 }

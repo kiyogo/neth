@@ -6926,6 +6926,86 @@ pub const PIGLIN_ADMIRE_DURATION_TICKS: i32 = 119;
 pub const PIGLIN_BABY_SPEED_MODIFIER_ID: &str = "minecraft:baby";
 pub const PIGLIN_BABY_SPEED_MODIFIER_AMOUNT: f64 = 0.2;
 
+/// Piglin baby spawn probability (0.2 = 20%).
+/// Mirrors vanilla `Piglin.java:77`:
+/// `private static final float PROBABILITY_OF_SPAWNING_AS_BABY = 0.2F;`
+pub const PIGLIN_PROBABILITY_OF_SPAWNING_AS_BABY: f32 = 0.2;
+
+/// Piglin armor item wear chance (0.1 = 10% per slot).
+/// Mirrors vanilla `Piglin.java:75`:
+/// `private static final float CHANCE_OF_WEARING_EACH_ARMOUR_ITEM = 0.1F;`
+pub const PIGLIN_CHANCE_OF_WEARING_EACH_ARMOUR_ITEM: f32 = 0.1;
+
+/// Piglin crossbow vs melee spawn probability (0.5 = 50%).
+/// Mirrors vanilla `Piglin.java:81`:
+/// `private static final double PROBABILITY_OF_SPAWNING_WITH_CROSSBOW_INSTEAD_OF_SWORD = 0.5;`
+pub const PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW: f64 = 0.5;
+
+/// Piglin crossbow projectile shooting velocity power (1.6).
+/// Mirrors vanilla `Piglin.java:345`:
+/// `this.performCrossbowAttack(this, 1.6F);`
+pub const PIGLIN_CROSSBOW_ATTACK_SPEED: f32 = 1.6;
+
+/// Piglin golden spear spawn chance (1 in 10 chance when not spawning with crossbow).
+/// Mirrors vanilla `Piglin.java:288`:
+/// `this.random.nextInt(10) == 0 ? Items.GOLDEN_SPEAR : Items.GOLDEN_SWORD`
+pub const PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN: u32 = 10;
+
+/// Zombified Piglin max health (20.0 HP).
+/// Mirrors vanilla `ZombifiedPiglin.java` / `Zombie.java`:
+pub const ZOMBIFIED_PIGLIN_MAX_HEALTH: f64 = 20.0;
+
+/// Zombified Piglin attack damage (5.0 HP).
+/// Mirrors vanilla `ZombifiedPiglin.java:84`:
+/// `.add(Attributes.ATTACK_DAMAGE, 5.0)`
+pub const ZOMBIFIED_PIGLIN_ATTACK_DAMAGE: f64 = 5.0;
+
+/// Zombified Piglin natural armor (2.0).
+/// Mirrors vanilla `ZombifiedPiglin.java` / `Zombie.java:162`:
+pub const ZOMBIFIED_PIGLIN_ARMOR: f64 = 2.0;
+
+/// Zombified Piglin follow range (35.0 blocks).
+/// Mirrors vanilla `ZombifiedPiglin.java` / `Zombie.java:160`:
+pub const ZOMBIFIED_PIGLIN_FOLLOW_RANGE: f64 = 35.0;
+
+/// Zombified Piglin spawn reinforcement chance (0.0).
+/// Mirrors vanilla `ZombifiedPiglin.java:82`:
+/// `.add(Attributes.SPAWN_REINFORCEMENTS_CHANCE, 0.0)`
+pub const ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE: f64 = 0.0;
+
+/// Zombified Piglin alert vertical box radius (10 blocks).
+/// Mirrors vanilla `ZombifiedPiglin.java:61`:
+/// `private static final int ALERT_RANGE_Y = 10;`
+pub const ZOMBIFIED_PIGLIN_ALERT_RANGE_Y: f64 = 10.0;
+
+/// Zombified Piglin alert interval in ticks (80 to 120 ticks = 4 to 6 seconds).
+/// Mirrors vanilla `ZombifiedPiglin.java:62`:
+/// `private static final UniformInt ALERT_INTERVAL = TimeUtil.rangeOfSeconds(4, 6);`
+pub const ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS: i32 = 80;
+pub const ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS: i32 = 120;
+
+/// Zombified Piglin golden spear spawn chance (1 in 20).
+/// Mirrors vanilla `ZombifiedPiglin.java:225`:
+/// `random.nextInt(20) == 0 ? Items.GOLDEN_SPEAR : Items.GOLDEN_SWORD`
+pub const ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY: u32 = 20;
+
+/// Zombified Piglin lava pathfinding malus (8.0).
+/// Mirrors vanilla `ZombifiedPiglin.java:67`:
+/// `this.setPathfindingMalus(PathType.LAVA, 8.0F);`
+pub const ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS: f32 = 8.0;
+
+/// Calculates experience reward for Piglin based on baby status.
+/// Mirrors vanilla `LivingEntity.java:1533` & `shouldDropExperience()`:
+/// Babies do not drop experience (0 XP), adults drop 5 XP.
+#[must_use]
+pub const fn calculate_piglin_experience_reward(is_baby: bool) -> u32 {
+    if is_baby {
+        0
+    } else {
+        PIGLIN_XP_REWARD
+    }
+}
+
 /// Zombified Piglin angry speed modifier identifier and amount, mirroring vanilla `ZombifiedPiglin.java:52-54`.
 /// AttributeModifier.Operation.ADD_VALUE (+0.05 speed).
 pub const ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID: &str = "minecraft:attacking";
@@ -10810,6 +10890,26 @@ mod tests {
         assert_eq!(calculate_zombified_piglin_speed(0.23, false, false), 0.23);
         // Baby zombified piglins do not gain angry speed modifier in vanilla
         assert_eq!(calculate_zombified_piglin_speed(0.23, true, true), 0.23);
+
+        // 7. Extended Piglin Family Parity (Piglin.java:75-81, 288, 345, ZombifiedPiglin.java:61-67, 82, 84, 225)
+        assert_eq!(PIGLIN_PROBABILITY_OF_SPAWNING_AS_BABY, 0.2);
+        assert_eq!(PIGLIN_CHANCE_OF_WEARING_EACH_ARMOUR_ITEM, 0.1);
+        assert_eq!(PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW, 0.5);
+        assert_eq!(PIGLIN_CROSSBOW_ATTACK_SPEED, 1.6);
+        assert_eq!(PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN, 10);
+        assert_eq!(calculate_piglin_experience_reward(false), 5);
+        assert_eq!(calculate_piglin_experience_reward(true), 0);
+
+        assert_eq!(ZOMBIFIED_PIGLIN_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ATTACK_DAMAGE, 5.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ARMOR, 2.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE, 0.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_RANGE_Y, 10.0);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS, 80);
+        assert_eq!(ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS, 120);
+        assert_eq!(ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY, 20);
+        assert_eq!(ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS, 8.0);
     }
 
     #[test]

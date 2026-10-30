@@ -4797,3 +4797,45 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
     - Added unit test `test_cave_spider_poison_and_attributes_parity`.
   - All unit tests verified and passing (5/5 in spider suite, 99/99 in combat suite).
+
+## Gap 214: Piglin, Piglin Brute & Zombified Piglin Family Combat, Attributes, Spawning & Anger Parity
+- **Vanilla Reference**:
+  - `AbstractPiglin.java:26-34, 51-57, 81-96, 103-115, 128-130`:
+    - `CONVERSION_TIME = 300` ticks (15 giây).
+    - `isConverting()`: Chỉ zombify khi `!isImmuneToZombification() && !isNoAi() && level.environmentAttributes().getValue(EnvironmentAttributes.PIGLINS_ZOMBIFY)`.
+    - `finishConversion()`: Chuyển thành `ZOMBIFIED_PIGLIN`, áp dụng hiệu ứng `NAUSEA` 200 ticks (10 giây, amplifier 0).
+    - NBT: `"IsImmuneToZombification"` (boolean), `"TimeInOverworld"` (int).
+    - `isHoldingMeleeWeapon()`: Kiểm tra item cầm tay chính có component `TOOL`.
+  - `Piglin.java:65-86, 164-166, 175-200, 237-247, 274-276, 285-289, 311-323, 345`:
+    - Base Attributes: `MAX_HEALTH = 16.0` (`PIGLIN_MAX_HEALTH`), `MOVEMENT_SPEED = 0.35` (`PIGLIN_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 5.0` (`PIGLIN_ATTACK_DAMAGE`), `xpReward = 5` (`PIGLIN_XP_REWARD`).
+    - Baby Mechanics: `PROBABILITY_OF_SPAWNING_AS_BABY = 0.2` (20%), modifier baby speed `0.2` (+20% base speed, `ADD_MULTIPLIED_BASE`), dimensions (0.49, 0.98, eye 0.78).
+    - Experience Parity: `LivingEntity.shouldDropExperience()` trả về `!isBaby()`. Do đó Baby Piglin thưởng `0 XP`, còn Adult Piglin thưởng `5 XP` (`calculate_piglin_experience_reward`).
+    - Spawn Weapon: 50% Crossbow (`PROBABILITY_OF_SPAWNING_WITH_CROSSBOW = 0.5`), 50% melee (trong đó 1/10 Golden Spear, 9/10 Golden Sword).
+    - Spawn Armor: 10% cơ hội cho mỗi vị trí Head, Chest, Legs, Feet (`CHANCE_OF_WEARING_EACH_ARMOUR_ITEM = 0.1`).
+    - Crossbow Projectile Speed: `performCrossbowAttack(this, 1.6F)` (`PIGLIN_CROSSBOW_ATTACK_SPEED = 1.6`).
+  - `PiglinBrute.java:32-35, 49-55, 67-69, 82-89, 103-105`:
+    - Base Attributes: `MAX_HEALTH = 50.0` (`PIGLIN_BRUTE_MAX_HEALTH`), `MOVEMENT_SPEED = 0.35` (`PIGLIN_BRUTE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 7.0` (`PIGLIN_BRUTE_ATTACK_DAMAGE`), `FOLLOW_RANGE = 12.0` (`PIGLIN_BRUTE_FOLLOW_RANGE`), `xpReward = 20` (`PIGLIN_BRUTE_XP_REWARD`).
+    - Always Adult (`canHunt = false`), vũ khí luôn là `Items.GOLDEN_AXE`, chỉ nhặt `Items.GOLDEN_AXE`.
+  - `ZombifiedPiglin.java:49-64, 80-85, 98-116, 127-149, 224-231`:
+    - Base Attributes: `MAX_HEALTH = 20.0` (`ZOMBIFIED_PIGLIN_MAX_HEALTH`), `MOVEMENT_SPEED = 0.23` (`ZOMBIFIED_PIGLIN_BASE_SPEED`), `ATTACK_DAMAGE = 5.0` (`ZOMBIFIED_PIGLIN_ATTACK_DAMAGE`), `ARMOR = 2.0` (`ZOMBIFIED_PIGLIN_ARMOR`), `FOLLOW_RANGE = 35.0` (`ZOMBIFIED_PIGLIN_FOLLOW_RANGE`), `SPAWN_REINFORCEMENTS_CHANCE = 0.0` (`ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE`).
+    - Anger & Speed Modifier: `"minecraft:attacking"` tăng `+0.05` (`ADD_VALUE`) tốc độ khi tức giận (`calculate_zombified_piglin_speed`), chỉ áp dụng cho người lớn (`!isBaby()`).
+    - Alert Mechanics: Chu kỳ alert `80..=120 ticks` (`4..6s`), quét đồng loại trong hộp `(FOLLOW_RANGE, 10.0, FOLLOW_RANGE)` (`ALERT_RANGE_Y = 10.0`).
+    - Spawning Weapon: 1/20 Golden Spear (`ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY = 20`), còn lại 19/20 Golden Sword.
+    - Lava Pathfinding Malus: `8.0` (`ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS = 8.0`).
+    - Experience Parity: Baby thưởng 2.5x base = 12 XP cộng thêm equipment, Adult thưởng 5 XP cộng equipment.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `PIGLIN_PROBABILITY_OF_SPAWNING_AS_BABY = 0.2`, `PIGLIN_CHANCE_OF_WEARING_EACH_ARMOUR_ITEM = 0.1`, `PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW = 0.5`, `PIGLIN_CROSSBOW_ATTACK_SPEED = 1.6`, `PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN = 10`, `ZOMBIFIED_PIGLIN_MAX_HEALTH = 20.0`, `ZOMBIFIED_PIGLIN_ATTACK_DAMAGE = 5.0`, `ZOMBIFIED_PIGLIN_ARMOR = 2.0`, `ZOMBIFIED_PIGLIN_FOLLOW_RANGE = 35.0`, `ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE = 0.0`, `ZOMBIFIED_PIGLIN_ALERT_RANGE_Y = 10.0`, `ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS = 80`, `ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS = 120`, `ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY = 20`, `ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS = 8.0`.
+    - Added helper `calculate_piglin_experience_reward(is_baby: bool) -> u32`.
+    - Updated unit test `test_hoglin_zoglin_piglin_combat_parity`.
+  - Updated `PiglinEntity` in `crates/pumpkin-core/src/entity/mob/piglin.rs`:
+    - Synced constants and attribute initialization (`PIGLIN_MAX_HEALTH`, `PIGLIN_MOVEMENT_SPEED`, `PIGLIN_ATTACK_DAMAGE`, `PIGLIN_XP_REWARD`, `PIGLIN_CONVERSION_TIME_TICKS`).
+    - Synced experience drop using `calculate_piglin_experience_reward(self.is_baby())` (0 XP for baby, 5 XP for adult).
+    - Updated unit test `test_piglin_baby_speed_and_conversion_nausea_parity`.
+  - Updated `PiglinBruteEntity` in `crates/pumpkin-core/src/entity/mob/piglin_brute.rs`:
+    - Synced constants and attributes (`PIGLIN_BRUTE_MAX_HEALTH`, `PIGLIN_BRUTE_MOVEMENT_SPEED`, `PIGLIN_BRUTE_ATTACK_DAMAGE`, `PIGLIN_BRUTE_FOLLOW_RANGE`, `PIGLIN_BRUTE_XP_REWARD`).
+  - Updated `ZombifiedPiglinEntity` in `crates/pumpkin-core/src/entity/mob/zombified_piglin.rs`:
+    - Synced base attributes and alert intervals with `combat.rs` constants.
+    - Registered `SPAWN_REINFORCEMENTS` at `0.0`.
+    - Updated unit test `test_zombified_piglin_anger_speed_parity`.
+  - All unit tests verified and passing across piglin, piglin_brute, zombified_piglin, and combat suites.

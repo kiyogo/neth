@@ -14,6 +14,10 @@ use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
 
+use crate::entity::combat::{
+    PIGLIN_BRUTE_ATTACK_DAMAGE, PIGLIN_BRUTE_FOLLOW_RANGE, PIGLIN_BRUTE_MAX_HEALTH,
+    PIGLIN_BRUTE_MOVEMENT_SPEED, PIGLIN_BRUTE_XP_REWARD, PIGLIN_CONVERSION_TIME_TICKS,
+};
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::mob::equipment::RegionalDifficulty;
 use crate::entity::mob::{abstract_piglin, piglin_brute_ai};
@@ -30,8 +34,8 @@ pub struct PiglinBruteEntity {
 }
 
 impl PiglinBruteEntity {
-    pub const CONVERSION_TIME: i32 = 300;
-    pub const XP_REWARD: u32 = 20;
+    pub const CONVERSION_TIME: i32 = PIGLIN_CONVERSION_TIME_TICKS;
+    pub const XP_REWARD: u32 = PIGLIN_BRUTE_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
@@ -51,23 +55,23 @@ impl PiglinBruteEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 50.0;
+                health.base_value = PIGLIN_BRUTE_MAX_HEALTH;
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.35;
+                speed.base_value = PIGLIN_BRUTE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 7.0;
+                damage.base_value = PIGLIN_BRUTE_ATTACK_DAMAGE;
                 damage.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 12.0;
+                follow.base_value = PIGLIN_BRUTE_FOLLOW_RANGE;
                 follow.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(50.0);
+        mob_arc.mob_entity.living_entity.set_health(PIGLIN_BRUTE_MAX_HEALTH as f32);
 
         mob_arc.mob_entity.init_brain(mob_arc.as_ref());
         mob_arc
