@@ -147,6 +147,25 @@ impl BlockBehaviour for NoteBlock {
             3.0,
             pitch,
         );
+        if is_base_block(instrument) {
+            let note_pos = pumpkin_util::math::vector3::Vector3::new(
+                args.position.0.x as f64 + 0.5,
+                args.position.0.y as f64 + 1.2,
+                args.position.0.z as f64 + 0.5,
+            );
+            let color_offset = pumpkin_util::math::vector3::Vector3::new(
+                f32::from(note_props.note) / 24.0,
+                0.0,
+                0.0,
+            );
+            args.world.spawn_particle(
+                note_pos,
+                color_offset,
+                0.0,
+                0,
+                pumpkin_data::particle::Particle::Note,
+            );
+        }
         true
     }
 
@@ -207,7 +226,7 @@ const fn convert_instrument_to_sound(instrument: NoteblockInstrument) -> Sound {
     }
 }
 
-const fn is_base_block(instrument: NoteblockInstrument) -> bool {
+pub const fn is_base_block(instrument: NoteblockInstrument) -> bool {
     matches!(
         instrument,
         NoteblockInstrument::Harp
@@ -225,5 +244,10 @@ const fn is_base_block(instrument: NoteblockInstrument) -> bool {
             | NoteblockInstrument::Didgeridoo
             | NoteblockInstrument::Bit
             | NoteblockInstrument::Banjo
+            | NoteblockInstrument::Pling
+            | NoteblockInstrument::Trumpet
+            | NoteblockInstrument::TrumpetExposed
+            | NoteblockInstrument::TrumpetOxidized
+            | NoteblockInstrument::TrumpetWeathered
     )
 }

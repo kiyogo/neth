@@ -8143,6 +8143,55 @@ pub fn dispenser_reservoir_sampling(
     replace_slot
 }
 
+/// Vanilla `NoteBlock.java:40, 136-138` & `NoteBlockInstrument.java:9-35`:
+pub const NOTE_BLOCK_VOLUME: f32 = 3.0;
+pub const NOTE_BLOCK_OCTAVE_SEMITONES: i32 = 12;
+pub const NOTE_BLOCK_TOTAL_NOTES: u16 = 25;
+
+/// Vanilla `NoteBlock.java:136-138`:
+/// Calculates note pitch: `2.0^((note - 12) / 12.0)`.
+#[must_use]
+pub fn calculate_note_block_pitch(note: u16) -> f32 {
+    ((f32::from(note) - 12.0) / 12.0).exp2()
+}
+
+/// Vanilla `NoteBlock.java:147`:
+/// Calculates note particle color offset: `note / 24.0` in range `[0.0, 1.0]`.
+#[must_use]
+pub fn calculate_note_particle_color_offset(note: u16) -> f64 {
+    f64::from(note.min(24)) / 24.0
+}
+
+/// Vanilla `NoteBlockInstrument.java:56-58, 64-66`:
+/// Determines whether an instrument is a base block instrument (tunable and works from below).
+#[must_use]
+pub const fn is_note_block_base_instrument(instrument_name: &str) -> bool {
+    let bytes = instrument_name.as_bytes();
+    matches!(
+        bytes,
+        b"harp"
+            | b"basedrum"
+            | b"snare"
+            | b"hat"
+            | b"bass"
+            | b"flute"
+            | b"bell"
+            | b"guitar"
+            | b"chime"
+            | b"xylophone"
+            | b"iron_xylophone"
+            | b"cow_bell"
+            | b"didgeridoo"
+            | b"bit"
+            | b"banjo"
+            | b"pling"
+            | b"trumpet"
+            | b"trumpet_exposed"
+            | b"trumpet_oxidized"
+            | b"trumpet_weathered"
+    )
+}
+
 
 
 
@@ -14451,6 +14500,41 @@ mod tests {
             dispenser_reservoir_sampling(&slots, &[0, 1, 0, 1]),
             Some(5)
         );
+    }
+
+    #[test]
+    fn test_note_block_pitch_instruments_and_particle_parity() {
+        assert_eq!(NOTE_BLOCK_VOLUME, 3.0);
+        assert_eq!(NOTE_BLOCK_TOTAL_NOTES, 25);
+        assert_eq!(NOTE_BLOCK_OCTAVE_SEMITONES, 12);
+
+        // Pitch formula: 2^((note - 12) / 12)
+        assert!((calculate_note_block_pitch(0) - 0.5).abs() < 1e-5);
+        assert!((calculate_note_block_pitch(12) - 1.0).abs() < 1e-5);
+        assert!((calculate_note_block_pitch(24) - 2.0).abs() < 1e-5);
+        assert!((calculate_note_block_pitch(6) - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-4);
+        assert!((calculate_note_block_pitch(18) - std::f32::consts::SQRT_2).abs() < 1e-4);
+
+        // Particle color offset: note / 24.0
+        assert!((calculate_note_particle_color_offset(0) - 0.0).abs() < 1e-6);
+        assert!((calculate_note_particle_color_offset(12) - 0.5).abs() < 1e-6);
+        assert!((calculate_note_particle_color_offset(24) - 1.0).abs() < 1e-6);
+
+        // Base block instrument classification (all 20 instruments)
+        let base_instruments = [
+            "harp", "basedrum", "snare", "hat", "bass", "flute", "bell", "guitar",
+            "chime", "xylophone", "iron_xylophone", "cow_bell", "didgeridoo", "bit",
+            "banjo", "pling", "trumpet", "trumpet_exposed", "trumpet_oxidized", "trumpet_weathered"
+        ];
+        for inst in base_instruments {
+            assert!(is_note_block_base_instrument(inst), "expected {} to be base instrument", inst);
+        }
+
+        // Mob head and custom head instruments (not base instruments)
+        let non_base = ["zombie", "skeleton", "creeper", "dragon", "wither_skeleton", "piglin", "custom_head"];
+        for inst in non_base {
+            assert!(!is_note_block_base_instrument(inst), "expected {} to NOT be base instrument", inst);
+        }
     }
 
 

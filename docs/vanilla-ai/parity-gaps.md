@@ -6208,3 +6208,26 @@ ound_to_orb_size tiers.
     - Added constants `SHULKER_BOX_COLUMNS`, `SHULKER_BOX_ROWS`, `SHULKER_BOX_CONTAINER_SIZE`, `SHULKER_BOX_EVENT_SET_OPEN_COUNT`, `SHULKER_BOX_OPENING_TICK_LENGTH`, `SHULKER_BOX_MAX_LID_HEIGHT`, `SHULKER_BOX_MAX_LID_ROTATION`, `DISPENSER_CONTAINER_SIZE`, `DROPPER_CONTAINER_SIZE`.
     - Added helper `dispenser_reservoir_sampling` validating the reservoir sampling algorithm.
     - Added unit test `test_shulker_box_dispenser_and_dropper_parity`.
+
+### Gap 251: Note Block Pitch Formula, Instrument Properties, Particle Color & Skull Mob Sound Parity
+- **Vanilla Reference**:
+  - `NoteBlock.java:36-56, 80-99, 136-150` & `NoteBlockInstrument.java:8-73`:
+    - Instrument categories:
+      - `BASE_BLOCK` (20 instruments): `HARP`, `BASEDRUM`, `SNARE`, `HAT`, `BASS`, `FLUTE`, `BELL`, `GUITAR`, `CHIME`, `XYLOPHONE`, `IRON_XYLOPHONE`, `COW_BELL`, `DIDGERIDOO`, `BIT`, `BANJO`, `PLING`, `TRUMPET`, `TRUMPET_EXPOSED`, `TRUMPET_OXIDIZED`, `TRUMPET_WEATHERED`.
+      - `MOB_HEAD` (6 instruments): `ZOMBIE`, `SKELETON`, `CREEPER`, `DRAGON`, `WITHER_SKELETON`, `PIGLIN`.
+      - `CUSTOM`: `CUSTOM_HEAD`.
+    - Placement / instrument derivation (`setInstrument`):
+      - If block above has `worksAboveNoteBlock()` (`type != BASE_BLOCK`, i.e. skull / mob head), note block takes that mob head instrument.
+      - Otherwise, instrument is derived from the block underneath. If block underneath is not a base block instrument, it falls back to `HARP`.
+    - Note tuning & octave: 25 semitones (notes `0..=24`, spanning 2 octaves).
+    - Pitch calculation: `getPitchFromNote(note) = 2.0^((note - 12) / 12.0)`. Note 0 is 0.5 (one octave down), Note 12 is 1.0 (base pitch), Note 24 is 2.0 (one octave up). Mob head instruments are not tunable and always play at fixed pitch `1.0`.
+    - Sound volume: `NOTE_VOLUME = 3` (3.0f).
+    - Particle emission: When playing a tunable note block, spawns `ParticleTypes.NOTE` at `(x + 0.5, y + 1.2, z + 0.5)` with motion vector `(note / 24.0, 0.0, 0.0)` which clients use as the color hue on the color wheel.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/note.rs`:
+    - Fixed `is_base_block` to include all 20 vanilla base instruments, adding missing `Pling`, `Trumpet`, `TrumpetExposed`, `TrumpetOxidized`, and `TrumpetWeathered`. Previously, note blocks placed on glowstone or copper blocks failed to resolve their instruments and improperly reverted to Harp or bypassed note tuning.
+    - Added particle emission for tunable note blocks via `args.world.spawn_particle` with `Particle::Note` and color offset `Vector3::new(note / 24.0, 0.0, 0.0)`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `NOTE_BLOCK_VOLUME` (3.0), `NOTE_BLOCK_OCTAVE_SEMITONES` (12), `NOTE_BLOCK_TOTAL_NOTES` (25).
+    - Added helper functions `calculate_note_block_pitch`, `calculate_note_particle_color_offset`, and `is_note_block_base_instrument`.
+    - Added unit test `test_note_block_pitch_instruments_and_particle_parity`.
