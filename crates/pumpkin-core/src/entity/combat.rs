@@ -3609,6 +3609,63 @@ pub fn should_enderman_evade_damage(
     }
 }
 
+/// Shulker max health (30.0 HP).
+///
+/// Mirrors vanilla `Shulker.java:148`:
+/// `return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 30.0);`
+pub const SHULKER_MAX_HEALTH: f32 = 30.0;
+
+/// Shulker covered armor bonus (+20.0 Armor).
+///
+/// Mirrors vanilla `Shulker.java:69`:
+/// `COVERED_ARMOR_MODIFIER = new AttributeModifier(COVERED_ARMOR_MODIFIER_ID, 20.0, AttributeModifier.Operation.ADD_VALUE)`
+pub const SHULKER_COVERED_ARMOR_BONUS: f32 = 20.0;
+
+/// Shulker covered armor modifier ID (`minecraft:covered`).
+///
+/// Mirrors vanilla `Shulker.java:68`:
+/// `COVERED_ARMOR_MODIFIER_ID = Identifier.withDefaultNamespace("covered")`
+pub const SHULKER_COVERED_ARMOR_MODIFIER_ID: &str = "minecraft:covered";
+
+/// Shulker experience reward (5 XP).
+///
+/// Mirrors vanilla `Shulker.java:92`:
+/// `this.xpReward = 5;`
+pub const SHULKER_XP_REWARD: u32 = 5;
+
+/// Shulker lid opening rate per tick (0.05).
+///
+/// Mirrors vanilla `Shulker.java:79`:
+/// `PEEK_PER_TICK = 0.05F;`
+pub const SHULKER_PEEK_PER_TICK: f32 = 0.05;
+
+/// Shulker maximum teleport distance (8 blocks).
+///
+/// Mirrors vanilla `Shulker.java:76`:
+/// `MAX_TELEPORT_DISTANCE = 8;`
+pub const SHULKER_MAX_TELEPORT_DISTANCE: i32 = 8;
+
+/// Shulker maximum attack distance squared (400.0 = 20 blocks).
+///
+/// Mirrors vanilla `Shulker.java:632`:
+/// `if (distance < 400.0)`
+pub const SHULKER_ATTACK_RANGE_SQ: f64 = 400.0;
+
+/// Shulker bullet flight speed (0.15).
+///
+/// Mirrors vanilla `ShulkerBullet.java:38`:
+/// `SPEED = 0.15;`
+pub const SHULKER_BULLET_SPEED: f64 = 0.15;
+
+/// Checks whether a Shulker is closed based on raw peek value.
+///
+/// Mirrors vanilla `Shulker.java:453-455`:
+/// `return this.getRawPeekAmount() == 0;`
+#[must_use]
+pub const fn is_shulker_closed(raw_peek: u8) -> bool {
+    raw_peek == 0
+}
+
 /// Determines whether a Shulker completely deflects an incoming projectile when closed.
 ///
 /// Mirrors vanilla `Shulker.java:430-435`:
@@ -8851,6 +8908,19 @@ mod tests {
         let (cancel, teleport) = should_enderman_evade_damage(false, false, true, 1);
         assert!(!cancel);
         assert!(!teleport);
+
+        // Shulker constants parity (Shulker.java:68, 69, 76, 79, 92, 148, 453-455, 632)
+        assert_eq!(SHULKER_MAX_HEALTH, 30.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_BONUS, 20.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_MODIFIER_ID, "minecraft:covered");
+        assert_eq!(SHULKER_XP_REWARD, 5);
+        assert_eq!(SHULKER_PEEK_PER_TICK, 0.05);
+        assert_eq!(SHULKER_MAX_TELEPORT_DISTANCE, 8);
+        assert_eq!(SHULKER_ATTACK_RANGE_SQ, 400.0);
+        assert_eq!(SHULKER_BULLET_SPEED, 0.15);
+        assert!(is_shulker_closed(0));
+        assert!(!is_shulker_closed(1));
+        assert!(!is_shulker_closed(100));
 
         // 3. Shulker arrow deflection when closed (Shulker.java:430-435)
         assert!(should_shulker_deflect_arrow(true, true));   // closed + arrow -> deflects

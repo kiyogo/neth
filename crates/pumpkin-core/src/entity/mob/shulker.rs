@@ -25,10 +25,15 @@ use crate::entity::mob::{Mob, MobEntity};
 use crate::entity::projectile::shulker_bullet::ShulkerBulletEntity;
 use crate::entity::{Entity, EntityBase};
 
+use crate::entity::combat::{
+    SHULKER_ATTACK_RANGE_SQ, SHULKER_COVERED_ARMOR_BONUS, SHULKER_MAX_HEALTH,
+    SHULKER_MAX_TELEPORT_DISTANCE, SHULKER_PEEK_PER_TICK, SHULKER_XP_REWARD, is_shulker_closed,
+};
+
 const DEFAULT_ATTACH_FACE: BlockDirection = BlockDirection::Down;
 const NO_COLOR: u8 = 16;
-const PEEK_PER_TICK: f32 = 0.05;
-const MAX_TELEPORT_DISTANCE: i32 = 8;
+const PEEK_PER_TICK: f32 = SHULKER_PEEK_PER_TICK;
+const MAX_TELEPORT_DISTANCE: i32 = SHULKER_MAX_TELEPORT_DISTANCE;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Axis {
@@ -86,15 +91,15 @@ impl ShulkerEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 30.0;
+                health.base_value = SHULKER_MAX_HEALTH as f64;
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = 20.0;
+                armor.base_value = SHULKER_COVERED_ARMOR_BONUS as f64;
                 armor.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(30.0);
+        mob_arc.mob_entity.living_entity.set_health(SHULKER_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -198,7 +203,7 @@ impl ShulkerEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = if is_closed { 20.0 } else { 0.0 };
+                armor.base_value = if is_closed { SHULKER_COVERED_ARMOR_BONUS as f64 } else { 0.0 };
                 armor.dirty.store(true, Ordering::Relaxed);
             }
         }
@@ -207,7 +212,7 @@ impl ShulkerEntity {
     }
 
     pub fn is_closed(&self) -> bool {
-        self.peek_amount.load(Ordering::Relaxed) == 0
+        is_shulker_closed(self.peek_amount.load(Ordering::Relaxed))
     }
 
     fn update_peek_amount(&self) -> bool {
@@ -399,7 +404,7 @@ impl CustomSound for ShulkerEntity {
 impl Mob for ShulkerEntity {
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_byte("AttachFace", self.attach_face.load(Ordering::Relaxed) as i8);
-        nbt.put_byte("PeekAmount", self.peek_amount.load(Ordering::Relaxed) as i8);
+        nbt.put_byte("Peek", self.peek_amount.load(Ordering::Relaxed) as i8);
         nbt.put_byte("Color", self.color.load(Ordering::Relaxed) as i8);
     }
 
@@ -407,7 +412,9 @@ impl Mob for ShulkerEntity {
         if let Some(face) = nbt.get_byte("AttachFace") {
             self.attach_face.store(face as u8, Ordering::Relaxed);
         }
-        if let Some(peek) = nbt.get_byte("PeekAmount") {
+        // Vanilla saves as "Peek", support legacy "PeekAmount" as fallback
+        let peek_opt = nbt.get_byte("Peek").or_else(|| nbt.get_byte("PeekAmount"));
+        if let Some(peek) = peek_opt {
             let val = peek as u8;
             self.peek_amount.store(val, Ordering::Relaxed);
             let mut attributes = self
@@ -417,7 +424,7 @@ impl Mob for ShulkerEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = if val == 0 { 20.0 } else { 0.0 };
+                armor.base_value = if is_shulker_closed(val) { SHULKER_COVERED_ARMOR_BONUS as f64 } else { 0.0 };
                 armor.dirty.store(true, Ordering::Relaxed);
             }
         }
@@ -436,6 +443,10 @@ impl Mob for ShulkerEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        SHULKER_XP_REWARD
     }
 
     fn get_mob_gravity(&self) -> f64 {
@@ -477,7 +488,10 @@ impl Mob for ShulkerEntity {
 
     fn pre_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
         let is_arrow = damage_type == DamageType::ARROW
-            || source.is_some_and(|s| s.get_entity().entity_type == &EntityType::ARROW);
+            || source.is_some_and(|s| {
+                let et = s.get_entity().entity_type;
+                et == &EntityType::ARROW || et == &EntityType::SPECTRAL_ARROW
+            });
         if crate::entity::combat::should_shulker_deflect_arrow(self.is_closed(), is_arrow) {
             return false;
         }
@@ -548,7 +562,7 @@ impl Goal for ShulkerAttackGoal {
         let target_pos = target.get_entity().pos.load();
         let dist_sq = shulker_pos.squared_distance_to_vec(&target_pos);
 
-        if dist_sq > 400.0 {
+        if dist_sq > SHULKER_ATTACK_RANGE_SQ {
             mob_entity.set_target(None);
             return;
         }
@@ -644,5 +658,33 @@ impl BlockPosExt for BlockPos {
             self.0.y + offset.y,
             self.0.z + offset.z,
         )
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_shulker_covered_armor_and_mechanics_parity() {
+        assert_eq!(SHULKER_MAX_HEALTH, 30.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_BONUS, 20.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_MODIFIER_ID, "minecraft:covered");
+        assert_eq!(SHULKER_XP_REWARD, 5);
+        assert_eq!(SHULKER_PEEK_PER_TICK, 0.05);
+        assert_eq!(SHULKER_MAX_TELEPORT_DISTANCE, 8);
+        assert_eq!(SHULKER_ATTACK_RANGE_SQ, 400.0);
+
+        // Closed state checks
+        assert!(is_shulker_closed(0));
+        assert!(!is_shulker_closed(30));
+        assert!(!is_shulker_closed(100));
+
+        // Arrow deflection
+        assert!(should_shulker_deflect_arrow(true, true));
+        assert!(!should_shulker_deflect_arrow(false, true));
+        assert!(!should_shulker_deflect_arrow(true, false));
     }
 }

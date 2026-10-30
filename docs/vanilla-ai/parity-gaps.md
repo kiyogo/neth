@@ -4664,3 +4664,34 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced velocity updates with `sync_velocity` and `velocity_dirty` on defender and ravager.
     - Added unit test `test_ravager_combat_stun_and_roar_parity`.
   - All unit tests verified and passing (4/4 in ravager suite, 99/99 in combat suite).
+
+## Gap 210: Shulker Covered Armor, Projectile Deflection, NBT & Experience Parity
+- **Vanilla Reference**: `Shulker.java:50-52, 68-76, 79, 92, 148, 159-170, 430-435, 441-471, 501-514, 632`, `ShulkerBullet.java:38, 285, 292`:
+  - `Shulker.java`:
+    - Base Attributes: `MAX_HEALTH = 30.0` (`SHULKER_MAX_HEALTH`), `ARMOR = 0.0` base.
+    - Covered Armor Modifier (`COVERED_ARMOR_MODIFIER_ID = "minecraft:covered"`):
+      - Khi vỏ đóng (`isClosed()` / `peek == 0`): Shulker được cộng thêm `+20.0 Armor` (`SHULKER_COVERED_ARMOR_BONUS = 20.0`, operation `ADD_VALUE`).
+      - Khi hé vỏ (`peek > 0`): Modifier này bị gỡ bỏ ngay lập tức.
+    - Projectile Deflection Parity (`hurtServer`):
+      - Khi đóng vỏ (`isClosed()`): Mọi projectile loại mũi tên (`AbstractArrow`, bao gồm cả `ARROW` và `SPECTRAL_ARROW`) đều bị phản xạ / vô hiệu hóa hoàn toàn (`return false`).
+    - Experience Reward:
+      - `this.xpReward = 5;` (`SHULKER_XP_REWARD = 5`).
+    - NBT Serialization Parity:
+      - Vanilla lưu độ mở vỏ vào byte tag `"Peek"`. Hỗ trợ ghi `"Peek"` và đọc dự phòng cả `"Peek"` lẫn `"PeekAmount"` (legacy).
+    - Constants & Navigation:
+      - `PEEK_PER_TICK = 0.05F` (`SHULKER_PEEK_PER_TICK`).
+      - `MAX_TELEPORT_DISTANCE = 8` (`SHULKER_MAX_TELEPORT_DISTANCE`).
+      - `ATTACK_RANGE_SQ = 400.0` (`SHULKER_ATTACK_RANGE_SQ` = 20 blocks).
+      - `ShulkerBullet` flight speed: `SPEED = 0.15` (`SHULKER_BULLET_SPEED`), damage: `4.0 HP` (`get_shulker_bullet_damage`), effect: `LEVITATION 200 ticks` (10 giây, amplifier 0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `SHULKER_MAX_HEALTH = 30.0`, `SHULKER_COVERED_ARMOR_BONUS = 20.0`, `SHULKER_COVERED_ARMOR_MODIFIER_ID = "minecraft:covered"`, `SHULKER_XP_REWARD = 5`, `SHULKER_PEEK_PER_TICK = 0.05`, `SHULKER_MAX_TELEPORT_DISTANCE = 8`, `SHULKER_ATTACK_RANGE_SQ = 400.0`, `SHULKER_BULLET_SPEED = 0.15`.
+    - Added helper `is_shulker_closed(raw_peek: u8) -> bool`.
+    - Updated unit tests `test_enderman_and_shulker_parity`.
+  - Updated `ShulkerEntity` in `crates/pumpkin-core/src/entity/mob/shulker.rs`:
+    - Synced base health and covered armor bonus (+20.0 Armor when closed).
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Synced projectile deflection for both regular and spectral arrows.
+    - Synced NBT persistence using `"Peek"` with `"PeekAmount"` backward compatibility.
+    - Added unit test `test_shulker_covered_armor_and_mechanics_parity`.
+  - All unit tests verified and passing (2/2 in shulker suite, 99/99 in combat suite).
