@@ -4695,3 +4695,35 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced NBT persistence using `"Peek"` with `"PeekAmount"` backward compatibility.
     - Added unit test `test_shulker_covered_armor_and_mechanics_parity`.
   - All unit tests verified and passing (2/2 in shulker suite, 99/99 in combat suite).
+
+## Gap 211: Phantom Insomnia, Size Scaling, Cat Avoidance & Flapping Mechanics Parity
+- **Vanilla Reference**: `Phantom.java:44-46, 54, 60-62, 84, 89, 118, 132-133, 157-166, 197, 222, 277, 460-472, 490-493`:
+  - `Phantom.java`:
+    - Base Attributes: `MAX_HEALTH = 20.0` (`PHANTOM_MAX_HEALTH`), `ATTACK_DAMAGE = 6.0` (`PHANTOM_BASE_ATTACK_DAMAGE`).
+    - Attack Damage & Size Scaling:
+      - Sát thương tấn công tỉ lệ theo kích thước: `6 + this.getPhantomSize()` (`calculate_phantom_attack_damage`), trong đó size bị giới hạn trong khoảng `0..=64` (`PHANTOM_MAX_SIZE = 64`), tạo ra sát thương tối đa lên tới `70.0 HP`.
+      - Tỉ lệ kích thước hitbox: `1.0F + 0.15F * size` (`calculate_phantom_dimension_scale`).
+    - Experience Drop:
+      - `this.xpReward = 5;` (`PHANTOM_XP_REWARD = 5`).
+    - Wing Flapping Mechanics (`isFlapping`):
+      - Chu kỳ vỗ cánh: `TICKS_PER_FLAP = 25` (`PHANTOM_TICKS_PER_FLAP = Mth.ceil(24.166098F)`).
+      - Góc quay cánh: `FLAP_DEGREES_PER_TICK = 7.448451F` (`PHANTOM_FLAP_DEGREES_PER_TICK`).
+      - Offset vỗ cánh theo ID cá thể: `getUniqueFlapTickOffset() = id * 3`.
+    - Cat Avoidance / Hiss Reaction:
+      - Khi sà xuống tấn công (`SWOOP`), nếu có Mèo trong bán kính 16.0 blocks (`PHANTOM_CAT_CHECK_RADIUS = 16.0`), Mèo sẽ rít lên cảnh báo (`cat.hiss()`), và Phantom lập tức sợ hãi hủy tấn công, quay trở lại trạng thái lượn vòng tròn (`CIRCLE`).
+    - Target Scanning Box:
+      - Quét người chơi trong hộp giãn nở `(16.0, 64.0, 16.0)` (`PHANTOM_TARGET_SEARCH_XZ = 16.0`, `PHANTOM_TARGET_SEARCH_Y = 64.0`).
+    - NBT Serialization Parity:
+      - Lưu `"size"` và hỗ trợ đọc cả `"size"` lẫn `"Size"`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `PHANTOM_MAX_HEALTH = 20.0`, `PHANTOM_BASE_ATTACK_DAMAGE = 6.0`, `PHANTOM_XP_REWARD = 5`, `PHANTOM_MAX_SIZE = 64`, `PHANTOM_TICKS_PER_FLAP = 25`, `PHANTOM_FLAP_DEGREES_PER_TICK = 7.448451`, `PHANTOM_CAT_CHECK_RADIUS = 16.0`, `PHANTOM_TARGET_SEARCH_XZ = 16.0`, `PHANTOM_TARGET_SEARCH_Y = 64.0`.
+    - Added helper `is_phantom_flapping(entity_id: i32, tick_count: i32) -> bool`.
+    - Updated unit test `test_phantom_and_ghast_parity`.
+  - Updated `PhantomEntity` in `crates/pumpkin-core/src/entity/mob/phantom.rs`:
+    - Synced base health, attack damage, and size clamp with `combat.rs` constants.
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Synced cat avoidance check radius and target search bounding box.
+    - Synced NBT persistence using `"size"` with legacy `"Size"` fallback.
+    - Added unit test `test_phantom_attributes_and_mechanics_parity`.
+  - All unit tests verified and passing (2/2 in phantom suite, 99/99 in combat suite).

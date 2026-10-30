@@ -13,6 +13,10 @@ use pumpkin_util::math::wrap_degrees;
 use rand::RngExt;
 
 use crate::entity::custom_sound::CustomSound;
+use crate::entity::combat::{
+    PHANTOM_BASE_ATTACK_DAMAGE, PHANTOM_CAT_CHECK_RADIUS, PHANTOM_MAX_HEALTH, PHANTOM_MAX_SIZE,
+    PHANTOM_TARGET_SEARCH_XZ, PHANTOM_TARGET_SEARCH_Y, PHANTOM_XP_REWARD,
+};
 use crate::entity::{
     Entity, EntityBase,
     ai::goal::{Controls, Goal},
@@ -60,11 +64,11 @@ impl PhantomEntity {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, PHANTOM_MAX_HEALTH as f64);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 6.0);
-        mob_entity.living_entity.health.store(20.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, PHANTOM_BASE_ATTACK_DAMAGE as f64);
+        mob_entity.living_entity.health.store(PHANTOM_MAX_HEALTH);
 
         let phantom = Self {
             mob_entity,
@@ -103,7 +107,7 @@ impl PhantomEntity {
     }
 
     pub fn set_phantom_size(&self, size: i32) {
-        let clamped = size.clamp(0, 64);
+        let clamped = size.clamp(0, PHANTOM_MAX_SIZE);
         self.phantom_size.store(clamped, Ordering::Relaxed);
         let entity = &self.mob_entity.living_entity.entity;
         entity.set_synced_data(tracked_data::phantom::ID_SIZE, clamped);
@@ -289,7 +293,7 @@ impl Goal for PhantomSweepAttackGoal {
         if age > self.cat_search_tick {
             self.cat_search_tick = age + 20;
             let world = entity.world.load();
-            let bb = entity.bounding_box.load().expand(16.0, 16.0, 16.0);
+            let bb = entity.bounding_box.load().expand(PHANTOM_CAT_CHECK_RADIUS, PHANTOM_CAT_CHECK_RADIUS, PHANTOM_CAT_CHECK_RADIUS);
             let nearby = world.get_entities_at_box(&bb);
             let has_cat = nearby.iter().any(|e| {
                 let ent = e.get_entity();
@@ -458,7 +462,7 @@ impl Goal for PhantomAttackPlayerTargetGoal {
         let mob_entity = mob.get_mob_entity();
         let entity = &mob_entity.living_entity.entity;
         let world = entity.world.load();
-        let bb = entity.bounding_box.load().expand(16.0, 64.0, 16.0);
+        let bb = entity.bounding_box.load().expand(PHANTOM_TARGET_SEARCH_XZ, PHANTOM_TARGET_SEARCH_Y, PHANTOM_TARGET_SEARCH_XZ);
         let players = world.get_players_at_box(&bb);
 
         let mut valid_player = None;
@@ -495,6 +499,10 @@ impl CustomSound for PhantomEntity {
 }
 
 impl Mob for PhantomEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        PHANTOM_XP_REWARD
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }
@@ -547,15 +555,53 @@ impl Mob for PhantomEntity {
         nbt.put_int("AX", anchor.x as i32);
         nbt.put_int("AY", anchor.y as i32);
         nbt.put_int("AZ", anchor.z as i32);
-        nbt.put_int("Size", self.phantom_size.load(Ordering::Relaxed));
+        // Vanilla uses lowercase "size"
+        nbt.put_int("size", self.phantom_size.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let (Some(x), Some(y), Some(z)) = (nbt.get_int("AX"), nbt.get_int("AY"), nbt.get_int("AZ")) {
             self.anchor_point.store(Vector3::new(f64::from(x), f64::from(y), f64::from(z)));
         }
-        if let Some(size) = nbt.get_int("Size") {
+        // Vanilla saves as "size", support legacy uppercase "Size" as fallback
+        if let Some(size) = nbt.get_int("size").or_else(|| nbt.get_int("Size")) {
             self.set_phantom_size(size);
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_phantom_attributes_and_mechanics_parity() {
+        assert_eq!(PHANTOM_MAX_HEALTH, 20.0);
+        assert_eq!(PHANTOM_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(PHANTOM_XP_REWARD, 5);
+        assert_eq!(PHANTOM_MAX_SIZE, 64);
+        assert_eq!(PHANTOM_TICKS_PER_FLAP, 25);
+        assert!((PHANTOM_FLAP_DEGREES_PER_TICK - 7.448451).abs() < 1e-6);
+        assert_eq!(PHANTOM_CAT_CHECK_RADIUS, 16.0);
+        assert_eq!(PHANTOM_TARGET_SEARCH_XZ, 16.0);
+        assert_eq!(PHANTOM_TARGET_SEARCH_Y, 64.0);
+
+        // Attack damage scaling: 6 + size
+        assert_eq!(calculate_phantom_attack_damage(0), 6.0);
+        assert_eq!(calculate_phantom_attack_damage(5), 11.0);
+        assert_eq!(calculate_phantom_attack_damage(64), 70.0);
+        assert_eq!(calculate_phantom_attack_damage(100), 70.0); // clamped at 64
+
+        // Wing flapping
+        assert!(is_phantom_flapping(0, 0));
+        assert!(is_phantom_flapping(0, 25));
+        assert!(!is_phantom_flapping(0, 10));
+
+        // Swoop abort
+        assert!(should_phantom_abort_swoop_on_collision_or_damage(true, false));
+        assert!(should_phantom_abort_swoop_on_collision_or_damage(false, true));
+        assert!(!should_phantom_abort_swoop_on_collision_or_damage(false, false));
     }
 }

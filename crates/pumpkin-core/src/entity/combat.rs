@@ -4076,6 +4076,61 @@ pub const fn calculate_witch_damage_received(
     }
 }
 
+/// Phantom max health (20.0 HP).
+///
+/// Mirrors vanilla `Phantom.java:44` / `Mob.java`:
+pub const PHANTOM_MAX_HEALTH: f32 = 20.0;
+
+/// Phantom base attack damage (6.0 HP).
+///
+/// Mirrors vanilla `Phantom.java:89`: `6 + this.getPhantomSize()`.
+pub const PHANTOM_BASE_ATTACK_DAMAGE: f32 = 6.0;
+
+/// Phantom experience reward (5 XP).
+///
+/// Mirrors vanilla `Phantom.java:54`: `this.xpReward = 5;`.
+pub const PHANTOM_XP_REWARD: u32 = 5;
+
+/// Phantom maximum size limit (64).
+///
+/// Mirrors vanilla `Phantom.java:84`: `Mth.clamp(size, 0, 64)`.
+pub const PHANTOM_MAX_SIZE: i32 = 64;
+
+/// Phantom ticks per wing flap cycle (25 ticks).
+///
+/// Mirrors vanilla `Phantom.java:46`: `TICKS_PER_FLAP = Mth.ceil(24.166098F)`.
+pub const PHANTOM_TICKS_PER_FLAP: i32 = 25;
+
+/// Phantom wing flap degrees per tick (~7.45 deg/tick).
+///
+/// Mirrors vanilla `Phantom.java:45`: `FLAP_DEGREES_PER_TICK = 7.448451F`.
+pub const PHANTOM_FLAP_DEGREES_PER_TICK: f32 = 7.448451;
+
+/// Phantom cat detection radius for fear response (16.0 blocks).
+///
+/// Mirrors vanilla `Phantom.java:463`: `Phantom.this.getBoundingBox().inflate(16.0)`.
+pub const PHANTOM_CAT_CHECK_RADIUS: f64 = 16.0;
+
+/// Phantom target acquisition horizontal search box inflation (16.0 blocks).
+///
+/// Mirrors vanilla `Phantom.java:222`: `Phantom.this.getBoundingBox().inflate(16.0, 64.0, 16.0)`.
+pub const PHANTOM_TARGET_SEARCH_XZ: f64 = 16.0;
+
+/// Phantom target acquisition vertical search box inflation (64.0 blocks).
+///
+/// Mirrors vanilla `Phantom.java:222`: `Phantom.this.getBoundingBox().inflate(16.0, 64.0, 16.0)`.
+pub const PHANTOM_TARGET_SEARCH_Y: f64 = 64.0;
+
+/// Checks if a Phantom is currently at its wing flap peak.
+///
+/// Mirrors vanilla `Phantom.java:60-62`:
+/// `(this.getUniqueFlapTickOffset() + this.tickCount) % TICKS_PER_FLAP == 0`
+#[must_use]
+pub const fn is_phantom_flapping(entity_id: i32, tick_count: i32) -> bool {
+    let offset = entity_id * 3;
+    (offset + tick_count) % PHANTOM_TICKS_PER_FLAP == 0
+}
+
 /// Calculates Phantom attack damage scaling based on size (0..=64).
 ///
 /// Mirrors vanilla `Phantom.java:89`: `6 + this.getPhantomSize()`
@@ -9136,6 +9191,21 @@ mod tests {
 
     #[test]
     fn test_phantom_and_ghast_parity() {
+        // Phantom constants & flap parity (Phantom.java:45, 46, 54, 84, 89, 222, 463)
+        assert_eq!(PHANTOM_MAX_HEALTH, 20.0);
+        assert_eq!(PHANTOM_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(PHANTOM_XP_REWARD, 5);
+        assert_eq!(PHANTOM_MAX_SIZE, 64);
+        assert_eq!(PHANTOM_TICKS_PER_FLAP, 25);
+        assert!((PHANTOM_FLAP_DEGREES_PER_TICK - 7.448451).abs() < 1e-6);
+        assert_eq!(PHANTOM_CAT_CHECK_RADIUS, 16.0);
+        assert_eq!(PHANTOM_TARGET_SEARCH_XZ, 16.0);
+        assert_eq!(PHANTOM_TARGET_SEARCH_Y, 64.0);
+        assert!(is_phantom_flapping(0, 0));
+        assert!(is_phantom_flapping(0, 25));
+        assert!(!is_phantom_flapping(0, 1));
+        assert!(is_phantom_flapping(1, 22)); // (1*3 + 22) = 25 % 25 == 0
+
         // 1. Phantom attack damage & dimension scaling (Phantom.java:89, 197)
         assert_eq!(calculate_phantom_attack_damage(0), 6.0);
         assert_eq!(calculate_phantom_attack_damage(1), 7.0);
