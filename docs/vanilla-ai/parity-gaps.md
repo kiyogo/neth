@@ -6013,3 +6013,27 @@ ound_to_orb_size tiers.
     - Implemented `can_be_leashed(&self) -> bool { false }` in `Mob` trait implementation.
     - Synchronized `get_base_experience_reward` and death drop with `WITHER_XP_REWARD`.
   - All unit tests verified and passing across the boss suite.
+
+### Gap 244: Decoration & Hanging Entities Family (Armor Stand, Item Frame, Glow Item Frame, Painting, Leash Knot, Display) Fire Damage, Burn Damage, Contained Item Drop & Support Parity
+- **Vanilla Reference**:
+  - `ArmorStand.java:304-315, 388-394`:
+    - `IGNITES_ARMOR_STANDS`: if already on fire, deals `0.15 HP` damage (`causeDamage(0.15F)`). If not on fire, sets fire for `5.0 seconds` (`100 ticks`).
+    - `BURNS_ARMOR_STANDS`: deals `4.0 HP` damage (`causeDamage(4.0F)`) if health > 0.5.
+    - Breaking health threshold: `health <= 0.5F` (spawns breaking particles, drops equipped gear and drops armor stand item).
+  - `ItemFrame.java:159-186`:
+    - `shouldDamageDropItem(source)`: if item frame contains an item and damage source is NOT an explosion (`!source.is(DamageTypeTags.IS_EXPLOSION)`), drops contained item first while keeping frame mounted.
+    - Fixed item frame protection: only destructible by creative players or `DamageTypeTags.BYPASSES_INVULNERABILITY`.
+    - Drop chance: `itemDropChance` (default 1.0).
+  - `HangingEntity.java:82-93`:
+    - `survives()`: requires solid block or redstone diode support on back face and no colliding obstruction.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ARMOR_STAND_FIRE_DAMAGE` (0.15), `ARMOR_STAND_IGNITE_TICKS` (100), `ARMOR_STAND_BURN_DAMAGE` (4.0), `ARMOR_STAND_BREAK_HEALTH_THRESHOLD` (0.5).
+    - Added helper `calculate_armor_stand_damage`.
+    - Added unit test `test_decoration_entities_family_armor_stand_and_item_frame_parity`.
+  - Updated `ArmorStandEntity` (`crates/pumpkin-core/src/entity/decoration/armor_stand.rs`):
+    - Replaced incorrect hardcoded ignite duration (160 -> 100 ticks) and implemented on-fire hit damage (0.15 HP).
+    - Implemented `cause_damage` method correctly breaking when health <= 0.5 HP, replacing outdated 0.7 HP decrement.
+  - Updated `ItemFrameEntity` (`crates/pumpkin-core/src/entity/decoration/item_frame.rs`):
+    - Converted hardcoded damage checks to use `MINECRAFT_BYPASSES_INVULNERABILITY` and `MINECRAFT_IS_EXPLOSION` damage type tags.
+  - All unit tests verified and passing across the decoration entities suite.

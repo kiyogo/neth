@@ -347,6 +347,21 @@ impl ArmorStandEntity {
     fn is_slot_insertion_disabled(&self, slot: &EquipmentSlot) -> bool {
         self.disabled_slots.load(Ordering::Relaxed) & Self::slot_bit(slot, 16) != 0
     }
+
+    /// Deals damage to the armor stand, breaking and dropping its items if health falls <= 0.5.
+    /// Mirrors vanilla `ArmorStand.java:388-394`.
+    fn cause_damage(&self, damage: f32) {
+        let (new_hp, will_break) = crate::entity::combat::calculate_armor_stand_damage(
+            self.living_entity.health.load(),
+            damage,
+        );
+        self.living_entity.health.store(new_hp);
+        if will_break {
+            Self::spawn_break_particles(self.get_entity());
+            self.break_and_drop_items();
+            self.get_entity().remove();
+        }
+    }
 }
 
 fn take_non_empty_equipment(
@@ -551,19 +566,21 @@ impl EntityBase for ArmorStandEntity {
         }
 
         if damage_type.has_tag(&tag::DamageType::MINECRAFT_IGNITES_ARMOR_STANDS) {
-            entity.fire_ticks.store(160, Ordering::Relaxed);
+            if entity.fire_ticks.load(Ordering::Relaxed) > 0 {
+                self.cause_damage(crate::entity::combat::ARMOR_STAND_FIRE_DAMAGE);
+            } else {
+                entity.fire_ticks.store(
+                    crate::entity::combat::ARMOR_STAND_IGNITE_TICKS as i32,
+                    Ordering::Relaxed,
+                );
+            }
             return false;
         }
 
         if damage_type.has_tag(&tag::DamageType::MINECRAFT_BURNS_ARMOR_STANDS) {
             let current_hp = self.living_entity.health.load();
-            let new_hp = current_hp - 0.7;
-            if new_hp <= 0.5 {
-                Self::spawn_break_particles(entity);
-                self.break_and_drop_items();
-                entity.remove();
-            } else {
-                self.living_entity.health.store(new_hp);
+            if current_hp > crate::entity::combat::ARMOR_STAND_BREAK_HEALTH_THRESHOLD {
+                self.cause_damage(crate::entity::combat::ARMOR_STAND_BURN_DAMAGE);
             }
             return false;
         }

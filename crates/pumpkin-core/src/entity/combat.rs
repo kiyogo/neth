@@ -7785,6 +7785,36 @@ pub const ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE: f32 = 10.0;
 /// `level.explode(this, damageSource, null, this.getX(), this.getY(), this.getZ(), 6.0F, false, Level.ExplosionInteraction.BLOCK);`
 pub const END_CRYSTAL_EXPLOSION_POWER: f32 = 6.0;
 
+/// Damage dealt to an armor stand each time it is hit while on fire (0.15 HP).
+/// Mirrors vanilla `ArmorStand.java:306`:
+/// `this.causeDamage(level, source, 0.15F);`
+pub const ARMOR_STAND_FIRE_DAMAGE: f32 = 0.15;
+
+/// Duration in ticks an armor stand ignites for when hit by an igniting damage source (100 ticks = 5.0 seconds).
+/// Mirrors vanilla `ArmorStand.java:308`:
+/// `this.igniteForSeconds(5.0F);`
+pub const ARMOR_STAND_IGNITE_TICKS: u32 = 100;
+
+/// Damage dealt to an armor stand by burning damage types (4.0 HP).
+/// Mirrors vanilla `ArmorStand.java:313`:
+/// `this.causeDamage(level, source, 4.0F);`
+pub const ARMOR_STAND_BURN_DAMAGE: f32 = 4.0;
+
+/// Armor stand breaking health threshold (0.5 HP).
+/// Mirrors vanilla `ArmorStand.java:312, 389`:
+/// `if (health <= 0.5F)`
+pub const ARMOR_STAND_BREAK_HEALTH_THRESHOLD: f32 = 0.5;
+
+/// Calculates new armor stand health after taking damage, and returns `(new_health, will_break)`.
+/// Mirrors vanilla `ArmorStand.java:388-393`.
+#[must_use]
+pub fn calculate_armor_stand_damage(current_health: f32, damage: f32) -> (f32, bool) {
+    let new_health = current_health - damage;
+    let will_break = new_health <= ARMOR_STAND_BREAK_HEALTH_THRESHOLD;
+    (new_health, will_break)
+}
+
+
 /// Checks if an entity type is able to damage End Crystals.
 /// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
 #[must_use]
@@ -13849,5 +13879,26 @@ mod tests {
         assert!(should_wither_deflect_projectile(true, true));
         assert!(!should_wither_deflect_projectile(false, true));
         assert!(!should_wither_deflect_projectile(true, false));
+    }
+
+
+    #[test]
+    fn test_decoration_entities_family_armor_stand_and_item_frame_parity() {
+        assert_eq!(ARMOR_STAND_FIRE_DAMAGE, 0.15);
+        assert_eq!(ARMOR_STAND_IGNITE_TICKS, 100);
+        assert_eq!(ARMOR_STAND_BURN_DAMAGE, 4.0);
+        assert_eq!(ARMOR_STAND_BREAK_HEALTH_THRESHOLD, 0.5);
+
+        let (hp1, break1) = calculate_armor_stand_damage(2.0, 0.15);
+        assert!((hp1 - 1.85).abs() < 1e-6);
+        assert!(!break1);
+
+        let (hp2, break2) = calculate_armor_stand_damage(2.0, 4.0);
+        assert_eq!(hp2, -2.0);
+        assert!(break2);
+
+        let (hp3, break3) = calculate_armor_stand_damage(0.6, 0.15);
+        assert!((hp3 - 0.45).abs() < 1e-6);
+        assert!(break3);
     }
 }

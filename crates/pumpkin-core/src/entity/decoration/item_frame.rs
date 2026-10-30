@@ -14,6 +14,7 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::Sound;
+use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::item_stack_seralizer::ItemStackSerializer;
 use pumpkin_protocol::java::client::play::{CSetEntityMetadata, Metadata};
@@ -515,7 +516,7 @@ impl EntityBase for ItemFrameEntity {
                 .is_some_and(Player::is_creative)
         });
         let bypasses_invuln =
-            damage_type == DamageType::OUT_OF_WORLD || damage_type == DamageType::GENERIC_KILL;
+            damage_type.has_tag(&tag::DamageType::MINECRAFT_BYPASSES_INVULNERABILITY);
 
         if fixed {
             if !bypasses_invuln && !is_creative_player {
@@ -528,7 +529,7 @@ impl EntityBase for ItemFrameEntity {
 
         let has_item = !self.get_item().is_empty();
         let is_explosion =
-            damage_type == DamageType::EXPLOSION || damage_type == DamageType::PLAYER_EXPLOSION;
+            damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_EXPLOSION);
 
         if !is_explosion && has_item {
             self.drop_item(source, false);
