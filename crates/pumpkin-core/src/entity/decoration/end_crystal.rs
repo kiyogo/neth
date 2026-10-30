@@ -80,14 +80,25 @@ impl EntityBase for EndCrystalEntity {
 
     fn damage_with_context(
         &self,
-        _caller: &dyn EntityBase,
+        caller: &dyn EntityBase,
         _amount: f32,
         damage_type: DamageType,
         _position: Option<Vector3<f64>>,
-        _source: Option<&dyn EntityBase>,
-        _cause: Option<&dyn EntityBase>,
+        source: Option<&dyn EntityBase>,
+        cause: Option<&dyn EntityBase>,
     ) -> bool {
         if self.is_invulnerable() {
+            return false;
+        }
+
+        // Vanilla EndCrystal.java:85, 94:
+        // Crystals are immune to damage caused by the Ender Dragon.
+        if let Some(src) = source.or(cause) {
+            if !crate::entity::combat::is_end_crystal_damageable_by(Some(src.get_entity().entity_type)) {
+                return false;
+            }
+        }
+        if !crate::entity::combat::is_end_crystal_damageable_by(Some(caller.get_entity().entity_type)) {
             return false;
         }
 
@@ -95,7 +106,11 @@ impl EntityBase for EndCrystalEntity {
         let world = self.entity.world.load();
         if !damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_EXPLOSION) {
             let pos = self.entity.pos.load();
-            world.explode(pos, 6.0, crate::world::ExplosionInteraction::Block);
+            world.explode(
+                pos,
+                crate::entity::combat::END_CRYSTAL_EXPLOSION_POWER,
+                crate::world::ExplosionInteraction::Block,
+            );
         }
 
         if let Some(ref fight_mutex) = world.dragon_fight
@@ -113,7 +128,7 @@ impl EntityBase for EndCrystalEntity {
                     dragon.on_crystal_destroyed(
                         self.entity.entity_uuid,
                         self.entity.pos.load(),
-                        _source,
+                        source,
                     );
                 }
             }

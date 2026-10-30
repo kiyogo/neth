@@ -7780,6 +7780,22 @@ pub const ENDER_DRAGON_WING_DAMAGE: f32 = 5.0;
 /// `this.hurt(level, this.head, this.damageSources().explosion(crystal, player), 10.0F);`
 pub const ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE: f32 = 10.0;
 
+/// Default explosion power of an End Crystal upon destruction (6.0F).
+/// Mirrors vanilla `EndCrystal.java:102`:
+/// `level.explode(this, damageSource, null, this.getX(), this.getY(), this.getZ(), 6.0F, false, Level.ExplosionInteraction.BLOCK);`
+pub const END_CRYSTAL_EXPLOSION_POWER: f32 = 6.0;
+
+/// Checks if an entity type is able to damage End Crystals.
+/// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
+#[must_use]
+pub fn is_end_crystal_damageable_by(attacker_type: Option<&pumpkin_data::entity::EntityType>) -> bool {
+    match attacker_type {
+        Some(entity_type) if *entity_type == pumpkin_data::entity::EntityType::ENDER_DRAGON => false,
+        _ => true,
+    }
+}
+
+
 /// Interval in ticks between Ender Dragon healing from an active End Crystal (10 ticks = 0.5s).
 ///
 /// Mirrors vanilla `EnderDragon.java:365`:
@@ -13800,5 +13816,38 @@ mod tests {
         assert_eq!(get_minecart_gravity(true, false), 0.005);
         assert_eq!(get_minecart_gravity(false, true), 0.0);
         assert_eq!(get_minecart_gravity(true, true), 0.0);
+    }
+
+
+    #[test]
+    fn test_boss_entities_family_attributes_and_shields_parity() {
+        assert_eq!(ENDER_DRAGON_MAX_HEALTH, 200.0);
+        assert_eq!(ENDER_DRAGON_CAMERA_DISTANCE, 16.0);
+        assert_eq!(ENDER_DRAGON_RESPAWN_KILL_XP, 500);
+        assert_eq!(ENDER_DRAGON_FIRST_KILL_XP, 12000);
+        assert_eq!(ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE, 10.0);
+        assert_eq!(END_CRYSTAL_EXPLOSION_POWER, 6.0);
+
+        // End Crystal dragon damage immunity parity (EndCrystal.java:85, 94)
+        assert!(!is_end_crystal_damageable_by(Some(&pumpkin_data::entity::EntityType::ENDER_DRAGON)));
+        assert!(is_end_crystal_damageable_by(Some(&pumpkin_data::entity::EntityType::PLAYER)));
+        assert!(is_end_crystal_damageable_by(Some(&pumpkin_data::entity::EntityType::ARROW)));
+        assert!(is_end_crystal_damageable_by(None));
+
+        // Wither attributes and powered projectile deflection parity (WitherBoss.java:87, 464-469, 510-517, 543-545)
+        assert_eq!(WITHER_MAX_HEALTH, 300.0);
+        assert_eq!(WITHER_ARMOR_POINTS, 4.0);
+        assert_eq!(WITHER_MOVEMENT_SPEED, 0.6);
+        assert_eq!(WITHER_FLYING_SPEED, 0.6);
+        assert_eq!(WITHER_FOLLOW_RANGE, 40.0);
+        assert_eq!(WITHER_XP_REWARD, 50);
+        assert_eq!(WITHER_INVULNERABLE_TICKS, 220);
+
+        assert!(is_wither_powered(150.0, 300.0));
+        assert!(is_wither_powered(100.0, 300.0));
+        assert!(!is_wither_powered(151.0, 300.0));
+        assert!(should_wither_deflect_projectile(true, true));
+        assert!(!should_wither_deflect_projectile(false, true));
+        assert!(!should_wither_deflect_projectile(true, false));
     }
 }

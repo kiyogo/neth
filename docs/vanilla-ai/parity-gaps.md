@@ -5984,3 +5984,32 @@ ound_to_orb_size tiers.
   - Updated `TntMinecart` (`crates/pumpkin-core/src/entity/vehicle/minecart/tnt.rs`):
     - Synchronized explosion power with `MINECART_TNT_DEFAULT_POWER`.
   - All vehicle unit tests verified and passing.
+
+### Gap 243: Boss Entities Family (Ender Dragon, End Crystal & Wither Boss) Attributes, Leashing, Dragon End Crystal Damage Immunity, Crystal Explosion Power & Wither Projectile Shield Parity
+- **Vanilla Reference**:
+  - `EnderDragon.java:119-120, 524-527`:
+    - Base Attributes: `MAX_HEALTH = 200.0`, `CAMERA_DISTANCE = 16.0`.
+    - Experience Rewards: `xpCount = 500` (subsequent kill), `12000` (first kill).
+    - Leashing: `canBeLeashed() -> false`.
+  - `EndCrystal.java:85, 94, 102`:
+    - Explosion Power: `6.0F` (`Level.ExplosionInteraction.BLOCK`).
+    - Damage Immunity: `source.getEntity() instanceof EnderDragon -> return false` (crystals are immune to Ender Dragon damage).
+  - `WitherBoss.java:87, 460-469, 510-517, 543-545`:
+    - Base Attributes: `MAX_HEALTH = 300.0`, `MOVEMENT_SPEED = 0.6`, `FLYING_SPEED = 0.6`, `FOLLOW_RANGE = 40.0`, `ARMOR = 4.0`.
+    - Experience Reward: `xpReward = 50`.
+    - Spawn Invulnerability: `INVULNERABLE_TICKS = 220` (starts at 1/3 max health = 100 HP, explodes power 7.0F when timer expires).
+    - Wither Shield (`isPowered()`): active when `health <= maxHealth / 2.0` (<= 150.0 HP), completely deflecting arrows and wind charges.
+    - Leashing: `canBeLeashed() -> false`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added `END_CRYSTAL_EXPLOSION_POWER` (6.0F) and helper `is_end_crystal_damageable_by`.
+    - Added comprehensive unit test `test_boss_entities_family_attributes_and_shields_parity`.
+  - Updated `EndCrystalEntity` (`crates/pumpkin-core/src/entity/decoration/end_crystal.rs`):
+    - Added Ender Dragon damage check preventing dragon entities from damaging or destroying End Crystals.
+    - Synchronized explosion power to `END_CRYSTAL_EXPLOSION_POWER`.
+  - Updated `EnderDragonEntity` (`crates/pumpkin-core/src/entity/boss/ender_dragon.rs`):
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32` (returning `ENDER_DRAGON_RESPAWN_KILL_XP`) in `Mob` trait implementation.
+  - Updated `WitherEntity` (`crates/pumpkin-core/src/entity/boss/wither.rs`):
+    - Implemented `can_be_leashed(&self) -> bool { false }` in `Mob` trait implementation.
+    - Synchronized `get_base_experience_reward` and death drop with `WITHER_XP_REWARD`.
+  - All unit tests verified and passing across the boss suite.

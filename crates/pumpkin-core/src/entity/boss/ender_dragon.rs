@@ -1163,6 +1163,14 @@ impl Mob for EnderDragonEntity {
         false
     }
 
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::ENDER_DRAGON_RESPAWN_KILL_XP
+    }
+
     fn get_mob_gravity(&self) -> f64 {
         0.0
     }

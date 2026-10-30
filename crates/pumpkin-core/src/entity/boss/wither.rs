@@ -704,7 +704,7 @@ impl Mob for WitherEntity {
                 crate::entity::experience_orb::ExperienceOrbEntity::spawn(
                     &world,
                     pos.to_centered_f64(),
-                    50,
+                    crate::entity::combat::WITHER_XP_REWARD,
                 );
             }
         }
@@ -729,8 +729,12 @@ impl Mob for WitherEntity {
         Some(self)
     }
 
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
-        50
+        crate::entity::combat::WITHER_XP_REWARD
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
