@@ -40,7 +40,7 @@ pub const SLIME: CubeKind = CubeKind {
     spawn_size: random_spawn_size,
     register_goals: register_hostile_goals,
     is_magma_cube: false,
-    squish_decay: 0.6,
+    squish_decay: crate::entity::combat::SLIME_SQUISH_DECAY,
 };
 
 pub struct SlimeEntity;

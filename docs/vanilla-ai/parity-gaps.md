@@ -4932,3 +4932,41 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced base attributes and lifetime despawn checks with `combat.rs` constants.
     - Updated unit test `test_endermite_despawn_and_xp_parity`.
   - All unit tests verified and passing across silverfish, endermite, and combat suites.
+
+## Gap 218: Slime & Magma Cube Family Parity (Size, Health Scaling, Splitting, Attack Damage, Fall Immunity & Lava Jump Boost)
+- **Vanilla Reference**:
+  - `AbstractCubeMob.java:44-46, 79-93, 139, 150, 186-218, 249-250, 254-259, 280, 293-295, 320-329, 352, 405, 410, 431, 509`:
+    - Size Range & Clamping: `MIN_SIZE = 1` (`CUBE_MOB_MIN_SIZE`), `MAX_SIZE = 127` (`CUBE_MOB_MAX_SIZE`), `MAX_NATURAL_SIZE = 4` (`CUBE_MOB_MAX_NATURAL_SIZE`).
+    - Attribute Scaling: `MAX_HEALTH = actualSize * actualSize`, `MOVEMENT_SPEED = 0.2F + 0.1F * actualSize`.
+    - Splitting on Death: Khi `size > 1 && isDeadOrDying()`, spawn `2 + random.nextInt(3)` (`CUBE_MOB_SPLIT_MIN_COUNT = 2`, `CUBE_MOB_SPLIT_EXTRA_COUNT = 3`) con nhỏ hơn với kích thước `size / 2` lệch vị trí `(i % 2 - 0.5) * (width / 2)` và `(i / 2 - 0.5) * (width / 2)`.
+    - Passenger Attachment Point: `dimensions.height() - 0.015625 * this.getSize() * scale` (`CUBE_MOB_PASSENGER_ATTACHMENT_Y_OFFSET_SCALE = 0.015625`).
+    - Sound Formulas: Volume `0.4F * size`, pitch Tiny `1.4F * (rand_diff * 0.2 + 1.0)`, pitch Normal `0.8F * (rand_diff * 0.2 + 1.0)`, squish pitch `(rand_diff * 0.2 + 1.0) / 0.8F`, attack pitch `rand_diff * 0.2 + 1.0`.
+    - Goals & Timings: Float liquid jump chance `0.8F` (`CUBE_MOB_FLOAT_JUMP_CHANCE`), wanted movement `1.2` (`CUBE_MOB_FLOAT_WANTED_MOVEMENT`), keep jumping wanted movement `1.0` (`CUBE_MOB_KEEP_JUMPING_WANTED_MOVEMENT`), random direction interval `40 + rand(60)` (`CUBE_MOB_RANDOM_DIRECTION_MIN_INTERVAL = 40`, `EXTRA = 60`), attack tired timer `300 ticks` (`CUBE_MOB_ATTACK_TIRED_TICKS = 300`).
+  - `Slime.java:44-46, 50-71, 120-124`:
+    - Attack Damage & XP: `ATTACK_DAMAGE = actualSize`, `xpReward = actualSize` (Size 1: 1 XP; Size 2: 2 XP; Size 4: 4 XP).
+    - Tiny Slime Damage Immunity: `canDealDamage() -> !isTiny() && isEffectiveAi()` (Slime size 1 không bao giờ gây sát thương).
+    - Target Filter: Player target chỉ kích hoạt khi `Math.abs(target.getY() - this.getY()) <= 4.0` (`CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF = 4.0`).
+    - Squish Decay: `0.6F` (`SLIME_SQUISH_DECAY = 0.6`).
+  - `MagmaCube.java:45-47, 60-66, 80-97, 104-106, 113-120`:
+    - Attack Damage & XP: `getAttackDamage() = actualSize + 2.0F` (`MAGMA_CUBE_ATTACK_DAMAGE_BONUS = 2.0F`), `ARMOR = size * 3` (`MAGMA_CUBE_ARMOR_PER_SIZE = 3.0F`), `xpReward = actualSize`.
+    - Tiny Magma Cube Damage: `canDealDamage() -> isEffectiveAi()` (Magma Cube size 1 VẪN gây 3.0 sát thương).
+    - Fall Damage & Fire Immunity: Miễn nhiễm toàn bộ sát thương lửa (`IN_FIRE`, `ON_FIRE`, `LAVA`, `HOT_FLOOR`, `CAMPFIRE`) và nằm trong tag `minecraft:fall_damage_immune` (`DamageType::FALL`).
+    - Movement Boosts: `jumpDelayMultiplier = 4` (`MAGMA_CUBE_JUMP_DELAY_MULTIPLIER = 4`), ground jump velocity bonus `+ size * 0.1F` (`MAGMA_CUBE_JUMP_BOOST_PER_SIZE = 0.1`), lava jump Y velocity `0.22F + size * 0.05F` (`MAGMA_CUBE_LAVA_JUMP_BASE = 0.22`, `MAGMA_CUBE_LAVA_JUMP_PER_SIZE = 0.05`).
+    - Squish Decay: `0.9F` (`MAGMA_CUBE_SQUISH_DECAY = 0.9`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `CUBE_MOB_MIN_SIZE = 1`, `CUBE_MOB_MAX_SIZE = 127`, `CUBE_MOB_MAX_NATURAL_SIZE = 4`, `CUBE_MOB_ATTACK_TIRED_TICKS = 300`, `CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF = 4.0`, `CUBE_MOB_PASSENGER_ATTACHMENT_Y_OFFSET_SCALE = 0.015625`, `MAGMA_CUBE_JUMP_DELAY_MULTIPLIER = 4`, `MAGMA_CUBE_ATTACK_DAMAGE_BONUS = 2.0`, `MAGMA_CUBE_ARMOR_PER_SIZE = 3.0`, `MAGMA_CUBE_JUMP_BOOST_PER_SIZE = 0.1`, `MAGMA_CUBE_LAVA_JUMP_BASE = 0.22`, `MAGMA_CUBE_LAVA_JUMP_PER_SIZE = 0.05`, `SLIME_SQUISH_DECAY = 0.6`, `MAGMA_CUBE_SQUISH_DECAY = 0.9`, `CUBE_MOB_FLOAT_JUMP_CHANCE = 0.8`, `CUBE_MOB_FLOAT_WANTED_MOVEMENT = 1.2`, `CUBE_MOB_KEEP_JUMPING_WANTED_MOVEMENT = 1.0`, `CUBE_MOB_RANDOM_DIRECTION_MIN_INTERVAL = 40`, `CUBE_MOB_RANDOM_DIRECTION_EXTRA_INTERVAL = 60`, `CUBE_MOB_SPLIT_MIN_COUNT = 2`, `CUBE_MOB_SPLIT_EXTRA_COUNT = 3`.
+    - Added helper `calculate_cube_mob_passenger_attachment_y(dimension_height, size, scale)`.
+    - Added helper `is_target_player_within_cube_y_range(target_y, cube_y)`.
+    - Added helper `calculate_cube_mob_natural_spawn_size(size_scale_roll, difficulty_special_mult, chance_roll)`.
+    - Added `DamageType::FALL` to `is_magma_cube_damage_negated` for complete parity with `minecraft:fall_damage_immune`.
+    - Updated unit test `test_slime_and_magma_cube_parity`.
+  - Updated `crates/pumpkin-core/src/entity/mob/cube_mob.rs`:
+    - Replaced hardcoded values with `combat.rs` constants across size bounds, split counts, height targeting, float goals, and random direction intervals.
+    - Added unit test `test_cube_mob_parity_constants`.
+  - Updated `crates/pumpkin-core/src/entity/mob/slime.rs`:
+    - Synced `SLIME_SQUISH_DECAY`.
+  - Updated `crates/pumpkin-core/src/entity/mob/magma_cube.rs`:
+    - Synced `MAGMA_CUBE_ATTACK_DAMAGE_BONUS`, `MAGMA_CUBE_ARMOR_PER_SIZE`, `MAGMA_CUBE_JUMP_DELAY_MULTIPLIER`, `MAGMA_CUBE_SQUISH_DECAY`.
+    - Added unit test `test_magma_cube_attributes_and_jump_parity`.
+  - All unit tests verified and passing across cube_mob, slime, magma_cube, and combat suites.

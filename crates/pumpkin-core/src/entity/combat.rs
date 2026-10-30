@@ -4263,6 +4263,118 @@ pub const fn calculate_ghast_damage_received(
     }
 }
 
+/// Minimum valid size for any CubeMob (1).
+/// Mirrors vanilla `AbstractCubeMob.java:44` (`MIN_SIZE = 1`).
+pub const CUBE_MOB_MIN_SIZE: i32 = 1;
+
+/// Maximum valid size for any CubeMob (127).
+/// Mirrors vanilla `AbstractCubeMob.java:45` (`MAX_SIZE = 127`).
+pub const CUBE_MOB_MAX_SIZE: i32 = 127;
+
+/// Maximum natural spawn size scale for wild CubeMobs (4).
+/// Mirrors vanilla `AbstractCubeMob.java:46` (`MAX_NATURAL_SIZE = 4`).
+pub const CUBE_MOB_MAX_NATURAL_SIZE: i32 = 4;
+
+/// Ticks a CubeMob attack goal can continue before growing tired (300 ticks = 15s).
+/// Mirrors vanilla `AbstractCubeMob.java:352` (`reducedTickDelay(300)`).
+pub const CUBE_MOB_ATTACK_TIRED_TICKS: i32 = 300;
+
+/// Maximum height (Y) difference between CubeMob and player for target acquisition (4.0 blocks).
+/// Mirrors vanilla `Slime.java:44` & `MagmaCube.java:45`:
+/// `Math.abs(target.getY() - this.getY()) <= 4.0`
+pub const CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF: f64 = 4.0;
+
+/// Offset multiplier per size for passenger attachment height.
+/// Mirrors vanilla `AbstractCubeMob.java:250`:
+/// `dimensions.height() - 0.015625 * this.getSize() * scale`
+pub const CUBE_MOB_PASSENGER_ATTACHMENT_Y_OFFSET_SCALE: f64 = 0.015625;
+
+/// Jump delay multiplier for Magma Cubes relative to base CubeMob jump delay (4x).
+/// Mirrors vanilla `MagmaCube.java:85` (`super.getJumpDelay() * 4`).
+pub const MAGMA_CUBE_JUMP_DELAY_MULTIPLIER: i32 = 4;
+
+/// Bonus attack damage added to Magma Cubes beyond base size attribute (+2.0F).
+/// Mirrors vanilla `MagmaCube.java:119` (`super.getAttackDamage() + 2.0F`).
+pub const MAGMA_CUBE_ATTACK_DAMAGE_BONUS: f32 = 2.0;
+
+/// Armor points granted per size for Magma Cubes (3.0 per size).
+/// Mirrors vanilla `MagmaCube.java:64` (`Attributes.ARMOR.setBaseValue(size * 3)`).
+pub const MAGMA_CUBE_ARMOR_PER_SIZE: f32 = 3.0;
+
+/// Additional jump boost per size when a Magma Cube jumps from ground (0.1F per size).
+/// Mirrors vanilla `MagmaCube.java:96` (`this.getSize() * 0.1F`).
+pub const MAGMA_CUBE_JUMP_BOOST_PER_SIZE: f64 = 0.1;
+
+/// Base vertical velocity when a Magma Cube jumps in lava (0.22F).
+/// Mirrors vanilla `MagmaCube.java:105` (`0.22F + this.getSize() * 0.05F`).
+pub const MAGMA_CUBE_LAVA_JUMP_BASE: f64 = 0.22;
+
+/// Extra vertical velocity per size when a Magma Cube jumps in lava (0.05F per size).
+/// Mirrors vanilla `MagmaCube.java:105`.
+pub const MAGMA_CUBE_LAVA_JUMP_PER_SIZE: f64 = 0.05;
+
+/// Squish decay factor per tick for Slimes (0.6F).
+/// Mirrors vanilla `AbstractCubeMob.java:150` (`this.targetSquish *= 0.6F`).
+pub const SLIME_SQUISH_DECAY: f32 = 0.6;
+
+/// Squish decay factor per tick for Magma Cubes (0.9F).
+/// Mirrors vanilla `MagmaCube.java:90` (`this.targetSquish *= 0.9F`).
+pub const MAGMA_CUBE_SQUISH_DECAY: f32 = 0.9;
+
+/// Jump chance per tick when a CubeMob floats in liquid (80% / 0.8F).
+/// Mirrors vanilla `AbstractCubeMob.java:405` (`random.nextFloat() < 0.8F`).
+pub const CUBE_MOB_FLOAT_JUMP_CHANCE: f32 = 0.8;
+
+/// Wanted speed modifier when a CubeMob floats in liquid (1.2).
+/// Mirrors vanilla `AbstractCubeMob.java:410` (`setWantedMovement(1.2)`).
+pub const CUBE_MOB_FLOAT_WANTED_MOVEMENT: f64 = 1.2;
+
+/// Wanted speed modifier for CubeMob keep-jumping goal (1.0).
+/// Mirrors vanilla `AbstractCubeMob.java:431` (`setWantedMovement(1.0)`).
+pub const CUBE_MOB_KEEP_JUMPING_WANTED_MOVEMENT: f64 = 1.0;
+
+/// Base randomize interval for CubeMob random direction goal (40 ticks).
+/// Mirrors vanilla `AbstractCubeMob.java:509` (`40 + random.nextInt(60)`).
+pub const CUBE_MOB_RANDOM_DIRECTION_MIN_INTERVAL: i32 = 40;
+
+/// Random additional interval for CubeMob random direction goal (60 ticks).
+/// Mirrors vanilla `AbstractCubeMob.java:509`.
+pub const CUBE_MOB_RANDOM_DIRECTION_EXTRA_INTERVAL: i32 = 60;
+
+/// Minimum child count spawned when a CubeMob splits on death (2).
+/// Mirrors vanilla `AbstractCubeMob.java:216` (`2 + this.random.nextInt(3)`).
+pub const CUBE_MOB_SPLIT_MIN_COUNT: i32 = 2;
+
+/// Extra random child count spawned when a CubeMob splits on death (up to +2).
+/// Mirrors vanilla `AbstractCubeMob.java:216`.
+pub const CUBE_MOB_SPLIT_EXTRA_COUNT: i32 = 3;
+
+/// Calculates passenger attachment Y position for CubeMob.
+/// Mirrors vanilla `AbstractCubeMob.java:250`:
+/// `dimensions.height() - 0.015625 * this.getSize() * scale`
+#[must_use]
+pub fn calculate_cube_mob_passenger_attachment_y(dimension_height: f64, size: i32, scale: f32) -> f64 {
+    dimension_height - CUBE_MOB_PASSENGER_ATTACHMENT_Y_OFFSET_SCALE * f64::from(size.max(1)) * f64::from(scale)
+}
+
+/// Checks whether a player's vertical position is within targeting height difference range (<= 4.0 blocks).
+/// Mirrors vanilla `Slime.java:44` & `MagmaCube.java:45`.
+#[must_use]
+pub fn is_target_player_within_cube_y_range(target_y: f64, cube_y: f64) -> bool {
+    (target_y - cube_y).abs() <= CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF
+}
+
+/// Simulates natural CubeMob size calculation based on difficulty.
+/// Mirrors vanilla `AbstractCubeMob.java:322-327`.
+#[must_use]
+pub fn calculate_cube_mob_natural_spawn_size(size_scale_roll: i32, difficulty_special_mult: f32, chance_roll: f32) -> i32 {
+    let mut size_scale = size_scale_roll.clamp(0, 2);
+    if size_scale < 2 && chance_roll < 0.5 * difficulty_special_mult {
+        size_scale += 1;
+    }
+    1 << size_scale
+}
+
 /// Calculates CubeMob (Slime & MagmaCube) contact attack damage based on size and mob type.
 ///
 /// Mirrors vanilla `Slime.java:122` & `MagmaCube.java:63, 118-120`:
@@ -4400,9 +4512,9 @@ pub fn calculate_cube_mob_attack_pitch(rand_diff: f32) -> f32 {
     rand_diff.mul_add(0.2, 1.0)
 }
 
-/// Determines whether damage to MagmaCube should be completely negated due to fire immunity.
+/// Determines whether damage to MagmaCube should be completely negated due to fire immunity and fall damage immunity.
 ///
-/// Mirrors vanilla `EntityTypes.java:649` (`fireImmune()`) & `MagmaCube.java:80`:
+/// Mirrors vanilla `EntityTypes.java:649` (`fireImmune()`), `MagmaCube.java:80`, and `EntityTypeTags.FALL_DAMAGE_IMMUNE`.
 #[must_use]
 pub fn is_magma_cube_damage_negated(damage_type: &pumpkin_data::damage::DamageType) -> bool {
     matches!(
@@ -4412,6 +4524,7 @@ pub fn is_magma_cube_damage_negated(damage_type: &pumpkin_data::damage::DamageTy
             | pumpkin_data::damage::DamageType::LAVA
             | pumpkin_data::damage::DamageType::HOT_FLOOR
             | pumpkin_data::damage::DamageType::CAMPFIRE
+            | pumpkin_data::damage::DamageType::FALL
     )
 }
 
@@ -9617,14 +9730,52 @@ mod tests {
         // Attack pitch
         assert!((calculate_cube_mob_attack_pitch(0.0) - 1.0).abs() < 1e-6);
 
-        // 7. Fire immunity for Magma Cube
+        // 7. Fire & Fall damage immunity for Magma Cube (EntityTypeTags.FALL_DAMAGE_IMMUNE)
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::IN_FIRE));
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::ON_FIRE));
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::LAVA));
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::HOT_FLOOR));
         assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::CAMPFIRE));
-        assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::FALL));
+        assert!(is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::FALL));
         assert!(!is_magma_cube_damage_negated(&pumpkin_data::damage::DamageType::PLAYER_ATTACK));
+
+        // 8. Size limits, passenger attachment & natural spawn size parity
+        assert_eq!(CUBE_MOB_MIN_SIZE, 1);
+        assert_eq!(CUBE_MOB_MAX_SIZE, 127);
+        assert_eq!(CUBE_MOB_MAX_NATURAL_SIZE, 4);
+        assert_eq!(CUBE_MOB_ATTACK_TIRED_TICKS, 300);
+        assert_eq!(CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF, 4.0);
+        assert_eq!(MAGMA_CUBE_JUMP_DELAY_MULTIPLIER, 4);
+        assert_eq!(MAGMA_CUBE_ATTACK_DAMAGE_BONUS, 2.0);
+        assert_eq!(MAGMA_CUBE_ARMOR_PER_SIZE, 3.0);
+        assert_eq!(MAGMA_CUBE_JUMP_BOOST_PER_SIZE, 0.1);
+        assert_eq!(MAGMA_CUBE_LAVA_JUMP_BASE, 0.22);
+        assert_eq!(MAGMA_CUBE_LAVA_JUMP_PER_SIZE, 0.05);
+        assert_eq!(SLIME_SQUISH_DECAY, 0.6);
+        assert_eq!(MAGMA_CUBE_SQUISH_DECAY, 0.9);
+        assert_eq!(CUBE_MOB_FLOAT_JUMP_CHANCE, 0.8);
+        assert_eq!(CUBE_MOB_FLOAT_WANTED_MOVEMENT, 1.2);
+        assert_eq!(CUBE_MOB_KEEP_JUMPING_WANTED_MOVEMENT, 1.0);
+        assert_eq!(CUBE_MOB_RANDOM_DIRECTION_MIN_INTERVAL, 40);
+        assert_eq!(CUBE_MOB_RANDOM_DIRECTION_EXTRA_INTERVAL, 60);
+        assert_eq!(CUBE_MOB_SPLIT_MIN_COUNT, 2);
+        assert_eq!(CUBE_MOB_SPLIT_EXTRA_COUNT, 3);
+
+        // Passenger attachment test: height - 0.015625 * size * scale
+        let pass_y = calculate_cube_mob_passenger_attachment_y(2.0, 4, 1.0);
+        assert!((pass_y - (2.0 - 0.015625 * 4.0)).abs() < 1e-6);
+
+        // Targeting Y difference test
+        assert!(is_target_player_within_cube_y_range(64.0, 68.0));
+        assert!(is_target_player_within_cube_y_range(68.0, 64.0));
+        assert!(!is_target_player_within_cube_y_range(64.0, 68.1));
+
+        // Natural spawn size test
+        assert_eq!(calculate_cube_mob_natural_spawn_size(0, 1.0, 0.8), 1);
+        assert_eq!(calculate_cube_mob_natural_spawn_size(1, 1.0, 0.8), 2);
+        assert_eq!(calculate_cube_mob_natural_spawn_size(2, 1.0, 0.8), 4);
+        assert_eq!(calculate_cube_mob_natural_spawn_size(0, 1.0, 0.1), 2); // promoted
+        assert_eq!(calculate_cube_mob_natural_spawn_size(1, 1.0, 0.1), 4); // promoted
     }
 
     #[test]

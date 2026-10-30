@@ -20,8 +20,8 @@ use crate::entity::mob::{Mob, MobEntity};
 use crate::entity::player::Player;
 use crate::entity::{Entity, EntityBase};
 
-pub const MIN_SIZE: i32 = 1;
-pub const MAX_SIZE: i32 = 127;
+pub const MIN_SIZE: i32 = crate::entity::combat::CUBE_MOB_MIN_SIZE;
+pub const MAX_SIZE: i32 = crate::entity::combat::CUBE_MOB_MAX_SIZE;
 
 /// A sound with a separate variant for tiny cubes.
 pub struct SizedSound {
@@ -84,7 +84,8 @@ pub fn random_spawn_size() -> i32 {
 
 #[must_use]
 pub fn random_split_count() -> i32 {
-    2 + rand::random_range(0..3)
+    crate::entity::combat::CUBE_MOB_SPLIT_MIN_COUNT
+        + rand::random_range(0..crate::entity::combat::CUBE_MOB_SPLIT_EXTRA_COUNT)
 }
 
 /// Shared `addBehaviourGoals` and `addTargetingGoals` of slimes and magma cubes.
@@ -100,7 +101,7 @@ pub fn register_hostile_goals(mob: &MobEntity) {
     targets.add_goal(
         1,
         ActiveTargetGoal::with_default(mob, &EntityType::PLAYER, true)
-            .when(TargetCondition::MaxHeightDifference(4.0)),
+            .when(TargetCondition::MaxHeightDifference(crate::entity::combat::CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF)),
     );
     targets.add_goal(
         3,
@@ -532,13 +533,13 @@ impl Goal for CubeMobFloatGoal {
             velo.y = crate::entity::combat::calculate_magma_cube_lava_jump_velocity(cube.get_size());
             entity.velocity.store(velo);
             entity.velocity_dirty.store(true, Ordering::SeqCst);
-        } else if rand::random_range(0.0..1.0) < 0.8 {
+        } else if rand::random_range(0.0..1.0) < crate::entity::combat::CUBE_MOB_FLOAT_JUMP_CHANCE {
             cube.mob_entity
                 .living_entity
                 .jumping
                 .store(true, Ordering::SeqCst);
         }
-        cube.speed_modifier.store(1.2);
+        cube.speed_modifier.store(crate::entity::combat::CUBE_MOB_FLOAT_WANTED_MOVEMENT);
     }
     fn should_run_every_tick(&self) -> bool {
         true
@@ -560,7 +561,7 @@ impl Goal for CubeMobAttackGoal {
             .is_some_and(|target| mob.can_attack(&*target))
     }
     fn start(&mut self, _mob: &dyn Mob) {
-        self.grow_tired_timer = to_goal_ticks(300);
+        self.grow_tired_timer = to_goal_ticks(crate::entity::combat::CUBE_MOB_ATTACK_TIRED_TICKS);
     }
     fn should_continue(&mut self, mob: &dyn Mob) -> bool {
         if !self.can_start(mob) {
@@ -622,7 +623,12 @@ impl Goal for CubeMobRandomDirectionGoal {
         };
         self.next_randomize_time -= 1;
         if self.next_randomize_time <= 0 {
-            self.next_randomize_time = self.get_tick_count(40 + rand::random_range(0..60));
+            self.next_randomize_time = self.get_tick_count(
+                crate::entity::combat::CUBE_MOB_RANDOM_DIRECTION_MIN_INTERVAL
+                    + rand::random_range(
+                        0..crate::entity::combat::CUBE_MOB_RANDOM_DIRECTION_EXTRA_INTERVAL,
+                    ),
+            );
             self.chosen_degrees = rand::random_range(0..360) as f32;
         }
         cube.target_yaw.store(self.chosen_degrees);
@@ -641,10 +647,29 @@ impl Goal for CubeMobKeepOnJumpingGoal {
     }
     fn tick(&mut self, mob: &dyn Mob) {
         if let Some(cube) = as_cube(mob) {
-            cube.speed_modifier.store(1.0);
+            cube.speed_modifier.store(crate::entity::combat::CUBE_MOB_KEEP_JUMPING_WANTED_MOVEMENT);
         }
     }
     fn controls(&self) -> Controls {
         Controls::JUMP | Controls::MOVE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cube_mob_parity_constants() {
+        assert_eq!(MIN_SIZE, 1);
+        assert_eq!(MAX_SIZE, 127);
+        assert_eq!(crate::entity::combat::CUBE_MOB_MAX_NATURAL_SIZE, 4);
+        assert_eq!(crate::entity::combat::CUBE_MOB_ATTACK_TIRED_TICKS, 300);
+        assert_eq!(crate::entity::combat::CUBE_MOB_TARGET_PLAYER_MAX_Y_DIFF, 4.0);
+        assert_eq!(crate::entity::combat::MAGMA_CUBE_JUMP_DELAY_MULTIPLIER, 4);
+        assert_eq!(crate::entity::combat::MAGMA_CUBE_ATTACK_DAMAGE_BONUS, 2.0);
+        assert_eq!(crate::entity::combat::MAGMA_CUBE_ARMOR_PER_SIZE, 3.0);
+        assert_eq!(crate::entity::combat::SLIME_SQUISH_DECAY, 0.6);
+        assert_eq!(crate::entity::combat::MAGMA_CUBE_SQUISH_DECAY, 0.9);
     }
 }
