@@ -14682,6 +14682,55 @@ mod tests {
     }
 
     #[test]
+    fn test_brewing_stand_data_and_constants_parity() {
+        use crate::block::entities::brewing_stand::{
+            BrewingStandBlockEntity, BREWING_SLOTS_UP, BREWING_SLOTS_DOWN, BREWING_SLOTS_SIDES,
+            BREWING_TIME_SECONDS, BREWING_TIME_TICKS, DEFAULT_BREW_TIME, DEFAULT_FUEL,
+            DEFAULT_SPEED_MULTIPLIER, BREWING_DEFAULT_FUEL_USES,
+        };
+        use crate::block::entities::PropertyDelegate;
+        use pumpkin_util::math::position::BlockPos;
+        use std::sync::Arc;
+
+        assert_eq!(BrewingStandBlockEntity::INVENTORY_SIZE, 5);
+        assert_eq!(BrewingStandBlockEntity::INGREDIENT_SLOT, 3);
+        assert_eq!(BrewingStandBlockEntity::FUEL_SLOT, 4);
+        assert_eq!(BrewingStandBlockEntity::DATA_BREW_TIME, 0);
+        assert_eq!(BrewingStandBlockEntity::DATA_FUEL_USES, 1);
+        assert_eq!(BrewingStandBlockEntity::DATA_TOTAL_BREW_TIME, 2);
+        assert_eq!(BrewingStandBlockEntity::DATA_TOTAL_FUEL_USES, 3);
+        assert_eq!(BrewingStandBlockEntity::NUM_DATA_VALUES, 4);
+
+        assert_eq!(BREWING_TIME_SECONDS, 20);
+        assert_eq!(BREWING_TIME_TICKS, 400);
+        assert_eq!(DEFAULT_BREW_TIME, 0);
+        assert_eq!(DEFAULT_FUEL, 0);
+        assert_eq!(DEFAULT_SPEED_MULTIPLIER, 1.0);
+        assert_eq!(BREWING_DEFAULT_FUEL_USES, 20);
+
+        assert_eq!(BREWING_SLOTS_UP, [3]);
+        assert_eq!(BREWING_SLOTS_DOWN, [0, 1, 2, 3]);
+        assert_eq!(BREWING_SLOTS_SIDES, [0, 1, 2, 4]);
+
+        let entity = Arc::new(BrewingStandBlockEntity::new(BlockPos::new(0, 64, 0)));
+        let prop = entity.clone() as Arc<dyn PropertyDelegate>;
+        assert_eq!(prop.get_properties_size(), 4);
+        assert_eq!(prop.get_property(0), 0);
+        assert_eq!(prop.get_property(1), 0);
+        assert_eq!(prop.get_property(2), 400);
+        assert_eq!(prop.get_property(3), 20);
+
+        prop.set_property(0, 150);
+        prop.set_property(1, 12);
+        prop.set_property(2, 350);
+        prop.set_property(3, 18);
+        assert_eq!(prop.get_property(0), 150);
+        assert_eq!(prop.get_property(1), 12);
+        assert_eq!(prop.get_property(2), 350);
+        assert_eq!(prop.get_property(3), 18);
+    }
+
+    #[test]
     fn test_bell_resonation_and_durations_parity() {
         use crate::block::blocks::redstone::bell::BellBlock;
         use crate::block::entities::bell::BellBlockEntity;

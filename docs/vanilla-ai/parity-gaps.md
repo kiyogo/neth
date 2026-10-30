@@ -6351,3 +6351,34 @@ ound_to_orb_size tiers.
     - Corrected resonate sound position from block corner (	o_f64()) to centered position (	o_centered_f64()).
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_bell_resonation_and_durations_parity.
+
+### Gap 257: Brewing Stand Brew Time, Fuel Item, Potion Ingredient Slots & Comparator Parity
+- **Vanilla Reference**:
+  - BrewingStandBlock.java:32-42, 75-100:
+    - Properties: HAS_BOTTLE_0, HAS_BOTTLE_1, HAS_BOTTLE_2.
+    - Comparator: Redstone signal derived from container contents.
+    - Sound and event: SoundEvents.BREWING_STAND_BREW and level.levelEvent(1035, pos, 0).
+  - BrewingStandBlockEntity.java:38-53, 62-95, 122-188, 253-278, 297-314:
+    - Slots and Data values:
+      - INGREDIENT_SLOT = 3, FUEL_SLOT = 4.
+      - Sided access slots: SLOTS_FOR_UP = [3], SLOTS_FOR_DOWN = [0, 1, 2, 3], SLOTS_FOR_SIDES = [0, 1, 2, 4].
+      - Container data indices:
+        - DATA_BREW_TIME = 0: remaining ticks in current brewing cycle.
+        - DATA_FUEL_USES = 1: remaining fuel charges (from Blaze Powder).
+        - DATA_TOTAL_BREW_TIME = 2: total cycle length (default 400 ticks / 20 seconds).
+        - DATA_TOTAL_FUEL_USES = 3: total fuel charges per fuel item (default 20).
+        - NUM_DATA_VALUES = 4: total of 4 synced container data properties.
+      - Default constants: DEFAULT_BREW_TIME = 0, BREWING_TIME_SECONDS = 20, DEFAULT_FUEL = 0, DEFAULT_SPEED_MULTIPLIER = 1.0F, DEFAULT_FUEL_USES = 20.
+  - BrewingStandMenu.java:25, 41:
+    - DATA_COUNT = 4, verifies checkContainerDataCount(brewingStandData, 4).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-inventory/src/brewing/brewing_screen_handler.rs:
+    - Corrected DATA_COUNT from 2 to 4.
+    - Added synchronization for container properties 2 (	otal_brew_time) and 3 (	otal_fuel_uses).
+  - Updated crates/pumpkin-core/src/block/entities/brewing_stand.rs:
+    - Exported module constants BREWING_TIME_SECONDS (20), DEFAULT_BREW_TIME (0), DEFAULT_FUEL (0), DEFAULT_SPEED_MULTIPLIER (1.0).
+    - Exported entity constants INGREDIENT_SLOT (3), FUEL_SLOT (4), DATA_BREW_TIME (0), DATA_FUEL_USES (1), DATA_TOTAL_BREW_TIME (2), DATA_TOTAL_FUEL_USES (3), NUM_DATA_VALUES (4), BREWING_TIME_SECONDS (20), BREWING_TIME_TICKS (400), DEFAULT_FUEL_USES (20).
+    - Added 	otal_brew_time and 	otal_fuel atomic fields to BrewingStandBlockEntity, loaded from and saved to NBT (	otal_brew_time, 	otal_fuel).
+    - Updated PropertyDelegate for BrewingStandBlockEntity to expose all 4 data properties with get_properties_size() == 4.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_brewing_stand_data_and_constants_parity.

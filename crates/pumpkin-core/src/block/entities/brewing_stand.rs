@@ -34,7 +34,11 @@ pub const BREWING_DATA_TOTAL_BREW_TIME: usize = 2;
 pub const BREWING_DATA_TOTAL_FUEL_USES: usize = 3;
 pub const BREWING_NUM_DATA_VALUES: usize = 4;
 
+pub const BREWING_TIME_SECONDS: i32 = 20;
 pub const BREWING_TIME_TICKS: i32 = 400; // 20 seconds
+pub const DEFAULT_BREW_TIME: i32 = 0;
+pub const DEFAULT_FUEL: i32 = 0;
+pub const DEFAULT_SPEED_MULTIPLIER: f32 = 1.0;
 pub const BREWING_DEFAULT_FUEL_USES: i32 = 20;
 
 pub static BREWING_SLOTS_UP: [usize; 1] = [3];
@@ -49,6 +53,8 @@ pub struct BrewingStandBlockEntity {
     pub comparator_dirty: AtomicBool,
     pub brew_time: AtomicI32,
     pub fuel: AtomicI32,
+    pub total_brew_time: AtomicI32,
+    pub total_fuel: AtomicI32,
     pub last_potion_count: StdMutex<Option<[bool; 3]>>,
     pub ingredient_item: StdMutex<Option<&'static pumpkin_data::item::Item>>,
 }
@@ -56,6 +62,16 @@ pub struct BrewingStandBlockEntity {
 impl BrewingStandBlockEntity {
     pub const INVENTORY_SIZE: usize = 5; // 3 potion slots + 1 ingredient + 1 fuel
     pub const ID: &'static str = "minecraft:brewing_stand";
+    pub const INGREDIENT_SLOT: usize = BREWING_SLOT_INGREDIENT;
+    pub const FUEL_SLOT: usize = BREWING_SLOT_FUEL;
+    pub const DATA_BREW_TIME: usize = BREWING_DATA_BREW_TIME;
+    pub const DATA_FUEL_USES: usize = BREWING_DATA_FUEL_USES;
+    pub const DATA_TOTAL_BREW_TIME: usize = BREWING_DATA_TOTAL_BREW_TIME;
+    pub const DATA_TOTAL_FUEL_USES: usize = BREWING_DATA_TOTAL_FUEL_USES;
+    pub const NUM_DATA_VALUES: usize = BREWING_NUM_DATA_VALUES;
+    pub const BREWING_TIME_SECONDS: i32 = 20;
+    pub const BREWING_TIME_TICKS: i32 = 400;
+    pub const DEFAULT_FUEL_USES: i32 = 20;
 
     /// Creates an empty container with component storage at the supplied position.
     #[must_use]
@@ -69,6 +85,8 @@ impl BrewingStandBlockEntity {
             comparator_dirty: AtomicBool::new(false),
             brew_time: AtomicI32::new(0),
             fuel: AtomicI32::new(0),
+            total_brew_time: AtomicI32::new(BREWING_TIME_TICKS),
+            total_fuel: AtomicI32::new(BREWING_DEFAULT_FUEL_USES),
             last_potion_count: StdMutex::new(None),
             ingredient_item: StdMutex::new(None),
         }
@@ -347,6 +365,7 @@ impl BrewingStandBlockEntity {
             && items[4].are_equal(&expected_fuel)
         {
             self.fuel.store(i32::from(fuel_power), Ordering::Relaxed);
+            self.total_fuel.store(i32::from(fuel_power), Ordering::Relaxed);
             items[4].decrement(1);
             // The fuel slot shrank, comparators needs an update.
             self.comparator_dirty.store(true, Ordering::Relaxed);
@@ -546,6 +565,14 @@ impl crate::block::entities::BlockEntity for BrewingStandBlockEntity {
         {
             entity.fuel.store(f, Ordering::Relaxed);
         }
+        let total_brew_time = nbt
+            .get_int("total_brew_time")
+            .unwrap_or(BREWING_TIME_TICKS);
+        entity.total_brew_time.store(total_brew_time, Ordering::Relaxed);
+        let total_fuel = nbt
+            .get_int("total_fuel")
+            .unwrap_or(BREWING_DEFAULT_FUEL_USES);
+        entity.total_fuel.store(total_fuel, Ordering::Relaxed);
 
         // Load inventory items from NBT
         let items = entity
@@ -588,6 +615,8 @@ impl crate::block::entities::BlockEntity for BrewingStandBlockEntity {
         // Persist brew state
         nbt.put_short("BrewTime", self.brew_time.load(Ordering::Relaxed) as i16);
         nbt.put_byte("Fuel", self.fuel.load(Ordering::Relaxed) as i8);
+        nbt.put_int("total_brew_time", self.total_brew_time.load(Ordering::Relaxed));
+        nbt.put_int("total_fuel", self.total_fuel.load(Ordering::Relaxed));
 
         // Save inventory contents to NBT
         self.write_inventory_nbt(nbt, true);
@@ -682,6 +711,7 @@ impl crate::block::entities::BlockEntity for BrewingStandBlockEntity {
             // Start new brewing cycle
             self.fuel.fetch_sub(1, Ordering::Relaxed);
             self.brew_time.store(brew_time, Ordering::Relaxed);
+            self.total_brew_time.store(brew_time, Ordering::Relaxed);
             *self
                 .ingredient_item
                 .lock()
@@ -758,13 +788,23 @@ impl PropertyDelegate for BrewingStandBlockEntity {
         match index {
             0 => self.brew_time.load(Ordering::Relaxed),
             1 => self.fuel.load(Ordering::Relaxed),
+            2 => self.total_brew_time.load(Ordering::Relaxed),
+            3 => self.total_fuel.load(Ordering::Relaxed),
             _ => 0,
         }
     }
 
-    fn set_property(&self, _index: i32, _value: i32) {}
+    fn set_property(&self, index: i32, value: i32) {
+        match index {
+            0 => self.brew_time.store(value, Ordering::Relaxed),
+            1 => self.fuel.store(value, Ordering::Relaxed),
+            2 => self.total_brew_time.store(value, Ordering::Relaxed),
+            3 => self.total_fuel.store(value, Ordering::Relaxed),
+            _ => {}
+        }
+    }
 
     fn get_properties_size(&self) -> i32 {
-        2
+        4
     }
 }
