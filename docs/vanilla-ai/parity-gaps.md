@@ -5729,3 +5729,57 @@ eck, part 1): nhận 100% full damage (damage).
   - Updated `CubeMobEntity` in `crates/pumpkin-core/src/entity/mob/cube_mob.rs`:
     - Implemented `can_be_leashed(&self) -> bool { false }`.
   - All 22 unit tests verified and passing across Nether mob test suites.
+
+### Gap 237: Hostile Overworld Mobs Family (Zombie, Husk, Drowned, Skeleton, Stray, Bogged, Creeper, Spider, Cave Spider & Enderman) Attributes, Leashing & Parity Constants
+- **Vanilla Reference**:
+  - `Zombie.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `FOLLOW_RANGE = 35.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 3.0`, `ARMOR = 2.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Husk.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `FOLLOW_RANGE = 35.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 3.0`, `ARMOR = 2.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Drowned.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `FOLLOW_RANGE = 35.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 3.0`, `ARMOR = 2.0`, `STEP_HEIGHT = 1.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Skeleton.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.25`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Stray.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.25`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Bogged.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 16.0`, `MOVEMENT_SPEED = 0.25`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Creeper.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.25`, `DEFAULT_FUSE = 30`, `DEFAULT_EXPLOSION_RADIUS = 3`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Spider.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 16.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 2.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `CaveSpider.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 12.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 2.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `EnderMan.java:createAttributes, xpReward = 5`:
+    - Base Attributes: `MAX_HEALTH = 40.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 7.0`, `FOLLOW_RANGE = 64.0`, `STEP_HEIGHT = 1.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ENDERMAN_MAX_HEALTH`, `ENDERMAN_BASE_MOVEMENT_SPEED`, `ENDERMAN_BASE_ATTACK_DAMAGE`, `ENDERMAN_FOLLOW_RANGE`, `ENDERMAN_STEP_HEIGHT`, `ENDERMAN_XP_REWARD`.
+    - Added constants `HUSK_MAX_HEALTH`, `HUSK_BASE_MOVEMENT_SPEED`, `HUSK_BASE_ATTACK_DAMAGE`, `HUSK_FOLLOW_RANGE`, `HUSK_ARMOR`, `HUSK_XP_REWARD`.
+    - Added constants `DROWNED_MAX_HEALTH`, `DROWNED_BASE_MOVEMENT_SPEED`, `DROWNED_BASE_ATTACK_DAMAGE`, `DROWNED_FOLLOW_RANGE`, `DROWNED_ARMOR`, `DROWNED_XP_REWARD`.
+    - Added constants `STRAY_BASE_MOVEMENT_SPEED`, `BOGGED_BASE_MOVEMENT_SPEED`.
+    - Added unit test `test_hostile_overworld_mobs_parity`.
+  - Updated `EndermanEntity` in `crates/pumpkin-core/src/entity/mob/enderman.rs`:
+    - Converted attribute initialization to use parity constants via `set_attribute_base` (Max Health 40.0, Speed 0.3, Attack Damage 7.0, Follow Range 64.0, Step Height 1.0).
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { ENDERMAN_XP_REWARD }`.
+  - Implemented `can_be_leashed(&self) -> bool { false }` across:
+    - `ZombieEntity` (`crates/pumpkin-core/src/entity/mob/zombie/mod.rs`)
+    - `HuskEntity` (`crates/pumpkin-core/src/entity/mob/zombie/husk.rs`)
+    - `DrownedEntity` (`crates/pumpkin-core/src/entity/mob/zombie/drowned.rs`)
+    - `SkeletonEntity` (`crates/pumpkin-core/src/entity/mob/skeleton/mod.rs`)
+    - `StrayEntity` (`crates/pumpkin-core/src/entity/mob/skeleton/stray.rs`)
+    - `BoggedEntity` (`crates/pumpkin-core/src/entity/mob/skeleton/bogged.rs`)
+    - `CreeperEntity` (`crates/pumpkin-core/src/entity/mob/creeper.rs`)
+    - `SpiderEntity` (`crates/pumpkin-core/src/entity/mob/spider.rs`)
+    - `CaveSpiderEntity` (`crates/pumpkin-core/src/entity/mob/cave_spider.rs`)
+  - All 39 unit tests verified and passing across the Hostile Overworld Mob suites.

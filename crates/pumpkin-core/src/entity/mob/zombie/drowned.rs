@@ -160,6 +160,10 @@ impl DrownedEntity {
 
     /// Vanilla `Drowned.okTarget`: by day only targets in water are worth chasing.
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn ok_target(target: &Entity, world: &World) -> bool {
         !world.is_bright_outside() || target.is_in_water()
     }

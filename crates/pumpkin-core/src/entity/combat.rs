@@ -8738,6 +8738,89 @@ pub const WITHER_FOLLOW_RANGE: f64 = 40.0;
 /// Mirrors vanilla WitherBoss.java:xpReward = 50.
 pub const WITHER_XP_REWARD: u32 = 50;
 
+// Hostile Overworld Mobs Parity Constants
+/// Enderman max health (40.0 HP / 20 hearts).
+/// Mirrors vanilla EnderMan.java:createAttributes (Attributes.MAX_HEALTH, 40.0).
+pub const ENDERMAN_MAX_HEALTH: f32 = 40.0;
+
+/// Enderman movement speed (0.3).
+/// Mirrors vanilla EnderMan.java:createAttributes (Attributes.MOVEMENT_SPEED, 0.3F).
+pub const ENDERMAN_BASE_MOVEMENT_SPEED: f64 = 0.3;
+
+/// Enderman attack damage (7.0 HP / 3.5 hearts).
+/// Mirrors vanilla EnderMan.java:createAttributes (Attributes.ATTACK_DAMAGE, 7.0).
+pub const ENDERMAN_BASE_ATTACK_DAMAGE: f32 = 7.0;
+
+/// Enderman follow range (64.0 blocks).
+/// Mirrors vanilla EnderMan.java:createAttributes (Attributes.FOLLOW_RANGE, 64.0).
+pub const ENDERMAN_FOLLOW_RANGE: f64 = 64.0;
+
+/// Enderman step height (1.0 block).
+/// Mirrors vanilla EnderMan.java:createAttributes (Attributes.STEP_HEIGHT, 1.0).
+pub const ENDERMAN_STEP_HEIGHT: f64 = 1.0;
+
+/// Enderman experience reward on death (5 XP).
+/// Mirrors vanilla EnderMan.java / Monster.java:xpReward = 5.
+pub const ENDERMAN_XP_REWARD: u32 = 5;
+
+/// Husk max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla Husk.java / Zombie.java.
+pub const HUSK_MAX_HEALTH: f32 = 20.0;
+
+/// Husk movement speed (0.23).
+/// Mirrors vanilla Husk.java / Zombie.java (Attributes.MOVEMENT_SPEED, 0.23F).
+pub const HUSK_BASE_MOVEMENT_SPEED: f64 = 0.23;
+
+/// Husk attack damage (3.0 HP / 1.5 hearts).
+/// Mirrors vanilla Husk.java / Zombie.java (Attributes.ATTACK_DAMAGE, 3.0).
+pub const HUSK_BASE_ATTACK_DAMAGE: f32 = 3.0;
+
+/// Husk follow range (35.0 blocks).
+/// Mirrors vanilla Husk.java / Zombie.java (Attributes.FOLLOW_RANGE, 35.0).
+pub const HUSK_FOLLOW_RANGE: f64 = 35.0;
+
+/// Husk natural armor points (2.0).
+/// Mirrors vanilla Husk.java / Zombie.java (Attributes.ARMOR, 2.0).
+pub const HUSK_ARMOR: f64 = 2.0;
+
+/// Husk experience reward on death (5 XP).
+/// Mirrors vanilla Husk.java / Monster.java:xpReward = 5.
+pub const HUSK_XP_REWARD: u32 = 5;
+
+/// Drowned max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla Drowned.java / Zombie.java.
+pub const DROWNED_MAX_HEALTH: f32 = 20.0;
+
+/// Drowned movement speed (0.23).
+/// Mirrors vanilla Drowned.java / Zombie.java (Attributes.MOVEMENT_SPEED, 0.23F).
+pub const DROWNED_BASE_MOVEMENT_SPEED: f64 = 0.23;
+
+/// Drowned attack damage (3.0 HP / 1.5 hearts).
+/// Mirrors vanilla Drowned.java / Zombie.java (Attributes.ATTACK_DAMAGE, 3.0).
+pub const DROWNED_BASE_ATTACK_DAMAGE: f32 = 3.0;
+
+/// Drowned follow range (35.0 blocks).
+/// Mirrors vanilla Drowned.java / Zombie.java (Attributes.FOLLOW_RANGE, 35.0).
+pub const DROWNED_FOLLOW_RANGE: f64 = 35.0;
+
+/// Drowned natural armor points (2.0).
+/// Mirrors vanilla Drowned.java / Zombie.java (Attributes.ARMOR, 2.0).
+pub const DROWNED_ARMOR: f64 = 2.0;
+
+/// Drowned experience reward on death (5 XP).
+/// Mirrors vanilla Drowned.java / Monster.java:xpReward = 5.
+pub const DROWNED_XP_REWARD: u32 = 5;
+
+/// Stray base movement speed (0.25).
+/// Mirrors vanilla Stray.java / AbstractSkeleton.java (Attributes.MOVEMENT_SPEED, 0.25).
+pub const STRAY_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+
+/// Bogged base movement speed (0.25).
+/// Mirrors vanilla Bogged.java / AbstractSkeleton.java (Attributes.MOVEMENT_SPEED, 0.25).
+pub const BOGGED_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+
 
 
 
@@ -13015,5 +13098,70 @@ mod tests {
         assert_eq!(MAGMA_CUBE_ATTACK_DAMAGE_BONUS, 2.0);
         assert_eq!(MAGMA_CUBE_ARMOR_PER_SIZE, 3.0);
         assert_eq!(MAGMA_CUBE_JUMP_DELAY_MULTIPLIER, 4);
+    }
+
+    #[test]
+    fn test_hostile_overworld_mobs_parity() {
+        // Zombie (Zombie.java:createAttributes, xpReward = 5)
+        assert_eq!(ZOMBIE_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIE_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(ZOMBIE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(ZOMBIE_XP_REWARD, 5);
+
+        // Husk & Drowned
+        assert_eq!(HUSK_MAX_HEALTH, 20.0);
+        assert_eq!(HUSK_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(HUSK_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(HUSK_FOLLOW_RANGE, 35.0);
+        assert_eq!(HUSK_ARMOR, 2.0);
+        assert_eq!(HUSK_XP_REWARD, 5);
+
+        assert_eq!(DROWNED_MAX_HEALTH, 20.0);
+        assert_eq!(DROWNED_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(DROWNED_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(DROWNED_FOLLOW_RANGE, 35.0);
+        assert_eq!(DROWNED_ARMOR, 2.0);
+        assert_eq!(DROWNED_STEP_HEIGHT, 1.0);
+        assert_eq!(DROWNED_XP_REWARD, 5);
+
+        // Skeleton, Stray & Bogged
+        assert_eq!(SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(SKELETON_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(SKELETON_XP_REWARD, 5);
+
+        assert_eq!(STRAY_MAX_HEALTH, 20.0);
+        assert_eq!(STRAY_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(STRAY_XP_REWARD, 5);
+
+        assert_eq!(BOGGED_MAX_HEALTH, 16.0);
+        assert_eq!(BOGGED_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(BOGGED_XP_REWARD, 5);
+
+        // Creeper
+        assert_eq!(CREEPER_MAX_HEALTH, 20.0);
+        assert_eq!(CREEPER_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(CREEPER_DEFAULT_FUSE, 30);
+        assert_eq!(CREEPER_DEFAULT_EXPLOSION_RADIUS, 3);
+        assert_eq!(CREEPER_XP_REWARD, 5);
+
+        // Spider & Cave Spider
+        assert_eq!(SPIDER_MAX_HEALTH, 16.0);
+        assert_eq!(SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(SPIDER_XP_REWARD, 5);
+
+        assert_eq!(CAVE_SPIDER_MAX_HEALTH, 12.0);
+        assert_eq!(CAVE_SPIDER_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(CAVE_SPIDER_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(CAVE_SPIDER_XP_REWARD, 5);
+
+        // Enderman
+        assert_eq!(ENDERMAN_MAX_HEALTH, 40.0);
+        assert_eq!(ENDERMAN_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ENDERMAN_BASE_ATTACK_DAMAGE, 7.0);
+        assert_eq!(ENDERMAN_FOLLOW_RANGE, 64.0);
+        assert_eq!(ENDERMAN_STEP_HEIGHT, 1.0);
+        assert_eq!(ENDERMAN_XP_REWARD, 5);
     }
 }

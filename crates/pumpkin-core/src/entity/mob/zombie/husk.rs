@@ -48,6 +48,10 @@ impl HuskEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn is_converting(&self) -> bool {
         self.drowned_conversion_time.load(Ordering::Relaxed) >= 0
     }

@@ -123,6 +123,11 @@ impl CaveSpiderEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn is_climbing(&self) -> bool {
         self.is_climbing.load(Ordering::Relaxed)
     }

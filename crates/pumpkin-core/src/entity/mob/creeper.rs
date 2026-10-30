@@ -119,6 +119,11 @@ impl CreeperEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn set_fuse_speed(&self, speed: i32) {
         self.fuse_speed.store(speed, Ordering::Relaxed);
         self.mob_entity

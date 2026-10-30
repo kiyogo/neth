@@ -77,20 +77,20 @@ impl EndermanEntity {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 40.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::ENDERMAN_MAX_HEALTH));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.3);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::ENDERMAN_BASE_MOVEMENT_SPEED);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 7.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::ENDERMAN_BASE_ATTACK_DAMAGE));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FOLLOW_RANGE, 64.0);
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::ENDERMAN_FOLLOW_RANGE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::STEP_HEIGHT, 1.0);
-        mob_entity.living_entity.health.store(40.0);
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::ENDERMAN_STEP_HEIGHT);
+        mob_entity.living_entity.health.store(crate::entity::combat::ENDERMAN_MAX_HEALTH);
 
         let entity = Self {
             mob_entity,
@@ -365,6 +365,11 @@ impl EndermanEntity {
             .set_synced_data(pumpkin_data::tracked_data::enderman::CREEPY, creepy);
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn is_creepy(&self) -> bool {
         self.creepy.load(Ordering::Relaxed)
     }
@@ -478,6 +483,10 @@ impl Mob for EndermanEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::ENDERMAN_XP_REWARD
     }
 
     fn is_sensitive_to_water(&self) -> bool {

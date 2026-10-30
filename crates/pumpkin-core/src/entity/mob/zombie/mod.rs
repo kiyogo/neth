@@ -157,6 +157,10 @@ impl ZombieEntityBase {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn can_break_doors(&self) -> bool {
         self.can_break_doors.load(Ordering::Relaxed)
     }
