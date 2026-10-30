@@ -16,6 +16,11 @@ use pumpkin_world::world::BlockFlags;
 pub struct LightningRodBlock;
 
 impl LightningRodBlock {
+    pub const ACTIVATION_TICKS: u32 = 8;
+    pub const RANGE: i32 = 128;
+    pub const EVENT_LIGHTNING_STRIKE: u16 = 3002;
+    pub const SPARK_CYCLE: u32 = 200;
+
     pub fn trigger(world: &Arc<World>, pos: &BlockPos) {
         let (block, state_id) = world.get_block_and_state_id(pos);
         let mut props = LightningRodLikeProperties::from_state_id(state_id);
@@ -26,7 +31,17 @@ impl LightningRodBlock {
             Self::update_neighbors(world, pos, props);
 
             // In vanilla, it stays powered for 8 ticks (4 redstone ticks) before scheduled tick turns it off.
-            world.schedule_block_tick(block, *pos, 8, TickPriority::Normal);
+            world.schedule_block_tick(block, *pos, Self::ACTIVATION_TICKS, TickPriority::Normal);
+            let axis_ordinal = match props.facing.to_block_direction().to_axis() {
+                pumpkin_data::block_properties::Axis::X => 0,
+                pumpkin_data::block_properties::Axis::Y => 1,
+                pumpkin_data::block_properties::Axis::Z => 2,
+            };
+            world.sync_world_event(
+                pumpkin_data::world::WorldEvent::ParticlesElectricSpark,
+                *pos,
+                axis_ordinal,
+            );
         }
     }
 

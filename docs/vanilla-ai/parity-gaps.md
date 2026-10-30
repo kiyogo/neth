@@ -6231,3 +6231,26 @@ ound_to_orb_size tiers.
     - Added constants `NOTE_BLOCK_VOLUME` (3.0), `NOTE_BLOCK_OCTAVE_SEMITONES` (12), `NOTE_BLOCK_TOTAL_NOTES` (25).
     - Added helper functions `calculate_note_block_pitch`, `calculate_note_particle_color_offset`, and `is_note_block_base_instrument`.
     - Added unit test `test_note_block_pitch_instruments_and_particle_parity`.
+
+### Gap 252: Lightning Rod Redstone Power Duration, Targeting Range & Channeling Parity
+- **Vanilla Reference**:
+  - `LightningRodBlock.java:25-31, 68-82, 95-102` & `LightningBolt.java:67-73, 105-114, 145-160`:
+    - Signal duration & parameters:
+      - `ACTIVATION_TICKS = 8`: stays powered for exactly 8 game ticks (4 redstone ticks / 0.4 seconds).
+      - `RANGE = 128`: natural lightning strikes within 128 blocks horizontal radius are diverted to target the lightning rod.
+      - `SPARK_CYCLE = 200`: when thundering, produces electric spark particles (`level.isThundering() && pos.getY() == level.getHeight(...) - 1`).
+      - Level event: emits `level.levelEvent(3002, pos, facing.getAxis().ordinal())` (`WorldEvent::ParticlesElectricSpark = 3002`) on lightning strike.
+    - Redstone output signal:
+      - Weak power: 15 in all directions when powered.
+      - Strong power: 15 only directly through the block it is facing (`state.getValue(FACING) == direction`).
+    - Channeling & strike effects:
+      - Trident with Channeling creates lightning only when `level.isThundering()` and target position can see the sky (`canSeeSky(pos)`).
+      - Lightning deals 5.0 HP direct damage to living entities within horizontal range 3.0 blocks and vertical range `[-3.0, +9.0]` blocks (`new AABB(x-3, y-3, z-3, x+3, y+9, z+3)`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/lightning_rod.rs`:
+    - Exported constants `ACTIVATION_TICKS` (8), `RANGE` (128), `EVENT_LIGHTNING_STRIKE` (3002), and `SPARK_CYCLE` (200).
+    - Added emission of `WorldEvent::ParticlesElectricSpark` (3002) with facing axis ordinal on lightning strike trigger.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `LIGHTNING_ROD_ACTIVATION_TICKS`, `LIGHTNING_ROD_RANGE`, `LIGHTNING_ROD_EVENT_LIGHTNING_STRIKE`, `LIGHTNING_ROD_SPARK_CYCLE_TICKS`, `LIGHTNING_STRIKE_DAMAGE`, `LIGHTNING_FIRE_SOURCE_COUNT`, `LIGHTNING_HIT_RANGE_HORIZONTAL`, `LIGHTNING_HIT_RANGE_VERTICAL_DOWN`, `LIGHTNING_HIT_RANGE_VERTICAL_UP`.
+    - Added helper functions `calculate_lightning_rod_redstone_power` and `can_trigger_channeling`.
+    - Added unit test `test_lightning_rod_and_channeling_parity`.

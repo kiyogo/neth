@@ -8192,6 +8192,37 @@ pub const fn is_note_block_base_instrument(instrument_name: &str) -> bool {
     )
 }
 
+/// Vanilla `LightningRodBlock.java:28-30` & `LightningBolt.java:148`:
+pub const LIGHTNING_ROD_ACTIVATION_TICKS: u32 = 8;
+pub const LIGHTNING_ROD_RANGE: i32 = 128;
+pub const LIGHTNING_ROD_EVENT_LIGHTNING_STRIKE: u16 = 3002;
+pub const LIGHTNING_ROD_SPARK_CYCLE_TICKS: u32 = 200;
+pub const LIGHTNING_STRIKE_DAMAGE: f32 = 5.0;
+pub const LIGHTNING_FIRE_SOURCE_COUNT: usize = 4;
+pub const LIGHTNING_HIT_RANGE_HORIZONTAL: f64 = 3.0;
+pub const LIGHTNING_HIT_RANGE_VERTICAL_DOWN: f64 = 3.0;
+pub const LIGHTNING_HIT_RANGE_VERTICAL_UP: f64 = 9.0;
+
+/// Vanilla `LightningRodBlock.java:68-75`:
+/// Computes weak and strong redstone signals for lightning rod.
+#[must_use]
+pub fn calculate_lightning_rod_redstone_power(powered: bool, facing: pumpkin_data::BlockDirection, query_dir: pumpkin_data::BlockDirection) -> (u8, u8) {
+    if !powered {
+        (0, 0)
+    } else {
+        let weak = 15;
+        let strong = if facing == query_dir { 15 } else { 0 };
+        (weak, strong)
+    }
+}
+
+/// Vanilla `ThrownTrident.java:152`:
+/// Channeling condition: must be thundering and target block must see the sky.
+#[must_use]
+pub fn can_trigger_channeling(is_thundering: bool, can_see_sky: bool) -> bool {
+    is_thundering && can_see_sky
+}
+
 
 
 
@@ -14535,6 +14566,40 @@ mod tests {
         for inst in non_base {
             assert!(!is_note_block_base_instrument(inst), "expected {} to NOT be base instrument", inst);
         }
+    }
+
+    #[test]
+    fn test_lightning_rod_and_channeling_parity() {
+        assert_eq!(LIGHTNING_ROD_ACTIVATION_TICKS, 8);
+        assert_eq!(LIGHTNING_ROD_RANGE, 128);
+        assert_eq!(LIGHTNING_ROD_EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LIGHTNING_ROD_SPARK_CYCLE_TICKS, 200);
+        assert_eq!(LIGHTNING_STRIKE_DAMAGE, 5.0);
+        assert_eq!(LIGHTNING_FIRE_SOURCE_COUNT, 4);
+        assert_eq!(LIGHTNING_HIT_RANGE_HORIZONTAL, 3.0);
+        assert_eq!(LIGHTNING_HIT_RANGE_VERTICAL_DOWN, 3.0);
+        assert_eq!(LIGHTNING_HIT_RANGE_VERTICAL_UP, 9.0);
+
+        // Redstone power: 15 weak power in all directions, 15 strong power only along facing
+        use pumpkin_data::BlockDirection;
+        assert_eq!(
+            calculate_lightning_rod_redstone_power(false, BlockDirection::Up, BlockDirection::Up),
+            (0, 0)
+        );
+        assert_eq!(
+            calculate_lightning_rod_redstone_power(true, BlockDirection::Up, BlockDirection::Up),
+            (15, 15)
+        );
+        assert_eq!(
+            calculate_lightning_rod_redstone_power(true, BlockDirection::Up, BlockDirection::North),
+            (15, 0)
+        );
+
+        // Channeling triggers only in thundering weather and when seeing sky
+        assert!(can_trigger_channeling(true, true));
+        assert!(!can_trigger_channeling(false, true)); // rain but not thunder
+        assert!(!can_trigger_channeling(true, false)); // thundering but under roof
+        assert!(!can_trigger_channeling(false, false));
     }
 
 
