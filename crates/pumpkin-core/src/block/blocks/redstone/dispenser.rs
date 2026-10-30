@@ -110,6 +110,11 @@ impl ScreenHandlerFactory for DispenserScreenFactory {
 #[pumpkin_block("minecraft:dispenser")]
 pub struct DispenserBlock;
 
+impl DispenserBlock {
+    pub const TRIGGER_DURATION: u32 = 4;
+    pub const CONTAINER_SIZE: usize = 9;
+}
+
 type DispenserLikeProperties = pumpkin_data::block_properties::DispenserLikeProperties;
 
 struct DispenseContext<'a> {
@@ -235,7 +240,7 @@ impl BlockBehaviour for DispenserBlock {
                 DispenserLikeProperties::from_state_id(args.world.get_block_state(args.position).id);
             if !props.triggered {
                 args.world
-                    .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                    .schedule_block_tick(args.block, *args.position, Self::TRIGGER_DURATION, TickPriority::Normal);
                 props.triggered = true;
                 args.world.set_block_state(
                     args.position,
@@ -255,7 +260,7 @@ impl BlockBehaviour for DispenserBlock {
 
         if powered && !props.triggered {
             args.world
-                .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                .schedule_block_tick(args.block, *args.position, Self::TRIGGER_DURATION, TickPriority::Normal);
             props.triggered = true;
             args.world.set_block_state(
                 args.position,

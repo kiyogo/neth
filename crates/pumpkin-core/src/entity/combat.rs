@@ -15177,4 +15177,20 @@ mod tests {
         assert_eq!(HopperBlockEntity::INVENTORY_SIZE, 5);
     }
 
+    #[test]
+    fn test_dispenser_and_dropper_timing_and_container_size_parity() {
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use crate::block::entities::dispenser::DispenserBlockEntity;
+        use crate::block::entities::dropper::DropperBlockEntity;
+
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+
+        assert_eq!(DispenserBlockEntity::INVENTORY_SIZE, 9);
+        assert_eq!(DropperBlockEntity::INVENTORY_SIZE, 9);
+    }
+
 }

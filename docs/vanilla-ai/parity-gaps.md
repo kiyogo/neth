@@ -6706,3 +6706,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants `HOPPER_CONTAINER_SIZE = 5` and `MOVE_ITEM_SPEED = 8`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_hopper_constants_and_container_size_parity`.
+
+
+### Gap 274: Dispenser & Dropper Trigger Duration, Container Size & Dispense Direction Parity
+- **Vanilla Reference**:
+  - DispenserBlock.java:45-55, 75-85, 230-245:
+    - `TRIGGER_DURATION = 4`: Scheduled tick delay upon receiving redstone signal is 4 ticks (0.2 seconds).
+    - `CONTAINER_SIZE = 9`: 3x3 inventory container size.
+  - DropperBlock.java:
+    - Uses same `TRIGGER_DURATION = 4` and `CONTAINER_SIZE = 9`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Exported constants `TRIGGER_DURATION = 4` and `CONTAINER_SIZE = 9`.
+    - Replaced hardcoded schedule tick delay with `Self::TRIGGER_DURATION`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Exported constants `TRIGGER_DURATION = 4` and `CONTAINER_SIZE = 9`.
+    - Replaced hardcoded schedule tick delay with `Self::TRIGGER_DURATION`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_dispenser_and_dropper_timing_and_container_size_parity`.

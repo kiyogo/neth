@@ -56,6 +56,11 @@ impl ScreenHandlerFactory for DropperScreenFactory {
 #[pumpkin_block("minecraft:dropper")]
 pub struct DropperBlock;
 
+impl DropperBlock {
+    pub const TRIGGER_DURATION: u32 = 4;
+    pub const CONTAINER_SIZE: usize = 9;
+}
+
 type DispenserLikeProperties = pumpkin_data::block_properties::DispenserLikeProperties;
 
 fn triangle<R: Rng>(rng: &mut R, min: f64, max: f64) -> f64 {
@@ -130,7 +135,7 @@ impl BlockBehaviour for DropperBlock {
                 DispenserLikeProperties::from_state_id(args.world.get_block_state(args.position).id);
             if !props.triggered {
                 args.world
-                    .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                    .schedule_block_tick(args.block, *args.position, Self::TRIGGER_DURATION, TickPriority::Normal);
                 props.triggered = true;
                 args.world.set_block_state(
                     args.position,
@@ -150,7 +155,7 @@ impl BlockBehaviour for DropperBlock {
 
         if powered && !props.triggered {
             args.world
-                .schedule_block_tick(args.block, *args.position, 4, TickPriority::Normal);
+                .schedule_block_tick(args.block, *args.position, Self::TRIGGER_DURATION, TickPriority::Normal);
             props.triggered = true;
             args.world.set_block_state(
                 args.position,
