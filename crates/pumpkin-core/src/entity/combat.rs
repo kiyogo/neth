@@ -7947,6 +7947,59 @@ pub fn calculate_furnace_experience_reward(amount: u32, xp_per_item: f32, rand_v
     }
 }
 
+/// Vanilla `BrewingStandBlockEntity.java:38-52`:
+pub const BREWING_STAND_POTION_SLOTS: [usize; 3] = [0, 1, 2];
+pub const BREWING_STAND_INGREDIENT_SLOT: usize = 3;
+pub const BREWING_STAND_FUEL_SLOT: usize = 4;
+pub const BREWING_STAND_TIME_TICKS: i32 = 400; // 20s
+pub const BREWING_STAND_DEFAULT_FUEL_USES: i32 = 20;
+
+/// Vanilla `BeaconBlockEntity.java:53-66`:
+pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
+pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
+pub const BEACON_EFFECT_INTERVAL_TICKS: u64 = 80; // 4s
+
+/// Vanilla `BeaconBlockEntity.java:270`:
+/// `double range = levels * 10 + 10;`
+#[must_use]
+pub fn calculate_beacon_range(levels: i32) -> f64 {
+    if levels <= 0 {
+        0.0
+    } else {
+        (levels * 10 + 10) as f64
+    }
+}
+
+/// Vanilla `BeaconBlockEntity.java:276`:
+/// `int durationTicks = (9 + levels * 2) * 20;`
+#[must_use]
+pub fn calculate_beacon_effect_duration_ticks(levels: i32) -> u32 {
+    if levels <= 0 {
+        0
+    } else {
+        ((9 + levels * 2) * 20) as u32
+    }
+}
+
+/// Vanilla `BeaconBlockEntity.java:271-274`:
+/// Primary power amplifier upgraded to 1 (Level II) when levels >= 4 and primary power equals secondary power.
+#[must_use]
+pub fn calculate_beacon_primary_amplifier(levels: i32, is_same_secondary: bool) -> u8 {
+    if levels >= 4 && is_same_secondary {
+        1
+    } else {
+        0
+    }
+}
+
+/// Vanilla `BrewingStandBlockEntity.java:312`:
+/// Extraction from ingredient slot (3) is only allowed for empty glass bottles (e.g. from honey).
+#[must_use]
+pub fn can_take_brewing_ingredient_through_bottom(is_glass_bottle: bool) -> bool {
+    is_glass_bottle
+}
+
+
 
 
 /// Interval in ticks between Ender Dragon healing from an active End Crystal (10 ticks = 0.5s).
@@ -14086,5 +14139,42 @@ mod tests {
         assert_eq!(calculate_furnace_experience_reward(3, 0.35, 0.04), 2);
         assert_eq!(calculate_furnace_experience_reward(3, 0.35, 0.10), 1);
     }
+
+    #[test]
+    fn test_brewing_stand_and_beacon_parity() {
+        assert_eq!(BREWING_STAND_POTION_SLOTS, [0, 1, 2]);
+        assert_eq!(BREWING_STAND_INGREDIENT_SLOT, 3);
+        assert_eq!(BREWING_STAND_FUEL_SLOT, 4);
+        assert_eq!(BREWING_STAND_TIME_TICKS, 400);
+        assert_eq!(BREWING_STAND_DEFAULT_FUEL_USES, 20);
+
+        assert!(can_take_brewing_ingredient_through_bottom(true));
+        assert!(!can_take_brewing_ingredient_through_bottom(false));
+
+        assert_eq!(BEACON_MAX_PYRAMID_LEVELS, 4);
+        assert_eq!(BEACON_SECONDARY_POWER_REQUIRED_LEVELS, 4);
+        assert_eq!(BEACON_EFFECT_INTERVAL_TICKS, 80);
+
+        // Range: levels * 10 + 10
+        assert_eq!(calculate_beacon_range(0), 0.0);
+        assert_eq!(calculate_beacon_range(1), 20.0);
+        assert_eq!(calculate_beacon_range(2), 30.0);
+        assert_eq!(calculate_beacon_range(3), 40.0);
+        assert_eq!(calculate_beacon_range(4), 50.0);
+
+        // Duration: (9 + levels * 2) * 20 ticks
+        assert_eq!(calculate_beacon_effect_duration_ticks(0), 0);
+        assert_eq!(calculate_beacon_effect_duration_ticks(1), 220);
+        assert_eq!(calculate_beacon_effect_duration_ticks(2), 260);
+        assert_eq!(calculate_beacon_effect_duration_ticks(3), 300);
+        assert_eq!(calculate_beacon_effect_duration_ticks(4), 340);
+
+        // Primary amplifier: 1 if levels >= 4 and same secondary
+        assert_eq!(calculate_beacon_primary_amplifier(1, false), 0);
+        assert_eq!(calculate_beacon_primary_amplifier(3, true), 0);
+        assert_eq!(calculate_beacon_primary_amplifier(4, false), 0);
+        assert_eq!(calculate_beacon_primary_amplifier(4, true), 1);
+    }
+
 
 }

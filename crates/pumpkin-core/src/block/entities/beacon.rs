@@ -27,8 +27,14 @@ use crate::block::entities::components::{BlockEntityComponents, CONTAINER_FIELDS
 use crate::block::entities::{BlockEntity, PropertyDelegate};
 use crate::world::World;
 
-const MAX_LEVELS: i32 = 4;
-const BLOCKS_CHECK_PER_TICK: i32 = 10;
+/// Vanilla `BeaconBlockEntity.java:53-66`:
+pub const BEACON_MAX_LEVELS: i32 = 4;
+pub const BEACON_LEVELS_NEEDED_FOR_SECONDARY: i32 = 4;
+pub const BEACON_BLOCKS_CHECK_PER_TICK: i32 = 10;
+pub const BEACON_EFFECT_INTERVAL_TICKS: u64 = 80;
+
+const MAX_LEVELS: i32 = BEACON_MAX_LEVELS;
+const BLOCKS_CHECK_PER_TICK: i32 = BEACON_BLOCKS_CHECK_PER_TICK;
 
 pub struct BeaconBlockEntity {
     pub position: BlockPos,

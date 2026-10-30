@@ -6097,3 +6097,29 @@ ound_to_orb_size tiers.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added constants, helpers (`calculate_furnace_cool_down`, `can_furnace_accept_output`, `calculate_furnace_experience_reward`), and unit test `test_furnace_cook_fuel_and_sided_inventory_parity`.
   - All unit tests verified and passing across the cooking block entities and sided hopper suites.
+
+### Gap 247: Brewing Stand & Beacon Block Entities Sided Slots, Fuel, Range & Effects Parity
+- **Vanilla Reference**:
+  - `BrewingStandBlockEntity.java:38-52, 121-175, 297-313`:
+    - Slot definitions: `SLOTS_FOR_UP = [3]` (ingredient), `SLOTS_FOR_DOWN = [0, 1, 2, 3]` (potions + ingredient), `SLOTS_FOR_SIDES = [0, 1, 2, 4]` (potions + fuel).
+    - Can take item from bottom: `canTakeItemThroughFace(slot, itemStack, Direction.DOWN)`: slot 3 is only extractable if the item is `minecraft:glass_bottle` (e.g. from honey bottle brewing remainder).
+    - Brewing duration: `BREWING_TIME_SECONDS = 20` (400 ticks).
+    - Fuel: `DEFAULT_FUEL_USES = 20` uses per blaze powder.
+    - Data values: `DATA_BREW_TIME = 0`, `DATA_FUEL_USES = 1`, `DATA_TOTAL_BREW_TIME = 2`, `DATA_TOTAL_FUEL_USES = 3`, `NUM_DATA_VALUES = 4`.
+  - `BeaconBlockEntity.java:53-66, 169-178, 199-225, 262-290`:
+    - Pyramid levels: 1 to 4 (`MAX_LEVELS = 4`). Secondary power unlocked at level 4 (`LEVELS_NEEDED_FOR_SECONDARY = 4`).
+    - Effect pulse interval: every 80 game ticks (4.0 seconds, `level.getGameTime() % 80L == 0L`).
+    - Range formula: `range = levels * 10 + 10` (Level 1: 20 blocks, Level 2: 30 blocks, Level 3: 40 blocks, Level 4: 50 blocks).
+    - Effect duration formula: `durationTicks = (9 + levels * 2) * 20` (Level 1: 220 ticks / 11s, Level 2: 260 ticks / 13s, Level 3: 300 ticks / 15s, Level 4: 340 ticks / 17s).
+    - Primary power upgrade: if `levels >= 4` and `primaryPower == secondaryPower`, amplifier is upgraded from 0 to 1 (Level II).
+    - Secondary power: applied with amplifier 0 (Level I) to players in range if distinct from primary power.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/brewing_stand.rs`:
+    - Added constants `BREWING_SLOT_POTION_0..2`, `BREWING_SLOT_INGREDIENT`, `BREWING_SLOT_FUEL`, `BREWING_TIME_TICKS`, `BREWING_DEFAULT_FUEL_USES`, `BREWING_SLOTS_UP`, `BREWING_SLOTS_DOWN`, `BREWING_SLOTS_SIDES`.
+    - Implemented `WorldlyContainer` methods on `Inventory`: `get_slots_for_face` (UP=[3], DOWN=[0,1,2,3], SIDES=[0,1,2,4]), `can_place_item_through_face`, `can_take_item_through_face` (slot 3 only glass bottle on extraction), `can_transfer_to`.
+  - Updated `crates/pumpkin-core/src/block/entities/beacon.rs`:
+    - Exported `BEACON_MAX_LEVELS` (4), `BEACON_LEVELS_NEEDED_FOR_SECONDARY` (4), `BEACON_BLOCKS_CHECK_PER_TICK` (10), `BEACON_EFFECT_INTERVAL_TICKS` (80).
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants and helpers (`calculate_beacon_range`, `calculate_beacon_effect_duration_ticks`, `calculate_beacon_primary_amplifier`, `can_take_brewing_ingredient_through_bottom`).
+    - Added comprehensive unit test `test_brewing_stand_and_beacon_parity`.
+  - All unit tests verified and passing across the brewing stand and beacon suites.

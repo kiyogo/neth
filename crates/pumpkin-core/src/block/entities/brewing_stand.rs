@@ -21,6 +21,26 @@ use pumpkin_protocol::codec::recipe::DynamicRecipe;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 
+/// Vanilla `BrewingStandBlockEntity.java:38-52`:
+pub const BREWING_SLOT_POTION_0: usize = 0;
+pub const BREWING_SLOT_POTION_1: usize = 1;
+pub const BREWING_SLOT_POTION_2: usize = 2;
+pub const BREWING_SLOT_INGREDIENT: usize = 3;
+pub const BREWING_SLOT_FUEL: usize = 4;
+
+pub const BREWING_DATA_BREW_TIME: usize = 0;
+pub const BREWING_DATA_FUEL_USES: usize = 1;
+pub const BREWING_DATA_TOTAL_BREW_TIME: usize = 2;
+pub const BREWING_DATA_TOTAL_FUEL_USES: usize = 3;
+pub const BREWING_NUM_DATA_VALUES: usize = 4;
+
+pub const BREWING_TIME_TICKS: i32 = 400; // 20 seconds
+pub const BREWING_DEFAULT_FUEL_USES: i32 = 20;
+
+pub static BREWING_SLOTS_UP: [usize; 1] = [3];
+pub static BREWING_SLOTS_DOWN: [usize; 4] = [0, 1, 2, 3];
+pub static BREWING_SLOTS_SIDES: [usize; 4] = [0, 1, 2, 4];
+
 pub struct BrewingStandBlockEntity {
     pub position: BlockPos,
     pub components: BlockEntityComponents,
@@ -434,6 +454,50 @@ impl pumpkin_inventory::Inventory for BrewingStandBlockEntity {
             4 => is_fuel(stack),
             _ => false,
         }
+    }
+
+    fn get_slots_for_face(
+        &self,
+        direction: pumpkin_util::BlockDirection,
+    ) -> Option<&'static [usize]> {
+        match direction {
+            pumpkin_util::BlockDirection::Up => Some(&BREWING_SLOTS_UP),
+            pumpkin_util::BlockDirection::Down => Some(&BREWING_SLOTS_DOWN),
+            _ => Some(&BREWING_SLOTS_SIDES),
+        }
+    }
+
+    fn can_place_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        _direction: Option<pumpkin_util::BlockDirection>,
+    ) -> bool {
+        self.is_valid_slot_for(slot, stack)
+    }
+
+    fn can_take_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        _direction: pumpkin_util::BlockDirection,
+    ) -> bool {
+        // Vanilla BrewingStandBlockEntity.java:312:
+        // slot == 3 ? itemStack.is(Items.GLASS_BOTTLE) : true
+        if slot == BREWING_SLOT_INGREDIENT {
+            stack.get_item().id == pumpkin_data::item::Item::GLASS_BOTTLE.id
+        } else {
+            true
+        }
+    }
+
+    fn can_transfer_to(
+        &self,
+        _hopper_inventory: &dyn pumpkin_inventory::Inventory,
+        slot: usize,
+        stack: &ItemStack,
+    ) -> bool {
+        self.can_take_item_through_face(slot, stack, pumpkin_util::BlockDirection::Down)
     }
 }
 
