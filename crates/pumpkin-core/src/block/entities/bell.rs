@@ -22,6 +22,15 @@ pub struct BellBlockEntity {
 
 impl BellBlockEntity {
     pub const ID: &'static str = "minecraft:bell";
+    pub const DURATION: i32 = 50;
+    pub const GLOW_DURATION: i32 = 60;
+    pub const MIN_TICKS_BETWEEN_SEARCHES: i64 = 60;
+    pub const MAX_RESONATION_TICKS: i32 = 40;
+    pub const TICKS_BEFORE_RESONATION: i32 = 5;
+    pub const SEARCH_RADIUS: f64 = 48.0;
+    pub const HEAR_BELL_RADIUS: f64 = 32.0;
+    pub const HIGHLIGHT_RAIDERS_RADIUS: f64 = 48.0;
+
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {
@@ -46,7 +55,7 @@ impl BellBlockEntity {
         let entities = world.entities.load();
         for entity_base in entities.iter() {
             let entity = entity_base.get_entity();
-            if entity.is_alive() && entity.pos.load().squared_distance_to_vec(&center) <= 32.0 * 32.0 {
+            if entity.is_alive() && entity.pos.load().squared_distance_to_vec(&center) <= Self::HEAR_BELL_RADIUS * Self::HEAR_BELL_RADIUS {
                 if let Some(mob) = entity_base.get_mob()
                     && let Some(villager) = mob.as_villager()
                 {
@@ -62,7 +71,7 @@ impl BellBlockEntity {
         for entity_base in entities.iter() {
             let entity = entity_base.get_entity();
             if entity.is_alive()
-                && entity.pos.load().squared_distance_to_vec(&center) <= 32.0 * 32.0
+                && entity.pos.load().squared_distance_to_vec(&center) <= Self::HEAR_BELL_RADIUS * Self::HEAR_BELL_RADIUS
                 && entity
                     .entity_type
                     .has_tag(&tag::EntityType::MINECRAFT_RAIDERS)
@@ -79,7 +88,7 @@ impl BellBlockEntity {
         for entity_base in entities.iter() {
             let entity = entity_base.get_entity();
             if entity.is_alive()
-                && entity.pos.load().squared_distance_to_vec(&center) <= 48.0 * 48.0
+                && entity.pos.load().squared_distance_to_vec(&center) <= Self::HIGHLIGHT_RAIDERS_RADIUS * Self::HIGHLIGHT_RAIDERS_RADIUS
                 && entity
                     .entity_type
                     .has_tag(&tag::EntityType::MINECRAFT_RAIDERS)
@@ -87,7 +96,7 @@ impl BellBlockEntity {
                 if let Some(living) = entity_base.get_living_entity() {
                     living.add_effect(Effect {
                         effect_type: &StatusEffect::GLOWING,
-                        duration: 180,
+                        duration: Self::GLOW_DURATION,
                         amplifier: 0,
                         ambient: false,
                         show_particles: true,
@@ -114,11 +123,11 @@ impl BlockEntity for BellBlockEntity {
         if self.ringing.load() {
             self.ring_ticks.fetch_add(1);
         }
-        if self.ring_ticks.load() >= 50 {
+        if self.ring_ticks.load() >= Self::DURATION {
             self.ringing.store(false);
             self.ring_ticks.store(0);
         }
-        if self.ring_ticks.load() >= 5
+        if self.ring_ticks.load() >= Self::TICKS_BEFORE_RESONATION
             && self.resonate_time.load() == 0
             && self.raiders_hear_bell(world)
         {
@@ -126,14 +135,14 @@ impl BlockEntity for BellBlockEntity {
             world.play_sound_fine(
                 Sound::BlockBellResonate,
                 SoundCategory::Blocks,
-                &self.position.to_f64(),
+                &self.position.to_centered_f64(),
                 1.0,
                 1.0,
             );
         }
 
         if self.resonating.load() {
-            if self.resonate_time.load() < 40 {
+            if self.resonate_time.load() < Self::MAX_RESONATION_TICKS {
                 self.resonate_time.fetch_add(1);
             } else {
                 self.make_raiders_glow(world);

@@ -6323,3 +6323,31 @@ ound_to_orb_size tiers.
     - Added helper calculate_lectern_comparator_output(has_book, page, page_count) matching vanilla formula.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_lectern_book_placement_and_comparator_parity.
+
+### Gap 256: Bell Resonation, Vibration Frequency, Invalidation & Raid Glowing Parity
+- **Vanilla Reference**:
+  - BellBlock.java:44-57, 109-142:
+    - Event: EVENT_BELL_RING = 1.
+    - Sound: SoundEvents.BELL_BLOCK played with volume 2.0F, pitch 1.0F on hit.
+    - Angle and Proper Hit: checks attachment (Floor, SingleWall, DoubleWall, Ceiling) and restricts hit to clickY <= 0.8124F and proper axis alignment.
+  - BellBlockEntity.java:21-37, 56-90, 120-164:
+    - Constants:
+      - DURATION = 50: 50 ticks of shaking animation.
+      - GLOW_DURATION = 60: 60 ticks (3 seconds) of Glowing effect applied to nearby raiders.
+      - MIN_TICKS_BETWEEN_SEARCHES = 60: 60 ticks before searching nearby entities again.
+      - MAX_RESONATION_TICKS = 40: 40 ticks duration of resonation before applying glow effect.
+      - TICKS_BEFORE_RESONATION = 5: 5 ticks before resonation begins after ring.
+      - SEARCH_RADIUS = 48.0: 48 block radius for entity search box.
+      - HEAR_BELL_RADIUS = 32.0: 32 block distance for raiders and villagers to hear the bell.
+      - HIGHLIGHT_RAIDERS_RADIUS = 48.0: 48 block distance for raiders to receive Glowing effect.
+    - Sound: SoundEvents.BELL_RESONATE played with volume 1.0F, pitch 1.0F at bell center.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/redstone/bell.rs:
+    - Exported constant EVENT_BELL_RING = 1.
+    - Corrected bell ring sound volume from 1.0 to 2.0, and pitch from 2.0 to 1.0 (matching Vanilla olume 2.0F, pitch 1.0F).
+  - Updated crates/pumpkin-core/src/block/entities/bell.rs:
+    - Exported constants DURATION (50), GLOW_DURATION (60), MIN_TICKS_BETWEEN_SEARCHES (60), MAX_RESONATION_TICKS (40), TICKS_BEFORE_RESONATION (5), SEARCH_RADIUS (48.0), HEAR_BELL_RADIUS (32.0), HIGHLIGHT_RAIDERS_RADIUS (48.0).
+    - Corrected raider glow effect duration from 180 (9 seconds) to Self::GLOW_DURATION (60 ticks / 3 seconds).
+    - Corrected resonate sound position from block corner (	o_f64()) to centered position (	o_centered_f64()).
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_bell_resonation_and_durations_parity.

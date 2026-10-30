@@ -55,8 +55,8 @@ fn ring_bell(
         Sound::BlockBellUse,
         SoundCategory::Blocks,
         &position.to_centered_f64(),
-        1.0,
         2.0,
+        1.0,
     );
 
     world.emit_game_event(
@@ -97,6 +97,10 @@ fn is_single_wall(position: BlockPos, facing: HorizontalFacing, world: &World) -
 
 #[pumpkin_block("minecraft:bell")]
 pub struct BellBlock;
+
+impl BellBlock {
+    pub const EVENT_BELL_RING: u32 = 1;
+}
 
 impl WallMountedBlock for BellBlock {
     fn get_direction(&self, state_id: BlockStateId, _block: &Block) -> BlockDirection {

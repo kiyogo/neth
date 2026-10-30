@@ -14682,6 +14682,22 @@ mod tests {
     }
 
     #[test]
+    fn test_bell_resonation_and_durations_parity() {
+        use crate::block::blocks::redstone::bell::BellBlock;
+        use crate::block::entities::bell::BellBlockEntity;
+
+        assert_eq!(BellBlock::EVENT_BELL_RING, 1);
+        assert_eq!(BellBlockEntity::DURATION, 50);
+        assert_eq!(BellBlockEntity::GLOW_DURATION, 60);
+        assert_eq!(BellBlockEntity::MIN_TICKS_BETWEEN_SEARCHES, 60);
+        assert_eq!(BellBlockEntity::MAX_RESONATION_TICKS, 40);
+        assert_eq!(BellBlockEntity::TICKS_BEFORE_RESONATION, 5);
+        assert_eq!(BellBlockEntity::SEARCH_RADIUS, 48.0);
+        assert_eq!(BellBlockEntity::HEAR_BELL_RADIUS, 32.0);
+        assert_eq!(BellBlockEntity::HIGHLIGHT_RAIDERS_RADIUS, 48.0);
+    }
+
+    #[test]
     fn test_lectern_book_placement_and_comparator_parity() {
         use crate::block::blocks::lectern::LecternBlock;
         use crate::block::entities::lectern::{LecternBlockEntity, calculate_lectern_comparator_output};
