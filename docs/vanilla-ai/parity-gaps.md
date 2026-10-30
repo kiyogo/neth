@@ -5404,3 +5404,39 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
     - Added unit test `test_chicken_parity_constants`.
   - All 17 unit tests verified and passing across farm animal test suites.
+
+
+### Gap 229: Frog, Tadpole, Goat & Rabbit Combat, Attributes, Leaping & Breeding Parity
+- **Vanilla Reference**:
+  - `Frog.java:132-138`:
+    - Base Attributes: `FROG_MAX_HEALTH = 10.0`, `FROG_BASE_MOVEMENT_SPEED = 1.0`, `FROG_BASE_ATTACK_DAMAGE = 10.0`, `FROG_STEP_HEIGHT = 1.0`, `FROG_XP_REWARD = 2`.
+    - Tongue Attack: Nhảy và dùng lưỡi nuốt các khối lập phương nhỏ (Slime, Magma Cube size 1) và thả Froglight tương ứng theo biến thể (Temperate: Ochre, Warm: Pearlescent, Cold: Verdant).
+  - `Tadpole.java:50-52`:
+    - Base Attributes: `TADPOLE_MAX_HEALTH = 6.0`, `TADPOLE_BASE_MOVEMENT_SPEED = 1.0`, `TADPOLE_XP_REWARD = 0`.
+    - Growth & Leashing: Lớn lên thành ếch theo nhiệt độ biome, không thể bị xích (`canBeLeashed() -> false`).
+  - `Goat.java:60-65, 120-130`:
+    - Base Attributes: `GOAT_MAX_HEALTH = 10.0`, `GOAT_BASE_MOVEMENT_SPEED = 0.2`, `GOAT_BASE_ATTACK_DAMAGE = 2.0` (Adult), `GOAT_BABY_ATTACK_DAMAGE = 1.0` (Baby).
+    - Long Jump & Horns: Giảm 10 khối sát thương rơi (`GOAT_FALL_DAMAGE_REDUCTION = 10`), 2% tỷ lệ là dê la hét (`GOAT_SCREAMING_CHANCE = 0.02`), `GOAT_XP_REWARD = 2`. Húc vào khối cứng làm rụng sừng Goat Horn.
+  - `Rabbit.java:42-45, 120-135`:
+    - Base Attributes: `RABBIT_MAX_HEALTH = 3.0`, `RABBIT_BASE_MOVEMENT_SPEED = 0.3`, `RABBIT_BASE_ATTACK_DAMAGE = 3.0`, `RABBIT_XP_REWARD = 2`.
+    - The Killer Bunny: Biến thể hung dữ (type 99, `RABBIT_EVIL_TYPE_ID = 99`), cộng thêm 5 sát thương (`RABBIT_EVIL_ATTACK_DAMAGE_BONUS = 5.0`), giáp 8.0 (`RABBIT_EVIL_ARMOR = 8.0`), chủ động tấn công người chơi, chó sói và cáo.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants for Frog, Tadpole, Goat, and Rabbit.
+  - Updated `FrogEntity` in `crates/pumpkin-core/src/entity/passive/frog.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_frog_parity_constants`.
+  - Updated `TadpoleEntity` in `crates/pumpkin-core/src/entity/passive/tadpole.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_tadpole_parity_constants`.
+  - Updated `GoatEntity` in `crates/pumpkin-core/src/entity/passive/goat.rs`:
+    - Converted attribute initialization to `set_attribute_base` with adult/baby dynamic attack damage parity.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_goat_parity_constants`.
+  - Updated `RabbitEntity` in `crates/pumpkin-core/src/entity/passive/rabbit.rs`:
+    - Converted attribute initialization to `set_attribute_base` with The Killer Bunny armor and damage parity.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_rabbit_parity_constants`.
+  - All 14 unit tests verified and passing across amphibian, caprine, and leporid test suites.

@@ -86,6 +86,8 @@ pub struct RabbitEntity {
 }
 
 impl RabbitEntity {
+    pub const XP_REWARD: u32 = combat::RABBIT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let variant = RabbitVariant::random_variant();
@@ -101,34 +103,26 @@ impl RabbitEntity {
             Arc::downgrade(&mob_arc)
         };
 
-        // Vanilla Rabbit: MAX_HEALTH = 3.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0 (Evil: ARMOR = 8.0, ATTACK_DAMAGE = 8.0)
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 3.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = if variant == RabbitVariant::Evil { 8.0 } else { 3.0 };
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
+        // Vanilla Rabbit: MAX_HEALTH = 3.0
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::RABBIT_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::RABBIT_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::ATTACK_DAMAGE,
+                combat::RABBIT_BASE_ATTACK_DAMAGE,
+            );
             if variant == RabbitVariant::Evil {
-                if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                    armor.base_value = 8.0;
-                    armor.dirty.store(true, Ordering::Relaxed);
-                }
+                mob_arc.mob_entity.living_entity.set_attribute_base(
+                    &Attributes::ARMOR,
+                    combat::RABBIT_EVIL_ARMOR,
+                );
             }
-        }
-        mob_arc.mob_entity.living_entity.set_health(3.0);
+            mob_arc.mob_entity.living_entity.set_health(combat::RABBIT_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -265,6 +259,14 @@ impl Animal for RabbitEntity {
 }
 
 impl Mob for RabbitEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_rabbit(&self) -> Option<&RabbitEntity> {
         Some(self)
     }
@@ -368,6 +370,16 @@ impl CustomSound for RabbitEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_rabbit_parity_constants() {
+        assert_eq!(RabbitEntity::XP_REWARD, 2);
+        assert_eq!(combat::RABBIT_MAX_HEALTH, 3.0);
+        assert_eq!(combat::RABBIT_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::RABBIT_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(combat::RABBIT_EVIL_ATTACK_DAMAGE_BONUS, 5.0);
+        assert_eq!(combat::RABBIT_EVIL_ARMOR, 8.0);
+        assert_eq!(combat::RABBIT_EVIL_TYPE_ID, 99);
+    }
 
     #[test]
     fn test_rabbit_variants_and_evil_sound_category() {

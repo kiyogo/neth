@@ -8341,6 +8341,41 @@ pub const CHICKEN_EGG_TIME_MIN: i32 = 6000;
 pub const CHICKEN_EGG_TIME_MAX: i32 = 12000;
 pub const CHICKEN_JOCKEY_CHANCE: f64 = 0.05;
 
+
+// =========================================================================
+// Gap 229: Frog, Tadpole, Goat & Rabbit Combat, Attributes, Leaping & Breeding Parity
+// Mirroring vanilla Minecraft Java 26.3
+// =========================================================================
+
+/// Frog attribute constants, mirroring vanilla `Frog.java:132-138`.
+pub const FROG_MAX_HEALTH: f64 = 10.0;
+pub const FROG_BASE_MOVEMENT_SPEED: f64 = 1.0;
+pub const FROG_BASE_ATTACK_DAMAGE: f64 = 10.0;
+pub const FROG_STEP_HEIGHT: f64 = 1.0;
+pub const FROG_XP_REWARD: u32 = 2;
+
+/// Tadpole attribute constants, mirroring vanilla `Tadpole.java:50-52`.
+pub const TADPOLE_MAX_HEALTH: f64 = 6.0;
+pub const TADPOLE_BASE_MOVEMENT_SPEED: f64 = 1.0;
+pub const TADPOLE_XP_REWARD: u32 = 0;
+
+/// Goat attribute, ram damage and long jump constants, mirroring vanilla `Goat.java:60-65, 120-130`.
+pub const GOAT_MAX_HEALTH: f64 = 10.0;
+pub const GOAT_BASE_MOVEMENT_SPEED: f64 = 0.2;
+pub const GOAT_BASE_ATTACK_DAMAGE: f64 = 2.0;
+pub const GOAT_BABY_ATTACK_DAMAGE: f64 = 1.0;
+pub const GOAT_FALL_DAMAGE_REDUCTION: i32 = 10;
+pub const GOAT_SCREAMING_CHANCE: f64 = 0.02;
+pub const GOAT_XP_REWARD: u32 = 2;
+
+/// Rabbit attribute and The Killer Bunny constants, mirroring vanilla `Rabbit.java:42-45, 120-135`.
+pub const RABBIT_MAX_HEALTH: f64 = 3.0;
+pub const RABBIT_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const RABBIT_BASE_ATTACK_DAMAGE: f64 = 3.0;
+pub const RABBIT_EVIL_ATTACK_DAMAGE_BONUS: f64 = 5.0;
+pub const RABBIT_EVIL_TYPE_ID: i32 = 99;
+pub const RABBIT_XP_REWARD: u32 = 2;
+
 #[cfg(test)]
 mod tests {
     use super::*;

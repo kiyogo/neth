@@ -38,6 +38,8 @@ pub struct TadpoleEntity {
 }
 
 impl TadpoleEntity {
+    pub const XP_REWARD: u32 = combat::TADPOLE_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -59,23 +61,15 @@ impl TadpoleEntity {
         let mob_arc = Arc::new(tadpole);
 
         // Vanilla Tadpole attributes: MAX_HEALTH = 6.0, MOVEMENT_SPEED = 1.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 6.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 1.0;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(6.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::TADPOLE_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::TADPOLE_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::TADPOLE_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -160,6 +154,7 @@ impl AgeableMob for TadpoleEntity {
 }
 
 impl Mob for TadpoleEntity {
+
     fn can_breathe_under_water(&self) -> bool {
         true
     }
@@ -208,7 +203,7 @@ impl Mob for TadpoleEntity {
 
     /// Vanilla `Tadpole.java:254-256`: `shouldDropExperience() -> false`.
     fn get_base_experience_reward(&self) -> u32 {
-        0
+        Self::XP_REWARD
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -326,5 +321,17 @@ impl CustomSound for TadpoleEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityTadpoleHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tadpole_parity_constants() {
+        assert_eq!(TadpoleEntity::XP_REWARD, 0);
+        assert_eq!(combat::TADPOLE_MAX_HEALTH, 6.0);
+        assert_eq!(combat::TADPOLE_BASE_MOVEMENT_SPEED, 1.0);
     }
 }

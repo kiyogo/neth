@@ -42,6 +42,8 @@ pub struct GoatEntity {
 }
 
 impl GoatEntity {
+    pub const XP_REWARD: u32 = combat::GOAT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let is_baby = entity.age.load(Ordering::Relaxed) < 0;
         let is_screaming = combat::should_spawn_screaming_goat(rand::random_range(0.0..1.0));
@@ -91,28 +93,24 @@ impl GoatEntity {
 
         // Vanilla Goat: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2, ATTACK_DAMAGE = 2.0 (baby: 1.0)
         let is_baby = mob_arc.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0;
-        let attack_dmg = if is_baby { 1.0 } else { 2.0 };
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.2;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = attack_dmg;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+        let attack_dmg = if is_baby {
+            combat::GOAT_BABY_ATTACK_DAMAGE
+        } else {
+            combat::GOAT_BASE_ATTACK_DAMAGE
+        };
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            combat::GOAT_MAX_HEALTH,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            combat::GOAT_BASE_MOVEMENT_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::ATTACK_DAMAGE,
+            attack_dmg,
+        );
+            mob_arc.mob_entity.living_entity.set_health(combat::GOAT_MAX_HEALTH as f32);
 
         mob_arc
     }
@@ -211,6 +209,14 @@ impl Animal for GoatEntity {
 }
 
 impl Mob for GoatEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -383,5 +389,21 @@ impl CustomSound for GoatEntity {
         } else {
             Sound::EntityGoatHurt
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_goat_parity_constants() {
+        assert_eq!(GoatEntity::XP_REWARD, 2);
+        assert_eq!(combat::GOAT_MAX_HEALTH, 10.0);
+        assert_eq!(combat::GOAT_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(combat::GOAT_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(combat::GOAT_BABY_ATTACK_DAMAGE, 1.0);
+        assert_eq!(combat::GOAT_FALL_DAMAGE_REDUCTION, 10);
+        assert_eq!(combat::GOAT_SCREAMING_CHANCE, 0.02);
     }
 }

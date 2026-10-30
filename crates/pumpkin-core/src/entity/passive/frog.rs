@@ -49,6 +49,8 @@ pub struct FrogEntity {
 }
 
 impl FrogEntity {
+    pub const XP_REWARD: u32 = combat::FROG_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let frog = Self {
@@ -179,6 +181,14 @@ impl Animal for FrogEntity {
 }
 
 impl Mob for FrogEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -533,6 +543,14 @@ impl Goal for FrogEatGoal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_frog_parity_constants() {
+        assert_eq!(FrogEntity::XP_REWARD, 2);
+        assert_eq!(combat::FROG_MAX_HEALTH, 10.0);
+        assert_eq!(combat::FROG_BASE_MOVEMENT_SPEED, 1.0);
+        assert_eq!(combat::FROG_BASE_ATTACK_DAMAGE, 10.0);
+        assert_eq!(combat::FROG_STEP_HEIGHT, 1.0);
+    }
 
     #[test]
     fn test_frog_variants_and_oviparous() {
