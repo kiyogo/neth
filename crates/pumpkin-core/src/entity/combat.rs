@@ -15074,4 +15074,20 @@ mod tests {
         assert!(!TripwireHookBlock::is_in_wire_range(43));
     }
 
+    #[test]
+    fn test_lever_constants_and_sound_pitch_parity() {
+        use crate::block::blocks::redstone::lever::LeverBlock;
+
+        assert_eq!(LeverBlock::POWER_ON, 15);
+        assert_eq!(LeverBlock::POWER_OFF, 0);
+        assert_eq!(LeverBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(LeverBlock::CLICK_PITCH_ON, 0.6);
+        assert_eq!(LeverBlock::CLICK_PITCH_OFF, 0.5);
+        assert_eq!(LeverBlock::DUST_COLOR_RED, 16711680);
+
+        // Click pitch checks:
+        assert_eq!(LeverBlock::get_click_pitch(true), 0.6);
+        assert_eq!(LeverBlock::get_click_pitch(false), 0.5);
+    }
+
 }

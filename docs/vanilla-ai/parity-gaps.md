@@ -6637,3 +6637,19 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Replaced hardcoded wire limits and scheduled tick delay with named constants.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_tripwire_hook_distance_and_power_parity`.
+
+
+### Gap 270: Lever Switch Pitch, Direct Output Direction & Redstone Power Parity
+- **Vanilla Reference**:
+  - LeverBlock.java:38-42, 60-95, 110-125:
+    - Redstone power output: weak power is 15 when powered and 0 when unpowered; strong power (direct signal) is 15 strictly in the connected attachment direction (`getConnectedDirection(state) == direction`), 0 otherwise.
+    - Sound pitch & volume: `SoundEvents.LEVER_CLICK`, volume 0.3F; pitch is 0.6F when switched ON (`powered == true`), and 0.5F when switched OFF (`powered == false`).
+    - Dust particle color: 16711680 (`0xFF0000`, red).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/lever.rs`:
+    - Exported public constants `POWER_ON = 15`, `POWER_OFF = 0`, `CLICK_VOLUME = 0.3`, `CLICK_PITCH_ON = 0.6`, `CLICK_PITCH_OFF = 0.5`, and `DUST_COLOR_RED = 16711680`.
+    - Exported helper function `get_click_pitch(powered)`.
+    - Updated `play_lever_sound` to use named constants.
+    - Standardized weak and strong redstone power methods using `POWER_ON` and `POWER_OFF`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_lever_constants_and_sound_pitch_parity`.

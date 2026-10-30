@@ -50,8 +50,8 @@ fn play_lever_sound(world: &Arc<World>, block_pos: &BlockPos, powered: bool) {
         Sound::BlockLeverClick,
         SoundCategory::Blocks,
         &block_pos.to_centered_f64(),
-        0.3,
-        if powered { 0.6 } else { 0.5 },
+        LeverBlock::CLICK_VOLUME,
+        LeverBlock::get_click_pitch(powered),
     );
 }
 
@@ -70,15 +70,15 @@ impl BlockBehaviour for LeverBlock {
 
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LeverLikeProperties::from_state_id(args.state.id);
-        if props.powered { 15 } else { 0 }
+        if props.powered { Self::POWER_ON } else { Self::POWER_OFF }
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LeverLikeProperties::from_state_id(args.state.id);
         if props.powered && props.get_direction() == args.direction {
-            15
+            Self::POWER_ON
         } else {
-            0
+            Self::POWER_OFF
         }
     }
 
@@ -128,6 +128,22 @@ impl WallMountedBlock for LeverBlock {
 }
 
 impl LeverBlock {
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+    pub const CLICK_VOLUME: f32 = 0.3;
+    pub const CLICK_PITCH_ON: f32 = 0.6;
+    pub const CLICK_PITCH_OFF: f32 = 0.5;
+    pub const DUST_COLOR_RED: i32 = 16711680;
+
+    #[must_use]
+    pub const fn get_click_pitch(powered: bool) -> f32 {
+        if powered {
+            Self::CLICK_PITCH_ON
+        } else {
+            Self::CLICK_PITCH_OFF
+        }
+    }
+
     fn update_neighbors(
         world: &Arc<World>,
         block_pos: &BlockPos,
