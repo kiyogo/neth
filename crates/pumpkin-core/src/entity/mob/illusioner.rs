@@ -163,6 +163,10 @@ impl Mob for IllusionerEntity {
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         self.read_raider_nbt(nbt);
     }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::ILLUSIONER_XP_REWARD
+    }
 }
 
 impl CustomSound for IllusionerEntity {
@@ -188,5 +192,22 @@ impl Raider for IllusionerEntity {
 
     fn get_celebrate_sound(&self) -> Sound {
         Sound::EntityIllusionerAmbient
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_illusioner_constants_and_spells_parity() {
+        assert_eq!(crate::entity::combat::ILLUSIONER_MAX_HEALTH, 32.0);
+        assert_eq!(crate::entity::combat::ILLUSIONER_MOVEMENT_SPEED, 0.5);
+        assert_eq!(crate::entity::combat::ILLUSIONER_FOLLOW_RANGE, 18.0);
+        assert_eq!(crate::entity::combat::ILLUSIONER_XP_REWARD, 5);
+        assert_eq!(crate::entity::combat::ILLUSIONER_BLINDNESS_DURATION_TICKS, 400);
+        assert_eq!(crate::entity::combat::ILLUSIONER_INVISIBILITY_DURATION_TICKS, 1200);
+        assert_eq!(crate::entity::combat::ILLUSIONER_MIRROR_CASTING_TICKS, 20);
+        assert_eq!(crate::entity::combat::ILLUSIONER_NUM_ILLUSIONS, 4);
+        assert_eq!(crate::entity::combat::ILLUSIONER_ILLUSION_SPREAD, 3);
     }
 }

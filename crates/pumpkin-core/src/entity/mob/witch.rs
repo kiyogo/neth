@@ -388,6 +388,10 @@ impl Mob for WitchEntity {
             }
         }
     }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::WITCH_XP_REWARD
+    }
 }
 
 impl RangedAttackMob for WitchEntity {
@@ -413,5 +417,16 @@ impl Raider for WitchEntity {
 
     fn get_celebrate_sound(&self) -> Sound {
         Sound::EntityWitchCelebrate
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_witch_constants_and_xp_parity() {
+        assert_eq!(crate::entity::combat::WITCH_MAX_HEALTH, 26.0);
+        assert_eq!(crate::entity::combat::WITCH_MOVEMENT_SPEED, 0.25);
+        assert_eq!(crate::entity::combat::WITCH_XP_REWARD, 5);
     }
 }

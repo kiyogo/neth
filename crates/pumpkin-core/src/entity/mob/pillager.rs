@@ -284,6 +284,10 @@ impl Mob for PillagerEntity {
             self.drop_inventory();
         }
     }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::PILLAGER_XP_REWARD
+    }
 }
 
 impl CustomSound for PillagerEntity {
@@ -319,5 +323,20 @@ impl CrossbowAttackMob for PillagerEntity {
 
     fn is_charging_crossbow(&self) -> bool {
         self.is_charging_crossbow()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pillager_constants_and_xp_parity() {
+        assert_eq!(PillagerEntity::INVENTORY_SIZE, 5);
+        assert_eq!(crate::entity::combat::PILLAGER_MAX_HEALTH, 24.0);
+        assert_eq!(crate::entity::combat::PILLAGER_MOVEMENT_SPEED, 0.35);
+        assert_eq!(crate::entity::combat::PILLAGER_ATTACK_DAMAGE, 5.0);
+        assert_eq!(crate::entity::combat::PILLAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(crate::entity::combat::PILLAGER_XP_REWARD, 5);
     }
 }

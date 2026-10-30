@@ -4476,3 +4476,42 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented dynamic `minecraft:attacking` speed modifier (+0.05) when angry and removed when calm.
     - Added unit test `test_zombified_piglin_anger_speed_parity`.
   - All unit tests verified and passing (12/12 in mob parity suite, 93/93 in combat suite).
+
+
+## Gap 205: Illager & Raider Family Parity (Johnny Vindicator, Illusioner Spells & Invisibility, Illager XP Rewards & Target Exemption)
+- **Vanilla Reference**: `Vindicator.java:51-54, 73, 100-101, 117, 147-148, 207-222`, `Pillager.java:84-90`, `Illusioner.java:45-47, 53, 80-82, 238, 260, 270`, `Witch.java:55, 107-109`, `Ravager.java:70`, `Evoker.java:50`:
+  - `Vindicator.java`:
+    - Trang thai `Johnny`: Khi Vindicator duoc dat ten custom name `"Johnny"` hoac doc NBT tag `Johnny: true`, kich hoat trang thai dac biet Johnny.
+    - `VindicatorJohnnyAttackGoal`: Johnny Vindicator tan cong hau nhu moi `LivingEntity` trong the gioi (bao gom player, villagers, iron golem, zombies, skeletons, creepers, spiders, animals,...), ngoai tru cac thanh vien trong gia dinh Illager / Raider (`Pillager`, `Vindicator`, `Evoker`, `Illusioner`, `Ravager`, `Witch`).
+    - NBT: Ghi `nbt.putBoolean("Johnny", true)` va doc `nbt.getBoolean("Johnny")`.
+  - `Illusioner.java`:
+    - `IllusionerBlindnessSpellGoal`: Gay hieu ung `StatusEffect::BLINDNESS` cho muc tieu trong 400 ticks (20 giay) (`ILLUSIONER_BLINDNESS_DURATION_TICKS = 400`).
+    - `IllusionerMirrorSpellGoal`: Kich hoat khi chua co Invisibility, thoi gian cast 20 ticks (1 giay) (`ILLUSIONER_MIRROR_CASTING_TICKS = 20`), gay hieu ung `StatusEffect::INVISIBILITY` cho ban than trong 1200 ticks (60 giay) (`ILLUSIONER_INVISIBILITY_DURATION_TICKS = 1200`), tao 4 ao anh xung quanh (`NUM_ILLUSIONS = 4`, `ILLUSION_SPREAD = 3`).
+    - XP drop: `ILLUSIONER_XP_REWARD = 5`.
+  - Illager & Raider Family Experience Rewards:
+    - Dong bo `get_base_experience_reward` cho tat ca cac thanh vien: Pillager = 5 XP, Vindicator = 5 XP, Illusioner = 5 XP, Witch = 5 XP, Ravager = 20 XP, Evoker = 10 XP.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `PILLAGER_MAX_HEALTH = 24.0`, `PILLAGER_MOVEMENT_SPEED = 0.35`, `PILLAGER_ATTACK_DAMAGE = 5.0`, `PILLAGER_FOLLOW_RANGE = 32.0`, `PILLAGER_XP_REWARD = 5`.
+    - Added constants `VINDICATOR_MAX_HEALTH = 24.0`, `VINDICATOR_MOVEMENT_SPEED = 0.35`, `VINDICATOR_ATTACK_DAMAGE = 5.0`, `VINDICATOR_FOLLOW_RANGE = 12.0`, `VINDICATOR_XP_REWARD = 5`, `VINDICATOR_JOHNNY_TAG = "Johnny"`.
+    - Added constants `ILLUSIONER_MAX_HEALTH = 32.0`, `ILLUSIONER_MOVEMENT_SPEED = 0.5`, `ILLUSIONER_FOLLOW_RANGE = 18.0`, `ILLUSIONER_XP_REWARD = 5`, `ILLUSIONER_BLINDNESS_DURATION_TICKS = 400`, `ILLUSIONER_INVISIBILITY_DURATION_TICKS = 1200`, `ILLUSIONER_MIRROR_CASTING_TICKS = 20`, `ILLUSIONER_NUM_ILLUSIONS = 4`, `ILLUSIONER_ILLUSION_SPREAD = 3`.
+    - Added constants `WITCH_MAX_HEALTH = 26.0`, `WITCH_MOVEMENT_SPEED = 0.25`, `WITCH_XP_REWARD = 5`.
+    - Added functions `is_johnny_targetable`, `create_illusioner_blindness_effect`, `create_illusioner_invisibility_effect`.
+    - Added unit test `test_illager_raider_family_parity`.
+  - Updated `VindicatorEntity` in `crates/pumpkin-core/src/entity/mob/vindicator.rs`:
+    - Added `is_johnny: AtomicBool`, `is_johnny()` and `set_johnny()`.
+    - Implemented Johnny tag detection on custom name `"Johnny"`.
+    - Implemented NBT serialization for `Johnny` boolean tag.
+    - Added `ActiveTargetGoal` for Johnny targeting non-illager living entities.
+    - Implemented `get_base_experience_reward` returning `VINDICATOR_XP_REWARD` (5 XP).
+    - Added unit test `test_vindicator_johnny_and_xp_parity`.
+  - Updated `PillagerEntity` in `crates/pumpkin-core/src/entity/mob/pillager.rs`:
+    - Implemented `get_base_experience_reward` returning `PILLAGER_XP_REWARD` (5 XP).
+    - Added unit test `test_pillager_constants_and_xp_parity`.
+  - Updated `IllusionerEntity` in `crates/pumpkin-core/src/entity/mob/illusioner.rs`:
+    - Implemented `get_base_experience_reward` returning `ILLUSIONER_XP_REWARD` (5 XP).
+    - Added unit test `test_illusioner_constants_and_spells_parity`.
+  - Updated `WitchEntity` in `crates/pumpkin-core/src/entity/mob/witch.rs`:
+    - Implemented `get_base_experience_reward` returning `WITCH_XP_REWARD` (5 XP).
+    - Added unit test `test_witch_constants_and_xp_parity`.
+  - All unit tests verified and passing (29/29 in illager/raider test suite, 94/94 in combat suite).

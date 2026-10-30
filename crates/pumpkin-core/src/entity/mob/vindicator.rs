@@ -1,5 +1,8 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
+
+use crate::entity::living::LivingEntity;
+use crate::world::World;
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
@@ -28,15 +31,26 @@ use crate::entity::{
 pub struct VindicatorEntity {
     pub mob_entity: MobEntity,
     pub raider_data: RaiderData,
+    pub is_johnny: AtomicBool,
 }
 
 impl VindicatorEntity {
+    #[must_use]
+    pub fn is_johnny(&self) -> bool {
+        self.is_johnny.load(Ordering::Relaxed)
+    }
+
+    pub fn set_johnny(&self, johnny: bool) {
+        self.is_johnny.store(johnny, Ordering::Relaxed);
+    }
+
     #[must_use]
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let vindicator = Self {
             mob_entity,
             raider_data: RaiderData::default(),
+            is_johnny: AtomicBool::new(false),
         };
         let mob_arc = Arc::new(vindicator);
 
@@ -95,7 +109,7 @@ impl VindicatorEntity {
             goal_selector.add_goal(5, Box::new(WaterAvoidingRandomStrollGoal::new(0.6)));
             goal_selector.add_goal(
                 6,
-                LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
+                LookAtEntityGoal::with_default(mob_weak.clone(), &EntityType::PLAYER, 8.0),
             );
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
 
@@ -124,6 +138,30 @@ impl VindicatorEntity {
             target_selector.add_goal(
                 3,
                 ActiveTargetGoal::with_default(&mob_arc.mob_entity, &EntityType::IRON_GOLEM, true),
+            );
+
+            let vindicator_weak = mob_weak.clone();
+            target_selector.add_goal(
+                4,
+                Box::new(ActiveTargetGoal::new(
+                    &mob_arc.mob_entity,
+                    &EntityType::PLAYER,
+                    10,
+                    true,
+                    false,
+                    Some(move |target: &LivingEntity, _world: &World| {
+                        if let Some(mob) = vindicator_weak.upgrade() {
+                            if let Some(vind) = mob.as_vindicator() {
+                                if vind.is_johnny() {
+                                    return crate::entity::combat::is_johnny_targetable(
+                                        target.entity.entity_type,
+                                    );
+                                }
+                            }
+                        }
+                        false
+                    }),
+                )),
             );
         };
 
@@ -158,6 +196,14 @@ impl Mob for VindicatorEntity {
             return;
         }
 
+        if !self.is_johnny() {
+            if let Some(name) = &**entity.custom_name.load() {
+                if name.clone().get_text() == crate::entity::combat::VINDICATOR_JOHNNY_TAG {
+                    self.set_johnny(true);
+                }
+            }
+        }
+
         // Ambient sound
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
             entity.world.load().play_sound_fine(
@@ -172,10 +218,41 @@ impl Mob for VindicatorEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_raider_nbt(nbt);
+        if self.is_johnny() {
+            nbt.put_bool(crate::entity::combat::VINDICATOR_JOHNNY_TAG, true);
+        }
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         self.read_raider_nbt(nbt);
+        if let Some(johnny) = nbt.get_bool(crate::entity::combat::VINDICATOR_JOHNNY_TAG) {
+            self.set_johnny(johnny);
+        }
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::VINDICATOR_XP_REWARD
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_vindicator_johnny_and_xp_parity() {
+        assert_eq!(crate::entity::combat::VINDICATOR_MAX_HEALTH, 24.0);
+        assert_eq!(crate::entity::combat::VINDICATOR_MOVEMENT_SPEED, 0.35);
+        assert_eq!(crate::entity::combat::VINDICATOR_ATTACK_DAMAGE, 5.0);
+        assert_eq!(crate::entity::combat::VINDICATOR_FOLLOW_RANGE, 12.0);
+        assert_eq!(crate::entity::combat::VINDICATOR_XP_REWARD, 5);
+        assert_eq!(crate::entity::combat::VINDICATOR_JOHNNY_TAG, "Johnny");
+
+        // Johnny targets non-illagers
+        assert!(crate::entity::combat::is_johnny_targetable(&EntityType::ZOMBIE));
+        assert!(crate::entity::combat::is_johnny_targetable(&EntityType::PLAYER));
+        assert!(!crate::entity::combat::is_johnny_targetable(&EntityType::VINDICATOR));
+        assert!(!crate::entity::combat::is_johnny_targetable(&EntityType::EVOKER));
     }
 }
 

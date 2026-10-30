@@ -6455,6 +6455,78 @@ pub fn calculate_piglin_baby_speed(base_speed: f64, is_baby: bool) -> f64 {
     }
 }
 
+/// Pillager combat and attribute constants, mirroring vanilla `Pillager.java:84-90`.
+pub const PILLAGER_MAX_HEALTH: f64 = 24.0;
+pub const PILLAGER_MOVEMENT_SPEED: f64 = 0.35;
+pub const PILLAGER_ATTACK_DAMAGE: f64 = 5.0;
+pub const PILLAGER_FOLLOW_RANGE: f64 = 32.0;
+pub const PILLAGER_XP_REWARD: u32 = 5;
+
+/// Vindicator combat and attribute constants, mirroring vanilla `Vindicator.java:51, 89-95`.
+pub const VINDICATOR_MAX_HEALTH: f64 = 24.0;
+pub const VINDICATOR_MOVEMENT_SPEED: f64 = 0.35;
+pub const VINDICATOR_ATTACK_DAMAGE: f64 = 5.0;
+pub const VINDICATOR_FOLLOW_RANGE: f64 = 12.0;
+pub const VINDICATOR_XP_REWARD: u32 = 5;
+pub const VINDICATOR_JOHNNY_TAG: &str = "Johnny";
+
+/// Illusioner combat and attribute constants, mirroring vanilla `Illusioner.java:45-47, 53, 80-82, 238, 260, 270`.
+pub const ILLUSIONER_MAX_HEALTH: f64 = 32.0;
+pub const ILLUSIONER_MOVEMENT_SPEED: f64 = 0.5;
+pub const ILLUSIONER_FOLLOW_RANGE: f64 = 18.0;
+pub const ILLUSIONER_XP_REWARD: u32 = 5;
+pub const ILLUSIONER_BLINDNESS_DURATION_TICKS: i32 = 400;
+pub const ILLUSIONER_INVISIBILITY_DURATION_TICKS: i32 = 1200;
+pub const ILLUSIONER_MIRROR_CASTING_TICKS: i32 = 20;
+pub const ILLUSIONER_NUM_ILLUSIONS: usize = 4;
+pub const ILLUSIONER_ILLUSION_SPREAD: i32 = 3;
+
+/// Witch combat and attribute constants, mirroring vanilla `Witch.java:55, 107-109`.
+pub const WITCH_MAX_HEALTH: f64 = 26.0;
+pub const WITCH_MOVEMENT_SPEED: f64 = 0.25;
+pub const WITCH_XP_REWARD: u32 = 5;
+
+/// Determines whether a target entity is valid for Johnny Vindicator attack,
+/// mirroring vanilla `Vindicator.java:207-210`:
+/// `NearestAttackableTargetGoal<>(this, LivingEntity.class, 0, true, true, (target, level) -> target.attackable())`
+/// Johnny attacks any living entity except fellow Illagers / Raiders.
+#[must_use]
+pub fn is_johnny_targetable(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    !is_illager_immune_to_ravager_roar(entity_type)
+        && entity_type != &pumpkin_data::entity::EntityType::GHAST
+        && entity_type != &pumpkin_data::entity::EntityType::ARMOR_STAND
+}
+
+/// Creates the Blindness status effect cast by an Illusioner, mirroring vanilla `Illusioner.java:238`:
+/// `target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 400), this)`
+#[must_use]
+pub fn create_illusioner_blindness_effect() -> pumpkin_data::potion::Effect {
+    pumpkin_data::potion::Effect {
+        effect_type: &pumpkin_data::effect::StatusEffect::BLINDNESS,
+        duration: ILLUSIONER_BLINDNESS_DURATION_TICKS,
+        amplifier: 0,
+        ambient: false,
+        show_particles: true,
+        show_icon: true,
+        blend: false,
+    }
+}
+
+/// Creates the Invisibility status effect cast by an Illusioner, mirroring vanilla `Illusioner.java:270`:
+/// `this.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 1200))`
+#[must_use]
+pub fn create_illusioner_invisibility_effect() -> pumpkin_data::potion::Effect {
+    pumpkin_data::potion::Effect {
+        effect_type: &pumpkin_data::effect::StatusEffect::INVISIBILITY,
+        duration: ILLUSIONER_INVISIBILITY_DURATION_TICKS,
+        amplifier: 0,
+        ambient: false,
+        show_particles: true,
+        show_icon: true,
+        blend: false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -10024,6 +10096,68 @@ mod tests {
         assert_eq!(calculate_zombified_piglin_speed(0.23, false, false), 0.23);
         // Baby zombified piglins do not gain angry speed modifier in vanilla
         assert_eq!(calculate_zombified_piglin_speed(0.23, true, true), 0.23);
+    }
+
+    #[test]
+    fn test_illager_raider_family_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Pillager constants (Pillager.java:84-90)
+        assert_eq!(PILLAGER_MAX_HEALTH, 24.0);
+        assert_eq!(PILLAGER_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PILLAGER_ATTACK_DAMAGE, 5.0);
+        assert_eq!(PILLAGER_FOLLOW_RANGE, 32.0);
+        assert_eq!(PILLAGER_XP_REWARD, 5);
+
+        // 2. Vindicator constants & Johnny logic (Vindicator.java:51, 89-95, 207-210)
+        assert_eq!(VINDICATOR_MAX_HEALTH, 24.0);
+        assert_eq!(VINDICATOR_MOVEMENT_SPEED, 0.35);
+        assert_eq!(VINDICATOR_ATTACK_DAMAGE, 5.0);
+        assert_eq!(VINDICATOR_FOLLOW_RANGE, 12.0);
+        assert_eq!(VINDICATOR_XP_REWARD, 5);
+        assert_eq!(VINDICATOR_JOHNNY_TAG, "Johnny");
+
+        // Johnny attacks players, villagers, golems, monsters, animals
+        assert!(is_johnny_targetable(&EntityType::PLAYER));
+        assert!(is_johnny_targetable(&EntityType::VILLAGER));
+        assert!(is_johnny_targetable(&EntityType::IRON_GOLEM));
+        assert!(is_johnny_targetable(&EntityType::ZOMBIE));
+        assert!(is_johnny_targetable(&EntityType::SKELETON));
+        assert!(is_johnny_targetable(&EntityType::COW));
+        assert!(is_johnny_targetable(&EntityType::SHEEP));
+        // Johnny spares fellow illagers/raiders
+        assert!(!is_johnny_targetable(&EntityType::VINDICATOR));
+        assert!(!is_johnny_targetable(&EntityType::PILLAGER));
+        assert!(!is_johnny_targetable(&EntityType::EVOKER));
+        assert!(!is_johnny_targetable(&EntityType::ILLUSIONER));
+        assert!(!is_johnny_targetable(&EntityType::RAVAGER));
+        assert!(!is_johnny_targetable(&EntityType::WITCH));
+
+        // 3. Illusioner constants & spell effects (Illusioner.java:45-47, 53, 80-82, 238, 270)
+        assert_eq!(ILLUSIONER_MAX_HEALTH, 32.0);
+        assert_eq!(ILLUSIONER_MOVEMENT_SPEED, 0.5);
+        assert_eq!(ILLUSIONER_FOLLOW_RANGE, 18.0);
+        assert_eq!(ILLUSIONER_XP_REWARD, 5);
+        assert_eq!(ILLUSIONER_BLINDNESS_DURATION_TICKS, 400);
+        assert_eq!(ILLUSIONER_INVISIBILITY_DURATION_TICKS, 1200);
+        assert_eq!(ILLUSIONER_MIRROR_CASTING_TICKS, 20);
+        assert_eq!(ILLUSIONER_NUM_ILLUSIONS, 4);
+        assert_eq!(ILLUSIONER_ILLUSION_SPREAD, 3);
+
+        let blindness = create_illusioner_blindness_effect();
+        assert_eq!(blindness.effect_type, &pumpkin_data::effect::StatusEffect::BLINDNESS);
+        assert_eq!(blindness.duration, 400);
+        assert_eq!(blindness.amplifier, 0);
+
+        let invisibility = create_illusioner_invisibility_effect();
+        assert_eq!(invisibility.effect_type, &pumpkin_data::effect::StatusEffect::INVISIBILITY);
+        assert_eq!(invisibility.duration, 1200);
+        assert_eq!(invisibility.amplifier, 0);
+
+        // 4. Witch constants (Witch.java:55, 107-109)
+        assert_eq!(WITCH_MAX_HEALTH, 26.0);
+        assert_eq!(WITCH_MOVEMENT_SPEED, 0.25);
+        assert_eq!(WITCH_XP_REWARD, 5);
     }
 }
 
