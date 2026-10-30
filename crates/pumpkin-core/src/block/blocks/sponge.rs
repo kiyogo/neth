@@ -1,11 +1,10 @@
 use pumpkin_macros::pumpkin_block;
-use pumpkin_util::math::vector3::Vector3;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
 use crate::block::{BlockBehaviour, OnNeighborUpdateArgs, PlacedArgs};
-use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{Block, BlockStateId};
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
@@ -14,16 +13,24 @@ use pumpkin_world::world::BlockFlags;
 pub struct SpongeBlock;
 
 impl SpongeBlock {
+    /// Vanilla `SpongeBlock.java:16-17`:
+    pub const MAX_DEPTH: i32 = 6;
+    pub const MAX_COUNT: usize = 64;
+
     pub fn absorb_water(world: &Arc<crate::world::World>, position: &BlockPos) -> bool {
         let mut water_blocks = Vec::new();
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
 
-        // Start from the sponge position
-        queue.push_back(*position);
+        // Start from the sponge position with depth 0
+        queue.push_back((*position, 0));
         visited.insert(*position);
 
-        while let Some(current_pos) = queue.pop_front() {
+        while let Some((current_pos, depth)) = queue.pop_front() {
+            if depth >= Self::MAX_DEPTH || water_blocks.len() >= Self::MAX_COUNT {
+                continue;
+            }
+
             for direction in &[
                 (1, 0, 0),
                 (-1, 0, 0),
@@ -32,6 +39,10 @@ impl SpongeBlock {
                 (0, 0, 1),
                 (0, 0, -1),
             ] {
+                if water_blocks.len() >= Self::MAX_COUNT {
+                    break;
+                }
+
                 let next_pos = BlockPos::new(
                     current_pos.0.x + direction.0,
                     current_pos.0.y + direction.1,
@@ -42,23 +53,13 @@ impl SpongeBlock {
                     continue;
                 }
 
-                let taxicab_dist = (next_pos.0.x - position.0.x).abs()
-                    + (next_pos.0.y - position.0.y).abs()
-                    + (next_pos.0.z - position.0.z).abs();
-
-                // Wiki standard: distance 7, max 118 blocks
-                if taxicab_dist > 7 || water_blocks.len() >= 118 {
-                    continue;
-                }
-
                 visited.insert(next_pos);
                 let (block, _state) = world.get_block_and_state(&next_pos);
 
                 // Only add to queue if it's water.
-                // This prevents "jumping" through air or solid blocks.
                 if block.id == Block::WATER.id {
                     water_blocks.push(next_pos);
-                    queue.push_back(next_pos);
+                    queue.push_back((next_pos, depth + 1));
                 }
             }
         }
@@ -108,36 +109,34 @@ impl BlockBehaviour for SpongeBlock {
 #[pumpkin_block("minecraft:wet_sponge")]
 pub struct WetSpongeBlock;
 
+impl WetSpongeBlock {
+    pub const EVENT_WATER_EVAPORATE: u32 = 2009;
+}
+
 impl BlockBehaviour for WetSpongeBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            // Check if placed where water evaporates (EnvironmentAttributes.WATER_EVAPORATES), if so, dry out
-            if args.world.dimension.water_evaporates {
-                args.world.set_block_state(
-                    args.position,
-                    Block::SPONGE.default_state.id,
-                    BlockFlags::NOTIFY_ALL,
-                );
+        // Check if placed where water evaporates (EnvironmentAttributes.WATER_EVAPORATES), if so, dry out
+        if args.world.dimension.water_evaporates {
+            args.world.set_block_state(
+                args.position,
+                Block::SPONGE.default_state.id,
+                BlockFlags::NOTIFY_ALL,
+            );
 
-                // Play dry sound and spawn smoke particles
-                args.world.play_block_sound(
-                    Sound::BlockWetSpongeDries,
-                    SoundCategory::Blocks,
-                    *args.position,
-                );
+            args.world.sync_world_event(
+                WorldEvent::ParticlesWaterEvaporating,
+                *args.position,
+                0,
+            );
 
-                args.world.spawn_particle(
-                    Vector3::new(
-                        args.position.0.x as f64 + 0.5,
-                        args.position.0.y as f64 + 1.0,
-                        args.position.0.z as f64 + 0.5,
-                    ),
-                    Vector3::new(0.25, 0.0, 0.25),
-                    0.01,
-                    16,
-                    Particle::Cloud,
-                );
-            }
+            let pitch = (1.0 + rand::random::<f32>() * 0.2) * 0.7;
+            args.world.play_sound_fine(
+                Sound::BlockWetSpongeDries,
+                SoundCategory::Blocks,
+                &args.position.to_centered_f64(),
+                1.0,
+                pitch,
+            );
         }
     }
 }

@@ -14682,6 +14682,15 @@ mod tests {
     }
 
     #[test]
+    fn test_sponge_depth_limits_and_evaporation_parity() {
+        use crate::block::blocks::sponge::{SpongeBlock, WetSpongeBlock};
+
+        assert_eq!(SpongeBlock::MAX_DEPTH, 6);
+        assert_eq!(SpongeBlock::MAX_COUNT, 64);
+        assert_eq!(WetSpongeBlock::EVENT_WATER_EVAPORATE, 2009);
+    }
+
+    #[test]
     fn test_sculk_timing_events_and_constants_parity() {
         use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
         use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;

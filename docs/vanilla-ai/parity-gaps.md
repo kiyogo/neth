@@ -6501,3 +6501,23 @@ otDir * 0.4F, max = 0.2F).
     - Corrected bloom sound position to center (	o_centered_f64()).
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_sculk_timing_events_and_constants_parity.
+
+### Gap 263: Sponge & Wet Sponge Water Absorption Radius, Block Limit & Evaporation Parity
+- **Vanilla Reference**:
+  - SpongeBlock.java:16-17, 44-55:
+    - MAX_DEPTH = 6: Breadth-first search traverses up to 6 blocks away from start position.
+    - MAX_COUNT = 64: Absorbs at most 64 water blocks (breadth-first traversal node limit 65).
+    - Sound: plays SoundEvents.SPONGE_ABSORB with volume 1.0F, pitch 1.0F when water is absorbed.
+  - WetSpongeBlock.java:23-28:
+    - In dimensions where water evaporates (EnvironmentAttributes.WATER_EVAPORATES), instantly dries into SPONGE.
+    - Event: emits level.levelEvent(2009, pos, 0) (ParticlesWaterEvaporate = 2009).
+    - Sound: plays SoundEvents.WET_SPONGE_DRIES with volume 1.0F and pitch (1.0F + random * 0.2F) * 0.7F.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/sponge.rs:
+    - Corrected BFS depth from incorrect 	axicab_dist > 7 to vanilla depth >= Self::MAX_DEPTH (MAX_DEPTH = 6).
+    - Corrected max water absorption block count from incorrect 118 to vanilla Self::MAX_COUNT (MAX_COUNT = 64).
+    - Exported constants MAX_DEPTH = 6 and MAX_COUNT = 64 on SpongeBlock.
+    - Updated WetSpongeBlock to emit WorldEvent::ParticlesWaterEvaporating (2009) and properly pitch Sound::BlockWetSpongeDries.
+    - Exported constant EVENT_WATER_EVAPORATE = 2009 on WetSpongeBlock.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_sponge_depth_limits_and_evaporation_parity.
