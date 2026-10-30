@@ -6919,6 +6919,32 @@ pub fn calculate_breeze_whirl_volume(rand_val: f32) -> f32 {
     0.8 + 0.2 * rand_val
 }
 
+/// Breeze base attributes, mirroring vanilla Breeze.java:67-73:
+/// - Max Health: 30.0 HP
+/// - Movement Speed: 0.63
+/// - Follow Range: 24.0 blocks
+/// - Attack Damage: 3.0 HP
+/// - Experience: 10 XP
+pub const BREEZE_MAX_HEALTH: f32 = 30.0;
+pub const BREEZE_BASE_MOVEMENT_SPEED: f64 = 0.63;
+pub const BREEZE_FOLLOW_RANGE: f64 = 24.0;
+pub const BREEZE_BASE_ATTACK_DAMAGE: f32 = 3.0;
+pub const BREEZE_XP_REWARD: u32 = 10;
+
+/// Creaking base attributes, mirroring vanilla Creaking.java:128-135:
+/// - Max Health: 1.0 HP
+/// - Movement Speed: 0.4
+/// - Attack Damage: 3.0 HP
+/// - Follow Range: 32.0 blocks
+/// - Step Height: 1.0625
+/// - Experience: 0 XP
+pub const CREAKING_MAX_HEALTH: f32 = 1.0;
+pub const CREAKING_BASE_MOVEMENT_SPEED: f64 = 0.4;
+pub const CREAKING_BASE_ATTACK_DAMAGE: f32 = 3.0;
+pub const CREAKING_FOLLOW_RANGE: f64 = 32.0;
+pub const CREAKING_STEP_HEIGHT: f64 = 1.0625;
+pub const CREAKING_XP_REWARD: u32 = 0;
+
 /// Skeleton max health (20.0 HP).
 ///
 /// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
@@ -13214,5 +13240,64 @@ mod tests {
         assert_eq!(FOX_MAX_HEALTH, 10.0);
         assert_eq!(FOX_BASE_MOVEMENT_SPEED, 0.3);
         assert_eq!(FOX_SAFE_FALL_DISTANCE, 5.0);
+    }
+
+    #[test]
+    fn test_special_entities_family_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // Special Mobs Leashing Parity (All Monsters cannot be leashed in vanilla)
+        assert!(!is_mob_leashable(&EntityType::SHULKER));
+        assert!(!is_mob_leashable(&EntityType::GUARDIAN));
+        assert!(!is_mob_leashable(&EntityType::ELDER_GUARDIAN));
+        assert!(!is_mob_leashable(&EntityType::SILVERFISH));
+        assert!(!is_mob_leashable(&EntityType::ENDERMITE));
+        assert!(!is_mob_leashable(&EntityType::BREEZE));
+        assert!(!is_mob_leashable(&EntityType::CREAKING));
+
+        // Shulker parity constants
+        assert_eq!(SHULKER_MAX_HEALTH, 30.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_BONUS, 20.0);
+        assert_eq!(SHULKER_COVERED_ARMOR_MODIFIER_ID, "minecraft:covered");
+        assert_eq!(SHULKER_XP_REWARD, 5);
+        assert_eq!(SHULKER_PEEK_PER_TICK, 0.05);
+        assert_eq!(SHULKER_MAX_TELEPORT_DISTANCE, 8);
+        assert_eq!(SHULKER_ATTACK_RANGE_SQ, 400.0);
+
+        // Guardian & Elder Guardian parity constants
+        assert_eq!(GUARDIAN_MAX_HEALTH, 30.0);
+        assert_eq!(GUARDIAN_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(GUARDIAN_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(GUARDIAN_XP_REWARD, 10);
+        assert_eq!(ELDER_GUARDIAN_MAX_HEALTH, 80.0);
+        assert_eq!(ELDER_GUARDIAN_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ELDER_GUARDIAN_BASE_ATTACK_DAMAGE, 8.0);
+        assert_eq!(ELDER_GUARDIAN_XP_REWARD, 10);
+
+        // Silverfish & Endermite parity constants
+        assert_eq!(SILVERFISH_MAX_HEALTH, 8.0);
+        assert_eq!(SILVERFISH_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(SILVERFISH_BASE_ATTACK_DAMAGE, 1.0);
+        assert_eq!(SILVERFISH_XP_REWARD, 5);
+        assert_eq!(ENDERMITE_MAX_HEALTH, 8.0);
+        assert_eq!(ENDERMITE_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(ENDERMITE_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(ENDERMITE_XP_REWARD, 3);
+
+        // Breeze parity constants
+        assert_eq!(BREEZE_MAX_HEALTH, 30.0);
+        assert_eq!(BREEZE_BASE_MOVEMENT_SPEED, 0.63);
+        assert_eq!(BREEZE_FOLLOW_RANGE, 24.0);
+        assert_eq!(BREEZE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(BREEZE_XP_REWARD, 10);
+        assert_eq!(BREEZE_FALL_DISTANCE_SOUND_THRESHOLD, 3.0);
+
+        // Creaking parity constants
+        assert_eq!(CREAKING_MAX_HEALTH, 1.0);
+        assert_eq!(CREAKING_BASE_MOVEMENT_SPEED, 0.4);
+        assert_eq!(CREAKING_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(CREAKING_FOLLOW_RANGE, 32.0);
+        assert_eq!(CREAKING_STEP_HEIGHT, 1.0625);
+        assert_eq!(CREAKING_XP_REWARD, 0);
     }
 }

@@ -24,6 +24,13 @@ pub struct BreezeEntity {
 }
 
 impl BreezeEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::BREEZE_XP_REWARD;
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let breeze = Self {
@@ -33,31 +40,23 @@ impl BreezeEntity {
         let mob_arc = Arc::new(breeze);
 
         // Vanilla Breeze: MOVEMENT_SPEED = 0.63, MAX_HEALTH = 30.0, FOLLOW_RANGE = 24.0, ATTACK_DAMAGE = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 30.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.63;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 24.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 3.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(30.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::BREEZE_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::BREEZE_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::BREEZE_FOLLOW_RANGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::BREEZE_BASE_ATTACK_DAMAGE));
+        mob_arc.mob_entity.living_entity.set_health(crate::entity::combat::BREEZE_MAX_HEALTH);
 
         let breeze_weak = Arc::downgrade(&mob_arc);
         let mob_weak: Weak<dyn Mob> = {
@@ -205,8 +204,12 @@ impl Mob for BreezeEntity {
         Some(self)
     }
 
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
-        10
+        crate::entity::combat::BREEZE_XP_REWARD
     }
 }
 

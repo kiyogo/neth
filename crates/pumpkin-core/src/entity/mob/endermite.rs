@@ -30,6 +30,11 @@ pub struct EndermiteEntity {
 impl EndermiteEntity {
     pub const XP_REWARD: u32 = ENDERMITE_XP_REWARD;
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let endermite = Self {
@@ -108,6 +113,10 @@ impl CustomSound for EndermiteEntity {
 }
 
 impl Mob for EndermiteEntity {
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }

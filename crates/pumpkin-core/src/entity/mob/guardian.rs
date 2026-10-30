@@ -27,6 +27,13 @@ pub struct GuardianEntity {
 }
 
 impl GuardianEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::GUARDIAN_XP_REWARD;
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -58,26 +65,18 @@ impl GuardianEntity {
         );
 
         // Vanilla Guardian attributes: MAX_HEALTH = 30.0, MOVEMENT_SPEED = 0.5, ATTACK_DAMAGE = 6.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = f64::from(crate::entity::combat::GUARDIAN_MAX_HEALTH);
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = crate::entity::combat::GUARDIAN_BASE_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = f64::from(crate::entity::combat::GUARDIAN_BASE_ATTACK_DAMAGE);
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::GUARDIAN_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::GUARDIAN_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::GUARDIAN_BASE_ATTACK_DAMAGE));
         mob_arc
             .mob_entity
             .living_entity
@@ -173,6 +172,10 @@ impl CustomSound for GuardianEntity {
 }
 
 impl Mob for GuardianEntity {
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
         crate::entity::combat::GUARDIAN_XP_REWARD
     }

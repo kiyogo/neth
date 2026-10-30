@@ -41,6 +41,11 @@ pub struct SilverfishEntity {
 impl SilverfishEntity {
     pub const XP_REWARD: u32 = SILVERFISH_XP_REWARD;
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let entity = Arc::new(MobEntity::new(entity));
         let silverfish = Self {
@@ -257,6 +262,10 @@ impl CustomSound for SilverfishEntity {
     }
 }
 impl Mob for SilverfishEntity {
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.entity
     }

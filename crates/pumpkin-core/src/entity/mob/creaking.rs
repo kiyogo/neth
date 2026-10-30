@@ -31,12 +31,12 @@ use crate::entity::{
 };
 
 pub const ATTACK_ANIMATION_DURATION: i32 = 15;
-pub const MAX_HEALTH: f32 = 1.0;
-pub const ATTACK_DAMAGE: f32 = 3.0;
-pub const FOLLOW_RANGE: f32 = 32.0;
+pub const MAX_HEALTH: f32 = crate::entity::combat::CREAKING_MAX_HEALTH;
+pub const ATTACK_DAMAGE: f32 = crate::entity::combat::CREAKING_BASE_ATTACK_DAMAGE;
+pub const FOLLOW_RANGE: f32 = crate::entity::combat::CREAKING_FOLLOW_RANGE as f32;
 pub const ACTIVATION_RANGE_SQ: f64 = 144.0;
 pub const ATTACK_INTERVAL: i32 = 40;
-pub const MOVEMENT_SPEED_WHEN_FIGHTING: f32 = 0.4;
+pub const MOVEMENT_SPEED_WHEN_FIGHTING: f32 = crate::entity::combat::CREAKING_BASE_MOVEMENT_SPEED as f32;
 pub const SPEED_MULTIPLIER_WHEN_IDLING: f32 = 0.3;
 pub const CREAKING_ORANGE: i32 = 16545810;
 pub const CREAKING_GRAY: i32 = 6250335;
@@ -63,6 +63,13 @@ pub struct CreakingEntity {
 }
 
 impl CreakingEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::CREAKING_XP_REWARD;
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let creaking = Self {
@@ -80,36 +87,27 @@ impl CreakingEntity {
         };
 
         // Initialize attributes
-        {
-            let mut attributes = creaking
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = f64::from(MAX_HEALTH);
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = f64::from(MOVEMENT_SPEED_WHEN_FIGHTING);
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = f64::from(ATTACK_DAMAGE);
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = f64::from(FOLLOW_RANGE);
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.0625;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        creaking.mob_entity.living_entity.health.store(MAX_HEALTH);
+        creaking
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(MAX_HEALTH));
+        creaking
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, f64::from(MOVEMENT_SPEED_WHEN_FIGHTING));
+        creaking
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(ATTACK_DAMAGE));
+        creaking
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, f64::from(FOLLOW_RANGE));
+        creaking
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::CREAKING_STEP_HEIGHT);
+        creaking.mob_entity.living_entity.set_health(MAX_HEALTH);
 
         let mob_arc = Arc::new(creaking);
         let mob_weak: Weak<dyn Mob> = {
@@ -391,6 +389,13 @@ impl CreakingEntity {
 }
 
 impl Mob for CreakingEntity {
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::CREAKING_XP_REWARD
+    }
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         if let Some(pos) = self.get_home_pos() {
             let mut sub = NbtCompound::new();

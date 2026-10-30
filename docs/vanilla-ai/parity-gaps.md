@@ -5811,3 +5811,61 @@ eck, part 1): nhận 100% full damage (damage).
     - `WolfEntity`, `CatEntity`, `OcelotEntity`, `PolarBearEntity`.
   - Implemented `can_be_leashed(&self) -> bool { false }` in `PandaEntity` (`crates/pumpkin-core/src/entity/passive/panda.rs`), matching vanilla `Panda.java:canBeLeashed() -> false`.
   - All 21 unit tests verified and passing across Cow, Horse, Camel, Fox, and Panda test suites.
+### Gap 239: Special Entities Family (Shulker, Guardian, Elder Guardian, Silverfish, Endermite, Breeze, Creaking) Attributes, Shell State, Wind Charge & Leashing Parity
+- **Vanilla Reference**:
+  - `Shulker.java:147-149, 68-69, 92`:
+    - Base Attributes: `MAX_HEALTH = 30.0`.
+    - Covered Armor Modifier: `+20.0 Armor` (`minecraft:covered`) applied when closed (`peek == 0`), removed when open (`peek > 0`).
+    - Experience Reward: `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Guardian.java:85-88, 30`:
+    - Base Attributes: `MAX_HEALTH = 30.0`, `MOVEMENT_SPEED = 0.5`, `ATTACK_DAMAGE = 6.0`.
+    - Experience Reward: `xpReward = 10`.
+    - Thorns retaliation damage: `2.0 HP` when stationary.
+    - Leashing: `canBeLeashed() -> false`.
+  - `ElderGuardian.java:35-37, 20-25`:
+    - Base Attributes: `MAX_HEALTH = 80.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 8.0`.
+    - Experience Reward: `xpReward = 10` (inherited from Guardian).
+    - Mining Fatigue curse: duration 6000 ticks, amplifier 2, interval 1200 ticks.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Silverfish.java:52-54`:
+    - Base Attributes: `MAX_HEALTH = 8.0`, `MOVEMENT_SPEED = 0.25`, `ATTACK_DAMAGE = 1.0`.
+    - Experience Reward: `xpReward = 5`.
+    - Merge interval: 10 ticks, wake up friends ticks: 20 ticks.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Endermite.java:36, 51-53`:
+    - Base Attributes: `MAX_HEALTH = 8.0`, `MOVEMENT_SPEED = 0.25`, `ATTACK_DAMAGE = 2.0`.
+    - Experience Reward: `xpReward = 3`.
+    - Despawn lifetime: 2400 ticks (2 min) unless persistent.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Breeze.java:67-73, 32`:
+    - Base Attributes: `MAX_HEALTH = 30.0`, `MOVEMENT_SPEED = 0.63`, `FOLLOW_RANGE = 24.0`, `ATTACK_DAMAGE = 3.0`.
+    - Experience Reward: `xpReward = 10`.
+    - Fall sound threshold: 3.0 blocks. Projectile deflection reverses non-wind-charge projectiles.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Creaking.java:128-135`:
+    - Base Attributes: `MAX_HEALTH = 1.0`, `MOVEMENT_SPEED = 0.4`, `ATTACK_DAMAGE = 3.0`, `FOLLOW_RANGE = 32.0`, `STEP_HEIGHT = 1.0625`.
+    - Experience Reward: `xpReward = 0`.
+    - Leashing: `canBeLeashed() -> false`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added Breeze base attributes and XP reward constants (`BREEZE_MAX_HEALTH`, `BREEZE_BASE_MOVEMENT_SPEED`, `BREEZE_FOLLOW_RANGE`, `BREEZE_BASE_ATTACK_DAMAGE`, `BREEZE_XP_REWARD`).
+    - Added Creaking base attributes and XP reward constants (`CREAKING_MAX_HEALTH`, `CREAKING_BASE_MOVEMENT_SPEED`, `CREAKING_BASE_ATTACK_DAMAGE`, `CREAKING_FOLLOW_RANGE`, `CREAKING_STEP_HEIGHT`, `CREAKING_XP_REWARD`).
+    - Added unit test `test_special_entities_family_parity`.
+  - Updated `BreezeEntity` (`crates/pumpkin-core/src/entity/mob/breeze.rs`):
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { BREEZE_XP_REWARD }`.
+  - Updated `CreakingEntity` (`crates/pumpkin-core/src/entity/mob/creaking.rs`):
+    - Converted attribute initialization to `set_attribute_base` using combat constants.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { CREAKING_XP_REWARD }` (0 XP).
+  - Updated `ElderGuardianEntity` (`crates/pumpkin-core/src/entity/mob/elder_guardian.rs`):
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `GuardianEntity` (`crates/pumpkin-core/src/entity/mob/guardian.rs`):
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `ShulkerEntity` (`crates/pumpkin-core/src/entity/mob/shulker.rs`):
+    - Converted attribute initialization and peek/closed armor updates to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Implemented `can_be_leashed(&self) -> bool { false }` in `SilverfishEntity` and `EndermiteEntity`.
+  - All unit tests verified and passing across the special entities suite.

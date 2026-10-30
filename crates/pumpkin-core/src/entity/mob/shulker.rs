@@ -66,6 +66,13 @@ pub struct ShulkerEntity {
 }
 
 impl ShulkerEntity {
+    pub const XP_REWARD: u32 = SHULKER_XP_REWARD;
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let shulker = Self {
@@ -83,22 +90,14 @@ impl ShulkerEntity {
         };
 
         // Vanilla Shulker: MAX_HEALTH = 30.0, ARMOR = 20.0 (when closed)
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = SHULKER_MAX_HEALTH as f64;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = SHULKER_COVERED_ARMOR_BONUS as f64;
-                armor.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(SHULKER_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ARMOR, f64::from(SHULKER_COVERED_ARMOR_BONUS));
         mob_arc.mob_entity.living_entity.set_health(SHULKER_MAX_HEALTH);
 
         {
@@ -196,16 +195,9 @@ impl ShulkerEntity {
         let is_closed = self.is_closed();
 
         if was_closed != is_closed {
-            let mut attributes = self
-                .mob_entity
+            self.mob_entity
                 .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = if is_closed { SHULKER_COVERED_ARMOR_BONUS as f64 } else { 0.0 };
-                armor.dirty.store(true, Ordering::Relaxed);
-            }
+                .set_attribute_base(&Attributes::ARMOR, if is_closed { f64::from(SHULKER_COVERED_ARMOR_BONUS) } else { 0.0 });
         }
 
         entity.set_synced_data(pumpkin_data::tracked_data::shulker::PEEK_ID, amount);
@@ -402,6 +394,10 @@ impl CustomSound for ShulkerEntity {
 }
 
 impl Mob for ShulkerEntity {
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_byte("AttachFace", self.attach_face.load(Ordering::Relaxed) as i8);
         nbt.put_byte("Peek", self.peek_amount.load(Ordering::Relaxed) as i8);
@@ -417,16 +413,9 @@ impl Mob for ShulkerEntity {
         if let Some(peek) = peek_opt {
             let val = peek as u8;
             self.peek_amount.store(val, Ordering::Relaxed);
-            let mut attributes = self
-                .mob_entity
+            self.mob_entity
                 .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = if is_shulker_closed(val) { SHULKER_COVERED_ARMOR_BONUS as f64 } else { 0.0 };
-                armor.dirty.store(true, Ordering::Relaxed);
-            }
+                .set_attribute_base(&Attributes::ARMOR, if is_shulker_closed(val) { f64::from(SHULKER_COVERED_ARMOR_BONUS) } else { 0.0 });
         }
         if let Some(color) = nbt.get_byte("Color") {
             self.color.store(color as u8, Ordering::Relaxed);
