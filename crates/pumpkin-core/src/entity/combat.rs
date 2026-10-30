@@ -7686,6 +7686,48 @@ pub const ZOGLIN_ATTACK_DAMAGE: f64 = 6.0;
 pub const ZOGLIN_BABY_ATTACK_DAMAGE: f64 = 0.5;
 pub const ZOGLIN_XP_REWARD: u32 = 5;
 
+/// Adult Zoglin melee attack interval in ticks (40 ticks = 2 seconds).
+/// Mirrors vanilla `Zoglin.java:71, 127`:
+/// `private static final int ATTACK_INTERVAL = 40;`
+pub const ZOGLIN_ADULT_ATTACK_INTERVAL: i32 = 40;
+
+/// Baby Zoglin melee attack interval in ticks (15 ticks = 0.75 seconds).
+/// Mirrors vanilla `Zoglin.java:72, 128`:
+/// `private static final int BABY_ATTACK_INTERVAL = 15;`
+pub const ZOGLIN_BABY_ATTACK_INTERVAL: i32 = 15;
+
+/// Zoglin attack duration / expiry in ticks (200 ticks = 10 seconds).
+/// Mirrors vanilla `Zoglin.java:73, 220`:
+/// `private static final int ATTACK_DURATION = 200;`
+pub const ZOGLIN_ATTACK_DURATION: i32 = 200;
+
+/// Hoglin attack animation duration in ticks (10 ticks = 0.5 seconds).
+/// Mirrors vanilla `HoglinBase.java:12`:
+/// `int ATTACK_ANIMATION_DURATION = 10;`
+pub const HOGLIN_ATTACK_ANIMATION_DURATION: i32 = 10;
+
+/// Hoglin baby spawn probability (0.2 = 20%).
+/// Mirrors vanilla `HoglinBase.java:13`:
+/// `float PROBABILITY_OF_SPAWNING_AS_BABY = 0.2F;`
+pub const HOGLIN_PROBABILITY_OF_SPAWNING_AS_BABY: f32 = 0.2;
+
+
+/// Maximum number of baby piglins riding one adult hoglin (3).
+/// Mirrors vanilla `Piglin.java:76`:
+/// `private static final int MAX_PASSENGERS_ON_ONE_HOGLIN = 3;`
+pub const PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN: i32 = 3;
+
+/// Calculates Zoglin attack interval based on baby status.
+/// Mirrors vanilla `Zoglin.java:127-128`:
+#[must_use]
+pub const fn calculate_zoglin_attack_interval(is_baby: bool) -> i32 {
+    if is_baby {
+        ZOGLIN_BABY_ATTACK_INTERVAL
+    } else {
+        ZOGLIN_ADULT_ATTACK_INTERVAL
+    }
+}
+
 /// Piglin Brute combat and attribute constants, mirroring vanilla `PiglinBrute.java:46, 50-55`.
 pub const PIGLIN_BRUTE_MAX_HEALTH: f64 = 50.0;
 pub const PIGLIN_BRUTE_MOVEMENT_SPEED: f64 = 0.35;

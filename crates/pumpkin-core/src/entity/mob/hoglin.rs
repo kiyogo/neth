@@ -28,39 +28,33 @@ pub struct HoglinEntity {
 }
 
 impl HoglinEntity {
-    pub const CONVERSION_TIME: i32 = 300;
-    pub const XP_REWARD: u32 = 5;
+    pub const CONVERSION_TIME: i32 = crate::entity::combat::HOGLIN_CONVERSION_TIME_TICKS;
+    pub const XP_REWARD: u32 = crate::entity::combat::HOGLIN_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
-        {
-            let mut attributes = mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 40.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(knockback_res) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
-                knockback_res.base_value = 0.6;
-                knockback_res.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(attack_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
-                attack_kb.base_value = 1.0;
-                attack_kb.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 6.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_entity.living_entity.health.store(40.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::HOGLIN_MAX_HEALTH);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::HOGLIN_MOVEMENT_SPEED);
+        mob_entity
+            .living_entity
+            .set_attribute_base(
+                &Attributes::KNOCKBACK_RESISTANCE,
+                crate::entity::combat::HOGLIN_KNOCKBACK_RESISTANCE,
+            );
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_KNOCKBACK, crate::entity::combat::HOGLIN_ATTACK_KNOCKBACK);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, crate::entity::combat::HOGLIN_ATTACK_DAMAGE);
+        mob_entity
+            .living_entity
+            .health
+            .store(crate::entity::combat::HOGLIN_MAX_HEALTH as f32);
 
         let hoglin = Self {
             mob_entity,
@@ -349,5 +343,15 @@ mod tests {
         assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
         assert_eq!(effect.duration, 200);
         assert_eq!(effect.amplifier, 0);
+
+        // Attributes & animation parity (Hoglin.java:95-101, HoglinBase.java:12-13)
+        assert_eq!(crate::entity::combat::HOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(crate::entity::combat::HOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(crate::entity::combat::HOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(crate::entity::combat::HOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(crate::entity::combat::HOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(crate::entity::combat::HOGLIN_BABY_ATTACK_DAMAGE, 0.5);
+        assert_eq!(crate::entity::combat::HOGLIN_ATTACK_ANIMATION_DURATION, 10);
+        assert_eq!(crate::entity::combat::HOGLIN_PROBABILITY_OF_SPAWNING_AS_BABY, 0.2);
     }
 }

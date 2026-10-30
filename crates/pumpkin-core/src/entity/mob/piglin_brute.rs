@@ -47,30 +47,22 @@ impl PiglinBruteEntity {
         let mob_arc = Arc::new(piglin);
 
         // Vanilla PiglinBrute: MAX_HEALTH = 50.0, MOVEMENT_SPEED = 0.35, ATTACK_DAMAGE = 7.0, FOLLOW_RANGE = 12.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = PIGLIN_BRUTE_MAX_HEALTH;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = PIGLIN_BRUTE_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = PIGLIN_BRUTE_ATTACK_DAMAGE;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = PIGLIN_BRUTE_FOLLOW_RANGE;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, PIGLIN_BRUTE_MAX_HEALTH);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, PIGLIN_BRUTE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, PIGLIN_BRUTE_ATTACK_DAMAGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, PIGLIN_BRUTE_FOLLOW_RANGE);
         mob_arc.mob_entity.living_entity.set_health(PIGLIN_BRUTE_MAX_HEALTH as f32);
 
         mob_arc.mob_entity.init_brain(mob_arc.as_ref());

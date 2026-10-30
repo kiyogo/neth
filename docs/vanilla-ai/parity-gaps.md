@@ -5175,3 +5175,44 @@ eck, part 1): nhận 100% full damage (damage).
   - Updated crates/pumpkin-core/src/entity/mob/zombified_piglin.rs:
     - Updated unit test test_zombified_piglin_anger_speed_parity verifying anger delay and persistent anger timings.
   - All 15 unit tests verified and passing across zombie, husk, drowned, zombie_villager, zombified_piglin, and combat test suites.
+
+
+### Gap 224: Piglin, Piglin Brute, Hoglin & Zoglin Combat, Bartering, Conversion & Attack Knockback Parity
+- **Vanilla Reference**:
+  - Piglin.java:68-81, 103, 164-166, 237-247, 286-289:
+    - Base Attributes: MAX_HEALTH = 16.0 (PIGLIN_MAX_HEALTH), MOVEMENT_SPEED = 0.35 (PIGLIN_MOVEMENT_SPEED), ATTACK_DAMAGE = 5.0 (PIGLIN_ATTACK_DAMAGE), xpReward = 5 (PIGLIN_XP_REWARD, baby drops 0 XP).
+    - Baby Speed Modifier: SPEED_MODIFIER_BABY = 0.2F (+20% base speed, PIGLIN_BABY_SPEED_MODIFIER_AMOUNT = 0.2, PIGLIN_BABY_SPEED_MODIFIER_ID = "minecraft:baby").
+    - Spawning Probabilities: 20% baby spawn chance (PIGLIN_PROBABILITY_OF_SPAWNING_AS_BABY = 0.2), 10% armor wear chance per slot (PIGLIN_CHANCE_OF_WEARING_EACH_ARMOUR_ITEM = 0.1), 50% spawn with crossbow vs melee (PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW = 0.5), 1 in 10 chance golden spear vs golden sword (PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN = 10), max passengers on one adult hoglin: 3 (PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN = 3).
+    - Overworld Conversion: 300 ticks (15 seconds, PIGLIN_CONVERSION_TIME_TICKS = 300), applies Nausea for 200 ticks (PIGLIN_CONVERSION_NAUSEA_DURATION_TICKS = 200) to ZombifiedPiglin.
+  - PiglinBrute.java:32-35, 46-55, 68:
+    - Base Attributes: MAX_HEALTH = 50.0 (PIGLIN_BRUTE_MAX_HEALTH), MOVEMENT_SPEED = 0.35 (PIGLIN_BRUTE_MOVEMENT_SPEED), ATTACK_DAMAGE = 7.0 (PIGLIN_BRUTE_ATTACK_DAMAGE), FOLLOW_RANGE = 12.0 (PIGLIN_BRUTE_FOLLOW_RANGE), xpReward = 20 (PIGLIN_BRUTE_XP_REWARD).
+    - Equipment: Main hand Items.GOLDEN_AXE (disables shields for 5.0 seconds).
+    - Hunting & Conversion: canHunt() -> false. Converts to ZombifiedPiglin in overworld after 300 ticks.
+  - Hoglin.java:61-70, 81, 95-100:
+    - Base Attributes: MAX_HEALTH = 40.0 (HOGLIN_MAX_HEALTH), MOVEMENT_SPEED = 0.3 (HOGLIN_MOVEMENT_SPEED), KNOCKBACK_RESISTANCE = 0.6 (HOGLIN_KNOCKBACK_RESISTANCE), ATTACK_KNOCKBACK = 1.0 (HOGLIN_ATTACK_KNOCKBACK), ATTACK_DAMAGE = 6.0 (HOGLIN_ATTACK_DAMAGE), xpReward = 5 (HOGLIN_XP_REWARD).
+    - Overworld Conversion: 300 ticks (15s, HOGLIN_CONVERSION_TIME_TICKS = 300), converts to Zoglin with Nausea 200 ticks.
+    - Leashing: canBeLeashed() -> true.
+  - HoglinBase.java:12-13, 17-53:
+    - Attack Animation & Spawning: ATTACK_ANIMATION_DURATION = 10 ticks (HOGLIN_ATTACK_ANIMATION_DURATION), PROBABILITY_OF_SPAWNING_AS_BABY = 0.2 (HOGLIN_PROBABILITY_OF_SPAWNING_AS_BABY).
+    - Damage formula: adult actualDamage = attackDamage / 2.0F + random.nextInt((int)attackDamage) (3.0..=8.0 damage for 6.0 attack damage), baby actualDamage = 0.5F (HOGLIN_BABY_ATTACK_DAMAGE = 0.5) via calculate_hoglin_attack_damage.
+    - Knockback throw: effectiveKnockbackPower = knockbackPower - knockbackResistance. If > 0, pushes target with horizontal impulse (effectiveKnockbackPower * (rand * 0.5 + 0.2) with yaw offset -10..+10 deg) and vertical impulse (effectiveKnockbackPower * rand * 0.5) via calculate_hoglin_throw_impulse. Adult still tosses target even when blocked by a shield.
+  - Zoglin.java:66-75, 84, 127-128, 139, 168-174, 193, 198-202:
+    - Base Attributes: MAX_HEALTH = 40.0 (ZOGLIN_MAX_HEALTH), MOVEMENT_SPEED = 0.3 (ZOGLIN_MOVEMENT_SPEED), KNOCKBACK_RESISTANCE = 0.6 (ZOGLIN_KNOCKBACK_RESISTANCE), ATTACK_KNOCKBACK = 1.0 (ZOGLIN_ATTACK_KNOCKBACK), ATTACK_DAMAGE = 6.0 (ZOGLIN_ATTACK_DAMAGE), xpReward = 5 (ZOGLIN_XP_REWARD).
+    - Attack Intervals: Adult 40 ticks (ZOGLIN_ADULT_ATTACK_INTERVAL = 40), Baby 15 ticks (ZOGLIN_BABY_ATTACK_INTERVAL = 15), Attack Duration 200 ticks (ZOGLIN_ATTACK_DURATION = 200) via calculate_zoglin_attack_interval.
+    - Targeting & Leashing: Attacks all living entities except fellow Zoglins and Creepers (can_zoglin_target_entity). Can be leashed (is_mob_leashable -> true) despite monster status. Tosses target on shield block when adult.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants for Zoglin attack intervals and durations (ZOGLIN_ADULT_ATTACK_INTERVAL, ZOGLIN_BABY_ATTACK_INTERVAL, ZOGLIN_ATTACK_DURATION), HoglinBase constants (HOGLIN_ATTACK_ANIMATION_DURATION, HOGLIN_PROBABILITY_OF_SPAWNING_AS_BABY), and Piglin baby riding limit (PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN).
+    - Added calculate_zoglin_attack_interval(is_baby: bool) -> i32.
+  - Updated crates/pumpkin-core/src/entity/mob/hoglin.rs:
+    - Converted attribute initialization to set_attribute_base and synced with combat constants.
+    - Expanded unit test test_hoglin_throw_and_conversion_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/zoglin.rs:
+    - Converted attribute initialization to set_attribute_base and synced with combat constants.
+    - Expanded unit test test_zoglin_combat_and_leash_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/piglin.rs:
+    - Converted attribute initialization to set_attribute_base.
+    - Expanded unit test test_piglin_baby_speed_and_conversion_nausea_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/piglin_brute.rs:
+    - Converted attribute initialization to set_attribute_base.
+  - All 12 unit tests verified and passing across piglin, hoglin, zoglin, and combat suites.

@@ -80,26 +80,18 @@ impl PiglinEntity {
         let mob_arc = Arc::new(piglin);
 
         // Vanilla Piglin: MAX_HEALTH = 16.0, MOVEMENT_SPEED = 0.35, ATTACK_DAMAGE = 5.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = PIGLIN_MAX_HEALTH;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = PIGLIN_MOVEMENT_SPEED;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = PIGLIN_ATTACK_DAMAGE;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, PIGLIN_MAX_HEALTH);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, PIGLIN_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, PIGLIN_ATTACK_DAMAGE);
         mob_arc.mob_entity.living_entity.set_health(PIGLIN_MAX_HEALTH as f32);
 
         mob_arc.mob_entity.set_can_pick_up_loot(true);
@@ -903,5 +895,8 @@ mod tests {
         assert_eq!(crate::entity::combat::PIGLIN_PROBABILITY_OF_SPAWNING_WITH_CROSSBOW, 0.5);
         assert_eq!(crate::entity::combat::PIGLIN_CROSSBOW_ATTACK_SPEED, 1.6);
         assert_eq!(crate::entity::combat::PIGLIN_SPEAR_SPAWN_CHANCE_IN_TEN, 10);
+        assert_eq!(crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_AMOUNT, 0.2);
+        assert_eq!(crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_ID, "minecraft:baby");
+        assert_eq!(crate::entity::combat::PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN, 3);
     }
 }

@@ -27,7 +27,7 @@ pub struct ZoglinEntity {
 }
 
 impl ZoglinEntity {
-    pub const XP_REWARD: u32 = 5;
+    pub const XP_REWARD: u32 = crate::entity::combat::ZOGLIN_XP_REWARD;
 
     pub const BABY_DIMENSIONS: EntityDimensions = EntityDimensions {
         width: 0.75,
@@ -37,34 +37,28 @@ impl ZoglinEntity {
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
-        {
-            let mut attributes = mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 40.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(knockback_res) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
-                knockback_res.base_value = 0.6;
-                knockback_res.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(attack_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
-                attack_kb.base_value = 1.0;
-                attack_kb.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 6.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_entity.living_entity.health.store(40.0);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::ZOGLIN_MAX_HEALTH);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::ZOGLIN_MOVEMENT_SPEED);
+        mob_entity
+            .living_entity
+            .set_attribute_base(
+                &Attributes::KNOCKBACK_RESISTANCE,
+                crate::entity::combat::ZOGLIN_KNOCKBACK_RESISTANCE,
+            );
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_KNOCKBACK, crate::entity::combat::ZOGLIN_ATTACK_KNOCKBACK);
+        mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, crate::entity::combat::ZOGLIN_ATTACK_DAMAGE);
+        mob_entity
+            .living_entity
+            .health
+            .store(crate::entity::combat::ZOGLIN_MAX_HEALTH as f32);
 
         let zoglin = Self {
             mob_entity,
@@ -264,5 +258,18 @@ mod tests {
         assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(6.0, false, 0), 3.0);
         assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(6.0, false, 3), 6.0);
         assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(0.5, true, 3), 0.5);
+
+        // Attributes & attack intervals parity (Zoglin.java:64-73, 127-128)
+        assert_eq!(crate::entity::combat::ZOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(crate::entity::combat::ZOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(crate::entity::combat::ZOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(crate::entity::combat::ZOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(crate::entity::combat::ZOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(crate::entity::combat::ZOGLIN_BABY_ATTACK_DAMAGE, 0.5);
+        assert_eq!(crate::entity::combat::ZOGLIN_ADULT_ATTACK_INTERVAL, 40);
+        assert_eq!(crate::entity::combat::ZOGLIN_BABY_ATTACK_INTERVAL, 15);
+        assert_eq!(crate::entity::combat::ZOGLIN_ATTACK_DURATION, 200);
+        assert_eq!(crate::entity::combat::calculate_zoglin_attack_interval(false), 40);
+        assert_eq!(crate::entity::combat::calculate_zoglin_attack_interval(true), 15);
     }
 }
