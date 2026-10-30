@@ -100,23 +100,20 @@ impl EntityBase for EnderPearlEntity {
         let owner_id = self.thrown.owner_id;
         let teleport_pos = entity.last_pos.load();
 
-        if let (
-            ProjectileHit::Entity {
-                entity: hit_entity,
-                hit_pos,
-                ..
-            },
-            Some(owner),
-        ) = (&hit, attacker)
+        if let ProjectileHit::Entity {
+            ref entity,
+            hit_pos,
+            ..
+        } = hit
         {
-            let victim_ref = &**hit_entity;
-            hit_entity.damage_with_context(
-                victim_ref,
+            let attacker_ref: &dyn EntityBase = attacker.as_deref().unwrap_or(self);
+            let _ = entity.damage_with_context(
+                attacker_ref,
                 0.0,
                 DamageType::THROWN,
-                Some(*hit_pos),
-                Some(owner.get_entity()),
-                Some(victim_ref),
+                Some(hit_pos),
+                Some(self.get_entity()),
+                attacker.as_deref(),
             );
         }
 

@@ -108,8 +108,9 @@ impl EntityBase for SmallFireballEntity {
                     target_ent.set_on_fire_for(5.0);
                 }
 
+                let attacker_ref: &dyn EntityBase = owner.as_deref().unwrap_or(self);
                 let damaged = entity.damage_with_context(
-                    entity.as_ref(),
+                    attacker_ref,
                     5.0,
                     pumpkin_data::damage::DamageType::FIREBALL,
                     Some(hit_pos),

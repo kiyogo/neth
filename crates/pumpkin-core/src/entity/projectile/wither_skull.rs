@@ -159,8 +159,9 @@ impl EntityBase for WitherSkullEntity {
                 DamageType::MAGIC
             };
 
+            let attacker_ref: &dyn EntityBase = shooter.as_deref().unwrap_or(self);
             let damaged = entity.damage_with_context(
-                entity.as_ref(),
+                attacker_ref,
                 amount,
                 damage_type,
                 Some(hit_pos),

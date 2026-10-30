@@ -2322,6 +2322,116 @@ pub fn is_entity_in_area_effect_cloud_radius(
     dist_sq <= ((radius * radius) as f64)
 }
 
+// =========================================================================
+// Projectile & Throwable Family Parity Constants
+// =========================================================================
+
+/// Base damage of standard arrows (2.0 HP).
+/// Mirrors vanilla `AbstractArrow.java:54`:
+/// `private static final double ARROW_BASE_DAMAGE = 2.0;`
+pub const ARROW_BASE_DAMAGE: f64 = 2.0;
+
+/// Default gravity acceleration for arrows (0.05).
+/// Mirrors vanilla `AbstractArrow.java:565`:
+/// `protected double getDefaultGravity() { return 0.05; }`
+pub const ARROW_DEFAULT_GRAVITY: f64 = 0.05;
+
+/// Air inertia/drag for arrows (0.99).
+/// Mirrors vanilla `AbstractArrow.java:57`:
+/// `private static final float INERTIA = 0.99F;`
+pub const ARROW_AIR_INERTIA: f64 = 0.99;
+
+/// Water inertia/drag for arrows (0.6).
+/// Mirrors vanilla `AbstractArrow.java:56`:
+/// `private static final float WATER_INERTIA = 0.6F;`
+pub const ARROW_WATER_INERTIA: f64 = 0.6;
+
+/// Base damage of thrown tridents (8.0 HP).
+/// Mirrors vanilla `ThrownTrident.java:122`:
+/// `float dmg = 8.0F;`
+pub const TRIDENT_BASE_DAMAGE: f32 = 8.0;
+
+/// Default gravity acceleration for tridents (0.05).
+/// Inherited from `AbstractArrow.java:565`.
+pub const TRIDENT_DEFAULT_GRAVITY: f64 = 0.05;
+
+/// Air inertia for tridents (0.99).
+/// Inherited from `AbstractArrow.java:57`.
+pub const TRIDENT_AIR_INERTIA: f64 = 0.99;
+
+/// Water inertia for tridents (0.99 - tridents glide through water).
+/// Mirrors vanilla `ThrownTrident.java:191`:
+/// `protected float getWaterInertia() { return 0.99F; }`
+pub const TRIDENT_WATER_INERTIA: f64 = 0.99;
+
+/// Default gravity acceleration for standard throwable projectiles (Snowball, Egg, Ender Pearl: 0.03).
+/// Mirrors vanilla `ThrowableProjectile.java:108`:
+/// `protected double getDefaultGravity() { return 0.03; }`
+pub const THROWABLE_PROJECTILE_DEFAULT_GRAVITY: f64 = 0.03;
+
+/// Default air drag for throwable projectiles (0.99).
+/// Mirrors vanilla `ThrowableProjectile.java:94`:
+/// `protected float getAirDrag() { return 0.99F; }`
+pub const THROWABLE_PROJECTILE_AIR_DRAG: f32 = 0.99;
+
+/// Water inertia for throwable projectiles (0.8).
+/// Mirrors vanilla `ThrowableProjectile.java:84`:
+/// `inertia = 0.8F;`
+pub const THROWABLE_PROJECTILE_WATER_INERTIA: f32 = 0.8;
+
+/// Default gravity acceleration for thrown potions (Splash & Lingering: 0.05).
+/// Mirrors vanilla `AbstractThrownPotion.java:31`:
+/// `protected double getDefaultGravity() { return 0.05; }`
+pub const POTION_DEFAULT_GRAVITY: f64 = 0.05;
+
+/// Default gravity acceleration for thrown experience bottles (0.07).
+/// Mirrors vanilla `ThrownExperienceBottle.java:35`:
+/// `protected double getDefaultGravity() { return 0.07; }`
+pub const EXPERIENCE_BOTTLE_DEFAULT_GRAVITY: f64 = 0.07;
+
+/// Initial acceleration power for fireballs and hurting projectiles (0.1).
+/// Mirrors vanilla `AbstractHurtingProjectile.java:19`.
+pub const FIREBALL_INITIAL_ACCELERATION: f64 = 0.1;
+
+/// Air inertia for hurting fireballs (0.95).
+/// Mirrors vanilla `AbstractHurtingProjectile.java:89`:
+/// `protected float getInertia() { return 0.95F; }`
+pub const FIREBALL_AIR_INERTIA: f64 = 0.95;
+
+/// Water inertia for hurting fireballs (0.8).
+/// Mirrors vanilla `AbstractHurtingProjectile.java:93`:
+/// `protected float getLiquidInertia() { return 0.8F; }`
+pub const FIREBALL_WATER_INERTIA: f64 = 0.8;
+
+/// Default explosion power for large fireballs (1.0).
+/// Mirrors vanilla `LargeFireball.java:23`:
+/// `private int explosionPower = 1;`
+pub const LARGE_FIREBALL_EXPLOSION_POWER: f32 = 1.0;
+
+/// Dangerous (blue) Wither Skull inertia (0.73).
+/// Mirrors vanilla `WitherSkull.java:49`:
+/// `return this.isDangerous() ? 0.73F : super.getInertia();`
+pub const WITHER_SKULL_DANGEROUS_INERTIA: f64 = 0.73;
+
+/// Normal Wither Skull inertia (0.95).
+/// Inherited from `AbstractHurtingProjectile.java:89`.
+pub const WITHER_SKULL_NORMAL_INERTIA: f64 = 0.95;
+
+/// Damage dealt by Wither Skull fired by living entity (8.0 HP).
+/// Mirrors vanilla `WitherSkull.java:62`:
+/// `wasHurt = var8.hurtServer(serverLevel, damageSource, 8.0F);`
+pub const WITHER_SKULL_LIVING_OWNER_DAMAGE: f32 = 8.0;
+
+/// Damage dealt by Wither Skull with no living owner (5.0 HP).
+/// Mirrors vanilla `WitherSkull.java:75`:
+/// `wasHurt = var8.hurtServer(serverLevel, this.damageSources().magic(), 5.0F);`
+pub const WITHER_SKULL_NO_OWNER_DAMAGE: f32 = 5.0;
+
+/// Wind charge inertia in air and water (1.0).
+/// Mirrors vanilla `AbstractWindCharge.java:64, 69`:
+/// `protected float getInertia() { return 1.0F; }`
+pub const WIND_CHARGE_INERTIA: f64 = 1.0;
+
 /// Calculates arrow damage based on impact velocity, base damage, and critical status.
 ///
 /// Mirrors vanilla `AbstractArrow.java:434, 452-455`:
@@ -13299,5 +13409,57 @@ mod tests {
         assert_eq!(CREAKING_FOLLOW_RANGE, 32.0);
         assert_eq!(CREAKING_STEP_HEIGHT, 1.0625);
         assert_eq!(CREAKING_XP_REWARD, 0);
+    }
+
+    #[test]
+    fn test_projectile_family_physics_and_damage_parity() {
+        // 1. Arrow & Trident Physics and Damage (AbstractArrow.java & ThrownTrident.java)
+        assert_eq!(ARROW_BASE_DAMAGE, 2.0);
+        assert_eq!(ARROW_DEFAULT_GRAVITY, 0.05);
+        assert_eq!(ARROW_AIR_INERTIA, 0.99);
+        assert_eq!(ARROW_WATER_INERTIA, 0.6);
+        assert_eq!(TRIDENT_BASE_DAMAGE, 8.0);
+        assert_eq!(TRIDENT_DEFAULT_GRAVITY, 0.05);
+        assert_eq!(TRIDENT_AIR_INERTIA, 0.99);
+        assert_eq!(TRIDENT_WATER_INERTIA, 0.99);
+
+        // 2. Throwable Items Physics (ThrowableProjectile.java, Snowball, Egg, Ender Pearl)
+        assert_eq!(THROWABLE_PROJECTILE_DEFAULT_GRAVITY, 0.03);
+        assert_eq!(THROWABLE_PROJECTILE_AIR_DRAG, 0.99);
+        assert_eq!(THROWABLE_PROJECTILE_WATER_INERTIA, 0.8);
+        assert_eq!(get_snowball_damage(true), 3.0);
+        assert_eq!(get_snowball_damage(false), 0.0);
+
+        // 3. Potions & Experience Bottles (AbstractThrownPotion.java & ThrownExperienceBottle.java)
+        assert_eq!(POTION_DEFAULT_GRAVITY, 0.05);
+        assert_eq!(EXPERIENCE_BOTTLE_DEFAULT_GRAVITY, 0.07);
+
+        // 4. Hurting Projectiles & Fireballs (AbstractHurtingProjectile.java, LargeFireball, SmallFireball, WitherSkull)
+        assert_eq!(FIREBALL_INITIAL_ACCELERATION, 0.1);
+        assert_eq!(FIREBALL_AIR_INERTIA, 0.95);
+        assert_eq!(FIREBALL_WATER_INERTIA, 0.8);
+        assert_eq!(LARGE_FIREBALL_DIRECT_DAMAGE, 6.0);
+        assert_eq!(LARGE_FIREBALL_EXPLOSION_POWER, 1.0);
+        assert_eq!(SMALL_FIREBALL_DIRECT_DAMAGE, 5.0);
+        assert_eq!(WITHER_SKULL_DANGEROUS_INERTIA, 0.73);
+        assert_eq!(WITHER_SKULL_NORMAL_INERTIA, 0.95);
+        assert_eq!(WITHER_SKULL_LIVING_OWNER_DAMAGE, 8.0);
+        assert_eq!(WITHER_SKULL_NO_OWNER_DAMAGE, 5.0);
+
+        // 5. Wind Charges (AbstractWindCharge.java)
+        assert_eq!(WIND_CHARGE_INERTIA, 1.0);
+        assert_eq!(WIND_CHARGE_DIRECT_DAMAGE, 1.0);
+        assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
+        assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
+
+        // 6. Llama Spit (LlamaSpit.java)
+        assert_eq!(get_llama_spit_damage(), 1.0);
+        assert_eq!(get_llama_spit_gravity(), 0.06);
+        assert_eq!(get_llama_spit_air_drag(), 0.99);
+
+        // 7. Shulker Bullet (ShulkerBullet.java)
+        assert_eq!(SHULKER_BULLET_SPEED, 0.15);
+        assert_eq!(get_shulker_bullet_damage(), 4.0);
+        assert_eq!(get_shulker_bullet_levitation_duration(), 200);
     }
 }

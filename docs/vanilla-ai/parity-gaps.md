@@ -5869,3 +5869,37 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `can_be_leashed(&self) -> bool { false }`.
   - Implemented `can_be_leashed(&self) -> bool { false }` in `SilverfishEntity` and `EndermiteEntity`.
   - All unit tests verified and passing across the special entities suite.
+### Gap 240: Projectiles & Throwables Family (Arrows, Tridents, Snowballs, Eggs, Ender Pearls, Potions, Fireballs, Wither Skulls, Wind Charges, Llama Spit) Physics, Inertia & Attacker Attribution Parity
+- **Vanilla Reference**:
+  - `AbstractArrow.java:54, 56-57, 565` & `ThrownTrident.java:122, 191`:
+    - Base Arrow Damage: `2.0 HP`, Gravity: `0.05`, Air Inertia: `0.99F`, Water Inertia: `0.6F`.
+    - Trident Damage: `8.0 HP`, Gravity: `0.05`, Air Inertia: `0.99F`, Water Inertia: `0.99F` (tridents glide through water).
+  - `ThrowableProjectile.java:84, 94, 108` (`Snowball.java`, `ThrownEgg.java`, `ThrownEnderpearl.java`):
+    - Default Gravity: `0.03`, Air Drag: `0.99F`, Water Inertia: `0.8F`.
+    - Snowball entity damage: `3.0 HP` on Blaze, `0.0 HP` on others.
+    - Egg & Ender Pearl entity impact damage: `0.0 HP`.
+    - Damage source: `thrown(this, this.getOwner())` (direct entity: projectile, causing entity / caller: shooter/owner).
+  - `AbstractThrownPotion.java:31` & `ThrownExperienceBottle.java:35`:
+    - Potion Gravity: `0.05`.
+    - Experience Bottle Gravity: `0.07`, XP reward: `3 + random(5) + random(5)` (range 3..=11).
+  - `AbstractHurtingProjectile.java:19, 89, 93` (`LargeFireball.java:23, 48`, `SmallFireball.java:41`, `WitherSkull.java:49, 62, 75`):
+    - Initial acceleration: `0.1`, Air Inertia: `0.95F`, Water Inertia: `0.8F`.
+    - Large Fireball: direct impact damage `6.0 HP`, explosion power `1.0`.
+    - Small Fireball: direct impact damage `5.0 HP`, ignite duration `5.0s`.
+    - Wither Skull: living owner damage `8.0 HP` (heals owner 5 HP on kill), no owner `5.0 HP`. Normal inertia `0.95`, dangerous (blue) skull inertia `0.73`.
+  - `AbstractWindCharge.java:64, 69`:
+    - Inertia: `1.0F` (no drag in air or water). Direct damage: `1.0 HP`. Player charge explosion power: `1.2`, Breeze charge explosion power: `3.0`.
+  - `LlamaSpit.java:39, 44, 49`:
+    - Gravity: `0.06`, Air Drag: `0.99F`, Damage: `1.0 HP` (`spit(this, owner)`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Codified projectile physics and damage constants matching vanilla (`ARROW_BASE_DAMAGE`, `ARROW_DEFAULT_GRAVITY`, `ARROW_AIR_INERTIA`, `ARROW_WATER_INERTIA`, `TRIDENT_BASE_DAMAGE`, `TRIDENT_DEFAULT_GRAVITY`, `TRIDENT_AIR_INERTIA`, `TRIDENT_WATER_INERTIA`, `THROWABLE_PROJECTILE_DEFAULT_GRAVITY`, `THROWABLE_PROJECTILE_AIR_DRAG`, `THROWABLE_PROJECTILE_WATER_INERTIA`, `POTION_DEFAULT_GRAVITY`, `EXPERIENCE_BOTTLE_DEFAULT_GRAVITY`, `FIREBALL_INITIAL_ACCELERATION`, `FIREBALL_AIR_INERTIA`, `FIREBALL_WATER_INERTIA`, `LARGE_FIREBALL_EXPLOSION_POWER`, `WITHER_SKULL_DANGEROUS_INERTIA`, `WITHER_SKULL_NORMAL_INERTIA`, `WITHER_SKULL_LIVING_OWNER_DAMAGE`, `WITHER_SKULL_NO_OWNER_DAMAGE`, `WIND_CHARGE_INERTIA`).
+    - Added comprehensive unit test `test_projectile_family_physics_and_damage_parity`.
+  - Fixed Attacker / Source / Cause attribution bug in `damage_with_context`:
+    - In `crates/pumpkin-core/src/entity/projectile/egg.rs`: fixed victim entity being passed as its own caller and cause; correctly attributed caller to shooter/projectile and source to egg entity.
+    - In `crates/pumpkin-core/src/entity/projectile/ender_pearl.rs`: fixed victim entity being passed as its own caller; properly handled entity hit when owner is None.
+    - In `crates/pumpkin-core/src/entity/projectile/llama_spit.rs`: replaced `entity.as_ref()` with `owner.as_deref().unwrap_or(self)` as caller.
+    - In `crates/pumpkin-core/src/entity/projectile/small_fireball.rs`: replaced `entity.as_ref()` with `owner.as_deref().unwrap_or(self)` as caller.
+    - In `crates/pumpkin-core/src/entity/projectile/wither_skull.rs`: replaced `entity.as_ref()` with `shooter.as_deref().unwrap_or(self)` as caller.
+    - In `crates/pumpkin-core/src/entity/projectile/wind_charge.rs`: replaced `entity.as_ref()` with `owner.as_deref().unwrap_or(self)` as caller.
+  - All unit tests verified and passing across the entire projectile test suite.

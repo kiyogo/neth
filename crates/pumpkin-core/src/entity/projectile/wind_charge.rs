@@ -209,8 +209,9 @@ impl EntityBase for WindChargeEntity {
             let owner_id = self.get_owner_id();
             let owner = owner_id.and_then(|id| world.get_entity_by_id(id));
 
+            let attacker_ref: &dyn EntityBase = owner.as_deref().unwrap_or(self);
             let _ = entity.damage_with_context(
-                entity.as_ref(),
+                attacker_ref,
                 crate::entity::combat::WIND_CHARGE_DIRECT_DAMAGE,
                 DamageType::WIND_CHARGE,
                 Some(hit_pos),

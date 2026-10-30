@@ -106,38 +106,20 @@ impl EntityBase for EggEntity {
             .owner_id
             .and_then(|id| world.get_entity_by_id(id));
 
-        if let (
-            crate::entity::projectile::ProjectileHit::Entity {
-                entity: hit_entity,
-                hit_pos: entity_hit_pos,
-                ..
-            },
-            Some(owner),
-        ) = (&hit, &attacker)
-        {
-            let victim_ref = &**hit_entity;
-            hit_entity.damage_with_context(
-                victim_ref,
-                0.0,
-                pumpkin_data::damage::DamageType::THROWN,
-                Some(*entity_hit_pos),
-                Some(owner.get_entity()),
-                Some(victim_ref),
-            );
-        } else if let crate::entity::projectile::ProjectileHit::Entity {
+        if let crate::entity::projectile::ProjectileHit::Entity {
             entity: hit_entity,
             hit_pos: entity_hit_pos,
             ..
         } = &hit
         {
-            let victim_ref = &**hit_entity;
-            hit_entity.damage_with_context(
-                victim_ref,
+            let attacker_ref: &dyn EntityBase = attacker.as_deref().unwrap_or(self);
+            let _ = hit_entity.damage_with_context(
+                attacker_ref,
                 0.0,
                 pumpkin_data::damage::DamageType::THROWN,
                 Some(*entity_hit_pos),
                 Some(self.get_entity()),
-                Some(victim_ref),
+                attacker.as_deref(),
             );
         }
 
