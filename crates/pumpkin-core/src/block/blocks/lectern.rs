@@ -98,8 +98,9 @@ impl ScreenHandlerFactory for LecternScreenFactory {
 pub struct LecternBlock;
 
 impl LecternBlock {
-    /// Vanilla pulse length of a page-turn signal, in game ticks.
-    const PAGE_TURN_PULSE_TICKS: u32 = 2;
+    /// Vanilla pulse length of a page-turn signal, in game ticks (Vanilla: PAGE_CHANGE_IMPULSE_TICKS = 2).
+    pub const PAGE_CHANGE_IMPULSE_TICKS: u32 = 2;
+    pub const PAGE_TURN_PULSE_TICKS: u32 = Self::PAGE_CHANGE_IMPULSE_TICKS;
 
     /// The lectern strongly powers the block below it, so its neighbors need
     /// updating whenever the power or book state changes.
@@ -243,6 +244,7 @@ impl BlockBehaviour for LecternBlock {
             props.to_state_id(args.block),
             BlockFlags::NOTIFY_ALL,
         );
+        Self::update_neighbors_below(args.world, args.position);
     }
 
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {

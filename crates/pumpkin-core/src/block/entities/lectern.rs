@@ -107,8 +107,26 @@ impl BlockEntity for LecternBlockEntity {
     }
 }
 
+/// Vanilla `LecternBlockEntity.getRedstoneSignal`: `floor(progress * 14.0) + (hasBook ? 1 : 0)`.
+#[must_use]
+pub fn calculate_lectern_comparator_output(has_book: bool, page: usize, page_count: usize) -> u8 {
+    if !has_book || page_count == 0 {
+        return 0;
+    }
+    let progress = if page_count > 1 {
+        (page.min(page_count - 1)) as f32 / (page_count - 1) as f32
+    } else {
+        1.0
+    };
+    (progress * 14.0).floor() as u8 + 1
+}
+
 impl LecternBlockEntity {
     pub const ID: &'static str = "minecraft:lectern";
+    pub const DATA_PAGE: usize = 0;
+    pub const NUM_DATA: usize = 1;
+    pub const SLOT_BOOK: usize = 0;
+    pub const NUM_SLOTS: usize = 1;
 
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
@@ -144,6 +162,16 @@ impl LecternBlockEntity {
         )
     }
 
+    pub fn has_book(&self) -> bool {
+        let book = self
+            .book
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        !book.is_empty()
+            && (book.get_data_component::<WrittenBookContentImpl>().is_some()
+                || book.get_data_component::<WritableBookContentImpl>().is_some())
+    }
+
     /// Vanilla `LecternBlockEntity.getRedstoneSignal`: `floor(progress * 14) + 1`,
     /// or `0` without a book. A single-page book counts as fully read and emits 15.
     pub fn comparator_output(&self) -> u8 {
@@ -156,12 +184,7 @@ impl LecternBlockEntity {
         }
 
         let page_count = Self::page_count_of(&book);
-        let progress = if page_count > 1 {
-            self.page.load(Ordering::Relaxed) as f32 / (page_count - 1) as f32
-        } else {
-            1.0
-        };
-        (progress * 14.0).floor() as u8 + 1
+        calculate_lectern_comparator_output(true, self.page.load(Ordering::Relaxed), page_count as usize)
     }
 }
 

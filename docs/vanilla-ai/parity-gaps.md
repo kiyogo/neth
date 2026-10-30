@@ -6296,3 +6296,30 @@ ound_to_orb_size tiers.
     - Added constants `TARGET_BLOCK_ACTIVATION_TICKS_ARROWS`, `TARGET_BLOCK_ACTIVATION_TICKS_OTHER`, `TARGET_BLOCK_MIN_POWER`, `TARGET_BLOCK_MAX_POWER`, `TARGET_BLOCK_BULLSEYE_MIN_DISTANCE`.
     - Added calculation helpers `calculate_target_block_redstone_power` and `get_target_block_activation_ticks`.
     - Added unit test `test_target_block_parity`.
+
+### Gap 255: Lectern Book Placement, Page Turning, Comparator Output & Redstone Pulse Parity
+- **Vanilla Reference**:
+  - LecternBlock.java:44-57, 148-167, 182-201:
+    - Constants:
+      - PAGE_CHANGE_IMPULSE_TICKS = 2: A page turn produces a 2-tick redstone pulse (POWERED = true), strongly powering the block below.
+    - Behavior:
+      - signalPageChange(Level level, BlockPos pos, BlockState state) sets POWERED = true, schedules block tick for 2 ticks, calls level.levelEvent(1043, pos, 0) (SoundPageTurn), and updates neighbors below.
+      - Scheduled tick clears POWERED = false and calls updateBelow(level, pos, state) to notify neighbors beneath that pulse has ended.
+      - Direct/Strong redstone power: emits power 15 only in Direction.UP (strongly powering block directly below). Weak power emits 15 in all directions when powered.
+  - LecternBlockEntity.java:34-37, 146-175, 240-248:
+    - Data container constants:
+      - DATA_PAGE = 0, NUM_DATA = 1, SLOT_BOOK = 0, NUM_SLOTS = 1.
+    - Comparator signal calculation:
+      - If empty / no book: returns 0.
+      - If hasBook: loor(pageProgress * 14.0F) + 1 where pageProgress = (pageCount > 1) ? (page / (pageCount - 1.0F)) : 1.0F.
+      - Single-page book always emits 15.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/lectern.rs:
+    - Exported PAGE_CHANGE_IMPULSE_TICKS (2).
+    - Added missing Self::update_neighbors_below(args.world, args.position) call in on_scheduled_tick when powered turns off, preventing redstone components underneath from getting stuck powered.
+  - Updated crates/pumpkin-core/src/block/entities/lectern.rs:
+    - Exported constants DATA_PAGE (0), NUM_DATA (1), SLOT_BOOK (0), NUM_SLOTS (1).
+    - Added has_book(&self) -> bool checking both WrittenBookContentImpl and WritableBookContentImpl.
+    - Added helper calculate_lectern_comparator_output(has_book, page, page_count) matching vanilla formula.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_lectern_book_placement_and_comparator_parity.

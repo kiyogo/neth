@@ -14682,6 +14682,37 @@ mod tests {
     }
 
     #[test]
+    fn test_lectern_book_placement_and_comparator_parity() {
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::entities::lectern::{LecternBlockEntity, calculate_lectern_comparator_output};
+
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlockEntity::DATA_PAGE, 0);
+        assert_eq!(LecternBlockEntity::NUM_DATA, 1);
+        assert_eq!(LecternBlockEntity::SLOT_BOOK, 0);
+        assert_eq!(LecternBlockEntity::NUM_SLOTS, 1);
+
+        // No book => 0
+        assert_eq!(calculate_lectern_comparator_output(false, 0, 0), 0);
+        assert_eq!(calculate_lectern_comparator_output(false, 0, 10), 0);
+
+        // Single-page book => 15 (fully read)
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 1), 15);
+
+        // 15-page book (pages 0..=14)
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 15), 1);
+        assert_eq!(calculate_lectern_comparator_output(true, 7, 15), 8);
+        assert_eq!(calculate_lectern_comparator_output(true, 14, 15), 15);
+
+        // 5-page book (pages 0..=4)
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 5), 1);
+        assert_eq!(calculate_lectern_comparator_output(true, 1, 5), 4);
+        assert_eq!(calculate_lectern_comparator_output(true, 2, 5), 8);
+        assert_eq!(calculate_lectern_comparator_output(true, 3, 5), 11);
+        assert_eq!(calculate_lectern_comparator_output(true, 4, 5), 15);
+    }
+
+    #[test]
     fn test_target_block_parity() {
         assert_eq!(TARGET_BLOCK_ACTIVATION_TICKS_ARROWS, 20);
         assert_eq!(TARGET_BLOCK_ACTIVATION_TICKS_OTHER, 8);
