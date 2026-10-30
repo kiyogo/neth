@@ -320,6 +320,13 @@ mod tests {
             calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, true),
             5.0
         );
+
+        // Scale & curse display limit parity (ElderGuardian.java:20, 25)
+        assert_eq!(crate::entity::combat::ELDER_GUARDIAN_SIZE_SCALE, 2.35);
+        assert_eq!(
+            crate::entity::combat::ELDER_GUARDIAN_CURSE_DISPLAY_LIMIT_TICKS,
+            1200
+        );
     }
 }
 

@@ -4875,3 +4875,36 @@ eck, part 1): nhận 100% full damage (damage).
     - Verified nautilus shell swap immunity (`can_replace_current_item`).
     - Updated unit test `test_drowned_trident_combat_and_uncertainty_parity`.
   - All unit tests verified and passing across husk, drowned, and zombie family test suites.
+
+## Gap 216: Guardian & Elder Guardian Combat, Laser Beam, Spikes Thorns & Mining Fatigue Parity
+- **Vanilla Reference**:
+  - `Guardian.java:48-50, 61-68, 85-87, 101-110, 229-254, 257-266, 311-324, 341-435`:
+    - Base Attributes: `MAX_HEALTH = 30.0` (`GUARDIAN_MAX_HEALTH`), `MOVEMENT_SPEED = 0.5` (`GUARDIAN_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 6.0` (`GUARDIAN_BASE_ATTACK_DAMAGE`), `xpReward = 10` (`GUARDIAN_XP_REWARD`).
+    - Laser Beam Attack (`GuardianAttackGoal`):
+      - Attack duration: 80 ticks = 4 giây (`GUARDIAN_ATTACK_DURATION_TICKS = 80`), pre-charge warmup -10 ticks (`GUARDIAN_LASER_WARMUP_TICKS = 10`).
+      - Target Selector: Player, Squid, Glow Squid, Axolotl với `distanceToSqr > 9.0` (`GUARDIAN_MIN_ATTACK_DISTANCE_SQ = 9.0`, tức > 3 blocks).
+      - Laser Damage Calculation: Base indirect magic damage = 1.0F (+2.0F on Hard difficulty = 3.0F), sau đó gọi physical melee damage via `doHurtTarget` (`ATTACK_DAMAGE = 6.0F`). Tổng damage: Normal 7.0 HP, Hard 9.0 HP.
+    - Spikes Thorns Retaliation (`hurtServer`): Khi Guardian đứng yên (`!isMoving()`, gai xòe ra) và bị tấn công bởi sinh vật sống không né thorns, phản 2.0F (1 tim) thorns damage (`GUARDIAN_THORNS_DAMAGE = 2.0`).
+    - Land Flop Mechanics: Khi ở trên cạn trên mặt đất, nhảy giãy giụa với `y = 0.5` (`GUARDIAN_FLOP_VERTICAL_VELOCITY = 0.5`) và xz scale `0.4` (`GUARDIAN_FLOP_HORIZONTAL_AMPLITUDE = 0.4`).
+    - Underwater Respiration: `setAirSupply(300)` (không bao giờ chết đuối).
+  - `ElderGuardian.java:20-26, 35-43, 65-78`:
+    - Base Attributes: `MAX_HEALTH = 80.0` (`ELDER_GUARDIAN_MAX_HEALTH`), `MOVEMENT_SPEED = 0.3` (`ELDER_GUARDIAN_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 8.0` (`ELDER_GUARDIAN_BASE_ATTACK_DAMAGE`), `xpReward = 10` (`ELDER_GUARDIAN_XP_REWARD`).
+    - Model Size Scale: `ELDER_SIZE_SCALE = 2.35` (`ELDER_GUARDIAN_SIZE_SCALE = 2.35`).
+    - Laser Attack: Attack duration nhanh hơn (60 ticks = 3 giây, `ELDER_GUARDIAN_ATTACK_DURATION_TICKS = 60`). Magic damage bonus +2.0F (Normal 3.0F magic + 8.0F physical = 11.0 HP; Hard 5.0F magic + 8.0F physical = 13.0 HP). Không bị ràng buộc khoảng cách tối thiểu `distanceToSqr > 9.0`.
+    - Mining Fatigue Ghost Curse:
+      - Chu kỳ 1200 ticks = 60 giây (`ELDER_GUARDIAN_CURSE_INTERVAL_TICKS = 1200`), bán kính 50.0 blocks (`ELDER_GUARDIAN_CURSE_RADIUS = 50.0`).
+      - Áp dụng `MobEffects.MINING_FATIGUE` thời lượng 6000 ticks = 5 phút (`ELDER_GUARDIAN_CURSE_DURATION_TICKS = 6000`), amplifier 2 (Mining Fatigue III).
+      - Gửi packet `ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT` hiển thị ma ảnh Elder Guardian.
+      - Giới hạn hiển thị/tái áp dụng: `1200 ticks` (`ELDER_GUARDIAN_CURSE_DISPLAY_LIMIT_TICKS = 1200`).
+    - Persistence: `setPersistenceRequired()` (không bao giờ tự despawn).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ELDER_GUARDIAN_SIZE_SCALE = 2.35`, `GUARDIAN_MIN_ATTACK_DISTANCE_SQ = 9.0`, `ELDER_GUARDIAN_CURSE_DISPLAY_LIMIT_TICKS = 1200`, `GUARDIAN_FLOP_VERTICAL_VELOCITY = 0.5`, `GUARDIAN_FLOP_HORIZONTAL_AMPLITUDE = 0.4`.
+    - Updated unit test `test_guardian_parity`.
+  - Updated `GuardianEntity` in `crates/pumpkin-core/src/entity/mob/guardian.rs`:
+    - Verified thorns retaliation condition, laser charge timings, and flop motion parameters.
+    - Updated unit test `test_guardian_combat_and_attributes_parity`.
+  - Updated `ElderGuardianEntity` in `crates/pumpkin-core/src/entity/mob/elder_guardian.rs`:
+    - Verified 60-tick laser attack duration, ghost curse pulse and client event packet broadcasting.
+    - Updated unit test `test_elder_guardian_combat_and_curse_parity`.
+  - All unit tests verified and passing across guardian, elder_guardian, and combat suites.

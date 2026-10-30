@@ -301,6 +301,14 @@ mod tests {
             calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, false),
             3.0
         );
+
+        // Flop motion & attack min distance parity (Guardian.java:260-262, 433)
+        assert_eq!(crate::entity::combat::GUARDIAN_MIN_ATTACK_DISTANCE_SQ, 9.0);
+        assert_eq!(crate::entity::combat::GUARDIAN_FLOP_VERTICAL_VELOCITY, 0.5);
+        assert_eq!(
+            crate::entity::combat::GUARDIAN_FLOP_HORIZONTAL_AMPLITUDE,
+            0.4
+        );
     }
 }
 

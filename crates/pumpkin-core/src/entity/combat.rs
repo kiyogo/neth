@@ -3927,6 +3927,27 @@ pub const ELDER_GUARDIAN_CURSE_DURATION_TICKS: i32 = 6000;
 /// Mirrors vanilla ElderGuardian.java:26 (EFFECT_AMPLIFIER = 2).
 pub const ELDER_GUARDIAN_CURSE_AMPLIFIER: u8 = 2;
 
+/// Elder Guardian mining fatigue display/re-apply limit in ticks (1200 ticks = 1 minute).
+/// Mirrors vanilla `ElderGuardian.java:25`:
+/// `private static final int EFFECT_DISPLAY_LIMIT = 1200;`
+pub const ELDER_GUARDIAN_CURSE_DISPLAY_LIMIT_TICKS: i32 = 1200;
+
+/// Elder Guardian scale compared to normal Guardian (2.35x).
+/// Mirrors vanilla `ElderGuardian.java:20`:
+/// `EntityTypes.ELDER_GUARDIAN.getWidth() / EntityTypes.GUARDIAN.getWidth()`
+pub const ELDER_GUARDIAN_SIZE_SCALE: f32 = 2.35;
+
+/// Minimum squared distance required for normal Guardian to initiate or continue laser attack (9.0 = 3.0 blocks).
+/// Mirrors vanilla `Guardian.java:360, 433`:
+/// `this.guardian.distanceToSqr(this.guardian.getTarget()) > 9.0`
+pub const GUARDIAN_MIN_ATTACK_DISTANCE_SQ: f64 = 9.0;
+
+/// Guardian flop motion parameters when grounded on land.
+/// Mirrors vanilla `Guardian.java:260-262`:
+/// `(random.nextFloat() * 2.0F - 1.0F) * 0.4F, 0.5, (random.nextFloat() * 2.0F - 1.0F) * 0.4F`
+pub const GUARDIAN_FLOP_VERTICAL_VELOCITY: f64 = 0.5;
+pub const GUARDIAN_FLOP_HORIZONTAL_AMPLITUDE: f32 = 0.4;
+
 /// Returns laser attack duration in ticks (60 for Elder Guardian, 80 for normal Guardian).
 /// Mirrors vanilla Guardian.java:125 and ElderGuardian.java:41.
 #[must_use]
@@ -9398,6 +9419,13 @@ mod tests {
         assert_eq!(curse.amplifier, 2);
         assert!(curse.show_particles);
         assert!(curse.show_icon);
+
+        // 5. Extended Guardian & Elder Guardian Parity (ElderGuardian.java:20, 25, Guardian.java:260-262, 360, 433)
+        assert_eq!(ELDER_GUARDIAN_SIZE_SCALE, 2.35);
+        assert_eq!(GUARDIAN_MIN_ATTACK_DISTANCE_SQ, 9.0);
+        assert_eq!(ELDER_GUARDIAN_CURSE_DISPLAY_LIMIT_TICKS, 1200);
+        assert_eq!(GUARDIAN_FLOP_VERTICAL_VELOCITY, 0.5);
+        assert_eq!(GUARDIAN_FLOP_HORIZONTAL_AMPLITUDE, 0.4);
     }
 
     #[test]
