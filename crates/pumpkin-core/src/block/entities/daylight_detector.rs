@@ -43,6 +43,9 @@ impl BlockEntity for DaylightDetectorBlockEntity {
 
 impl DaylightDetectorBlockEntity {
     pub const ID: &'static str = "minecraft:daylight_detector";
+    pub const TICK_INTERVAL_TICKS: i64 = 20;
+    pub const MAX_POWER: u8 = 15;
+    pub const SHAPE_HEIGHT_PIXELS: f64 = 6.0;
 
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {

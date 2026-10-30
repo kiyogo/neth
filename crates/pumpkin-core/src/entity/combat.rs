@@ -8223,6 +8223,35 @@ pub fn can_trigger_channeling(is_thundering: bool, can_see_sky: bool) -> bool {
     is_thundering && can_see_sky
 }
 
+/// Vanilla `DaylightDetectorBlock.java:28-30, 47-63, 106`:
+pub const DAYLIGHT_DETECTOR_TICK_INTERVAL_TICKS: i64 = 20;
+pub const DAYLIGHT_DETECTOR_MAX_POWER: u8 = 15;
+pub const DAYLIGHT_DETECTOR_SHAPE_HEIGHT_PIXELS: f64 = 6.0;
+
+/// Vanilla `DaylightDetectorBlock.java:47-63`:
+/// Computes signal strength for daylight detector based on sky brightness, sun angle, and inverted state.
+#[must_use]
+pub fn calculate_daylight_detector_signal(
+    effective_sky_brightness: i32,
+    sun_angle_radians: f32,
+    is_inverted: bool,
+) -> u8 {
+    let mut target = effective_sky_brightness;
+    let mut sun_angle = sun_angle_radians;
+    if is_inverted {
+        target = 15 - target;
+    } else if target > 0 {
+        let offset = if sun_angle < std::f32::consts::PI {
+            0.0
+        } else {
+            std::f32::consts::PI * 2.0
+        };
+        sun_angle += (offset - sun_angle) * 0.2;
+        target = ((target as f32 * sun_angle.cos()) + 0.5).floor() as i32;
+    }
+    target.clamp(0, 15) as u8
+}
+
 
 
 
@@ -14600,6 +14629,27 @@ mod tests {
         assert!(!can_trigger_channeling(false, true)); // rain but not thunder
         assert!(!can_trigger_channeling(true, false)); // thundering but under roof
         assert!(!can_trigger_channeling(false, false));
+    }
+
+    #[test]
+    fn test_daylight_detector_parity() {
+        assert_eq!(DAYLIGHT_DETECTOR_TICK_INTERVAL_TICKS, 20);
+        assert_eq!(DAYLIGHT_DETECTOR_MAX_POWER, 15);
+        assert_eq!(DAYLIGHT_DETECTOR_SHAPE_HEIGHT_PIXELS, 6.0);
+
+        // Signal strength at noon (sun angle = 0, sky brightness = 15)
+        assert_eq!(calculate_daylight_detector_signal(15, 0.0, false), 15);
+        assert_eq!(calculate_daylight_detector_signal(15, 0.0, true), 0);
+
+        // Signal strength at midnight (sky brightness = 0)
+        assert_eq!(calculate_daylight_detector_signal(0, std::f32::consts::PI, false), 0);
+        assert_eq!(calculate_daylight_detector_signal(0, std::f32::consts::PI, true), 15);
+
+        // Signal strength under shade (noon, partial sky brightness)
+        assert_eq!(calculate_daylight_detector_signal(5, 0.0, false), 5);
+        assert_eq!(calculate_daylight_detector_signal(5, 0.0, true), 10);
+        assert_eq!(calculate_daylight_detector_signal(10, 0.0, false), 10);
+        assert_eq!(calculate_daylight_detector_signal(10, 0.0, true), 5);
     }
 
 

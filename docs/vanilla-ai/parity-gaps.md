@@ -6254,3 +6254,22 @@ ound_to_orb_size tiers.
     - Added constants `LIGHTNING_ROD_ACTIVATION_TICKS`, `LIGHTNING_ROD_RANGE`, `LIGHTNING_ROD_EVENT_LIGHTNING_STRIKE`, `LIGHTNING_ROD_SPARK_CYCLE_TICKS`, `LIGHTNING_STRIKE_DAMAGE`, `LIGHTNING_FIRE_SOURCE_COUNT`, `LIGHTNING_HIT_RANGE_HORIZONTAL`, `LIGHTNING_HIT_RANGE_VERTICAL_DOWN`, `LIGHTNING_HIT_RANGE_VERTICAL_UP`.
     - Added helper functions `calculate_lightning_rod_redstone_power` and `can_trigger_channeling`.
     - Added unit test `test_lightning_rod_and_channeling_parity`.
+
+### Gap 253: Daylight Detector Inversion, Dimension Skylight, Ticking Rate & Redstone Power Parity
+- **Vanilla Reference**:
+  - `DaylightDetectorBlock.java:27-35, 47-63, 98-109` & `DaylightDetectorBlockEntity.java:1-10`:
+    - Geometry & constants:
+      - Shape: `Block.column(16.0, 0.0, 6.0)` (height 6 pixels / 0.375 blocks).
+      - Maximum power output: `15` (`POWER` in range `0..=15`).
+      - Ticking rate: `level.getGameTime() % 20L == 0L` (ticks once every 20 game ticks / 1.0 second).
+      - Dimension requirement: `level.dimensionType().hasSkyLight()`: daylight detectors only tick and update signal in dimensions with skylight (Overworld).
+    - Signal calculation:
+      - Inverted: `target = 15 - effectiveSkyBrightness`.
+      - Normal: `target = round(effectiveSkyBrightness * cos(sunAngle + (offset - sunAngle) * 0.2))` clamped to `[0, 15]`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/daylight_detector.rs`:
+    - Exported constants `TICK_INTERVAL_TICKS` (20), `MAX_POWER` (15), and `SHAPE_HEIGHT_PIXELS` (6.0).
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `DAYLIGHT_DETECTOR_TICK_INTERVAL_TICKS`, `DAYLIGHT_DETECTOR_MAX_POWER`, `DAYLIGHT_DETECTOR_SHAPE_HEIGHT_PIXELS`.
+    - Added helper function `calculate_daylight_detector_signal`.
+    - Added unit test `test_daylight_detector_parity`.
