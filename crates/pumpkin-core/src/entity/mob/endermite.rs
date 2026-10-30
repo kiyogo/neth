@@ -6,6 +6,10 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 
+use crate::entity::combat::{
+    ENDERMITE_BASE_ATTACK_DAMAGE, ENDERMITE_BASE_MOVEMENT_SPEED, ENDERMITE_LIFETIME_MAX,
+    ENDERMITE_MAX_HEALTH, ENDERMITE_XP_REWARD, should_endermite_despawn,
+};
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
@@ -24,7 +28,7 @@ pub struct EndermiteEntity {
 }
 
 impl EndermiteEntity {
-    pub const XP_REWARD: u32 = 3;
+    pub const XP_REWARD: u32 = ENDERMITE_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
@@ -47,19 +51,19 @@ impl EndermiteEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 8.0;
+                health.base_value = f64::from(ENDERMITE_MAX_HEALTH);
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.25;
+                speed.base_value = ENDERMITE_BASE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 2.0;
+                damage.base_value = f64::from(ENDERMITE_BASE_ATTACK_DAMAGE);
                 damage.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(8.0);
+        mob_arc.mob_entity.living_entity.set_health(ENDERMITE_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -177,11 +181,14 @@ mod tests {
 
     #[test]
     fn test_endermite_despawn_and_xp_parity() {
-        assert_eq!(EndermiteEntity::XP_REWARD, 3);
-        assert_eq!(crate::entity::combat::ENDERMITE_LIFETIME_MAX, 2400);
-        assert!(crate::entity::combat::should_endermite_despawn(2400, false));
-        assert!(crate::entity::combat::should_endermite_despawn(2500, false));
-        assert!(!crate::entity::combat::should_endermite_despawn(2399, false));
-        assert!(!crate::entity::combat::should_endermite_despawn(3000, true));
+        assert_eq!(EndermiteEntity::XP_REWARD, ENDERMITE_XP_REWARD);
+        assert_eq!(ENDERMITE_LIFETIME_MAX, 2400);
+        assert_eq!(ENDERMITE_MAX_HEALTH, 8.0);
+        assert_eq!(ENDERMITE_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(ENDERMITE_BASE_ATTACK_DAMAGE, 2.0);
+        assert!(should_endermite_despawn(2400, false));
+        assert!(should_endermite_despawn(2500, false));
+        assert!(!should_endermite_despawn(2399, false));
+        assert!(!should_endermite_despawn(3000, true));
     }
 }

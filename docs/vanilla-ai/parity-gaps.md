@@ -4908,3 +4908,27 @@ eck, part 1): nhận 100% full damage (damage).
     - Verified 60-tick laser attack duration, ghost curse pulse and client event packet broadcasting.
     - Updated unit test `test_elder_guardian_combat_and_curse_parity`.
   - All unit tests verified and passing across guardian, elder_guardian, and combat suites.
+
+## Gap 217: Silverfish & Endermite Attributes, Lifetime Despawn, Friend Wakeup & Infestation Parity
+- **Vanilla Reference**:
+  - `Silverfish.java:40-60, 126-170, 185-230`:
+    - Base Attributes: `MAX_HEALTH = 8.0` (`SILVERFISH_MAX_HEALTH`), `MOVEMENT_SPEED = 0.25` (`SILVERFISH_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 1.0` (`SILVERFISH_BASE_ATTACK_DAMAGE`), `xpReward = 5` (`SILVERFISH_XP_REWARD`).
+    - Wake Up Friends Mechanics: Khi nhận sát thương từ nguồn entity hoặc damage type trong tag `minecraft:always_triggers_silverfish`, kích hoạt `wakeUpFriendsTicks = 20` (`SILVERFISH_WAKE_UP_FRIENDS_TICKS = 20`). Quét tìm khối Infested xung quanh trong phạm vi `y: -5..=5, xz: -10..=10`. Khi `mobGriefing` bật, đập khối đá và spawn Silverfish mới với 50% cơ hội dừng quét.
+    - Merge with Stone: Chu kỳ dạo bước ngẫu nhiên mỗi 10 ticks (`SILVERFISH_MERGE_INTERVAL_TICKS = 10`), kiểm tra khối tương thích `InfestedBlock.isCompatibleHostBlock`, biến khối thành Infested tương ứng và loại bỏ Silverfish với hạt khói `EntityStatus.Poof`.
+  - `Endermite.java:30-40, 50-60, 75-90, 120-130`:
+    - Base Attributes: `MAX_HEALTH = 8.0` (`ENDERMITE_MAX_HEALTH`), `MOVEMENT_SPEED = 0.25` (`ENDERMITE_BASE_MOVEMENT_SPEED`), `ATTACK_DAMAGE = 2.0` (`ENDERMITE_BASE_ATTACK_DAMAGE`, gây sát thương gấp đôi Silverfish), `xpReward = 3` (`ENDERMITE_XP_REWARD`).
+    - Spawning from Ender Pearl: 5% tỷ lệ spawn khi ngọc Ender va chạm (`ThrownEnderpearl.java:107`, `ENDER_PEARL_ENDERMITE_SPAWN_CHANCE = 0.05`).
+    - Lifetime & Despawn: `MAX_LIFE = 2400` ticks (2 phút, `ENDERMITE_LIFETIME_MAX = 2400`). Khi `!isPersistenceRequired()`, mỗi tick `life++`. Khi `life >= 2400`, tự động biến mất (`discard()`). Lưu trữ và khôi phục trạng thái thông qua NBT tag `"Lifetime"`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `SILVERFISH_MAX_HEALTH = 8.0`, `SILVERFISH_BASE_MOVEMENT_SPEED = 0.25`, `SILVERFISH_BASE_ATTACK_DAMAGE = 1.0`, `SILVERFISH_XP_REWARD = 5`, `SILVERFISH_MERGE_INTERVAL_TICKS = 10`, `SILVERFISH_WAKE_UP_FRIENDS_TICKS = 20`.
+    - Added constants `ENDERMITE_MAX_HEALTH = 8.0`, `ENDERMITE_BASE_MOVEMENT_SPEED = 0.25`, `ENDERMITE_BASE_ATTACK_DAMAGE = 2.0`, `ENDERMITE_XP_REWARD = 3`, `ENDER_PEARL_ENDERMITE_SPAWN_CHANCE = 0.05`, `ENDERMITE_LIFETIME_MAX = 2400`.
+    - Added helper `should_endermite_despawn(life: i32, persistence_required: bool) -> bool`.
+    - Updated unit test `test_hostile_mob_details_parity`.
+  - Updated `SilverfishEntity` in `crates/pumpkin-core/src/entity/mob/silverfish.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Updated unit test `test_silverfish_wake_up_and_xp_parity`.
+  - Updated `EndermiteEntity` in `crates/pumpkin-core/src/entity/mob/endermite.rs`:
+    - Synced base attributes and lifetime despawn checks with `combat.rs` constants.
+    - Updated unit test `test_endermite_despawn_and_xp_parity`.
+  - All unit tests verified and passing across silverfish, endermite, and combat suites.

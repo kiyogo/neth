@@ -6396,11 +6396,41 @@ pub const fn should_cube_mob_play_jump_sound(size: i32) -> bool {
     size > 0
 }
 
+/// Silverfish base attributes, mirroring vanilla `Silverfish.java:53`:
+/// - Max Health: 8.0 HP
+/// - Movement Speed: 0.25
+/// - Attack Damage: 1.0 HP
+/// - Experience: 5 XP
+pub const SILVERFISH_MAX_HEALTH: f32 = 8.0;
+pub const SILVERFISH_BASE_MOVEMENT_SPEED: f64 = 0.25;
+pub const SILVERFISH_BASE_ATTACK_DAMAGE: f32 = 1.0;
+pub const SILVERFISH_XP_REWARD: u32 = 5;
+
+/// Number of ticks between Silverfish attempts to merge with nearby compatible stone blocks.
+/// Mirrors vanilla `Silverfish.java:131`:
+/// `super(silverfish, 1.0, 10);`
+pub const SILVERFISH_MERGE_INTERVAL_TICKS: i32 = 10;
+
 /// Number of ticks Silverfish continues waking up nearby infested block friends when hurt.
 ///
 /// Mirrors vanilla `Silverfish.java:189`:
 /// `silverfish.wakeUpFriendsTicks = 20;`
 pub const SILVERFISH_WAKE_UP_FRIENDS_TICKS: i32 = 20;
+
+/// Endermite base attributes, mirroring vanilla `Endermite.java:36, 52`:
+/// - Max Health: 8.0 HP
+/// - Movement Speed: 0.25
+/// - Attack Damage: 2.0 HP
+/// - Experience: 3 XP
+pub const ENDERMITE_MAX_HEALTH: f32 = 8.0;
+pub const ENDERMITE_BASE_MOVEMENT_SPEED: f64 = 0.25;
+pub const ENDERMITE_BASE_ATTACK_DAMAGE: f32 = 2.0;
+pub const ENDERMITE_XP_REWARD: u32 = 3;
+
+/// Chance of Ender Pearl impact spawning an Endermite (5%).
+/// Mirrors vanilla `ThrownEnderpearl.java:107`:
+/// `if (random.nextFloat() < 0.05F)`
+pub const ENDER_PEARL_ENDERMITE_SPAWN_CHANCE: f32 = 0.05;
 
 /// Maximum lifetime in ticks of an Endermite before despawning (2400 ticks = 2 minutes).
 ///
@@ -10698,8 +10728,19 @@ mod tests {
         assert!(should_cube_mob_play_jump_sound(1));
         assert!(!should_cube_mob_play_jump_sound(0));
 
-        // 4. Silverfish wake friends duration & Endermite lifetime (Silverfish.java:189, Endermite.java:82)
+        // 4. Silverfish wake friends duration & Endermite lifetime (Silverfish.java:53, 189, Endermite.java:36, 52, 82)
+        assert_eq!(SILVERFISH_MAX_HEALTH, 8.0);
+        assert_eq!(SILVERFISH_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(SILVERFISH_BASE_ATTACK_DAMAGE, 1.0);
+        assert_eq!(SILVERFISH_XP_REWARD, 5);
+        assert_eq!(SILVERFISH_MERGE_INTERVAL_TICKS, 10);
         assert_eq!(SILVERFISH_WAKE_UP_FRIENDS_TICKS, 20);
+
+        assert_eq!(ENDERMITE_MAX_HEALTH, 8.0);
+        assert_eq!(ENDERMITE_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(ENDERMITE_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(ENDERMITE_XP_REWARD, 3);
+        assert_eq!(ENDER_PEARL_ENDERMITE_SPAWN_CHANCE, 0.05);
         assert_eq!(ENDERMITE_LIFETIME_MAX, 2400);
         assert!(should_endermite_despawn(2400, false));
         assert!(should_endermite_despawn(2500, false));
