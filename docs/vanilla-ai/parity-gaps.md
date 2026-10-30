@@ -6037,3 +6037,31 @@ ound_to_orb_size tiers.
   - Updated `ItemFrameEntity` (`crates/pumpkin-core/src/entity/decoration/item_frame.rs`):
     - Converted hardcoded damage checks to use `MINECRAFT_BYPASSES_INVULNERABILITY` and `MINECRAFT_IS_EXPLOSION` damage type tags.
   - All unit tests verified and passing across the decoration entities suite.
+
+### Gap 245: Area Effect Cloud & Lightning Bolt Entities Family (Potion Cloud Radius, Waiting Period, Reapplication Delay, Lightning Fire & Damage) Parity
+- **Vanilla Reference**:
+  - `AreaEffectCloud.java:29-47, 190-240`:
+    - `DEFAULT_RADIUS = 3.0F`, `MINIMAL_RADIUS = 0.5F`, `MAX_RADIUS = 32.0F`.
+    - `DEFAULT_LINGERING_DURATION = 600` ticks (30 seconds).
+    - `DEFAULT_WAIT_TIME = 20` ticks (1 second).
+    - `DEFAULT_REAPPLICATION_DELAY = 20` ticks (1 second).
+    - `TIME_BETWEEN_APPLICATIONS = 5` ticks.
+    - `HEIGHT = 0.5F`.
+    - `DEFAULT_RADIUS_ON_USE = -0.5F`.
+    - If `radius < 0.5F` or `tickCount - waitTime >= duration`, the cloud is discarded.
+  - `LightningBolt.java:32-34` & `Entity.java:2932-2939`:
+    - `START_LIFE = 2` ticks.
+    - `DAMAGE_RADIUS = 3.0` blocks horizontally, Y bounds `[-3.0, +9.0]`.
+    - Lightning damage to struck entities: `5.0 HP` (`DamageType::LIGHTNING_BOLT`).
+    - Ignite duration upon strike: `8.0 seconds` (160 ticks).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `AREA_EFFECT_CLOUD_DEFAULT_RADIUS`, `AREA_EFFECT_CLOUD_MINIMAL_RADIUS`, `AREA_EFFECT_CLOUD_MAX_RADIUS`, `AREA_EFFECT_CLOUD_DEFAULT_LINGERING_DURATION`, `AREA_EFFECT_CLOUD_DEFAULT_WAIT_TIME`, `AREA_EFFECT_CLOUD_DEFAULT_REAPPLICATION_DELAY`, `AREA_EFFECT_CLOUD_TIME_BETWEEN_APPLICATIONS`, `AREA_EFFECT_CLOUD_DEFAULT_HEIGHT`, `AREA_EFFECT_CLOUD_RADIUS_ON_USE`, `LIGHTNING_DAMAGE`, `LIGHTNING_FIRE_SECONDS`, `LIGHTNING_DAMAGE_RADIUS`, `LIGHTNING_DAMAGE_Y_BELOW`, `LIGHTNING_DAMAGE_Y_ABOVE`, `LIGHTNING_START_LIFE`.
+    - Added unit test `test_area_effect_cloud_and_lightning_bolt_parity`.
+  - Updated `AreaEffectCloudEntity` (`crates/pumpkin-core/src/entity/area_effect_cloud.rs`):
+    - Converted default radius, duration, wait time, reapplication delay, minimal discard radius and 5-tick application period to combat constants.
+  - Updated `LightningBoltEntity` (`crates/pumpkin-core/src/entity/lightning.rs`):
+    - Converted `START_LIFE` and `damage_box` calculation to combat constants.
+  - Updated `EntityBase::on_lightning_strike` (`crates/pumpkin-core/src/entity/mod.rs`):
+    - Converted ignite duration (8.0s) and damage (5.0 HP) to combat constants.
+  - All unit tests verified and passing across the area effect cloud and lightning suites.

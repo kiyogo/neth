@@ -64,15 +64,15 @@ impl AreaEffectCloudEntity {
             entity,
             item_stack: Mutex::new(ItemStack::new(0, &pumpkin_data::item::Item::GLASS_BOTTLE)),
             effects: Mutex::new(Vec::new()),
-            radius: Mutex::new(3.0),
-            duration: Mutex::new(600), // default for lingering potions
+            radius: Mutex::new(crate::entity::combat::AREA_EFFECT_CLOUD_DEFAULT_RADIUS),
+            duration: Mutex::new(crate::entity::combat::AREA_EFFECT_CLOUD_DEFAULT_LINGERING_DURATION),
             age: Mutex::new(0),
-            reapplication_delay: Mutex::new(20),
+            reapplication_delay: Mutex::new(crate::entity::combat::AREA_EFFECT_CLOUD_DEFAULT_REAPPLICATION_DELAY),
             reapplication_map: Mutex::new(HashMap::new()),
             radius_on_tick: Mutex::new(-3.0 / 600.0), // default for lingering potions
             radius_on_use: Mutex::new(0.0),
             duration_on_use: Mutex::new(0),
-            wait_time: Mutex::new(20),
+            wait_time: Mutex::new(crate::entity::combat::AREA_EFFECT_CLOUD_DEFAULT_WAIT_TIME),
         };
 
         Arc::new(cloud)
@@ -290,7 +290,7 @@ impl EntityBase for AreaEffectCloudEntity {
                 *radius += delta;
                 let current_radius = *radius;
                 // Vanilla AreaEffectCloud.java:204: if (radius < 0.5F) { this.discard(); return; }
-                if current_radius < 0.5 {
+                if current_radius < crate::entity::combat::AREA_EFFECT_CLOUD_MINIMAL_RADIUS {
                     drop(radius);
                     self.entity.remove();
                     return;
@@ -318,7 +318,7 @@ impl EntityBase for AreaEffectCloudEntity {
         }
 
         // Vanilla AreaEffectCloud.java:212: only search and apply effects every 5 ticks
-        if age % 5 != 0 {
+        if age % crate::entity::combat::AREA_EFFECT_CLOUD_TIME_BETWEEN_APPLICATIONS != 0 {
             return;
         }
 

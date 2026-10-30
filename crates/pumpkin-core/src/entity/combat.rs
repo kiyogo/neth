@@ -7805,6 +7805,79 @@ pub const ARMOR_STAND_BURN_DAMAGE: f32 = 4.0;
 /// `if (health <= 0.5F)`
 pub const ARMOR_STAND_BREAK_HEALTH_THRESHOLD: f32 = 0.5;
 
+/// Default initial radius of an Area Effect Cloud (3.0 blocks).
+/// Mirrors vanilla `AreaEffectCloud.java:40`:
+/// `private static final float DEFAULT_RADIUS = 3.0F;`
+pub const AREA_EFFECT_CLOUD_DEFAULT_RADIUS: f32 = 3.0;
+
+/// Minimal radius before an Area Effect Cloud is discarded (0.5 blocks).
+/// Mirrors vanilla `AreaEffectCloud.java:39`:
+/// `private static final float MINIMAL_RADIUS = 0.5F;`
+pub const AREA_EFFECT_CLOUD_MINIMAL_RADIUS: f32 = 0.5;
+
+/// Maximum allowed radius for an Area Effect Cloud (32.0 blocks).
+/// Mirrors vanilla `AreaEffectCloud.java:33`:
+/// `private static final float MAX_RADIUS = 32.0F;`
+pub const AREA_EFFECT_CLOUD_MAX_RADIUS: f32 = 32.0;
+
+/// Default duration of a lingering potion Area Effect Cloud (600 ticks = 30 seconds).
+/// Mirrors vanilla `AreaEffectCloud.java:44`:
+/// `public static final int DEFAULT_LINGERING_DURATION = 600;`
+pub const AREA_EFFECT_CLOUD_DEFAULT_LINGERING_DURATION: i32 = 600;
+
+/// Default wait time before an Area Effect Cloud activates (20 ticks = 1 second).
+/// Mirrors vanilla `AreaEffectCloud.java:45`:
+/// `private static final int DEFAULT_WAIT_TIME = 20;`
+pub const AREA_EFFECT_CLOUD_DEFAULT_WAIT_TIME: i32 = 20;
+
+/// Default delay before reapplying effects to the same entity (20 ticks = 1 second).
+/// Mirrors vanilla `AreaEffectCloud.java:46`:
+/// `private static final int DEFAULT_REAPPLICATION_DELAY = 20;`
+pub const AREA_EFFECT_CLOUD_DEFAULT_REAPPLICATION_DELAY: i32 = 20;
+
+/// Ticks between candidate searches and effect applications (5 ticks).
+/// Mirrors vanilla `AreaEffectCloud.java:29`:
+/// `private static final int TIME_BETWEEN_APPLICATIONS = 5;`
+pub const AREA_EFFECT_CLOUD_TIME_BETWEEN_APPLICATIONS: i32 = 5;
+
+/// Height of an Area Effect Cloud bounding box (0.5 blocks).
+/// Mirrors vanilla `AreaEffectCloud.java:42`:
+/// `public static final float HEIGHT = 0.5F;`
+pub const AREA_EFFECT_CLOUD_DEFAULT_HEIGHT: f32 = 0.5;
+
+/// Radius change on use when an entity is affected (-0.5 blocks).
+/// Mirrors vanilla `ThrownLingeringPotion.java:46`:
+pub const AREA_EFFECT_CLOUD_RADIUS_ON_USE: f32 = -0.5;
+
+/// Damage dealt to entities struck by lightning (5.0 HP = 2.5 hearts).
+/// Mirrors vanilla `Entity.java:2938`:
+/// `this.hurtServer(level, this.damageSources().lightningBolt(), 5.0F);`
+pub const LIGHTNING_DAMAGE: f32 = 5.0;
+
+/// Fire duration in seconds applied to entities struck by lightning (8.0 seconds = 160 ticks).
+/// Mirrors vanilla `Entity.java:2935`:
+/// `this.igniteForSeconds(8.0F);`
+pub const LIGHTNING_FIRE_SECONDS: f32 = 8.0;
+
+/// Horizontal damage radius for lightning strikes (3.0 blocks).
+/// Mirrors vanilla `LightningBolt.java:33`:
+/// `private static final double DAMAGE_RADIUS = 3.0;`
+pub const LIGHTNING_DAMAGE_RADIUS: f64 = 3.0;
+
+/// Vertical damage distance below lightning position (3.0 blocks).
+/// Mirrors vanilla `LightningBolt.java:148`:
+pub const LIGHTNING_DAMAGE_Y_BELOW: f64 = 3.0;
+
+/// Vertical damage distance above lightning position (9.0 blocks = 6.0 + 3.0).
+/// Mirrors vanilla `LightningBolt.java:148`:
+pub const LIGHTNING_DAMAGE_Y_ABOVE: f64 = 9.0;
+
+/// Initial lifetime in ticks of a lightning bolt (2 ticks).
+/// Mirrors vanilla `LightningBolt.java:32`:
+/// `private static final int START_LIFE = 2;`
+pub const LIGHTNING_START_LIFE: i32 = 2;
+
+
 /// Calculates new armor stand health after taking damage, and returns `(new_health, will_break)`.
 /// Mirrors vanilla `ArmorStand.java:388-393`.
 #[must_use]
@@ -13900,5 +13973,26 @@ mod tests {
         let (hp3, break3) = calculate_armor_stand_damage(0.6, 0.15);
         assert!((hp3 - 0.45).abs() < 1e-6);
         assert!(break3);
+    }
+
+
+    #[test]
+    fn test_area_effect_cloud_and_lightning_bolt_parity() {
+        assert_eq!(AREA_EFFECT_CLOUD_DEFAULT_RADIUS, 3.0);
+        assert_eq!(AREA_EFFECT_CLOUD_MINIMAL_RADIUS, 0.5);
+        assert_eq!(AREA_EFFECT_CLOUD_MAX_RADIUS, 32.0);
+        assert_eq!(AREA_EFFECT_CLOUD_DEFAULT_LINGERING_DURATION, 600);
+        assert_eq!(AREA_EFFECT_CLOUD_DEFAULT_WAIT_TIME, 20);
+        assert_eq!(AREA_EFFECT_CLOUD_DEFAULT_REAPPLICATION_DELAY, 20);
+        assert_eq!(AREA_EFFECT_CLOUD_TIME_BETWEEN_APPLICATIONS, 5);
+        assert_eq!(AREA_EFFECT_CLOUD_DEFAULT_HEIGHT, 0.5);
+        assert_eq!(AREA_EFFECT_CLOUD_RADIUS_ON_USE, -0.5);
+
+        assert_eq!(LIGHTNING_DAMAGE, 5.0);
+        assert_eq!(LIGHTNING_FIRE_SECONDS, 8.0);
+        assert_eq!(LIGHTNING_DAMAGE_RADIUS, 3.0);
+        assert_eq!(LIGHTNING_DAMAGE_Y_BELOW, 3.0);
+        assert_eq!(LIGHTNING_DAMAGE_Y_ABOVE, 9.0);
+        assert_eq!(LIGHTNING_START_LIFE, 2);
     }
 }

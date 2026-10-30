@@ -37,7 +37,7 @@ impl LightningBoltEntity {
         let flashes = rand::rng().random_range(1..=3);
         Self {
             entity,
-            life: AtomicI32::new(2),
+            life: AtomicI32::new(crate::entity::combat::LIGHTNING_START_LIFE),
             seed: AtomicI64::new(seed),
             flashes: AtomicI32::new(flashes),
             visual_only: AtomicBool::new(false),
@@ -252,8 +252,16 @@ impl EntityBase for LightningBoltEntity {
             let pos = entity.pos.load();
 
             let damage_box = BoundingBox::new(
-                Vector3::new(pos.x - 3.0, pos.y - 3.0, pos.z - 3.0),
-                Vector3::new(pos.x + 3.0, pos.y + 9.0, pos.z + 3.0),
+                Vector3::new(
+                    pos.x - crate::entity::combat::LIGHTNING_DAMAGE_RADIUS,
+                    pos.y - crate::entity::combat::LIGHTNING_DAMAGE_Y_BELOW,
+                    pos.z - crate::entity::combat::LIGHTNING_DAMAGE_RADIUS,
+                ),
+                Vector3::new(
+                    pos.x + crate::entity::combat::LIGHTNING_DAMAGE_RADIUS,
+                    pos.y + crate::entity::combat::LIGHTNING_DAMAGE_Y_ABOVE,
+                    pos.z + crate::entity::combat::LIGHTNING_DAMAGE_RADIUS,
+                ),
             );
 
             let entities = world.get_all_at_box(&damage_box);
