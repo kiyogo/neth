@@ -15090,4 +15090,37 @@ mod tests {
         assert_eq!(LeverBlock::get_click_pitch(false), 0.5);
     }
 
+    #[test]
+    fn test_button_press_ticks_and_arrow_activation_parity() {
+        use crate::block::blocks::redstone::buttons::ButtonBlock;
+        use pumpkin_data::Block;
+
+        assert_eq!(ButtonBlock::STONE_BUTTON_TICKS, 20);
+        assert_eq!(ButtonBlock::WOODEN_BUTTON_TICKS, 30);
+        assert_eq!(ButtonBlock::POWER_ON, 15);
+        assert_eq!(ButtonBlock::POWER_OFF, 0);
+
+        // Stone and Polished Blackstone buttons both have 20 ticks duration
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::STONE_BUTTON), 20);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::POLISHED_BLACKSTONE_BUTTON), 20);
+
+        // Wooden buttons have 30 ticks duration
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::OAK_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::SPRUCE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::BIRCH_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::JUNGLE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::ACACIA_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::DARK_OAK_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::MANGROVE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::CHERRY_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::BAMBOO_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::CRIMSON_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::WARPED_BUTTON), 30);
+
+        // Arrow activation: wooden buttons true, stone/blackstone false
+        assert!(!ButtonBlock::can_be_activated_by_arrows(&Block::STONE_BUTTON));
+        assert!(!ButtonBlock::can_be_activated_by_arrows(&Block::POLISHED_BLACKSTONE_BUTTON));
+        assert!(ButtonBlock::can_be_activated_by_arrows(&Block::OAK_BUTTON));
+    }
+
 }

@@ -58,11 +58,7 @@ fn click_button(player: &Player, world: &Arc<World>, block_pos: &BlockPos) -> bo
         button_props.to_state_id(block),
         BlockFlags::NOTIFY_ALL,
     );
-    let delay = if block == &Block::STONE_BUTTON {
-        20
-    } else {
-        30
-    };
+    let delay = ButtonBlock::get_press_ticks(block);
     world.schedule_block_tick(block, *block_pos, delay, TickPriority::Normal);
     ButtonBlock::update_neighbors(world, block_pos, button_props);
     // The client predicts the press sound, so exclude the pressing player.
@@ -113,15 +109,15 @@ impl BlockBehaviour for ButtonBlock {
 
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let button_props = ButtonLikeProperties::from_state_id(args.state.id);
-        if button_props.powered { 15 } else { 0 }
+        if button_props.powered { Self::POWER_ON } else { Self::POWER_OFF }
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let button_props = ButtonLikeProperties::from_state_id(args.state.id);
         if button_props.powered && button_props.get_direction() == args.direction {
-            15
+            Self::POWER_ON
         } else {
-            0
+            Self::POWER_OFF
         }
     }
 
@@ -171,6 +167,25 @@ impl WallMountedBlock for ButtonBlock {
 }
 
 impl ButtonBlock {
+    pub const STONE_BUTTON_TICKS: u32 = 20;
+    pub const WOODEN_BUTTON_TICKS: u32 = 30;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub fn get_press_ticks(block: &Block) -> u32 {
+        if block == &Block::STONE_BUTTON || block == &Block::POLISHED_BLACKSTONE_BUTTON {
+            Self::STONE_BUTTON_TICKS
+        } else {
+            Self::WOODEN_BUTTON_TICKS
+        }
+    }
+
+    #[must_use]
+    pub fn can_be_activated_by_arrows(block: &Block) -> bool {
+        block != &Block::STONE_BUTTON && block != &Block::POLISHED_BLACKSTONE_BUTTON
+    }
+
     fn update_neighbors(world: &Arc<World>, block_pos: &BlockPos, props: ButtonLikeProperties) {
         let direction = props.get_direction().opposite();
         world.update_neighbors(block_pos, None);

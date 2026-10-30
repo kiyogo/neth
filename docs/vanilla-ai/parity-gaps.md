@@ -6653,3 +6653,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized weak and strong redstone power methods using `POWER_ON` and `POWER_OFF`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_lever_constants_and_sound_pitch_parity`.
+
+
+### Gap 271: Button Press Duration (Wood vs Stone), Arrow Activation & Direct Signal Parity
+- **Vanilla Reference**:
+  - ButtonBlock.java:42-55, 75-105, 120-135, Blocks.java:POLISHED_BLACKSTONE_BUTTON:
+    - Press stay duration:
+      - `STONE_BUTTON_TICKS = 20`: Stone and Polished Blackstone buttons stay pressed for 20 ticks (1.0 second).
+      - `WOODEN_BUTTON_TICKS = 30`: Wooden buttons stay pressed for 30 ticks (1.5 seconds).
+    - Arrow activation: `canButtonBeActivatedByArrows()` is true for wooden buttons, but false for stone and polished blackstone buttons.
+    - Weak signal is 15 when pressed and 0 when unpressed. Strong signal (direct signal) is 15 strictly in the connected attachment direction (`getConnectedDirection(state) == direction`), 0 otherwise.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/buttons.rs`:
+    - Exported constants `STONE_BUTTON_TICKS = 20`, `WOODEN_BUTTON_TICKS = 30`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported helpers `get_press_ticks(block)` and `can_be_activated_by_arrows(block)`.
+    - Fixed bug where `POLISHED_BLACKSTONE_BUTTON` was mistakenly assigned wooden button duration (30 ticks) instead of stone duration (20 ticks).
+    - Standardized redstone power values to `POWER_ON` and `POWER_OFF`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_button_press_ticks_and_arrow_activation_parity`.
