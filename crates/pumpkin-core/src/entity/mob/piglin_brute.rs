@@ -134,6 +134,7 @@ impl PiglinBruteEntity {
 
         if let Some(living) = zombified.get_living_entity() {
             living.set_health(self.mob_entity.living_entity.health.load());
+            living.add_effect(crate::entity::combat::create_piglin_conversion_effect());
         }
 
         if let Some(custom_name) = &**entity.custom_name.load() {
@@ -323,5 +324,27 @@ impl Mob for PiglinBruteEntity {
 
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_piglin_brute_attributes_and_conversion_parity() {
+        assert_eq!(PiglinBruteEntity::CONVERSION_TIME, 300);
+        assert_eq!(PiglinBruteEntity::XP_REWARD, 20);
+
+        // Constants verification
+        assert_eq!(crate::entity::combat::PIGLIN_BRUTE_MAX_HEALTH, 50.0);
+        assert_eq!(crate::entity::combat::PIGLIN_BRUTE_MOVEMENT_SPEED, 0.35);
+        assert_eq!(crate::entity::combat::PIGLIN_BRUTE_ATTACK_DAMAGE, 7.0);
+        assert_eq!(crate::entity::combat::PIGLIN_BRUTE_FOLLOW_RANGE, 12.0);
+        assert_eq!(crate::entity::combat::PIGLIN_BRUTE_XP_REWARD, 20);
+
+        let effect = crate::entity::combat::create_piglin_conversion_effect();
+        assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
+        assert_eq!(effect.duration, 200);
     }
 }

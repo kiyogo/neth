@@ -6301,6 +6301,160 @@ pub const fn calculate_vex_summon_lifetime(rand_0_to_89: i32) -> i32 {
     20 * (30 + rand_0_to_89)
 }
 
+/// Hoglin combat and attribute constants, mirroring vanilla `Hoglin.java:95-101`, `HoglinBase.java:12-13`.
+pub const HOGLIN_MAX_HEALTH: f64 = 40.0;
+pub const HOGLIN_MOVEMENT_SPEED: f64 = 0.3;
+pub const HOGLIN_KNOCKBACK_RESISTANCE: f64 = 0.6;
+pub const HOGLIN_ATTACK_KNOCKBACK: f64 = 1.0;
+pub const HOGLIN_ATTACK_DAMAGE: f64 = 6.0;
+pub const HOGLIN_BABY_ATTACK_DAMAGE: f64 = 0.5;
+pub const HOGLIN_CONVERSION_TIME_TICKS: i32 = 300;
+pub const HOGLIN_XP_REWARD: u32 = 5;
+
+/// Zoglin combat and attribute constants, mirroring vanilla `Zoglin.java:64-70`.
+pub const ZOGLIN_MAX_HEALTH: f64 = 40.0;
+pub const ZOGLIN_MOVEMENT_SPEED: f64 = 0.3;
+pub const ZOGLIN_KNOCKBACK_RESISTANCE: f64 = 0.6;
+pub const ZOGLIN_ATTACK_KNOCKBACK: f64 = 1.0;
+pub const ZOGLIN_ATTACK_DAMAGE: f64 = 6.0;
+pub const ZOGLIN_BABY_ATTACK_DAMAGE: f64 = 0.5;
+pub const ZOGLIN_XP_REWARD: u32 = 5;
+
+/// Piglin Brute combat and attribute constants, mirroring vanilla `PiglinBrute.java:46, 50-55`.
+pub const PIGLIN_BRUTE_MAX_HEALTH: f64 = 50.0;
+pub const PIGLIN_BRUTE_MOVEMENT_SPEED: f64 = 0.35;
+pub const PIGLIN_BRUTE_ATTACK_DAMAGE: f64 = 7.0;
+pub const PIGLIN_BRUTE_FOLLOW_RANGE: f64 = 12.0;
+pub const PIGLIN_BRUTE_XP_REWARD: u32 = 20;
+
+/// Piglin combat and attribute constants, mirroring vanilla `Piglin.java:72-74`, `PiglinAi.java:86, 799`.
+pub const PIGLIN_MAX_HEALTH: f64 = 16.0;
+pub const PIGLIN_MOVEMENT_SPEED: f64 = 0.35;
+pub const PIGLIN_ATTACK_DAMAGE: f64 = 5.0;
+pub const PIGLIN_XP_REWARD: u32 = 5;
+pub const PIGLIN_CONVERSION_TIME_TICKS: i32 = 300;
+pub const PIGLIN_CONVERSION_NAUSEA_DURATION_TICKS: i32 = 200;
+pub const PIGLIN_ADMIRE_DURATION_TICKS: i32 = 119;
+
+/// Baby Piglin speed modifier identifier and amount, mirroring vanilla `Piglin.java:68-70`.
+/// AttributeModifier.Operation.ADD_MULTIPLIED_BASE (+20% base speed).
+pub const PIGLIN_BABY_SPEED_MODIFIER_ID: &str = "minecraft:baby";
+pub const PIGLIN_BABY_SPEED_MODIFIER_AMOUNT: f64 = 0.2;
+
+/// Zombified Piglin angry speed modifier identifier and amount, mirroring vanilla `ZombifiedPiglin.java:52-54`.
+/// AttributeModifier.Operation.ADD_VALUE (+0.05 speed).
+pub const ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID: &str = "minecraft:attacking";
+pub const ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT: f64 = 0.05;
+pub const ZOMBIFIED_PIGLIN_BASE_SPEED: f64 = 0.23;
+pub const ZOMBIFIED_PIGLIN_XP_REWARD: u32 = 5;
+
+/// Calculates Hoglin / Zoglin attack damage with vanilla random offset,
+/// mirroring vanilla `HoglinBase.java:18-25`:
+/// ```text
+/// if (!body.isBaby() && (int)attackDamage > 0) {
+///     actualDamage = attackDamage / 2.0F + level.getRandom().nextInt((int)attackDamage);
+/// } else {
+///     actualDamage = attackDamage;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_hoglin_attack_damage(base_attack_damage: f32, is_baby: bool, rand_int: u32) -> f32 {
+    let int_damage = base_attack_damage as u32;
+    if !is_baby && int_damage > 0 {
+        base_attack_damage * 0.5 + (rand_int % int_damage) as f32
+    } else {
+        base_attack_damage
+    }
+}
+
+/// Calculates Hoglin / Zoglin throw impulse vector, mirroring vanilla `HoglinBase.java:38-53` and `Vec3.java:245-251`:
+/// ```text
+/// double knockbackPower = body.getAttributeValue(Attributes.ATTACK_KNOCKBACK);
+/// double knockbackResistance = target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
+/// double effectiveKnockbackPower = knockbackPower - knockbackResistance;
+/// if (!(effectiveKnockbackPower <= 0.0)) {
+///     double xd = target.getX() - body.getX();
+///     double zd = target.getZ() - body.getZ();
+///     RandomSource random = body.level().getRandom();
+///     float horizontalPushAngle = random.nextInt(21) - 10;
+///     double horizontalScale = effectiveKnockbackPower * (random.nextFloat() * 0.5F + 0.2F);
+///     Vec3 horizontalPushVector = new Vec3(xd, 0.0, zd).normalize().scale(horizontalScale).yRot(horizontalPushAngle);
+///     double verticalScale = effectiveKnockbackPower * random.nextFloat() * 0.5;
+///     target.push(horizontalPushVector.x, verticalScale, horizontalPushVector.z);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_hoglin_throw_impulse(
+    dx: f64,
+    dz: f64,
+    knockback_power: f64,
+    knockback_resistance: f64,
+    rand_angle_rad: f32,
+    rand_h: f32,
+    rand_v: f64,
+) -> Option<Vector3<f64>> {
+    let effective_kb = knockback_power - knockback_resistance;
+    if effective_kb <= 0.0 {
+        return None;
+    }
+
+    let dist = dx.hypot(dz).max(1e-4);
+    let horizontal_scale = effective_kb * (f64::from(rand_h) * 0.5 + 0.2);
+    let norm_x = (dx / dist) * horizontal_scale;
+    let norm_z = (dz / dist) * horizontal_scale;
+
+    let cos = f64::from(rand_angle_rad.cos());
+    let sin = f64::from(rand_angle_rad.sin());
+
+    let vx = norm_x * cos + norm_z * sin;
+    let vz = norm_z * cos - norm_x * sin;
+    let vy = effective_kb * rand_v * 0.5;
+
+    Some(Vector3::new(vx, vy, vz))
+}
+
+/// Creates the Nausea status effect applied upon conversion from Piglin/Hoglin,
+/// mirroring vanilla `AbstractPiglin.java:113` and `Hoglin.java:254`:
+/// `zombified.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 200, 0))`
+#[must_use]
+pub fn create_piglin_conversion_effect() -> pumpkin_data::potion::Effect {
+    pumpkin_data::potion::Effect {
+        effect_type: &pumpkin_data::effect::StatusEffect::NAUSEA,
+        duration: PIGLIN_CONVERSION_NAUSEA_DURATION_TICKS,
+        amplifier: 0,
+        ambient: false,
+        show_particles: true,
+        show_icon: true,
+        blend: false,
+    }
+}
+
+/// Calculates Zombified Piglin movement speed based on anger and baby status,
+/// mirroring vanilla `ZombifiedPiglin.java:52-54, 99-108`:
+/// - Base speed: 0.23
+/// - When angry and not baby: +0.05 (`ADD_VALUE`) => 0.28
+#[must_use]
+pub fn calculate_zombified_piglin_speed(base_speed: f64, is_angry: bool, is_baby: bool) -> f64 {
+    if is_angry && !is_baby {
+        base_speed + ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT
+    } else {
+        base_speed
+    }
+}
+
+/// Calculates Piglin movement speed based on baby status,
+/// mirroring vanilla `Piglin.java:68-70, 242-244`:
+/// - Base speed: 0.35
+/// - When baby: +20% (`ADD_MULTIPLIED_BASE`) => 0.42
+#[must_use]
+pub fn calculate_piglin_baby_speed(base_speed: f64, is_baby: bool) -> f64 {
+    if is_baby {
+        base_speed * (1.0 + PIGLIN_BABY_SPEED_MODIFIER_AMOUNT)
+    } else {
+        base_speed
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -9788,6 +9942,88 @@ mod tests {
 
         // 2. Evoker constants (Evoker.java:50)
         assert_eq!(EVOKER_XP_REWARD, 10);
+    }
+
+    #[test]
+    fn test_hoglin_zoglin_piglin_combat_parity() {
+        // 1. Hoglin constants & damage formulas (Hoglin.java:95-101, HoglinBase.java:18-53)
+        assert_eq!(HOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(HOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(HOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(HOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(HOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(HOGLIN_BABY_ATTACK_DAMAGE, 0.5);
+        assert_eq!(HOGLIN_CONVERSION_TIME_TICKS, 300);
+        assert_eq!(HOGLIN_XP_REWARD, 5);
+
+        // Adult attack damage: base / 2.0 + rand(base) => 3.0 + (0..6) => 3.0..=8.0
+        assert_eq!(calculate_hoglin_attack_damage(6.0, false, 0), 3.0);
+        assert_eq!(calculate_hoglin_attack_damage(6.0, false, 5), 8.0);
+        assert_eq!(calculate_hoglin_attack_damage(6.0, false, 2), 5.0);
+        // Baby attack damage: stays base (0.5)
+        assert_eq!(calculate_hoglin_attack_damage(0.5, true, 0), 0.5);
+        assert_eq!(calculate_hoglin_attack_damage(0.5, true, 99), 0.5);
+
+        // 2. Hoglin throw impulse (HoglinBase.java:38-53)
+        // Zero effective knockback (attacker 1.0, defender 1.0 resistance) => None
+        assert!(calculate_hoglin_throw_impulse(1.0, 0.0, 1.0, 1.0, 0.0, 0.5, 0.5).is_none());
+        assert!(calculate_hoglin_throw_impulse(1.0, 0.0, 1.0, 1.5, 0.0, 0.5, 0.5).is_none());
+
+        // Normal effective knockback (attacker 1.0, defender 0.0 resistance)
+        let impulse = calculate_hoglin_throw_impulse(1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        assert!(impulse.is_some());
+        let imp = impulse.unwrap();
+        // rand_h = 0.0 => horizontalScale = 1.0 * (0.0 * 0.5 + 0.2) = 0.2
+        // angle = 0.0 => cos = 1, sin = 0 => vx = 0.2, vz = 0.0
+        // rand_v = 1.0 => vy = 1.0 * 1.0 * 0.5 = 0.5
+        assert!((imp.x - 0.2).abs() < 1e-5);
+        assert!((imp.y - 0.5).abs() < 1e-5);
+        assert!(imp.z.abs() < 1e-5);
+
+        // 3. Zoglin constants (Zoglin.java:64-70)
+        assert_eq!(ZOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(ZOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ZOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(ZOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(ZOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(ZOGLIN_BABY_ATTACK_DAMAGE, 0.5);
+        assert_eq!(ZOGLIN_XP_REWARD, 5);
+
+        // 4. Piglin Brute constants (PiglinBrute.java:46, 50-55)
+        assert_eq!(PIGLIN_BRUTE_MAX_HEALTH, 50.0);
+        assert_eq!(PIGLIN_BRUTE_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PIGLIN_BRUTE_ATTACK_DAMAGE, 7.0);
+        assert_eq!(PIGLIN_BRUTE_FOLLOW_RANGE, 12.0);
+        assert_eq!(PIGLIN_BRUTE_XP_REWARD, 20);
+
+        // 5. Piglin constants and conversion nausea (Piglin.java:72-74, AbstractPiglin.java:113, PiglinAi.java:86)
+        assert_eq!(PIGLIN_MAX_HEALTH, 16.0);
+        assert_eq!(PIGLIN_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PIGLIN_ATTACK_DAMAGE, 5.0);
+        assert_eq!(PIGLIN_XP_REWARD, 5);
+        assert_eq!(PIGLIN_CONVERSION_TIME_TICKS, 300);
+        assert_eq!(PIGLIN_CONVERSION_NAUSEA_DURATION_TICKS, 200);
+        assert_eq!(PIGLIN_ADMIRE_DURATION_TICKS, 119);
+
+        let effect = create_piglin_conversion_effect();
+        assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
+        assert_eq!(effect.duration, 200);
+        assert_eq!(effect.amplifier, 0);
+
+        // 6. Speed modifiers: Piglin Baby (+20% base) and Zombified Piglin Angry (+0.05)
+        assert_eq!(PIGLIN_BABY_SPEED_MODIFIER_ID, "minecraft:baby");
+        assert_eq!(PIGLIN_BABY_SPEED_MODIFIER_AMOUNT, 0.2);
+        assert!((calculate_piglin_baby_speed(0.35, true) - 0.42).abs() < 1e-6);
+        assert_eq!(calculate_piglin_baby_speed(0.35, false), 0.35);
+
+        assert_eq!(ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID, "minecraft:attacking");
+        assert_eq!(ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT, 0.05);
+        assert_eq!(ZOMBIFIED_PIGLIN_BASE_SPEED, 0.23);
+        assert_eq!(ZOMBIFIED_PIGLIN_XP_REWARD, 5);
+        assert!((calculate_zombified_piglin_speed(0.23, true, false) - 0.28).abs() < 1e-6);
+        assert_eq!(calculate_zombified_piglin_speed(0.23, false, false), 0.23);
+        // Baby zombified piglins do not gain angry speed modifier in vanilla
+        assert_eq!(calculate_zombified_piglin_speed(0.23, true, true), 0.23);
     }
 }
 

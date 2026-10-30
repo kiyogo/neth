@@ -798,9 +798,12 @@ impl MobEntity {
             return false;
         }
 
-        let base_damage = self
+        let raw_damage = self
             .living_entity
             .get_attribute_value(&Attributes::ATTACK_DAMAGE) as f32;
+        let base_damage = caller
+            .get_mob()
+            .map_or(raw_damage, |mob| mob.modify_applied_attack_damage(raw_damage));
 
         let held_item = self.living_entity.held_item(caller);
         let mut extra_ench_damage = 0.0f32;
@@ -1324,6 +1327,11 @@ pub trait Mob: EntityBase + Send + Sync {
     }
 
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {}
+
+    /// Custom hook to modify attack damage dealt by this mob, mirroring vanilla `HoglinBase.hurtAndThrowTarget`.
+    fn modify_applied_attack_damage(&self, base_damage: f32) -> f32 {
+        base_damage
+    }
 
     fn on_attack(&self, _target: &dyn EntityBase) {}
 

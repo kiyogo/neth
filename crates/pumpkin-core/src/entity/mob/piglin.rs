@@ -148,6 +148,20 @@ impl PiglinEntity {
         } else {
             entity.entity_dimension.store(Self::ADULT_DIMENSIONS);
         }
+
+        let living = &self.mob_entity.living_entity;
+        living.update_attribute(&Attributes::MOVEMENT_SPEED, |speed| {
+            speed.remove_modifier(crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_ID);
+            if baby {
+                speed.add_or_replace_modifier(crate::entity::attributes::Modifier {
+                    id: crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_ID.to_string(),
+                    amount: crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_AMOUNT,
+                    operation: crate::entity::attributes::ModifierOperation::MultiplyBase,
+                    permanent: false,
+                });
+            }
+        });
+        crate::entity::attributes::send_attribute_updates_for_living(living, vec![Attributes::MOVEMENT_SPEED]);
     }
 
     #[must_use]
@@ -449,6 +463,7 @@ impl PiglinEntity {
 
         if let Some(living) = zombified.get_living_entity() {
             living.set_health(self.mob_entity.living_entity.health.load());
+            living.add_effect(crate::entity::combat::create_piglin_conversion_effect());
         }
 
         if let Some(custom_name) = &**entity.custom_name.load() {
@@ -849,5 +864,29 @@ impl CrossbowAttackMob for PiglinEntity {
 
     fn is_charging_crossbow(&self) -> bool {
         self.is_charging_crossbow()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_piglin_baby_speed_and_conversion_nausea_parity() {
+        assert_eq!(PiglinEntity::CONVERSION_TIME, 300);
+        assert_eq!(PiglinEntity::INVENTORY_SIZE, 8);
+        assert_eq!(PiglinEntity::XP_REWARD, 5);
+        assert_eq!(PiglinEntity::AMBIENT_SOUND_INTERVAL, 80);
+
+        // Baby speed modifier parity (+20% base speed)
+        let adult_speed = 0.35;
+        let baby_speed = crate::entity::combat::calculate_piglin_baby_speed(adult_speed, true);
+        assert!((baby_speed - 0.42).abs() < 1e-6);
+
+        // Conversion nausea duration (200 ticks = 10s)
+        let effect = crate::entity::combat::create_piglin_conversion_effect();
+        assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
+        assert_eq!(effect.duration, 200);
+        assert_eq!(effect.amplifier, 0);
     }
 }

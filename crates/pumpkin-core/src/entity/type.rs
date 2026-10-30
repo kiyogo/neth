@@ -3762,12 +3762,13 @@ mod tests {
         let defender = from_type(&EntityType::ZOMBIE, Vector3::new(0.0, 64.0, 0.0), &world, Uuid::new_v4());
         let defender_ent = defender.get_entity();
 
-        // 1. Adult Hoglin: on_blocked_by_shield throws defender upwards (vel.y = 0.5)
+        // 1. Adult Hoglin: on_blocked_by_shield throws defender upwards (vel.y in [0.0, 0.5] per HoglinBase.java:49)
         let hoglin = from_type(&EntityType::HOGLIN, Vector3::new(2.0, 64.0, 0.0), &world, Uuid::new_v4());
         defender_ent.velocity.store(Vector3::new(0.0, 0.0, 0.0));
         hoglin.on_blocked_by_shield(defender.as_ref(), true);
+        let vel = defender_ent.velocity.load();
         assert!(
-            (defender_ent.velocity.load().y - 0.5).abs() < 1e-4,
+            vel.y >= 0.0 && vel.y <= 0.5 && (vel.x != 0.0 || vel.z != 0.0),
             "Adult Hoglin should throw target upwards even when blocked by shield"
         );
 

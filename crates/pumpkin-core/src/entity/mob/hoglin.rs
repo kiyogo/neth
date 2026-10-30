@@ -157,6 +157,7 @@ impl HoglinEntity {
 
         if let Some(living) = zoglin.get_living_entity() {
             living.set_health(self.mob_entity.living_entity.health.load());
+            living.add_effect(crate::entity::combat::create_piglin_conversion_effect());
         }
 
         if let Some(custom_name) = &**entity.custom_name.load() {
@@ -267,8 +268,19 @@ impl Mob for HoglinEntity {
         }
     }
 
+    fn modify_applied_attack_damage(&self, base_damage: f32) -> f32 {
+        let rand_int = rand::random::<u32>();
+        crate::entity::combat::calculate_hoglin_attack_damage(
+            base_damage,
+            self.is_baby.load(Ordering::Relaxed),
+            rand_int,
+        )
+    }
+
     fn on_attack(&self, target: &dyn EntityBase) {
-        throw_target(&self.mob_entity.living_entity.entity, target);
+        if !self.is_baby.load(Ordering::Relaxed) {
+            throw_target(&self.mob_entity.living_entity.entity, target);
+        }
     }
 
     fn on_blocked_by_shield(&self, defender: &dyn EntityBase, _fully_blocked: bool) {
@@ -280,15 +292,62 @@ impl Mob for HoglinEntity {
 
 /// Vanilla `HoglinBase.throwTarget`, shared with zoglins.
 pub fn throw_target(attacker: &Entity, target: &dyn EntityBase) {
+    let knockback_power = attacker
+        .get_living_entity()
+        .map_or(1.0, |living| living.get_attribute_value(&Attributes::ATTACK_KNOCKBACK));
+    let knockback_res = target
+        .get_living_entity()
+        .map_or(0.0, |living| living.get_attribute_value(&Attributes::KNOCKBACK_RESISTANCE));
+
     let my_pos = attacker.pos.load();
     let target_pos = target.get_entity().pos.load();
     let dx = target_pos.x - my_pos.x;
     let dz = target_pos.z - my_pos.z;
-    let dist = dx.hypot(dz).max(0.001);
-    let vel = target.get_entity().velocity.load();
-    target.get_entity().velocity.store(Vector3::new(
-        vel.x + (dx / dist) * 0.5,
-        0.5,
-        vel.z + (dz / dist) * 0.5,
-    ));
+
+    let rand_angle = (rand::random_range(0..21) - 10) as f32;
+    let rand_h = rand::random::<f32>();
+    let rand_v = rand::random::<f64>();
+
+    if let Some(impulse) = crate::entity::combat::calculate_hoglin_throw_impulse(
+        dx,
+        dz,
+        knockback_power,
+        knockback_res,
+        rand_angle,
+        rand_h,
+        rand_v,
+    ) {
+        let ent = target.get_entity();
+        let vel = ent.velocity.load();
+        ent.velocity.store(Vector3::new(
+            vel.x + impulse.x,
+            vel.y + impulse.y,
+            vel.z + impulse.z,
+        ));
+        ent.velocity_dirty.store(true, Ordering::SeqCst);
+        ent.sync_velocity.store(true, Ordering::SeqCst);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hoglin_throw_and_conversion_parity() {
+        assert_eq!(HoglinEntity::CONVERSION_TIME, 300);
+        assert_eq!(HoglinEntity::XP_REWARD, 5);
+
+        // Verification of attack damage formula via combat helper
+        let adult_dmg = crate::entity::combat::calculate_hoglin_attack_damage(6.0, false, 0);
+        assert_eq!(adult_dmg, 3.0);
+        let baby_dmg = crate::entity::combat::calculate_hoglin_attack_damage(0.5, true, 42);
+        assert_eq!(baby_dmg, 0.5);
+
+        // Conversion effect duration & type
+        let effect = crate::entity::combat::create_piglin_conversion_effect();
+        assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::NAUSEA);
+        assert_eq!(effect.duration, 200);
+        assert_eq!(effect.amplifier, 0);
+    }
 }

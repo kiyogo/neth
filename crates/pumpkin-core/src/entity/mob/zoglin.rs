@@ -220,6 +220,15 @@ impl Mob for ZoglinEntity {
         Self::XP_REWARD
     }
 
+    fn modify_applied_attack_damage(&self, base_damage: f32) -> f32 {
+        let rand_int = rand::random::<u32>();
+        crate::entity::combat::calculate_hoglin_attack_damage(
+            base_damage,
+            self.is_baby.load(Ordering::Relaxed),
+            rand_int,
+        )
+    }
+
     fn on_attack(&self, target: &dyn EntityBase) {
         // Vanilla HoglinBase.hurtAndThrowTarget: babies don't throw.
         if self.is_baby() {
@@ -237,5 +246,23 @@ impl Mob for ZoglinEntity {
     /// Vanilla Zoglin.java:193: Zoglins can be leashed despite being hostile monsters.
     fn can_be_leashed(&self) -> bool {
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zoglin_combat_and_leash_parity() {
+        assert_eq!(ZoglinEntity::XP_REWARD, 5);
+
+        // Zoglins can be leashed (Zoglin.java:193)
+        assert!(crate::entity::combat::is_mob_leashable(&EntityType::ZOGLIN));
+
+        // Damage calculation formula
+        assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(6.0, false, 0), 3.0);
+        assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(6.0, false, 3), 6.0);
+        assert_eq!(crate::entity::combat::calculate_hoglin_attack_damage(0.5, true, 3), 0.5);
     }
 }

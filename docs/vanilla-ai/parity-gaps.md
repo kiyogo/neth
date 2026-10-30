@@ -4429,3 +4429,50 @@ eck, part 1): nhận 100% full damage (damage).
   - Added unit test `test_eye_of_ender_constants_parity` in `crates/pumpkin-core/src/entity/projectile/eye_of_ender.rs`.
   - All unit tests verified and passing (98/98 in test suite).
 
+
+
+## Gap 204: Nether Piglin Family & Hoglin/Zoglin Combat, Fling & Conversion Parity
+- **Vanilla Reference**: `HoglinBase.java:18-53`, `Hoglin.java:95-109, 252-255`, `Zoglin.java:64-70, 180-193`, `AbstractPiglin.java:109-115`, `Piglin.java:68-75, 239-247`, `PiglinBrute.java:46, 50-55`, `ZombifiedPiglin.java:52-55, 98-108`:
+  - `HoglinBase.java`:
+    - `hurtAndThrowTarget`: Sat thuong thuc te cua Hoglin/Zoglin truong thanh duoc tinh bang `attackDamage / 2.0F + random.nextInt((int)attackDamage)`. Voi base damage 6.0, sat thuong dao dong tu 3.0 den 8.0 HP. Voi Baby Hoglin/Zoglin, sat thuong giu nguyen base (0.5 HP).
+    - `throwTarget`: Tinh toan knockback power thuc te `effectiveKnockbackPower = knockbackPower - knockbackResistance`. Neu `<= 0.0` thi khong hat tung muc tieu. Neu `> 0.0`, hat muc tieu theo vector huong xoay ngang mot goc ngau nhien tu -10 den +10 do va ty le ngang `effectiveKnockbackPower * (random.nextFloat() * 0.5 + 0.2)`, cung van toc thang dung `effectiveKnockbackPower * random.nextFloat() * 0.5`. Baby Hoglin va Baby Zoglin khong bao gio hat tung muc tieu khi tan cong.
+  - `Hoglin.java` & `AbstractPiglin.java`:
+    - Chuyen hoa sau 300 ticks (`timeInOverworld > 300`): Hoglin chuyen thanh Zoglin, Piglin / Piglin Brute chuyen thanh Zombified Piglin. Entity moi duoc tao bat buoc nhan hieu ung `StatusEffect::NAUSEA` trong 200 ticks (10 giay), amplifier 0.
+  - `Piglin.java`:
+    - Baby Piglin co attribute modifier `minecraft:baby` voi `ADD_MULTIPLIED_BASE` tang toc do di chuyen them +20% (`base_speed * 1.2 = 0.42`).
+    - Thoi gian ngam vang `PIGLIN_ADMIRE_DURATION_TICKS = 119` ticks.
+  - `ZombifiedPiglin.java`:
+    - Khi tuc gian (co target), Zombified Piglin khong phai baby duoc them modifier `minecraft:attacking` voi `ADD_VALUE` +0.05 toc do di chuyen (tu 0.23 len 0.28). Khi het gian, modifier nay duoc go bo.
+  - `PiglinBrute.java`:
+    - Thuo tinh MAX_HEALTH = 50.0, MOVEMENT_SPEED = 0.35, ATTACK_DAMAGE = 7.0, FOLLOW_RANGE = 12.0, XP reward = 20 XP.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `HOGLIN_MAX_HEALTH = 40.0`, `HOGLIN_MOVEMENT_SPEED = 0.3`, `HOGLIN_KNOCKBACK_RESISTANCE = 0.6`, `HOGLIN_ATTACK_KNOCKBACK = 1.0`, `HOGLIN_ATTACK_DAMAGE = 6.0`, `HOGLIN_BABY_ATTACK_DAMAGE = 0.5`, `HOGLIN_CONVERSION_TIME_TICKS = 300`, `HOGLIN_XP_REWARD = 5`.
+    - Added constants `ZOGLIN_MAX_HEALTH = 40.0`, `ZOGLIN_MOVEMENT_SPEED = 0.3`, `ZOGLIN_KNOCKBACK_RESISTANCE = 0.6`, `ZOGLIN_ATTACK_KNOCKBACK = 1.0`, `ZOGLIN_ATTACK_DAMAGE = 6.0`, `ZOGLIN_BABY_ATTACK_DAMAGE = 0.5`, `ZOGLIN_XP_REWARD = 5`.
+    - Added constants `PIGLIN_BRUTE_MAX_HEALTH = 50.0`, `PIGLIN_BRUTE_MOVEMENT_SPEED = 0.35`, `PIGLIN_BRUTE_ATTACK_DAMAGE = 7.0`, `PIGLIN_BRUTE_FOLLOW_RANGE = 12.0`, `PIGLIN_BRUTE_XP_REWARD = 20`.
+    - Added constants `PIGLIN_MAX_HEALTH = 16.0`, `PIGLIN_MOVEMENT_SPEED = 0.35`, `PIGLIN_ATTACK_DAMAGE = 5.0`, `PIGLIN_XP_REWARD = 5`, `PIGLIN_CONVERSION_TIME_TICKS = 300`, `PIGLIN_CONVERSION_NAUSEA_DURATION_TICKS = 200`, `PIGLIN_ADMIRE_DURATION_TICKS = 119`.
+    - Added modifier constants `PIGLIN_BABY_SPEED_MODIFIER_ID = "minecraft:baby"` (+0.2 MultiplyBase), `ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID = "minecraft:attacking"` (+0.05 Add), `ZOMBIFIED_PIGLIN_BASE_SPEED = 0.23`, `ZOMBIFIED_PIGLIN_XP_REWARD = 5`.
+    - Added functions `calculate_hoglin_attack_damage`, `calculate_hoglin_throw_impulse`, `create_piglin_conversion_effect`, `calculate_zombified_piglin_speed`, `calculate_piglin_baby_speed`.
+    - Added unit test `test_hoglin_zoglin_piglin_combat_parity`.
+  - Updated `Mob` trait and `try_attack` in `crates/pumpkin-core/src/entity/mob/mod.rs`:
+    - Added `modify_applied_attack_damage` hook and applied in `try_attack`.
+  - Updated `HoglinEntity` in `crates/pumpkin-core/src/entity/mob/hoglin.rs`:
+    - Implemented `modify_applied_attack_damage` using `calculate_hoglin_attack_damage`.
+    - Restricted `on_attack` fling to adult hoglins only.
+    - Updated `throw_target` with physics impulse formula accounting for target knockback resistance and rotation angles.
+    - Added Nausea effect on conversion to Zoglin via `create_piglin_conversion_effect`.
+    - Added unit test `test_hoglin_throw_and_conversion_parity`.
+  - Updated `ZoglinEntity` in `crates/pumpkin-core/src/entity/mob/zoglin.rs`:
+    - Implemented `modify_applied_attack_damage`.
+    - Added unit test `test_zoglin_combat_and_leash_parity`.
+  - Updated `PiglinEntity` in `crates/pumpkin-core/src/entity/mob/piglin.rs`:
+    - Implemented baby speed modifier (+20% base) in `set_baby`.
+    - Added Nausea effect on conversion to Zombified Piglin.
+    - Added unit test `test_piglin_baby_speed_and_conversion_nausea_parity`.
+  - Updated `PiglinBruteEntity` in `crates/pumpkin-core/src/entity/mob/piglin_brute.rs`:
+    - Added Nausea effect on conversion to Zombified Piglin.
+    - Added unit test `test_piglin_brute_attributes_and_conversion_parity`.
+  - Updated `ZombifiedPiglinEntity` in `crates/pumpkin-core/src/entity/mob/zombified_piglin.rs`:
+    - Implemented dynamic `minecraft:attacking` speed modifier (+0.05) when angry and removed when calm.
+    - Added unit test `test_zombified_piglin_anger_speed_parity`.
+  - All unit tests verified and passing (12/12 in mob parity suite, 93/93 in combat suite).

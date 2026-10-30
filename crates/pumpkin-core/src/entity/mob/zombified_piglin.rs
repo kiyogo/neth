@@ -211,6 +211,10 @@ impl Mob for ZombifiedPiglinEntity {
 
         let Some(target) = self.mob_entity.get_target() else {
             self.had_target.store(false, Ordering::Relaxed);
+            let living = &self.mob_entity.living_entity;
+            living.update_attribute(&Attributes::MOVEMENT_SPEED, |speed| {
+                speed.remove_modifier(crate::entity::combat::ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID);
+            });
             if rand::random_range(0..100) == 0 && !entity.silent.load(Ordering::Relaxed) {
                 entity.world.load().play_sound_fine(
                     Sound::EntityZombifiedPiglinAmbient,
@@ -222,6 +226,22 @@ impl Mob for ZombifiedPiglinEntity {
             }
             return;
         };
+
+        let is_baby = self.is_baby_mob();
+        let living = &self.mob_entity.living_entity;
+        if !is_baby {
+            living.update_attribute(&Attributes::MOVEMENT_SPEED, |speed| {
+                let had_mod = speed.modifiers.iter().any(|m| m.id == crate::entity::combat::ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID);
+                if !had_mod {
+                    speed.add_or_replace_modifier(crate::entity::attributes::Modifier {
+                        id: crate::entity::combat::ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID.to_string(),
+                        amount: crate::entity::combat::ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT,
+                        operation: crate::entity::attributes::ModifierOperation::Add,
+                        permanent: false,
+                    });
+                }
+            });
+        }
 
         // Fresh target: wait out a full interval before spreading the word.
         if !self.had_target.swap(true, Ordering::Relaxed) {
@@ -250,5 +270,28 @@ impl Mob for ZombifiedPiglinEntity {
             Self::XP_REWARD
         };
         self.calculate_equipment_experience_reward(base)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_zombified_piglin_anger_speed_parity() {
+        assert_eq!(ZombifiedPiglinEntity::XP_REWARD, 5);
+
+        // Angry speed modifier parity: +0.05 ADD_VALUE
+        let base_speed = 0.23;
+        let angry_speed = crate::entity::combat::calculate_zombified_piglin_speed(base_speed, true, false);
+        assert!((angry_speed - 0.28).abs() < 1e-6);
+
+        // Calm speed: base 0.23
+        let calm_speed = crate::entity::combat::calculate_zombified_piglin_speed(base_speed, false, false);
+        assert_eq!(calm_speed, base_speed);
+
+        // Baby angry speed: stays base 0.23 (babies do not gain speed modifier in vanilla)
+        let baby_angry_speed = crate::entity::combat::calculate_zombified_piglin_speed(base_speed, true, true);
+        assert_eq!(baby_angry_speed, base_speed);
     }
 }
