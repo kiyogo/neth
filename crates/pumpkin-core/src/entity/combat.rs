@@ -14997,4 +14997,30 @@ mod tests {
         assert_eq!(packed, expected);
     }
 
+    #[test]
+    fn test_respawn_anchor_charges_and_comparator_parity() {
+        use crate::block::blocks::respawn_anchor::RespawnAnchorBlock;
+
+        assert_eq!(RespawnAnchorBlock::MIN_CHARGES, 0);
+        assert_eq!(RespawnAnchorBlock::MAX_CHARGES, 4);
+        assert_eq!(RespawnAnchorBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(RespawnAnchorBlock::MAX_COMPARATOR_SIGNAL, 15);
+
+        // Comparator signal scaling: floor(charges / 4.0 * 15)
+        assert_eq!(RespawnAnchorBlock::get_scaled_charge_level(0, 15), 0);
+        assert_eq!(RespawnAnchorBlock::get_scaled_charge_level(1, 15), 3);
+        assert_eq!(RespawnAnchorBlock::get_scaled_charge_level(2, 15), 7);
+        assert_eq!(RespawnAnchorBlock::get_scaled_charge_level(3, 15), 11);
+        assert_eq!(RespawnAnchorBlock::get_scaled_charge_level(4, 15), 15);
+
+        // Explosion condition in unsupported dimensions (e.g. Overworld/End)
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, false));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, false));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(4, false));
+        // Works in supported dimension (Nether)
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, true));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, true));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(4, true));
+    }
+
 }

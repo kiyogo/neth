@@ -11,15 +11,28 @@ use crate::block::{
 };
 use crate::entity::EntityBase;
 
-/// Vanilla `RespawnAnchorBlock.MAX_CHARGES`.
-const MAX_CHARGES: u8 = 4;
-
-const fn should_explode_in_unsupported_dimension(charges: u8, respawn_anchor_works: bool) -> bool {
-    charges > 0 && !respawn_anchor_works
-}
-
 #[pumpkin_block("minecraft:respawn_anchor")]
 pub struct RespawnAnchorBlock;
+
+impl RespawnAnchorBlock {
+    pub const MIN_CHARGES: u8 = 0;
+    pub const MAX_CHARGES: u8 = 4;
+    pub const EXPLOSION_POWER: f32 = 5.0;
+    pub const MAX_COMPARATOR_SIGNAL: u32 = 15;
+
+    #[must_use]
+    pub const fn should_explode_in_unsupported_dimension(
+        charges: u8,
+        respawn_anchor_works: bool,
+    ) -> bool {
+        charges > 0 && !respawn_anchor_works
+    }
+
+    #[must_use]
+    pub const fn get_scaled_charge_level(charges: u8, maximum: u32) -> u32 {
+        (charges as u32 * maximum) / (Self::MAX_CHARGES as u32)
+    }
+}
 
 impl BlockBehaviour for RespawnAnchorBlock {
     /// Charges the respawn anchor when the player uses glowstone and capacity remains.
@@ -31,7 +44,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
         let state_id = args.world.get_block_state_id(args.position);
         let mut props = RespawnAnchorLikeProperties::from_state_id(state_id);
 
-        if props.charges >= 4 {
+        if props.charges >= Self::MAX_CHARGES {
             return BlockActionResult::Pass;
         }
 
@@ -48,10 +61,10 @@ impl BlockBehaviour for RespawnAnchorBlock {
         args.world.play_sound(
             Sound::BlockRespawnAnchorCharge,
             SoundCategory::Blocks,
-            &args.position.to_f64(),
+            &args.position.to_centered_f64(),
         );
 
-        if props.charges == 4 {
+        if props.charges == Self::MAX_CHARGES {
             args.player.trigger_advancement(
                 crate::entity::player::advancement::trigger::AdvancementTrigger::ChargeRespawnAnchor,
             );
@@ -65,15 +78,19 @@ impl BlockBehaviour for RespawnAnchorBlock {
         let state_id = args.world.get_block_state_id(args.position);
         let props = RespawnAnchorLikeProperties::from_state_id(state_id);
 
-        if should_explode_in_unsupported_dimension(
+        if Self::should_explode_in_unsupported_dimension(
             props.charges,
             args.world.dimension.respawn_anchor_works,
         ) {
             args.world
                 .break_block(args.position, None, BlockFlags::SKIP_DROPS);
             let center_pos = args.position.to_centered_f64();
-            args.world
-                .explode_with_fire(center_pos, 5.0, true, crate::world::ExplosionInteraction::Block);
+            args.world.explode_with_fire(
+                center_pos,
+                Self::EXPLOSION_POWER,
+                true,
+                crate::world::ExplosionInteraction::Block,
+            );
             return BlockActionResult::SuccessServer;
         }
 
@@ -81,7 +98,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
             return BlockActionResult::Pass;
         }
 
-        if props.charges == 0 {
+        if props.charges == Self::MIN_CHARGES {
             args.player
                 .send_system_message(&pumpkin_macros::translate_cross!(
                     translation::java::BLOCK_MINECRAFT_BED_NO_SLEEP,
@@ -103,7 +120,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
             world.play_sound(
                 Sound::BlockRespawnAnchorSetSpawn,
                 SoundCategory::Blocks,
-                &pos.to_f64(),
+                &pos.to_centered_f64(),
             );
 
             player.send_system_message(&pumpkin_macros::translate_cross!(
@@ -118,7 +135,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
     /// Charges scale over the full signal range, so each charge is worth 15 / 4.
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
         let props = RespawnAnchorLikeProperties::from_state_id(args.state.id);
-        Some(props.charges * 15 / MAX_CHARGES)
+        Some(Self::get_scaled_charge_level(props.charges, Self::MAX_COMPARATOR_SIGNAL) as u8)
     }
 
     /// Respawn anchors are never considered passable for pathfinding.
@@ -129,19 +146,19 @@ impl BlockBehaviour for RespawnAnchorBlock {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_CHARGES, should_explode_in_unsupported_dimension};
+    use super::RespawnAnchorBlock;
 
     #[test]
     fn uncharged_anchor_never_explodes() {
-        assert!(!should_explode_in_unsupported_dimension(0, false));
-        assert!(!should_explode_in_unsupported_dimension(0, true));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, false));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, true));
     }
 
     #[test]
     fn charged_anchor_explodes_only_where_unsupported() {
-        assert!(should_explode_in_unsupported_dimension(1, false));
-        assert!(should_explode_in_unsupported_dimension(MAX_CHARGES, false));
-        assert!(!should_explode_in_unsupported_dimension(1, true));
-        assert!(!should_explode_in_unsupported_dimension(MAX_CHARGES, true));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, false));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(RespawnAnchorBlock::MAX_CHARGES, false));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, true));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(RespawnAnchorBlock::MAX_CHARGES, true));
     }
 }

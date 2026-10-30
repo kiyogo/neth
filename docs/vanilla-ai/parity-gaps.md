@@ -6582,3 +6582,20 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Enforced valid world build height bounds checking (`-64..320`) before teleporting.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_dragon_egg_constants_and_teleport_packing_parity`.
+
+
+### Gap 267: Respawn Anchor Charge, Scaling Comparator Signal, Center Sound & Explosion Parity
+- **Vanilla Reference**:
+  - RespawnAnchorBlock.java:37-40, 114-118, 126-156, 172-182:
+    - `MIN_CHARGES = 0`, `MAX_CHARGES = 4`: Capacity ranges from 0 to 4 charges.
+    - `EXPLOSION_POWER = 5.0F`: Power of explosion in dimensions where respawn anchor does not work (`respawn_anchor_works == false`, e.g. Overworld / End).
+    - `getScaledChargeLevel(state, maximum)`: Formula `floor(charges / 4.0 * maximum)`. For comparator output (`maximum = 15`), outputs: 0 charges -> 0, 1 charge -> 3, 2 charges -> 7, 3 charges -> 11, 4 charges -> 15.
+    - Centered sounds: `SoundEvents.RESPAWN_ANCHOR_CHARGE` and `SoundEvents.RESPAWN_ANCHOR_SET_SPAWN` are played at block center `(x + 0.5, y + 0.5, z + 0.5)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/respawn_anchor.rs`:
+    - Exported public constants `MIN_CHARGES = 0`, `MAX_CHARGES = 4`, `EXPLOSION_POWER = 5.0`, and `MAX_COMPARATOR_SIGNAL = 15`.
+    - Exported calculation helper `get_scaled_charge_level(charges, maximum)` matching vanilla scaling.
+    - Updated charge and set spawn sound positions to block center vector (`to_centered_f64()`).
+    - Standardized explosion power reference to `Self::EXPLOSION_POWER`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_respawn_anchor_charges_and_comparator_parity`.
