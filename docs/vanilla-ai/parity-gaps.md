@@ -6616,3 +6616,24 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants `MIN_POWER = 0`, `MAX_POWER = 15`, `UPDATE_INTERVAL_TICKS = 20`, `SHAPE_HEIGHT = 6.0`, and `SUN_ANGLE_LERP_FACTOR = 0.2`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_daylight_detector_constants_and_power_clamping_parity`.
+
+
+### Gap 269: Tripwire Hook Connection Range, Recheck Delay, Sound & Direct Redstone Signal Parity
+- **Vanilla Reference**:
+  - TripWireHookBlock.java:40-45, 78-142, 175-195:
+    - `WIRE_DIST_MIN = 1`, `WIRE_DIST_MAX = 42`: Tripwire lines can span between 1 and 40 tripwires between opposing hooks (distance check strictly `< 42`).
+    - `RECHECK_PERIOD = 10`: Recheck scheduled tick delay is 10 ticks.
+    - Weak power output: 15 when powered, 0 when unpowered.
+    - Strong power output: 15 only in facing direction when powered.
+    - Sound pitches:
+      - `powered && !wasPowered`: `TRIPWIRE_CLICK_ON`, volume 0.4F, pitch 0.6F.
+      - `!powered && wasPowered`: `TRIPWIRE_CLICK_OFF`, volume 0.4F, pitch 0.5F.
+      - `attached && !wasAttached`: `TRIPWIRE_ATTACH`, volume 0.4F, pitch 0.7F.
+      - `!attached && wasAttached`: `TRIPWIRE_DETACH`, volume 0.4F, pitch `1.2F / (random * 0.2F + 0.9F)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs`:
+    - Exported public constants `WIRE_DIST_MIN = 1`, `WIRE_DIST_MAX = 42`, `RECHECK_PERIOD_TICKS = 10`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported range helper `is_in_wire_range(distance)`.
+    - Replaced hardcoded wire limits and scheduled tick delay with named constants.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_tripwire_hook_distance_and_power_parity`.

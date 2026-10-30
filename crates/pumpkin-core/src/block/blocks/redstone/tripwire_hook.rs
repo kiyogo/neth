@@ -133,6 +133,16 @@ impl BlockBehaviour for TripwireHookBlock {
 }
 
 impl TripwireHookBlock {
+    pub const WIRE_DIST_MIN: i32 = 1;
+    pub const WIRE_DIST_MAX: i32 = 42;
+    pub const RECHECK_PERIOD_TICKS: u32 = 10;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub const fn is_in_wire_range(distance: i32) -> bool {
+        distance >= Self::WIRE_DIST_MIN && distance < Self::WIRE_DIST_MAX
+    }
     pub fn can_place_at(
         world: &dyn BlockAccessor,
         block_pos: &BlockPos,
@@ -160,9 +170,9 @@ impl TripwireHookBlock {
         let mut can_attach = !skip_state_update;
         let mut wire_attached = false;
         let mut j = 0;
-        let mut wires_props: Vec<Option<TripwireProperties>> = vec![None; 42];
+        let mut wires_props: Vec<Option<TripwireProperties>> = vec![None; Self::WIRE_DIST_MAX as usize];
 
-        for k in 1..42 {
+        for k in Self::WIRE_DIST_MIN..Self::WIRE_DIST_MAX {
             let current_pos = start_hook_pos.offset_dir(start_hook_props.facing.to_offset(), k);
             let current_block = world.get_block(&current_pos);
             if current_block == &Block::TRIPWIRE_HOOK {
@@ -191,7 +201,7 @@ impl TripwireHookBlock {
                     world.schedule_block_tick(
                         &Block::TRIPWIRE_HOOK,
                         start_hook_pos,
-                        10,
+                        Self::RECHECK_PERIOD_TICKS,
                         TickPriority::Normal,
                     );
                     can_attach &= !current_wire_props.disarmed;

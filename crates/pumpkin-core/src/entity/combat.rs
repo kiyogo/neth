@@ -15056,4 +15056,22 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_tripwire_hook_distance_and_power_parity() {
+        use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
+
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MIN, 1);
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MAX, 42);
+        assert_eq!(TripwireHookBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireHookBlock::POWER_ON, 15);
+        assert_eq!(TripwireHookBlock::POWER_OFF, 0);
+
+        // Valid wire distance checks:
+        assert!(!TripwireHookBlock::is_in_wire_range(0));
+        assert!(TripwireHookBlock::is_in_wire_range(1));
+        assert!(TripwireHookBlock::is_in_wire_range(41));
+        assert!(!TripwireHookBlock::is_in_wire_range(42));
+        assert!(!TripwireHookBlock::is_in_wire_range(43));
+    }
+
 }
