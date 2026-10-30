@@ -6476,3 +6476,28 @@ otDir * 0.4F, max = 0.2F).
     - Exported calculation helper calculate_end_portal_frame_comparator_signal(has_eye).
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_end_portal_frame_eye_and_comparator_parity.
+
+### Gap 262: Sculk Sensor, Shrieker & Catalyst Vibration Frequency & Level Event Parity
+- **Vanilla Reference**:
+  - SculkSensorBlock.java:45-56, 180-210:
+    - ACTIVE_TICKS = 30: 30 ticks active duration before transitioning to cooldown.
+    - COOLDOWN_TICKS = 10: 10 ticks cooldown duration before returning to inactive.
+    - Power output: redstone signal equal to calculated power while in Active phase, 0 in cooldown or inactive.
+    - Direct signal: strongly powers only in Direction.UP.
+  - SculkShriekerBlock.java & SculkShriekerBlockEntity.java:
+    - SHRIEKING_TICKS = 90: 90 ticks (4.5 seconds) shrieking duration.
+    - WARNING_SOUND_RADIUS = 10, DARKNESS_RADIUS = 40.0, WARDEN_SPAWN_ATTEMPTS = 20, WARDEN_SPAWN_RANGE_XZ = 5, WARDEN_SPAWN_RANGE_Y = 6.
+    - Event: level.levelEvent(3007, pos, 0) (WorldEvent::ParticlesSculkShriek = 3007).
+  - SculkCatalystBlock.java & SculkCatalystBlockEntity.java:
+    - PULSE_TICKS = 8: 8 ticks bloom animation scheduled tick.
+    - LISTENER_RADIUS = 8: 8 blocks radius to detect entity deaths.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs:
+    - Exported constants ACTIVE_TICKS = 30 and COOLDOWN_TICKS = 10.
+  - Updated crates/pumpkin-core/src/block/blocks/sculk/sculk_shrieker.rs:
+    - Exported constants WARNING_SOUND_RADIUS = 10, WARDEN_SPAWN_ATTEMPTS = 20, WARDEN_SPAWN_RANGE_XZ = 5, WARDEN_SPAWN_RANGE_Y = 6, DARKNESS_RADIUS = 40.0, SHRIEKING_TICKS = 90, and EVENT_SCULK_SHRIEK = 3007.
+  - Updated crates/pumpkin-core/src/block/blocks/sculk/sculk_catalyst.rs:
+    - Exported constants PULSE_TICKS = 8 and LISTENER_RADIUS = 8.
+    - Corrected bloom sound position to center (	o_centered_f64()).
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_sculk_timing_events_and_constants_parity.

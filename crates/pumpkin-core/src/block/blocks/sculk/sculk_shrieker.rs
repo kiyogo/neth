@@ -41,6 +41,13 @@ impl BlockMetadata for SculkShriekerBlock {
 }
 
 impl SculkShriekerBlock {
+    pub const WARNING_SOUND_RADIUS: i32 = WARNING_SOUND_RADIUS;
+    pub const WARDEN_SPAWN_ATTEMPTS: i32 = WARDEN_SPAWN_ATTEMPTS;
+    pub const WARDEN_SPAWN_RANGE_XZ: i32 = WARDEN_SPAWN_RANGE_XZ;
+    pub const WARDEN_SPAWN_RANGE_Y: i32 = WARDEN_SPAWN_RANGE_Y;
+    pub const DARKNESS_RADIUS: f64 = DARKNESS_RADIUS;
+    pub const SHRIEKING_TICKS: u32 = SHRIEKING_TICKS;
+    pub const EVENT_SCULK_SHRIEK: u32 = 3007;
     fn try_get_player(world: &World, entity: &Entity) -> Option<Arc<Player>> {
         if let Some(player) = world.get_player_by_id(entity.entity_id) {
             return Some(player);

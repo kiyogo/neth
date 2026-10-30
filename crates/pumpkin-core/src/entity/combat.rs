@@ -14682,6 +14682,30 @@ mod tests {
     }
 
     #[test]
+    fn test_sculk_timing_events_and_constants_parity() {
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;
+        use crate::block::blocks::sculk::sculk_catalyst::SculkCatalystBlock;
+
+        // Sensor:
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS, 30);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+
+        // Shrieker:
+        assert_eq!(SculkShriekerBlock::WARNING_SOUND_RADIUS, 10);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_ATTEMPTS, 20);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_XZ, 5);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_Y, 6);
+        assert_eq!(SculkShriekerBlock::DARKNESS_RADIUS, 40.0);
+        assert_eq!(SculkShriekerBlock::SHRIEKING_TICKS, 90);
+        assert_eq!(SculkShriekerBlock::EVENT_SCULK_SHRIEK, 3007);
+
+        // Catalyst:
+        assert_eq!(SculkCatalystBlock::PULSE_TICKS, 8);
+        assert_eq!(SculkCatalystBlock::LISTENER_RADIUS, 8);
+    }
+
+    #[test]
     fn test_end_portal_frame_eye_and_comparator_parity() {
         use crate::block::blocks::end_portal_frame::{
             EndPortalFrameBlock, calculate_end_portal_frame_comparator_signal,

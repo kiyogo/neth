@@ -18,6 +18,8 @@ impl BlockMetadata for SculkCatalystBlock {
 }
 
 impl SculkCatalystBlock {
+    pub const PULSE_TICKS: u32 = 8;
+    pub const LISTENER_RADIUS: i32 = 8;
     pub fn bloom(world: &Arc<crate::world::World>, pos: &BlockPos) {
         let block = world.get_block(pos);
         if block.id != BlockId::SCULK_CATALYST {
@@ -37,7 +39,7 @@ impl SculkCatalystBlock {
         world.play_sound(
             Sound::BlockSculkCatalystBloom,
             SoundCategory::Blocks,
-            &pos.to_f64(),
+            &pos.to_centered_f64(),
         );
     }
 }

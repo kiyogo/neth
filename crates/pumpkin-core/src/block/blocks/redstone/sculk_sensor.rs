@@ -45,6 +45,8 @@ fn sculk_sensor_phase(block: &Block, state_id: BlockStateId) -> SculkSensorPhase
 }
 
 impl SculkSensorBlock {
+    pub const ACTIVE_TICKS: u32 = 30;
+    pub const COOLDOWN_TICKS: u32 = 10;
     pub fn trigger(world: &Arc<World>, pos: &BlockPos, block: &Block, power: u8) {
         if block.id == BlockId::SCULK_SENSOR {
             let state = world.get_block_state(pos);
