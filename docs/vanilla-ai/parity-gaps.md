@@ -5096,3 +5096,32 @@ eck, part 1): nhận 100% full damage (damage).
     - Synchronized patrol banner search box with constants.
     - Added unit test test_raider_parity_constants.
   - All 13 unit tests verified and passing across evoker, vindicator, witch, raider, and combat suites.
+
+
+### Gap 222: Warden Combat, Sonic Boom, Anger Management & Darkness Parity
+- **Vanilla Reference**:
+  - Warden.java:78-100, 185-193, 319-322:
+    - Base Attributes: MAX_HEALTH = 500.0 (WARDEN_MAX_HEALTH), MOVEMENT_SPEED_WHEN_FIGHTING = 0.3 (WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING), KNOCKBACK_RESISTANCE = 1.0 (WARDEN_KNOCKBACK_RESISTANCE), ATTACK_KNOCKBACK = 1.5 (WARDEN_ATTACK_KNOCKBACK), ATTACK_DAMAGE = 30.0 (WARDEN_ATTACK_DAMAGE), FOLLOW_RANGE = 24.0 (WARDEN_FOLLOW_RANGE), xpReward = 5 (WARDEN_XP_REWARD).
+    - Shield Disabling: getSecondsToDisableBlocking() -> 5.0F (WARDEN_DISABLE_SHIELD_SECONDS = 5.0).
+    - Dynamic Heartbeat Delay: 40 - floor(clamp(anger / 80.0, 0.0, 1.0) * 30.0) (calculate_warden_heartbeat_delay: anger 0 -> 40 ticks, anger 40 -> 25 ticks, anger 80+ -> 10 ticks).
+    - Animation & Action Durations: emerge 134 ticks (WARDEN_EMERGE_DURATION), sniffing 84 ticks (WARDEN_SNIFFING_DURATION), roar 84 ticks (WARDEN_ROAR_DURATION), digging 100 ticks (WARDEN_DIGGING_DURATION).
+    - Darkness Pulse: radius 20.0 (WARDEN_DARKNESS_RADIUS), interval 120 ticks (WARDEN_DARKNESS_INTERVAL), duration 260 ticks (WARDEN_DARKNESS_DURATION), display limit 200 ticks (WARDEN_DARKNESS_DISPLAY_LIMIT).
+    - Anger Management Constants: tick delay 20 (WARDEN_ANGERMANAGEMENT_TICK_DELAY), default anger 35 (WARDEN_DEFAULT_ANGER), touch cooldown 20 ticks (WARDEN_TOUCH_COOLDOWN_TICKS), on hurt anger boost 20 (WARDEN_ON_HURT_ANGER_BOOST), projectile suspect anger 10 (WARDEN_PROJECTILE_ANGER).
+  - SonicBoom.java:19-25, 79-82:
+    - Distance XZ: 15.0 blocks (SONIC_BOOM_DISTANCE_XZ), Distance Y: 20.0 blocks (SONIC_BOOM_DISTANCE_Y).
+    - Damage: 10.0F magic damage (SONIC_BOOM_DAMAGE = 10.0).
+    - Timing: Cooldown 40 ticks (SONIC_BOOM_COOLDOWN = 40), Charge duration 34 ticks (SONIC_BOOM_CHARGE_DURATION = 34), Total duration 60 ticks (SONIC_BOOM_TOTAL_DURATION = 60).
+    - Knockback: Horizontal 2.5 * (1.0 - kb_res), Vertical 0.5 * (1.0 - kb_res) (calculate_sonic_boom_knockback).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added all Warden and Sonic Boom constants (WARDEN_MAX_HEALTH, WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING, WARDEN_KNOCKBACK_RESISTANCE, WARDEN_ATTACK_KNOCKBACK, WARDEN_ATTACK_DAMAGE, WARDEN_FOLLOW_RANGE, WARDEN_XP_REWARD, WARDEN_DISABLE_SHIELD_SECONDS, WARDEN_EMERGE_DURATION, WARDEN_SNIFFING_DURATION, WARDEN_ROAR_DURATION, WARDEN_DIGGING_DURATION, WARDEN_DARKNESS_RADIUS, WARDEN_DARKNESS_INTERVAL, WARDEN_DARKNESS_DURATION, WARDEN_DARKNESS_DISPLAY_LIMIT, WARDEN_TOUCH_COOLDOWN_TICKS, WARDEN_ANGERMANAGEMENT_TICK_DELAY, WARDEN_DEFAULT_ANGER, WARDEN_ON_HURT_ANGER_BOOST, WARDEN_PROJECTILE_ANGER, SONIC_BOOM_DISTANCE_XZ, SONIC_BOOM_DISTANCE_Y, SONIC_BOOM_DAMAGE, SONIC_BOOM_COOLDOWN, SONIC_BOOM_CHARGE_DURATION, SONIC_BOOM_TOTAL_DURATION, SONIC_BOOM_HORIZONTAL_KNOCKBACK, SONIC_BOOM_VERTICAL_KNOCKBACK).
+    - Added calculate_warden_heartbeat_delay(anger: i32) -> i32 implementing vanilla formula.
+    - Added calculate_sonic_boom_knockback(knockback_res: f64) -> (f64, f64).
+  - Updated crates/pumpkin-core/src/entity/mob/warden.rs:
+    - Synchronized attribute initialization with set_attribute_base and combat constants.
+    - Replaced 3-step discrete heartbeat delay with continuous calculate_warden_heartbeat_delay.
+    - Synchronized SonicBoomGoal and timing constants.
+    - Added unit test test_warden_sonic_boom_constants_and_knockback_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/warden_anger.rs:
+    - Synchronized anger default and projectile values with combat constants.
+  - All 5 unit tests verified and passing across warden, sonic_boom, and anger test suites.

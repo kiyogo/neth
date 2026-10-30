@@ -8,9 +8,14 @@ use uuid::Uuid;
 use crate::entity::{EntityBase, RemovalReason};
 use crate::world::World;
 
+use crate::entity::combat::{
+    WARDEN_ANGER_AGITATED_MIN, WARDEN_ANGER_ANGRY_MIN, WARDEN_DEFAULT_ANGER_DECREASE,
+    WARDEN_MAX_ANGER,
+};
+
 const CONVERSION_DELAY: i32 = 2;
-const MAX_ANGER: i32 = 150;
-const DEFAULT_ANGER_DECREASE: i32 = 1;
+const MAX_ANGER: i32 = WARDEN_MAX_ANGER;
+const DEFAULT_ANGER_DECREASE: i32 = WARDEN_DEFAULT_ANGER_DECREASE;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AngerLevel {
@@ -26,8 +31,8 @@ impl AngerLevel {
     pub const fn minimum_anger(self) -> i32 {
         match self {
             Self::Calm => 0,
-            Self::Agitated => 40,
-            Self::Angry => 80,
+            Self::Agitated => WARDEN_ANGER_AGITATED_MIN,
+            Self::Angry => WARDEN_ANGER_ANGRY_MIN,
         }
     }
 

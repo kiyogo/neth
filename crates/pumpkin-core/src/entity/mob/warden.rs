@@ -31,18 +31,29 @@ use crate::entity::{
 };
 use crate::world::World;
 
-const EMERGE_DURATION: i32 = 134;
-const SNIFFING_DURATION: i32 = 84;
-const ROAR_DURATION: i32 = 84;
-const DIGGING_DURATION: i32 = 100;
-const DARKNESS_DISPLAY_LIMIT: i32 = 200;
-const DARKNESS_DURATION: i32 = 260;
-const TOUCH_COOLDOWN_TICKS: i32 = 20;
-const ANGERMANAGEMENT_TICK_DELAY: i32 = 20;
-const DARKNESS_INTERVAL: i32 = 120;
-const DARKNESS_RADIUS: f64 = 20.0;
-const DEFAULT_ANGER: i32 = 35;
-const ON_HURT_ANGER_BOOST: i32 = 20;
+use crate::entity::combat::{
+    SONIC_BOOM_CHARGE_DURATION, SONIC_BOOM_COOLDOWN, SONIC_BOOM_TOTAL_DURATION,
+    WARDEN_ANGERMANAGEMENT_TICK_DELAY, WARDEN_ATTACK_DAMAGE, WARDEN_ATTACK_KNOCKBACK,
+    WARDEN_DARKNESS_DISPLAY_LIMIT, WARDEN_DARKNESS_DURATION, WARDEN_DARKNESS_INTERVAL,
+    WARDEN_DARKNESS_RADIUS, WARDEN_DEFAULT_ANGER, WARDEN_DIGGING_DURATION,
+    WARDEN_DISABLE_SHIELD_SECONDS, WARDEN_EMERGE_DURATION, WARDEN_FOLLOW_RANGE,
+    WARDEN_KNOCKBACK_RESISTANCE, WARDEN_MAX_HEALTH, WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING,
+    WARDEN_ON_HURT_ANGER_BOOST, WARDEN_ROAR_DURATION, WARDEN_SNIFFING_DURATION,
+    WARDEN_TOUCH_COOLDOWN_TICKS, WARDEN_XP_REWARD, calculate_warden_heartbeat_delay,
+};
+
+const EMERGE_DURATION: i32 = WARDEN_EMERGE_DURATION;
+const SNIFFING_DURATION: i32 = WARDEN_SNIFFING_DURATION;
+const ROAR_DURATION: i32 = WARDEN_ROAR_DURATION;
+const DIGGING_DURATION: i32 = WARDEN_DIGGING_DURATION;
+const DARKNESS_DISPLAY_LIMIT: i32 = WARDEN_DARKNESS_DISPLAY_LIMIT;
+const DARKNESS_DURATION: i32 = WARDEN_DARKNESS_DURATION;
+const TOUCH_COOLDOWN_TICKS: i32 = WARDEN_TOUCH_COOLDOWN_TICKS;
+const ANGERMANAGEMENT_TICK_DELAY: i32 = WARDEN_ANGERMANAGEMENT_TICK_DELAY;
+const DARKNESS_INTERVAL: i32 = WARDEN_DARKNESS_INTERVAL;
+const DARKNESS_RADIUS: f64 = WARDEN_DARKNESS_RADIUS;
+const DEFAULT_ANGER: i32 = WARDEN_DEFAULT_ANGER;
+const ON_HURT_ANGER_BOOST: i32 = WARDEN_ON_HURT_ANGER_BOOST;
 
 pub struct WardenEntity {
     pub mob_entity: MobEntity,
@@ -300,9 +311,9 @@ pub struct WardenSonicBoomGoal {
 }
 
 impl WardenSonicBoomGoal {
-    pub const COOLDOWN: i32 = 40;
-    pub const CHARGE_DURATION: i32 = 34;
-    pub const TOTAL_DURATION: i32 = 60;
+    pub const COOLDOWN: i32 = SONIC_BOOM_COOLDOWN;
+    pub const CHARGE_DURATION: i32 = SONIC_BOOM_CHARGE_DURATION;
+    pub const TOTAL_DURATION: i32 = SONIC_BOOM_TOTAL_DURATION;
 
     #[must_use]
     pub const fn new(warden: Weak<WardenEntity>) -> Self {
@@ -464,7 +475,7 @@ impl Goal for WardenSonicBoomGoal {
 }
 
 impl WardenEntity {
-    pub const XP_REWARD: u32 = 5;
+    pub const XP_REWARD: u32 = WARDEN_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
@@ -487,39 +498,31 @@ impl WardenEntity {
         let mob_arc = Arc::new(warden);
 
         // Vanilla Warden: MAX_HEALTH = 500.0, MOVEMENT_SPEED = 0.3, KNOCKBACK_RESISTANCE = 1.0, ATTACK_KNOCKBACK = 1.5, ATTACK_DAMAGE = 30.0, FOLLOW_RANGE = 24.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 500.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(kb_res) = attributes.get_mut(&Attributes::KNOCKBACK_RESISTANCE.id) {
-                kb_res.base_value = 1.0;
-                kb_res.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(atk_kb) = attributes.get_mut(&Attributes::ATTACK_KNOCKBACK.id) {
-                atk_kb.base_value = 1.5;
-                atk_kb.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 30.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 24.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(500.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(WARDEN_MAX_HEALTH));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::KNOCKBACK_RESISTANCE, WARDEN_KNOCKBACK_RESISTANCE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_KNOCKBACK, WARDEN_ATTACK_KNOCKBACK);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(WARDEN_ATTACK_DAMAGE));
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, WARDEN_FOLLOW_RANGE);
+        mob_arc.mob_entity.living_entity.set_health(WARDEN_MAX_HEALTH);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -791,7 +794,7 @@ impl Mob for WardenEntity {
     }
 
     fn get_seconds_to_disable_blocking(&self) -> f32 {
-        5.0
+        WARDEN_DISABLE_SHIELD_SECONDS
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
@@ -882,13 +885,9 @@ impl Mob for WardenEntity {
 
         self.update_target_from_anger();
 
-        // Heartbeat pulsing sound
+        // Heartbeat pulsing sound (Warden.java:319-322)
         let hb_t = self.heartbeat_tick.fetch_add(1, Ordering::Relaxed) + 1;
-        let hb_interval = match self.get_anger_level() {
-            AngerLevel::Angry => 20,
-            AngerLevel::Agitated => 40,
-            AngerLevel::Calm => 60,
-        };
+        let hb_interval = calculate_warden_heartbeat_delay(self.get_active_anger());
         if hb_t >= hb_interval {
             self.heartbeat_tick.store(0, Ordering::Relaxed);
             if !entity.silent.load(Ordering::Relaxed) {
@@ -942,7 +941,17 @@ mod tests {
 
     #[test]
     fn test_warden_sonic_boom_constants_and_knockback_parity() {
-        assert_eq!(WardenEntity::XP_REWARD, 5);
+        assert_eq!(WardenEntity::XP_REWARD, WARDEN_XP_REWARD);
+        assert_eq!(WARDEN_MAX_HEALTH, 500.0);
+        assert_eq!(WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING, 0.3);
+        assert_eq!(WARDEN_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(WARDEN_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(WARDEN_ATTACK_DAMAGE, 30.0);
+        assert_eq!(WARDEN_FOLLOW_RANGE, 24.0);
+        assert_eq!(WARDEN_DISABLE_SHIELD_SECONDS, 5.0);
+        assert_eq!(calculate_warden_heartbeat_delay(0), 40);
+        assert_eq!(calculate_warden_heartbeat_delay(40), 25);
+        assert_eq!(calculate_warden_heartbeat_delay(80), 10);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DAMAGE, 10.0);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_XZ, 15.0);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_Y, 20.0);

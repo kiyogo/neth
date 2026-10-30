@@ -7038,6 +7038,147 @@ pub fn is_sonic_boom_in_range(dx: f64, dy: f64, dz: f64) -> bool {
     (dx * dx + dz * dz).sqrt() <= SONIC_BOOM_DISTANCE_XZ && dy.abs() <= SONIC_BOOM_DISTANCE_Y
 }
 
+/// Warden base max health (500.0 HP / 250 hearts).
+/// Mirrors vanilla `Warden.java:80, 187` (`Attributes.MAX_HEALTH, 500.0`).
+pub const WARDEN_MAX_HEALTH: f32 = 500.0;
+
+/// Warden base movement speed when fighting (0.3).
+/// Mirrors vanilla `Warden.java:81, 188` (`Attributes.MOVEMENT_SPEED, 0.3F`).
+pub const WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING: f64 = 0.3;
+
+/// Warden knockback resistance (1.0 = 100% immune to normal knockback).
+/// Mirrors vanilla `Warden.java:82, 189` (`Attributes.KNOCKBACK_RESISTANCE, 1.0`).
+pub const WARDEN_KNOCKBACK_RESISTANCE: f64 = 1.0;
+
+/// Warden attack knockback bonus (1.5).
+/// Mirrors vanilla `Warden.java:83, 190` (`Attributes.ATTACK_KNOCKBACK, 1.5`).
+pub const WARDEN_ATTACK_KNOCKBACK: f64 = 1.5;
+
+/// Warden melee attack damage (30.0 HP / 15 hearts).
+/// Mirrors vanilla `Warden.java:84, 191` (`Attributes.ATTACK_DAMAGE, 30.0`).
+pub const WARDEN_ATTACK_DAMAGE: f32 = 30.0;
+
+/// Warden player follow range (24.0 blocks).
+/// Mirrors vanilla `Warden.java:85, 192` (`Attributes.FOLLOW_RANGE, 24.0`).
+pub const WARDEN_FOLLOW_RANGE: f64 = 24.0;
+
+/// Experience reward dropped by a Warden on death (5 XP).
+/// Mirrors vanilla `Warden.java` (`xpReward = 5`).
+pub const WARDEN_XP_REWARD: u32 = 5;
+
+/// Cooldown ticks between vibration detections for Warden (40 ticks = 2.0s).
+/// Mirrors vanilla `Warden.java:78` (`VIBRATION_COOLDOWN_TICKS = 40`).
+pub const WARDEN_VIBRATION_COOLDOWN_TICKS: i32 = 40;
+
+/// Ticks of melee combat before Warden considers using Sonic Boom (200 ticks = 10.0s).
+/// Mirrors vanilla `Warden.java:79` (`TIME_TO_USE_MELEE_UNTIL_SONIC_BOOM = 200`).
+pub const WARDEN_TIME_TO_USE_MELEE_UNTIL_SONIC_BOOM: i32 = 200;
+
+/// Darkness effect display limit in ticks for Warden pulsing darkness (200 ticks = 10.0s).
+/// Mirrors vanilla `Warden.java:87` (`DARKNESS_DISPLAY_LIMIT = 200`).
+pub const WARDEN_DARKNESS_DISPLAY_LIMIT: i32 = 200;
+
+/// Darkness effect duration applied to nearby players (260 ticks = 13.0s).
+/// Mirrors vanilla `Warden.java:88` (`DARKNESS_DURATION = 260`).
+pub const WARDEN_DARKNESS_DURATION: i32 = 260;
+
+/// Darkness effect search and application radius (20.0 blocks).
+/// Mirrors vanilla `Warden.java:89` (`DARKNESS_RADIUS = 20`).
+pub const WARDEN_DARKNESS_RADIUS: f64 = 20.0;
+
+/// Interval between Warden darkness pulses (120 ticks = 6.0s).
+/// Mirrors vanilla `Warden.java:90` (`DARKNESS_INTERVAL = 120`).
+pub const WARDEN_DARKNESS_INTERVAL: i32 = 120;
+
+/// Interval between anger management decay ticks (20 ticks = 1.0s).
+/// Mirrors vanilla `Warden.java:91` (`ANGERMANAGEMENT_TICK_DELAY = 20`).
+pub const WARDEN_ANGERMANAGEMENT_TICK_DELAY: i32 = 20;
+
+/// Default anger increase when touched or disturbed by an entity (35).
+/// Mirrors vanilla `Warden.java:92` (`DEFAULT_ANGER = 35`).
+pub const WARDEN_DEFAULT_ANGER: i32 = 35;
+
+/// Anger increase from projectile impact (10).
+/// Mirrors vanilla `Warden.java:93` (`PROJECTILE_ANGER = 10`).
+pub const WARDEN_PROJECTILE_ANGER: i32 = 10;
+
+/// Anger boost added to minimum angry threshold when Warden is hurt (20).
+/// Mirrors vanilla `Warden.java:94` (`ON_HURT_ANGER_BOOST = 20`).
+pub const WARDEN_ON_HURT_ANGER_BOOST: i32 = 20;
+
+/// Maximum ticks threshold to remember recent projectile hits (100 ticks = 5.0s).
+/// Mirrors vanilla `Warden.java:95` (`RECENT_PROJECTILE_TICK_THRESHOLD = 100`).
+pub const WARDEN_RECENT_PROJECTILE_TICK_THRESHOLD: i32 = 100;
+
+/// Cooldown between physical touch anger increments (20 ticks = 1.0s).
+/// Mirrors vanilla `Warden.java:96` (`TOUCH_COOLDOWN_TICKS = 20`).
+pub const WARDEN_TOUCH_COOLDOWN_TICKS: i32 = 20;
+
+/// Maximum distance from which a projectile impact angers the Warden (30.0 blocks).
+/// Mirrors vanilla `Warden.java:100` (`PROJECTILE_ANGER_DISTANCE = 30`).
+pub const WARDEN_PROJECTILE_ANGER_DISTANCE: f64 = 30.0;
+
+/// Total animation duration for Warden emerge animation (134 ticks = 6.7s).
+/// Mirrors vanilla `WardenAi.java:87` (`EMERGE_DURATION = 134`).
+pub const WARDEN_EMERGE_DURATION: i32 = 134;
+
+/// Total animation duration for Warden sniffing (84 ticks = 4.2s).
+/// Mirrors vanilla `WardenAi.java:88` (`SNIFFING_DURATION = 84`).
+pub const WARDEN_SNIFFING_DURATION: i32 = 84;
+
+/// Total animation duration for Warden roar (84 ticks = 4.2s).
+/// Mirrors vanilla `WardenAi.java:89` (`ROAR_DURATION = 84`).
+pub const WARDEN_ROAR_DURATION: i32 = 84;
+
+/// Total animation duration for Warden digging into ground (100 ticks = 5.0s).
+/// Mirrors vanilla `WardenAi.java:90` (`DIGGING_DURATION = 100`).
+pub const WARDEN_DIGGING_DURATION: i32 = 100;
+
+/// Shield disable duration in seconds when hit by Warden melee attack (5.0s).
+/// Mirrors vanilla `Warden.java:492` (`return 5.0F;`).
+pub const WARDEN_DISABLE_SHIELD_SECONDS: f32 = 5.0;
+
+/// Maximum anger value in anger management tracking (150).
+/// Mirrors vanilla `AngerManagement.java:34` (`MAX_ANGER = 150`).
+pub const WARDEN_MAX_ANGER: i32 = 150;
+
+/// Default anger decrease per decay cycle (1).
+/// Mirrors vanilla `AngerManagement.java:35` (`DEFAULT_ANGER_DECREASE = 1`).
+pub const WARDEN_DEFAULT_ANGER_DECREASE: i32 = 1;
+
+/// Minimum anger threshold for Agitated state (40).
+/// Mirrors vanilla `AngerLevel.java:12` (`AGITATED(40, ...)`).
+pub const WARDEN_ANGER_AGITATED_MIN: i32 = 40;
+
+/// Minimum anger threshold for Angry state (80).
+/// Mirrors vanilla `AngerLevel.java:13` (`ANGRY(80, ...)`).
+pub const WARDEN_ANGER_ANGRY_MIN: i32 = 80;
+
+/// Cooldown ticks for Sonic Boom attack (40 ticks = 2.0s).
+/// Mirrors vanilla `SonicBoom.java:23` (`COOLDOWN = 40`).
+pub const SONIC_BOOM_COOLDOWN: i32 = 40;
+
+/// Charge ticks before Sonic Boom sound and effect trigger (34 ticks = 1.7s).
+/// Mirrors vanilla `SonicBoom.java:24` (`TICKS_BEFORE_PLAYING_SOUND = 34`).
+pub const SONIC_BOOM_CHARGE_DURATION: i32 = 34;
+
+/// Total duration of Sonic Boom behavior (60 ticks = 3.0s).
+/// Mirrors vanilla `SonicBoom.java:25` (`DURATION = 60`).
+pub const SONIC_BOOM_TOTAL_DURATION: i32 = 60;
+
+/// Calculates heartbeat delay in ticks based on Warden client anger level (40 ticks down to 10 ticks).
+///
+/// Mirrors vanilla `Warden.java:319-322`:
+/// ```java
+/// float anger = (float)this.getClientAngerLevel() / AngerLevel.ANGRY.getMinimumAnger();
+/// return 40 - Mth.floor(Mth.clamp(anger, 0.0F, 1.0F) * 30.0F);
+/// ```
+#[must_use]
+pub fn calculate_warden_heartbeat_delay(client_anger: i32) -> i32 {
+    let ratio = (client_anger as f32 / WARDEN_ANGER_ANGRY_MIN as f32).clamp(0.0, 1.0);
+    40 - (ratio * 30.0).floor() as i32
+}
+
 /// Maximum health for Ender Dragon (200.0 HP = 100 hearts).
 ///
 /// Mirrors vanilla `EnderDragon.java:840`:
@@ -11389,6 +11530,47 @@ mod tests {
         assert!(!should_wither_deflect_projectile(true, false));
 
         // 4. Warden Sonic Boom damage, ranges and knockback (SonicBoom.java:19-22, 79-84)
+        // Warden constants parity (Warden.java:78-100, 185-193, 319-322, SonicBoom.java:19-25, 79-82)
+        assert_eq!(WARDEN_MAX_HEALTH, 500.0);
+        assert_eq!(WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING, 0.3);
+        assert_eq!(WARDEN_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(WARDEN_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(WARDEN_ATTACK_DAMAGE, 30.0);
+        assert_eq!(WARDEN_FOLLOW_RANGE, 24.0);
+        assert_eq!(WARDEN_XP_REWARD, 5);
+        assert_eq!(WARDEN_VIBRATION_COOLDOWN_TICKS, 40);
+        assert_eq!(WARDEN_TIME_TO_USE_MELEE_UNTIL_SONIC_BOOM, 200);
+        assert_eq!(WARDEN_DARKNESS_DISPLAY_LIMIT, 200);
+        assert_eq!(WARDEN_DARKNESS_DURATION, 260);
+        assert_eq!(WARDEN_DARKNESS_RADIUS, 20.0);
+        assert_eq!(WARDEN_DARKNESS_INTERVAL, 120);
+        assert_eq!(WARDEN_ANGERMANAGEMENT_TICK_DELAY, 20);
+        assert_eq!(WARDEN_DEFAULT_ANGER, 35);
+        assert_eq!(WARDEN_PROJECTILE_ANGER, 10);
+        assert_eq!(WARDEN_ON_HURT_ANGER_BOOST, 20);
+        assert_eq!(WARDEN_RECENT_PROJECTILE_TICK_THRESHOLD, 100);
+        assert_eq!(WARDEN_TOUCH_COOLDOWN_TICKS, 20);
+        assert_eq!(WARDEN_PROJECTILE_ANGER_DISTANCE, 30.0);
+        assert_eq!(WARDEN_EMERGE_DURATION, 134);
+        assert_eq!(WARDEN_SNIFFING_DURATION, 84);
+        assert_eq!(WARDEN_ROAR_DURATION, 84);
+        assert_eq!(WARDEN_DIGGING_DURATION, 100);
+        assert_eq!(WARDEN_DISABLE_SHIELD_SECONDS, 5.0);
+        assert_eq!(WARDEN_MAX_ANGER, 150);
+        assert_eq!(WARDEN_DEFAULT_ANGER_DECREASE, 1);
+        assert_eq!(WARDEN_ANGER_AGITATED_MIN, 40);
+        assert_eq!(WARDEN_ANGER_ANGRY_MIN, 80);
+
+        // Heartbeat calculation: anger 0 -> 40, anger 40 -> 25, anger 80+ -> 10
+        assert_eq!(calculate_warden_heartbeat_delay(0), 40);
+        assert_eq!(calculate_warden_heartbeat_delay(20), 33);
+        assert_eq!(calculate_warden_heartbeat_delay(40), 25);
+        assert_eq!(calculate_warden_heartbeat_delay(80), 10);
+        assert_eq!(calculate_warden_heartbeat_delay(150), 10);
+
+        assert_eq!(SONIC_BOOM_COOLDOWN, 40);
+        assert_eq!(SONIC_BOOM_CHARGE_DURATION, 34);
+        assert_eq!(SONIC_BOOM_TOTAL_DURATION, 60);
         assert_eq!(SONIC_BOOM_DAMAGE, 10.0);
         assert_eq!(SONIC_BOOM_DISTANCE_XZ, 15.0);
         assert_eq!(SONIC_BOOM_DISTANCE_Y, 20.0);
