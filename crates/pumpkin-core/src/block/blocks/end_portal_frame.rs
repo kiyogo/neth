@@ -8,8 +8,23 @@ use crate::{
 
 type EndPortalFrameProperties = pumpkin_data::block_properties::EndPortalFrameLikeProperties;
 
+/// Vanilla `EndPortalFrameBlock.java:44-46`: `state.getValue(HAS_EYE) ? 15 : 0`
+#[must_use]
+pub const fn calculate_end_portal_frame_comparator_signal(has_eye: bool) -> u8 {
+    if has_eye { 15 } else { 0 }
+}
+
 #[pumpkin_block("minecraft:end_portal_frame")]
 pub struct EndPortalFrameBlock;
+
+impl EndPortalFrameBlock {
+    pub const COMPARATOR_SIGNAL_EYE: u8 = 15;
+    pub const COMPARATOR_SIGNAL_EMPTY: u8 = 0;
+    pub const EVENT_FRAME_FILL: u32 = 1503;
+    pub const EVENT_PORTAL_SPAWN: u32 = 1038;
+    pub const PORTAL_FRAME_COUNT: usize = 12;
+    pub const PORTAL_INNER_SIZE: usize = 3;
+}
 
 impl BlockBehaviour for EndPortalFrameBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {

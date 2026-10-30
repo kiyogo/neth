@@ -6461,3 +6461,18 @@ otDir * 0.4F, max = 0.2F).
     - Exported percentage calculations calculate_gateway_spawn_percent(age, a) and calculate_gateway_cooldown_percent(cooldown, a).
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_end_gateway_timing_and_durations_parity.
+
+### Gap 261: End Portal Frame Eye Insertion, Activation Sound, Orientation & Portal Completion Parity
+- **Vanilla Reference**:
+  - EndPortalFrameBlock.java:44-55, 78-112:
+    - Comparator power: state.getValue(HAS_EYE) ? 15 : 0.
+    - Portal shape: 5x5 ring (3 blocks per side, facing inward, with eyes filled). Total of 12 frame blocks and 9 portal blocks in the interior.
+  - EnderEyeItem.java:31-64:
+    - On eye insert: consumes 1 eye, sets HAS_EYE = true, emits level.levelEvent(1503, pos, 0) (SoundEndPortalFrameFill).
+    - On portal completion: replaces 3x3 interior air with END_PORTAL and plays level.globalLevelEvent(1038, center, 0) (SoundEndPortalSpawn).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/end_portal_frame.rs:
+    - Exported constants COMPARATOR_SIGNAL_EYE (15), COMPARATOR_SIGNAL_EMPTY (0), EVENT_FRAME_FILL (1503), EVENT_PORTAL_SPAWN (1038), PORTAL_FRAME_COUNT (12), PORTAL_INNER_SIZE (3).
+    - Exported calculation helper calculate_end_portal_frame_comparator_signal(has_eye).
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_end_portal_frame_eye_and_comparator_parity.

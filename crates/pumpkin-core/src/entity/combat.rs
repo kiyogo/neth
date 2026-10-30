@@ -14682,6 +14682,24 @@ mod tests {
     }
 
     #[test]
+    fn test_end_portal_frame_eye_and_comparator_parity() {
+        use crate::block::blocks::end_portal_frame::{
+            EndPortalFrameBlock, calculate_end_portal_frame_comparator_signal,
+        };
+
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EYE, 15);
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EMPTY, 0);
+        assert_eq!(EndPortalFrameBlock::EVENT_FRAME_FILL, 1503);
+        assert_eq!(EndPortalFrameBlock::EVENT_PORTAL_SPAWN, 1038);
+        assert_eq!(EndPortalFrameBlock::PORTAL_FRAME_COUNT, 12);
+        assert_eq!(EndPortalFrameBlock::PORTAL_INNER_SIZE, 3);
+
+        // Comparator power:
+        assert_eq!(calculate_end_portal_frame_comparator_signal(true), 15);
+        assert_eq!(calculate_end_portal_frame_comparator_signal(false), 0);
+    }
+
+    #[test]
     fn test_end_gateway_timing_and_durations_parity() {
         use crate::block::entities::end_gateway::{
             EndGatewayBlockEntity, calculate_gateway_spawn_percent, calculate_gateway_cooldown_percent,
