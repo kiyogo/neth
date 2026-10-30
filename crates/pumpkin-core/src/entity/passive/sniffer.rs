@@ -79,6 +79,7 @@ pub struct SnifferEntity {
 }
 
 impl SnifferEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::SNIFFER_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let sniffer = Self {
@@ -90,24 +91,18 @@ impl SnifferEntity {
         };
 
         // Initialize attributes: Max Health = 14.0, Movement Speed = 0.1
-        {
-            let mut attributes = sniffer
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 14.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.1;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        sniffer.mob_entity.living_entity.health.store(14.0);
+        sniffer
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::SNIFFER_MAX_HEALTH as f64);
+        sniffer
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::SNIFFER_BASE_MOVEMENT_SPEED);
+        sniffer
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::SNIFFER_MAX_HEALTH);
 
         let mob_arc = Arc::new(sniffer);
         let mob_weak: Weak<dyn Mob> = {
@@ -385,6 +380,14 @@ impl Mob for SnifferEntity {
         Some(self)
     }
 
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_int("State", self.get_state().id());
         nbt.put_int(
@@ -520,5 +523,14 @@ mod tests {
         assert!((pitch_low - 0.8).abs() < 1e-6);
         assert!((pitch_high - 1.2).abs() < 1e-6);
         assert!((pitch_mid - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_sniffer_parity_constants() {
+        assert_eq!(SnifferEntity::XP_REWARD, 2);
+        assert_eq!(crate::entity::combat::SNIFFER_MAX_HEALTH, 14.0);
+        assert_eq!(crate::entity::combat::SNIFFER_BASE_MOVEMENT_SPEED, 0.1);
+        assert_eq!(crate::entity::combat::SNIFFER_BABY_START_AGE, -48000);
+        assert_eq!(crate::entity::combat::SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS, 120);
     }
 }

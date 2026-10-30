@@ -36,6 +36,7 @@ pub struct StriderEntity {
 }
 
 impl StriderEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::STRIDER_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let strider = Self {
@@ -52,23 +53,18 @@ impl StriderEntity {
         };
 
         // Vanilla Strider: MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.175
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 20.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.175;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(20.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::STRIDER_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::STRIDER_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::STRIDER_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -173,6 +169,14 @@ impl Animal for StriderEntity {
 impl Mob for StriderEntity {
     fn as_strider(&self) -> Option<&StriderEntity> {
         Some(self)
+    }
+
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
@@ -355,6 +359,15 @@ impl CustomSound for StriderEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strider_parity_constants() {
+        assert_eq!(StriderEntity::XP_REWARD, 2);
+        assert_eq!(crate::entity::combat::STRIDER_MAX_HEALTH, 20.0);
+        assert_eq!(crate::entity::combat::STRIDER_BASE_MOVEMENT_SPEED, 0.175);
+        assert_eq!(crate::entity::combat::STRIDER_SUFFOCATING_SPEED_MODIFIER, -0.34);
+    }
 
     #[test]
     fn test_strider_ridden_speed_and_sounds() {

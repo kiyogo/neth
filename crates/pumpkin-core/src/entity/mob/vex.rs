@@ -27,6 +27,7 @@ pub struct VexEntity {
 }
 
 impl VexEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::VEX_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         entity.synched_data.define(pumpkin_data::tracked_data::vex::DATA_FLAGS_ID, 0u8);
         let mob_entity = MobEntity::new(entity);
@@ -58,23 +59,18 @@ impl VexEntity {
         }
 
         // Vanilla Vex: MAX_HEALTH = 14.0, ATTACK_DAMAGE = 4.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 14.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 4.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(14.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::VEX_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, crate::entity::combat::VEX_BASE_ATTACK_DAMAGE as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::VEX_MAX_HEALTH);
 
         // Vanilla Vex: noPhysics = true (flies through solid blocks), hasNoGravity = true
         let entity_ref = mob_arc.get_entity();
@@ -214,7 +210,15 @@ impl CustomSound for VexEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::entity::combat::*;
+
+    #[test]
+    fn test_vex_parity_constants() {
+        assert_eq!(VexEntity::XP_REWARD, 3);
+        assert_eq!(crate::entity::combat::VEX_MAX_HEALTH, 14.0);
+        assert_eq!(crate::entity::combat::VEX_BASE_ATTACK_DAMAGE, 4.0);
+    }
 
     #[test]
     fn test_vex_constants_and_decay_parity() {

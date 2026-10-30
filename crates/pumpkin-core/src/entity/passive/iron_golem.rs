@@ -89,6 +89,7 @@ pub struct IronGolemEntity {
 
 
 impl IronGolemEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::IRON_GOLEM_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
 
@@ -119,6 +120,32 @@ impl IronGolemEntity {
             Arc::downgrade(&mob_arc)
 
         };
+
+        // Vanilla IronGolem: MAX_HEALTH = 100.0, MOVEMENT_SPEED = 0.25, KNOCKBACK_RESISTANCE = 1.0, ATTACK_DAMAGE = 15.0, STEP_HEIGHT = 1.0
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::IRON_GOLEM_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::IRON_GOLEM_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::KNOCKBACK_RESISTANCE, crate::entity::combat::IRON_GOLEM_KNOCKBACK_RESISTANCE as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, crate::entity::combat::IRON_GOLEM_BASE_ATTACK_DAMAGE as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::IRON_GOLEM_STEP_HEIGHT as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::IRON_GOLEM_MAX_HEALTH);
 
 
 
@@ -301,6 +328,10 @@ impl NeutralMob for IronGolemEntity {
 
 
 impl Mob for IronGolemEntity {
+
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
 
     fn can_attack(&self, target: &dyn EntityBase) -> bool {
 
@@ -613,6 +644,16 @@ impl CustomSound for IronGolemEntity {
 #[cfg(test)]
 
 mod tests {
+
+    #[test]
+    fn test_iron_golem_parity_constants() {
+        assert_eq!(crate::entity::combat::IRON_GOLEM_MAX_HEALTH, 100.0);
+        assert_eq!(crate::entity::combat::IRON_GOLEM_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(crate::entity::combat::IRON_GOLEM_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(crate::entity::combat::IRON_GOLEM_BASE_ATTACK_DAMAGE, 15.0);
+        assert_eq!(crate::entity::combat::IRON_GOLEM_STEP_HEIGHT, 1.0);
+        assert_eq!(crate::entity::combat::IRON_GOLEM_XP_REWARD, 0);
+    }
 
 
     use crate::entity::combat::{

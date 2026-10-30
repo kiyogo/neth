@@ -5526,3 +5526,56 @@ eck, part 1): nhận 100% full damage (damage).
     - Added unit test `test_tropical_fish_parity_constants`.
   - All 41 unit tests verified and passing across aquatic mob suites.
 
+### Gap 232: Sniffer, Armadillo, Strider, Allay, Vex, Iron Golem & Snow Golem Utility Mobs Combat, Attributes, Shell State, Flying Speed & Scenting Parity
+- **Vanilla Reference**:
+  - `Sniffer.java:35, 73, 86, 136, 215-240, 387`:
+    - Base Attributes: `SNIFFER_MAX_HEALTH = 14.0`, `SNIFFER_BASE_MOVEMENT_SPEED = 0.1`, `SNIFFER_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Con non lớn chậm (`SNIFFER_BABY_START_AGE = -48000`), thời gian đào nhả hạt giống (`DIGGING_DROP_SEED_OFFSET_TICKS = 120`), âm thanh ăn hạt cỏ pitch random giữa 0.8 và 1.2.
+  - `Armadillo.java:93, 293-295, 398, 404, 410`:
+    - Base Attributes: `ARMADILLO_MAX_HEALTH = 12.0`, `ARMADILLO_BASE_MOVEMENT_SPEED = 0.14`, `ARMADILLO_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Trạng thái cuộn tròn Rolling (`ARMADILLO_ROLL_DURATION_TICKS = 10`), Scared (`ARMADILLO_SCARED_DURATION_TICKS = 50`), Unrolling (`ARMADILLO_UNROLL_DURATION_TICKS = 30`). Khi sợ hãi thu mình trong mai nhận sát thương giảm theo công thức `(damage - 1.0F) / 2.0F`.
+  - `Strider.java:82, 169-171, 350`:
+    - Base Attributes: `STRIDER_MAX_HEALTH = 20.0`, `STRIDER_BASE_MOVEMENT_SPEED = 0.175`, `STRIDER_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Ra khỏi dung nham bị lạnh run và giảm 34% tốc độ di chuyển (`STRIDER_SUFFOCATING_SPEED_MODIFIER = -0.34`).
+  - `Allay.java:78, 128-131`:
+    - Base Attributes: `ALLAY_MAX_HEALTH = 20.0`, `ALLAY_FLYING_SPEED = 0.1`, `ALLAY_BASE_MOVEMENT_SPEED = 0.1`, `ALLAY_BASE_ATTACK_DAMAGE = 2.0`, `ALLAY_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Nhân bản khi nghe nhạc Jukebox và cho Amethyst Shard với hồi chiêu 6000 ticks (`ALLAY_DUPLICATION_COOLDOWN_TICKS = 6000`).
+  - `Vex.java:60, 79, 99`:
+    - Base Attributes: `VEX_MAX_HEALTH = 14.0`, `VEX_BASE_ATTACK_DAMAGE = 4.0`, `VEX_XP_REWARD = 3`.
+    - Mechanics: Triệu hồi bởi Evoker có giới hạn thời gian sống (`limitedLifeTicks`), sau đó mất máu dần mỗi 20 ticks.
+  - `IronGolem.java:99-103, 189-199`, `SnowGolem.java:62, 86, 130-137`:
+    - Iron Golem: `IRON_GOLEM_MAX_HEALTH = 100.0`, `IRON_GOLEM_BASE_MOVEMENT_SPEED = 0.25`, `IRON_GOLEM_KNOCKBACK_RESISTANCE = 1.0`, `IRON_GOLEM_BASE_ATTACK_DAMAGE = 15.0`, `IRON_GOLEM_STEP_HEIGHT = 1.0`, `IRON_GOLEM_XP_REWARD = 0`, `canBeLeashed() -> true`. Fling mục tiêu lên trời với velocity `0.4F`. Hồi 25 HP bằng Iron Ingot.
+    - Snow Golem: `SNOW_GOLEM_MAX_HEALTH = 4.0`, `SNOW_GOLEM_BASE_MOVEMENT_SPEED = 0.2`, `SNOW_GOLEM_XP_REWARD = 0`, `canBeLeashed() -> true`, tan chảy trong nước và mưa (`isSensitiveToWater`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants for Sniffer, Armadillo, Strider, Allay, Vex, Iron Golem, and Snow Golem.
+    - Added unit test `test_utility_mobs_parity`.
+  - Updated `SnifferEntity` in `crates/pumpkin-core/src/entity/passive/sniffer.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_sniffer_parity_constants`.
+  - Updated `ArmadilloEntity` in `crates/pumpkin-core/src/entity/passive/armadillo.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_armadillo_parity_constants`.
+  - Updated `StriderEntity` in `crates/pumpkin-core/src/entity/passive/strider.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_strider_parity_constants`.
+  - Updated `AllayEntity` in `crates/pumpkin-core/src/entity/passive/allay.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_allay_parity_constants`.
+  - Updated `VexEntity` in `crates/pumpkin-core/src/entity/mob/vex.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Added unit test `test_vex_parity_constants`.
+  - Updated `IronGolemEntity` in `crates/pumpkin-core/src/entity/passive/iron_golem.rs`:
+    - Initialized all base attributes in `new()` via `set_attribute_base` (Max Health 100.0, Speed 0.25, Knockback Resistance 1.0, Attack Damage 15.0, Step Height 1.0).
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+    - Added unit test `test_iron_golem_parity_constants`.
+  - Updated `SnowGolemEntity` in `crates/pumpkin-core/src/entity/passive/snow_golem.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+    - Added unit test `test_snow_golem_parity_constants`.
+  - All 25 unit tests verified and passing across utility mob test suites.
+

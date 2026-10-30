@@ -124,6 +124,7 @@ pub struct ArmadilloEntity {
 }
 
 impl ArmadilloEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::ARMADILLO_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let armadillo = Self {
@@ -136,24 +137,18 @@ impl ArmadilloEntity {
         };
 
         // Initialize attributes: Max Health = 12.0, Movement Speed = 0.14
-        {
-            let mut attributes = armadillo
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 12.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.14;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        armadillo.mob_entity.living_entity.health.store(12.0);
+        armadillo
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::ARMADILLO_MAX_HEALTH as f64);
+        armadillo
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::ARMADILLO_BASE_MOVEMENT_SPEED);
+        armadillo
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::ARMADILLO_MAX_HEALTH);
 
         let mob_arc = Arc::new(armadillo);
         let mob_weak: Weak<dyn Mob> = {
@@ -328,6 +323,14 @@ impl Mob for ArmadilloEntity {
 
     fn as_armadillo(&self) -> Option<&ArmadilloEntity> {
         Some(self)
+    }
+
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
@@ -518,5 +521,15 @@ mod tests {
         assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(5.0), 2.0);
         assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(11.0), 5.0);
         assert_eq!(crate::entity::combat::calculate_armadillo_scared_damage(0.0), 0.0);
+    }
+
+    #[test]
+    fn test_armadillo_parity_constants() {
+        assert_eq!(ArmadilloEntity::XP_REWARD, 2);
+        assert_eq!(crate::entity::combat::ARMADILLO_MAX_HEALTH, 12.0);
+        assert_eq!(crate::entity::combat::ARMADILLO_BASE_MOVEMENT_SPEED, 0.14);
+        assert_eq!(crate::entity::combat::ARMADILLO_ROLL_DURATION_TICKS, 10);
+        assert_eq!(crate::entity::combat::ARMADILLO_SCARED_DURATION_TICKS, 50);
+        assert_eq!(crate::entity::combat::ARMADILLO_UNROLL_DURATION_TICKS, 30);
     }
 }

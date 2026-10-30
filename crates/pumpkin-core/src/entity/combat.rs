@@ -8546,6 +8546,99 @@ pub const SALMON_LARGE_SCALE: f32 = 1.5;
 /// Mirrors vanilla `Salmon.java:46` (`return 5;`).
 pub const SALMON_MAX_SCHOOL_SIZE: i32 = 5;
 
+/// Sniffer base max health (14.0 HP / 7 hearts).
+/// Mirrors vanilla Sniffer.java:86 (Attributes.MAX_HEALTH, 14.0).
+pub const SNIFFER_MAX_HEALTH: f32 = 14.0;
+
+/// Sniffer base movement speed (0.1).
+/// Mirrors vanilla Sniffer.java:86 (Attributes.MOVEMENT_SPEED, 0.1F).
+pub const SNIFFER_BASE_MOVEMENT_SPEED: f64 = 0.1;
+
+/// Sniffer experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Animal.java.
+pub const SNIFFER_XP_REWARD: u32 = 2;
+
+/// Sniffer baby start age in ticks (-48000 ticks = 40 minutes).
+/// Mirrors vanilla Sniffer.java:73 (SNIFFER_BABY_START_AGE = -48000).
+pub const SNIFFER_BABY_START_AGE: i32 = -48000;
+
+/// Sniffer digging drop seed offset in ticks (120 ticks = 6s).
+/// Mirrors vanilla Sniffer.java:35 (DIGGING_DROP_SEED_OFFSET_TICKS = 120).
+pub const SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS: i32 = 120;
+
+/// Armadillo base max health (12.0 HP / 6 hearts).
+/// Mirrors vanilla Armadillo.java:93 (Attributes.MAX_HEALTH, 12.0).
+pub const ARMADILLO_MAX_HEALTH: f32 = 12.0;
+
+/// Armadillo base movement speed (0.14).
+/// Mirrors vanilla Armadillo.java:93 (Attributes.MOVEMENT_SPEED, 0.14).
+pub const ARMADILLO_BASE_MOVEMENT_SPEED: f64 = 0.14;
+
+/// Armadillo experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Animal.java.
+pub const ARMADILLO_XP_REWARD: u32 = 2;
+
+/// Armadillo roll animation duration in ticks (10 ticks = 0.5s).
+/// Mirrors vanilla Armadillo.java:398.
+pub const ARMADILLO_ROLL_DURATION_TICKS: u64 = 10;
+
+/// Armadillo scared state animation duration in ticks (50 ticks = 2.5s).
+/// Mirrors vanilla Armadillo.java:404.
+pub const ARMADILLO_SCARED_DURATION_TICKS: u64 = 50;
+
+/// Armadillo unroll animation duration in ticks (30 ticks = 1.5s).
+/// Mirrors vanilla Armadillo.java:410.
+pub const ARMADILLO_UNROLL_DURATION_TICKS: u64 = 30;
+
+/// Strider base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla Strider.java / Mob.java (Attributes.MAX_HEALTH, 20.0).
+pub const STRIDER_MAX_HEALTH: f32 = 20.0;
+
+/// Strider base movement speed (0.175).
+/// Mirrors vanilla Strider.java:350 (Attributes.MOVEMENT_SPEED, 0.175F).
+pub const STRIDER_BASE_MOVEMENT_SPEED: f64 = 0.175;
+
+/// Strider experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Animal.java.
+pub const STRIDER_XP_REWARD: u32 = 2;
+
+/// Strider suffocating speed modifier out of lava (-0.34).
+/// Mirrors vanilla Strider.java:82 (-0.34F).
+pub const STRIDER_SUFFOCATING_SPEED_MODIFIER: f64 = -0.34;
+
+/// Allay base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla Allay.java:128 (Attributes.MAX_HEALTH, 20.0).
+pub const ALLAY_MAX_HEALTH: f32 = 20.0;
+
+/// Allay flying speed (0.1).
+/// Mirrors vanilla Allay.java:129 (Attributes.FLYING_SPEED, 0.1F).
+pub const ALLAY_FLYING_SPEED: f64 = 0.1;
+
+/// Allay base movement speed (0.1).
+/// Mirrors vanilla Allay.java:130 (Attributes.MOVEMENT_SPEED, 0.1F).
+pub const ALLAY_BASE_MOVEMENT_SPEED: f64 = 0.1;
+
+/// Allay base attack damage (2.0 HP / 1 heart).
+/// Mirrors vanilla Allay.java:131 (Attributes.ATTACK_DAMAGE, 2.0).
+pub const ALLAY_BASE_ATTACK_DAMAGE: f32 = 2.0;
+
+/// Allay experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Mob.java.
+pub const ALLAY_XP_REWARD: u32 = 2;
+
+/// Allay duplication cooldown in ticks (6000 ticks = 5 minutes).
+/// Mirrors vanilla Allay.java:78 (DUPLICATION_COOLDOWN_TICKS = 6000).
+pub const ALLAY_DUPLICATION_COOLDOWN_TICKS: i32 = 6000;
+
+/// Vex base max health (14.0 HP / 7 hearts).
+/// Mirrors vanilla Vex.java:99 (Attributes.MAX_HEALTH, 14.0).
+pub const VEX_MAX_HEALTH: f32 = 14.0;
+
+/// Vex base attack damage (4.0 HP / 2 hearts).
+/// Mirrors vanilla Vex.java:99 (Attributes.ATTACK_DAMAGE, 4.0).
+pub const VEX_BASE_ATTACK_DAMAGE: f32 = 4.0;
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -12612,5 +12705,53 @@ mod tests {
         assert_eq!(SALMON_MEDIUM_SCALE, 1.0);
         assert_eq!(SALMON_LARGE_SCALE, 1.5);
         assert_eq!(SALMON_MAX_SCHOOL_SIZE, 5);
+    }
+    #[test]
+    fn test_utility_mobs_parity() {
+        // Sniffer Parity (Sniffer.java:35, 73, 86)
+        assert_eq!(SNIFFER_MAX_HEALTH, 14.0);
+        assert_eq!(SNIFFER_BASE_MOVEMENT_SPEED, 0.1);
+        assert_eq!(SNIFFER_XP_REWARD, 2);
+        assert_eq!(SNIFFER_BABY_START_AGE, -48000);
+        assert_eq!(SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS, 120);
+
+        // Armadillo Parity (Armadillo.java:93, 398, 404, 410)
+        assert_eq!(ARMADILLO_MAX_HEALTH, 12.0);
+        assert_eq!(ARMADILLO_BASE_MOVEMENT_SPEED, 0.14);
+        assert_eq!(ARMADILLO_XP_REWARD, 2);
+        assert_eq!(ARMADILLO_ROLL_DURATION_TICKS, 10);
+        assert_eq!(ARMADILLO_SCARED_DURATION_TICKS, 50);
+        assert_eq!(ARMADILLO_UNROLL_DURATION_TICKS, 30);
+
+        // Strider Parity (Strider.java:82, 350)
+        assert_eq!(STRIDER_MAX_HEALTH, 20.0);
+        assert_eq!(STRIDER_BASE_MOVEMENT_SPEED, 0.175);
+        assert_eq!(STRIDER_XP_REWARD, 2);
+        assert_eq!(STRIDER_SUFFOCATING_SPEED_MODIFIER, -0.34);
+
+        // Allay Parity (Allay.java:78, 128-131)
+        assert_eq!(ALLAY_MAX_HEALTH, 20.0);
+        assert_eq!(ALLAY_FLYING_SPEED, 0.1);
+        assert_eq!(ALLAY_BASE_MOVEMENT_SPEED, 0.1);
+        assert_eq!(ALLAY_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(ALLAY_XP_REWARD, 2);
+        assert_eq!(ALLAY_DUPLICATION_COOLDOWN_TICKS, 6000);
+
+        // Vex Parity (Vex.java:60, 99)
+        assert_eq!(VEX_MAX_HEALTH, 14.0);
+        assert_eq!(VEX_BASE_ATTACK_DAMAGE, 4.0);
+        assert_eq!(VEX_XP_REWARD, 3);
+
+        // Golem Parity (IronGolem.java:99-103, SnowGolem.java:62)
+        assert_eq!(IRON_GOLEM_MAX_HEALTH, 100.0);
+        assert_eq!(IRON_GOLEM_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(IRON_GOLEM_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(IRON_GOLEM_BASE_ATTACK_DAMAGE, 15.0);
+        assert_eq!(IRON_GOLEM_STEP_HEIGHT, 1.0);
+        assert_eq!(IRON_GOLEM_XP_REWARD, 0);
+
+        assert_eq!(SNOW_GOLEM_MAX_HEALTH, 4.0);
+        assert_eq!(SNOW_GOLEM_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(SNOW_GOLEM_XP_REWARD, 0);
     }
 }

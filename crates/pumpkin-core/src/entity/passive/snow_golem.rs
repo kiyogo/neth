@@ -73,6 +73,7 @@ pub struct SnowGolemEntity {
 
 
 impl SnowGolemEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::SNOW_GOLEM_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
 
@@ -107,45 +108,17 @@ impl SnowGolemEntity {
 
 
         // Vanilla SnowGolem: MAX_HEALTH = 4.0, MOVEMENT_SPEED = 0.2
-
-        {
-
-            let mut attributes = mob_arc
-
-                .mob_entity
-
-                .living_entity
-
-                .attributes
-
-                .write()
-
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-
-                health.base_value = f64::from(crate::entity::combat::SNOW_GOLEM_MAX_HEALTH);
-
-                health.dirty.store(true, Ordering::Relaxed);
-
-            }
-
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-
-                speed.base_value = crate::entity::combat::SNOW_GOLEM_BASE_MOVEMENT_SPEED;
-
-                speed.dirty.store(true, Ordering::Relaxed);
-
-            }
-
-        }
-
         mob_arc
-
             .mob_entity
-
             .living_entity
-
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::SNOW_GOLEM_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::SNOW_GOLEM_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
             .set_health(crate::entity::combat::SNOW_GOLEM_MAX_HEALTH);
 
 
@@ -393,6 +366,10 @@ impl Shearable for SnowGolemEntity {
 
 
 impl Mob for SnowGolemEntity {
+
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
 
     fn get_base_experience_reward(&self) -> u32 {
 
@@ -671,6 +648,13 @@ impl RangedAttackMob for SnowGolemEntity {
 #[cfg(test)]
 
 mod tests {
+
+    #[test]
+    fn test_snow_golem_parity_constants() {
+        assert_eq!(crate::entity::combat::SNOW_GOLEM_MAX_HEALTH, 4.0);
+        assert_eq!(crate::entity::combat::SNOW_GOLEM_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(crate::entity::combat::SNOW_GOLEM_XP_REWARD, 0);
+    }
 
 
     use crate::entity::combat::{
