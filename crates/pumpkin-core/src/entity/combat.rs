@@ -12966,4 +12966,54 @@ mod tests {
         assert_eq!(SONIC_BOOM_TOTAL_DURATION, 60);
         assert_eq!(SONIC_BOOM_DAMAGE, 10.0);
     }
+
+    #[test]
+    fn test_nether_mobs_family_parity() {
+        // Piglin (Piglin.java:createAttributes, xpReward)
+        assert_eq!(PIGLIN_MAX_HEALTH, 16.0);
+        assert_eq!(PIGLIN_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PIGLIN_ATTACK_DAMAGE, 5.0);
+        assert_eq!(PIGLIN_XP_REWARD, 5);
+
+        // Piglin Brute (PiglinBrute.java:createAttributes, xpReward)
+        assert_eq!(PIGLIN_BRUTE_MAX_HEALTH, 50.0);
+        assert_eq!(PIGLIN_BRUTE_MOVEMENT_SPEED, 0.35);
+        assert_eq!(PIGLIN_BRUTE_ATTACK_DAMAGE, 7.0);
+        assert_eq!(PIGLIN_BRUTE_FOLLOW_RANGE, 12.0);
+        assert_eq!(PIGLIN_BRUTE_XP_REWARD, 20);
+
+        // Hoglin & Zoglin (Hoglin.java, Zoglin.java)
+        assert_eq!(HOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(HOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(HOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(HOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(HOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(HOGLIN_XP_REWARD, 5);
+
+        assert_eq!(ZOGLIN_MAX_HEALTH, 40.0);
+        assert_eq!(ZOGLIN_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ZOGLIN_KNOCKBACK_RESISTANCE, 0.6);
+        assert_eq!(ZOGLIN_ATTACK_KNOCKBACK, 1.0);
+        assert_eq!(ZOGLIN_ATTACK_DAMAGE, 6.0);
+        assert_eq!(ZOGLIN_XP_REWARD, 5);
+
+        // Ghast (Ghast.java:createAttributes, xpReward)
+        assert_eq!(GHAST_MAX_HEALTH, 10.0);
+        assert_eq!(GHAST_FOLLOW_RANGE, 100.0);
+        assert_eq!(GHAST_CAMERA_DISTANCE, 8.0);
+        assert_eq!(GHAST_FLYING_SPEED, 0.06);
+        assert_eq!(GHAST_XP_REWARD, 5);
+
+        // Blaze (Blaze.java:createAttributes, xpReward)
+        assert_eq!(BLAZE_MAX_HEALTH, 20.0);
+        assert_eq!(BLAZE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(BLAZE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(BLAZE_FOLLOW_RANGE, 48.0);
+        assert_eq!(BLAZE_XP_REWARD, 10);
+
+        // Magma Cube (MagmaCube.java)
+        assert_eq!(MAGMA_CUBE_ATTACK_DAMAGE_BONUS, 2.0);
+        assert_eq!(MAGMA_CUBE_ARMOR_PER_SIZE, 3.0);
+        assert_eq!(MAGMA_CUBE_JUMP_DELAY_MULTIPLIER, 4);
+    }
 }

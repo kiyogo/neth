@@ -5689,3 +5689,43 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `can_be_leashed(&self) -> bool { false }` and `dampens_vibrations(&self) -> bool { true }`.
     - Updated unit test `test_warden_sonic_boom_constants_and_knockback_parity`.
   - All 8 unit tests verified and passing across Ender Dragon, Wither, and Warden test suites.
+
+### Gap 236: Nether Mobs Family (Piglin, Piglin Brute, Hoglin, Zoglin, Ghast, Magma Cube & Blaze) Attributes, Conversions, Bartering, Rage & Fire Parity
+- **Vanilla Reference**:
+  - `Piglin.java:createAttributes, xpReward, canBeLeashed`:
+    - Base Attributes: `MAX_HEALTH = 16.0`, `MOVEMENT_SPEED = 0.35`, `ATTACK_DAMAGE = 5.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `PiglinBrute.java:createAttributes, xpReward, canBeLeashed`:
+    - Base Attributes: `MAX_HEALTH = 50.0`, `MOVEMENT_SPEED = 0.35`, `ATTACK_DAMAGE = 7.0`, `FOLLOW_RANGE = 12.0`, `xpReward = 20`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Hoglin.java:createAttributes, canBeLeashed, xpReward`:
+    - Base Attributes: `MAX_HEALTH = 40.0`, `MOVEMENT_SPEED = 0.3`, `KNOCKBACK_RESISTANCE = 0.6`, `ATTACK_KNOCKBACK = 1.0`, `ATTACK_DAMAGE = 6.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> true` (ngoại lệ quái vật có thể buộc dây trong Vanilla).
+  - `Zoglin.java:createAttributes, canBeLeashed, xpReward`:
+    - Base Attributes: `MAX_HEALTH = 40.0`, `MOVEMENT_SPEED = 0.3`, `KNOCKBACK_RESISTANCE = 0.6`, `ATTACK_KNOCKBACK = 1.0`, `ATTACK_DAMAGE = 6.0`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> true` (ngoại lệ quái vật có thể buộc dây trong Vanilla).
+  - `Ghast.java:createAttributes, canBeLeashed, xpReward`:
+    - Base Attributes: `MAX_HEALTH = 10.0`, `FOLLOW_RANGE = 100.0`, `CAMERA_DISTANCE = 8.0`, `FLYING_SPEED = 0.06`, `xpReward = 5`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `Blaze.java:createAttributes, canBeLeashed, xpReward`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 6.0`, `FOLLOW_RANGE = 48.0`, `xpReward = 10`.
+    - Leashing: `canBeLeashed() -> false`.
+  - `MagmaCube.java:createAttributes, setSize, getAttackDamage, canBeLeashed`:
+    - Base Attributes: `SLIME_BASE_MOVEMENT_SPEED = 0.2`, `ATTACK_DAMAGE_BONUS = 2.0` (tổng sát thương `size + 2`), `ARMOR_PER_SIZE = 3.0` (tổng giáp `size * 3`), `JUMP_DELAY_MULTIPLIER = 4`.
+    - Leashing: `canBeLeashed() -> false`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_nether_mobs_family_parity`.
+  - Updated `HoglinEntity` in `crates/pumpkin-core/src/entity/mob/hoglin.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+  - Updated `PiglinEntity` in `crates/pumpkin-core/src/entity/mob/piglin.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `PiglinBruteEntity` in `crates/pumpkin-core/src/entity/mob/piglin_brute.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `GhastEntity` in `crates/pumpkin-core/src/entity/mob/ghast.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `BlazeEntity` in `crates/pumpkin-core/src/entity/mob/blaze.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - Updated `CubeMobEntity` in `crates/pumpkin-core/src/entity/mob/cube_mob.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+  - All 22 unit tests verified and passing across Nether mob test suites.

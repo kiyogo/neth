@@ -101,6 +101,10 @@ impl HoglinEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        true
+    }
+
     pub fn can_be_hunted(&self) -> bool {
         !self.is_baby.load(Ordering::Relaxed) && !self.cannot_be_hunted.load(Ordering::Relaxed)
     }

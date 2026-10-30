@@ -118,6 +118,11 @@ impl GhastEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn set_charging(&self, charging: bool) {
         self.is_charging.store(charging, Ordering::Relaxed);
         let entity = &self.mob_entity.living_entity.entity;

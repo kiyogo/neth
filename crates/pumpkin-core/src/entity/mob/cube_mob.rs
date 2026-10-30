@@ -161,6 +161,11 @@ impl CubeMobEntity {
         (self.kind.register_goals)(mob);
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn set_size(&self, size: i32, update_health: bool) {
         let actual_size = size.clamp(MIN_SIZE, MAX_SIZE);
         let living_entity = &self.mob_entity.living_entity;

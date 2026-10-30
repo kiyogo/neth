@@ -119,6 +119,11 @@ impl PiglinEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    #[must_use]
     pub fn is_converting(&self, world: &World) -> bool {
         !self.is_immune_to_zombification()
             && !self.mob_entity.is_no_ai()

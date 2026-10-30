@@ -73,6 +73,10 @@ impl PiglinBruteEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn is_immune_to_zombification(&self) -> bool {
         self.immune_to_zombification.load(Ordering::Relaxed)
     }
