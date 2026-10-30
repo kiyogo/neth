@@ -6825,3 +6825,17 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Refactored wire update routines and signal methods to use named constants and dropoff helpers.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_redstone_wire_constants_colors_and_signal_parity`.
+
+### Gap 281: Redstone Lamp Toggle Delay & Light Emission Parity
+- **Vanilla Reference**:
+  - RedstoneLampBlock.java:30-45, Blocks.java:2700-2715:
+    - Turn-off delay: `DELAY = 4` game ticks. When losing power, the lamp schedules a tick for 4 ticks before turning off (`level.scheduleTick(pos, this, 4)`).
+    - Turn-on delay: Immediate (0 ticks, `level.setBlock(pos, state.cycle(LIT), 2)`).
+    - Light emission: `litBlockEmission(15)` - emits 15 when lit, and 0 when unlit.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/redstone_lamp.rs`:
+    - Exported constants `DELAY = 4`, `LIGHT_LEVEL_LIT = 15`, and `LIGHT_LEVEL_UNLIT = 0`.
+    - Exported helper `get_light_emission(lit)`.
+    - Replaced hardcoded schedule tick delay with `Self::DELAY`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_redstone_lamp_delay_and_light_emission_parity`.

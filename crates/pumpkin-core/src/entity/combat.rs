@@ -15317,4 +15317,17 @@ mod tests {
         assert_eq!(RedstoneWireBlock::calculate_target_strength(8, 12), 11);
         assert_eq!(RedstoneWireBlock::calculate_target_strength(10, 8), 10);
     }
+
+    #[test]
+    fn test_redstone_lamp_delay_and_light_emission_parity() {
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+
+        // Light level based on lit state
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+    }
 }

@@ -12,6 +12,21 @@ type RedstoneLampProperties = pumpkin_data::block_properties::RedstoneOreLikePro
 #[pumpkin_block("minecraft:redstone_lamp")]
 pub struct RedstoneLamp;
 
+impl RedstoneLamp {
+    pub const DELAY: u32 = 4;
+    pub const LIGHT_LEVEL_LIT: u8 = 15;
+    pub const LIGHT_LEVEL_UNLIT: u8 = 0;
+
+    #[must_use]
+    pub const fn get_light_emission(lit: bool) -> u8 {
+        if lit {
+            Self::LIGHT_LEVEL_LIT
+        } else {
+            Self::LIGHT_LEVEL_UNLIT
+        }
+    }
+}
+
 impl BlockBehaviour for RedstoneLamp {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = RedstoneLampProperties::default(args.block);
@@ -31,7 +46,7 @@ impl BlockBehaviour for RedstoneLamp {
                     args.world.schedule_block_tick(
                         args.block,
                         *args.position,
-                        4,
+                        Self::DELAY,
                         TickPriority::Normal,
                     );
                 } else {
