@@ -65,6 +65,11 @@ impl BlockBehaviour for DaylightDetectorBlock {
 }
 
 impl DaylightDetectorBlock {
+    pub const MIN_POWER: u8 = 0;
+    pub const MAX_POWER: u8 = 15;
+    pub const UPDATE_INTERVAL_TICKS: i64 = 20;
+    pub const SHAPE_HEIGHT: f64 = 6.0;
+    pub const SUN_ANGLE_LERP_FACTOR: f32 = 0.2;
     #[must_use]
     pub fn calculate_signal_strength(
         effective_sky_brightness: i32,

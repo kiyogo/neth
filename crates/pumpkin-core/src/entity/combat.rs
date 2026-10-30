@@ -15023,4 +15023,37 @@ mod tests {
         assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(4, true));
     }
 
+    #[test]
+    fn test_daylight_detector_constants_and_power_clamping_parity() {
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert_eq!(DaylightDetectorBlock::SHAPE_HEIGHT, 6.0);
+        assert_eq!(DaylightDetectorBlock::SUN_ANGLE_LERP_FACTOR, 0.2);
+
+        // Clamping checks:
+        // Midday (sun directly overhead, angle 0 rad): target * cos(0) = 15
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, false),
+            15
+        );
+        // Inverted at midday: 15 - 15 = 0
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, true),
+            0
+        );
+        // Inverted at midnight: 15 - 0 = 15
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(0, std::f32::consts::PI, true),
+            15
+        );
+        // Midnight (angle PI rad, cos(PI) = -1): target <= 0
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, std::f32::consts::PI, false),
+            0
+        );
+    }
+
 }

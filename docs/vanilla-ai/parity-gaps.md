@@ -6599,3 +6599,20 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized explosion power reference to `Self::EXPLOSION_POWER`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_respawn_anchor_charges_and_comparator_parity`.
+
+
+### Gap 268: Daylight Detector Celestial Angle Formula, Inverted Logic & Signal Strength Parity
+- **Vanilla Reference**:
+  - DaylightDetectorBlock.java:23-50, 70-112:
+    - `POWER = 0..15`: Emits redstone power 0 to 15.
+    - `INVERTED = boolean`: Toggles daylight detection vs inverted (night) mode.
+    - Update rate: Ticks every 20 game ticks (`UPDATE_INTERVAL_TICKS = 20`).
+    - Shape height: `SHAPE_HEIGHT = 6.0` pixels high (`VoxelShape Block.column(16.0, 0.0, 6.0)`).
+    - Signal calculation:
+      - Inverted: `15 - effective_sky_brightness`.
+      - Regular: `effective_sky_brightness * cos(sun_angle + lerp)` rounded and clamped to `0..15`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Exported constants `MIN_POWER = 0`, `MAX_POWER = 15`, `UPDATE_INTERVAL_TICKS = 20`, `SHAPE_HEIGHT = 6.0`, and `SUN_ANGLE_LERP_FACTOR = 0.2`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_daylight_detector_constants_and_power_clamping_parity`.
