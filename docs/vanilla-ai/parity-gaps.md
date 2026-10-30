@@ -4358,13 +4358,13 @@
 eck, part 1): nhận 100% full damage (damage).
       - Khi đánh trúng các bộ phận khác (thân, cánh, đuôi): sát thương bị giảm theo công thức Vanilla: damage / 4.0F + Math.min(damage, 1.0F). Sát thương dưới 0.01F bị triệt tiêu hoàn toàn.
     - checkCrystals:
-      - Khi kết nối với End Crystal, rồng chỉ hồi 1.0 HP mỗi 10 ticks (	ickCount % 10 == 0 && health < maxHealth). Trước đây Neth hồi 1.0 HP mỗi tick (nhanh gấp 10 lần Vanilla).
+      - Khi kết nối với End Crystal, rồng chỉ hồi 1.0 HP mỗi 10 ticks ( ickCount % 10 == 0 && health < maxHealth). Trước đây Neth hồi 1.0 HP mỗi tick (nhanh gấp 10 lần Vanilla).
       - Khi End Crystal đang hồi máu cho rồng bị phá hủy, rồng chịu 10.0 HP sát thương nổ vào đầu (hurt(level, head, explosion(crystal, player), 10.0F)).
     - knockBack & hurt (Player collision):
       - Va chạm trực diện với Đầu hoặc Cổ gây 10.0 HP sát thương (ENDER_DRAGON_HEAD_COLLISION_DAMAGE = 10.0).
       - Cánh quét (wing sweep) đẩy lùi theo công thức xd / dd * 4.0, 0.2F, zd / dd * 4.0 (với vận tốc thẳng đứng 0.2F) và gây 5.0 HP sát thương khi không ở trạng thái ngồi (ENDER_DRAGON_WING_DAMAGE = 5.0).
     - sittingDamageReceived: Khi sát thương tích lũy ở trạng thái đậu/ngồi vượt quá 25% max health (50.0 HP trên 200.0 HP), rồng tự động cất cánh (Takeoff).
-    - 	ickDeath: Quá trình chết kéo dài 200 ticks. Từ tick 151 đến 199, mỗi 5 ticks rớt 8% tổng kinh nghiệm; tại tick 200 rớt 20% còn lại (tổng 12000 XP cho lần giết đầu, 500 XP cho các lần sau).
+    -  ickDeath: Quá trình chết kéo dài 200 ticks. Từ tick 151 đến 199, mỗi 5 ticks rớt 8% tổng kinh nghiệm; tại tick 200 rớt 20% còn lại (tổng 12000 XP cho lần giết đầu, 500 XP cho các lần sau).
   - WitherSkull.java:
     - Khi bắn ra bởi sinh vật sống (owner instanceof LivingEntity): gây 8.0 HP sát thương loại WITHER_SKULL. Nếu nạn nhân bị hạ gục, hồi 5.0 HP cho shooter.
     - Khi không có living owner (bắn từ dispenser hoặc bẫy): gây 5.0 HP sát thương phép (DamageType::MAGIC).
@@ -4384,18 +4384,18 @@ eck, part 1): nhận 100% full damage (damage).
     - Added WITHER_SKULL_LIVING_DAMAGE = 8.0, WITHER_SKULL_MAGIC_DAMAGE = 5.0, WITHER_SKULL_DANGEROUS_MAX_RESISTANCE = 0.8, calculate_wither_skull_damage, calculate_wither_skull_block_resistance.
     - Added WIND_CHARGE_DIRECT_DAMAGE = 1.0, WIND_CHARGE_EXPLOSION_POWER = 1.2, BREEZE_WIND_CHARGE_EXPLOSION_POWER = 3.0, WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN = 5, WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET = 0.25.
     - Added LARGE_FIREBALL_DIRECT_DAMAGE = 6.0, SMALL_FIREBALL_DIRECT_DAMAGE = 5.0, SMALL_FIREBALL_IGNITE_SECONDS = 5.0, SMALL_FIREBALL_IGNITE_TICKS = 100.
-    - Added unit test 	est_dragon_wither_skull_wind_charge_fireball_parity.
+    - Added unit test  est_dragon_wither_skull_wind_charge_fireball_parity.
   - Updated WitherSkullEntity in crates/pumpkin-core/src/entity/projectile/wither_skull.rs:
     - Supports magic damage fallback when owner is absent or non-living via calculate_wither_skull_damage.
-    - Added unit test 	est_wither_skull_damage_and_effect_parity.
+    - Added unit test  est_wither_skull_damage_and_effect_parity.
   - Updated WindChargeEntity in crates/pumpkin-core/src/entity/projectile/wind_charge.rs:
     - Standardized explosion power, deflect cooldown, normal offset, and direct hit damage.
-    - Added unit test 	est_wind_charge_entity_constants_parity.
+    - Added unit test  est_wind_charge_entity_constants_parity.
   - Updated EnderDragonEntity in crates/pumpkin-core/src/entity/boss/ender_dragon.rs:
     - Synchronized crystal heal rate to vanilla 10-tick interval (should_dragon_crystal_heal).
     - Implemented head & neck direct collision damage (10.0 HP) and wing sweep knockback + damage in handle_player_collisions.
     - Standardized part damage reduction via calculate_dragon_part_damage and sitting takeoff check via should_dragon_takeoff_from_sitting_damage.
-    - Added unit test 	est_ender_dragon_combat_and_crystal_parity.
+    - Added unit test  est_ender_dragon_combat_and_crystal_parity.
   - All unit tests verified and passing (88/88 in entity::combat::tests, 2/2 in entity::boss, 2/2 in entity::projectile).
 
 ## Gap 203: Evoker Fangs Immunity, Vex Flapping & Decay, Llama Spit & Shulker Bullet Parity
@@ -4970,3 +4970,48 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced `MAGMA_CUBE_ATTACK_DAMAGE_BONUS`, `MAGMA_CUBE_ARMOR_PER_SIZE`, `MAGMA_CUBE_JUMP_DELAY_MULTIPLIER`, `MAGMA_CUBE_SQUISH_DECAY`.
     - Added unit test `test_magma_cube_attributes_and_jump_parity`.
   - All unit tests verified and passing across cube_mob, slime, magma_cube, and combat suites.
+
+## Gap 219: Skeleton Family Combat, Bow Attack Intervals, Arrow Effects, Shearing & Stray Conversion Parity
+- **Vanilla Reference**:
+  - AbstractSkeleton.java:51-56, 78-90, 112, 117, 138-144, 160-175:
+    - Base Attributes: MAX_HEALTH = 20.0 (SKELETON_MAX_HEALTH), MOVEMENT_SPEED = 0.25 (SKELETON_BASE_MOVEMENT_SPEED), xpReward = 5 (SKELETON_XP_REWARD).
+    - Attack Intervals: Hard = 20 ticks (SKELETON_HARD_ATTACK_INTERVAL = 20), Normal/Easy = 40 ticks (SKELETON_DEFAULT_ATTACK_INTERVAL = 40).
+    - Arrow Shoot Velocity: 1.6 (ABSTRACT_SKELETON_ARROW_VELOCITY = 1.6).
+    - Goal Speeds: Melee speed 1.2 (ABSTRACT_SKELETON_MELEE_SPEED_MODIFIER), Flee Sun 1.0 (ABSTRACT_SKELETON_FLEE_SUN_SPEED), Avoid Wolf distance 6.0 (ABSTRACT_SKELETON_AVOID_WOLF_DISTANCE), walk speed 1.0, sprint speed 1.2.
+  - Skeleton.java:18-21, 62-64:
+    - Powder Snow Conversion: Chìm trong tuyết bột 140 ticks (SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS = 140), sau đó rung lắc 300 ticks (SKELETON_STRAY_CONVERSION_SHAKING_TICKS = 300) trước khi biến thành EntityType.STRAY và phát âm thanh event ID 1048 (SKELETON_STRAY_CONVERSION_SOUND_EVENT_ID = 1048). canFreeze() -> false.
+  - Stray.java:21-68:
+    - Tipped Arrow: Bắn tên mang hiệu ứng MobEffects.SLOWNESS trong 600 ticks (30 giây, STRAY_SLOWNESS_DURATION_TICKS = 600).
+    - Attack Interval: Hard = 20 ticks, Normal/Easy = 40 ticks.
+  - Bogged.java:36-38, 107-125, 127-140:
+    - Max Health: Giảm xuống 16.0 HP (BOGGED_MAX_HEALTH = 16.0).
+    - Tipped Arrow: Bắn tên mang hiệu ứng MobEffects.POISON trong 100 ticks (5 giây, BOGGED_POISON_DURATION_TICKS = 100).
+    - Attack Interval: Bắn chậm hơn bình thường - Hard = 50 ticks (BOGGED_HARD_ATTACK_INTERVAL = 50), Normal/Easy = 70 ticks (BOGGED_DEFAULT_ATTACK_INTERVAL = 70).
+    - Shearing Mechanics: Dùng Shears để cắt nấm (Shearable), phát âm thanh SoundEvents.BOGGED_SHEAR, thả nấm theo loot table BOGGED_SHEAR, set sheared = true.
+  - Parched.java:17-70:
+    - Max Health: 16.0 HP (PARCHED_MAX_HEALTH = 16.0).
+    - Tipped Arrow: Bắn tên mang hiệu ứng MobEffects.WEAKNESS trong 600 ticks (30 giây, PARCHED_WEAKNESS_DURATION_TICKS = 600).
+    - Attack Interval: Hard = 50 ticks (PARCHED_HARD_ATTACK_INTERVAL = 50), Normal/Easy = 70 ticks (PARCHED_DEFAULT_ATTACK_INTERVAL = 70).
+    - Immunity: Miễn nhiễm hiệu ứng MobEffects.WEAKNESS (canBeAffected(WEAKNESS) -> false).
+  - WitherSkeleton.java:32-35, 74-90, 93-115:
+    - Base Attributes: MAX_HEALTH = 20.0 (WITHER_SKELETON_MAX_HEALTH), ATTACK_DAMAGE = 4.0 (WITHER_SKELETON_BASE_ATTACK_DAMAGE), MOVEMENT_SPEED = 0.25, Lava pathfinding malus 8.0 (WITHER_SKELETON_LAVA_PATHFINDING_MALUS = 8.0).
+    - Wither Melee Effect: Gây hiệu ứng MobEffects.WITHER trong 200 ticks (10 giây, WITHER_SKELETON_WITHER_DURATION_TICKS = 200).
+    - Flaming Arrow: Tên bắn ra được châm lửa trong 100 giây (WITHER_SKELETON_ARROW_IGNITE_SECONDS = 100.0).
+    - Immunities: Miễn nhiễm sát thương và hiệu ứng WITHER, hoàn toàn miễn nhiễm sát thương lửa (fireImmune).
+    - Equipment: Luôn cầm Items.STONE_SWORD ở tay chính.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants SKELETON_BASE_MOVEMENT_SPEED = 0.25, SKELETON_HARD_ATTACK_INTERVAL = 20, SKELETON_DEFAULT_ATTACK_INTERVAL = 40, SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS = 140, SKELETON_STRAY_CONVERSION_SHAKING_TICKS = 300, SKELETON_STRAY_CONVERSION_SOUND_EVENT_ID = 1048, ABSTRACT_SKELETON_ARROW_VELOCITY = 1.6, ABSTRACT_SKELETON_MELEE_SPEED_MODIFIER = 1.2, ABSTRACT_SKELETON_FLEE_SUN_SPEED = 1.0, ABSTRACT_SKELETON_AVOID_WOLF_DISTANCE = 6.0, ABSTRACT_SKELETON_AVOID_WOLF_WALK_SPEED = 1.0, ABSTRACT_SKELETON_AVOID_WOLF_SPRINT_SPEED = 1.2, WITHER_SKELETON_LAVA_PATHFINDING_MALUS = 8.0, WITHER_SKELETON_BASE_MOVEMENT_SPEED = 0.25, PARCHED_MAX_HEALTH = 16.0, PARCHED_XP_REWARD = 5, PARCHED_WEAKNESS_DURATION_TICKS = 600, PARCHED_HARD_ATTACK_INTERVAL = 50, PARCHED_DEFAULT_ATTACK_INTERVAL = 70.
+    - Added helper calculate_skeleton_attack_interval(is_hard: bool) -> i32.
+    - Added helper calculate_parched_attack_interval(is_hard: bool) -> i32.
+    - Updated unit test  est_boss_and_mini_boss_combat_details_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/skeleton/skeleton.rs:
+    - Synced attack intervals and stray conversion timing with combat.rs constants.
+    - Added unit test  est_skeleton_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/mob/skeleton/parched.rs:
+    - Synced max health (16.0), weakness arrow duration (600), and attack intervals with combat.rs constants.
+    - Added unit test  est_parched_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/mob/skeleton/mod.rs:
+    - Synced base attack interval and attributes.
+    - Added unit test  est_skeleton_base_parity.
+  - All unit tests verified and passing across skeleton, stray, bogged, parched, wither, and combat suites.

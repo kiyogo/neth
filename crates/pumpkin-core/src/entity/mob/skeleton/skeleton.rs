@@ -5,6 +5,12 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 
+use crate::entity::combat::{
+    SKELETON_MAX_HEALTH, SKELETON_STRAY_CONVERSION_SHAKING_TICKS,
+    SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS, SKELETON_XP_REWARD,
+    calculate_skeleton_attack_interval,
+};
+
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -128,13 +134,14 @@ impl Mob for SkeletonEntity {
         Some(Sound::EntitySkeletonAmbient)
     }
 
+    fn get_base_experience_reward(&self) -> u32 {
+        SKELETON_XP_REWARD
+    }
+
     fn get_min_attack_interval(&self) -> Option<i32> {
         let world = self.get_entity().world.load();
-        if world.get_difficulty() == pumpkin_util::Difficulty::Hard {
-            Some(20)
-        } else {
-            Some(40)
-        }
+        let is_hard = world.get_difficulty() == pumpkin_util::Difficulty::Hard;
+        Some(calculate_skeleton_attack_interval(is_hard))
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -155,8 +162,8 @@ impl Mob for SkeletonEntity {
                 }
             } else {
                 let freeze = self.freezing_time.fetch_add(1, Ordering::Relaxed) + 1;
-                if freeze >= 140 {
-                    self.start_freeze_conversion(300);
+                if freeze >= SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS {
+                    self.start_freeze_conversion(SKELETON_STRAY_CONVERSION_SHAKING_TICKS);
                 }
             }
         } else {
@@ -205,3 +212,19 @@ impl Mob for SkeletonEntity {
             .populate_default_equipment_enchantments(difficulty);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_skeleton_parity_constants() {
+        assert_eq!(SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(SKELETON_XP_REWARD, 5);
+        assert_eq!(SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS, 140);
+        assert_eq!(SKELETON_STRAY_CONVERSION_SHAKING_TICKS, 300);
+        assert_eq!(calculate_skeleton_attack_interval(true), 20);
+        assert_eq!(calculate_skeleton_attack_interval(false), 40);
+    }
+}
+

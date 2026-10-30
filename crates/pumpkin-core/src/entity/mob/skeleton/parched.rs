@@ -8,6 +8,10 @@ use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::Sound;
 
+use crate::entity::combat::{
+    PARCHED_DEFAULT_ATTACK_INTERVAL, PARCHED_HARD_ATTACK_INTERVAL, PARCHED_MAX_HEALTH,
+    PARCHED_WEAKNESS_DURATION_TICKS, PARCHED_XP_REWARD, calculate_parched_attack_interval,
+};
 use crate::entity::{
     Entity,
     custom_sound::CustomSound,
@@ -21,7 +25,10 @@ pub struct ParchedSkeletonEntity {
 
 impl ParchedSkeletonEntity {
     pub fn new(entity: Entity) -> Arc<Self> {
-        let entity = SkeletonEntityBase::new_with_attack_interval(entity, 50);
+        let entity = SkeletonEntityBase::new_with_attack_interval(
+            entity,
+            PARCHED_HARD_ATTACK_INTERVAL,
+        );
 
         // Vanilla: Attributes.MAX_HEALTH = 16.0
         {
@@ -32,7 +39,7 @@ impl ParchedSkeletonEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 16.0;
+                health.base_value = f64::from(PARCHED_MAX_HEALTH);
                 health.dirty.store(true, Ordering::Relaxed);
             }
         }
@@ -61,11 +68,12 @@ impl Mob for ParchedSkeletonEntity {
 
     fn get_min_attack_interval(&self) -> Option<i32> {
         let world = self.entity.mob_entity.living_entity.entity.world.load();
-        if world.get_difficulty() == pumpkin_util::Difficulty::Hard {
-            Some(50)
-        } else {
-            Some(70)
-        }
+        let is_hard = world.get_difficulty() == pumpkin_util::Difficulty::Hard;
+        Some(calculate_parched_attack_interval(is_hard))
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        PARCHED_XP_REWARD
     }
 
     fn get_arrow_projectile(&self) -> Option<ItemStack> {
@@ -74,7 +82,7 @@ impl Mob for ParchedSkeletonEntity {
         let weakness_effect = StatusEffectInstance {
             effect_id: Cow::Borrowed("minecraft:weakness"),
             amplifier: 0,
-            duration: 600,
+            duration: PARCHED_WEAKNESS_DURATION_TICKS,
             ambient: false,
             show_particles: true,
             show_icon: true,
@@ -113,5 +121,21 @@ impl CustomSound for ParchedSkeletonEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityParchedHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parched_parity_constants() {
+        assert_eq!(PARCHED_MAX_HEALTH, 16.0);
+        assert_eq!(PARCHED_XP_REWARD, 5);
+        assert_eq!(PARCHED_WEAKNESS_DURATION_TICKS, 600);
+        assert_eq!(PARCHED_HARD_ATTACK_INTERVAL, 50);
+        assert_eq!(PARCHED_DEFAULT_ATTACK_INTERVAL, 70);
+        assert_eq!(calculate_parched_attack_interval(true), 50);
+        assert_eq!(calculate_parched_attack_interval(false), 70);
     }
 }

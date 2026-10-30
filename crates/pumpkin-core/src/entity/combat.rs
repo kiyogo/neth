@@ -6598,10 +6598,68 @@ pub fn calculate_breeze_whirl_volume(rand_val: f32) -> f32 {
 /// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
 pub const SKELETON_MAX_HEALTH: f32 = 20.0;
 
+/// Base movement speed for skeletons (0.25).
+/// Mirrors vanilla `AbstractSkeleton.java:90` (`Attributes.MOVEMENT_SPEED, 0.25`).
+pub const SKELETON_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
 /// Skeleton experience reward (5 XP).
 ///
 /// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
 pub const SKELETON_XP_REWARD: u32 = 5;
+
+/// Attack interval in ticks for standard Skeletons on Hard difficulty (20 ticks = 1.0s).
+/// Mirrors vanilla `AbstractSkeleton.java:51` (`HARD_ATTACK_INTERVAL = 20`).
+pub const SKELETON_HARD_ATTACK_INTERVAL: i32 = 20;
+
+/// Attack interval in ticks for standard Skeletons on Normal/Easy difficulty (40 ticks = 2.0s).
+/// Mirrors vanilla `AbstractSkeleton.java:52` (`NORMAL_ATTACK_INTERVAL = 40`).
+pub const SKELETON_DEFAULT_ATTACK_INTERVAL: i32 = 40;
+
+/// Number of ticks submerged in powder snow before Skeleton begins converting to Stray (140 ticks = 7.0s).
+/// Mirrors vanilla `Skeleton.java:20` (`"FreezingTime", 140`).
+pub const SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS: i32 = 140;
+
+/// Shaking conversion duration when Skeleton turns into Stray (300 ticks = 15.0s).
+/// Mirrors vanilla `Skeleton.java:20` (`"StrayConversionTime", 300`).
+pub const SKELETON_STRAY_CONVERSION_SHAKING_TICKS: i32 = 300;
+
+/// Sound event ID broadcast when Skeleton converts into Stray (1048).
+/// Mirrors vanilla `Skeleton.java:20`.
+pub const SKELETON_STRAY_CONVERSION_SOUND_EVENT_ID: i32 = 1048;
+
+/// Calculates ranged attack interval for Skeleton depending on difficulty.
+#[must_use]
+pub const fn calculate_skeleton_attack_interval(is_hard: bool) -> i32 {
+    if is_hard {
+        SKELETON_HARD_ATTACK_INTERVAL
+    } else {
+        SKELETON_DEFAULT_ATTACK_INTERVAL
+    }
+}
+
+/// Arrow projectile initial launch speed when fired by a Skeleton (1.6).
+/// Mirrors vanilla `AbstractSkeleton.java:170`.
+pub const ABSTRACT_SKELETON_ARROW_VELOCITY: f32 = 1.6;
+
+/// Movement speed multiplier when Skeleton attacks in melee mode (1.2).
+/// Mirrors vanilla `AbstractSkeleton.java:56` (`MeleeAttackGoal(this, 1.2, false)`).
+pub const ABSTRACT_SKELETON_MELEE_SPEED_MODIFIER: f64 = 1.2;
+
+/// Movement speed multiplier when Skeleton flees sunlight (1.0).
+/// Mirrors vanilla `AbstractSkeleton.java:78` (`FleeSunGoal(this, 1.0)`).
+pub const ABSTRACT_SKELETON_FLEE_SUN_SPEED: f64 = 1.0;
+
+/// Avoid distance from wolves for Skeletons (6.0 blocks).
+/// Mirrors vanilla `AbstractSkeleton.java:79`.
+pub const ABSTRACT_SKELETON_AVOID_WOLF_DISTANCE: f32 = 6.0;
+
+/// Walk speed modifier when avoiding wolves (1.0).
+/// Mirrors vanilla `AbstractSkeleton.java:79`.
+pub const ABSTRACT_SKELETON_AVOID_WOLF_WALK_SPEED: f64 = 1.0;
+
+/// Sprint speed modifier when avoiding wolves (1.2).
+/// Mirrors vanilla `AbstractSkeleton.java:79`.
+pub const ABSTRACT_SKELETON_AVOID_WOLF_SPRINT_SPEED: f64 = 1.2;
 
 /// Wither Skeleton max health (20.0 HP).
 ///
@@ -6612,6 +6670,14 @@ pub const WITHER_SKELETON_MAX_HEALTH: f32 = 20.0;
 ///
 /// Mirrors vanilla `WitherSkeleton.java:87`:
 pub const WITHER_SKELETON_BASE_ATTACK_DAMAGE: f32 = 4.0;
+
+/// Wither Skeleton base movement speed (0.25).
+/// Mirrors vanilla `AbstractSkeleton.java:90`.
+pub const WITHER_SKELETON_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+/// Pathfinding malus through lava for Wither Skeleton (8.0).
+/// Mirrors vanilla `WitherSkeleton.java:34` (`setPathfindingMalus(PathType.LAVA, 8.0F)`).
+pub const WITHER_SKELETON_LAVA_PATHFINDING_MALUS: f32 = 8.0;
 
 /// Wither status effect duration applied by Wither Skeleton melee attack (200 ticks = 10 seconds).
 ///
@@ -6698,6 +6764,45 @@ pub const fn calculate_bogged_attack_interval(is_hard: bool) -> i32 {
         BOGGED_HARD_ATTACK_INTERVAL
     } else {
         BOGGED_DEFAULT_ATTACK_INTERVAL
+    }
+}
+
+/// Parched skeleton max health (16.0 HP).
+///
+/// Mirrors vanilla `Parched.java:33`:
+/// `add(Attributes.MAX_HEALTH, 16.0)`
+pub const PARCHED_MAX_HEALTH: f32 = 16.0;
+
+/// Parched skeleton experience reward (5 XP).
+///
+/// Mirrors vanilla `Parched.java` / `Mob.java`:
+pub const PARCHED_XP_REWARD: u32 = 5;
+
+/// Duration in ticks of the Weakness status effect applied by Parched arrows (600 ticks = 30 seconds).
+///
+/// Mirrors vanilla `Parched.java:26`:
+/// `arrow.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600));`
+pub const PARCHED_WEAKNESS_DURATION_TICKS: i32 = 600;
+
+/// Ranged attack interval for Parched on Hard difficulty (50 ticks).
+///
+/// Mirrors vanilla `Parched.java:58`:
+/// `protected int getHardAttackInterval() { return 50; }`
+pub const PARCHED_HARD_ATTACK_INTERVAL: i32 = 50;
+
+/// Ranged attack interval for Parched on Normal/Easy difficulty (70 ticks).
+///
+/// Mirrors vanilla `Parched.java:63`:
+/// `protected int getAttackInterval() { return 70; }`
+pub const PARCHED_DEFAULT_ATTACK_INTERVAL: i32 = 70;
+
+/// Calculates ranged attack interval for Parched skeleton depending on difficulty.
+#[must_use]
+pub const fn calculate_parched_attack_interval(is_hard: bool) -> i32 {
+    if is_hard {
+        PARCHED_HARD_ATTACK_INTERVAL
+    } else {
+        PARCHED_DEFAULT_ATTACK_INTERVAL
     }
 }
 
@@ -10910,14 +11015,32 @@ mod tests {
         assert!((calculate_breeze_whirl_volume(0.0) - 0.8).abs() < 1e-6);
         assert!((calculate_breeze_whirl_volume(1.0) - 1.0).abs() < 1e-6);
 
-        // Skeleton family constants and effects parity (WitherSkeleton.java, Stray.java, Bogged.java)
+        // Skeleton family constants and effects parity (Skeleton.java, WitherSkeleton.java, Stray.java, Bogged.java, Parched.java)
         assert_eq!(SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(SKELETON_BASE_MOVEMENT_SPEED, 0.25);
         assert_eq!(SKELETON_XP_REWARD, 5);
+        assert_eq!(SKELETON_HARD_ATTACK_INTERVAL, 20);
+        assert_eq!(SKELETON_DEFAULT_ATTACK_INTERVAL, 40);
+        assert_eq!(calculate_skeleton_attack_interval(true), 20);
+        assert_eq!(calculate_skeleton_attack_interval(false), 40);
+        assert_eq!(SKELETON_STRAY_CONVERSION_SUBMERGED_TICKS, 140);
+        assert_eq!(SKELETON_STRAY_CONVERSION_SHAKING_TICKS, 300);
+        assert_eq!(SKELETON_STRAY_CONVERSION_SOUND_EVENT_ID, 1048);
+        assert_eq!(ABSTRACT_SKELETON_ARROW_VELOCITY, 1.6);
+        assert_eq!(ABSTRACT_SKELETON_MELEE_SPEED_MODIFIER, 1.2);
+        assert_eq!(ABSTRACT_SKELETON_FLEE_SUN_SPEED, 1.0);
+        assert_eq!(ABSTRACT_SKELETON_AVOID_WOLF_DISTANCE, 6.0);
+        assert_eq!(ABSTRACT_SKELETON_AVOID_WOLF_WALK_SPEED, 1.0);
+        assert_eq!(ABSTRACT_SKELETON_AVOID_WOLF_SPRINT_SPEED, 1.2);
+
         assert_eq!(WITHER_SKELETON_MAX_HEALTH, 20.0);
         assert_eq!(WITHER_SKELETON_BASE_ATTACK_DAMAGE, 4.0);
+        assert_eq!(WITHER_SKELETON_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(WITHER_SKELETON_LAVA_PATHFINDING_MALUS, 8.0);
         assert_eq!(WITHER_SKELETON_WITHER_DURATION_TICKS, 200);
         assert_eq!(WITHER_SKELETON_ARROW_IGNITE_SECONDS, 100.0);
         assert_eq!(WITHER_SKELETON_XP_REWARD, 5);
+
         assert_eq!(STRAY_MAX_HEALTH, 20.0);
         assert_eq!(STRAY_SLOWNESS_DURATION_TICKS, 600);
         assert_eq!(STRAY_HARD_ATTACK_INTERVAL, 20);
@@ -10925,15 +11048,23 @@ mod tests {
         assert_eq!(calculate_stray_attack_interval(true), 20);
         assert_eq!(calculate_stray_attack_interval(false), 40);
         assert_eq!(STRAY_XP_REWARD, 5);
+
         assert_eq!(BOGGED_MAX_HEALTH, 16.0);
         assert_eq!(BOGGED_XP_REWARD, 5);
-
-        // 2. Bogged poison duration and attack intervals (Bogged.java:110, 118, 123)
         assert_eq!(BOGGED_POISON_DURATION_TICKS, 100);
         assert_eq!(BOGGED_HARD_ATTACK_INTERVAL, 50);
         assert_eq!(BOGGED_DEFAULT_ATTACK_INTERVAL, 70);
         assert_eq!(calculate_bogged_attack_interval(true), 50);
         assert_eq!(calculate_bogged_attack_interval(false), 70);
+
+        // Parched weakness duration and attack intervals (Parched.java:26, 33, 58, 63)
+        assert_eq!(PARCHED_MAX_HEALTH, 16.0);
+        assert_eq!(PARCHED_XP_REWARD, 5);
+        assert_eq!(PARCHED_WEAKNESS_DURATION_TICKS, 600);
+        assert_eq!(PARCHED_HARD_ATTACK_INTERVAL, 50);
+        assert_eq!(PARCHED_DEFAULT_ATTACK_INTERVAL, 70);
+        assert_eq!(calculate_parched_attack_interval(true), 50);
+        assert_eq!(calculate_parched_attack_interval(false), 70);
 
         // 3. Wither boss invulnerability, health and shield (WitherBoss.java:66, 264, 464-469, 512, 516)
         assert_eq!(WITHER_INVULNERABLE_TICKS, 220);

@@ -31,7 +31,7 @@ pub struct SkeletonEntityBase {
 
 impl SkeletonEntityBase {
     pub fn new(entity: Entity) -> Arc<Self> {
-        Self::new_with_attack_interval(entity, 20)
+        Self::new_with_attack_interval(entity, crate::entity::combat::SKELETON_HARD_ATTACK_INTERVAL)
     }
 
     pub fn new_with_attack_interval(entity: Entity, attack_interval: i32) -> Arc<Self> {
@@ -249,5 +249,17 @@ impl Mob for SkeletonEntityBase {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         equipment.put(&EquipmentSlot::MAIN_HAND, ItemStack::new(1, &Item::BOW));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+
+    #[test]
+    fn test_skeleton_base_parity() {
+        assert_eq!(crate::entity::combat::SKELETON_HARD_ATTACK_INTERVAL, 20);
+        assert_eq!(crate::entity::combat::SKELETON_DEFAULT_ATTACK_INTERVAL, 40);
+        assert_eq!(crate::entity::combat::WITHER_SKELETON_BASE_ATTACK_DAMAGE, 4.0);
     }
 }
