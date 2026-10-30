@@ -41,7 +41,7 @@ impl VehicleEntity {
         let current_damage = self.damage.load();
         let damage_ticked = current_damage > 0.0;
         if damage_ticked {
-            self.damage.store(current_damage - 1.0);
+            self.damage.store((current_damage - crate::entity::combat::VEHICLE_DAMAGE_DECAY_PER_TICK).max(0.0));
         }
 
         if hurt_ticked || damage_ticked {
@@ -237,7 +237,13 @@ impl VehicleEntity {
             .and_then(|s| s.get_player())
             .is_some_and(|p| p.gamemode.load() == GameMode::Creative);
 
-        if is_creative || new_strength > 40.0 {
+        let (_, will_destroy) = crate::entity::combat::calculate_vehicle_damage_step(
+            self.get_damage(),
+            amount,
+            is_creative,
+        );
+
+        if will_destroy || new_strength > crate::entity::combat::VEHICLE_DAMAGE_THRESHOLD {
             let mut destroy_event =
                 crate::plugin::api::events::vehicle::vehicle_destroy::VehicleDestroyEvent::new(
                     self.entity.entity_id,
@@ -267,11 +273,11 @@ impl VehicleEntity {
     pub fn apply_damage_wobble(&self, amount: f32) -> f32 {
         let current_side = self.get_hurt_dir();
         self.set_hurt_dir(-current_side);
-        self.set_hurt_time(10);
+        self.set_hurt_time(crate::entity::combat::VEHICLE_HURT_TIME);
         self.entity.mark_hurt();
 
         let current_strength = self.get_damage();
-        let new_strength = current_strength + amount * 10.0;
+        let new_strength = current_strength + amount * crate::entity::combat::VEHICLE_DAMAGE_PER_HIT_MULTIPLIER;
         self.set_damage(new_strength);
 
         self.send_wobble_metadata();

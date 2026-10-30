@@ -21,7 +21,7 @@ impl TntMinecart {
     pub(super) const fn new() -> Self {
         Self {
             fuse: AtomicI32::new(-1),
-            explosion_power: AtomicCell::new(4.0),
+            explosion_power: AtomicCell::new(crate::entity::combat::MINECART_TNT_DEFAULT_POWER),
             explosion_speed_factor: AtomicCell::new(1.0),
         }
     }

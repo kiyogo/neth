@@ -35,7 +35,7 @@ use block_effects::BoatMovement;
 use chest::ChestBoat;
 use physics::BoatStatus;
 
-const TIME_TO_EJECT: f32 = 60.0;
+const TIME_TO_EJECT: f32 = crate::entity::combat::BOAT_TIME_TO_EJECT;
 
 pub struct BoatEntity {
     pub vehicle: VehicleEntity,
@@ -470,7 +470,7 @@ impl EntityBase for BoatEntity {
         if self.vehicle.entity.has_no_gravity() {
             0.0
         } else {
-            physics::DEFAULT_GRAVITY
+            crate::entity::combat::BOAT_DEFAULT_GRAVITY
         }
     }
     fn write_custom_nbt(&self, nbt: &mut NbtCompound) {

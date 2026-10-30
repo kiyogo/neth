@@ -182,9 +182,8 @@ fn boost(
     movement
 }
 
-const GRAVITY: f64 = 0.04;
 const RAIL_HEIGHT_OFFSET: f64 = 0.0625;
-const AIR_DRAG: f32 = 0.95;
+const AIR_DRAG: f32 = crate::entity::combat::MINECART_AIR_DRAG;
 /// Pumpkin: vanilla never zeroes a sliding cart. Below this the rest of the slide
 /// is under 0.04 blocks, even with the 0.997 rider slowdown.
 const STOP_SPEED: f64 = 1.0E-4;
@@ -236,7 +235,11 @@ impl MinecartEntity {
     /// Vanilla `getMaxSpeed` (old behaviour): the per-axis cap of one step.
     fn max_speed(&self) -> f64 {
         let in_water = self.vehicle.entity.touching_water.load(Ordering::Relaxed);
-        let base = if in_water { 0.2 } else { 0.4 };
+        let base = if in_water {
+            crate::entity::combat::MINECART_MAX_SPEED_WATER
+        } else {
+            crate::entity::combat::MINECART_MAX_SPEED_LAND
+        };
         match self.kind {
             MinecartKind::Furnace(_) if in_water => base * 0.75,
             MinecartKind::Furnace(_) => base * 0.5,
@@ -411,13 +414,13 @@ impl MinecartEntity {
         let entity = &self.vehicle.entity;
         let mut movement = entity.velocity.load();
         if !entity.on_ground.load(Ordering::Relaxed) {
-            movement.y -= GRAVITY;
+            movement.y -= self.get_gravity();
         }
         let max_speed = self.max_speed();
         movement.x = movement.x.clamp(-max_speed, max_speed);
         movement.z = movement.z.clamp(-max_speed, max_speed);
         if self.grounded(world, pos) {
-            movement = movement * 0.5;
+            movement = movement * crate::entity::combat::MINECART_OFF_RAIL_GROUND_DRAG;
         }
         if movement.length_squared() > 0.0 {
             self.move_entity(caller, movement);
@@ -781,6 +784,13 @@ impl EntityBase for MinecartEntity {
         true
     }
 
+    fn get_gravity(&self) -> f64 {
+        crate::entity::combat::get_minecart_gravity(
+            self.vehicle.entity.touching_water.load(Ordering::Relaxed),
+            self.vehicle.entity.has_no_gravity(),
+        )
+    }
+
     /// Bedrock minecart origin sits 0.35 above the Java one.
     fn bedrock_y_offset(&self) -> f64 {
         0.35
@@ -874,8 +884,12 @@ impl EntityBase for MinecartEntity {
             }
         }
 
-        let will_break = self.vehicle.entity.is_alive()
-            && (creative || self.vehicle.get_damage() + amount * 10.0 > 40.0);
+        let (_, will_break_step) = crate::entity::combat::calculate_vehicle_damage_step(
+            self.vehicle.get_damage(),
+            amount,
+            creative,
+        );
+        let will_break = self.vehicle.entity.is_alive() && will_break_step;
 
         if let MinecartKind::Tnt(minecart) = &self.kind
             && will_break

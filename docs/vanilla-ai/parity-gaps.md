@@ -5945,3 +5945,42 @@ ound_to_orb_size tiers.
   - Updated crates/pumpkin-core/src/entity/item.rs:
     - Replaced hardcoded constants with ITEM_ENTITY_LIFETIME, ITEM_ENTITY_DEFAULT_GRAVITY.
   - All unit tests verified and passing across the falling block, experience orb, and combat test suites.
+
+### Gap 242: Vehicle Entities Family (Boat, Chest Boat, Minecart, Chest Minecart, Furnace Minecart, Hopper Minecart, TNT Minecart, Spawner Minecart, Command Block Minecart) Physics, Deceleration, Buoyancy, Damage & Drop Item Parity
+- **Vanilla Reference**:
+  - `VehicleEntity.java:45-56, 70-76`:
+    - Hurt duration: `HURT_TIME = 10` ticks (`this.setHurtTime(10)`).
+    - Hurt direction: flips sign upon hurt (`this.setHurtDir(-this.getHurtDir())`).
+    - Accumulated damage per hit: `damage * 10.0F` (`this.setDamage(this.getDamage() + damage * 10.0F)`).
+    - Destruction threshold: `this.getDamage() > 40.0F` (destroyed and drops vehicle item, or discarded if attacker is creative player).
+    - Natural damage decay: `this.setDamage(this.getDamage() - 1.0F)` per tick.
+  - `AbstractBoat.java:61-64, 107`:
+    - `TIME_TO_EJECT = 60` ticks (underwater time threshold before ejecting passengers).
+    - `PADDLE_SPEED = Math.PI / 8` (~0.3927 rad).
+    - `PADDLE_SOUND_TIME = Math.PI / 4` (~0.7854 rad).
+    - `BUBBLE_TIME = 60` ticks.
+    - `getDefaultGravity() = 0.04`.
+  - `AbstractMinecart.java:276-278, 400` & `OldMinecartBehavior.java:30, 175`:
+    - Minecart Gravity: `0.04` on land/in air, reduced to `0.005` in water (`this.isInWater() ? 0.005 : 0.04`).
+    - Max speed on rails: `0.4` blocks/tick on land, `0.2` in water (`isInWater() ? 0.2 : 0.4`).
+    - Off-rail ground horizontal velocity multiplier: `0.5` (`deltaMovement.multiply(0.5, 0.0, 0.5)`).
+    - Air Drag: `0.95F`.
+  - `MinecartTNT.java:33, 52-75, 150`:
+    - Base explosion power: `4.0F`.
+    - Activator rail prime fuse: `80` ticks.
+    - Destruction prime fuse: `random(20) + random(20)` ticks.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `VEHICLE_HURT_TIME`, `VEHICLE_DAMAGE_THRESHOLD`, `VEHICLE_DAMAGE_PER_HIT_MULTIPLIER`, `VEHICLE_DAMAGE_DECAY_PER_TICK`, `BOAT_DEFAULT_GRAVITY`, `BOAT_TIME_TO_EJECT`, `BOAT_PADDLE_SPEED`, `MINECART_DEFAULT_GRAVITY`, `MINECART_WATER_GRAVITY`, `MINECART_MAX_SPEED_LAND`, `MINECART_MAX_SPEED_WATER`, `MINECART_OFF_RAIL_GROUND_DRAG`, `MINECART_AIR_DRAG`, `MINECART_TNT_DEFAULT_POWER`, `MINECART_TNT_DEFAULT_FUSE`.
+    - Added helper functions `calculate_vehicle_damage_step` and `get_minecart_gravity`.
+    - Added unit test `test_vehicle_entities_family_physics_and_damage_parity`.
+  - Updated `VehicleEntity` (`crates/pumpkin-core/src/entity/vehicle/vehicle.rs`):
+    - Converted damage decay, wobble multiplier, and destruction threshold to use combat constants and `calculate_vehicle_damage_step`.
+  - Updated `BoatEntity` (`crates/pumpkin-core/src/entity/vehicle/boat.rs` and `physics.rs`):
+    - Synchronized `TIME_TO_EJECT` and `DEFAULT_GRAVITY` with combat constants.
+  - Updated `MinecartEntity` (`crates/pumpkin-core/src/entity/vehicle/minecart.rs`):
+    - Implemented `get_gravity(&self)` on `EntityBase` dynamically resolving water buoyancy (`0.005` vs `0.04`).
+    - Synchronized `max_speed`, off-rail ground drag, air drag, and damage steps with combat constants.
+  - Updated `TntMinecart` (`crates/pumpkin-core/src/entity/vehicle/minecart/tnt.rs`):
+    - Synchronized explosion power with `MINECART_TNT_DEFAULT_POWER`.
+  - All vehicle unit tests verified and passing.

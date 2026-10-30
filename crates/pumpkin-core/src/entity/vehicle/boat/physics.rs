@@ -8,7 +8,7 @@ use crate::entity::{EntityBase, player::Player};
 use crate::plugin::api::events::vehicle::vehicle_move::VehicleMoveEvent;
 use pumpkin_protocol::java::client::play::CMoveVehicle;
 
-pub(super) const DEFAULT_GRAVITY: f64 = 0.04;
+pub(super) const DEFAULT_GRAVITY: f64 = crate::entity::combat::BOAT_DEFAULT_GRAVITY;
 const WATER_OFFSET: f64 = 0.001;
 
 #[derive(Clone, Copy, PartialEq, Eq)]

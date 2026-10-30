@@ -3532,6 +3532,112 @@ pub const fn get_experience_orb_split_value(max_value: u32) -> u32 {
     }
 }
 
+
+/// Vehicle entity default hurt duration in ticks (10 ticks).
+/// Mirrors vanilla VehicleEntity.java:45:
+/// 	his.setHurtTime(10);
+pub const VEHICLE_HURT_TIME: i32 = 10;
+
+/// Vehicle entity damage destruction threshold (40.0).
+/// Mirrors vanilla VehicleEntity.java:50:
+/// 	his.getDamage() > 40.0F
+pub const VEHICLE_DAMAGE_THRESHOLD: f32 = 40.0;
+
+/// Vehicle entity damage multiplier per hit (10.0).
+/// Mirrors vanilla VehicleEntity.java:47:
+/// 	his.setDamage(this.getDamage() + damage * 10.0F);
+pub const VEHICLE_DAMAGE_PER_HIT_MULTIPLIER: f32 = 10.0;
+
+/// Vehicle entity damage decay per tick (1.0).
+/// Mirrors vanilla VehicleEntity.java:37 / AbstractMinecart.java:287:
+/// 	his.setDamage(this.getDamage() - 1.0F);
+pub const VEHICLE_DAMAGE_DECAY_PER_TICK: f32 = 1.0;
+
+/// Default gravity acceleration for Boats and Rafts (0.04).
+/// Mirrors vanilla AbstractBoat.java:107:
+/// protected double getDefaultGravity() { return 0.04; }
+pub const BOAT_DEFAULT_GRAVITY: f64 = 0.04;
+
+/// Time in ticks underwater before boat ejects passengers (60 ticks = 3 seconds).
+/// Mirrors vanilla AbstractBoat.java:61:
+/// private static final int TIME_TO_EJECT = 60;
+pub const BOAT_TIME_TO_EJECT: f32 = 60.0;
+
+/// Boat paddle rotation speed step (PI / 8 = ~0.3927 rad).
+/// Mirrors vanilla AbstractBoat.java:62:
+/// private static final float PADDLE_SPEED = (float) (Math.PI / 8);
+pub const BOAT_PADDLE_SPEED: f32 = core::f32::consts::PI / 8.0;
+
+/// Default gravity acceleration for Minecarts on land or in air (0.04).
+/// Mirrors vanilla AbstractMinecart.java:277:
+/// 
+/// `return this.isInWater() ? 0.005 : 0.04;`
+pub const MINECART_DEFAULT_GRAVITY: f64 = 0.04;
+
+/// Gravity acceleration for Minecarts when in water (0.005).
+/// Mirrors vanilla AbstractMinecart.java:277:
+/// 
+/// `return this.isInWater() ? 0.005 : 0.04;`
+pub const MINECART_WATER_GRAVITY: f64 = 0.005;
+
+/// Maximum speed of a minecart on land rails (0.4 blocks per tick).
+/// Mirrors vanilla OldMinecartBehavior.java:30 and AbstractMinecart.java:400:
+/// private static final double MAX_SPEED_ON_LAND = 0.4;
+pub const MINECART_MAX_SPEED_LAND: f64 = 0.4;
+
+/// Maximum speed of a minecart in water (0.2 blocks per tick).
+/// Mirrors vanilla OldMinecartBehavior.java:400:
+/// 
+/// `return this.minecart.isInWater() ? 0.2 : 0.4;`
+pub const MINECART_MAX_SPEED_WATER: f64 = 0.2;
+
+/// Off-rail ground horizontal velocity multiplier for minecarts (0.5).
+/// Mirrors vanilla OldMinecartBehavior.java:175:
+/// 	his.setDeltaMovement(this.getDeltaMovement().multiply(0.5, 0.0, 0.5));
+pub const MINECART_OFF_RAIL_GROUND_DRAG: f64 = 0.5;
+
+/// Minecart air drag multiplier (0.95).
+/// Mirrors vanilla OldMinecartBehavior.java / AbstractMinecart.java:
+pub const MINECART_AIR_DRAG: f32 = 0.95;
+
+/// TNT Minecart default base explosion power (4.0).
+/// Mirrors vanilla MinecartTNT.java:33:
+/// private static final float DEFAULT_EXPLOSION_POWER_BASE = 4.0F;
+pub const MINECART_TNT_DEFAULT_POWER: f32 = 4.0;
+
+/// TNT Minecart default activator rail prime fuse in ticks (80 ticks = 4 seconds).
+/// Mirrors vanilla MinecartTNT.java:150:
+/// 	his.fuse = 80;
+pub const MINECART_TNT_DEFAULT_FUSE: i32 = 80;
+
+/// Calculates new accumulated damage and destruction state for a vehicle entity.
+///
+/// Returns (new_accumulated_damage, will_destroy) given current damage, hit damage, and whether attacker is creative.
+/// Mirrors vanilla VehicleEntity.java:47-50.
+#[must_use]
+pub fn calculate_vehicle_damage_step(
+    current_damage: f32,
+    hit_damage: f32,
+    is_creative: bool,
+) -> (f32, bool) {
+    let new_damage = current_damage + hit_damage * VEHICLE_DAMAGE_PER_HIT_MULTIPLIER;
+    let will_destroy = is_creative || (new_damage > VEHICLE_DAMAGE_THRESHOLD);
+    (new_damage, will_destroy)
+}
+
+/// Computes effective minecart gravity depending on water state and no_gravity flag.
+/// Mirrors vanilla AbstractMinecart.java:276-278.
+#[must_use]
+pub fn get_minecart_gravity(in_water: bool, has_no_gravity: bool) -> f64 {
+    if has_no_gravity {
+        0.0
+    } else if in_water {
+        MINECART_WATER_GRAVITY
+    } else {
+        MINECART_DEFAULT_GRAVITY
+    }
+}
+
 /// Calculates vertical velocity change for entities on top of a bubble column.
 ///
 /// Mirrors vanilla `Entity.java:2945-2954` (`handleOnAboveBubbleColumn`):
@@ -13652,5 +13758,47 @@ mod tests {
         // Out of range (>= 8.0 blocks)
         let far_player = Vector3::new(9.0, 64.0, 0.0);
         assert!(calculate_experience_orb_follow_pull(orb, far_player, 1.8).is_none());
+    }
+
+
+    #[test]
+    fn test_vehicle_entities_family_physics_and_damage_parity() {
+        assert_eq!(VEHICLE_HURT_TIME, 10);
+        assert_eq!(VEHICLE_DAMAGE_THRESHOLD, 40.0);
+        assert_eq!(VEHICLE_DAMAGE_PER_HIT_MULTIPLIER, 10.0);
+        assert_eq!(VEHICLE_DAMAGE_DECAY_PER_TICK, 1.0);
+
+        assert_eq!(BOAT_DEFAULT_GRAVITY, 0.04);
+        assert_eq!(BOAT_TIME_TO_EJECT, 60.0);
+        assert!((BOAT_PADDLE_SPEED - core::f32::consts::PI / 8.0).abs() < 1e-6);
+
+        assert_eq!(MINECART_DEFAULT_GRAVITY, 0.04);
+        assert_eq!(MINECART_WATER_GRAVITY, 0.005);
+        assert_eq!(MINECART_MAX_SPEED_LAND, 0.4);
+        assert_eq!(MINECART_MAX_SPEED_WATER, 0.2);
+        assert_eq!(MINECART_OFF_RAIL_GROUND_DRAG, 0.5);
+        assert_eq!(MINECART_AIR_DRAG, 0.95);
+        assert_eq!(MINECART_TNT_DEFAULT_POWER, 4.0);
+        assert_eq!(MINECART_TNT_DEFAULT_FUSE, 80);
+
+        // Damage step tests
+        let (dmg, destroy) = calculate_vehicle_damage_step(0.0, 2.0, false);
+        assert_eq!(dmg, 20.0);
+        assert!(!destroy);
+
+        let (dmg2, destroy2) = calculate_vehicle_damage_step(20.0, 2.5, false);
+        assert_eq!(dmg2, 45.0);
+        assert!(destroy2); // 45.0 > 40.0
+
+        // Creative attacker always destroys
+        let (dmg_c, destroy_c) = calculate_vehicle_damage_step(0.0, 1.0, true);
+        assert_eq!(dmg_c, 10.0);
+        assert!(destroy_c);
+
+        // Minecart gravity tests
+        assert_eq!(get_minecart_gravity(false, false), 0.04);
+        assert_eq!(get_minecart_gravity(true, false), 0.005);
+        assert_eq!(get_minecart_gravity(false, true), 0.0);
+        assert_eq!(get_minecart_gravity(true, true), 0.0);
     }
 }
