@@ -14,10 +14,32 @@ pub(crate) const fn is_cooking_block(id: BlockId) -> bool {
     )
 }
 
+/// Vanilla `AbstractFurnaceBlockEntity.java:49-61`:
+pub const FURNACE_SLOT_INPUT: usize = 0;
+pub const FURNACE_SLOT_FUEL: usize = 1;
+pub const FURNACE_SLOT_RESULT: usize = 2;
+
+pub const FURNACE_DATA_LIT_TIME: usize = 0;
+pub const FURNACE_DATA_LIT_DURATION: usize = 1;
+pub const FURNACE_DATA_COOKING_PROGRESS: usize = 2;
+pub const FURNACE_DATA_COOKING_TOTAL_TIME: usize = 3;
+pub const FURNACE_NUM_DATA_VALUES: usize = 4;
+
+pub const FURNACE_BURN_TIME_STANDARD: u16 = 200;
+pub const FURNACE_BURN_COOL_SPEED: u16 = 2;
+
+pub const FURNACE_DEFAULT_COOK_TIME: u16 = 200;
+pub const FURNACE_FAST_COOK_TIME: u16 = 100;
+
+pub static FURNACE_SLOTS_UP: [usize; 1] = [0];
+pub static FURNACE_SLOTS_DOWN: [usize; 2] = [2, 1];
+pub static FURNACE_SLOTS_SIDES: [usize; 1] = [1];
+
 /// Trait for extracting smelting experience from cooking block entities.
 pub trait CookingBlockEntityBase:
     Sync + Send + Inventory + PropertyDelegate + BlockEntity + Clearable
 {
+    fn get_recipe_kind(&self) -> pumpkin_data::recipes::CookingRecipeKind;
     fn get_cooking_time_spent(&self) -> u16;
     fn get_cooking_total_time(&self) -> u16;
     fn get_lit_time_remaining(&self) -> u16;
@@ -47,7 +69,13 @@ pub trait CookingBlockEntityBase:
 #[macro_export]
 macro_rules! impl_cooking_block_entity_base {
     ($struct_name:ty) => {
+        $crate::impl_cooking_block_entity_base!($struct_name, pumpkin_data::recipes::CookingRecipeKind::Smelting);
+    };
+    ($struct_name:ty, $recipe_kind:expr) => {
         impl CookingBlockEntityBase for $struct_name {
+            fn get_recipe_kind(&self) -> pumpkin_data::recipes::CookingRecipeKind {
+                $recipe_kind
+            }
             fn get_cooking_time_spent(&self) -> u16 {
                 self.cooking_time_spent.load(Ordering::Relaxed)
             }
@@ -120,20 +148,26 @@ macro_rules! impl_cooking_block_entity_base {
             }
 
             fn extract_experience_from_recipes(&self) -> i32 {
-                // Calculate total XP from tracked recipes and clear the map (vanilla behavior)
+                // Calculate total XP from tracked recipes and clear the map (vanilla behavior: AbstractFurnaceBlockEntity.java:398-406)
                 let mut recipes = self
                     .recipes_used
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner);
-                let mut total_xp: f32 = 0.0;
+                let mut total_xp: i32 = 0;
                 for (recipe_id, count) in recipes.iter() {
                     // Look up the recipe's XP value
                     if let Some(xp) = pumpkin_data::recipes::get_recipe_experience(recipe_id) {
-                        total_xp += xp * (*count as f32);
+                        let total = xp * (*count as f32);
+                        let mut reward = total.floor() as i32;
+                        let frac = total.fract();
+                        if frac > 0.0 && rand::random::<f32>() < frac {
+                            reward += 1;
+                        }
+                        total_xp += reward;
                     }
                 }
                 recipes.clear();
-                total_xp.floor() as i32
+                total_xp
             }
 
             fn can_accept_recipe_output(
@@ -161,10 +195,10 @@ macro_rules! impl_cooking_block_entity_base {
                         .unwrap_or(&recipe.result.id),
                 ) && !is_top_items_empty
                     && recipe_output_item.id == side_item_stack.item.id
-                    && side_item_stack.item_count < max_count
-                    && side_item_stack.item_count < side_item_stack.get_max_stack_size()
                 {
-                    return true;
+                    let result_count = side_item_stack.item_count as u32 + recipe.result.count as u32;
+                    let max_result_count = (max_count as u32).min(side_item_stack.get_max_stack_size() as u32);
+                    return result_count <= max_result_count;
                 }
                 false
             }
@@ -190,7 +224,7 @@ macro_rules! impl_cooking_block_entity_base {
                         if items[2].are_equal(ItemStack::EMPTY) {
                             items[2] = output_item_stack;
                         } else if items[2].are_items_and_components_equal(&output_item_stack) {
-                            items[2].increment(1);
+                            items[2].increment(recipe.result.count);
                         }
 
                         // Track recipe usage for XP calculation (vanilla RecipesUsed format)
@@ -337,7 +371,7 @@ macro_rules! impl_inventory_for_cooking {
                 if slot == 0 && !is_same_item {
                     if let Some(recipe) = pumpkin_data::recipes::get_cooking_recipe_with_ingredient(
                         stack.item,
-                        CookingRecipeKind::Smelting,
+                        self.get_recipe_kind(),
                     ) {
                         self.set_cooking_total_time(recipe.cookingtime as u16);
                     } else {
@@ -348,6 +382,75 @@ macro_rules! impl_inventory_for_cooking {
 
                 // Always consider the inventory changed when setting a stack
                 self.mark_dirty();
+            }
+
+            fn is_valid_slot_for(&self, slot: usize, stack: &ItemStack) -> bool {
+                // Vanilla AbstractFurnaceBlockEntity.java:342-353:
+                // Slot 2 is output: never placeable.
+                // Slot 1 is fuel: must have cooking fuel or be an empty bucket (when fuel slot isn't already bucket).
+                if slot == $crate::block::entities::furnace_like_block_entity::FURNACE_SLOT_RESULT {
+                    return false;
+                }
+                if slot != $crate::block::entities::furnace_like_block_entity::FURNACE_SLOT_FUEL {
+                    return true;
+                }
+                let is_fuel = stack
+                    .get_data_component::<pumpkin_data::data_component_impl::CookingFuelImpl>()
+                    .is_some_and(|f| f.get_burn_ticks(false) > 0);
+                let current_fuel = self.get_fuel_item();
+                let is_bucket = stack.item.id == pumpkin_data::item::Item::BUCKET.id
+                    && current_fuel.item.id != pumpkin_data::item::Item::BUCKET.id;
+                is_fuel || is_bucket
+            }
+
+            fn get_slots_for_face(
+                &self,
+                direction: pumpkin_util::BlockDirection,
+            ) -> Option<&'static [usize]> {
+                match direction {
+                    pumpkin_util::BlockDirection::Down => {
+                        Some(&$crate::block::entities::furnace_like_block_entity::FURNACE_SLOTS_DOWN)
+                    }
+                    pumpkin_util::BlockDirection::Up => {
+                        Some(&$crate::block::entities::furnace_like_block_entity::FURNACE_SLOTS_UP)
+                    }
+                    _ => Some(&$crate::block::entities::furnace_like_block_entity::FURNACE_SLOTS_SIDES),
+                }
+            }
+
+            fn can_place_item_through_face(
+                &self,
+                slot: usize,
+                stack: &ItemStack,
+                _direction: Option<pumpkin_util::BlockDirection>,
+            ) -> bool {
+                self.is_valid_slot_for(slot, stack)
+            }
+
+            fn can_take_item_through_face(
+                &self,
+                slot: usize,
+                stack: &ItemStack,
+                direction: pumpkin_util::BlockDirection,
+            ) -> bool {
+                // Vanilla AbstractFurnaceBlockEntity.java:309-311:
+                // Down extraction from fuel slot (1) is only allowed for empty buckets.
+                if direction == pumpkin_util::BlockDirection::Down
+                    && slot == $crate::block::entities::furnace_like_block_entity::FURNACE_SLOT_FUEL
+                {
+                    stack.item.id == pumpkin_data::item::Item::BUCKET.id
+                } else {
+                    true
+                }
+            }
+
+            fn can_transfer_to(
+                &self,
+                _hopper_inventory: &dyn pumpkin_inventory::Inventory,
+                slot: usize,
+                stack: &ItemStack,
+            ) -> bool {
+                self.can_take_item_through_face(slot, stack, pumpkin_util::BlockDirection::Down)
             }
 
             fn mark_dirty(&self) {

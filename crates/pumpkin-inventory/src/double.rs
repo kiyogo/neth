@@ -109,6 +109,36 @@ impl Inventory for DoubleInventory {
         }
     }
 
+    fn can_place_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        direction: Option<pumpkin_util::BlockDirection>,
+    ) -> bool {
+        if slot >= self.first.size() {
+            self.second
+                .can_place_item_through_face(slot - self.first.size(), stack, direction)
+        } else {
+            self.first
+                .can_place_item_through_face(slot, stack, direction)
+        }
+    }
+
+    fn can_take_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        direction: pumpkin_util::BlockDirection,
+    ) -> bool {
+        if slot >= self.first.size() {
+            self.second
+                .can_take_item_through_face(slot - self.first.size(), stack, direction)
+        } else {
+            self.first
+                .can_take_item_through_face(slot, stack, direction)
+        }
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

@@ -85,6 +85,38 @@ pub trait Inventory: Send + Sync + Clearable {
         true
     }
 
+    /// Vanilla `WorldlyContainer.getSlotsForFace(Direction)`:
+    /// Returns which slots can be accessed from the given direction.
+    /// `None` indicates a standard container where all slots `0..size()` are accessible from any face.
+    fn get_slots_for_face(
+        &self,
+        _direction: pumpkin_util::BlockDirection,
+    ) -> Option<&'static [usize]> {
+        None
+    }
+
+    /// Vanilla `WorldlyContainer.canPlaceItemThroughFace(int, ItemStack, Direction)`:
+    /// Determines whether the given item can be inserted into `slot` from `direction`.
+    fn can_place_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        _direction: Option<pumpkin_util::BlockDirection>,
+    ) -> bool {
+        self.is_valid_slot_for(slot, stack)
+    }
+
+    /// Vanilla `WorldlyContainer.canTakeItemThroughFace(int, ItemStack, Direction)`:
+    /// Determines whether the item in `slot` can be extracted through `direction`.
+    fn can_take_item_through_face(
+        &self,
+        _slot: usize,
+        _stack: &ItemStack,
+        _direction: pumpkin_util::BlockDirection,
+    ) -> bool {
+        true
+    }
+
     fn can_transfer_to(
         &self,
         _hopper_inventory: &dyn Inventory,

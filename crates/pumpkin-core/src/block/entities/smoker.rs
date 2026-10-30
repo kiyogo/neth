@@ -61,7 +61,7 @@ impl SmokerBlockEntity {
     }
 }
 
-impl_cooking_block_entity_base!(SmokerBlockEntity);
+impl_cooking_block_entity_base!(SmokerBlockEntity, CookingRecipeKind::Smoking);
 impl_block_entity_for_cooking!(SmokerBlockEntity, CookingRecipeKind::Smoking);
 impl_inventory_for_cooking!(SmokerBlockEntity);
 impl_clearable_for_cooking!(SmokerBlockEntity);

@@ -7898,6 +7898,56 @@ pub fn is_end_crystal_damageable_by(attacker_type: Option<&pumpkin_data::entity:
     }
 }
 
+/// Vanilla `AbstractFurnaceBlockEntity.java:49-61`:
+pub const FURNACE_SLOT_INPUT: usize = 0;
+pub const FURNACE_SLOT_FUEL: usize = 1;
+pub const FURNACE_SLOT_RESULT: usize = 2;
+
+pub const FURNACE_DATA_LIT_TIME: usize = 0;
+pub const FURNACE_DATA_LIT_DURATION: usize = 1;
+pub const FURNACE_DATA_COOKING_PROGRESS: usize = 2;
+pub const FURNACE_DATA_COOKING_TOTAL_TIME: usize = 3;
+pub const FURNACE_NUM_DATA_VALUES: usize = 4;
+
+pub const FURNACE_BURN_TIME_STANDARD: u16 = 200;
+pub const FURNACE_BURN_COOL_SPEED: u16 = 2;
+
+pub const FURNACE_DEFAULT_COOK_TIME: u16 = 200;
+pub const FURNACE_FAST_COOK_TIME: u16 = 100;
+
+/// Vanilla `AbstractFurnaceBlockEntity.java:212-214`:
+/// Unlit cooking cool-down speed: decreases cookingTimer by 2 per tick clamped to [0, total_time].
+#[must_use]
+pub fn calculate_furnace_cool_down(current_progress: u16, total_time: u16) -> u16 {
+    current_progress.saturating_sub(FURNACE_BURN_COOL_SPEED).min(total_time)
+}
+
+/// Vanilla `AbstractFurnaceBlockEntity.java:243-256`:
+/// Can accept recipe output: checks result slot compatibility and that resulting count does not exceed max stack size.
+#[must_use]
+pub fn can_furnace_accept_output(
+    current_output_count: u8,
+    recipe_output_count: u8,
+    max_stack_size: u8,
+) -> bool {
+    (current_output_count as u16 + recipe_output_count as u16) <= max_stack_size as u16
+}
+
+/// Vanilla `AbstractFurnaceBlockEntity.java:398-406`:
+/// Experience calculation: floor(amount * value) + (random < fract ? 1 : 0).
+#[must_use]
+pub fn calculate_furnace_experience_reward(amount: u32, xp_per_item: f32, rand_val: f32) -> u32 {
+    let total = (amount as f32) * xp_per_item;
+    let floor_xp = total.floor() as u32;
+    let frac = total.fract();
+    if frac > 0.0 && rand_val < frac {
+        floor_xp + 1
+    } else {
+        floor_xp
+    }
+}
+
+
 
 /// Interval in ticks between Ender Dragon healing from an active End Crystal (10 ticks = 0.5s).
 ///
@@ -13995,4 +14045,46 @@ mod tests {
         assert_eq!(LIGHTNING_DAMAGE_Y_ABOVE, 9.0);
         assert_eq!(LIGHTNING_START_LIFE, 2);
     }
+
+    #[test]
+    fn test_furnace_cook_fuel_and_sided_inventory_parity() {
+        assert_eq!(FURNACE_SLOT_INPUT, 0);
+        assert_eq!(FURNACE_SLOT_FUEL, 1);
+        assert_eq!(FURNACE_SLOT_RESULT, 2);
+
+        assert_eq!(FURNACE_DATA_LIT_TIME, 0);
+        assert_eq!(FURNACE_DATA_LIT_DURATION, 1);
+        assert_eq!(FURNACE_DATA_COOKING_PROGRESS, 2);
+        assert_eq!(FURNACE_DATA_COOKING_TOTAL_TIME, 3);
+        assert_eq!(FURNACE_NUM_DATA_VALUES, 4);
+
+        assert_eq!(FURNACE_BURN_TIME_STANDARD, 200);
+        assert_eq!(FURNACE_BURN_COOL_SPEED, 2);
+        assert_eq!(FURNACE_DEFAULT_COOK_TIME, 200);
+        assert_eq!(FURNACE_FAST_COOK_TIME, 100);
+
+        // Cool-down rate: drops by 2 ticks per tick when unlit
+        assert_eq!(calculate_furnace_cool_down(100, 200), 98);
+        assert_eq!(calculate_furnace_cool_down(1, 200), 0);
+        assert_eq!(calculate_furnace_cool_down(0, 200), 0);
+        assert_eq!(calculate_furnace_cool_down(250, 200), 200);
+
+        // Can accept output: stack limit checks
+        assert!(can_furnace_accept_output(0, 1, 64));
+        assert!(can_furnace_accept_output(63, 1, 64));
+        assert!(!can_furnace_accept_output(64, 1, 64));
+        assert!(can_furnace_accept_output(60, 4, 64));
+        assert!(!can_furnace_accept_output(61, 4, 64));
+
+        // Experience reward parity: 1 iron ingot = 0.7 XP
+        // If rand < 0.7 => 1 XP, else => 0 XP
+        assert_eq!(calculate_furnace_experience_reward(1, 0.7, 0.5), 1);
+        assert_eq!(calculate_furnace_experience_reward(1, 0.7, 0.8), 0);
+        // 10 iron ingots = 7.0 XP (integer => 7 XP always)
+        assert_eq!(calculate_furnace_experience_reward(10, 0.7, 0.99), 7);
+        // 3 food items = 3 * 0.35 = 1.05 XP
+        assert_eq!(calculate_furnace_experience_reward(3, 0.35, 0.04), 2);
+        assert_eq!(calculate_furnace_experience_reward(3, 0.35, 0.10), 1);
+    }
+
 }

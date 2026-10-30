@@ -244,10 +244,18 @@ impl HopperBlockEntity {
             if let Some(container) = get_container(world, pos_up, &entity, true)
                 .or_else(|| entity.clone().get_inventory())
             {
-                // TODO check WorldlyContainer
-                for i in 0..container.size() {
+                // Vanilla HopperBlockEntity.java:223-226: Direction direction = Direction.DOWN; getSlots(container, direction)
+                let slots: Vec<usize> = if let Some(face_slots) = container.get_slots_for_face(pumpkin_util::BlockDirection::Down) {
+                    face_slots.to_vec()
+                } else {
+                    (0..container.size()).collect()
+                };
+                for i in slots {
                     let mut item = container.get_stack(i);
-                    if !item.is_empty() && container.can_transfer_to(self, i, &item) {
+                    if !item.is_empty()
+                        && container.can_take_item_through_face(i, &item, pumpkin_util::BlockDirection::Down)
+                        && container.can_transfer_to(self, i, &item)
+                    {
                         // Hoppers tick in parallel: writing back the stale `item` would erase what
                         // another hopper put into this slot meanwhile -> take and put back instead.
                         if let Some(source) = container.as_any().downcast_ref::<Self>() {
@@ -415,7 +423,14 @@ impl HopperBlockEntity {
                     // `dst.is_empty()` branch and reports a transfer that never happened.
                     continue;
                 };
-                if Self::add_one_item(self, container.as_ref(), &extraction.one_item) {
+                let entering_face = match self.facing {
+                    FacingHopper::Down => pumpkin_util::BlockDirection::Up,
+                    FacingHopper::North => pumpkin_util::BlockDirection::South,
+                    FacingHopper::South => pumpkin_util::BlockDirection::North,
+                    FacingHopper::West => pumpkin_util::BlockDirection::East,
+                    FacingHopper::East => pumpkin_util::BlockDirection::West,
+                };
+                if Self::add_one_item_directional(self, container.as_ref(), &extraction.one_item, Some(entering_face)) {
                     return true;
                 }
                 if let Some(leftover) = self.put_back(slot, extraction) {
@@ -428,7 +443,16 @@ impl HopperBlockEntity {
         false
     }
     pub fn add_one_item(from: &dyn Inventory, to: &dyn Inventory, item: &ItemStack) -> bool {
-        Self::add_stack(Some(from), to, item.copy_with_count(1)).is_empty()
+        Self::add_one_item_directional(from, to, item, None)
+    }
+
+    pub fn add_one_item_directional(
+        from: &dyn Inventory,
+        to: &dyn Inventory,
+        item: &ItemStack,
+        face: Option<pumpkin_util::BlockDirection>,
+    ) -> bool {
+        Self::add_stack_directional(Some(from), to, item.copy_with_count(1), face).is_empty()
     }
 
     /// Vanilla `HopperBlockEntity.addItem(from, container, stack, null)`: spreads stack inside
@@ -436,25 +460,50 @@ impl HopperBlockEntity {
     pub fn add_stack(
         from: Option<&dyn Inventory>,
         to: &dyn Inventory,
-        mut stack: ItemStack,
+        stack: ItemStack,
     ) -> ItemStack {
-        for slot in 0..to.size() {
+        Self::add_stack_directional(from, to, stack, None)
+    }
+
+    pub fn add_stack_directional(
+        from: Option<&dyn Inventory>,
+        to: &dyn Inventory,
+        mut stack: ItemStack,
+        face: Option<pumpkin_util::BlockDirection>,
+    ) -> ItemStack {
+        let slots: Vec<usize> = if let Some(dir) = face && let Some(face_slots) = to.get_slots_for_face(dir) {
+            face_slots.to_vec()
+        } else {
+            (0..to.size()).collect()
+        };
+        for slot in slots {
             if stack.is_empty() {
                 break;
             }
-            Self::try_move_in_item(from, to, &mut stack, slot);
+            Self::try_move_in_item_directional(from, to, &mut stack, slot, face);
         }
         stack
     }
 
     /// Vanilla `HopperBlockEntity.tryMoveInItem`.
+    #[expect(dead_code)]
     fn try_move_in_item(
         from: Option<&dyn Inventory>,
         to: &dyn Inventory,
         stack: &mut ItemStack,
         slot: usize,
     ) {
-        if !to.is_valid_slot_for(slot, stack) {
+        Self::try_move_in_item_directional(from, to, stack, slot, None);
+    }
+
+    fn try_move_in_item_directional(
+        from: Option<&dyn Inventory>,
+        to: &dyn Inventory,
+        stack: &mut ItemStack,
+        slot: usize,
+        face: Option<pumpkin_util::BlockDirection>,
+    ) {
+        if !to.can_place_item_through_face(slot, stack, face) {
             return;
         }
         let to_empty = to.is_empty();

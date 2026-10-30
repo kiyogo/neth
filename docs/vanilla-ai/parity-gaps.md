@@ -6065,3 +6065,35 @@ ound_to_orb_size tiers.
   - Updated `EntityBase::on_lightning_strike` (`crates/pumpkin-core/src/entity/mod.rs`):
     - Converted ignite duration (8.0s) and damage (5.0 HP) to combat constants.
   - All unit tests verified and passing across the area effect cloud and lightning suites.
+
+### Gap 246: Furnace, Blast Furnace & Smoker Block Entities Cook Times, Fuel Burns, Sided Slots & Experience Parity
+- **Vanilla Reference**:
+  - `AbstractFurnaceBlockEntity.java:49-67, 149-214, 281-292, 342-353, 398-406`:
+    - Slot definitions: `SLOT_INPUT = 0`, `SLOT_FUEL = 1`, `SLOT_RESULT = 2`.
+    - Sided slot routing (`WorldlyContainer`):
+      - `SLOTS_FOR_UP = [0]` (top hopper pushes into input slot).
+      - `SLOTS_FOR_DOWN = [2, 1]` (bottom hopper pulls output first, then fuel slot).
+      - `SLOTS_FOR_SIDES = [1]` (side hoppers push into fuel slot).
+    - Can take item from bottom: `canTakeItemThroughFace(slot, itemStack, Direction.DOWN)`: slot 1 is only extractable if the item is takeable from bottom (empty bucket `minecraft:bucket` from consumed lava buckets). Slot 0 cannot be extracted from bottom.
+    - Can place item: slot 2 (result) can never be placed into. Slot 1 only accepts `CookingFuel` or empty `BUCKET` (if current fuel isn't already a bucket).
+    - Data values: `DATA_LIT_TIME = 0`, `DATA_LIT_DURATION = 1`, `DATA_COOKING_PROGRESS = 2`, `DATA_COOKING_TOTAL_TIME = 3`, `NUM_DATA_VALUES = 4`.
+    - Standard fuel burn time: `BURN_TIME_STANDARD = 200` ticks.
+    - Unlit cooling speed: `BURN_COOL_SPEED = 2` (decreases `cookingTimer` by 2 ticks per tick: `Mth.clamp(cookingTimer - 2, 0, cookingTotalTime)`).
+    - Cook times: default 200 ticks (Furnace / Smelting), halved to 100 ticks (Blast Furnace / Blasting, Smoker / Smoking).
+    - Experience reward formula: `xpReward = floor(amount * value) + (random < fract ? 1 : 0)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-inventory/src/inventory/inventory.rs` & `double.rs`:
+    - Added `WorldlyContainer` sided access methods to `Inventory`: `get_slots_for_face`, `can_place_item_through_face`, `can_take_item_through_face`.
+  - Updated `crates/pumpkin-core/src/block/entities/furnace_like_block_entity.rs`:
+    - Added constants `FURNACE_SLOT_INPUT`, `FURNACE_SLOT_FUEL`, `FURNACE_SLOT_RESULT`, `FURNACE_DATA_LIT_TIME`, `FURNACE_DATA_LIT_DURATION`, `FURNACE_DATA_COOKING_PROGRESS`, `FURNACE_DATA_COOKING_TOTAL_TIME`, `FURNACE_NUM_DATA_VALUES`, `FURNACE_BURN_TIME_STANDARD`, `FURNACE_BURN_COOL_SPEED`, `FURNACE_DEFAULT_COOK_TIME`, `FURNACE_FAST_COOK_TIME`, and slot mappings `FURNACE_SLOTS_UP`, `FURNACE_SLOTS_DOWN`, `FURNACE_SLOTS_SIDES`.
+    - Implemented `get_recipe_kind(&self)` on `CookingBlockEntityBase` allowing `set_stack` to dynamically query the block entity's actual recipe type (Blasting 100 ticks, Smoking 100 ticks, Smelting 200 ticks) instead of hardcoding Smelting.
+    - Updated `extract_experience_from_recipes` with vanilla probabilistic fractional XP rounding (`if rand < frac { reward += 1 }`), ensuring items with fractional XP (e.g. iron ingot 0.7 XP, food 0.35 XP) drop XP properly.
+    - Implemented `is_valid_slot_for`: rejects slot 2 insertion and restricts slot 1 to fuel and empty bucket.
+    - Implemented `get_slots_for_face`, `can_place_item_through_face`, `can_take_item_through_face`, and `can_transfer_to` matching vanilla `WorldlyContainer`.
+    - Fixed `can_accept_recipe_output` and `craft_recipe` to account for `recipe.result.count` and stack limits.
+  - Updated `FurnaceBlockEntity`, `BlastingFurnaceBlockEntity`, and `SmokerBlockEntity` with their matching `CookingRecipeKind`.
+  - Updated `crates/pumpkin-core/src/block/entities/hopper.rs`:
+    - Integrated `get_slots_for_face` and directional insertion (`add_stack_directional` / `can_place_item_through_face`) and extraction (`can_take_item_through_face`), ensuring hoppers route inputs into the top, fuel into the sides, and pull outputs/empty buckets from the bottom.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants, helpers (`calculate_furnace_cool_down`, `can_furnace_accept_output`, `calculate_furnace_experience_reward`), and unit test `test_furnace_cook_fuel_and_sided_inventory_parity`.
+  - All unit tests verified and passing across the cooking block entities and sided hopper suites.
