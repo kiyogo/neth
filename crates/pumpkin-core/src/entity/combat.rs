@@ -8252,6 +8252,35 @@ pub fn calculate_daylight_detector_signal(
     target.clamp(0, 15) as u8
 }
 
+/// Vanilla `TargetBlock.java:26-28, 54-70`:
+pub const TARGET_BLOCK_ACTIVATION_TICKS_ARROWS: u32 = 20;
+pub const TARGET_BLOCK_ACTIVATION_TICKS_OTHER: u32 = 8;
+pub const TARGET_BLOCK_MIN_POWER: u8 = 1;
+pub const TARGET_BLOCK_MAX_POWER: u8 = 15;
+pub const TARGET_BLOCK_BULLSEYE_MIN_DISTANCE: f64 = 30.0;
+
+/// Vanilla `TargetBlock.java:54-70`:
+/// Computes target block power output based on distance from center:
+/// `distance = max(d1, d2)` on plane perpendicular to hit face axis.
+/// `power = max(1, ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0)))`.
+#[must_use]
+pub fn calculate_target_block_redstone_power(distance_from_center: f64) -> u8 {
+    let norm = ((0.5 - distance_from_center) / 0.5).clamp(0.0, 1.0);
+    let power = (15.0 * norm).ceil() as u8;
+    power.clamp(1, 15)
+}
+
+/// Vanilla `TargetBlock.java:46`:
+/// Determines activation ticks based on projectile type.
+#[must_use]
+pub fn get_target_block_activation_ticks(is_arrow: bool) -> u32 {
+    if is_arrow {
+        TARGET_BLOCK_ACTIVATION_TICKS_ARROWS
+    } else {
+        TARGET_BLOCK_ACTIVATION_TICKS_OTHER
+    }
+}
+
 
 
 
@@ -14650,6 +14679,32 @@ mod tests {
         assert_eq!(calculate_daylight_detector_signal(5, 0.0, true), 10);
         assert_eq!(calculate_daylight_detector_signal(10, 0.0, false), 10);
         assert_eq!(calculate_daylight_detector_signal(10, 0.0, true), 5);
+    }
+
+    #[test]
+    fn test_target_block_parity() {
+        assert_eq!(TARGET_BLOCK_ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TARGET_BLOCK_ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TARGET_BLOCK_MIN_POWER, 1);
+        assert_eq!(TARGET_BLOCK_MAX_POWER, 15);
+        assert_eq!(TARGET_BLOCK_BULLSEYE_MIN_DISTANCE, 30.0);
+
+        // Power scaling:
+        // Bullseye (exact center) => 15
+        assert_eq!(calculate_target_block_redstone_power(0.0), 15);
+        // Near center (within 0.033 blocks) => 15
+        assert_eq!(calculate_target_block_redstone_power(0.03), 15);
+        // Halfway to edge (0.25 blocks) => 8
+        assert_eq!(calculate_target_block_redstone_power(0.25), 8);
+        // Near outer edge (0.45 blocks) => 2
+        assert_eq!(calculate_target_block_redstone_power(0.45), 2);
+        // At or beyond edge (0.5 blocks) => 1 (clamped to minimum 1)
+        assert_eq!(calculate_target_block_redstone_power(0.5), 1);
+        assert_eq!(calculate_target_block_redstone_power(0.6), 1);
+
+        // Activation ticks:
+        assert_eq!(get_target_block_activation_ticks(true), 20);
+        assert_eq!(get_target_block_activation_ticks(false), 8);
     }
 
 

@@ -34,6 +34,14 @@ fn get_redstone_strength(
 #[pumpkin_block("minecraft:target")]
 pub struct TargetBlock;
 
+impl TargetBlock {
+    pub const ACTIVATION_TICKS_ARROWS: u32 = 20;
+    pub const ACTIVATION_TICKS_OTHER: u32 = 8;
+    pub const MIN_POWER: u8 = 1;
+    pub const MAX_POWER: u8 = 15;
+    pub const BULLSEYE_MIN_DISTANCE: f64 = 30.0;
+}
+
 impl BlockBehaviour for TargetBlock {
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {
         true
@@ -85,9 +93,9 @@ impl BlockBehaviour for TargetBlock {
             let delay = if entity_type == &EntityType::ARROW
                 || entity_type == &EntityType::SPECTRAL_ARROW
             {
-                20
+                Self::ACTIVATION_TICKS_ARROWS
             } else {
-                8
+                Self::ACTIVATION_TICKS_OTHER
             };
             args.world
                 .schedule_block_tick(args.block, *args.position, delay, TickPriority::Normal);

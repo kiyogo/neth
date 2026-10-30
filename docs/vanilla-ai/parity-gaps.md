@@ -6273,3 +6273,26 @@ ound_to_orb_size tiers.
     - Added constants `DAYLIGHT_DETECTOR_TICK_INTERVAL_TICKS`, `DAYLIGHT_DETECTOR_MAX_POWER`, `DAYLIGHT_DETECTOR_SHAPE_HEIGHT_PIXELS`.
     - Added helper function `calculate_daylight_detector_signal`.
     - Added unit test `test_daylight_detector_parity`.
+
+### Gap 254: Target Block Hit Projectile Velocity, Signal Duration, Power Scaling & Redstone Delay Parity
+- **Vanilla Reference**:
+  - `TargetBlock.java:25-75`:
+    - Redstone output properties:
+      - `OUTPUT_POWER`: 0 to 15.
+      - Minimum active power is `1`; maximum power is `15`.
+      - Activation duration:
+        - `ACTIVATION_TICKS_ARROWS = 20`: 20 game ticks (1.0 second / 10 redstone ticks) when hit by `AbstractArrow` (arrows, spectral arrows).
+        - `ACTIVATION_TICKS_OTHER = 8`: 8 game ticks (0.4 seconds / 4 redstone ticks) when hit by other projectiles (snowballs, eggs, ender pearls, tridents, wind charges, etc.).
+    - Distance and power calculation:
+      - For hit location on hit face, calculates `distance = max(d1, d2)` where `d1` and `d2` are distances from the center (0.5) along the axes perpendicular to the hit face normal.
+      - Power: `max(1, ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0)))`.
+      - Exact bullseye (`distance <= 0.033` blocks) yields maximum power `15`.
+      - Advancements: hitting bullseye from at least 30 blocks away (`dx.hypot(dz) >= 30.0`) triggers the `Bullseye` advancement.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`:
+    - Exported constants `ACTIVATION_TICKS_ARROWS` (20), `ACTIVATION_TICKS_OTHER` (8), `MIN_POWER` (1), `MAX_POWER` (15), and `BULLSEYE_MIN_DISTANCE` (30.0).
+    - Linked scheduled block ticks to the exported activation tick constants.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `TARGET_BLOCK_ACTIVATION_TICKS_ARROWS`, `TARGET_BLOCK_ACTIVATION_TICKS_OTHER`, `TARGET_BLOCK_MIN_POWER`, `TARGET_BLOCK_MAX_POWER`, `TARGET_BLOCK_BULLSEYE_MIN_DISTANCE`.
+    - Added calculation helpers `calculate_target_block_redstone_power` and `get_target_block_activation_ticks`.
+    - Added unit test `test_target_block_parity`.
