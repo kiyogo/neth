@@ -20,10 +20,16 @@ use crate::entity::{
     mob::{Mob, MobEntity},
 };
 
+use crate::entity::combat::{
+    BLAZE_ASCENT_ACCELERATION, BLAZE_ATTACK_DAMAGE, BLAZE_BASE_MOVEMENT_SPEED,
+    BLAZE_FALL_SPEED_MULTIPLIER, BLAZE_FOLLOW_RANGE, BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS,
+    BLAZE_HEIGHT_OFFSET_SPREAD, BLAZE_MAX_HEALTH, BLAZE_XP_REWARD,
+};
+
 const INITIAL_ALLOWED_HEIGHT_OFFSET: f32 = 0.5;
-const HEIGHT_OFFSET_CHANGE_INTERVAL: i32 = 100;
-const HEIGHT_OFFSET_SPREAD: f64 = 6.891;
-const ASCENT_ACCELERATION: f64 = 0.3f32 as f64;
+const HEIGHT_OFFSET_CHANGE_INTERVAL: i32 = BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS;
+const HEIGHT_OFFSET_SPREAD: f64 = BLAZE_HEIGHT_OFFSET_SPREAD;
+const ASCENT_ACCELERATION: f64 = BLAZE_ASCENT_ACCELERATION;
 
 pub struct BlazeEntity {
     pub entity: Arc<MobEntity>,
@@ -33,23 +39,23 @@ pub struct BlazeEntity {
 }
 
 impl BlazeEntity {
-    pub const XP_REWARD: u32 = 10;
+    pub const XP_REWARD: u32 = BLAZE_XP_REWARD;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(BLAZE_MAX_HEALTH));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 6.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(BLAZE_ATTACK_DAMAGE));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, BLAZE_BASE_MOVEMENT_SPEED);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FOLLOW_RANGE, 48.0);
-        mob_entity.living_entity.health.store(20.0);
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, BLAZE_FOLLOW_RANGE);
+        mob_entity.living_entity.health.store(BLAZE_MAX_HEALTH);
 
         let entity = Arc::new(mob_entity);
         let blaze = Self {
@@ -158,7 +164,7 @@ impl Mob for BlazeEntity {
         if !on_ground && vel.y < 0.0 {
             base_entity
                 .velocity
-                .store(Vector3::new(vel.x, vel.y * 0.6, vel.z));
+                .store(Vector3::new(vel.x, vel.y * BLAZE_FALL_SPEED_MULTIPLIER, vel.z));
         }
 
         let world = base_entity.world.load_full();
@@ -245,7 +251,15 @@ mod tests {
 
     #[test]
     fn test_blaze_burn_sound_and_fireball_spread_parity() {
-        assert_eq!(BlazeEntity::XP_REWARD, 10);
+        assert_eq!(BlazeEntity::XP_REWARD, BLAZE_XP_REWARD);
+        assert_eq!(BLAZE_MAX_HEALTH, 20.0);
+        assert_eq!(BLAZE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(BLAZE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(BLAZE_FOLLOW_RANGE, 48.0);
+        assert_eq!(BLAZE_FALL_SPEED_MULTIPLIER, 0.6);
+        assert_eq!(BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS, 100);
+        assert_eq!(BLAZE_HEIGHT_OFFSET_SPREAD, 6.891);
+        assert_eq!(BLAZE_ASCENT_ACCELERATION, 0.3);
         assert!((crate::entity::combat::calculate_blaze_burn_pitch(0.0) - 0.3).abs() < 1e-6);
         assert!((crate::entity::combat::calculate_blaze_burn_pitch(1.0) - 1.0).abs() < 1e-6);
         assert!((crate::entity::combat::calculate_blaze_burn_volume(0.0) - 1.0).abs() < 1e-6);

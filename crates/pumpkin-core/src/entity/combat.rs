@@ -4231,6 +4231,78 @@ pub const fn should_phantom_abort_swoop_on_collision_or_damage(
     horizontal_collision || was_hurt_recently
 }
 
+/// Ghast base max health (10.0 HP / 5 hearts).
+/// Mirrors vanilla `Ghast.java:118` (`Attributes.MAX_HEALTH, 10.0`).
+pub const GHAST_MAX_HEALTH: f32 = 10.0;
+
+/// Ghast player follow range (100.0 blocks).
+/// Mirrors vanilla `Ghast.java:119` (`Attributes.FOLLOW_RANGE, 100.0`).
+pub const GHAST_FOLLOW_RANGE: f64 = 100.0;
+
+/// Ghast camera distance for third-person rendering (8.0).
+/// Mirrors vanilla `Ghast.java:120` (`Attributes.CAMERA_DISTANCE, 8.0`).
+pub const GHAST_CAMERA_DISTANCE: f64 = 8.0;
+
+/// Ghast flying speed attribute (0.06).
+/// Mirrors vanilla `Ghast.java:121` (`Attributes.FLYING_SPEED, 0.06`).
+pub const GHAST_FLYING_SPEED: f64 = 0.06;
+
+/// Ghast experience reward on death (5 XP).
+/// Mirrors vanilla `Ghast.java:51` (`this.xpReward = 5`).
+pub const GHAST_XP_REWARD: u32 = 5;
+
+/// Ghast ambient and hurt sound volume (5.0F).
+/// Mirrors vanilla `Ghast.java:146` (`return 5.0F;`).
+pub const GHAST_SOUND_VOLUME: f32 = 5.0;
+
+/// Default explosion power of a Ghast LargeFireball (1).
+/// Mirrors vanilla `Ghast.java:46` (`DEFAULT_EXPLOSION_POWER = 1`).
+pub const GHAST_DEFAULT_EXPLOSION_POWER: u8 = 1;
+
+/// Instakill damage dealt when a reflected LargeFireball hits a Ghast (1000.0F).
+/// Mirrors vanilla `Ghast.java:103` (`super.hurtServer(level, source, 1000.0F)`).
+pub const GHAST_REFLECTED_FIREBALL_DAMAGE: f32 = 1000.0;
+
+/// Maximum squared distance for Ghast attack targeting (64 blocks / 4096.0 sq blocks).
+/// Mirrors vanilla `Ghast.java:195, 358` (`target.distanceToSqr < 4096.0`).
+pub const GHAST_ATTACK_RANGE_SQ: f64 = 4096.0;
+
+/// Ticks of fireball charging before Ghast emits warning sound (10 ticks = 0.5s).
+/// Mirrors vanilla `Ghast.java:361` (`this.chargeTime == 10`).
+pub const GHAST_FIREBALL_WARN_TICKS: i32 = 10;
+
+/// Ticks of fireball charging when Ghast launches LargeFireball (20 ticks = 1.0s).
+/// Mirrors vanilla `Ghast.java:365` (`this.chargeTime == 20`).
+pub const GHAST_FIREBALL_SHOOT_TICKS: i32 = 20;
+
+/// Reset value of chargeTime following a fireball shot (-40 ticks = 2.0s cooldown).
+/// Mirrors vanilla `Ghast.java:379` (`this.chargeTime = -40`).
+pub const GHAST_FIREBALL_COOLDOWN_TICKS: i32 = -40;
+
+/// Sound event ID broadcast when Ghast begins charging fireball (1015).
+/// Mirrors vanilla `Ghast.java:362` (`level.levelEvent(null, 1015, ...)`).
+pub const GHAST_WARN_SOUND_EVENT_ID: i32 = 1015;
+
+/// Sound event ID broadcast when Ghast shoots fireball (1016).
+/// Mirrors vanilla `Ghast.java:373` (`level.levelEvent(null, 1016, ...)`).
+pub const GHAST_SHOOT_SOUND_EVENT_ID: i32 = 1016;
+
+/// Flight acceleration scale when drifting towards wanted position (FLYING_SPEED * 5.0 / 3.0 = 0.1).
+/// Mirrors vanilla `Ghast.java:253`.
+pub const GHAST_FLOAT_MOVE_SCALE: f64 = 0.1;
+
+/// Radius in blocks for random float position selection (16.0 blocks).
+/// Mirrors vanilla `Ghast.java:479-481` (`(random.nextFloat() * 2.0F - 1.0F) * 16.0F`).
+pub const GHAST_FLOAT_WANDER_RADIUS: f64 = 16.0;
+
+/// Minimum squared distance to destination before re-rolling float target (1.0).
+/// Mirrors vanilla `Ghast.java:416` (`dd < 1.0 || dd > 3600.0`).
+pub const GHAST_FLOAT_MIN_DIST_SQ: f64 = 1.0;
+
+/// Maximum squared distance to destination before cancelling float goal (3600.0 / 60 blocks).
+/// Mirrors vanilla `Ghast.java:416`.
+pub const GHAST_FLOAT_MAX_DIST_SQ: f64 = 3600.0;
+
 /// Checks whether a damage source against a Ghast is a reflected LargeFireball by a Player.
 ///
 /// Mirrors vanilla `Ghast.java:76-78`:
@@ -6444,6 +6516,62 @@ pub const fn should_enderman_play_stare_sound(
 ) -> bool {
     !is_silent && (last_stare_sound == 0 || current_tick >= last_stare_sound + ENDERMAN_DELAY_BETWEEN_CREEPY_STARE_SOUND)
 }
+
+/// Blaze base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla `Monster.java` (`Attributes.MAX_HEALTH, 20.0`).
+pub const BLAZE_MAX_HEALTH: f32 = 20.0;
+
+/// Blaze base movement speed (0.23).
+/// Mirrors vanilla `Blaze.java:55` (`Attributes.MOVEMENT_SPEED, 0.23F`).
+pub const BLAZE_BASE_MOVEMENT_SPEED: f64 = 0.23;
+
+/// Blaze melee attack damage (6.0 HP / 3 hearts).
+/// Mirrors vanilla `Blaze.java:55` (`Attributes.ATTACK_DAMAGE, 6.0`).
+pub const BLAZE_ATTACK_DAMAGE: f32 = 6.0;
+
+/// Blaze follow range (48.0 blocks).
+/// Mirrors vanilla `Blaze.java:55` (`Attributes.FOLLOW_RANGE, 48.0`).
+pub const BLAZE_FOLLOW_RANGE: f64 = 48.0;
+
+/// Blaze experience reward on death (10 XP).
+/// Mirrors vanilla `Blaze.java:40` (`this.xpReward = 10`).
+pub const BLAZE_XP_REWARD: u32 = 10;
+
+/// Multiplier applied to Y velocity when falling in air (0.6).
+/// Mirrors vanilla `Blaze.java:87` (`multiply(1.0, 0.6, 1.0)`).
+pub const BLAZE_FALL_SPEED_MULTIPLIER: f64 = 0.6;
+
+/// Interval between allowed height offset re-calculations (100 ticks = 5.0s).
+/// Mirrors vanilla `Blaze.java:122` (`nextHeightOffsetChangeTick = 100`).
+pub const BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS: i32 = 100;
+
+/// Spread parameter for triangle distribution of allowed height offset (6.891).
+/// Mirrors vanilla `Blaze.java:123` (`random.triangle(0.5, 6.891)`).
+pub const BLAZE_HEIGHT_OFFSET_SPREAD: f64 = 6.891;
+
+/// Vertical acceleration rate when ascending towards target (0.3).
+/// Mirrors vanilla `Blaze.java:129` (`(0.3F - movement.y) * 0.3F`).
+pub const BLAZE_ASCENT_ACCELERATION: f64 = 0.3;
+
+/// Melee attack interval when within close range (< 4.0 sq distance, 20 ticks = 1.0s).
+/// Mirrors vanilla `Blaze.java:208` (`this.attackTime = 20`).
+pub const BLAZE_MELEE_ATTACK_INTERVAL: i32 = 20;
+
+/// Warmup time before Blaze unleashes small fireball burst (60 ticks = 3.0s).
+/// Mirrors vanilla `Blaze.java:220` (`this.attackTime = 60`).
+pub const BLAZE_FIREBALL_WARMUP_TICKS: i32 = 60;
+
+/// Interval between each small fireball in the 3-shot burst (6 ticks = 0.3s).
+/// Mirrors vanilla `Blaze.java:223` (`this.attackTime = 6`).
+pub const BLAZE_FIREBALL_BURST_INTERVAL_TICKS: i32 = 6;
+
+/// Cooldown time after completing small fireball burst (100 ticks = 5.0s).
+/// Mirrors vanilla `Blaze.java:225` (`this.attackTime = 100`).
+pub const BLAZE_FIREBALL_COOLDOWN_TICKS: i32 = 100;
+
+/// Sound event ID broadcast when Blaze shoots small fireball (1018).
+/// Mirrors vanilla `Blaze.java:233` (`level.levelEvent(null, 1018, ...)`).
+pub const BLAZE_SHOOT_SOUND_EVENT_ID: i32 = 1018;
 
 /// Calculates sound pitch for Blaze burning/crackling sound.
 ///
@@ -9575,6 +9703,22 @@ mod tests {
         assert!(should_blaze_take_water_damage(true, false));  // touching water
         assert!(should_blaze_take_water_damage(false, true));  // raining
         assert!(!should_blaze_take_water_damage(false, false)); // dry
+
+        // 7. Blaze combat constants parity (Blaze.java:40, 55, 87, 122, 123, 129, 208, 220, 223, 225, 233)
+        assert_eq!(BLAZE_MAX_HEALTH, 20.0);
+        assert_eq!(BLAZE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(BLAZE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(BLAZE_FOLLOW_RANGE, 48.0);
+        assert_eq!(BLAZE_XP_REWARD, 10);
+        assert_eq!(BLAZE_FALL_SPEED_MULTIPLIER, 0.6);
+        assert_eq!(BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS, 100);
+        assert_eq!(BLAZE_HEIGHT_OFFSET_SPREAD, 6.891);
+        assert_eq!(BLAZE_ASCENT_ACCELERATION, 0.3);
+        assert_eq!(BLAZE_MELEE_ATTACK_INTERVAL, 20);
+        assert_eq!(BLAZE_FIREBALL_WARMUP_TICKS, 60);
+        assert_eq!(BLAZE_FIREBALL_BURST_INTERVAL_TICKS, 6);
+        assert_eq!(BLAZE_FIREBALL_COOLDOWN_TICKS, 100);
+        assert_eq!(BLAZE_SHOOT_SOUND_EVENT_ID, 1018);
     }
 
     #[test]
@@ -9781,6 +9925,26 @@ mod tests {
 
         assert_eq!(calculate_ghast_damage_received(6.0, true), 1000.0);
         assert_eq!(calculate_ghast_damage_received(6.0, false), 6.0);
+
+        // 5. Ghast constants parity (Ghast.java:46, 51, 118-121, 146, 195, 361, 365, 379)
+        assert_eq!(GHAST_MAX_HEALTH, 10.0);
+        assert_eq!(GHAST_FOLLOW_RANGE, 100.0);
+        assert_eq!(GHAST_CAMERA_DISTANCE, 8.0);
+        assert_eq!(GHAST_FLYING_SPEED, 0.06);
+        assert_eq!(GHAST_XP_REWARD, 5);
+        assert_eq!(GHAST_SOUND_VOLUME, 5.0);
+        assert_eq!(GHAST_DEFAULT_EXPLOSION_POWER, 1);
+        assert_eq!(GHAST_REFLECTED_FIREBALL_DAMAGE, 1000.0);
+        assert_eq!(GHAST_ATTACK_RANGE_SQ, 4096.0);
+        assert_eq!(GHAST_FIREBALL_WARN_TICKS, 10);
+        assert_eq!(GHAST_FIREBALL_SHOOT_TICKS, 20);
+        assert_eq!(GHAST_FIREBALL_COOLDOWN_TICKS, -40);
+        assert_eq!(GHAST_WARN_SOUND_EVENT_ID, 1015);
+        assert_eq!(GHAST_SHOOT_SOUND_EVENT_ID, 1016);
+        assert_eq!(GHAST_FLOAT_MOVE_SCALE, 0.1);
+        assert_eq!(GHAST_FLOAT_WANDER_RADIUS, 16.0);
+        assert_eq!(GHAST_FLOAT_MIN_DIST_SQ, 1.0);
+        assert_eq!(GHAST_FLOAT_MAX_DIST_SQ, 3600.0);
     }
 
     #[test]

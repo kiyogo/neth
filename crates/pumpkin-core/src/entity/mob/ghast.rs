@@ -11,6 +11,13 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
+use crate::entity::combat::{
+    GHAST_ATTACK_RANGE_SQ, GHAST_CAMERA_DISTANCE, GHAST_DEFAULT_EXPLOSION_POWER,
+    GHAST_FIREBALL_COOLDOWN_TICKS, GHAST_FIREBALL_SHOOT_TICKS, GHAST_FIREBALL_WARN_TICKS,
+    GHAST_FLOAT_MAX_DIST_SQ, GHAST_FLOAT_MIN_DIST_SQ, GHAST_FLOAT_MOVE_SCALE,
+    GHAST_FLOAT_WANDER_RADIUS, GHAST_FLYING_SPEED, GHAST_FOLLOW_RANGE, GHAST_MAX_HEALTH,
+    GHAST_SOUND_VOLUME, GHAST_XP_REWARD,
+};
 use crate::entity::ai::goal::active_target::ActiveTargetGoal;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::living::LivingEntity;
@@ -30,25 +37,25 @@ pub struct GhastEntity {
 }
 
 impl GhastEntity {
-    pub const DEFAULT_EXPLOSION_POWER: u8 = 1;
-    pub const XP_REWARD: u32 = 5;
-    pub const FLYING_SPEED: f64 = 0.06;
+    pub const DEFAULT_EXPLOSION_POWER: u8 = GHAST_DEFAULT_EXPLOSION_POWER;
+    pub const XP_REWARD: u32 = GHAST_XP_REWARD;
+    pub const FLYING_SPEED: f64 = GHAST_FLYING_SPEED;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 10.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(GHAST_MAX_HEALTH));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FOLLOW_RANGE, 100.0);
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, GHAST_FOLLOW_RANGE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::CAMERA_DISTANCE, 8.0);
+            .set_attribute_base(&Attributes::CAMERA_DISTANCE, GHAST_CAMERA_DISTANCE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FLYING_SPEED, 0.06);
-        mob_entity.living_entity.health.store(10.0);
+            .set_attribute_base(&Attributes::FLYING_SPEED, GHAST_FLYING_SPEED);
+        mob_entity.living_entity.health.store(GHAST_MAX_HEALTH);
 
         let ghast = Self {
             mob_entity,
@@ -177,7 +184,7 @@ impl Mob for GhastEntity {
                 Sound::EntityGhastAmbient,
                 SoundCategory::Hostile,
                 &entity.pos.load(),
-                5.0,
+                GHAST_SOUND_VOLUME,
                 (rand::random::<f32>() - rand::random::<f32>()).mul_add(0.2, 1.0),
             );
         }
@@ -264,7 +271,7 @@ impl Goal for GhastLookGoal {
             let mob_pos = mob_entity.living_entity.entity.pos.load();
             let target_pos = target.get_entity().pos.load();
 
-            if mob_pos.squared_distance_to_vec(&target_pos) < 4096.0 {
+            if mob_pos.squared_distance_to_vec(&target_pos) < GHAST_ATTACK_RANGE_SQ {
                 let dx = target_pos.x - mob_pos.x;
                 let dz = target_pos.z - mob_pos.z;
                 let yaw = (-f64::atan2(dx, dz).to_degrees()) as f32;
@@ -347,26 +354,26 @@ impl Goal for GhastShootFireballGoal {
         let target_pos = target.get_entity().pos.load();
         let dist_sq = ghast_pos.squared_distance_to_vec(&target_pos);
 
-        if dist_sq < 4096.0 {
+        if dist_sq < GHAST_ATTACK_RANGE_SQ {
             let world = entity.world.load();
             self.charge_time += 1;
 
-            if self.charge_time == 10 {
+            if self.charge_time == GHAST_FIREBALL_WARN_TICKS {
                 world.play_sound_fine(
                     Sound::EntityGhastWarn,
                     SoundCategory::Hostile,
                     &ghast_pos,
-                    5.0,
+                    GHAST_SOUND_VOLUME,
                     1.0,
                 );
             }
 
-            if self.charge_time == 20 {
+            if self.charge_time == GHAST_FIREBALL_SHOOT_TICKS {
                 world.play_sound_fine(
                     Sound::EntityGhastShoot,
                     SoundCategory::Hostile,
                     &ghast_pos,
-                    5.0,
+                    GHAST_SOUND_VOLUME,
                     1.0,
                 );
 
@@ -400,13 +407,13 @@ impl Goal for GhastShootFireballGoal {
                     .store(f32::from(ghast.get_explosion_power()), Ordering::Relaxed);
 
                 world.spawn_entity_non_save(Arc::new(fireball));
-                self.charge_time = -40;
+                self.charge_time = GHAST_FIREBALL_COOLDOWN_TICKS;
             }
         } else if self.charge_time > 0 {
             self.charge_time -= 1;
         }
 
-        ghast.set_charging(self.charge_time > 10);
+        ghast.set_charging(self.charge_time > GHAST_FIREBALL_WARN_TICKS);
     }
 
     fn controls(&self) -> Controls {
@@ -441,7 +448,7 @@ impl Goal for RandomFloatAroundGoal {
         wanted.is_none_or(|target| {
             let pos = ghast.mob_entity.living_entity.entity.pos.load();
             let dist_sq = pos.squared_distance_to_vec(&target);
-            !dist_sq.is_nan() && !(1.0..=3600.0).contains(&dist_sq)
+            !dist_sq.is_nan() && !(GHAST_FLOAT_MIN_DIST_SQ..=GHAST_FLOAT_MAX_DIST_SQ).contains(&dist_sq)
         })
     }
 
@@ -452,9 +459,9 @@ impl Goal for RandomFloatAroundGoal {
         let pos = ghast.mob_entity.living_entity.entity.pos.load();
         let new_target = {
             let mut rng = rand::rng();
-            let target_x = pos.x + (rng.random::<f64>() * 2.0 - 1.0) * 16.0;
-            let target_y = pos.y + (rng.random::<f64>() * 2.0 - 1.0) * 16.0;
-            let target_z = pos.z + (rng.random::<f64>() * 2.0 - 1.0) * 16.0;
+            let target_x = pos.x + (rng.random::<f64>() * 2.0 - 1.0) * GHAST_FLOAT_WANDER_RADIUS;
+            let target_y = pos.y + (rng.random::<f64>() * 2.0 - 1.0) * GHAST_FLOAT_WANDER_RADIUS;
+            let target_z = pos.z + (rng.random::<f64>() * 2.0 - 1.0) * GHAST_FLOAT_WANDER_RADIUS;
             Vector3::new(target_x, target_y, target_z)
         };
         *ghast
@@ -474,7 +481,7 @@ impl Goal for RandomFloatAroundGoal {
         wanted.is_some_and(|target| {
             let pos = ghast.mob_entity.living_entity.entity.pos.load();
             let dist_sq = pos.squared_distance_to_vec(&target);
-            (1.0..=3600.0).contains(&dist_sq)
+            (GHAST_FLOAT_MIN_DIST_SQ..=GHAST_FLOAT_MAX_DIST_SQ).contains(&dist_sq)
         })
     }
 
@@ -504,7 +511,7 @@ impl Goal for RandomFloatAroundGoal {
             let travel = Vector3::new(target.x - pos.x, target.y - pos.y, target.z - pos.z);
             let dist = travel.length();
             if dist > 0.001 {
-                let move_scale = GhastEntity::FLYING_SPEED * 5.0 / 3.0; // 0.1
+                let move_scale = GHAST_FLOAT_MOVE_SCALE; // 0.1
                 let norm = travel.normalize();
                 let delta = Vector3::new(
                     norm.x * move_scale,
@@ -523,5 +530,29 @@ impl Goal for RandomFloatAroundGoal {
 
     fn controls(&self) -> Controls {
         Controls::MOVE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ghast_combat_and_flight_parity() {
+        assert_eq!(GhastEntity::DEFAULT_EXPLOSION_POWER, 1);
+        assert_eq!(GhastEntity::XP_REWARD, 5);
+        assert_eq!(GhastEntity::FLYING_SPEED, 0.06);
+        assert_eq!(GHAST_MAX_HEALTH, 10.0);
+        assert_eq!(GHAST_FOLLOW_RANGE, 100.0);
+        assert_eq!(GHAST_CAMERA_DISTANCE, 8.0);
+        assert_eq!(GHAST_SOUND_VOLUME, 5.0);
+        assert_eq!(GHAST_ATTACK_RANGE_SQ, 4096.0);
+        assert_eq!(GHAST_FIREBALL_WARN_TICKS, 10);
+        assert_eq!(GHAST_FIREBALL_SHOOT_TICKS, 20);
+        assert_eq!(GHAST_FIREBALL_COOLDOWN_TICKS, -40);
+        assert_eq!(GHAST_FLOAT_MOVE_SCALE, 0.1);
+        assert_eq!(GHAST_FLOAT_WANDER_RADIUS, 16.0);
+        assert_eq!(GHAST_FLOAT_MIN_DIST_SQ, 1.0);
+        assert_eq!(GHAST_FLOAT_MAX_DIST_SQ, 3600.0);
     }
 }

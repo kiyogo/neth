@@ -3,6 +3,11 @@ use pumpkin_protocol::java::client::play::CWorldEvent;
 use pumpkin_util::math::vector3::Vector3;
 use std::sync::Arc;
 
+use crate::entity::combat::{
+    BLAZE_FIREBALL_BURST_INTERVAL_TICKS, BLAZE_FIREBALL_COOLDOWN_TICKS,
+    BLAZE_FIREBALL_WARMUP_TICKS, BLAZE_MELEE_ATTACK_INTERVAL, BLAZE_SHOOT_SOUND_EVENT_ID,
+    calculate_blaze_small_fireball_spread,
+};
 use crate::entity::{
     Entity,
     ai::goal::{Controls, Goal},
@@ -96,7 +101,7 @@ impl Goal for BlazeShootFireballGoal {
             }
 
             if self.attack_time <= 0 {
-                self.attack_time = 20;
+                self.attack_time = BLAZE_MELEE_ATTACK_INTERVAL;
                 let damaged = blaze.entity.try_attack(&*blaze, target.as_ref());
                 if damaged {
                     blaze.on_attack(target.as_ref());
@@ -116,12 +121,12 @@ impl Goal for BlazeShootFireballGoal {
             if self.attack_time <= 0 {
                 self.attack_step += 1;
                 if self.attack_step == 1 {
-                    self.attack_time = 60;
+                    self.attack_time = BLAZE_FIREBALL_WARMUP_TICKS;
                     blaze.set_charged(true);
                 } else if self.attack_step <= 4 {
-                    self.attack_time = 6;
+                    self.attack_time = BLAZE_FIREBALL_BURST_INTERVAL_TICKS;
                 } else {
-                    self.attack_time = 100;
+                    self.attack_time = BLAZE_FIREBALL_COOLDOWN_TICKS;
                     self.attack_step = 0;
                     blaze.set_charged(false);
                 }
@@ -154,12 +159,12 @@ impl Goal for BlazeShootFireballGoal {
 
 /// One fireball, aimed with a triangular spread that widens with the distance.
 fn shoot_fireball(blaze: &Entity, dx: f64, yd: f64, dz: f64, distance_sq: f64) {
-    let spread = 2.297 * distance_sq.sqrt().sqrt() * 0.5;
+    let spread = calculate_blaze_small_fireball_spread(distance_sq);
     let world = blaze.world.load_full();
 
     world.broadcast_to_chunk(
         blaze.chunk_pos.load(),
-        &CWorldEvent::new(1018, blaze.block_pos.load(), 0, false),
+        &CWorldEvent::new(BLAZE_SHOOT_SOUND_EVENT_ID, blaze.block_pos.load(), 0, false),
     );
 
     let direction = {

@@ -5015,3 +5015,38 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced base attack interval and attributes.
     - Added unit test  est_skeleton_base_parity.
   - All unit tests verified and passing across skeleton, stray, bogged, parched, wither, and combat suites.
+
+### Gap 220: Blaze & Ghast Combat, Fireball Projectile, Flight Movement & Hurt Sound Parity
+- **Vanilla Reference**:
+  - Blaze.java:40, 55, 87, 91-103, 114, 122-129, 208, 220, 223, 225, 231-237:
+    - Base Attributes: MAX_HEALTH = 20.0 (BLAZE_MAX_HEALTH), MOVEMENT_SPEED = 0.23 (BLAZE_BASE_MOVEMENT_SPEED), ATTACK_DAMAGE = 6.0 (BLAZE_ATTACK_DAMAGE), FOLLOW_RANGE = 48.0 (BLAZE_FOLLOW_RANGE), xpReward = 10 (BLAZE_XP_REWARD).
+    - Slow Falling: When !onGround && velocity.y < 0.0, velocity.y *= 0.6 (BLAZE_FALL_SPEED_MULTIPLIER = 0.6).
+    - Water Sensitivity: isSensitiveToWater() -> true. Drown damage if touching water or in rain.
+    - Height Offset & Floating: Every 100 ticks (BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS = 100), height offset changes using triangle(0.5, 6.891) (BLAZE_HEIGHT_OFFSET_SPREAD = 6.891). If target eye Y > Blaze eye Y + allowed offset, accelerates upwards: velocity.y += (0.3 - velocity.y) * 0.3 (BLAZE_ASCENT_ACCELERATION = 0.3).
+    - Crackling Burn Sound: 1/24 chance per tick (should_blaze_play_burn_sound), volume 1.0 + random * 1.0 (calculate_blaze_burn_volume), pitch 0.3 + random * 0.7 (calculate_blaze_burn_pitch).
+    - Attack Cycle:
+      - Melee: if distance sq < 4.0, attacks every 20 ticks (BLAZE_MELEE_ATTACK_INTERVAL = 20).
+      - Ranged Burst: Warmup 60 ticks (BLAZE_FIREBALL_WARMUP_TICKS = 60) with isCharged = true. Shoots 3 small fireballs with 6 ticks interval (BLAZE_FIREBALL_BURST_INTERVAL_TICKS = 6), sound event ID 1018 (BLAZE_SHOOT_SOUND_EVENT_ID = 1018), spread formula 2.297 * sqrt(sqrt(distance_sq)) * 0.5 (calculate_blaze_small_fireball_spread). After 4th step, cooldown 100 ticks (BLAZE_FIREBALL_COOLDOWN_TICKS = 100) and isCharged = false.
+  - Ghast.java:46, 51, 76-78, 101-108, 118-121, 146, 195, 253, 358, 361-365, 373, 379, 416, 479-481:
+    - Base Attributes: MAX_HEALTH = 10.0 (GHAST_MAX_HEALTH), FOLLOW_RANGE = 100.0 (GHAST_FOLLOW_RANGE), CAMERA_DISTANCE = 8.0 (GHAST_CAMERA_DISTANCE), FLYING_SPEED = 0.06 (GHAST_FLYING_SPEED), xpReward = 5 (GHAST_XP_REWARD).
+    - Sound Volume: Ambient and hurt sound volume = 5.0F (GHAST_SOUND_VOLUME = 5.0).
+    - Reflected Fireball Instakill: If damage source is a reflected fireball caused by a Player, receives 1000.0F instant damage (GHAST_REFLECTED_FIREBALL_DAMAGE = 1000.0).
+    - Attack Range & Goals:
+      - Targeting: ActiveTargetGoal with Math.abs(target.getY() - this.getY()) <= 4.0.
+      - Fireball Shooting: within squared distance 4096.0 (64 blocks, GHAST_ATTACK_RANGE_SQ = 4096.0). Charge time: 10 ticks warns (GHAST_FIREBALL_WARN_TICKS = 10) with sound event ID 1015 (GHAST_WARN_SOUND_EVENT_ID = 1015) and isCharging = true. At 20 ticks shoots (GHAST_FIREBALL_SHOOT_TICKS = 20) LargeFireball with sound event ID 1016 (GHAST_SHOOT_SOUND_EVENT_ID = 1016) at pos + viewVector * 4.0 with explosion power (default 1, GHAST_DEFAULT_EXPLOSION_POWER = 1), resets charge time to -40 (GHAST_FIREBALL_COOLDOWN_TICKS = -40).
+      - Random Float Around Goal: Checks distance 1.0..=3600.0 sq blocks (GHAST_FLOAT_MIN_DIST_SQ..=GHAST_FLOAT_MAX_DIST_SQ), wander radius 16.0 (GHAST_FLOAT_WANDER_RADIUS = 16.0), move scale FLYING_SPEED * 5.0 / 3.0 = 0.1 (GHAST_FLOAT_MOVE_SCALE = 0.1).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added all Ghast constants (GHAST_MAX_HEALTH, GHAST_FOLLOW_RANGE, GHAST_CAMERA_DISTANCE, GHAST_FLYING_SPEED, GHAST_XP_REWARD, GHAST_SOUND_VOLUME, GHAST_DEFAULT_EXPLOSION_POWER, GHAST_REFLECTED_FIREBALL_DAMAGE, GHAST_ATTACK_RANGE_SQ, GHAST_FIREBALL_WARN_TICKS, GHAST_FIREBALL_SHOOT_TICKS, GHAST_FIREBALL_COOLDOWN_TICKS, GHAST_WARN_SOUND_EVENT_ID, GHAST_SHOOT_SOUND_EVENT_ID, GHAST_FLOAT_MOVE_SCALE, GHAST_FLOAT_WANDER_RADIUS, GHAST_FLOAT_MIN_DIST_SQ, GHAST_FLOAT_MAX_DIST_SQ).
+    - Added all Blaze constants (BLAZE_MAX_HEALTH, BLAZE_BASE_MOVEMENT_SPEED, BLAZE_ATTACK_DAMAGE, BLAZE_FOLLOW_RANGE, BLAZE_XP_REWARD, BLAZE_FALL_SPEED_MULTIPLIER, BLAZE_HEIGHT_OFFSET_INTERVAL_TICKS, BLAZE_HEIGHT_OFFSET_SPREAD, BLAZE_ASCENT_ACCELERATION, BLAZE_MELEE_ATTACK_INTERVAL, BLAZE_FIREBALL_WARMUP_TICKS, BLAZE_FIREBALL_BURST_INTERVAL_TICKS, BLAZE_FIREBALL_COOLDOWN_TICKS, BLAZE_SHOOT_SOUND_EVENT_ID).
+    - Added helper calculate_blaze_burn_pitch, calculate_blaze_burn_volume, should_blaze_play_burn_sound, calculate_blaze_small_fireball_spread, is_ghast_reflected_fireball, calculate_ghast_damage_received.
+    - Expanded unit tests in test_phantom_and_ghast_parity and test_creeper_and_blaze_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/blaze.rs:
+    - Replaced hardcoded values with constants.
+    - Added unit test test_blaze_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/ai/goal/blaze_attack.rs:
+    - Replaced hardcoded attack intervals and small fireball spread formula with combat constants and helpers.
+  - Updated crates/pumpkin-core/src/entity/mob/ghast.rs:
+    - Replaced hardcoded attribute values, explosion power, attack intervals, wander range, and sounds with combat constants.
+    - Added unit test test_ghast_combat_and_flight_parity.
+  - All unit tests verified and passing across blaze, ghast, and combat test suites.
