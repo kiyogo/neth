@@ -172,6 +172,27 @@ impl Mob for HuskEntity {
                     });
                 }
             }
+
+            // Vanilla Husk also inherits fire attack from Zombie.doHurtTarget if on fire
+            let base_entity = self.get_entity();
+            if base_entity.is_on_fire() {
+                let world = base_entity.world.load();
+                let difficulty = match world.level_info.load().difficulty {
+                    pumpkin_util::Difficulty::Peaceful => 0.0,
+                    pumpkin_util::Difficulty::Easy => 1.0,
+                    pumpkin_util::Difficulty::Normal => 2.0,
+                    pumpkin_util::Difficulty::Hard => 3.0,
+                };
+                let rand_val = rand::random::<f32>();
+                if let Some(seconds) = crate::entity::combat::calculate_zombie_fire_attack_seconds(
+                    true,
+                    true,
+                    difficulty,
+                    rand_val,
+                ) {
+                    target.set_on_fire_for(seconds as f32);
+                }
+            }
         }
     }
 

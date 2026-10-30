@@ -309,6 +309,11 @@ mod tests {
         let baby_angry_speed = crate::entity::combat::calculate_zombified_piglin_speed(base_speed, true, true);
         assert_eq!(baby_angry_speed, base_speed);
 
+        // Anger sound delay and persistent anger timings
+        assert_eq!(crate::entity::combat::ZOMBIFIED_PIGLIN_FIRST_ANGER_SOUND_DELAY_MAX_TICKS, 20);
+        assert_eq!(crate::entity::combat::ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MIN_TICKS, 400);
+        assert_eq!(crate::entity::combat::ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MAX_TICKS, 780);
+
         // Attributes parity (ZombifiedPiglin.java:61-67, 80-85, 225)
         assert_eq!(ZOMBIFIED_PIGLIN_MAX_HEALTH, 20.0);
         assert_eq!(ZOMBIFIED_PIGLIN_FOLLOW_RANGE, 35.0);

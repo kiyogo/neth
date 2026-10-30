@@ -5125,3 +5125,53 @@ eck, part 1): nhận 100% full damage (damage).
   - Updated crates/pumpkin-core/src/entity/mob/warden_anger.rs:
     - Synchronized anger default and projectile values with combat constants.
   - All 5 unit tests verified and passing across warden, sonic_boom, and anger test suites.
+
+
+### Gap 223: Zombie, Husk, Drowned, Zombie Villager & Zombified Piglin Combat, Conversion, Drowning & Weapon Parity
+- **Vanilla Reference**:
+  - Zombie.java:74-90, 94, 247, 302, 318-321, 347, 510-536:
+    - Base Attributes: MAX_HEALTH = 20.0 (ZOMBIE_MAX_HEALTH), FOLLOW_RANGE = 35.0 (ZOMBIE_FOLLOW_RANGE), MOVEMENT_SPEED = 0.23 (ZOMBIE_BASE_MOVEMENT_SPEED), ATTACK_DAMAGE = 3.0 (ZOMBIE_BASE_ATTACK_DAMAGE), ARMOR = 2.0 (ZOMBIE_BASE_ARMOR), xpReward = 5 (ZOMBIE_XP_REWARD).
+    - Baby Speed Modifier: SPEED_MODIFIER_BABY = 0.5 (ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT), ID = "minecraft:baby" (ZOMBIE_BABY_SPEED_MODIFIER_ID), baby XP multiplier 2.5x (12 XP).
+    - Drowning Conversion: in water 600 ticks (ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS = 600), shaking conversion 300 ticks (ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS = 300), conversion sound event ID 1040 (ZOMBIE_TO_DROWNED_CONVERSION_SOUND_EVENT_ID = 1040).
+    - Fire Attack on Target: if main hand empty, on fire, and rand < difficulty * 0.3 (ZOMBIE_FIRE_ATTACK_CHANCE_FACTOR = 0.3), target is ignited for 2 * (int)difficulty seconds (ZOMBIE_FIRE_ATTACK_DURATION_MULTIPLIER = 2) via calculate_zombie_fire_attack_seconds.
+    - Leader & Reinforcements: Leader chance 0.05 (ZOMBIE_LEADER_CHANCE = 0.05), reinforcement attempts 50 (ZOMBIE_REINFORCEMENT_ATTEMPTS = 50), range 7..=40 blocks (ZOMBIE_REINFORCEMENT_RANGE_MIN = 7, ZOMBIE_REINFORCEMENT_RANGE_MAX = 40), caller penalty -0.05 (ZOMBIE_REINFORCEMENT_CALLER_CHARGE = -0.05), callee penalty -0.05 (ZOMBIE_REINFORCEMENT_CALLEE_CHARGE = -0.05), break door chance 0.1 (ZOMBIE_BREAK_DOOR_CHANCE = 0.1), villager conversion sound event ID 1026 (ZOMBIE_TO_ZOMBIE_VILLAGER_CONVERSION_SOUND_EVENT_ID = 1026).
+  - Husk.java:42-44, 67-75, 84, 88-90:
+    - Daylight Immunity: isSunSensitive() -> false (burns_in_daylight() -> false).
+    - Unarmed Melee Attack: inflicts Hunger for 140 * difficulty ticks (HUSK_UNARMED_HUNGER_BASE_TICKS = 140) via calculate_husk_hunger_duration.
+    - Fire Attack: inherits Zombie fire attack on target when burning and unarmed.
+    - Drowning Conversion: converts to Zombie (not Drowned directly) after 600 ticks submerged and 300 ticks shaking, sound event ID 1041 (HUSK_TO_ZOMBIE_CONVERSION_SOUND_EVENT_ID = 1041).
+  - Drowned.java:69-76, 84, 95, 319-327:
+    - Step Height: Attributes.STEP_HEIGHT = 1.0 (DROWNED_STEP_HEIGHT = 1.0).
+    - Ranged Attack: Trident throw velocity 1.6 (DROWNED_TRIDENT_SHOOT_VELOCITY = 1.6), interval 40 ticks (DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS = 40), range 10.0 blocks (DROWNED_TRIDENT_ATTACK_RANGE = 10.0). Inaccuracy: Easy/Peaceful = 14.0, Normal = 10.0, Hard = 6.0 via calculate_drowned_trident_uncertainty.
+    - Equipment Chances: 10% weapon chance (62.5% trident, 37.5% fishing rod), 3% offhand nautilus shell (DROWNED_NAUTILUS_SHELL_CHANCE = 0.03), 50% zombie nautilus jockey chance (DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE = 0.5).
+  - ZombieVillager.java:69-72, 170, 201-203, 212, 266-268, 281-290:
+    - Curing Wait Time: 3600..=6000 ticks (3 to 5 minutes, ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN = 3600, ZOMBIE_VILLAGER_CONVERSION_WAIT_MAX = 6000, spread 2401 ticks via calculate_zombie_villager_cure_time).
+    - Special Blocks Speedup: radius 4 blocks (ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS = 4), max 14 blocks (ZOMBIE_VILLAGER_MAX_SPECIAL_BLOCKS = 14), 1% check chance per tick (ZOMBIE_VILLAGER_SPECIAL_BLOCK_CHECK_CHANCE = 0.01), 30% progress increment chance per special block (ZOMBIE_VILLAGER_SPECIAL_BLOCK_BOOST_CHANCE = 0.3).
+    - Sound & Particle Events: EntityEvent 16 during conversion (ZOMBIE_VILLAGER_CURE_SOUND_EVENT_ID = 16), LevelEvent 1027 on finish cure (ZOMBIE_VILLAGER_CURED_WORLD_EVENT_ID = 1027), Nausea duration 200 ticks (ZOMBIE_VILLAGER_NAUSEA_DURATION_TICKS = 200).
+    - Fire Attack & XP: inherits Zombie fire attack on target when burning and unarmed, base XP 5 (baby 12 XP).
+  - ZombifiedPiglin.java:52-67, 80-85, 225:
+    - Base Attributes: MAX_HEALTH = 20.0 (ZOMBIFIED_PIGLIN_MAX_HEALTH), ATTACK_DAMAGE = 5.0 (ZOMBIFIED_PIGLIN_ATTACK_DAMAGE), ARMOR = 2.0 (ZOMBIFIED_PIGLIN_ARMOR), FOLLOW_RANGE = 35.0 (ZOMBIFIED_PIGLIN_FOLLOW_RANGE), BASE_SPEED = 0.23 (ZOMBIFIED_PIGLIN_BASE_SPEED), SPAWN_REINFORCEMENTS = 0.0 (ZOMBIFIED_PIGLIN_SPAWN_REINFORCEMENTS_CHANCE), xpReward = 5 (ZOMBIFIED_PIGLIN_XP_REWARD).
+    - Angry Speed: +0.05 ADD_VALUE modifier "minecraft:attacking" (ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT = 0.05, ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID = "minecraft:attacking") applied only to non-babies via calculate_zombified_piglin_speed.
+    - Alert Range & Interval: Alert box Y = 10.0 (ZOMBIFIED_PIGLIN_ALERT_RANGE_Y = 10.0), interval 4..=6 seconds (80..=120 ticks, ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MIN_TICKS = 80, ZOMBIFIED_PIGLIN_ALERT_INTERVAL_MAX_TICKS = 120).
+    - First Anger Sound Delay: 0..=1 second (0..=20 ticks, ZOMBIFIED_PIGLIN_FIRST_ANGER_SOUND_DELAY_MAX_TICKS = 20).
+    - Persistent Anger Time: 20..=39 seconds (400..=780 ticks, ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MIN_TICKS = 400, ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MAX_TICKS = 780).
+    - Equipment: 1 in 20 chance golden spear, 19 in 20 chance golden sword (ZOMBIFIED_PIGLIN_SPEAR_SPAWN_CHANCE_IN_TWENTY = 20). Lava malus 8.0 (ZOMBIFIED_PIGLIN_LAVA_PATHFINDING_MALUS = 8.0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants for fire attacks, leader spawn, reinforcement attempts and ranges, conversion sound IDs, zombie villager curing timings, special blocks speedup, and zombified piglin anger sound/persistent anger timings.
+    - Added helper calculate_zombie_fire_attack_seconds and calculate_zombie_villager_cure_time.
+  - Updated crates/pumpkin-core/src/entity/mob/zombie/zombie.rs:
+    - Implemented on_attack applying vanilla burning target ignition when unarmed and on fire.
+    - Added unit test test_zombie_fire_attack_and_leader_parity.
+  - Updated crates/pumpkin-core/src/entity/mob/zombie/husk.rs:
+    - Implemented fire attack alongside Hunger in on_attack.
+  - Updated crates/pumpkin-core/src/entity/mob/zombie/zombie_villager.rs:
+    - Replaced hardcoded constants with combat constants.
+    - Implemented on_attack fire attack parity.
+    - Added unit test test_zombie_villager_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/mob/zombie/mod.rs:
+    - Synced reinforcement attempts and ranges with combat constants.
+    - Added unit test test_zombie_entity_base_parity_constants.
+  - Updated crates/pumpkin-core/src/entity/mob/zombified_piglin.rs:
+    - Updated unit test test_zombified_piglin_anger_speed_parity verifying anger delay and persistent anger timings.
+  - All 15 unit tests verified and passing across zombie, husk, drowned, zombie_villager, zombified_piglin, and combat test suites.

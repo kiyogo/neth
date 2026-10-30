@@ -3404,6 +3404,146 @@ pub const ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS: i32 = 600;
 /// Mirrors vanilla `Zombie.java:103` (`drowningTracker: "DrownedConversionTime", 300`).
 pub const ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS: i32 = 300;
 
+/// Zombie bare-hand attack fire ignition chance factor (0.3).
+/// Mirrors vanilla `Zombie.java:319`:
+/// `if (this.getMainHandItem().isEmpty() && this.isOnFire() && this.random.nextFloat() < difficulty * 0.3F)`
+pub const ZOMBIE_FIRE_ATTACK_CHANCE_FACTOR: f32 = 0.3;
+
+/// Zombie bare-hand attack fire ignition duration multiplier in seconds (2).
+/// Mirrors vanilla `Zombie.java:320`:
+/// `target.igniteForSeconds(2 * (int)difficulty);`
+pub const ZOMBIE_FIRE_ATTACK_DURATION_MULTIPLIER: u32 = 2;
+
+/// Zombie leader spawn chance (5% scaled by regional difficulty).
+/// Mirrors vanilla `Zombie.java:87`:
+/// `public static final float ZOMBIE_LEADER_CHANCE = 0.05F;`
+pub const ZOMBIE_LEADER_CHANCE: f32 = 0.05;
+
+/// Zombie reinforcement spawn attempts (50).
+/// Mirrors vanilla `Zombie.java:88`:
+/// `public static final int REINFORCEMENT_ATTEMPTS = 50;`
+pub const ZOMBIE_REINFORCEMENT_ATTEMPTS: i32 = 50;
+
+/// Zombie reinforcement max spawn range (40 blocks).
+/// Mirrors vanilla `Zombie.java:89`:
+/// `public static final int REINFORCEMENT_RANGE_MAX = 40;`
+pub const ZOMBIE_REINFORCEMENT_RANGE_MAX: i32 = 40;
+
+/// Zombie reinforcement min spawn range (7 blocks).
+/// Mirrors vanilla `Zombie.java:90`:
+/// `public static final int REINFORCEMENT_RANGE_MIN = 7;`
+pub const ZOMBIE_REINFORCEMENT_RANGE_MIN: i32 = 7;
+
+/// Zombie break door chance on Hard difficulty (10%).
+/// Mirrors vanilla `Zombie.java:94`:
+/// `private static final float BREAK_DOOR_CHANCE = 0.1F;`
+pub const ZOMBIE_BREAK_DOOR_CHANCE: f32 = 0.1;
+
+/// Zombie reinforcement caller charge deduction (-0.05).
+/// Mirrors vanilla `Zombie.java:302`:
+/// `existingAmount - 0.05`
+pub const ZOMBIE_REINFORCEMENT_CALLER_CHARGE: f64 = -0.05;
+
+/// Zombie reinforcement callee charge penalty (-0.05).
+/// Mirrors vanilla `Zombie.java:80`:
+/// `new AttributeModifier(..., -0.05F, AttributeModifier.Operation.ADD_VALUE)`
+pub const ZOMBIE_REINFORCEMENT_CALLEE_CHARGE: f64 = -0.05;
+
+/// Zombie converting villager to zombie villager sound/level event ID (1026).
+/// Mirrors vanilla `Zombie.java:247`:
+/// `level.levelEvent(null, 1026, this.blockPosition(), 0);`
+pub const ZOMBIE_TO_ZOMBIE_VILLAGER_CONVERSION_SOUND_EVENT_ID: i32 = 1026;
+
+/// Zombie converting to drowned sound/level event ID (1040).
+/// Mirrors vanilla `Zombie.java:347`:
+/// `return 1040;`
+pub const ZOMBIE_TO_DROWNED_CONVERSION_SOUND_EVENT_ID: i32 = 1040;
+
+/// Zombie Villager cure minimum wait time in ticks (3600 ticks = 3 minutes).
+/// Mirrors vanilla `ZombieVillager.java:69`:
+/// `private static final int VILLAGER_CONVERSION_WAIT_MIN = 3600;`
+pub const ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN: i32 = 3600;
+
+/// Zombie Villager cure maximum wait time in ticks (6000 ticks = 5 minutes).
+/// Mirrors vanilla `ZombieVillager.java:70`:
+/// `private static final int VILLAGER_CONVERSION_WAIT_MAX = 6000;`
+pub const ZOMBIE_VILLAGER_CONVERSION_WAIT_MAX: i32 = 6000;
+
+/// Zombie Villager cure random spread range in ticks (2401 ticks).
+/// Mirrors vanilla `ZombieVillager.java:170`:
+/// `this.random.nextInt(2401) + 3600`
+pub const ZOMBIE_VILLAGER_CONVERSION_SPREAD: i32 = 2401;
+
+/// Zombie Villager max nearby special blocks considered for curing speedup (14).
+/// Mirrors vanilla `ZombieVillager.java:71`:
+/// `private static final int MAX_SPECIAL_BLOCKS_COUNT = 14;`
+pub const ZOMBIE_VILLAGER_MAX_SPECIAL_BLOCKS: i32 = 14;
+
+/// Zombie Villager special block search radius (4 blocks in X, Y, Z).
+/// Mirrors vanilla `ZombieVillager.java:72`:
+/// `private static final int SPECIAL_BLOCK_RADIUS = 4;`
+pub const ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS: i32 = 4;
+
+/// Zombie Villager special block check probability per tick (1%).
+/// Mirrors vanilla `ZombieVillager.java:281`:
+/// `if (this.random.nextFloat() < 0.01F)`
+pub const ZOMBIE_VILLAGER_SPECIAL_BLOCK_CHECK_CHANCE: f32 = 0.01;
+
+/// Zombie Villager special block speedup probability per block (30%).
+/// Mirrors vanilla `ZombieVillager.java:290`:
+/// `if (this.random.nextFloat() < 0.3F) amount++;`
+pub const ZOMBIE_VILLAGER_SPECIAL_BLOCK_BOOST_CHANCE: f32 = 0.3;
+
+/// Zombie Villager cured nausea duration in ticks (200 ticks = 10 seconds).
+/// Mirrors vanilla `ZombieVillager.java:266`:
+/// `villager.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 200, 0));`
+pub const ZOMBIE_VILLAGER_NAUSEA_DURATION_TICKS: i32 = 200;
+
+/// Zombie Villager curing sound entity status event ID (16).
+/// Mirrors vanilla `ZombieVillager.java:202, 212`:
+/// `this.level().broadcastEntityEvent(this, (byte)16);`
+pub const ZOMBIE_VILLAGER_CURE_SOUND_EVENT_ID: u8 = 16;
+
+/// Zombie Villager cured world/level event ID (1027).
+/// Mirrors vanilla `ZombieVillager.java:268`:
+/// `level.levelEvent(null, 1027, this.blockPosition(), 0);`
+pub const ZOMBIE_VILLAGER_CURED_WORLD_EVENT_ID: i32 = 1027;
+
+/// Calculates whether a zombie bare-hand melee attack on fire ignites the target and the duration in seconds.
+///
+/// Mirrors vanilla `Zombie.java:318-321`:
+/// ```text
+/// float difficulty = level.getCurrentDifficultyAt(this.blockPosition()).getEffectiveDifficulty();
+/// if (this.getMainHandItem().isEmpty() && this.isOnFire() && this.random.nextFloat() < difficulty * 0.3F) {
+///     target.igniteForSeconds(2 * (int)difficulty);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_zombie_fire_attack_seconds(
+    is_on_fire: bool,
+    main_hand_empty: bool,
+    difficulty: f32,
+    rand_val: f32,
+) -> Option<u32> {
+    if !is_on_fire || !main_hand_empty || difficulty <= 0.0 {
+        return None;
+    }
+    if rand_val < difficulty * ZOMBIE_FIRE_ATTACK_CHANCE_FACTOR {
+        Some(ZOMBIE_FIRE_ATTACK_DURATION_MULTIPLIER * (difficulty as u32))
+    } else {
+        None
+    }
+}
+
+/// Calculates initial conversion time in ticks for curing a Zombie Villager.
+///
+/// Mirrors vanilla `ZombieVillager.java:170`:
+/// `this.random.nextInt(2401) + 3600`
+#[must_use]
+pub const fn calculate_zombie_villager_cure_time(rand_spread: i32) -> i32 {
+    ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN + rand_spread
+}
+
 /// Base duration for Hunger inflicted by unarmed Husk hit (140 ticks / 7 seconds per difficulty level).
 /// Mirrors vanilla `Husk.java:59`: `140 * (int)difficulty`.
 pub const HUSK_UNARMED_HUNGER_BASE_TICKS: i32 = 140;
@@ -7653,6 +7793,20 @@ pub const ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_ID: &str = "minecraft:attack
 pub const ZOMBIFIED_PIGLIN_ATTACKING_SPEED_MODIFIER_AMOUNT: f64 = 0.05;
 pub const ZOMBIFIED_PIGLIN_BASE_SPEED: f64 = 0.23;
 pub const ZOMBIFIED_PIGLIN_XP_REWARD: u32 = 5;
+
+/// Zombified Piglin first anger sound delay range (0 to 1 second = 0 to 20 ticks).
+/// Mirrors vanilla `ZombifiedPiglin.java:56`:
+/// `private static final UniformInt FIRST_ANGER_SOUND_DELAY = TimeUtil.rangeOfSeconds(0, 1);`
+pub const ZOMBIFIED_PIGLIN_FIRST_ANGER_SOUND_DELAY_MAX_TICKS: i32 = 20;
+
+/// Zombified Piglin persistent anger time minimum in ticks (20 seconds = 400 ticks).
+/// Mirrors vanilla `ZombifiedPiglin.java:58`:
+/// `private static final UniformInt PERSISTENT_ANGER_TIME = TimeUtil.rangeOfSeconds(20, 39);`
+pub const ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
+
+/// Zombified Piglin persistent anger time maximum in ticks (39 seconds = 780 ticks).
+/// Mirrors vanilla `ZombifiedPiglin.java:58`.
+pub const ZOMBIFIED_PIGLIN_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
 /// Calculates Hoglin / Zoglin attack damage with vanilla random offset,
 /// mirroring vanilla `HoglinBase.java:18-25`:

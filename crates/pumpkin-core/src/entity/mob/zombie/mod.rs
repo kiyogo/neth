@@ -363,10 +363,10 @@ impl ZombieEntityBase {
 
         let zombie_pos = self.mob_entity.living_entity.entity.pos.load();
         let entity_type = &self.mob_entity.living_entity.entity.entity_type;
-        for _ in 0..50 {
-            let offset_x = (rng.random_range(7..=40) * if rng.random_bool(0.5) { 1 } else { -1 }) as f64;
-            let offset_y = rng.random_range(-7..=7) as f64;
-            let offset_z = (rng.random_range(7..=40) * if rng.random_bool(0.5) { 1 } else { -1 }) as f64;
+        for _ in 0..crate::entity::combat::ZOMBIE_REINFORCEMENT_ATTEMPTS {
+            let offset_x = (rng.random_range(crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MIN..=crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MAX) * if rng.random_bool(0.5) { 1 } else { -1 }) as f64;
+            let offset_y = rng.random_range(-crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MIN..=crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MIN) as f64;
+            let offset_z = (rng.random_range(crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MIN..=crate::entity::combat::ZOMBIE_REINFORCEMENT_RANGE_MAX) * if rng.random_bool(0.5) { 1 } else { -1 }) as f64;
             let spawn_pos = Vector3::new(
                 zombie_pos.x + offset_x,
                 zombie_pos.y + offset_y,
@@ -398,8 +398,28 @@ impl ZombieEntityBase {
                 mob.set_mob_target(Some(target.clone()));
             }
             world.spawn_entity(reinforcement);
-            self.reinforcement_chance.store((chance - 0.05).max(0.0));
+            self.reinforcement_chance.store((chance + crate::entity::combat::ZOMBIE_REINFORCEMENT_CALLER_CHARGE as f32).max(0.0));
             break;
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_zombie_entity_base_parity_constants() {
+        use crate::entity::combat::{
+            ZOMBIE_BASE_ARMOR, ZOMBIE_BASE_ATTACK_DAMAGE, ZOMBIE_BASE_MOVEMENT_SPEED,
+            ZOMBIE_FOLLOW_RANGE, ZOMBIE_MAX_HEALTH, ZOMBIE_XP_REWARD,
+        };
+
+        assert_eq!(ZOMBIE_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIE_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(ZOMBIE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(ZOMBIE_BASE_ARMOR, 2.0);
+        assert_eq!(ZOMBIE_XP_REWARD, 5);
     }
 }

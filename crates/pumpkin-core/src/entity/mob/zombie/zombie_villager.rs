@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::Block;
+use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::item::Item;
@@ -46,14 +47,14 @@ pub struct ZombieVillagerEntity {
 }
 
 impl ZombieVillagerEntity {
-    const VILLAGER_CONVERSION_WAIT_MIN: i32 = 3600;
-    const VILLAGER_CONVERSION_WAIT_MAX: i32 = 6000;
-    const MAX_SPECIAL_BLOCKS_COUNT: i32 = 14;
-    const SPECIAL_BLOCK_RADIUS_X: i32 = 4;
-    const SPECIAL_BLOCK_RADIUS_Y: i32 = 4;
-    const SPECIAL_BLOCK_RADIUS_Z: i32 = 4;
+    const VILLAGER_CONVERSION_WAIT_MIN: i32 = crate::entity::combat::ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN;
+    const VILLAGER_CONVERSION_WAIT_MAX: i32 = crate::entity::combat::ZOMBIE_VILLAGER_CONVERSION_WAIT_MAX;
+    const MAX_SPECIAL_BLOCKS_COUNT: i32 = crate::entity::combat::ZOMBIE_VILLAGER_MAX_SPECIAL_BLOCKS;
+    const SPECIAL_BLOCK_RADIUS_X: i32 = crate::entity::combat::ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS;
+    const SPECIAL_BLOCK_RADIUS_Y: i32 = crate::entity::combat::ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS;
+    const SPECIAL_BLOCK_RADIUS_Z: i32 = crate::entity::combat::ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS;
     /// Nausea the cured villager wakes up with.
-    const NAUSEA_DURATION: i32 = 200;
+    const NAUSEA_DURATION: i32 = crate::entity::combat::ZOMBIE_VILLAGER_NAUSEA_DURATION_TICKS;
 
     pub fn new(entity: Entity) -> Arc<Self> {
         Self::with_can_break_doors(entity, false)
@@ -271,6 +272,39 @@ impl Mob for ZombieVillagerEntity {
         Some(self)
     }
 
+    fn on_attack(&self, target: &dyn EntityBase) {
+        let base_entity = self.get_entity();
+        if !base_entity.is_on_fire() {
+            return;
+        }
+        let equipment = self
+            .mob_entity
+            .mob_entity
+            .living_entity
+            .entity_equipment
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let main_hand = equipment.get(&EquipmentSlot::MAIN_HAND);
+        if main_hand.is_empty() {
+            let world = base_entity.world.load();
+            let difficulty = match world.level_info.load().difficulty {
+                pumpkin_util::Difficulty::Peaceful => 0.0,
+                pumpkin_util::Difficulty::Easy => 1.0,
+                pumpkin_util::Difficulty::Normal => 2.0,
+                pumpkin_util::Difficulty::Hard => 3.0,
+            };
+            let rand_val = rand::random::<f32>();
+            if let Some(seconds) = crate::entity::combat::calculate_zombie_fire_attack_seconds(
+                true,
+                true,
+                difficulty,
+                rand_val,
+            ) {
+                target.set_on_fire_for(seconds as f32);
+            }
+        }
+    }
+
     fn spawn_as_baby(&self) -> bool {
         self.mob_entity.spawn_as_baby()
     }
@@ -454,6 +488,32 @@ impl CustomSound for ZombieVillagerEntity {
 #[cfg(test)]
 mod tests {
     use super::{Block, speeds_up_conversion};
+
+    #[test]
+    fn test_zombie_villager_parity_constants() {
+        use crate::entity::combat::{
+            calculate_zombie_villager_cure_time, ZOMBIE_VILLAGER_CONVERSION_SPREAD,
+            ZOMBIE_VILLAGER_CONVERSION_WAIT_MAX, ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN,
+            ZOMBIE_VILLAGER_CURED_WORLD_EVENT_ID, ZOMBIE_VILLAGER_CURE_SOUND_EVENT_ID,
+            ZOMBIE_VILLAGER_MAX_SPECIAL_BLOCKS, ZOMBIE_VILLAGER_NAUSEA_DURATION_TICKS,
+            ZOMBIE_VILLAGER_SPECIAL_BLOCK_BOOST_CHANCE, ZOMBIE_VILLAGER_SPECIAL_BLOCK_CHECK_CHANCE,
+            ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS,
+        };
+
+        assert_eq!(ZOMBIE_VILLAGER_CONVERSION_WAIT_MIN, 3600);
+        assert_eq!(ZOMBIE_VILLAGER_CONVERSION_WAIT_MAX, 6000);
+        assert_eq!(ZOMBIE_VILLAGER_CONVERSION_SPREAD, 2401);
+        assert_eq!(calculate_zombie_villager_cure_time(0), 3600);
+        assert_eq!(calculate_zombie_villager_cure_time(2400), 6000);
+
+        assert_eq!(ZOMBIE_VILLAGER_MAX_SPECIAL_BLOCKS, 14);
+        assert_eq!(ZOMBIE_VILLAGER_SPECIAL_BLOCK_RADIUS, 4);
+        assert_eq!(ZOMBIE_VILLAGER_SPECIAL_BLOCK_CHECK_CHANCE, 0.01);
+        assert_eq!(ZOMBIE_VILLAGER_SPECIAL_BLOCK_BOOST_CHANCE, 0.3);
+        assert_eq!(ZOMBIE_VILLAGER_NAUSEA_DURATION_TICKS, 200);
+        assert_eq!(ZOMBIE_VILLAGER_CURE_SOUND_EVENT_ID, 16);
+        assert_eq!(ZOMBIE_VILLAGER_CURED_WORLD_EVENT_ID, 1027);
+    }
 
     #[test]
     fn only_iron_bars_and_beds_speed_up_the_cure() {

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use pumpkin_data::damage::DamageType;
+use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 
@@ -137,6 +138,39 @@ impl Mob for ZombieEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn on_attack(&self, target: &dyn EntityBase) {
+        let base_entity = &self.entity.mob_entity.living_entity.entity;
+        if !base_entity.is_on_fire() {
+            return;
+        }
+        let equipment = self
+            .entity
+            .mob_entity
+            .living_entity
+            .entity_equipment
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let main_hand = equipment.get(&EquipmentSlot::MAIN_HAND);
+        if main_hand.is_empty() {
+            let world = base_entity.world.load();
+            let difficulty = match world.level_info.load().difficulty {
+                pumpkin_util::Difficulty::Peaceful => 0.0,
+                pumpkin_util::Difficulty::Easy => 1.0,
+                pumpkin_util::Difficulty::Normal => 2.0,
+                pumpkin_util::Difficulty::Hard => 3.0,
+            };
+            let rand_val = rand::random::<f32>();
+            if let Some(seconds) = crate::entity::combat::calculate_zombie_fire_attack_seconds(
+                true,
+                true,
+                difficulty,
+                rand_val,
+            ) {
+                target.set_on_fire_for(seconds as f32);
+            }
+        }
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
@@ -283,6 +317,51 @@ mod tests {
 
         assert_eq!(ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS, 600);
         assert_eq!(ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, 300);
+    }
+
+    #[test]
+    fn test_zombie_fire_attack_and_leader_parity() {
+        use crate::entity::combat::{
+            calculate_zombie_fire_attack_seconds, ZOMBIE_BREAK_DOOR_CHANCE,
+            ZOMBIE_FIRE_ATTACK_CHANCE_FACTOR, ZOMBIE_FIRE_ATTACK_DURATION_MULTIPLIER,
+            ZOMBIE_LEADER_CHANCE, ZOMBIE_REINFORCEMENT_ATTEMPTS,
+            ZOMBIE_REINFORCEMENT_CALLEE_CHARGE, ZOMBIE_REINFORCEMENT_CALLER_CHARGE,
+            ZOMBIE_REINFORCEMENT_RANGE_MAX, ZOMBIE_REINFORCEMENT_RANGE_MIN,
+            ZOMBIE_TO_DROWNED_CONVERSION_SOUND_EVENT_ID,
+            ZOMBIE_TO_ZOMBIE_VILLAGER_CONVERSION_SOUND_EVENT_ID,
+        };
+
+        assert_eq!(ZOMBIE_LEADER_CHANCE, 0.05);
+        assert_eq!(ZOMBIE_REINFORCEMENT_ATTEMPTS, 50);
+        assert_eq!(ZOMBIE_REINFORCEMENT_RANGE_MAX, 40);
+        assert_eq!(ZOMBIE_REINFORCEMENT_RANGE_MIN, 7);
+        assert_eq!(ZOMBIE_BREAK_DOOR_CHANCE, 0.1);
+        assert_eq!(ZOMBIE_REINFORCEMENT_CALLEE_CHARGE, -0.05);
+        assert_eq!(ZOMBIE_REINFORCEMENT_CALLER_CHARGE, -0.05);
+        assert_eq!(ZOMBIE_TO_ZOMBIE_VILLAGER_CONVERSION_SOUND_EVENT_ID, 1026);
+        assert_eq!(ZOMBIE_TO_DROWNED_CONVERSION_SOUND_EVENT_ID, 1040);
+
+        assert_eq!(ZOMBIE_FIRE_ATTACK_CHANCE_FACTOR, 0.3);
+        assert_eq!(ZOMBIE_FIRE_ATTACK_DURATION_MULTIPLIER, 2);
+
+        // Not on fire -> no ignition
+        assert_eq!(calculate_zombie_fire_attack_seconds(false, true, 2.0, 0.1), None);
+        // Holding weapon -> no ignition
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, false, 2.0, 0.1), None);
+        // Peaceful difficulty -> no ignition
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 0.0, 0.1), None);
+
+        // Easy (difficulty = 1.0, threshold = 0.3):
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 1.0, 0.1), Some(2));
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 1.0, 0.35), None);
+
+        // Normal (difficulty = 2.0, threshold = 0.6):
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 2.0, 0.5), Some(4));
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 2.0, 0.7), None);
+
+        // Hard (difficulty = 3.0, threshold = 0.9):
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 3.0, 0.8), Some(6));
+        assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 3.0, 0.95), None);
     }
 }
 
