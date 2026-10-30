@@ -7,7 +7,6 @@ use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
-use pumpkin_util::Difficulty;
 
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::mob::equipment::RegionalDifficulty;
@@ -160,16 +159,11 @@ impl Mob for HuskEntity {
         if main_hand.is_empty() {
             if let Some(living) = target.get_living_entity() {
                 let world = self.get_entity().world.load();
-                let multiplier = match world.level_info.load().difficulty {
-                    Difficulty::Peaceful => 0,
-                    Difficulty::Easy => 1,
-                    Difficulty::Normal => 2,
-                    Difficulty::Hard => 3,
-                };
-                if multiplier > 0 {
+                let duration = crate::entity::combat::calculate_husk_hunger_duration(world.level_info.load().difficulty);
+                if duration > 0 {
                     living.add_effect(Effect {
                         effect_type: &StatusEffect::HUNGER,
-                        duration: 140 * multiplier,
+                        duration,
                         amplifier: 0,
                         ambient: false,
                         show_particles: true,
@@ -199,8 +193,8 @@ impl Mob for HuskEntity {
                 }
             } else {
                 let in_water = self.in_water_time.fetch_add(1, Ordering::Relaxed) + 1;
-                if in_water >= 600 {
-                    self.start_drowned_conversion(300);
+                if in_water >= crate::entity::combat::ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS {
+                    self.start_drowned_conversion(crate::entity::combat::ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS);
                 }
             }
         } else {
@@ -277,3 +271,24 @@ impl Mob for HuskEntity {
         Mob::get_base_experience_reward(self.entity.as_ref())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        calculate_husk_hunger_duration, HUSK_UNARMED_HUNGER_BASE_TICKS,
+        ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS,
+    };
+
+    #[test]
+    fn test_husk_hunger_duration_and_daylight_immunity_parity() {
+        assert_eq!(HUSK_UNARMED_HUNGER_BASE_TICKS, 140);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Peaceful), 0);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Easy), 140);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Normal), 280);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Hard), 420);
+
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS, 600);
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, 300);
+    }
+}
+

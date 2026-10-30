@@ -4595,3 +4595,45 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward` returning `ELDER_GUARDIAN_XP_REWARD` (10 XP).
     - Added unit test `test_elder_guardian_combat_and_curse_parity`.
   - All unit tests verified and passing (5/5 in guardian suite, 97/97 in combat suite).
+
+
+## Gap 208: Zombie Family Combat, Conversion & Trident Parity (Zombie, Husk, Drowned)
+- **Vanilla Reference**: `Zombie.java:55-58, 93-97, 101-105, 232-260`, `Husk.java:30-45, 58-63`, `Drowned.java:82, 319-327`, `RangedAttackMob.java:23-28`, `Monster.java:55`:
+  - `Zombie.java`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `FOLLOW_RANGE = 35.0`, `MOVEMENT_SPEED = 0.23`, `ATTACK_DAMAGE = 3.0`, `ARMOR = 2.0`.
+    - Baby Speed Modifier: `ZOMBIE_BABY_SPEED_MODIFIER_ID = "minecraft:baby"`, `ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT = 0.5` (+50% base speed).
+    - Water Drowning Conversion: Chìm hoàn toàn trong nước `600 ticks` (30 giây) (`ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS = 600`), sau đó lắc lư chuyển đổi trong `300 ticks` (15 giây) (`ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS = 300`) trước khi biến đổi thành Drowned.
+    - Experience drop: `xpReward = 5` (Baby: 2.5x base XP).
+  - `Husk.java`:
+    - Sunlight Immunity: Khong bi chay nang (`burns_in_daylight() = false`).
+    - Unarmed Attack Hunger: Don danh khong vu khi gay hieu ung `StatusEffect::HUNGER` voi thoi luong `140 * difficulty` ticks (Easy: 140 ticks / 7s; Normal: 280 ticks / 14s; Hard: 420 ticks / 21s).
+    - Water Conversion: Chìm trong nước 600 ticks, lắc lư 300 ticks trước khi biến thành `Zombie`.
+  - `Drowned.java`:
+    - Step Height: `STEP_HEIGHT = 1.0` (Attributes.STEP_HEIGHT).
+    - Trident Ranged Attack:
+      - Shoot Velocity: `1.6` blocks/sec.
+      - Ranged Attack Inaccuracy Parity (`RangedAttackMob.java:23-28`): Tinh toan do lech nem dua tren do kho:
+        - Peaceful / Easy: **14.0**
+        - Normal: **10.0**
+        - Hard: **6.0**
+        (Sua sai lech truoc day khi tinh `14 - difficulty * 4` lam Hard = 2 thay vi 6).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ZOMBIE_MAX_HEALTH = 20.0`, `ZOMBIE_FOLLOW_RANGE = 35.0`, `ZOMBIE_BASE_MOVEMENT_SPEED = 0.23`, `ZOMBIE_BASE_ATTACK_DAMAGE = 3.0`, `ZOMBIE_BASE_ARMOR = 2.0`, `ZOMBIE_XP_REWARD = 5`, `ZOMBIE_BABY_SPEED_MODIFIER_ID = "minecraft:baby"`, `ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT = 0.5`, `ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS = 600`, `ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS = 300`, `HUSK_UNARMED_HUNGER_BASE_TICKS = 140`, `DROWNED_TRIDENT_SHOOT_VELOCITY = 1.6`, `DROWNED_STEP_HEIGHT = 1.0`.
+    - Added functions `calculate_drowned_trident_uncertainty(difficulty)` and `calculate_husk_hunger_duration(difficulty)`.
+    - Added unit test `test_zombie_family_combat_and_conversion_parity`.
+  - Updated `crates/pumpkin-core/src/entity/mob/zombie/mod.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Synced baby modifier with `ZOMBIE_BABY_SPEED_MODIFIER_*`.
+    - Synced base XP reward with `ZOMBIE_XP_REWARD`.
+  - Updated `crates/pumpkin-core/src/entity/mob/zombie/zombie.rs`:
+    - Synced conversion ticks with `ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS` and `ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS`.
+    - Added unit test `test_zombie_drowning_conversion_and_baby_speed_parity`.
+  - Updated `crates/pumpkin-core/src/entity/mob/zombie/husk.rs`:
+    - Used `calculate_husk_hunger_duration` and synced conversion ticks.
+    - Added unit test `test_husk_hunger_duration_and_daylight_immunity_parity`.
+  - Updated `crates/pumpkin-core/src/entity/mob/zombie/drowned.rs`:
+    - Synced step height with `DROWNED_STEP_HEIGHT`.
+    - Implemented `calculate_drowned_trident_uncertainty` and `DROWNED_TRIDENT_SHOOT_VELOCITY`.
+    - Added unit test `test_drowned_trident_combat_and_uncertainty_parity`.
+  - All unit tests verified and passing (11/11 in zombie family suite, 99/99 in combat suite).

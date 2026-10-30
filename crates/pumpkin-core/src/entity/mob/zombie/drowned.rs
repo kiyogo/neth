@@ -61,7 +61,7 @@ impl DrownedEntity {
         let mob_entity = &drowned.entity.mob_entity;
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::STEP_HEIGHT, 1.0);
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::DROWNED_STEP_HEIGHT);
         let mut navigator = Navigator::amphibious(false);
         navigator.set_pathfinding_malus(PathType::Water, 0.0);
         *mob_entity
@@ -277,13 +277,15 @@ impl RangedAttackMob for DrownedEntity {
             - trident.entity.pos.load().y;
         let dz = target_pos.z - pos.z;
         let distance = dx.hypot(dz);
-        let difficulty = world.level_info.load().difficulty as i32;
+        let uncertainty = crate::entity::combat::calculate_drowned_trident_uncertainty(
+            world.level_info.load().difficulty,
+        );
         trident.set_velocity(
             dx,
             distance.mul_add(0.2, dy),
             dz,
-            1.6,
-            f64::from(14 - difficulty * 4),
+            crate::entity::combat::DROWNED_TRIDENT_SHOOT_VELOCITY,
+            uncertainty,
         );
         trident.apply_on_projectile_spawned(&trident_stack);
         world.spawn_entity(Arc::new(trident));
@@ -837,3 +839,24 @@ impl Goal for DrownedSwimUpGoal {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        calculate_drowned_trident_uncertainty, DROWNED_STEP_HEIGHT,
+        DROWNED_TRIDENT_SHOOT_VELOCITY,
+    };
+
+    #[test]
+    fn test_drowned_trident_combat_and_uncertainty_parity() {
+        assert_eq!(DROWNED_TRIDENT_SHOOT_VELOCITY, 1.6);
+        assert_eq!(DROWNED_STEP_HEIGHT, 1.0);
+
+        // Vanilla RangedAttackMob uncertainty parity: Easy=14.0, Normal=10.0, Hard=6.0
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Peaceful), 14.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Easy), 14.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Normal), 10.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Hard), 6.0);
+    }
+}
+

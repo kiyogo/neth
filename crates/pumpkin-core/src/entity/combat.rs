@@ -3361,6 +3361,95 @@ pub const fn can_lightning_convert_mob(difficulty: pumpkin_util::Difficulty) -> 
 }
 
 // ============================================================================
+// Zombie Family Parity Constants (Zombie, Husk, Drowned, Zombie Villager)
+// ============================================================================
+
+/// Base max health for a Zombie / Husk / Drowned / Zombie Villager (20.0 HP / 10 hearts).
+/// Mirrors vanilla `Zombie.java:93` (`Attributes.MAX_HEALTH, 20.0`).
+pub const ZOMBIE_MAX_HEALTH: f32 = 20.0;
+
+/// Base follow range for a Zombie (35.0 blocks).
+/// Mirrors vanilla `Zombie.java:94` (`Attributes.FOLLOW_RANGE, 35.0`).
+pub const ZOMBIE_FOLLOW_RANGE: f64 = 35.0;
+
+/// Base movement speed for a Zombie / Husk / Drowned (0.23).
+/// Mirrors vanilla `Zombie.java:95` (`Attributes.MOVEMENT_SPEED, 0.23F`).
+pub const ZOMBIE_BASE_MOVEMENT_SPEED: f64 = 0.23;
+
+/// Base attack damage for a Zombie / Husk / Drowned (3.0 HP).
+/// Mirrors vanilla `Zombie.java:96` (`Attributes.ATTACK_DAMAGE, 3.0`).
+pub const ZOMBIE_BASE_ATTACK_DAMAGE: f32 = 3.0;
+
+/// Base natural armor for a Zombie (2.0 points = 1 armor icon).
+/// Mirrors vanilla `Zombie.java:97` (`Attributes.ARMOR, 2.0`).
+pub const ZOMBIE_BASE_ARMOR: f64 = 2.0;
+
+/// Base experience reward dropped by a Zombie / Husk / Drowned / Zombie Villager on death (5 XP).
+/// Mirrors vanilla `Monster.java:55` (`this.xpReward = 5`).
+pub const ZOMBIE_XP_REWARD: u32 = 5;
+
+/// Baby zombie movement speed modifier identifier ("minecraft:baby").
+/// Mirrors vanilla `Zombie.java:55` (`SPEED_MODIFIER_BABY_ID`).
+pub const ZOMBIE_BABY_SPEED_MODIFIER_ID: &str = "minecraft:baby";
+
+/// Baby zombie movement speed multiplier (+0.5 = +50% base speed).
+/// Mirrors vanilla `Zombie.java:56-58` (`SPEED_MODIFIER_BABY = ... 0.5 ... ADD_MULTIPLIED_BASE`).
+pub const ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT: f64 = 0.5;
+
+/// Submerged duration before a Zombie begins shaking conversion to Drowned (600 ticks / 30 seconds).
+/// Mirrors vanilla `Zombie.java:101-105` (`drowningTracker: "InWaterTime", 600`).
+pub const ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS: i32 = 600;
+
+/// Shaking conversion duration from Zombie to Drowned or Husk to Zombie (300 ticks / 15 seconds).
+/// Mirrors vanilla `Zombie.java:103` (`drowningTracker: "DrownedConversionTime", 300`).
+pub const ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS: i32 = 300;
+
+/// Base duration for Hunger inflicted by unarmed Husk hit (140 ticks / 7 seconds per difficulty level).
+/// Mirrors vanilla `Husk.java:59`: `140 * (int)difficulty`.
+pub const HUSK_UNARMED_HUNGER_BASE_TICKS: i32 = 140;
+
+/// Projectile throw velocity for a Drowned throwing a Trident (1.6 blocks/sec scale).
+/// Mirrors vanilla `Drowned.java:319` (`projectile.shoot(..., 1.6F, uncertainty)`).
+pub const DROWNED_TRIDENT_SHOOT_VELOCITY: f64 = 1.6;
+
+/// Base step height for a Drowned (1.0 block).
+/// Mirrors vanilla `Drowned.java:82` (`Attributes.STEP_HEIGHT, 1.0`).
+pub const DROWNED_STEP_HEIGHT: f64 = 1.0;
+
+/// Calculates the projectile inaccuracy (spread angle in degrees) when a Drowned throws a Trident.
+///
+/// Mirrors vanilla `Drowned.java:323-327` and `RangedAttackMob.java:23-28`:
+/// - Easy / Peaceful: 14.0
+/// - Normal: 10.0
+/// - Hard: 6.0
+#[must_use]
+pub fn calculate_drowned_trident_uncertainty(difficulty: pumpkin_util::Difficulty) -> f64 {
+    match difficulty {
+        pumpkin_util::Difficulty::Peaceful | pumpkin_util::Difficulty::Easy => 14.0,
+        pumpkin_util::Difficulty::Normal => 10.0,
+        pumpkin_util::Difficulty::Hard => 6.0,
+    }
+}
+
+/// Calculates Hunger duration in ticks inflicted by an unarmed Husk attack based on difficulty.
+///
+/// Mirrors vanilla `Husk.java:59-60`: `140 * (int)difficulty`
+/// - Peaceful: 0 ticks (no hunger)
+/// - Easy (1): 140 ticks (7s)
+/// - Normal (2): 280 ticks (14s)
+/// - Hard (3): 420 ticks (21s)
+#[must_use]
+pub fn calculate_husk_hunger_duration(difficulty: pumpkin_util::Difficulty) -> i32 {
+    let multiplier = match difficulty {
+        pumpkin_util::Difficulty::Peaceful => 0,
+        pumpkin_util::Difficulty::Easy => 1,
+        pumpkin_util::Difficulty::Normal => 2,
+        pumpkin_util::Difficulty::Hard => 3,
+    };
+    HUSK_UNARMED_HUNGER_BASE_TICKS * multiplier
+}
+
+// ============================================================================
 // Golem Family Parity Constants (Iron Golem & Snow Golem)
 // ============================================================================
 
@@ -10368,11 +10457,34 @@ mod tests {
         assert_eq!(WITCH_MOVEMENT_SPEED, 0.25);
         assert_eq!(WITCH_XP_REWARD, 5);
     }
+
+    #[test]
+    fn test_zombie_family_combat_and_conversion_parity() {
+        // 1. Zombie base attributes & baby speed (Zombie.java:55-58, 93-97)
+        assert_eq!(ZOMBIE_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIE_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(ZOMBIE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(ZOMBIE_BASE_ARMOR, 2.0);
+        assert_eq!(ZOMBIE_XP_REWARD, 5);
+        assert_eq!(ZOMBIE_BABY_SPEED_MODIFIER_ID, "minecraft:baby");
+        assert_eq!(ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT, 0.5);
+
+        // 2. Conversion timings (Zombie.java:101-105, Husk.java:30-45)
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS, 600);
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, 300);
+
+        // 3. Husk hunger duration formula (Husk.java:59-60)
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Peaceful), 0);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Easy), 140);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Normal), 280);
+        assert_eq!(calculate_husk_hunger_duration(pumpkin_util::Difficulty::Hard), 420);
+
+        // 4. Drowned trident uncertainty & shoot speed (Drowned.java:82, 319-327)
+        assert_eq!(DROWNED_TRIDENT_SHOOT_VELOCITY, 1.6);
+        assert_eq!(DROWNED_STEP_HEIGHT, 1.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Easy), 14.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Normal), 10.0);
+        assert_eq!(calculate_drowned_trident_uncertainty(pumpkin_util::Difficulty::Hard), 6.0);
+    }
 }
-
-
-
-
-
-
-

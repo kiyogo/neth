@@ -157,8 +157,8 @@ impl Mob for ZombieEntity {
                 }
             } else {
                 let in_water = self.in_water_time.fetch_add(1, Ordering::Relaxed) + 1;
-                if in_water >= 600 {
-                    self.start_drowned_conversion(300);
+                if in_water >= crate::entity::combat::ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS {
+                    self.start_drowned_conversion(crate::entity::combat::ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS);
                 }
             }
         } else {
@@ -259,3 +259,30 @@ impl ZombieEntity {
         self.entity.set_baby(baby);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT, ZOMBIE_BABY_SPEED_MODIFIER_ID,
+        ZOMBIE_BASE_ARMOR, ZOMBIE_BASE_ATTACK_DAMAGE, ZOMBIE_BASE_MOVEMENT_SPEED,
+        ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS,
+        ZOMBIE_FOLLOW_RANGE, ZOMBIE_MAX_HEALTH, ZOMBIE_XP_REWARD,
+    };
+
+    #[test]
+    fn test_zombie_drowning_conversion_and_baby_speed_parity() {
+        assert_eq!(ZOMBIE_MAX_HEALTH, 20.0);
+        assert_eq!(ZOMBIE_FOLLOW_RANGE, 35.0);
+        assert_eq!(ZOMBIE_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(ZOMBIE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(ZOMBIE_BASE_ARMOR, 2.0);
+        assert_eq!(ZOMBIE_XP_REWARD, 5);
+
+        assert_eq!(ZOMBIE_BABY_SPEED_MODIFIER_ID, "minecraft:baby");
+        assert_eq!(ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT, 0.5);
+
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SUBMERGED_TICKS, 600);
+        assert_eq!(ZOMBIE_DROWN_CONVERSION_SHAKING_TICKS, 300);
+    }
+}
+

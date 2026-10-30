@@ -56,20 +56,20 @@ impl ZombieEntityBase {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 20.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, f64::from(crate::entity::combat::ZOMBIE_MAX_HEALTH));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::FOLLOW_RANGE, 35.0);
+            .set_attribute_base(&Attributes::FOLLOW_RANGE, crate::entity::combat::ZOMBIE_FOLLOW_RANGE);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MOVEMENT_SPEED, 0.23);
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::ZOMBIE_BASE_MOVEMENT_SPEED);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ATTACK_DAMAGE, 3.0);
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, f64::from(crate::entity::combat::ZOMBIE_BASE_ATTACK_DAMAGE));
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::ARMOR, 2.0);
-        mob_entity.living_entity.health.store(20.0);
+            .set_attribute_base(&Attributes::ARMOR, crate::entity::combat::ZOMBIE_BASE_ARMOR);
+        mob_entity.living_entity.health.store(crate::entity::combat::ZOMBIE_MAX_HEALTH);
 
         let mut rng = rand::rng();
         let reinforcement_chance = if rng.random::<f32>() < 0.05 {
@@ -200,8 +200,8 @@ impl ZombieEntityBase {
         let living = &self.mob_entity.living_entity;
         if baby {
             let modifier = crate::entity::attributes::Modifier {
-                id: "minecraft:baby".to_string(),
-                amount: 0.5,
+                id: crate::entity::combat::ZOMBIE_BABY_SPEED_MODIFIER_ID.to_string(),
+                amount: crate::entity::combat::ZOMBIE_BABY_SPEED_MODIFIER_AMOUNT,
                 operation: crate::entity::attributes::ModifierOperation::MultiplyBase,
                 permanent: false,
             };
@@ -241,12 +241,7 @@ impl Mob for ZombieEntityBase {
     }
 
     fn get_base_experience_reward(&self) -> u32 {
-        let base = self
-            .mob_entity
-            .living_entity
-            .entity
-            .entity_type
-            .experience_reward;
+        let base = crate::entity::combat::ZOMBIE_XP_REWARD;
         let base = if self.is_baby() {
             (base as f32 * 2.5) as u32
         } else {
