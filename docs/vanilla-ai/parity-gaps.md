@@ -6158,3 +6158,31 @@ ound_to_orb_size tiers.
     - Added helper functions `calculate_campfire_cool_down`, `calculate_chiseled_bookshelf_comparator_output`, and `can_place_record_in_jukebox`.
     - Added unit test `test_campfire_chiseled_bookshelf_and_jukebox_parity`.
   - All unit tests verified and passing across the campfire, chiseled bookshelf, and jukebox suites.
+
+### Gap 249: Decorated Pot & Crafter Block Entities Sided Storage, Triggering & Comparator Parity
+- **Vanilla Reference**:
+  - `DecoratedPotBlockEntity.java:27-41, 160-186` & `DecoratedPotBlock.java:88-128, 230-236`:
+    - Container model: Decorated Pot implements `ContainerSingleItem.BlockContainerSingleItem`, providing a single-slot (`size = 1`) container accessible to hoppers from all directions.
+    - Automation: Hoppers can insert into slot 0 and extract from slot 0. When an unopened loot table is pending, insertions are rejected.
+    - Wobble animation: `EVENT_POT_WOBBLES = 1`. Positive wobble (duration 7 ticks) on successful item insertion; Negative wobble (duration 10 ticks) on interaction failure (pot full or empty-hand interaction).
+    - Insertion pitch bend: plays `SoundEvents.DECORATED_POT_INSERT` with `pitch = 0.7F + 0.5F * (count / max_stack)`.
+    - Comparator output: calculates `lerpDiscrete(alpha, 0, 15)` where `alpha = count / max_stack`. If empty, outputs 0; non-empty outputs 1 to 15.
+  - `CrafterBlockEntity.java:26-32, 88-113, 251-262` & `CrafterBlock.java:46-47, 57-64, 73-80`:
+    - Storage grid: 9 slots (3x3), supporting slot disabling (`SLOT_DISABLED = 1`, `SLOT_ENABLED = 0`).
+    - Redstone output signal: counts slots that are non-empty OR disabled (`0..9`), representing used crafting slots directly (not standard container signal).
+    - Item insertion & distribution: `canPlaceItem(slot, stack)` rejects insertion if slot is disabled or at max stack size. If slot already contains items, insertion is rejected if `smaller_stack_exist` is true (i.e. if an enabled slot with a higher index is empty or contains fewer items of the same type). This guarantees hoppers evenly distribute items across all enabled slots before stacking further items.
+    - Crafting cycle: `CRAFTING_TICK_DELAY = 4` ticks delay before crafting on rising edge, `MAX_CRAFTING_TICKS = 6` ticks crafting animation duration. Emits event 1049 (`SoundCrafterCraft`) on success, event 1050 (`SoundCrafterFail`) on recipe failure.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/decorated_pot.rs`:
+    - Implemented `Inventory` (size 1) and `Clearable` for `DecoratedPotBlockEntity`, allowing hopper push/pull automation.
+    - Overrode `get_inventory` to return `Some(self)`.
+    - Exported constants `EVENT_POT_WOBBLES`, `WOBBLE_POSITIVE_TICKS` (7), `WOBBLE_NEGATIVE_TICKS` (10), and enum `PotWobbleStyle`.
+  - Updated `crates/pumpkin-core/src/block/blocks/decorated_pot.rs`:
+    - Updated `use_with_item` to calculate insert sound pitch using `0.7 + 0.5 * (count / max_stack)` via `play_sound_fine`.
+  - Updated `crates/pumpkin-core/src/block/entities/crafter.rs`:
+    - Implemented `smaller_stack_exist` in `CrafterBlockEntity` matching `CrafterBlockEntity.java:102-113`.
+    - Updated `is_valid_slot_for` to enforce slot disabling, max stack size, and `smaller_stack_exist` distribution logic.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `DECORATED_POT_EVENT_POT_WOBBLES`, `DECORATED_POT_WOBBLE_POSITIVE_TICKS`, `DECORATED_POT_WOBBLE_NEGATIVE_TICKS`, `DECORATED_POT_BASE_PITCH`, `DECORATED_POT_PITCH_BEND_SCALE`, `CRAFTER_CONTAINER_SIZE`, `CRAFTER_CONTAINER_WIDTH`, `CRAFTER_CONTAINER_HEIGHT`, `CRAFTER_CRAFTING_TICK_DELAY`, `CRAFTER_MAX_CRAFTING_TICKS`, `CRAFTER_FAIL_EVENT_ID`, `CRAFTER_CRAFT_EVENT_ID`.
+    - Added calculation helpers `calculate_decorated_pot_pitch`, `calculate_decorated_pot_comparator_output`, `calculate_crafter_redstone_signal`, and `crafter_smaller_stack_exist`.
+    - Added unit test `test_decorated_pot_and_crafter_parity`.

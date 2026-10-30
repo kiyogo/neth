@@ -52,10 +52,17 @@ impl BlockBehaviour for DecoratedPotBlock {
                 .downcast_ref::<DecoratedPotBlockEntity>()
         {
             if pot_entity.try_insert_item(args.item_stack, 1) {
-                args.world.play_sound(
+                let (count, max_stack) = pot_entity
+                    .get_item()
+                    .map_or((1, 64), |it| (it.item_count, it.get_max_stack_size()));
+                let pitch_bend = f32::from(count) / f32::from(max_stack.max(1));
+                let pitch = 0.7 + 0.5 * pitch_bend;
+                args.world.play_sound_fine(
                     Sound::BlockDecoratedPotInsert,
                     SoundCategory::Blocks,
                     &args.position.to_f64(),
+                    1.0,
+                    pitch,
                 );
                 // Vanilla `BlockEntity.setChanged` notifies comparators.
                 args.world

@@ -8039,6 +8039,73 @@ pub fn can_place_record_in_jukebox(is_empty: bool, has_jukebox_playable: bool) -
     is_empty && has_jukebox_playable
 }
 
+/// Vanilla `DecoratedPotBlockEntity.java:30, 177-186` & `DecoratedPotBlock.java:117, 235`:
+pub const DECORATED_POT_EVENT_POT_WOBBLES: u32 = 1;
+pub const DECORATED_POT_WOBBLE_POSITIVE_TICKS: u32 = 7;
+pub const DECORATED_POT_WOBBLE_NEGATIVE_TICKS: u32 = 10;
+pub const DECORATED_POT_BASE_PITCH: f32 = 0.7;
+pub const DECORATED_POT_PITCH_BEND_SCALE: f32 = 0.5;
+
+/// Vanilla `CrafterBlockEntity.java:26-32` & `CrafterBlock.java:46-47`:
+pub const CRAFTER_CONTAINER_SIZE: usize = 9;
+pub const CRAFTER_CONTAINER_WIDTH: usize = 3;
+pub const CRAFTER_CONTAINER_HEIGHT: usize = 3;
+pub const CRAFTER_CRAFTING_TICK_DELAY: u32 = 4;
+pub const CRAFTER_MAX_CRAFTING_TICKS: i32 = 6;
+pub const CRAFTER_FAIL_EVENT_ID: i32 = 1050;
+pub const CRAFTER_CRAFT_EVENT_ID: i32 = 1049;
+
+/// Vanilla `DecoratedPotBlock.java:117`:
+/// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
+#[must_use]
+pub fn calculate_decorated_pot_pitch(count: u8, max_stack: u8) -> f32 {
+    let bend = f32::from(count) / f32::from(max_stack.max(1));
+    DECORATED_POT_BASE_PITCH + DECORATED_POT_PITCH_BEND_SCALE * bend
+}
+
+/// Vanilla `DecoratedPotBlock.java:235` & `AbstractContainerMenu.java:781`:
+/// Single-slot comparator output: `0` if empty, else `1 + floor(alpha * 14)`.
+#[must_use]
+pub fn calculate_decorated_pot_comparator_output(count: u8, max_stack: u8) -> u8 {
+    if count == 0 {
+        0
+    } else {
+        let alpha = (f32::from(count) / f32::from(max_stack.max(1))).min(1.0);
+        1 + (alpha * 14.0).floor() as u8
+    }
+}
+
+/// Vanilla `CrafterBlockEntity.java:251-262`:
+/// Crafter analog redstone output: count of slots that are non-empty or disabled (0..9).
+#[must_use]
+pub fn calculate_crafter_redstone_signal(num_non_empty_or_disabled_slots: usize) -> u8 {
+    num_non_empty_or_disabled_slots.min(CRAFTER_CONTAINER_SIZE) as u8
+}
+
+/// Vanilla `CrafterBlockEntity.java:102-113`:
+/// Checks if an enabled slot exists with index > base_slot that is empty or has a smaller count of the same item.
+#[must_use]
+pub fn crafter_smaller_stack_exist(
+    slots: &[Option<(u16, u8)>],
+    disabled: &[bool],
+    base_slot: usize,
+) -> bool {
+    let base = match slots.get(base_slot).copied().flatten() {
+        Some(b) => b,
+        None => return false,
+    };
+    for i in (base_slot + 1)..slots.len() {
+        if !disabled.get(i).copied().unwrap_or(false) {
+            match slots[i] {
+                None => return true,
+                Some((id, count)) if id == base.0 && count < base.1 => return true,
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
 
 
 
@@ -14249,6 +14316,66 @@ mod tests {
         assert!(can_place_record_in_jukebox(true, true));
         assert!(!can_place_record_in_jukebox(false, true)); // already has disc
         assert!(!can_place_record_in_jukebox(true, false)); // item is not a music disc
+    }
+
+    #[test]
+    fn test_decorated_pot_and_crafter_parity() {
+        // Decorated Pot constants & wobble
+        assert_eq!(DECORATED_POT_EVENT_POT_WOBBLES, 1);
+        assert_eq!(DECORATED_POT_WOBBLE_POSITIVE_TICKS, 7);
+        assert_eq!(DECORATED_POT_WOBBLE_NEGATIVE_TICKS, 10);
+
+        // Pitch formula: 0.7 + 0.5 * (count / max_stack)
+        assert!((calculate_decorated_pot_pitch(0, 64) - 0.7).abs() < 1e-4);
+        assert!((calculate_decorated_pot_pitch(32, 64) - 0.95).abs() < 1e-4);
+        assert!((calculate_decorated_pot_pitch(64, 64) - 1.2).abs() < 1e-4);
+        assert!((calculate_decorated_pot_pitch(1, 1) - 1.2).abs() < 1e-4);
+
+        // Pot comparator output: lerpDiscrete from 0 to 15
+        assert_eq!(calculate_decorated_pot_comparator_output(0, 64), 0);
+        assert_eq!(calculate_decorated_pot_comparator_output(1, 64), 1);
+        assert_eq!(calculate_decorated_pot_comparator_output(32, 64), 8);
+        assert_eq!(calculate_decorated_pot_comparator_output(64, 64), 15);
+        assert_eq!(calculate_decorated_pot_comparator_output(1, 1), 15);
+
+        // Crafter constants
+        assert_eq!(CRAFTER_CONTAINER_SIZE, 9);
+        assert_eq!(CRAFTER_CONTAINER_WIDTH, 3);
+        assert_eq!(CRAFTER_CONTAINER_HEIGHT, 3);
+        assert_eq!(CRAFTER_CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CRAFTER_MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CRAFTER_CRAFT_EVENT_ID, 1049);
+
+        // Crafter analog redstone signal (0..9)
+        for i in 0..=9 {
+            assert_eq!(calculate_crafter_redstone_signal(i), i as u8);
+        }
+        assert_eq!(calculate_crafter_redstone_signal(15), 9); // capped at container size 9
+
+        // Crafter smaller_stack_exist distribution logic:
+        let disabled = [false; 9];
+        let mut slots: [Option<(u16, u8)>; 9] = [None; 9];
+        slots[0] = Some((100, 1));
+        // slot 0 has 1 item, slots 1..8 are empty: must distribute to next slot!
+        assert!(crafter_smaller_stack_exist(&slots, &disabled, 0));
+
+        // When all slots have 1 item: no smaller stack exists
+        for slot in &mut slots {
+            *slot = Some((100, 1));
+        }
+        assert!(!crafter_smaller_stack_exist(&slots, &disabled, 0));
+
+        // When slot 0 has 2 items and slot 1 has 1 item: smaller stack exists at slot 1
+        slots[0] = Some((100, 2));
+        assert!(crafter_smaller_stack_exist(&slots, &disabled, 0));
+
+        // When slot 1 is disabled and slot 2 is empty: skips slot 1 and detects slot 2
+        let mut disabled_with_1 = [false; 9];
+        disabled_with_1[1] = true;
+        slots[1] = None;
+        slots[2] = None;
+        assert!(crafter_smaller_stack_exist(&slots, &disabled_with_1, 0));
     }
 
 

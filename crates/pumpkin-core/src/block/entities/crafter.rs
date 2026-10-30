@@ -252,6 +252,32 @@ impl CrafterBlockEntity {
         }
         count
     }
+
+    #[must_use]
+    pub fn smaller_stack_exist(
+        &self,
+        items: &[ItemStack; Self::INVENTORY_SIZE],
+        base_size: u8,
+        base_item: &ItemStack,
+        base_slot: usize,
+    ) -> bool {
+        let disabled = self
+            .disabled_slots
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for i in (base_slot + 1)..Self::INVENTORY_SIZE {
+            if !disabled[i] {
+                let slot_stack = &items[i];
+                if slot_stack.is_empty()
+                    || (slot_stack.item_count < base_size
+                        && slot_stack.item.id == base_item.item.id)
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 impl RecipeInputInventory for CrafterBlockEntity {
@@ -322,7 +348,21 @@ impl Inventory for CrafterBlockEntity {
     }
 
     fn is_valid_slot_for(&self, slot: usize, _stack: &ItemStack) -> bool {
-        !self.is_slot_disabled(slot)
+        if self.is_slot_disabled(slot) || slot >= Self::INVENTORY_SIZE {
+            return false;
+        }
+        let items = self
+            .items
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let slot_stack = &items[slot];
+        if slot_stack.item_count >= slot_stack.get_max_stack_size() {
+            return false;
+        }
+        if slot_stack.is_empty() {
+            return true;
+        }
+        !self.smaller_stack_exist(&items, slot_stack.item_count, slot_stack, slot)
     }
 
     fn mark_dirty(&self) {

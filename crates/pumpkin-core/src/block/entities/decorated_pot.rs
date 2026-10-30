@@ -5,6 +5,7 @@ use super::{
 use pumpkin_data::data_component::DataComponent;
 use pumpkin_data::data_component_impl::{ContainerImpl, ContainerLootImpl};
 use pumpkin_data::item_stack::ItemStack;
+use pumpkin_inventory::{Clearable, Inventory};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
 use std::sync::{Arc, Mutex};
@@ -151,6 +152,10 @@ impl BlockEntity for DecoratedPotBlockEntity {
         Some(nbt)
     }
 
+    fn get_inventory(self: Arc<Self>) -> Option<Arc<dyn Inventory>> {
+        Some(self)
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -264,5 +269,111 @@ impl DecoratedPotBlockEntity {
                     1 + (filled * 14.0).floor() as u8
                 }
             })
+    }
+}
+
+pub const EVENT_POT_WOBBLES: u32 = 1;
+pub const WOBBLE_POSITIVE_TICKS: u32 = 7;
+pub const WOBBLE_NEGATIVE_TICKS: u32 = 10;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PotWobbleStyle {
+    Positive = 0,
+    Negative = 1,
+}
+
+impl PotWobbleStyle {
+    #[must_use]
+    pub const fn duration_ticks(self) -> u32 {
+        match self {
+            Self::Positive => WOBBLE_POSITIVE_TICKS,
+            Self::Negative => WOBBLE_NEGATIVE_TICKS,
+        }
+    }
+}
+
+impl Inventory for DecoratedPotBlockEntity {
+    fn size(&self) -> usize {
+        1
+    }
+
+    fn is_empty(&self) -> bool {
+        self.item
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .map_or(true, ItemStack::is_empty)
+    }
+
+    fn get_stack(&self, slot: usize) -> ItemStack {
+        if slot == 0 {
+            self.item
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone()
+                .unwrap_or_else(|| ItemStack::EMPTY.clone())
+        } else {
+            ItemStack::EMPTY.clone()
+        }
+    }
+
+    fn remove_stack(&self, slot: usize) -> ItemStack {
+        if slot == 0 {
+            self.take_item().unwrap_or_else(|| ItemStack::EMPTY.clone())
+        } else {
+            ItemStack::EMPTY.clone()
+        }
+    }
+
+    fn remove_stack_specific(&self, slot: usize, amount: u8) -> ItemStack {
+        if slot == 0 && amount > 0 {
+            let mut item_guard = self
+                .item
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if let Some(existing) = item_guard.as_mut() {
+                let split = existing.split(amount);
+                if existing.is_empty() {
+                    *item_guard = None;
+                }
+                split
+            } else {
+                ItemStack::EMPTY.clone()
+            }
+        } else {
+            ItemStack::EMPTY.clone()
+        }
+    }
+
+    fn set_stack(&self, slot: usize, stack: ItemStack) {
+        if slot == 0 {
+            let mut item_guard = self
+                .item
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if stack.is_empty() {
+                *item_guard = None;
+            } else {
+                *item_guard = Some(stack);
+            }
+        }
+    }
+
+    fn is_valid_slot_for(&self, slot: usize, _stack: &ItemStack) -> bool {
+        slot == 0 && !self.has_loot_table()
+    }
+
+    fn get_max_count_per_stack(&self) -> u8 {
+        64
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl Clearable for DecoratedPotBlockEntity {
+    fn clear(&self) {
+        self.take_item();
     }
 }
