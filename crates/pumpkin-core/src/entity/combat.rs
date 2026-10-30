@@ -14682,6 +14682,30 @@ mod tests {
     }
 
     #[test]
+    fn test_conduit_activation_range_and_durations_parity() {
+        use crate::block::entities::conduit::{
+            ConduitBlockEntity, calculate_conduit_effect_range,
+        };
+
+        assert_eq!(ConduitBlockEntity::BLOCK_REFRESH_RATE, 2);
+        assert_eq!(ConduitBlockEntity::EFFECT_DURATION, 13);
+        assert_eq!(ConduitBlockEntity::ROTATION_SPEED, -0.0375);
+        assert_eq!(ConduitBlockEntity::MIN_ACTIVE_SIZE, 16);
+        assert_eq!(ConduitBlockEntity::MIN_KILL_SIZE, 42);
+        assert_eq!(ConduitBlockEntity::KILL_RANGE, 8.0);
+
+        // Range scaling formula: (active_size / 7) * 16
+        assert_eq!(calculate_conduit_effect_range(0), 0);
+        assert_eq!(calculate_conduit_effect_range(6), 0);
+        assert_eq!(calculate_conduit_effect_range(7), 16);
+        assert_eq!(calculate_conduit_effect_range(16), 32); // Min active frame
+        assert_eq!(calculate_conduit_effect_range(21), 48);
+        assert_eq!(calculate_conduit_effect_range(28), 64);
+        assert_eq!(calculate_conduit_effect_range(35), 80);
+        assert_eq!(calculate_conduit_effect_range(42), 96); // Complete frame (hunting)
+    }
+
+    #[test]
     fn test_brewing_stand_data_and_constants_parity() {
         use crate::block::entities::brewing_stand::{
             BrewingStandBlockEntity, BREWING_SLOTS_UP, BREWING_SLOTS_DOWN, BREWING_SLOTS_SIDES,

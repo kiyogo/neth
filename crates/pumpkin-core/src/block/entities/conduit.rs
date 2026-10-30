@@ -24,13 +24,20 @@ pub struct ConduitBlockEntity {
     next_ambient_sound_activation: AtomicI64,
 }
 
+/// Vanilla `ConduitBlockEntity.java:161`: `int effectRange = activeSize / 7 * 16;`
+#[must_use]
+pub const fn calculate_conduit_effect_range(active_size: usize) -> i32 {
+    (active_size as i32 / 7) * 16
+}
+
 impl ConduitBlockEntity {
     pub const ID: &'static str = "minecraft:conduit";
-    const BLOCK_REFRESH_RATE: i64 = 2;
-    const EFFECT_DURATION: i32 = 13;
-    const MIN_ACTIVE_SIZE: usize = 16;
-    const MIN_KILL_SIZE: usize = 42;
-    const KILL_RANGE: f64 = 8.0;
+    pub const BLOCK_REFRESH_RATE: i64 = 2;
+    pub const EFFECT_DURATION: i32 = 13;
+    pub const ROTATION_SPEED: f32 = -0.0375;
+    pub const MIN_ACTIVE_SIZE: usize = 16;
+    pub const MIN_KILL_SIZE: usize = 42;
+    pub const KILL_RANGE: f64 = 8.0;
 
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {

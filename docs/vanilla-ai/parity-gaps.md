@@ -6382,3 +6382,29 @@ ound_to_orb_size tiers.
     - Updated PropertyDelegate for BrewingStandBlockEntity to expose all 4 data properties with get_properties_size() == 4.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_brewing_stand_data_and_constants_parity.
+
+### Gap 258: Conduit Activation, Range Calculation, Hunting Attack & Target Selection Parity
+- **Vanilla Reference**:
+  - ConduitBlock.java:23-53:
+    - Waterlogging and shape validation.
+  - ConduitBlockEntity.java:34-48, 74-120, 159-216:
+    - Constants:
+      - BLOCK_REFRESH_RATE = 2: Checks frame and updates status every 2 seconds (40 game ticks).
+      - EFFECT_DURATION = 13: Conduit Power status effect lasts 13 seconds (260 game ticks).
+      - ROTATION_SPEED = -0.0375F: Rotation speed in radians per tick.
+      - MIN_ACTIVE_SIZE = 16: Minimum of 16 conduit-effect frame blocks (Prismarine, Prismarine Bricks, Dark Prismarine, Sea Lantern) required for activation.
+      - MIN_KILL_SIZE = 42: Complete frame of 42 blocks required for hunting/destroying nearby hostile mobs.
+      - KILL_RANGE = 8: Attack target distance limit (8.0 blocks).
+    - Range formula:
+      - effectRange = (activeSize / 7) * 16.
+      - Minimum active (16 blocks) gives 32 blocks radius.
+      - Complete frame (42 blocks) gives 96 blocks radius.
+    - Attack behavior:
+      - Targets hostile enemies (input instanceof Enemy && input.isInWaterOrRain()).
+      - Deals 4.0F magic damage and plays SoundEvents.CONDUIT_ATTACK_TARGET.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/entities/conduit.rs:
+    - Exported constants BLOCK_REFRESH_RATE (2), EFFECT_DURATION (13), ROTATION_SPEED (-0.0375), MIN_ACTIVE_SIZE (16), MIN_KILL_SIZE (42), KILL_RANGE (8.0).
+    - Exported helper function calculate_conduit_effect_range(active_size) matching vanilla formula (active_size / 7) * 16.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_conduit_activation_range_and_durations_parity.
