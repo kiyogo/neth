@@ -162,7 +162,7 @@ impl SkeletonEntityBase {
             );
         };
 
-        // Vanilla WitherSkeleton has base attack damage 4.0
+        // Vanilla WitherSkeleton has base attack damage 4.0 (WitherSkeleton.java:87)
         {
             let mut attributes = mob_arc
                 .mob_entity
@@ -173,7 +173,7 @@ impl SkeletonEntityBase {
             if let Some(damage) =
                 attributes.get_mut(&pumpkin_data::attributes::Attributes::ATTACK_DAMAGE.id)
             {
-                damage.base_value = 4.0;
+                damage.base_value = crate::entity::combat::WITHER_SKELETON_BASE_ATTACK_DAMAGE as f64;
                 damage
                     .dirty
                     .store(true, std::sync::atomic::Ordering::Relaxed);

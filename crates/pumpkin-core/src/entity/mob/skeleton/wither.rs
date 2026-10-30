@@ -8,6 +8,10 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::Sound;
 
+use crate::entity::combat::{
+    WITHER_SKELETON_ARROW_IGNITE_SECONDS, WITHER_SKELETON_BASE_ATTACK_DAMAGE,
+    WITHER_SKELETON_MAX_HEALTH, WITHER_SKELETON_WITHER_DURATION_TICKS, WITHER_SKELETON_XP_REWARD,
+};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -52,11 +56,11 @@ impl Mob for WitherSkeletonEntity {
     }
 
     fn on_attack(&self, target: &dyn EntityBase) {
-        // Vanilla WitherSkeleton inflicts Wither effect for 200 ticks (10 seconds) on hit
+        // Vanilla WitherSkeleton inflicts Wither effect for 200 ticks (10 seconds) on hit (WitherSkeleton.java:99)
         if let Some(living) = target.get_living_entity() {
             living.add_effect(Effect {
                 effect_type: &StatusEffect::WITHER,
-                duration: 200,
+                duration: WITHER_SKELETON_WITHER_DURATION_TICKS,
                 amplifier: 0,
                 ambient: false,
                 show_particles: true,
@@ -67,8 +71,9 @@ impl Mob for WitherSkeletonEntity {
     }
 
     fn get_arrow(&self, arrow: ArrowEntity) -> ArrowEntity {
-        // vanilla lights it for 100 seconds
+        // Vanilla WitherSkeleton lights shot arrows for 100.0 seconds (WitherSkeleton.java:108)
         arrow.set_flame(true);
+        arrow.entity.set_on_fire_for(WITHER_SKELETON_ARROW_IGNITE_SECONDS);
         arrow
     }
 
@@ -98,7 +103,26 @@ impl Mob for WitherSkeletonEntity {
         // Vanilla WitherSkeleton does not generate equipment enchantments
     }
 
+    fn get_base_experience_reward(&self) -> u32 {
+        WITHER_SKELETON_XP_REWARD
+    }
+
     fn get_ambient_sound(&self) -> Option<Sound> {
         Some(Sound::EntityWitherSkeletonAmbient)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wither_skeleton_combat_and_wither_effect_parity() {
+        assert_eq!(WITHER_SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(WITHER_SKELETON_BASE_ATTACK_DAMAGE, 4.0);
+        assert_eq!(WITHER_SKELETON_WITHER_DURATION_TICKS, 200);
+        assert_eq!(WITHER_SKELETON_ARROW_IGNITE_SECONDS, 100.0);
+        assert_eq!(WITHER_SKELETON_XP_REWARD, 5);
     }
 }

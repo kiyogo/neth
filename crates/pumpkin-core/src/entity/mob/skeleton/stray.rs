@@ -6,6 +6,10 @@ use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::Sound;
 
+use crate::entity::combat::{
+    STRAY_DEFAULT_ATTACK_INTERVAL, STRAY_HARD_ATTACK_INTERVAL, STRAY_MAX_HEALTH,
+    STRAY_SLOWNESS_DURATION_TICKS, STRAY_XP_REWARD, calculate_stray_attack_interval,
+};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -54,11 +58,12 @@ impl Mob for StraySkeletonEntity {
 
     fn get_min_attack_interval(&self) -> Option<i32> {
         let world = self.get_entity().world.load();
-        if world.get_difficulty() == pumpkin_util::Difficulty::Hard {
-            Some(20)
-        } else {
-            Some(40)
-        }
+        let is_hard = world.get_difficulty() == pumpkin_util::Difficulty::Hard;
+        Some(calculate_stray_attack_interval(is_hard))
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        STRAY_XP_REWARD
     }
 
     fn populate_default_equipment_slots(
@@ -81,7 +86,7 @@ impl Mob for StraySkeletonEntity {
         let slowness_effect = StatusEffectInstance {
             effect_id: Cow::Borrowed("minecraft:slowness"),
             amplifier: 0,
-            duration: 600,
+            duration: STRAY_SLOWNESS_DURATION_TICKS,
             ambient: false,
             show_particles: true,
             show_icon: true,
@@ -99,3 +104,20 @@ impl Mob for StraySkeletonEntity {
     }
 }
 
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stray_slowness_and_interval_parity() {
+        assert_eq!(STRAY_MAX_HEALTH, 20.0);
+        assert_eq!(STRAY_SLOWNESS_DURATION_TICKS, 600);
+        assert_eq!(STRAY_HARD_ATTACK_INTERVAL, 20);
+        assert_eq!(STRAY_DEFAULT_ATTACK_INTERVAL, 40);
+        assert_eq!(calculate_stray_attack_interval(true), 20);
+        assert_eq!(calculate_stray_attack_interval(false), 40);
+        assert_eq!(STRAY_XP_REWARD, 5);
+    }
+}

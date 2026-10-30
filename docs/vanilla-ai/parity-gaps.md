@@ -4727,3 +4727,42 @@ eck, part 1): nhận 100% full damage (damage).
     - Synced NBT persistence using `"size"` with legacy `"Size"` fallback.
     - Added unit test `test_phantom_attributes_and_mechanics_parity`.
   - All unit tests verified and passing (2/2 in phantom suite, 99/99 in combat suite).
+
+## Gap 212: Skeleton Family Variants Combat, Effects & Shearing Parity (Wither Skeleton, Stray, Bogged)
+- **Vanilla Reference**: `WitherSkeleton.java:31-35, 74-76, 86-90, 93-103, 106-115`, `Stray.java:51-57`, `Bogged.java:37-38, 71-78, 107-135`, `AbstractSkeleton.java:112, 117`:
+  - `WitherSkeleton.java`:
+    - Base Attributes: `MAX_HEALTH = 20.0` (`WITHER_SKELETON_MAX_HEALTH`), `ATTACK_DAMAGE = 4.0` (`WITHER_SKELETON_BASE_ATTACK_DAMAGE`), `MOVEMENT_SPEED = 0.25`, `xpReward = 5` (`WITHER_SKELETON_XP_REWARD`).
+    - Wither Effect on Hit (`doHurtTarget`): Khi đánh cận chiến trúng `LivingEntity`, gây hiệu ứng Wither trong `200 ticks` = 10 giây (`WITHER_SKELETON_WITHER_DURATION_TICKS = 200`, amplifier 0).
+    - Arrow Ignition (`getArrow`): Mũi tên bắn ra luôn bốc cháy trong `100.0` giây (`WITHER_SKELETON_ARROW_IGNITE_SECONDS = 100.0`).
+    - Immunity: Miễn nhiễm hoàn toàn với sát thương Wither (`pre_damage`) và miễn nhiễm lửa / dung nham (`fireImmune`).
+    - Preferred Equipment: Khởi tạo với Kiếm Đá (`Items.STONE_SWORD`) không có giáp và không enchant.
+  - `Stray.java`:
+    - Base Attributes: `MAX_HEALTH = 20.0` (`STRAY_MAX_HEALTH`), `xpReward = 5` (`STRAY_XP_REWARD`).
+    - Slowness Arrow Effect: Mũi tên bắn ra mang hiệu ứng Slowness trong `600 ticks` = 30 giây (`STRAY_SLOWNESS_DURATION_TICKS = 600`, amplifier 0).
+    - Ranged Attack Intervals: `20 ticks` ở độ khó Hard (`STRAY_HARD_ATTACK_INTERVAL`), `40 ticks` ở độ khó Normal/Easy (`STRAY_DEFAULT_ATTACK_INTERVAL`).
+  - `Bogged.java`:
+    - Base Attributes: `MAX_HEALTH = 16.0` (`BOGGED_MAX_HEALTH`), `xpReward = 5` (`BOGGED_XP_REWARD`).
+    - Poison Arrow Effect: Mũi tên mang hiệu ứng Poison trong `100 ticks` = 5 giây (`BOGGED_POISON_DURATION_TICKS = 100`).
+    - Shearing Mechanics (`Shearable`): Cắt kéo rơi nấm nâu / nấm đỏ (`BuiltInLootTables.BOGGED_SHEAR`) và chuyển sang trạng thái đã cắt (`sheared = true`).
+    - Ranged Attack Intervals: `50 ticks` ở độ khó Hard (`BOGGED_HARD_ATTACK_INTERVAL`), `70 ticks` ở độ khó Normal/Easy (`BOGGED_DEFAULT_ATTACK_INTERVAL`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `SKELETON_MAX_HEALTH = 20.0`, `SKELETON_XP_REWARD = 5`, `WITHER_SKELETON_MAX_HEALTH = 20.0`, `WITHER_SKELETON_BASE_ATTACK_DAMAGE = 4.0`, `WITHER_SKELETON_WITHER_DURATION_TICKS = 200`, `WITHER_SKELETON_ARROW_IGNITE_SECONDS = 100.0`, `WITHER_SKELETON_XP_REWARD = 5`, `STRAY_MAX_HEALTH = 20.0`, `STRAY_SLOWNESS_DURATION_TICKS = 600`, `STRAY_HARD_ATTACK_INTERVAL = 20`, `STRAY_DEFAULT_ATTACK_INTERVAL = 40`, `STRAY_XP_REWARD = 5`, `BOGGED_MAX_HEALTH = 16.0`, `BOGGED_XP_REWARD = 5`.
+    - Added helper `calculate_stray_attack_interval(is_hard: bool) -> i32`.
+    - Updated unit test `test_creeper_and_blaze_parity`.
+  - Updated `WitherSkeletonEntity` in `crates/pumpkin-core/src/entity/mob/skeleton/wither.rs`:
+    - Inflicts Wither for `WITHER_SKELETON_WITHER_DURATION_TICKS` (200 ticks).
+    - Ignites arrows for `WITHER_SKELETON_ARROW_IGNITE_SECONDS` (100.0s).
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Added unit test `test_wither_skeleton_combat_and_wither_effect_parity`.
+  - Updated `StraySkeletonEntity` in `crates/pumpkin-core/src/entity/mob/skeleton/stray.rs`:
+    - Synced attack interval using `calculate_stray_attack_interval`.
+    - Synced slowness arrow duration `STRAY_SLOWNESS_DURATION_TICKS` (600 ticks).
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Added unit test `test_stray_slowness_and_interval_parity`.
+  - Updated `BoggedSkeletonEntity` in `crates/pumpkin-core/src/entity/mob/skeleton/bogged.rs`:
+    - Synced health with `BOGGED_MAX_HEALTH` (16.0 HP).
+    - Implemented `get_base_experience_reward(&self) -> u32` (5 XP).
+    - Updated unit test `test_bogged_poison_and_interval_parity`.
+  - Updated `SkeletonEntityBase::new_wither` in `crates/pumpkin-core/src/entity/mob/skeleton/mod.rs` with `WITHER_SKELETON_BASE_ATTACK_DAMAGE` (4.0 HP).
+  - All unit tests verified and passing (11/11 in skeleton suite, 99/99 in combat suite).

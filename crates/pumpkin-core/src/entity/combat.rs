@@ -6319,6 +6319,86 @@ pub fn calculate_breeze_whirl_volume(rand_val: f32) -> f32 {
     0.8 + 0.2 * rand_val
 }
 
+/// Skeleton max health (20.0 HP).
+///
+/// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
+pub const SKELETON_MAX_HEALTH: f32 = 20.0;
+
+/// Skeleton experience reward (5 XP).
+///
+/// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
+pub const SKELETON_XP_REWARD: u32 = 5;
+
+/// Wither Skeleton max health (20.0 HP).
+///
+/// Mirrors vanilla `WitherSkeleton.java:31`:
+pub const WITHER_SKELETON_MAX_HEALTH: f32 = 20.0;
+
+/// Wither Skeleton base attack damage (4.0 HP).
+///
+/// Mirrors vanilla `WitherSkeleton.java:87`:
+pub const WITHER_SKELETON_BASE_ATTACK_DAMAGE: f32 = 4.0;
+
+/// Wither status effect duration applied by Wither Skeleton melee attack (200 ticks = 10 seconds).
+///
+/// Mirrors vanilla `WitherSkeleton.java:99`:
+pub const WITHER_SKELETON_WITHER_DURATION_TICKS: i32 = 200;
+
+/// Arrow fire duration when shot by Wither Skeleton (100.0 seconds).
+///
+/// Mirrors vanilla `WitherSkeleton.java:108`:
+pub const WITHER_SKELETON_ARROW_IGNITE_SECONDS: f32 = 100.0;
+
+/// Wither Skeleton experience reward (5 XP).
+///
+/// Mirrors vanilla `WitherSkeleton.java` / `Mob.java`:
+pub const WITHER_SKELETON_XP_REWARD: u32 = 5;
+
+/// Stray max health (20.0 HP).
+///
+/// Mirrors vanilla `Stray.java` / `AbstractSkeleton.java`:
+pub const STRAY_MAX_HEALTH: f32 = 20.0;
+
+/// Slowness status effect duration applied by Stray arrows (600 ticks = 30 seconds).
+///
+/// Mirrors vanilla `Stray.java:55`:
+pub const STRAY_SLOWNESS_DURATION_TICKS: i32 = 600;
+
+/// Ranged attack interval for Stray on Hard difficulty (20 ticks).
+///
+/// Mirrors vanilla `AbstractSkeleton.java:112`:
+pub const STRAY_HARD_ATTACK_INTERVAL: i32 = 20;
+
+/// Ranged attack interval for Stray on Normal/Easy difficulty (40 ticks).
+///
+/// Mirrors vanilla `AbstractSkeleton.java:117`:
+pub const STRAY_DEFAULT_ATTACK_INTERVAL: i32 = 40;
+
+/// Calculates ranged attack interval for Stray skeleton depending on difficulty.
+#[must_use]
+pub const fn calculate_stray_attack_interval(is_hard: bool) -> i32 {
+    if is_hard {
+        STRAY_HARD_ATTACK_INTERVAL
+    } else {
+        STRAY_DEFAULT_ATTACK_INTERVAL
+    }
+}
+
+/// Stray experience reward (5 XP).
+///
+/// Mirrors vanilla `Stray.java` / `Mob.java`:
+pub const STRAY_XP_REWARD: u32 = 5;
+
+/// Bogged max health (16.0 HP).
+///
+/// Mirrors vanilla `Bogged.java:37`:
+pub const BOGGED_MAX_HEALTH: f32 = 16.0;
+
+/// Bogged experience reward (5 XP).
+///
+/// Mirrors vanilla `Bogged.java` / `Mob.java`:
+pub const BOGGED_XP_REWARD: u32 = 5;
+
 /// Duration in ticks of the Poison status effect applied by Bogged arrows (100 ticks = 5 seconds).
 ///
 /// Mirrors vanilla `Bogged.java:110`:
@@ -10402,6 +10482,24 @@ mod tests {
         assert!((calculate_breeze_whirl_pitch(1.0) - 1.1).abs() < 1e-6);
         assert!((calculate_breeze_whirl_volume(0.0) - 0.8).abs() < 1e-6);
         assert!((calculate_breeze_whirl_volume(1.0) - 1.0).abs() < 1e-6);
+
+        // Skeleton family constants and effects parity (WitherSkeleton.java, Stray.java, Bogged.java)
+        assert_eq!(SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(SKELETON_XP_REWARD, 5);
+        assert_eq!(WITHER_SKELETON_MAX_HEALTH, 20.0);
+        assert_eq!(WITHER_SKELETON_BASE_ATTACK_DAMAGE, 4.0);
+        assert_eq!(WITHER_SKELETON_WITHER_DURATION_TICKS, 200);
+        assert_eq!(WITHER_SKELETON_ARROW_IGNITE_SECONDS, 100.0);
+        assert_eq!(WITHER_SKELETON_XP_REWARD, 5);
+        assert_eq!(STRAY_MAX_HEALTH, 20.0);
+        assert_eq!(STRAY_SLOWNESS_DURATION_TICKS, 600);
+        assert_eq!(STRAY_HARD_ATTACK_INTERVAL, 20);
+        assert_eq!(STRAY_DEFAULT_ATTACK_INTERVAL, 40);
+        assert_eq!(calculate_stray_attack_interval(true), 20);
+        assert_eq!(calculate_stray_attack_interval(false), 40);
+        assert_eq!(STRAY_XP_REWARD, 5);
+        assert_eq!(BOGGED_MAX_HEALTH, 16.0);
+        assert_eq!(BOGGED_XP_REWARD, 5);
 
         // 2. Bogged poison duration and attack intervals (Bogged.java:110, 118, 123)
         assert_eq!(BOGGED_POISON_DURATION_TICKS, 100);

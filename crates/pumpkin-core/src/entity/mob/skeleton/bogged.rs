@@ -12,6 +12,7 @@ use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::vector3::Vector3;
 
+use crate::entity::combat::{BOGGED_MAX_HEALTH, BOGGED_XP_REWARD};
 use crate::entity::{
     Entity, EntityBase,
     custom_sound::CustomSound,
@@ -40,7 +41,7 @@ impl BoggedSkeletonEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 16.0;
+                health.base_value = BOGGED_MAX_HEALTH as f64;
                 health.dirty.store(true, Ordering::Relaxed);
             }
         }
@@ -118,6 +119,10 @@ impl Mob for BoggedSkeletonEntity {
         Some(self)
     }
 
+    fn get_base_experience_reward(&self) -> u32 {
+        BOGGED_XP_REWARD
+    }
+
     fn get_ambient_sound(&self) -> Option<Sound> {
         Some(Sound::EntityBoggedAmbient)
     }
@@ -189,8 +194,12 @@ impl Mob for BoggedSkeletonEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_bogged_poison_and_interval_parity() {
+        assert_eq!(BOGGED_MAX_HEALTH, 16.0);
+        assert_eq!(BOGGED_XP_REWARD, 5);
         assert_eq!(crate::entity::combat::BOGGED_POISON_DURATION_TICKS, 100);
         assert_eq!(crate::entity::combat::BOGGED_HARD_ATTACK_INTERVAL, 50);
         assert_eq!(crate::entity::combat::BOGGED_DEFAULT_ATTACK_INTERVAL, 70);
