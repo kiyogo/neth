@@ -226,11 +226,22 @@ impl RedstoneGateBlock<RepeaterProperties> for RepeaterBlock {
 
     fn get_update_delay_internal(&self, state_id: BlockStateId, _block: &Block) -> u32 {
         let props = RepeaterProperties::from_state_id(state_id);
-        u32::from(props.delay) * 2
+        Self::calculate_delay_ticks(props.delay)
     }
 }
 
 impl RepeaterBlock {
+    pub const MIN_DELAY: u8 = 1;
+    pub const MAX_DELAY: u8 = 4;
+    pub const DELAY_MULTIPLIER: u32 = 2;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub const fn calculate_delay_ticks(delay: u8) -> u32 {
+        delay as u32 * Self::DELAY_MULTIPLIER
+    }
+
     fn on_use(props: RepeaterProperties, world: &Arc<World>, block_pos: BlockPos, block: &Block) {
         let mut props = props;
         props.delay = if props.delay == 4 { 1 } else { props.delay + 1 };

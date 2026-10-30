@@ -6772,3 +6772,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized schedule tick calls and power getters to use named constants.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_observer_pulse_duration_and_power_parity`.
+
+
+### Gap 278: Repeater Delay Multiplier, Lock State & Redstone Pulse Parity
+- **Vanilla Reference**:
+  - RepeaterBlock.java:33-48:
+    - Delay property: `DELAY` ranges 1..=4.
+    - Delay calculation: `getDelay(state) = state.getValue(DELAY) * 2` (2, 4, 6, 8 game ticks, corresponding to 1, 2, 3, 4 redstone ticks).
+    - Locked state: `LOCKED = boolean`, locks repeater state when powered from the side by another diode/repeater/comparator.
+    - Power output: 15 when powered, 0 when unpowered.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/repeater.rs`:
+    - Exported constants `MIN_DELAY = 1`, `MAX_DELAY = 4`, `DELAY_MULTIPLIER = 2`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported calculation helper `calculate_delay_ticks(delay)`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_repeater_delay_scaling_and_constants_parity`.

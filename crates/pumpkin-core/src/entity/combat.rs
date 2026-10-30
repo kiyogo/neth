@@ -15231,4 +15231,21 @@ mod tests {
         assert_eq!(ObserverBlock::POWER_OFF, 0);
     }
 
+    #[test]
+    fn test_repeater_delay_scaling_and_constants_parity() {
+        use crate::block::blocks::redstone::repeater::RepeaterBlock;
+
+        assert_eq!(RepeaterBlock::MIN_DELAY, 1);
+        assert_eq!(RepeaterBlock::MAX_DELAY, 4);
+        assert_eq!(RepeaterBlock::DELAY_MULTIPLIER, 2);
+        assert_eq!(RepeaterBlock::POWER_ON, 15);
+        assert_eq!(RepeaterBlock::POWER_OFF, 0);
+
+        // Delay conversion (delay 1..4 -> 2, 4, 6, 8 ticks)
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(1), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(2), 4);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(3), 6);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
+    }
+
 }
