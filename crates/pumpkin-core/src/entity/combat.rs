@@ -15164,4 +15164,17 @@ mod tests {
         assert_eq!(WeightedPressurePlateBlock::signal_strength(200, 150), 15);
     }
 
+    #[test]
+    fn test_hopper_constants_and_container_size_parity() {
+        use crate::block::blocks::hopper::HopperBlock;
+        use crate::block::entities::hopper::HopperBlockEntity;
+
+        assert_eq!(HopperBlock::HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlockEntity::HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlockEntity::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlockEntity::NO_COOLDOWN_TIME, -1);
+        assert_eq!(HopperBlockEntity::INVENTORY_SIZE, 5);
+    }
+
 }

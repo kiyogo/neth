@@ -6691,3 +6691,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants `POWER_ON = 15`, `POWER_OFF = 0`, and `PRESSED_TICKS = 20`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_pressure_plate_weight_scaling_and_durations_parity`.
+
+
+### Gap 273: Hopper Transfer Cooldown, Inventory Slot Count & Comparator Parity
+- **Vanilla Reference**:
+  - HopperBlock.java:40-52 & HopperBlockEntity.java:38-42:
+    - `MOVE_ITEM_SPEED = 8`: Hopper item transfer cooldown is 8 game ticks (0.4 seconds) after pushing/pulling an item.
+    - `HOPPER_CONTAINER_SIZE = 5`: Inventory capacity is 5 item slots.
+    - `NO_COOLDOWN_TIME = -1`: Default uninitialized cooldown time.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/hopper.rs`:
+    - Exported constants `HOPPER_CONTAINER_SIZE = 5`, `MOVE_ITEM_SPEED = 8`, and `NO_COOLDOWN_TIME = -1`.
+  - Updated `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Exported constants `HOPPER_CONTAINER_SIZE = 5` and `MOVE_ITEM_SPEED = 8`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_hopper_constants_and_container_size_parity`.

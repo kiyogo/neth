@@ -186,6 +186,9 @@ impl BlockEntity for HopperBlockEntity {
 
 impl HopperBlockEntity {
     pub const INVENTORY_SIZE: usize = 5;
+    pub const HOPPER_CONTAINER_SIZE: usize = 5;
+    pub const MOVE_ITEM_SPEED: i32 = 8;
+    pub const NO_COOLDOWN_TIME: i32 = -1;
     pub const ID: &'static str = "minecraft:hopper";
 
     /// Creates an empty container with component storage at the supplied position.

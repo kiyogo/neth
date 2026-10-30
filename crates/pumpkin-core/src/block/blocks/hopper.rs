@@ -52,6 +52,11 @@ impl ScreenHandlerFactory for HopperBlockScreenFactory {
 #[pumpkin_block("minecraft:hopper")]
 pub struct HopperBlock;
 
+impl HopperBlock {
+    pub const HOPPER_CONTAINER_SIZE: usize = 5;
+    pub const MOVE_ITEM_SPEED: i32 = 8;
+}
+
 type HopperLikeProperties = pumpkin_data::block_properties::HopperLikeProperties;
 
 impl BlockBehaviour for HopperBlock {
