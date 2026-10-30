@@ -18,6 +18,12 @@ use super::{PressurePlate, detection_box_at};
 /// This is for Normal Pressure plates, so not Gold or Iron
 pub struct PressurePlateBlock;
 
+impl PressurePlateBlock {
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+    pub const PRESSED_TICKS: u32 = 20;
+}
+
 type PressurePlateProps = pumpkin_data::block_properties::StonePressurePlateLikeProperties;
 
 impl BlockMetadata for PressurePlateBlock {

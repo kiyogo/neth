@@ -15123,4 +15123,45 @@ mod tests {
         assert!(ButtonBlock::can_be_activated_by_arrows(&Block::OAK_BUTTON));
     }
 
+    #[test]
+    fn test_pressure_plate_weight_scaling_and_durations_parity() {
+        use crate::block::blocks::redstone::pressure_plate::weighted::WeightedPressurePlateBlock;
+        use crate::block::blocks::redstone::pressure_plate::plate::PressurePlateBlock;
+        use pumpkin_data::Block;
+
+        assert_eq!(WeightedPressurePlateBlock::LIGHT_MAX_WEIGHT, 15);
+        assert_eq!(WeightedPressurePlateBlock::HEAVY_MAX_WEIGHT, 150);
+        assert_eq!(WeightedPressurePlateBlock::MAX_POWER, 15);
+        assert_eq!(WeightedPressurePlateBlock::PRESSED_TICKS, 10);
+        assert_eq!(PressurePlateBlock::POWER_ON, 15);
+        assert_eq!(PressurePlateBlock::POWER_OFF, 0);
+        assert_eq!(PressurePlateBlock::PRESSED_TICKS, 20);
+
+        // Max weights per block
+        assert_eq!(
+            WeightedPressurePlateBlock::get_max_weight(&Block::LIGHT_WEIGHTED_PRESSURE_PLATE),
+            15
+        );
+        assert_eq!(
+            WeightedPressurePlateBlock::get_max_weight(&Block::HEAVY_WEIGHTED_PRESSURE_PLATE),
+            150
+        );
+
+        // Light (Gold, maxWeight = 15): 1 entity per signal power level
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 15), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 15), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(7, 15), 7);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(15, 15), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(20, 15), 15);
+
+        // Heavy (Iron, maxWeight = 150): 10 entities per signal power level
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 150), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(10, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(11, 150), 2);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(75, 150), 8);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(150, 150), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(200, 150), 15);
+    }
+
 }

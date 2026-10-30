@@ -15,12 +15,33 @@ use super::{PressurePlate, detection_box_at};
 /// This is for Gold and Iron Pressure Plate
 pub struct WeightedPressurePlateBlock;
 
-pub(super) fn signal_strength(entity_count: usize, max_weight: usize) -> u8 {
-    let count = entity_count.min(max_weight);
-    if count == 0 {
-        return 0;
+impl WeightedPressurePlateBlock {
+    pub const LIGHT_MAX_WEIGHT: usize = 15;
+    pub const HEAVY_MAX_WEIGHT: usize = 150;
+    pub const MAX_POWER: u8 = 15;
+    pub const PRESSED_TICKS: u32 = 10;
+
+    #[must_use]
+    pub fn signal_strength(entity_count: usize, max_weight: usize) -> u8 {
+        let count = entity_count.min(max_weight);
+        if count == 0 {
+            return 0;
+        }
+        (count as f32 / max_weight as f32 * 15.0).ceil() as u8
     }
-    (count as f32 / max_weight as f32 * 15.0).ceil() as u8
+
+    #[must_use]
+    pub fn get_max_weight(block: &Block) -> usize {
+        if block == &Block::LIGHT_WEIGHTED_PRESSURE_PLATE {
+            Self::LIGHT_MAX_WEIGHT
+        } else {
+            Self::HEAVY_MAX_WEIGHT
+        }
+    }
+}
+
+pub(super) fn signal_strength(entity_count: usize, max_weight: usize) -> u8 {
+    WeightedPressurePlateBlock::signal_strength(entity_count, max_weight)
 }
 
 type PressurePlateProps = pumpkin_data::block_properties::LightWeightedPressurePlateLikeProperties;
@@ -92,13 +113,7 @@ impl PressurePlate for WeightedPressurePlateBlock {
     fn calculate_redstone_output(&self, world: &World, block: &Block, pos: &BlockPos) -> u8 {
         // light = Gold
         // heavy = Iron
-        let weight = if block == &Block::LIGHT_WEIGHTED_PRESSURE_PLATE {
-            // Gold
-            15
-        } else {
-            // Iron
-            150
-        };
+        let weight = Self::get_max_weight(block);
         let aabb = detection_box_at(pos);
         let len = world.get_entities_at_box(&aabb).len() + world.get_players_at_box(&aabb).len();
         signal_strength(len, weight)

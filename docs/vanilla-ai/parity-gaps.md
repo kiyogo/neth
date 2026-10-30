@@ -6671,3 +6671,23 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized redstone power values to `POWER_ON` and `POWER_OFF`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_button_press_ticks_and_arrow_activation_parity`.
+
+
+### Gap 272: Weighted & Standard Pressure Plate Sensitivity, Weight Capacity & Signal Scaling Parity
+- **Vanilla Reference**:
+  - PressurePlateBlock.java:23-45 & WeightedPressurePlateBlock.java:18-48:
+    - Standard Pressure Plates (wood/stone):
+      - Stay pressed duration: `PRESSED_TICKS = 20`.
+      - Output: binary 15 (powered) or 0 (unpowered).
+    - Weighted Pressure Plates:
+      - Stay pressed duration: `PRESSED_TICKS = 10`.
+      - Light Weighted Pressure Plate (Gold): `maxWeight = 15`. Signal formula `ceil(count / 15.0 * 15.0) = count` (1 entity = 1 redstone signal level).
+      - Heavy Weighted Pressure Plate (Iron): `maxWeight = 150`. Signal formula `ceil(count / 150.0 * 15.0) = ceil(count / 10.0)` (10 entities per redstone signal level).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/weighted.rs`:
+    - Exported constants `LIGHT_MAX_WEIGHT = 15`, `HEAVY_MAX_WEIGHT = 150`, `MAX_POWER = 15`, and `PRESSED_TICKS = 10`.
+    - Exported `signal_strength(count, max_weight)` and `get_max_weight(block)` helper functions.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/plate.rs`:
+    - Exported constants `POWER_ON = 15`, `POWER_OFF = 0`, and `PRESSED_TICKS = 20`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_pressure_plate_weight_scaling_and_durations_parity`.
