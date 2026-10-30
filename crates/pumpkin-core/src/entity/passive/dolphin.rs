@@ -44,6 +44,7 @@ pub struct DolphinEntity {
 }
 
 impl DolphinEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::DOLPHIN_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -69,27 +70,22 @@ impl DolphinEntity {
         };
 
         // Vanilla Dolphin: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 1.2, ATTACK_DAMAGE = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 1.2;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 3.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::DOLPHIN_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::DOLPHIN_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, crate::entity::combat::DOLPHIN_BASE_ATTACK_DAMAGE as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::DOLPHIN_MAX_HEALTH);
         mob_arc
             .mob_entity
             .living_entity
@@ -232,6 +228,14 @@ impl Mob for DolphinEntity {
 
     fn is_pushed_by_fluids(&self) -> bool {
         false
+    }
+
+    fn can_be_leashed(&self) -> bool {
+        true
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -472,6 +476,16 @@ impl Goal for DolphinSwimWithPlayerGoal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_dolphin_parity_constants() {
+        assert_eq!(DolphinEntity::XP_REWARD, 2);
+        assert_eq!(crate::entity::combat::DOLPHIN_MAX_HEALTH, 10.0);
+        assert_eq!(crate::entity::combat::DOLPHIN_BASE_MOVEMENT_SPEED, 1.2);
+        assert_eq!(crate::entity::combat::DOLPHIN_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(crate::entity::combat::DOLPHIN_TOTAL_AIR_SUPPLY, 4800);
+        assert_eq!(crate::entity::combat::DOLPHIN_TOTAL_MOISTNESS_LEVEL, 2400);
+    }
 
     #[test]
     fn test_dolphin_data_tracker_and_moistness() {

@@ -8408,6 +8408,144 @@ pub const BEE_TIME_UNTIL_DEATH_AFTER_STING: i32 = 1200;
 pub const BEE_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
 pub const BEE_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
+/// Turtle base max health (30.0 HP / 15 hearts).
+/// Mirrors vanilla Turtle.java:164 (Attributes.MAX_HEALTH, 30.0).
+pub const TURTLE_MAX_HEALTH: f32 = 30.0;
+
+/// Turtle base movement speed (0.25).
+/// Mirrors vanilla Turtle.java:164 (Attributes.MOVEMENT_SPEED, 0.25).
+pub const TURTLE_BASE_MOVEMENT_SPEED: f64 = 0.25;
+
+/// Turtle step height (1.0 block).
+/// Mirrors vanilla Turtle.java:164 (Attributes.STEP_HEIGHT, 1.0).
+pub const TURTLE_STEP_HEIGHT: f32 = 1.0;
+
+/// Turtle experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Animal.java.
+pub const TURTLE_XP_REWARD: u32 = 2;
+
+/// Turtle ambient sound interval (200 ticks = 10s).
+/// Mirrors vanilla Turtle.java:174.
+pub const TURTLE_AMBIENT_SOUND_INTERVAL: i32 = 200;
+
+/// Turtle baby dimension scale (0.3).
+/// Mirrors vanilla Turtle.java:69.
+pub const TURTLE_BABY_SCALE: f32 = 0.3;
+
+/// Axolotl base max health (14.0 HP / 7 hearts).
+/// Mirrors vanilla Axolotl.java:390 (Attributes.MAX_HEALTH, 14.0).
+pub const AXOLOTL_MAX_HEALTH: f32 = 14.0;
+
+/// Axolotl base movement speed (1.0).
+/// Mirrors vanilla Axolotl.java:391 (Attributes.MOVEMENT_SPEED, 1.0).
+pub const AXOLOTL_BASE_MOVEMENT_SPEED: f64 = 1.0;
+
+/// Axolotl base attack damage (2.0 HP / 1 heart).
+/// Mirrors vanilla Axolotl.java:392 (Attributes.ATTACK_DAMAGE, 2.0).
+pub const AXOLOTL_BASE_ATTACK_DAMAGE: f32 = 2.0;
+
+/// Axolotl step height (1.0 block).
+/// Mirrors vanilla Axolotl.java:393 (Attributes.STEP_HEIGHT, 1.0).
+pub const AXOLOTL_STEP_HEIGHT: f32 = 1.0;
+
+/// Axolotl experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla Animal.java.
+pub const AXOLOTL_XP_REWARD: u32 = 2;
+
+/// Axolotl total playdead ticks (200 ticks = 10.0s).
+/// Mirrors vanilla Axolotl.java:78.
+pub const AXOLOTL_TOTAL_PLAYDEAD_TIME: i32 = 200;
+
+/// Axolotl blue rare variant chance (1 in 1200).
+/// Mirrors vanilla Axolotl.java:88.
+pub const AXOLOTL_RARE_VARIANT_CHANCE: u32 = 1200;
+
+/// Axolotl player regen detection range (20.0 blocks).
+/// Mirrors vanilla Axolotl.java:87.
+pub const AXOLOTL_PLAYER_REGEN_DETECTION_RANGE: f64 = 20.0;
+
+/// Axolotl max regen buff duration (2400 ticks = 2 minutes).
+/// Mirrors vanilla Axolotl.java:92.
+pub const AXOLOTL_REGEN_BUFF_MAX_DURATION: i32 = 2400;
+
+/// Dolphin base max health (10.0 HP / 5 hearts).
+/// Mirrors vanilla Dolphin.java:177 (Attributes.MAX_HEALTH, 10.0).
+pub const DOLPHIN_MAX_HEALTH: f32 = 10.0;
+
+/// Dolphin base movement speed (1.2).
+/// Mirrors vanilla Dolphin.java:177 (Attributes.MOVEMENT_SPEED, 1.2F).
+pub const DOLPHIN_BASE_MOVEMENT_SPEED: f64 = 1.2;
+
+/// Dolphin base attack damage (3.0 HP / 1.5 hearts).
+/// Mirrors vanilla Dolphin.java:177 (Attributes.ATTACK_DAMAGE, 3.0).
+pub const DOLPHIN_BASE_ATTACK_DAMAGE: f32 = 3.0;
+
+/// Dolphin total air supply (4800 ticks = 4 minutes).
+/// Mirrors vanilla Dolphin.java:78.
+pub const DOLPHIN_TOTAL_AIR_SUPPLY: i32 = 4800;
+
+/// Dolphin total moistness level before drying out (2400 ticks = 2 minutes).
+/// Mirrors vanilla Dolphin.java:79.
+pub const DOLPHIN_TOTAL_MOISTNESS_LEVEL: i32 = 2400;
+
+/// Dolphin experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla WaterAnimal.java:36.
+pub const DOLPHIN_XP_REWARD: u32 = 2;
+
+/// Squid base max health (10.0 HP / 5 hearts).
+/// Mirrors vanilla Squid.java:65 (Attributes.MAX_HEALTH, 10.0).
+pub const SQUID_MAX_HEALTH: f32 = 10.0;
+
+/// Squid experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla WaterAnimal.java:36.
+pub const SQUID_XP_REWARD: u32 = 2;
+
+/// Glow Squid base max health (10.0 HP / 5 hearts).
+/// Mirrors vanilla Squid.java:65 (Attributes.MAX_HEALTH, 10.0).
+pub const GLOW_SQUID_MAX_HEALTH: f32 = 10.0;
+
+/// Glow Squid experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla WaterAnimal.java:36.
+pub const GLOW_SQUID_XP_REWARD: u32 = 2;
+
+/// Glow Squid dark ticks remaining on hurt (100 ticks = 5s).
+/// Mirrors vanilla GlowSquid.java:86.
+pub const GLOW_SQUID_DARK_TICKS_ON_HURT: i32 = 100;
+
+/// Base max health for all fish species (Cod, Salmon, Pufferfish, Tropical Fish) (3.0 HP / 1.5 hearts).
+/// Mirrors vanilla AbstractFish.java:45 (Attributes.MAX_HEALTH, 3.0).
+pub const FISH_MAX_HEALTH: f32 = 3.0;
+
+/// Total air supply for fish out of water (300 ticks = 15s).
+/// Mirrors vanilla WaterAnimal.java:47.
+pub const FISH_TOTAL_AIR_SUPPLY: i32 = 300;
+
+/// Fish drown damage when out of air (2.0 HP / 1 heart).
+/// Mirrors vanilla WaterAnimal.java:44.
+pub const FISH_DROWN_DAMAGE: f32 = 2.0;
+
+/// Fish experience reward (1-3 XP, standard base 2).
+/// Mirrors vanilla WaterAnimal.java:36.
+pub const FISH_XP_REWARD: u32 = 2;
+
+/// Fish ambient sound interval (120 ticks = 6s).
+/// Mirrors vanilla WaterAnimal.java:17.
+pub const FISH_AMBIENT_SOUND_INTERVAL: i32 = 120;
+
+/// Pufferfish sting poison duration per puff state (60 ticks per puff state: state 1 = 60 ticks / 3s, state 2 = 120 ticks / 6s).
+/// Mirrors vanilla Pufferfish.java:143, 160 (60 * puffState).
+pub const PUFFERFISH_POISON_TICKS_PER_STATE: i32 = 60;
+
+/// Salmon scale factors for small, medium, and large variants.
+/// Mirrors vanilla Salmon.java:157-159 (SMALL = 0.5F, MEDIUM = 1.0F, LARGE = 1.5F).
+pub const SALMON_SMALL_SCALE: f32 = 0.5;
+pub const SALMON_MEDIUM_SCALE: f32 = 1.0;
+pub const SALMON_LARGE_SCALE: f32 = 1.5;
+
+/// Salmon maximum school size (5).
+/// Mirrors vanilla `Salmon.java:46` (`return 5;`).
+pub const SALMON_MAX_SCHOOL_SIZE: i32 = 5;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -12426,5 +12564,53 @@ mod tests {
         assert_eq!(DROWNED_ZOMBIE_NAUTILUS_JOCKEY_CHANCE, 0.5);
         assert_eq!(DROWNED_TRIDENT_ATTACK_INTERVAL_TICKS, 40);
         assert_eq!(DROWNED_TRIDENT_ATTACK_RANGE, 10.0);
+    }
+    #[test]
+    fn test_aquatic_mobs_parity() {
+        // Turtle Parity (Turtle.java:69, 164, 174)
+        assert_eq!(TURTLE_MAX_HEALTH, 30.0);
+        assert_eq!(TURTLE_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(TURTLE_STEP_HEIGHT, 1.0);
+        assert_eq!(TURTLE_XP_REWARD, 2);
+        assert_eq!(TURTLE_AMBIENT_SOUND_INTERVAL, 200);
+        assert_eq!(TURTLE_BABY_SCALE, 0.3);
+
+        // Axolotl Parity (Axolotl.java:78, 87, 88, 92, 390-393)
+        assert_eq!(AXOLOTL_MAX_HEALTH, 14.0);
+        assert_eq!(AXOLOTL_BASE_MOVEMENT_SPEED, 1.0);
+        assert_eq!(AXOLOTL_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(AXOLOTL_STEP_HEIGHT, 1.0);
+        assert_eq!(AXOLOTL_XP_REWARD, 2);
+        assert_eq!(AXOLOTL_TOTAL_PLAYDEAD_TIME, 200);
+        assert_eq!(AXOLOTL_RARE_VARIANT_CHANCE, 1200);
+        assert_eq!(AXOLOTL_PLAYER_REGEN_DETECTION_RANGE, 20.0);
+        assert_eq!(AXOLOTL_REGEN_BUFF_MAX_DURATION, 2400);
+
+        // Dolphin Parity (Dolphin.java:78, 79, 177)
+        assert_eq!(DOLPHIN_MAX_HEALTH, 10.0);
+        assert_eq!(DOLPHIN_BASE_MOVEMENT_SPEED, 1.2);
+        assert_eq!(DOLPHIN_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(DOLPHIN_TOTAL_AIR_SUPPLY, 4800);
+        assert_eq!(DOLPHIN_TOTAL_MOISTNESS_LEVEL, 2400);
+        assert_eq!(DOLPHIN_XP_REWARD, 2);
+
+        // Squid & Glow Squid Parity (Squid.java:65, GlowSquid.java:86)
+        assert_eq!(SQUID_MAX_HEALTH, 10.0);
+        assert_eq!(SQUID_XP_REWARD, 2);
+        assert_eq!(GLOW_SQUID_MAX_HEALTH, 10.0);
+        assert_eq!(GLOW_SQUID_XP_REWARD, 2);
+        assert_eq!(GLOW_SQUID_DARK_TICKS_ON_HURT, 100);
+
+        // Fish Parity (WaterAnimal.java:17, 36, 44, 47, AbstractFish.java:45, Pufferfish.java:143, Salmon.java:46, 157-159)
+        assert_eq!(FISH_MAX_HEALTH, 3.0);
+        assert_eq!(FISH_TOTAL_AIR_SUPPLY, 300);
+        assert_eq!(FISH_DROWN_DAMAGE, 2.0);
+        assert_eq!(FISH_XP_REWARD, 2);
+        assert_eq!(FISH_AMBIENT_SOUND_INTERVAL, 120);
+        assert_eq!(PUFFERFISH_POISON_TICKS_PER_STATE, 60);
+        assert_eq!(SALMON_SMALL_SCALE, 0.5);
+        assert_eq!(SALMON_MEDIUM_SCALE, 1.0);
+        assert_eq!(SALMON_LARGE_SCALE, 1.5);
+        assert_eq!(SALMON_MAX_SCHOOL_SIZE, 5);
     }
 }

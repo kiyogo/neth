@@ -90,6 +90,7 @@ pub struct AxolotlEntity {
 }
 
 impl AxolotlEntity {
+    pub const XP_REWARD: u32 = combat::AXOLOTL_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -119,31 +120,26 @@ impl AxolotlEntity {
         };
 
         // Vanilla Axolotl: MAX_HEALTH = 14.0, MOVEMENT_SPEED = 1.0, ATTACK_DAMAGE = 2.0, STEP_HEIGHT = 1.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 14.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 1.0;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 2.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.0;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(14.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, combat::AXOLOTL_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, combat::AXOLOTL_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::AXOLOTL_BASE_ATTACK_DAMAGE as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, combat::AXOLOTL_STEP_HEIGHT as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(combat::AXOLOTL_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -404,6 +400,10 @@ impl Mob for AxolotlEntity {
         true
     }
 
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }
@@ -552,6 +552,19 @@ impl CustomSound for AxolotlEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_axolotl_parity_constants() {
+        assert_eq!(AxolotlEntity::XP_REWARD, 2);
+        assert_eq!(combat::AXOLOTL_MAX_HEALTH, 14.0);
+        assert_eq!(combat::AXOLOTL_BASE_MOVEMENT_SPEED, 1.0);
+        assert_eq!(combat::AXOLOTL_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(combat::AXOLOTL_STEP_HEIGHT, 1.0);
+        assert_eq!(combat::AXOLOTL_TOTAL_PLAYDEAD_TIME, 200);
+        assert_eq!(combat::AXOLOTL_RARE_VARIANT_CHANCE, 1200);
+        assert_eq!(combat::AXOLOTL_PLAYER_REGEN_DETECTION_RANGE, 20.0);
+        assert_eq!(combat::AXOLOTL_REGEN_BUFF_MAX_DURATION, 2400);
+    }
 
     #[test]
     fn test_axolotl_rehydrate_and_play_dead_silence() {

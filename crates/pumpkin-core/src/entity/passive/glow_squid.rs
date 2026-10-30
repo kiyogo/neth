@@ -31,6 +31,7 @@ pub struct GlowSquidEntity {
 }
 
 impl GlowSquidEntity {
+    pub const XP_REWARD: u32 = combat::GLOW_SQUID_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let mut rng = rand::rng();
@@ -47,19 +48,11 @@ impl GlowSquidEntity {
         };
 
         // Vanilla Glow Squid attributes: MAX_HEALTH = 10.0
-        {
-            let mut attributes = glow_squid
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        glow_squid.mob_entity.living_entity.set_health(10.0);
+        glow_squid
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, combat::GLOW_SQUID_MAX_HEALTH as f64);
+        glow_squid.mob_entity.living_entity.set_health(combat::GLOW_SQUID_MAX_HEALTH);
 
         Arc::new(glow_squid)
     }
@@ -349,6 +342,13 @@ impl CustomSound for GlowSquidEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_glow_squid_parity_constants() {
+        assert_eq!(GlowSquidEntity::XP_REWARD, 2);
+        assert_eq!(combat::GLOW_SQUID_MAX_HEALTH, 10.0);
+        assert_eq!(combat::GLOW_SQUID_DARK_TICKS_ON_HURT, 100);
+    }
 
     #[test]
     fn test_glow_squid_dark_ticks_and_nbt() {

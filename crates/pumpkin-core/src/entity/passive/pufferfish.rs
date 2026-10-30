@@ -69,6 +69,7 @@ pub struct PufferfishEntity {
 }
 
 impl PufferfishEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::FISH_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -95,19 +96,14 @@ impl PufferfishEntity {
         mob_arc.refresh_dimensions();
 
         // Vanilla Pufferfish (AbstractFish): MAX_HEALTH = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 3.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(3.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::FISH_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::FISH_MAX_HEALTH);
 
         let puffer_weak = Arc::downgrade(&mob_arc);
 
@@ -291,6 +287,14 @@ impl Mob for PufferfishEntity {
         false
     }
 
+    fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
+    }
+
     fn can_breathe_underwater(&self) -> bool {
         true
     }
@@ -395,6 +399,14 @@ fn poison(puff_state: PuffState) -> Effect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_pufferfish_parity_constants() {
+        assert_eq!(PufferfishEntity::XP_REWARD, 2);
+        assert_eq!(crate::entity::combat::FISH_MAX_HEALTH, 3.0);
+        assert_eq!(crate::entity::combat::FISH_TOTAL_AIR_SUPPLY, 300);
+        assert_eq!(crate::entity::combat::PUFFERFISH_POISON_TICKS_PER_STATE, 60);
+    }
 
     #[test]
     fn test_pufferfish_scales_and_sting() {

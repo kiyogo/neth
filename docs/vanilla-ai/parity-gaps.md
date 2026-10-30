@@ -5469,3 +5469,60 @@ eck, part 1): nhận 100% full damage (damage).
     - Added unit test 	est_bee_parity_constants.
   - All unit tests verified and passing across aerial mob test suites.
 
+### Gap 231: Aquatic & Special Mobs Attributes, Oxygen/Moisture, Leashing, Poison Sting & Scale Parity
+- **Vanilla Reference**:
+  - `Turtle.java:69, 164, 174, 278-285`:
+    - Base Attributes: `TURTLE_MAX_HEALTH = 30.0`, `TURTLE_BASE_MOVEMENT_SPEED = 0.25`, `TURTLE_STEP_HEIGHT = 1.0`, `TURTLE_XP_REWARD = 2`, `canBeLeashed() -> false`.
+    - Mechanics: `TURTLE_BABY_SCALE = 0.3F`, `TURTLE_AMBIENT_SOUND_INTERVAL = 200`, sét đánh chết ngay (`Float.MAX_VALUE` damage).
+  - `Axolotl.java:78, 87, 88, 92, 369, 390-393`:
+    - Base Attributes: `AXOLOTL_MAX_HEALTH = 14.0`, `AXOLOTL_BASE_MOVEMENT_SPEED = 1.0`, `AXOLOTL_BASE_ATTACK_DAMAGE = 2.0`, `AXOLOTL_STEP_HEIGHT = 1.0`, `AXOLOTL_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Giả chết (`AXOLOTL_TOTAL_PLAYDEAD_TIME = 200`), tỷ lệ biến thể xanh hiếm 1/1200 (`AXOLOTL_RARE_VARIANT_CHANCE = 1200`), buff hồi máu cho người chơi trong bán kính 20 block tối đa 2400 ticks (`AXOLOTL_PLAYER_REGEN_DETECTION_RANGE = 20.0`, `AXOLOTL_REGEN_BUFF_MAX_DURATION = 2400`).
+  - `Dolphin.java:78, 79, 177, 376`:
+    - Base Attributes: `DOLPHIN_MAX_HEALTH = 10.0`, `DOLPHIN_BASE_MOVEMENT_SPEED = 1.2`, `DOLPHIN_BASE_ATTACK_DAMAGE = 3.0`, `DOLPHIN_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Dung lượng không khí 4800 ticks (`DOLPHIN_TOTAL_AIR_SUPPLY = 4800`), độ ẩm trên cạn 2400 ticks (`DOLPHIN_TOTAL_MOISTNESS_LEVEL = 2400`).
+  - `Squid.java:65, 88`, `GlowSquid.java:36, 86`:
+    - Base Attributes: `SQUID_MAX_HEALTH = 10.0`, `GLOW_SQUID_MAX_HEALTH = 10.0`, `SQUID_XP_REWARD = 2`, `GLOW_SQUID_XP_REWARD = 2`, `canBeLeashed() -> true`.
+    - Mechanics: Mực phát sáng bị tối 100 ticks khi chịu sát thương (`GLOW_SQUID_DARK_TICKS_ON_HURT = 100`).
+  - `WaterAnimal.java:17, 36, 44, 47, 66`, `AbstractFish.java:45`, `Pufferfish.java:142, 143, 155, 160, 185-191`, `Salmon.java:46, 157-159`:
+    - Base Attributes: `FISH_MAX_HEALTH = 3.0`, `FISH_TOTAL_AIR_SUPPLY = 300`, `FISH_DROWN_DAMAGE = 2.0`, `FISH_XP_REWARD = 2`, `FISH_AMBIENT_SOUND_INTERVAL = 120`, `canBeLeashed() -> false`.
+    - Mechanics: Cá nóc gây sát thương chích `1 + puffState` và hiệu ứng độc `60 * puffState` ticks (`PUFFERFISH_POISON_TICKS_PER_STATE = 60`). Cá hồi kích thước biến thể Small (`0.5F`), Medium (`1.0F`), Large (`1.5F`), kích thước đàn tối đa 5 (`SALMON_MAX_SCHOOL_SIZE = 5`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added comprehensive aquatic parity constants for Turtle, Axolotl, Dolphin, Squid, Glow Squid, and Fish families.
+    - Added unit test `test_aquatic_mobs_parity`.
+  - Updated `TurtleEntity` in `crates/pumpkin-core/src/entity/passive/turtle.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_turtle_parity_constants`.
+  - Updated `AxolotlEntity` in `crates/pumpkin-core/src/entity/passive/axolotl.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_axolotl_parity_constants`.
+  - Updated `DolphinEntity` in `crates/pumpkin-core/src/entity/passive/dolphin.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { true }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_dolphin_parity_constants`.
+  - Updated `SquidEntity` in `crates/pumpkin-core/src/entity/passive/squid.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Added unit test `test_squid_parity_constants`.
+  - Updated `GlowSquidEntity` in `crates/pumpkin-core/src/entity/passive/glow_squid.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Added unit test `test_glow_squid_parity_constants`.
+  - Updated `PufferfishEntity` in `crates/pumpkin-core/src/entity/passive/pufferfish.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_pufferfish_parity_constants`.
+  - Updated `CodEntity` in `crates/pumpkin-core/src/entity/passive/cod.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_cod_parity_constants`.
+  - Updated `SalmonEntity` in `crates/pumpkin-core/src/entity/passive/salmon.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_salmon_parity_constants`.
+  - Updated `TropicalFishEntity` in `crates/pumpkin-core/src/entity/passive/tropical_fish.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { Self::XP_REWARD }`.
+    - Added unit test `test_tropical_fish_parity_constants`.
+  - All 41 unit tests verified and passing across aquatic mob suites.
+

@@ -45,6 +45,7 @@ pub struct TurtleEntity {
 }
 
 impl TurtleEntity {
+    pub const XP_REWARD: u32 = crate::entity::combat::TURTLE_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -65,27 +66,22 @@ impl TurtleEntity {
         };
 
         // Vanilla Turtle: MAX_HEALTH = 30.0, MOVEMENT_SPEED = 0.25, STEP_HEIGHT = 1.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 30.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.25;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(step) = attributes.get_mut(&Attributes::STEP_HEIGHT.id) {
-                step.base_value = 1.0;
-                step.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(30.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, crate::entity::combat::TURTLE_MAX_HEALTH as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MOVEMENT_SPEED, crate::entity::combat::TURTLE_BASE_MOVEMENT_SPEED);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::STEP_HEIGHT, crate::entity::combat::TURTLE_STEP_HEIGHT as f64);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::TURTLE_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -168,6 +164,10 @@ impl Mob for TurtleEntity {
     /// Vanilla Turtle.java:279: Turtles cannot be leashed.
     fn can_be_leashed(&self) -> bool {
         false
+    }
+
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
     }
 
     /// Turtle.getAmbientSoundInterval in vanilla is 200.
@@ -286,5 +286,21 @@ impl CustomSound for TurtleEntity {
         } else {
             Some(Sound::EntityTurtleHurt)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat;
+
+    #[test]
+    fn test_turtle_parity_constants() {
+        assert_eq!(TurtleEntity::XP_REWARD, 2);
+        assert_eq!(combat::TURTLE_MAX_HEALTH, 30.0);
+        assert_eq!(combat::TURTLE_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(combat::TURTLE_STEP_HEIGHT, 1.0);
+        assert_eq!(combat::TURTLE_AMBIENT_SOUND_INTERVAL, 200);
+        assert_eq!(combat::TURTLE_BABY_SCALE, 0.3);
     }
 }

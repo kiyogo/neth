@@ -28,6 +28,7 @@ pub struct SquidEntity {
 }
 
 impl SquidEntity {
+    pub const XP_REWARD: u32 = combat::SQUID_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let mut rng = rand::rng();
@@ -43,19 +44,11 @@ impl SquidEntity {
         };
 
         // Vanilla Squid attributes: MAX_HEALTH = 10.0
-        {
-            let mut attributes = squid
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        squid.mob_entity.living_entity.set_health(10.0);
+        squid
+            .mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::MAX_HEALTH, combat::SQUID_MAX_HEALTH as f64);
+        squid.mob_entity.living_entity.set_health(combat::SQUID_MAX_HEALTH);
 
         Arc::new(squid)
     }
@@ -292,6 +285,12 @@ impl CustomSound for SquidEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_squid_parity_constants() {
+        assert_eq!(SquidEntity::XP_REWARD, 2);
+        assert_eq!(combat::SQUID_MAX_HEALTH, 10.0);
+    }
 
     #[test]
     fn test_squid_ink_trigger() {
