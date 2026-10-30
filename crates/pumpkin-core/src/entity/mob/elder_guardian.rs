@@ -3,9 +3,7 @@ use std::sync::{Arc, Weak};
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::entity::EntityType;
-use pumpkin_data::potion::Effect;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
 use pumpkin_protocol::codec::var_int::VarInt;
@@ -74,24 +72,27 @@ impl ElderGuardianEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 80.0;
+                health.base_value = f64::from(crate::entity::combat::ELDER_GUARDIAN_MAX_HEALTH);
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
+                speed.base_value = crate::entity::combat::ELDER_GUARDIAN_BASE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 8.0;
+                damage.base_value = f64::from(crate::entity::combat::ELDER_GUARDIAN_BASE_ATTACK_DAMAGE);
                 damage.dirty.store(true, Ordering::Relaxed);
             } else {
                 attributes.insert(
                     Attributes::ATTACK_DAMAGE.id,
-                    crate::entity::attributes::AttributeInstance::new(8.0),
+                    crate::entity::attributes::AttributeInstance::new(f64::from(crate::entity::combat::ELDER_GUARDIAN_BASE_ATTACK_DAMAGE)),
                 );
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(80.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::ELDER_GUARDIAN_MAX_HEALTH);
         mob_arc.mob_entity.persistence_required.store(true, Ordering::Relaxed);
 
         let mob_weak: Weak<dyn Mob> = {
@@ -172,6 +173,10 @@ impl CustomSound for ElderGuardianEntity {
 }
 
 impl Mob for ElderGuardianEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::ELDER_GUARDIAN_XP_REWARD
+    }
+
     /// Elder guardians never drown.
     fn can_breathe_underwater(&self) -> bool {
         true
@@ -217,23 +222,18 @@ impl Mob for ElderGuardianEntity {
         }
 
         let ticks = self.tick_count.fetch_add(1, Ordering::Relaxed) + 1;
-        if ticks % 1200 == 0 {
+        if ticks % crate::entity::combat::ELDER_GUARDIAN_CURSE_INTERVAL_TICKS == 0 {
             let pos = entity.pos.load();
             let world = entity.world.load();
-            let players = world.get_nearby_players(pos, 50.0);
-            let packet = CGameEvent::new(GameEvent::PlayElderGuardianMobAppearance, 1.0);
+            let players = world.get_nearby_players(pos, crate::entity::combat::ELDER_GUARDIAN_CURSE_RADIUS);
+            let packet = CGameEvent::new(
+                GameEvent::PlayElderGuardianMobAppearance,
+                if entity.silent.load(Ordering::Relaxed) { 0.0 } else { 1.0 },
+            );
 
             for player in players {
                 player.try_send_client_packet(&packet);
-                player.living_entity.add_effect(Effect {
-                    effect_type: &StatusEffect::MINING_FATIGUE,
-                    duration: 6000,
-                    amplifier: 2,
-                    ambient: false,
-                    show_particles: true,
-                    show_icon: true,
-                    blend: false,
-                });
+                player.living_entity.add_effect(crate::entity::combat::create_elder_guardian_curse_effect());
             }
         }
 
@@ -276,3 +276,50 @@ impl Mob for ElderGuardianEntity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        ELDER_GUARDIAN_ATTACK_DURATION_TICKS, ELDER_GUARDIAN_BASE_ATTACK_DAMAGE,
+        ELDER_GUARDIAN_BASE_MOVEMENT_SPEED, ELDER_GUARDIAN_CURSE_AMPLIFIER,
+        ELDER_GUARDIAN_CURSE_DURATION_TICKS, ELDER_GUARDIAN_CURSE_INTERVAL_TICKS,
+        ELDER_GUARDIAN_CURSE_RADIUS, ELDER_GUARDIAN_MAX_HEALTH, ELDER_GUARDIAN_XP_REWARD,
+        calculate_guardian_laser_damage, create_elder_guardian_curse_effect,
+        get_guardian_attack_duration,
+    };
+
+    #[test]
+    fn test_elder_guardian_combat_and_curse_parity() {
+        assert_eq!(ELDER_GUARDIAN_MAX_HEALTH, 80.0);
+        assert_eq!(ELDER_GUARDIAN_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ELDER_GUARDIAN_BASE_ATTACK_DAMAGE, 8.0);
+        assert_eq!(ELDER_GUARDIAN_XP_REWARD, 10);
+        assert_eq!(ELDER_GUARDIAN_ATTACK_DURATION_TICKS, 60);
+        assert_eq!(get_guardian_attack_duration(true), 60);
+
+        // Curse intervals & effects (ElderGuardian.java:23-28)
+        assert_eq!(ELDER_GUARDIAN_CURSE_INTERVAL_TICKS, 1200);
+        assert_eq!(ELDER_GUARDIAN_CURSE_RADIUS, 50.0);
+        assert_eq!(ELDER_GUARDIAN_CURSE_DURATION_TICKS, 6000);
+        assert_eq!(ELDER_GUARDIAN_CURSE_AMPLIFIER, 2);
+
+        let effect = create_elder_guardian_curse_effect();
+        assert_eq!(effect.effect_type, &pumpkin_data::effect::StatusEffect::MINING_FATIGUE);
+        assert_eq!(effect.duration, 6000);
+        assert_eq!(effect.amplifier, 2);
+        assert!(!effect.ambient);
+        assert!(effect.show_particles);
+        assert!(effect.show_icon);
+
+        // Elder guardian laser damage bonus (+2.0 over normal)
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Normal, true),
+            3.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, true),
+            5.0
+        );
+    }
+}
+

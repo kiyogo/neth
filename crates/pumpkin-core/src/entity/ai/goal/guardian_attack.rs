@@ -1,4 +1,6 @@
 use pumpkin_data::damage::DamageType;
+use std::sync::atomic::Ordering;
+use pumpkin_data::entity::EntityStatus;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
 use pumpkin_protocol::codec::var_int::VarInt;
@@ -105,13 +107,22 @@ impl Goal for GuardianAttackGoal {
             mob.get_entity()
                 .set_synced_data(tracked_data::guardian::ID_ATTACK_TARGET, VarInt(target_id));
 
-            let pos = mob.get_entity().pos.load();
-            mob.get_entity().world.load().play_sound(
+            let entity = mob.get_entity();
+            if !entity.silent.load(Ordering::Relaxed) {
+                entity.world.load().send_entity_status(
+                    entity,
+                    EntityStatus::GuardianAttackSound,
+                    None,
+                );
+            }
+
+            let pos = entity.pos.load();
+            entity.world.load().play_sound(
                 Sound::EntityGuardianAttack,
                 SoundCategory::Hostile,
                 &pos,
             );
-        } else if self.attack_time >= 80 {
+        } else if self.attack_time >= crate::entity::combat::get_guardian_attack_duration(self.is_elder) {
             // Complete laser blast
             let world = mob.get_entity().world.load();
             let difficulty = world.level_info.load().difficulty;

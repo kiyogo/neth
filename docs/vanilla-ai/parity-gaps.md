@@ -4553,3 +4553,45 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward` returning `SNOW_GOLEM_XP_REWARD` (0 XP).
     - Added unit test `test_snow_golem_constants_and_shearing_parity`.
   - All unit tests verified and passing (7/7 in golem suite, 95/95 in combat suite).
+
+
+## Gap 207: Guardian & Elder Guardian Combat & Mechanics Parity (Laser Duration, Thorns Spikes & Ghost Curse)
+- **Vanilla Reference**: `Guardian.java:49, 55, 94, 125, 311-317, 374, 399, 403-414`, `ElderGuardian.java:23-28, 36, 41, 70`, `EntityStatus.java` (GuardianAttackSound = 21):
+  - `Guardian.java`:
+    - Base Attributes: `MAX_HEALTH = 30.0`, `MOVEMENT_SPEED = 0.5`, `ATTACK_DAMAGE = 6.0`.
+    - Spikes Thorns Retaliation: Khi gai mo ra (`!isMoving()`), Guardian phan don gay `2.0 HP` (`GUARDIAN_THORNS_DAMAGE = 2.0`) len ke tan cong can chien (DamageType khac `THORNS` va khac `AVOIDS_GUARDIAN_THORNS`).
+    - Laser Beam Attack:
+      - Khoi dong nham muc tieu: `attackTime = -10` (10 ticks / 0.5s warmup).
+      - Khi `attackTime == 0`: Gui `EntityStatus::GuardianAttackSound` (byte 21) cho client.
+      - Thoi gian tich nang luong laser cua Guardian thuong: **80 ticks** (4 giay) (`getAttackDuration() = 80`).
+      - Sat thuong laser: Giai doan 1 gay `indirectMagic` (Base = 1.0; Hard mode = +2.0); Giai doan 2 gay mob attack physical damage (6.0).
+    - Experience drop: `xpReward = 10`.
+  - `ElderGuardian.java`:
+    - Base Attributes: `MAX_HEALTH = 80.0`, `MOVEMENT_SPEED = 0.3`, `ATTACK_DAMAGE = 8.0`.
+    - Laser Beam Duration Parity: Elder Guardian tich laser nhanh hon, chi mat **60 ticks** (3 giay) (`getAttackDuration() = 60`) thay vi 80 ticks cua Guardian thuong.
+    - Laser Damage: Magic damage duoc cong them `+2.0` cho Elder Guardian (Easy/Normal = 3.0, Hard = 5.0), cong them 8.0 physical attack damage.
+    - Ghost Curse Pulse:
+      - Chu ky: `(tickCount + id) % 1200 == 0` (moi 1200 ticks = 60 giay).
+      - Ban kinh: `50.0 blocks`.
+      - Hieu ung: Gay `StatusEffect::MINING_FATIGUE` cap do III (amplifier = 2) trong `6000 ticks` (5 phut).
+      - Gui goi tin `CGameEvent::PlayElderGuardianMobAppearance` (gia tri 0.0 neu silent, 1.0 neu phat am thanh hu doa).
+    - Experience drop: `xpReward = 10`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `GUARDIAN_MAX_HEALTH = 30.0`, `GUARDIAN_BASE_MOVEMENT_SPEED = 0.5`, `GUARDIAN_BASE_ATTACK_DAMAGE = 6.0`, `GUARDIAN_XP_REWARD = 10`, `GUARDIAN_LASER_WARMUP_TICKS = 10`, `GUARDIAN_ATTACK_DURATION_TICKS = 80`.
+    - Added constants `ELDER_GUARDIAN_MAX_HEALTH = 80.0`, `ELDER_GUARDIAN_BASE_MOVEMENT_SPEED = 0.3`, `ELDER_GUARDIAN_BASE_ATTACK_DAMAGE = 8.0`, `ELDER_GUARDIAN_XP_REWARD = 10`, `ELDER_GUARDIAN_ATTACK_DURATION_TICKS = 60`, `ELDER_GUARDIAN_CURSE_INTERVAL_TICKS = 1200`, `ELDER_GUARDIAN_CURSE_RADIUS = 50.0`, `ELDER_GUARDIAN_CURSE_DURATION_TICKS = 6000`, `ELDER_GUARDIAN_CURSE_AMPLIFIER = 2`.
+    - Added functions `get_guardian_attack_duration(is_elder)` and `create_elder_guardian_curse_effect()`.
+    - Updated `test_guardian_parity`.
+  - Updated `GuardianAttackGoal` in `crates/pumpkin-core/src/entity/ai/goal/guardian_attack.rs`:
+    - Parity: Dung `get_guardian_attack_duration(self.is_elder)` (60 ticks cho Elder Guardian, 80 ticks cho Guardian).
+    - Broadcast `EntityStatus::GuardianAttackSound` (byte 21) khi laser beam bat dau tai tick 0.
+  - Updated `GuardianEntity` in `crates/pumpkin-core/src/entity/mob/guardian.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Implemented `get_base_experience_reward` returning `GUARDIAN_XP_REWARD` (10 XP).
+    - Added unit test `test_guardian_combat_and_attributes_parity`.
+  - Updated `ElderGuardianEntity` in `crates/pumpkin-core/src/entity/mob/elder_guardian.rs`:
+    - Synced base attributes with `combat.rs` constants.
+    - Synced curse interval, radius, and effect builder with `combat.rs` constants.
+    - Implemented `get_base_experience_reward` returning `ELDER_GUARDIAN_XP_REWARD` (10 XP).
+    - Added unit test `test_elder_guardian_combat_and_curse_parity`.
+  - All unit tests verified and passing (5/5 in guardian suite, 97/97 in combat suite).

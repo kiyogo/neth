@@ -66,19 +66,22 @@ impl GuardianEntity {
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 30.0;
+                health.base_value = f64::from(crate::entity::combat::GUARDIAN_MAX_HEALTH);
                 health.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.5;
+                speed.base_value = crate::entity::combat::GUARDIAN_BASE_MOVEMENT_SPEED;
                 speed.dirty.store(true, Ordering::Relaxed);
             }
             if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 6.0;
+                damage.base_value = f64::from(crate::entity::combat::GUARDIAN_BASE_ATTACK_DAMAGE);
                 damage.dirty.store(true, Ordering::Relaxed);
             }
         }
-        mob_arc.mob_entity.living_entity.set_health(30.0);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::GUARDIAN_MAX_HEALTH);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -170,6 +173,10 @@ impl CustomSound for GuardianEntity {
 }
 
 impl Mob for GuardianEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::GUARDIAN_XP_REWARD
+    }
+
     /// Guardians never drown.
     fn can_breathe_underwater(&self) -> bool {
         true
@@ -252,3 +259,48 @@ impl Mob for GuardianEntity {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::entity::combat::{
+        GUARDIAN_ATTACK_DURATION_TICKS, GUARDIAN_BASE_ATTACK_DAMAGE,
+        GUARDIAN_BASE_MOVEMENT_SPEED, GUARDIAN_LASER_WARMUP_TICKS, GUARDIAN_MAX_HEALTH,
+        GUARDIAN_THORNS_DAMAGE, GUARDIAN_XP_REWARD, calculate_guardian_laser_damage,
+        get_guardian_attack_duration, should_guardian_retaliate_thorns,
+    };
+
+    #[test]
+    fn test_guardian_combat_and_attributes_parity() {
+        assert_eq!(GUARDIAN_MAX_HEALTH, 30.0);
+        assert_eq!(GUARDIAN_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(GUARDIAN_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(GUARDIAN_XP_REWARD, 10);
+        assert_eq!(GUARDIAN_LASER_WARMUP_TICKS, 10);
+        assert_eq!(GUARDIAN_ATTACK_DURATION_TICKS, 80);
+        assert_eq!(get_guardian_attack_duration(false), 80);
+        assert_eq!(GUARDIAN_THORNS_DAMAGE, 2.0);
+
+        // Thorns trigger only when stationary and hit by living entity
+        assert!(should_guardian_retaliate_thorns(
+            false,
+            &pumpkin_data::damage::DamageType::PLAYER_ATTACK,
+            true
+        ));
+        assert!(!should_guardian_retaliate_thorns(
+            true,
+            &pumpkin_data::damage::DamageType::PLAYER_ATTACK,
+            true
+        ));
+
+        // Laser damage on normal vs hard difficulty
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Normal, false),
+            1.0
+        );
+        assert_eq!(
+            calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, false),
+            3.0
+        );
+    }
+}
+

@@ -3678,8 +3678,101 @@ pub fn should_guardian_retaliate_thorns(
     direct_attacker_is_living
 }
 
+// ============================================================================
+// Guardian Family Parity Constants (Guardian & Elder Guardian)
+// ============================================================================
+
 /// Vanilla Guardian thorns damage amount (2.0F).
+/// Mirrors vanilla Guardian.java:315.
 pub const GUARDIAN_THORNS_DAMAGE: f32 = 2.0;
+
+/// Base max health for a Guardian (30.0 HP / 15 hearts).
+/// Mirrors vanilla Guardian.java:94 (Attributes.MAX_HEALTH, 30.0).
+pub const GUARDIAN_MAX_HEALTH: f32 = 30.0;
+
+/// Base movement speed for a Guardian.
+/// Mirrors vanilla Guardian.java:94 (Attributes.MOVEMENT_SPEED, 0.5).
+pub const GUARDIAN_BASE_MOVEMENT_SPEED: f64 = 0.5;
+
+/// Base attack damage for a Guardian.
+/// Mirrors vanilla Guardian.java:94 (Attributes.ATTACK_DAMAGE, 6.0).
+pub const GUARDIAN_BASE_ATTACK_DAMAGE: f32 = 6.0;
+
+/// Experience reward dropped by a Guardian on death (10 XP).
+/// Mirrors vanilla Guardian.java:55 (	his.xpReward = 10).
+pub const GUARDIAN_XP_REWARD: u32 = 10;
+
+/// Laser warmup duration before beam starts (10 ticks / 0.5s, from -10 to 0).
+/// Mirrors vanilla Guardian.java:374 (	his.attackTime = -10).
+pub const GUARDIAN_LASER_WARMUP_TICKS: i32 = 10;
+
+/// Laser beam charging duration for a normal Guardian (80 ticks / 4s).
+/// Mirrors vanilla Guardian.java:49,125 (getAttackDuration() { return 80; }).
+pub const GUARDIAN_ATTACK_DURATION_TICKS: i32 = 80;
+
+/// Base max health for an Elder Guardian (80.0 HP / 40 hearts).
+/// Mirrors vanilla ElderGuardian.java:36 (Attributes.MAX_HEALTH, 80.0).
+pub const ELDER_GUARDIAN_MAX_HEALTH: f32 = 80.0;
+
+/// Base movement speed for an Elder Guardian.
+/// Mirrors vanilla ElderGuardian.java:36 (Attributes.MOVEMENT_SPEED, 0.3F).
+pub const ELDER_GUARDIAN_BASE_MOVEMENT_SPEED: f64 = 0.3;
+
+/// Base attack damage for an Elder Guardian.
+/// Mirrors vanilla ElderGuardian.java:36 (Attributes.ATTACK_DAMAGE, 8.0).
+pub const ELDER_GUARDIAN_BASE_ATTACK_DAMAGE: f32 = 8.0;
+
+/// Experience reward dropped by an Elder Guardian on death (10 XP).
+/// Mirrors vanilla ElderGuardian.java / Guardian.java:55 (	his.xpReward = 10).
+pub const ELDER_GUARDIAN_XP_REWARD: u32 = 10;
+
+/// Laser beam charging duration for an Elder Guardian (60 ticks / 3s).
+/// Mirrors vanilla ElderGuardian.java:41 (getAttackDuration() { return 60; }).
+pub const ELDER_GUARDIAN_ATTACK_DURATION_TICKS: i32 = 60;
+
+/// Interval between Elder Guardian ghost curse pulses (1200 ticks / 60s).
+/// Mirrors vanilla ElderGuardian.java:23 (EFFECT_INTERVAL = 1200).
+pub const ELDER_GUARDIAN_CURSE_INTERVAL_TICKS: i32 = 1200;
+
+/// Radius of Elder Guardian ghost curse pulse (50.0 blocks).
+/// Mirrors vanilla ElderGuardian.java:24 (EFFECT_RADIUS = 50).
+pub const ELDER_GUARDIAN_CURSE_RADIUS: f64 = 50.0;
+
+/// Duration of Mining Fatigue applied by Elder Guardian curse (6000 ticks / 5 minutes).
+/// Mirrors vanilla ElderGuardian.java:25 (EFFECT_DURATION = 6000).
+pub const ELDER_GUARDIAN_CURSE_DURATION_TICKS: i32 = 6000;
+
+/// Amplifier of Mining Fatigue applied by Elder Guardian curse (amplifier 2 = Level III).
+/// Mirrors vanilla ElderGuardian.java:26 (EFFECT_AMPLIFIER = 2).
+pub const ELDER_GUARDIAN_CURSE_AMPLIFIER: u8 = 2;
+
+/// Returns laser attack duration in ticks (60 for Elder Guardian, 80 for normal Guardian).
+/// Mirrors vanilla Guardian.java:125 and ElderGuardian.java:41.
+#[must_use]
+pub const fn get_guardian_attack_duration(is_elder: bool) -> i32 {
+    if is_elder {
+        ELDER_GUARDIAN_ATTACK_DURATION_TICKS
+    } else {
+        GUARDIAN_ATTACK_DURATION_TICKS
+    }
+}
+
+/// Creates the Mining Fatigue III potion effect instance applied by Elder Guardian curse.
+/// Mirrors vanilla ElderGuardian.java:70:
+/// 
+/// `new MobEffectInstance(MobEffects.MINING_FATIGUE, 6000, 2)`
+#[must_use]
+pub fn create_elder_guardian_curse_effect() -> pumpkin_data::potion::Effect {
+    pumpkin_data::potion::Effect {
+        effect_type: &pumpkin_data::effect::StatusEffect::MINING_FATIGUE,
+        duration: ELDER_GUARDIAN_CURSE_DURATION_TICKS,
+        amplifier: ELDER_GUARDIAN_CURSE_AMPLIFIER,
+        ambient: false,
+        show_particles: true,
+        show_icon: true,
+        blend: false,
+    }
+}
 
 /// Calculates magic damage dealt by Guardian or Elder Guardian laser beam.
 ///
@@ -8724,6 +8817,35 @@ mod tests {
             calculate_guardian_laser_damage(pumpkin_util::Difficulty::Hard, true),
             5.0
         );
+
+        // 3. Attack durations and constants parity (Guardian.java & ElderGuardian.java)
+        assert_eq!(GUARDIAN_MAX_HEALTH, 30.0);
+        assert_eq!(GUARDIAN_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(GUARDIAN_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(GUARDIAN_XP_REWARD, 10);
+        assert_eq!(GUARDIAN_LASER_WARMUP_TICKS, 10);
+        assert_eq!(GUARDIAN_ATTACK_DURATION_TICKS, 80);
+        assert_eq!(get_guardian_attack_duration(false), 80);
+
+        assert_eq!(ELDER_GUARDIAN_MAX_HEALTH, 80.0);
+        assert_eq!(ELDER_GUARDIAN_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(ELDER_GUARDIAN_BASE_ATTACK_DAMAGE, 8.0);
+        assert_eq!(ELDER_GUARDIAN_XP_REWARD, 10);
+        assert_eq!(ELDER_GUARDIAN_ATTACK_DURATION_TICKS, 60);
+        assert_eq!(get_guardian_attack_duration(true), 60);
+
+        // 4. Elder Guardian curse constants & effect instance (ElderGuardian.java:23-26, 70)
+        assert_eq!(ELDER_GUARDIAN_CURSE_INTERVAL_TICKS, 1200);
+        assert_eq!(ELDER_GUARDIAN_CURSE_RADIUS, 50.0);
+        assert_eq!(ELDER_GUARDIAN_CURSE_DURATION_TICKS, 6000);
+        assert_eq!(ELDER_GUARDIAN_CURSE_AMPLIFIER, 2);
+
+        let curse = create_elder_guardian_curse_effect();
+        assert_eq!(curse.effect_type, &pumpkin_data::effect::StatusEffect::MINING_FATIGUE);
+        assert_eq!(curse.duration, 6000);
+        assert_eq!(curse.amplifier, 2);
+        assert!(curse.show_particles);
+        assert!(curse.show_icon);
     }
 
     #[test]
