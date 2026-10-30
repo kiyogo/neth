@@ -100,6 +100,7 @@ impl BlockEntity for DropperBlockEntity {
 
 impl DropperBlockEntity {
     pub const INVENTORY_SIZE: usize = 9;
+    pub const CONTAINER_SIZE: usize = 9;
     pub const ID: &'static str = "minecraft:dropper";
 
     /// Creates an empty container with component storage at the supplied position.

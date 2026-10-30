@@ -8106,6 +8106,43 @@ pub fn crafter_smaller_stack_exist(
     false
 }
 
+/// Vanilla `ShulkerBoxBlockEntity.java:36-43` & `ShulkerBoxBlock.java:78-85`:
+pub const SHULKER_BOX_COLUMNS: usize = 9;
+pub const SHULKER_BOX_ROWS: usize = 3;
+pub const SHULKER_BOX_CONTAINER_SIZE: usize = 27;
+pub const SHULKER_BOX_EVENT_SET_OPEN_COUNT: u8 = 1;
+pub const SHULKER_BOX_OPENING_TICK_LENGTH: u8 = 10;
+pub const SHULKER_BOX_MAX_LID_HEIGHT: f32 = 0.5;
+pub const SHULKER_BOX_MAX_LID_ROTATION: f32 = 270.0;
+
+/// Vanilla `DispenserBlockEntity.java:17` & `DispenserBlock.java:34`:
+pub const DISPENSER_CONTAINER_SIZE: usize = 9;
+
+/// Vanilla `DropperBlock.java:23`:
+pub const DROPPER_CONTAINER_SIZE: usize = 9;
+
+/// Vanilla `DispenserBlockEntity.java:34-45`:
+/// Selects an occupied slot using reservoir sampling:
+/// `int replaceOdds = 1; if (rand.nextInt(replaceOdds++) == 0) replaceSlot = i;`
+#[must_use]
+pub fn dispenser_reservoir_sampling(
+    non_empty_slots: &[usize],
+    random_choices: &[usize],
+) -> Option<usize> {
+    if non_empty_slots.is_empty() {
+        return None;
+    }
+    let mut replace_slot = None;
+    for (idx, &slot) in non_empty_slots.iter().enumerate() {
+        let odds = idx + 1;
+        let roll = random_choices.get(idx).copied().unwrap_or(0);
+        if roll % odds == 0 {
+            replace_slot = Some(slot);
+        }
+    }
+    replace_slot
+}
+
 
 
 
@@ -14376,6 +14413,44 @@ mod tests {
         slots[1] = None;
         slots[2] = None;
         assert!(crafter_smaller_stack_exist(&slots, &disabled_with_1, 0));
+    }
+
+    #[test]
+    fn test_shulker_box_dispenser_and_dropper_parity() {
+        // Shulker Box constants
+        assert_eq!(SHULKER_BOX_COLUMNS, 9);
+        assert_eq!(SHULKER_BOX_ROWS, 3);
+        assert_eq!(SHULKER_BOX_CONTAINER_SIZE, 27);
+        assert_eq!(SHULKER_BOX_EVENT_SET_OPEN_COUNT, 1);
+        assert_eq!(SHULKER_BOX_OPENING_TICK_LENGTH, 10);
+        assert_eq!(SHULKER_BOX_MAX_LID_HEIGHT, 0.5);
+        assert_eq!(SHULKER_BOX_MAX_LID_ROTATION, 270.0);
+
+        // Dispenser & Dropper container sizes
+        assert_eq!(DISPENSER_CONTAINER_SIZE, 9);
+        assert_eq!(DROPPER_CONTAINER_SIZE, 9);
+
+        // Reservoir sampling parity:
+        assert_eq!(dispenser_reservoir_sampling(&[], &[]), None);
+
+        // When rolls are all 0: every candidate replaces the previous, yielding the last one
+        let slots = vec![0, 3, 5, 8];
+        assert_eq!(
+            dispenser_reservoir_sampling(&slots, &[0, 0, 0, 0]),
+            Some(8)
+        );
+
+        // When roll is 0 only for first candidate and > 0 for rest: first candidate remains selected
+        assert_eq!(
+            dispenser_reservoir_sampling(&slots, &[0, 1, 1, 1]),
+            Some(0)
+        );
+
+        // When roll is 0 for first and third candidate: third candidate selected
+        assert_eq!(
+            dispenser_reservoir_sampling(&slots, &[0, 1, 0, 1]),
+            Some(5)
+        );
     }
 
 

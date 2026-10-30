@@ -150,8 +150,15 @@ impl ViewerCountListener for ShulkerBoxBlockEntity {
 
 impl ShulkerBoxBlockEntity {
     pub const INVENTORY_SIZE: usize = 27;
+    pub const COLUMNS: usize = 9;
+    pub const ROWS: usize = 3;
+    pub const CONTAINER_SIZE: usize = 27;
+    pub const EVENT_SET_OPEN_COUNT: u8 = 1;
     pub const OPEN_ANIMATION_EVENT_TYPE: u8 = 1;
     pub const ID: &'static str = "minecraft:shulker_box";
+    pub const OPENING_TICK_LENGTH: u8 = 10;
+    pub const MAX_LID_HEIGHT: f32 = 0.5;
+    pub const MAX_LID_ROTATION: f32 = 270.0;
     const ANIMATION_TICKS: u8 = 10;
     pub fn is_closed(&self) -> bool {
         self.viewers.get_viewer_count() == 0 && self.animation_progress.load(Ordering::Relaxed) == 0
@@ -256,6 +263,32 @@ impl Inventory for ShulkerBoxBlockEntity {
 
     fn is_valid_slot_for(&self, _slot: usize, stack: &ItemStack) -> bool {
         pumpkin_inventory::slot::can_fit_inside_container_items(stack)
+    }
+
+    fn get_slots_for_face(&self, _direction: pumpkin_util::BlockDirection) -> Option<&'static [usize]> {
+        static SLOTS: [usize; 27] = [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26,
+        ];
+        Some(&SLOTS)
+    }
+
+    fn can_place_item_through_face(
+        &self,
+        slot: usize,
+        stack: &ItemStack,
+        _direction: Option<pumpkin_util::BlockDirection>,
+    ) -> bool {
+        self.is_valid_slot_for(slot, stack)
+    }
+
+    fn can_take_item_through_face(
+        &self,
+        _slot: usize,
+        _stack: &ItemStack,
+        _direction: pumpkin_util::BlockDirection,
+    ) -> bool {
+        true
     }
 
     fn can_transfer_to(

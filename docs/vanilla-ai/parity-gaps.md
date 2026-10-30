@@ -6186,3 +6186,25 @@ ound_to_orb_size tiers.
     - Added constants `DECORATED_POT_EVENT_POT_WOBBLES`, `DECORATED_POT_WOBBLE_POSITIVE_TICKS`, `DECORATED_POT_WOBBLE_NEGATIVE_TICKS`, `DECORATED_POT_BASE_PITCH`, `DECORATED_POT_PITCH_BEND_SCALE`, `CRAFTER_CONTAINER_SIZE`, `CRAFTER_CONTAINER_WIDTH`, `CRAFTER_CONTAINER_HEIGHT`, `CRAFTER_CRAFTING_TICK_DELAY`, `CRAFTER_MAX_CRAFTING_TICKS`, `CRAFTER_FAIL_EVENT_ID`, `CRAFTER_CRAFT_EVENT_ID`.
     - Added calculation helpers `calculate_decorated_pot_pitch`, `calculate_decorated_pot_comparator_output`, `calculate_crafter_redstone_signal`, and `crafter_smaller_stack_exist`.
     - Added unit test `test_decorated_pot_and_crafter_parity`.
+
+### Gap 250: Shulker Box, Dispenser & Dropper Sided Inventory & Random Selection Parity
+- **Vanilla Reference**:
+  - `ShulkerBoxBlockEntity.java:36-43, 233-245` & `ShulkerBoxBlock.java:78-85`:
+    - Storage dimensions: `COLUMNS = 9`, `ROWS = 3`, `CONTAINER_SIZE = 27`.
+    - Sided inventory: implements `WorldlyContainer`, exposing `SLOTS = IntStream.range(0, 27).toArray()` to all faces.
+    - Sided placement: `canPlaceItemThroughFace(slot, itemStack, direction)` strictly rejects shulker box items (`!(Block.byItem(itemStack.getItem()) instanceof ShulkerBoxBlock)`).
+    - Sided extraction: `canTakeItemThroughFace` permits extraction of any item through any face.
+    - Open animation & obstruction: `OPENING_TICK_LENGTH = 10` ticks (progress increments by 0.1 per tick up to 1.0). `MAX_LID_HEIGHT = 0.5F`, `MAX_LID_ROTATION = 270.0F`. Opening is blocked if the 0.5-block lid projection space in facing direction has block collisions (`level.noCollision(lidOpenBoundingBox)`).
+  - `DispenserBlockEntity.java:17, 34-71` & `DropperBlock.java:23`:
+    - Container dimensions: `CONTAINER_SIZE = 9`.
+    - Random slot selection: `getRandomSlot(RandomSource)` uses single-pass reservoir sampling (`replaceOdds = 1; if (rand.nextInt(replaceOdds++) == 0) replaceSlot = i;`) across all non-empty slots, ensuring exact uniform distribution without memory allocation.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/shulker_box.rs`:
+    - Exported constants `COLUMNS` (9), `ROWS` (3), `CONTAINER_SIZE` (27), `EVENT_SET_OPEN_COUNT` (1), `OPENING_TICK_LENGTH` (10), `MAX_LID_HEIGHT` (0.5), and `MAX_LID_ROTATION` (270.0).
+    - Implemented `WorldlyContainer` methods on `Inventory`: `get_slots_for_face` (exposing all 27 slots to any direction), `can_place_item_through_face` (filtering via `can_fit_inside_container_items`), and `can_take_item_through_face` (true).
+  - Updated `crates/pumpkin-core/src/block/entities/dispenser.rs` & `dropper.rs`:
+    - Exported `CONTAINER_SIZE = 9`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `SHULKER_BOX_COLUMNS`, `SHULKER_BOX_ROWS`, `SHULKER_BOX_CONTAINER_SIZE`, `SHULKER_BOX_EVENT_SET_OPEN_COUNT`, `SHULKER_BOX_OPENING_TICK_LENGTH`, `SHULKER_BOX_MAX_LID_HEIGHT`, `SHULKER_BOX_MAX_LID_ROTATION`, `DISPENSER_CONTAINER_SIZE`, `DROPPER_CONTAINER_SIZE`.
+    - Added helper `dispenser_reservoir_sampling` validating the reservoir sampling algorithm.
+    - Added unit test `test_shulker_box_dispenser_and_dropper_parity`.
