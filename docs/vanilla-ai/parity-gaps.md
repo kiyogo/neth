@@ -5616,3 +5616,43 @@ eck, part 1): nhận 100% full damage (damage).
     - Converted base attributes initialization to `set_attribute_base` (Max Health, Movement Speed, Follow Range).
     - Fixed f32 cast in `set_health`.
   - Verified 17/17 tests passing for illagers and raid mobs.
+
+### Gap 234: Villager, Wandering Trader & Trader Llama Trading, Restock, Gossip, Level Progression & Leashing Parity
+- **Vanilla Reference**:
+  - `Villager.java:createAttributes, rewardTradeXp, shouldIncreaseLevel, allowedToRestock, shouldRestock`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.5`, `FOLLOW_RANGE = 16.0`, `xpReward = 0`.
+    - Leashing: `canBeLeashed() -> false`.
+    - Restock: `RESTOCK_COOLDOWN_TICKS = 2400L` (2 phút), `MAX_RESTOCKS_PER_DAY = 2`, `HALF_DAY_TICKS = 12000L`.
+    - Level Progression & Career Advancement:
+      - Khi hoàn thành trade, tính XP gain và kiểm tra `shouldIncreaseLevel()`.
+      - Ngưỡng XP cấp độ (`VillagerData.java:18-20`): `MIN_VILLAGER_LEVEL = 1`, `MAX_VILLAGER_LEVEL = 5`, `NEXT_LEVEL_XP_THRESHOLDS = [0, 10, 70, 150, 250]`.
+      - Khi thăng cấp: Level tăng lên 1, gọi `updateTrades`, áp dụng hiệu ứng `REGENERATION` (200 ticks / 10 giây, amplifier 0), và cộng thêm 5 XP vào quả cầu kinh nghiệm thả ra (`popXp = 3 + rand(4) + (levelUp ? 5 : 0)`).
+  - `WanderingTrader.java, WanderingTraderSpawner.java:22-25, 46`:
+    - Base Attributes: `MAX_HEALTH = 20.0`, `MOVEMENT_SPEED = 0.5`, `FOLLOW_RANGE = 16.0`, `xpReward = 0`.
+    - Leashing: `canBeLeashed() -> false`.
+    - Spawning & Despawn: `DESPAWN_DELAY_TICKS = 48000` (40 phút), `DEFAULT_SPAWN_DELAY = 24000`, `MIN_SPAWN_CHANCE = 25%`, `MAX_SPAWN_CHANCE = 75%`, `SPAWN_CHANCE_INCREASE = 25%`.
+    - Trade XP Reward: Thả `3 + rand(4)` XP orb tại `pos + (0, 0.5, 0)` khi `offer.shouldRewardExp()`.
+  - `TraderLlama.java:28-29, 37-39, Llama.java:300-302`:
+    - `canBeLeashed() -> true`, `XP_REWARD = 2`, `TRADER_LLAMA_DESPAWN_DELAY_TICKS = 47999`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `VILLAGER_MAX_HEALTH`, `VILLAGER_BASE_MOVEMENT_SPEED`, `VILLAGER_FOLLOW_RANGE`, `VILLAGER_XP_REWARD`, `VILLAGER_MIN_LEVEL`, `VILLAGER_MAX_LEVEL`, `VILLAGER_NEXT_LEVEL_XP_THRESHOLDS`, `VILLAGER_RESTOCK_COOLDOWN_TICKS`, `VILLAGER_MAX_RESTOCKS_PER_DAY`, `VILLAGER_HALF_DAY_TICKS`, `VILLAGER_REGENERATION_TICKS_ON_LEVEL_UP`.
+    - Added constants `WANDERING_TRADER_MAX_HEALTH`, `WANDERING_TRADER_BASE_MOVEMENT_SPEED`, `WANDERING_TRADER_FOLLOW_RANGE`, `WANDERING_TRADER_XP_REWARD`, `WANDERING_TRADER_DESPAWN_DELAY_TICKS`, `WANDERING_TRADER_DEFAULT_SPAWN_DELAY`, `WANDERING_TRADER_MIN_SPAWN_CHANCE`, `WANDERING_TRADER_MAX_SPAWN_CHANCE`, `WANDERING_TRADER_SPAWN_CHANCE_INCREASE`.
+    - Added unit test `test_villager_and_trader_parity`.
+  - Updated `crates/pumpkin-core/src/entity/passive/villager/data.rs`:
+    - Added `MIN_VILLAGER_LEVEL`, `MAX_VILLAGER_LEVEL`, `NEXT_LEVEL_XP_THRESHOLDS`.
+    - Implemented helper methods `can_level_up`, `get_min_xp_per_level`, `get_max_xp_per_level`.
+    - Added unit test `villager_data_level_and_threshold_parity`.
+  - Updated `VillagerEntity` in `crates/pumpkin-core/src/entity/passive/villager/mod.rs`:
+    - Initialized base attributes via `set_attribute_base` (Max Health, Movement Speed, Follow Range).
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { 0 }`.
+    - Implemented `should_increase_level(&self, current_xp: i32) -> bool`.
+    - Fixed `complete_trade` to evaluate level progression upon trading, increment level, update trades, apply Regeneration I effect for 200 ticks, and spawn `3..=6` (+5 on level up) XP orb at entity pos `+ (0, 0.5, 0)`.
+    - Added unit test `villager_parity_constants_and_level_progression`.
+  - Updated `WanderingTraderEntity` in `crates/pumpkin-core/src/entity/passive/wandering_trader.rs`:
+    - Converted attribute initialization to `set_attribute_base` (Max Health 20.0, Speed 0.5, Follow Range 16.0).
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { 0 }`.
+    - Added unit test `test_wandering_trader_parity_constants`.
+  - Updated `TraderLlamaEntity` in `crates/pumpkin-core/src/entity/passive/trader_llama.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { true }`.
+  - All 29 unit tests verified and passing across Villager, Wandering Trader, and Trader Llama suites.

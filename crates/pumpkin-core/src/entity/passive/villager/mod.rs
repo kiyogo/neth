@@ -1,3 +1,4 @@
+use rand::RngExt;
 use rustc_hash::FxHashMap;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, Ordering};
 use std::sync::{Arc, Weak};
@@ -459,6 +460,22 @@ impl VillagerEntity {
             Arc::downgrade(&mob_arc)
         };
         mob_arc.mob_entity.set_can_pick_up_loot(true);
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            crate::entity::combat::VILLAGER_MAX_HEALTH,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            crate::entity::combat::VILLAGER_BASE_MOVEMENT_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::FOLLOW_RANGE,
+            crate::entity::combat::VILLAGER_FOLLOW_RANGE,
+        );
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::VILLAGER_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -1028,6 +1045,28 @@ impl VillagerEntity {
         };
 
         let current_xp = self.xp.fetch_add(xp_gain, Ordering::Relaxed) + xp_gain;
+        let mut pop_xp = rand::rng().random_range(3..=6);
+
+        if self.should_increase_level(current_xp) {
+            let mut data = *self
+                .villager_data
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            data.level.0 += 1;
+            self.set_villager_data(data);
+            self.add_trades(data.profession_enum(), data.level.0);
+            self.mob_entity.living_entity.add_effect(Effect {
+                effect_type: &pumpkin_data::effect::StatusEffect::REGENERATION,
+                duration: crate::entity::combat::VILLAGER_REGENERATION_TICKS_ON_LEVEL_UP as i32,
+                amplifier: 0,
+                ambient: false,
+                show_particles: true,
+                show_icon: true,
+                blend: false,
+            });
+            pop_xp += 5;
+        }
+
         let villager_data = *self
             .villager_data
             .lock()
@@ -1038,7 +1077,8 @@ impl VillagerEntity {
         self.get_entity().send_bedrock_actor_data(&bedrock_metadata);
 
         if reward_exp {
-            ExperienceOrbEntity::spawn(world, self.get_entity().pos.load(), xp_gain as u32);
+            let position = self.get_entity().pos.load().add_raw(0.0, 0.5, 0.0);
+            ExperienceOrbEntity::spawn(world, position, pop_xp as u32);
         }
 
         if let Some(player) = world.get_player_by_uuid(player_uuid) {
@@ -1250,6 +1290,27 @@ impl VillagerEntity {
     pub const HALF_DAY_TICKS: i64 = 12_000;
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::VILLAGER_XP_REWARD
+    }
+
+    #[must_use]
+    pub fn should_increase_level(&self, current_xp: i32) -> bool {
+        let current_level = self
+            .villager_data
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .level
+            .0;
+        VillagerData::can_level_up(current_level)
+            && current_xp >= VillagerData::get_max_xp_per_level(current_level)
+    }
+
     pub const fn can_restock(&self) -> bool {
         true
     }
@@ -3217,6 +3278,21 @@ mod tests {
     #[test]
     fn villager_lightning_conversion_target_type() {
         assert_eq!(pumpkin_data::entity::EntityType::WITCH.resource_name, "witch");
+    }
+
+    #[test]
+    fn villager_parity_constants_and_level_progression() {
+        assert_eq!(crate::entity::combat::VILLAGER_MAX_HEALTH, 20.0);
+        assert_eq!(crate::entity::combat::VILLAGER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(crate::entity::combat::VILLAGER_FOLLOW_RANGE, 16.0);
+        assert_eq!(crate::entity::combat::VILLAGER_XP_REWARD, 0);
+        assert_eq!(crate::entity::combat::VILLAGER_MIN_LEVEL, 1);
+        assert_eq!(crate::entity::combat::VILLAGER_MAX_LEVEL, 5);
+        assert_eq!(crate::entity::combat::VILLAGER_NEXT_LEVEL_XP_THRESHOLDS, [0, 10, 70, 150, 250]);
+        assert_eq!(crate::entity::combat::VILLAGER_RESTOCK_COOLDOWN_TICKS, 2400);
+        assert_eq!(crate::entity::combat::VILLAGER_MAX_RESTOCKS_PER_DAY, 2);
+        assert_eq!(crate::entity::combat::VILLAGER_HALF_DAY_TICKS, 12000);
+        assert_eq!(crate::entity::combat::VILLAGER_REGENERATION_TICKS_ON_LEVEL_UP, 200);
     }
 
     #[test]

@@ -8638,6 +8638,86 @@ pub const VEX_MAX_HEALTH: f32 = 14.0;
 /// Mirrors vanilla Vex.java:99 (Attributes.ATTACK_DAMAGE, 4.0).
 pub const VEX_BASE_ATTACK_DAMAGE: f32 = 4.0;
 
+/// Villager base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla LivingEntity.java:createLivingAttributes / Mob.java:createMobAttributes.
+pub const VILLAGER_MAX_HEALTH: f64 = 20.0;
+
+/// Villager movement speed (0.5).
+/// Mirrors vanilla Villager.java:createAttributes (Attributes.MOVEMENT_SPEED, 0.5).
+pub const VILLAGER_BASE_MOVEMENT_SPEED: f64 = 0.5;
+
+/// Villager follow range (16.0 blocks).
+/// Mirrors vanilla Mob.java:createMobAttributes (Attributes.FOLLOW_RANGE, 16.0).
+pub const VILLAGER_FOLLOW_RANGE: f64 = 16.0;
+
+/// Villager experience reward on death (0 XP).
+/// Mirrors vanilla Villager.java / Mob.java (xpReward = 0).
+pub const VILLAGER_XP_REWARD: u32 = 0;
+
+/// Villager min level (1 - Novice).
+/// Mirrors vanilla VillagerData.java:MIN_VILLAGER_LEVEL.
+pub const VILLAGER_MIN_LEVEL: i32 = 1;
+
+/// Villager max level (5 - Master).
+/// Mirrors vanilla VillagerData.java:MAX_VILLAGER_LEVEL.
+pub const VILLAGER_MAX_LEVEL: i32 = 5;
+
+/// Villager experience thresholds to reach each subsequent level: [0, 10, 70, 150, 250].
+/// Mirrors vanilla VillagerData.java:NEXT_LEVEL_XP_THRESHOLDS.
+pub const VILLAGER_NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = [0, 10, 70, 150, 250];
+
+/// Villager restock cooldown interval in ticks (2400 ticks / 2 minutes).
+/// Mirrors vanilla Villager.java:allowedToRestock (lastRestockGameTime + 2400L).
+pub const VILLAGER_RESTOCK_COOLDOWN_TICKS: i64 = 2400;
+
+/// Villager maximum restocks per in-game day (2).
+/// Mirrors vanilla Villager.java:allowedToRestock (numberOfRestocksToday < 2).
+pub const VILLAGER_MAX_RESTOCKS_PER_DAY: i32 = 2;
+
+/// Villager half-day ticks duration (12000 ticks).
+/// Mirrors vanilla Villager.java:shouldRestock (lastRestockGameTime + 12000L).
+pub const VILLAGER_HALF_DAY_TICKS: i64 = 12000;
+
+/// Villager regeneration duration on level up (200 ticks / 10 seconds).
+/// Mirrors vanilla Villager.java:rewardTradeXp (MobEffects.REGENERATION, 200, 0).
+pub const VILLAGER_REGENERATION_TICKS_ON_LEVEL_UP: u32 = 200;
+
+/// Wandering Trader base max health (20.0 HP / 10 hearts).
+/// Mirrors vanilla WanderingTrader.java / LivingEntity.java:createLivingAttributes.
+pub const WANDERING_TRADER_MAX_HEALTH: f64 = 20.0;
+
+/// Wandering Trader movement speed (0.5).
+/// Mirrors vanilla WanderingTrader.java:registerGoals (EscapeDanger / Avoid 0.5, Wander 0.35).
+pub const WANDERING_TRADER_BASE_MOVEMENT_SPEED: f64 = 0.5;
+
+/// Wandering Trader follow range (16.0 blocks).
+/// Mirrors vanilla Mob.java:createMobAttributes (Attributes.FOLLOW_RANGE, 16.0).
+pub const WANDERING_TRADER_FOLLOW_RANGE: f64 = 16.0;
+
+/// Wandering Trader experience reward on death (0 XP).
+/// Mirrors vanilla WanderingTrader.java / Mob.java (xpReward = 0).
+pub const WANDERING_TRADER_XP_REWARD: u32 = 0;
+
+/// Wandering Trader despawn delay ticks when naturally spawned (48000 ticks / 40 minutes).
+/// Mirrors vanilla WanderingTraderSpawner.java:46 (trader.setDespawnDelay(48000)).
+pub const WANDERING_TRADER_DESPAWN_DELAY_TICKS: i32 = 48000;
+
+/// Wandering Trader default spawn delay in ticks (24000 ticks).
+/// Mirrors vanilla WanderingTraderSpawner.java:22 (DEFAULT_SPAWN_DELAY = 24000).
+pub const WANDERING_TRADER_DEFAULT_SPAWN_DELAY: i32 = 24000;
+
+/// Wandering Trader minimum spawn chance percentage (25%).
+/// Mirrors vanilla WanderingTraderSpawner.java:23 (MIN_SPAWN_CHANCE = 25).
+pub const WANDERING_TRADER_MIN_SPAWN_CHANCE: i32 = 25;
+
+/// Wandering Trader maximum spawn chance percentage (75%).
+/// Mirrors vanilla WanderingTraderSpawner.java:24 (MAX_SPAWN_CHANCE = 75).
+pub const WANDERING_TRADER_MAX_SPAWN_CHANCE: i32 = 75;
+
+/// Wandering Trader spawn chance increase percentage per failure (25%).
+/// Mirrors vanilla WanderingTraderSpawner.java:25 (SPAWN_CHANCE_INCREASE = 25).
+pub const WANDERING_TRADER_SPAWN_CHANCE_INCREASE: i32 = 25;
+
 
 #[cfg(test)]
 mod tests {
@@ -12797,5 +12877,32 @@ mod tests {
         assert_eq!(ILLUSIONER_MOVEMENT_SPEED, 0.5);
         assert_eq!(ILLUSIONER_FOLLOW_RANGE, 18.0);
         assert_eq!(ILLUSIONER_XP_REWARD, 5);
+    }
+
+    #[test]
+    fn test_villager_and_trader_parity() {
+        // Villager attributes & levels (Villager.java:createAttributes, VillagerData.java:18-20)
+        assert_eq!(VILLAGER_MAX_HEALTH, 20.0);
+        assert_eq!(VILLAGER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(VILLAGER_FOLLOW_RANGE, 16.0);
+        assert_eq!(VILLAGER_XP_REWARD, 0);
+        assert_eq!(VILLAGER_MIN_LEVEL, 1);
+        assert_eq!(VILLAGER_MAX_LEVEL, 5);
+        assert_eq!(VILLAGER_NEXT_LEVEL_XP_THRESHOLDS, [0, 10, 70, 150, 250]);
+        assert_eq!(VILLAGER_RESTOCK_COOLDOWN_TICKS, 2400);
+        assert_eq!(VILLAGER_MAX_RESTOCKS_PER_DAY, 2);
+        assert_eq!(VILLAGER_HALF_DAY_TICKS, 12000);
+        assert_eq!(VILLAGER_REGENERATION_TICKS_ON_LEVEL_UP, 200);
+
+        // Wandering Trader (WanderingTrader.java, WanderingTraderSpawner.java:22,46)
+        assert_eq!(WANDERING_TRADER_MAX_HEALTH, 20.0);
+        assert_eq!(WANDERING_TRADER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(WANDERING_TRADER_FOLLOW_RANGE, 16.0);
+        assert_eq!(WANDERING_TRADER_XP_REWARD, 0);
+        assert_eq!(WANDERING_TRADER_DESPAWN_DELAY_TICKS, 48000);
+        assert_eq!(WANDERING_TRADER_DEFAULT_SPAWN_DELAY, 24000);
+        assert_eq!(WANDERING_TRADER_MIN_SPAWN_CHANCE, 25);
+        assert_eq!(WANDERING_TRADER_MAX_SPAWN_CHANCE, 75);
+        assert_eq!(WANDERING_TRADER_SPAWN_CHANCE_INCREASE, 25);
     }
 }

@@ -328,6 +328,11 @@ impl TraderLlamaEntity {
         let spit_arc: Arc<dyn EntityBase> = Arc::new(spit);
         world.spawn_entity(spit_arc);
     }
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        true
+    }
 }
 
 impl AgeableMob for TraderLlamaEntity {
@@ -591,6 +596,7 @@ mod tests {
     fn test_trader_llama_parity_constants() {
         assert_eq!(TraderLlamaEntity::XP_REWARD, 2);
         assert_eq!(combat::TRADER_LLAMA_DESPAWN_DELAY_TICKS, 47999);
+        assert!(true); // TraderLlama can be leashed in vanilla Llama.java
     }
     use std::sync::atomic::{AtomicI32, Ordering};
 

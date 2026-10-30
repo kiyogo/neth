@@ -166,24 +166,23 @@ impl WanderingTraderEntity {
         };
         let trader_weak = Arc::downgrade(&mob_arc);
 
-        // Vanilla WanderingTrader (AbstractVillager/Villager): MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.5
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 20.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.5;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(20.0);
+        // Vanilla WanderingTrader (AbstractVillager/Villager): MAX_HEALTH = 20.0, MOVEMENT_SPEED = 0.5, FOLLOW_RANGE = 16.0
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            crate::entity::combat::WANDERING_TRADER_MAX_HEALTH,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            crate::entity::combat::WANDERING_TRADER_BASE_MOVEMENT_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::FOLLOW_RANGE,
+            crate::entity::combat::WANDERING_TRADER_FOLLOW_RANGE,
+        );
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::WANDERING_TRADER_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -297,6 +296,15 @@ impl WanderingTraderEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::WANDERING_TRADER_XP_REWARD
+    }
+
     pub fn get_despawn_delay(&self) -> i32 {
         self.despawn_delay.load(Ordering::Relaxed)
     }
@@ -1346,6 +1354,19 @@ impl Goal for WanderingTraderUseItemGoal {
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_wandering_trader_parity_constants() {
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_MAX_HEALTH, 20.0);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_BASE_MOVEMENT_SPEED, 0.5);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_FOLLOW_RANGE, 16.0);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_XP_REWARD, 0);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_DESPAWN_DELAY_TICKS, 48000);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_DEFAULT_SPAWN_DELAY, 24000);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_MIN_SPAWN_CHANCE, 25);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_MAX_SPAWN_CHANCE, 75);
+        assert_eq!(crate::entity::combat::WANDERING_TRADER_SPAWN_CHANCE_INCREASE, 25);
+    }
 
     #[test]
     fn default_wandering_trader_despawn_delay_is_zero() {

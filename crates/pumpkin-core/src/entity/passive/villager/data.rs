@@ -139,6 +139,32 @@ mod tests {
         let decayed_small = small_val - GossipType::Trading.decay_per_transfer();
         assert!(decayed_small < 2);
     }
+
+    #[test]
+    fn villager_data_level_and_threshold_parity() {
+        use super::VillagerData;
+        assert_eq!(VillagerData::MIN_VILLAGER_LEVEL, 1);
+        assert_eq!(VillagerData::MAX_VILLAGER_LEVEL, 5);
+        assert_eq!(VillagerData::NEXT_LEVEL_XP_THRESHOLDS, [0, 10, 70, 150, 250]);
+
+        assert!(VillagerData::can_level_up(1));
+        assert!(VillagerData::can_level_up(2));
+        assert!(VillagerData::can_level_up(3));
+        assert!(VillagerData::can_level_up(4));
+        assert!(!VillagerData::can_level_up(5));
+        assert!(!VillagerData::can_level_up(0));
+
+        assert_eq!(VillagerData::get_min_xp_per_level(1), 0);
+        assert_eq!(VillagerData::get_max_xp_per_level(1), 10);
+        assert_eq!(VillagerData::get_min_xp_per_level(2), 10);
+        assert_eq!(VillagerData::get_max_xp_per_level(2), 70);
+        assert_eq!(VillagerData::get_min_xp_per_level(3), 70);
+        assert_eq!(VillagerData::get_max_xp_per_level(3), 150);
+        assert_eq!(VillagerData::get_min_xp_per_level(4), 150);
+        assert_eq!(VillagerData::get_max_xp_per_level(4), 250);
+        assert_eq!(VillagerData::get_min_xp_per_level(5), 0);
+        assert_eq!(VillagerData::get_max_xp_per_level(5), 0);
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -179,5 +205,32 @@ impl VillagerData {
     #[must_use]
     pub fn profession_enum(&self) -> VillagerProfession {
         VillagerProfession::from_i32(self.profession.0).unwrap_or(VillagerProfession::None)
+    }
+
+    pub const MIN_VILLAGER_LEVEL: i32 = crate::entity::combat::VILLAGER_MIN_LEVEL;
+    pub const MAX_VILLAGER_LEVEL: i32 = crate::entity::combat::VILLAGER_MAX_LEVEL;
+    pub const NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = crate::entity::combat::VILLAGER_NEXT_LEVEL_XP_THRESHOLDS;
+
+    #[must_use]
+    pub const fn can_level_up(current_level: i32) -> bool {
+        current_level >= Self::MIN_VILLAGER_LEVEL && current_level < Self::MAX_VILLAGER_LEVEL
+    }
+
+    #[must_use]
+    pub const fn get_min_xp_per_level(level: i32) -> i32 {
+        if Self::can_level_up(level) {
+            Self::NEXT_LEVEL_XP_THRESHOLDS[(level - 1) as usize]
+        } else {
+            0
+        }
+    }
+
+    #[must_use]
+    pub const fn get_max_xp_per_level(level: i32) -> i32 {
+        if Self::can_level_up(level) {
+            Self::NEXT_LEVEL_XP_THRESHOLDS[level as usize]
+        } else {
+            0
+        }
     }
 }
