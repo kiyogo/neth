@@ -114,6 +114,16 @@ impl BlockEntity for EndGatewayBlockEntity {
     }
 }
 
+#[must_use]
+pub fn calculate_gateway_spawn_percent(age: i64, a: f32) -> f32 {
+    (((age as f32) + a) / (EndGatewayBlockEntity::SPAWN_TIME as f32)).clamp(0.0, 1.0)
+}
+
+#[must_use]
+pub fn calculate_gateway_cooldown_percent(cooldown: i32, a: f32) -> f32 {
+    1.0 - (((cooldown as f32) - a) / (EndGatewayBlockEntity::COOLDOWN_TIME as f32)).clamp(0.0, 1.0)
+}
+
 impl EndGatewayBlockEntity {
     pub const ID: &'static str = "minecraft:end_gateway";
     pub const SPAWN_TIME: i64 = 200;
@@ -121,6 +131,8 @@ impl EndGatewayBlockEntity {
     pub const ATTENTION_INTERVAL: i64 = 2400;
     pub const EVENT_COOLDOWN: u8 = 1;
     pub const GATEWAY_HEIGHT_ABOVE_SURFACE: i32 = 10;
+    pub const DEFAULT_AGE: i64 = 0;
+    pub const DEFAULT_EXACT_TELEPORT: bool = false;
 
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {

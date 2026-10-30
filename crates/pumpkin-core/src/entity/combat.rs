@@ -14682,6 +14682,32 @@ mod tests {
     }
 
     #[test]
+    fn test_end_gateway_timing_and_durations_parity() {
+        use crate::block::entities::end_gateway::{
+            EndGatewayBlockEntity, calculate_gateway_spawn_percent, calculate_gateway_cooldown_percent,
+        };
+
+        assert_eq!(EndGatewayBlockEntity::SPAWN_TIME, 200);
+        assert_eq!(EndGatewayBlockEntity::COOLDOWN_TIME, 40);
+        assert_eq!(EndGatewayBlockEntity::ATTENTION_INTERVAL, 2400);
+        assert_eq!(EndGatewayBlockEntity::EVENT_COOLDOWN, 1);
+        assert_eq!(EndGatewayBlockEntity::GATEWAY_HEIGHT_ABOVE_SURFACE, 10);
+        assert_eq!(EndGatewayBlockEntity::DEFAULT_AGE, 0);
+        assert_eq!(EndGatewayBlockEntity::DEFAULT_EXACT_TELEPORT, false);
+
+        // Spawn percent:
+        assert_eq!(calculate_gateway_spawn_percent(0, 0.0), 0.0);
+        assert_eq!(calculate_gateway_spawn_percent(100, 0.0), 0.5);
+        assert_eq!(calculate_gateway_spawn_percent(200, 0.0), 1.0);
+        assert_eq!(calculate_gateway_spawn_percent(250, 0.0), 1.0);
+
+        // Cooldown percent:
+        assert_eq!(calculate_gateway_cooldown_percent(40, 0.0), 0.0);
+        assert_eq!(calculate_gateway_cooldown_percent(20, 0.0), 0.5);
+        assert_eq!(calculate_gateway_cooldown_percent(0, 0.0), 1.0);
+    }
+
+    #[test]
     fn test_enchanting_table_bookshelves_and_cost_parity() {
         use crate::block::blocks::enchanting_table::{
             EnchantingTableBlock, calculate_enchantment_cost,

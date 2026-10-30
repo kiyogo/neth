@@ -6437,3 +6437,27 @@ otDir * 0.4F, max = 0.2F).
     - Exported constant MAX_BOOKSHELVES = 15.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_enchanting_table_bookshelves_and_cost_parity.
+
+### Gap 260: End Gateway Teleport Cooldown, Beam Generation, Exact Teleport Target & Exit Gateway Parity
+- **Vanilla Reference**:
+  - EndGatewayBlock.java:43-73:
+    - Handles entities colliding with end gateway blocks (canUsePortal(false) and !isCoolingDown()).
+    - Teleports entity with portal ticket, preserving delta and rotation.
+    - Particles: getParticleAmount() renders portal particles across visible faces.
+  - TheEndGatewayBlockEntity.java:30-41, 64-118, 129-150:
+    - Constants:
+      - SPAWN_TIME = 200: 200 ticks beam animation when gateway spawns.
+      - COOLDOWN_TIME = 40: 40 ticks (2 seconds) teleport cooldown.
+      - ATTENTION_INTERVAL = 2400: 2400 ticks (2 minutes) periodic beam pulse / cooldown trigger.
+      - EVENT_COOLDOWN = 1: block event ID to trigger cooldown and purple beam animation.
+      - GATEWAY_HEIGHT_ABOVE_SURFACE = 10: Spawns 10 blocks above surface on outer islands.
+      - DEFAULT_AGE = 0L, DEFAULT_EXACT_TELEPORT = false.
+    - Percentage formulas:
+      - getSpawnPercent(a) = clamp((age + a) / 200.0, 0.0, 1.0).
+      - getCooldownPercent(a) = 1.0 - clamp((cooldown - a) / 40.0, 0.0, 1.0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/entities/end_gateway.rs:
+    - Exported constants DEFAULT_AGE (0) and DEFAULT_EXACT_TELEPORT (false).
+    - Exported percentage calculations calculate_gateway_spawn_percent(age, a) and calculate_gateway_cooldown_percent(cooldown, a).
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_end_gateway_timing_and_durations_parity.
