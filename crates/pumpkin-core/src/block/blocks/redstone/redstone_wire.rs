@@ -27,13 +27,64 @@ type RedstoneWireProperties = RedstoneWireLikeProperties;
 #[pumpkin_block("minecraft:redstone_wire")]
 pub struct RedstoneWireBlock;
 
+impl RedstoneWireBlock {
+    pub const MIN_POWER: u8 = 0;
+    pub const MAX_POWER: u8 = 15;
+    pub const PARTICLE_DENSITY: f32 = 0.2;
+    pub const SIDE_OF_BLOCK: f32 = 0.4375;
+
+    pub const COLORS: [i32; 16] = [
+        -11796480, // 0: 0xFF4C0000
+        -9437184,  // 1: 0xFF700000
+        -8781824,  // 2: 0xFF7A0000
+        -8126464,  // 3: 0xFF840000
+        -7471104,  // 4: 0xFF8E0000
+        -6750208,  // 5: 0xFF990000
+        -6094848,  // 6: 0xFFA30000
+        -5439488,  // 7: 0xFFAD0000
+        -4784128,  // 8: 0xFFB70000
+        -4128768,  // 9: 0xFFC10000
+        -3407872,  // 10: 0xFFCC0000
+        -2752512,  // 11: 0xFFD60000
+        -2097152,  // 12: 0xFFE00000
+        -1440256,  // 13: 0xFFEA0600
+        -779520,   // 14: 0xFFF41B00
+        -52736,    // 15: 0xFFFF3200
+    ];
+
+    #[must_use]
+    pub const fn get_color_for_power(power: u8) -> i32 {
+        let index = if (power as usize) > 15 { 15 } else { power as usize };
+        Self::COLORS[index]
+    }
+
+    #[must_use]
+    pub const fn calculate_wire_dropoff(incoming_wire_signal: u8) -> u8 {
+        incoming_wire_signal.saturating_sub(1)
+    }
+
+    #[must_use]
+    pub const fn calculate_target_strength(block_signal: u8, incoming_wire_signal: u8) -> u8 {
+        if block_signal >= Self::MAX_POWER {
+            Self::MAX_POWER
+        } else {
+            let dropped = Self::calculate_wire_dropoff(incoming_wire_signal);
+            if block_signal > dropped {
+                block_signal
+            } else {
+                dropped
+            }
+        }
+    }
+}
+
 impl BlockBehaviour for RedstoneWireBlock {
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         can_survive(args.block_accessor, args.position)
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
-        let initial_state = make_cross(0);
+        let initial_state = make_cross(Self::MIN_POWER);
         let wire = get_connection_state(args.world, initial_state, args.position);
         wire.to_state_id(args.block)
     }
@@ -185,7 +236,7 @@ impl BlockBehaviour for RedstoneWireBlock {
 
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let wire = RedstoneWireProperties::from_state_id(args.state.id);
-        if wire.power == 0 || args.direction == BlockDirection::Down {
+        if wire.power == Self::MIN_POWER || args.direction == BlockDirection::Down {
             return 0;
         }
         if args.direction == BlockDirection::Up {
@@ -201,7 +252,7 @@ impl BlockBehaviour for RedstoneWireBlock {
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let wire = RedstoneWireProperties::from_state_id(args.state.id);
-        if wire.power == 0 || args.direction != BlockDirection::Up {
+        if wire.power == Self::MIN_POWER || args.direction != BlockDirection::Up {
             return 0;
         }
         wire.power
@@ -297,8 +348,8 @@ pub fn update_power_strength(world: &Arc<World>, pos: &BlockPos) {
 
 fn calculate_target_strength(world: &World, pos: &BlockPos) -> u8 {
     let block_signal = get_block_signal(world, pos);
-    if block_signal == 15 {
-        return 15;
+    if block_signal == RedstoneWireBlock::MAX_POWER {
+        return RedstoneWireBlock::MAX_POWER;
     }
     let wire_signal = get_incoming_wire_signal(world, pos);
     block_signal.max(wire_signal)
@@ -311,8 +362,8 @@ fn get_block_signal(world: &World, pos: &BlockPos) -> u8 {
         let (neighbor_block, neighbor_state) = world.get_block_and_state(&neighbor_pos);
         let signal =
             get_redstone_power_no_dust(neighbor_block, neighbor_state, world, neighbor_pos, side);
-        if signal == 15 {
-            return 15;
+        if signal == RedstoneWireBlock::MAX_POWER {
+            return RedstoneWireBlock::MAX_POWER;
         }
         max_signal = max_signal.max(signal);
     }
@@ -353,7 +404,7 @@ fn get_incoming_wire_signal(world: &World, pos: &BlockPos) -> u8 {
         }
     }
 
-    max_wire_signal.saturating_sub(1)
+    RedstoneWireBlock::calculate_wire_dropoff(max_wire_signal)
 }
 
 pub fn update_neighbors_at(world: &Arc<World>, pos: &BlockPos, source_block: &Block) {

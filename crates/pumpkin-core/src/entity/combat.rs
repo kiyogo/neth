@@ -15283,4 +15283,38 @@ mod tests {
         assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 7, true), 8);
     }
 
+
+    #[test]
+    fn test_redstone_wire_constants_colors_and_signal_parity() {
+        use crate::block::blocks::redstone::redstone_wire::RedstoneWireBlock;
+
+        assert_eq!(RedstoneWireBlock::MIN_POWER, 0);
+        assert_eq!(RedstoneWireBlock::MAX_POWER, 15);
+        assert_eq!(RedstoneWireBlock::PARTICLE_DENSITY, 0.2);
+        assert_eq!(RedstoneWireBlock::SIDE_OF_BLOCK, 0.4375);
+
+        // Power colors
+        assert_eq!(RedstoneWireBlock::COLORS.len(), 16);
+        assert_eq!(RedstoneWireBlock::get_color_for_power(0), -11796480); // 0xFF4C0000
+        assert_eq!(RedstoneWireBlock::get_color_for_power(1), -9437184);  // 0xFF700000
+        assert_eq!(RedstoneWireBlock::get_color_for_power(14), -779520);  // 0xFFF41B00
+        assert_eq!(RedstoneWireBlock::get_color_for_power(15), -52736);   // 0xFFFF3200
+        // Clamping above 15
+        assert_eq!(RedstoneWireBlock::get_color_for_power(20), -52736);
+
+        // Wire signal dropoff (attenuation by 1)
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(14), 13);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(1), 0);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(0), 0);
+
+        // Target strength calculation
+        // Direct block signal 15 bypasses wire calculation
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(15, 0), 15);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(15, 15), 15);
+        // Wire signal with dropoff
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(0, 15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(8, 12), 11);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(10, 8), 10);
+    }
 }

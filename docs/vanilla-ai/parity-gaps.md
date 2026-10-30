@@ -6805,3 +6805,23 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Standardized schedule tick calls and sound playback to use named constants.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_comparator_modes_sound_and_delay_parity`.
+
+### Gap 280: Redstone Wire Power Attenuation, Dropoff (15 to 0), Wire Colors & Signal Parity
+- **Vanilla Reference**:
+  - RedStoneWireBlock.java:48-61, 400-423:
+    - Power property: `POWER` ranges 0..=15 (`MIN_POWER = 0`, `MAX_POWER = 15`).
+    - Wire color calculation: Array of 16 ARGB colors corresponding to powers 0..15 generated via formula:
+      `red = power * 0.6F + (power > 0 ? 0.4F : 0.3F)`,
+      `green = clamp(power^2 * 0.7F - 0.5F, 0..1)`,
+      `blue = clamp(power^2 * 0.6F - 0.7F, 0..1)`.
+      Colors range from dark red `0xFF4C0000` (-11796480) at power 0 to bright red-orange `0xFFFF3200` (-52736) at power 15.
+    - Particle density: `PARTICLE_DENSITY = 0.2F`, offset `SIDE_OF_BLOCK = 0.4375F`.
+    - Power dropoff: Each wire block attenuates incoming wire signal by 1 (`saturating_sub(1)`).
+    - Target strength: If adjacent solid signal is 15, wire directly adopts 15; otherwise `max(blockSignal, incomingWireSignal - 1)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/redstone_wire.rs`:
+    - Exported constants `MIN_POWER = 0`, `MAX_POWER = 15`, `PARTICLE_DENSITY = 0.2`, `SIDE_OF_BLOCK = 0.4375`, and `COLORS: [i32; 16]`.
+    - Exported helpers `get_color_for_power(power)`, `calculate_wire_dropoff(incoming_wire_signal)`, and `calculate_target_strength(block_signal, incoming_wire_signal)`.
+    - Refactored wire update routines and signal methods to use named constants and dropoff helpers.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_redstone_wire_constants_colors_and_signal_parity`.
