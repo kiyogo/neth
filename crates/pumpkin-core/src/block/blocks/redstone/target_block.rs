@@ -40,6 +40,35 @@ impl TargetBlock {
     pub const MIN_POWER: u8 = 1;
     pub const MAX_POWER: u8 = 15;
     pub const BULLSEYE_MIN_DISTANCE: f64 = 30.0;
+
+    #[must_use]
+    pub fn is_arrow_projectile(entity_type: &EntityType) -> bool {
+        entity_type == &EntityType::ARROW
+            || entity_type == &EntityType::SPECTRAL_ARROW
+            || entity_type == &EntityType::TRIDENT
+    }
+
+    #[must_use]
+    pub fn get_activation_ticks(entity_type: &EntityType) -> u32 {
+        if Self::is_arrow_projectile(entity_type) {
+            Self::ACTIVATION_TICKS_ARROWS
+        } else {
+            Self::ACTIVATION_TICKS_OTHER
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_hit_power(
+        hit_pos: &Vector3<f64>,
+        block_pos: &pumpkin_util::math::position::BlockPos,
+    ) -> u8 {
+        get_redstone_strength(hit_pos, block_pos)
+    }
+
+    #[must_use]
+    pub const fn emits_strong_power() -> bool {
+        false
+    }
 }
 
 impl BlockBehaviour for TargetBlock {
@@ -52,13 +81,12 @@ impl BlockBehaviour for TargetBlock {
         props.r#power
     }
 
-    fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
-        let props = TargetProperties::from_state_id(args.state.id);
-        props.r#power
+    fn get_strong_redstone_power(&self, _args: GetRedstonePowerArgs<'_>) -> u8 {
+        0
     }
 
     fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
-        let power = get_redstone_strength(args.hit_pos, args.position);
+        let power = Self::calculate_hit_power(args.hit_pos, args.position);
         if let Some(owner_id) = args.projectile.get_owner_id()
             && let Some(player) = args.world.get_player_by_id(owner_id)
         {
@@ -71,7 +99,7 @@ impl BlockBehaviour for TargetBlock {
                 let player_pos = player.position();
                 let dx = player_pos.x - args.hit_pos.x;
                 let dz = player_pos.z - args.hit_pos.z;
-                if dx.hypot(dz) >= 30.0 {
+                if dx.hypot(dz) >= Self::BULLSEYE_MIN_DISTANCE {
                     player.trigger_advancement(
                         crate::entity::player::advancement::trigger::AdvancementTrigger::Bullseye,
                     );
@@ -89,14 +117,7 @@ impl BlockBehaviour for TargetBlock {
                 props.to_state_id(args.block),
                 BlockFlags::NOTIFY_ALL,
             );
-            let entity_type = args.projectile.get_entity().entity_type;
-            let delay = if entity_type == &EntityType::ARROW
-                || entity_type == &EntityType::SPECTRAL_ARROW
-            {
-                Self::ACTIVATION_TICKS_ARROWS
-            } else {
-                Self::ACTIVATION_TICKS_OTHER
-            };
+            let delay = Self::get_activation_ticks(args.projectile.get_entity().entity_type);
             args.world
                 .schedule_block_tick(args.block, *args.position, delay, TickPriority::Normal);
         }

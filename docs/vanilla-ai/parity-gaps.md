@@ -6855,3 +6855,24 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants `MIN_POWER = 0` and `MAX_POWER = 15`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_trapped_chest_viewer_count_signal_and_direction_parity`.
+
+### Gap 283: Target Block Hit Precision, Projectile Activation Duration & Strong Power Parity
+- **Vanilla Reference**:
+  - TargetBlock.java:23-55, 75-90:
+    - Activation durations:
+      - Arrows & Tridents (`AbstractArrow`): `ACTIVATION_TICKS_ARROWS = 20` ticks (1.0 second).
+      - Other projectiles (snowballs, eggs, ender pearls): `ACTIVATION_TICKS_OTHER = 8` ticks (0.4 seconds).
+    - Signal source & strength:
+      - `isSignalSource = true`.
+      - Hit strength: ranges 1..=15 (`MIN_POWER = 1`, `MAX_POWER = 15`). Off-state is 0.
+      - Strong power: `getDirectSignal` is not overridden in `TargetBlock.java` (defaults to 0 in `BlockBehaviour.java`). Target blocks emit weak redstone power only, never strong power.
+    - Bullseye criteria: Advancements require hit distance from player >= 30.0 blocks (`BULLSEYE_MIN_DISTANCE = 30.0`) and power = 15.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`:
+    - Added support for `EntityType::TRIDENT` in projectile activation duration check matching vanilla `AbstractArrow` hierarchy (20 ticks vs 8 ticks).
+    - Fixed `get_strong_redstone_power` to return `0` instead of weak power `props.r#power`.
+    - Exported constants `ACTIVATION_TICKS_ARROWS = 20`, `ACTIVATION_TICKS_OTHER = 8`, `MIN_POWER = 1`, `MAX_POWER = 15`, and `BULLSEYE_MIN_DISTANCE = 30.0`.
+    - Exported helpers `is_arrow_projectile(entity_type)`, `get_activation_ticks(entity_type)`, `calculate_hit_power(hit_pos, block_pos)`, and `emits_strong_power() -> bool`.
+    - Refactored `on_projectile_hit` to use exported helpers and named constants.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_target_block_timing_precision_and_power_parity`.

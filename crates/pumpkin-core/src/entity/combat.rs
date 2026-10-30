@@ -15359,4 +15359,42 @@ mod tests {
         assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::East));
         assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::West));
     }
+
+    #[test]
+    fn test_target_block_timing_precision_and_power_parity() {
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_util::math::position::BlockPos;
+        use pumpkin_util::math::vector3::Vector3;
+
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert!(!TargetBlock::emits_strong_power());
+
+        // Activation ticks parity (arrows and tridents get 20 ticks, other projectiles get 8 ticks)
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SPECTRAL_ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::TRIDENT), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SNOWBALL), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::EGG), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::ENDER_PEARL), 8);
+
+        // Power calculation from hit coordinates:
+        let block_pos = BlockPos::new(10, 64, -20);
+
+        // Exact bullseye center on North face (x=10.5, y=64.5, z=-20.0) -> distance = 0.0 -> power = 15
+        let center_hit = Vector3::new(10.5, 64.5, -20.0);
+        assert_eq!(TargetBlock::calculate_hit_power(&center_hit, &block_pos), 15);
+
+        // Slightly off center (x=10.5, y=64.8, z=-20.0) -> dy=0.3 -> distance = 0.3 -> factor = (0.5-0.3)/0.5 = 0.4 -> ceil(15*0.4) = 6
+        let off_center_hit = Vector3::new(10.5, 64.8, -20.0);
+        assert_eq!(TargetBlock::calculate_hit_power(&off_center_hit, &block_pos), 7);
+
+        // Edge hit on North face (x=10.99, y=64.5, z=-20.0) -> dx=0.49 -> factor = (0.5-0.49)/0.5 = 0.02 -> power = 1
+        let edge_hit = Vector3::new(10.99, 64.5, -20.0);
+        assert_eq!(TargetBlock::calculate_hit_power(&edge_hit, &block_pos), 1);
+    }
 }
