@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, AtomicI32, Ordering},
@@ -47,6 +48,8 @@ pub struct PolarBearEntity {
 }
 
 impl PolarBearEntity {
+    pub const XP_REWARD: u32 = combat::POLAR_BEAR_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let polar_bear = Self {
@@ -64,28 +67,10 @@ impl PolarBearEntity {
 
         // Vanilla PolarBear: MAX_HEALTH = 30.0, FOLLOW_RANGE = 20.0, MOVEMENT_SPEED = 0.25, ATTACK_DAMAGE = 6.0
         {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 30.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 20.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.25;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 6.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
+            mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MAX_HEALTH, combat::POLAR_BEAR_MAX_HEALTH);
+            mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::FOLLOW_RANGE, combat::POLAR_BEAR_FOLLOW_RANGE);
+            mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MOVEMENT_SPEED, combat::POLAR_BEAR_BASE_MOVEMENT_SPEED);
+            mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::POLAR_BEAR_BASE_ATTACK_DAMAGE);
         }
         mob_arc.mob_entity.living_entity.set_health(30.0);
 
@@ -203,7 +188,7 @@ impl PolarBearEntity {
                 1.0,
                 1.0,
             );
-            self.warning_sound_ticks.store(40, Ordering::Relaxed);
+            self.warning_sound_ticks.store(combat::POLAR_BEAR_WARNING_SOUND_TICKS, Ordering::Relaxed);
         }
     }
 }
@@ -227,6 +212,14 @@ impl NeutralMob for PolarBearEntity {
 }
 
 impl Mob for PolarBearEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -340,6 +333,22 @@ impl CustomSound for PolarBearEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::entity::combat;
+
+    #[test]
+    fn test_polar_bear_parity_constants() {
+        assert_eq!(PolarBearEntity::XP_REWARD, 2);
+        assert_eq!(combat::POLAR_BEAR_MAX_HEALTH, 30.0);
+        assert_eq!(combat::POLAR_BEAR_FOLLOW_RANGE, 20.0);
+        assert_eq!(combat::POLAR_BEAR_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(combat::POLAR_BEAR_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(combat::POLAR_BEAR_STAND_ANIMATION_TICKS, 6.0);
+        assert_eq!(combat::POLAR_BEAR_WARNING_SOUND_TICKS, 40);
+        assert_eq!(combat::POLAR_BEAR_PERSISTENT_ANGER_MIN_TICKS, 400);
+        assert_eq!(combat::POLAR_BEAR_PERSISTENT_ANGER_MAX_TICKS, 780);
+    }
+
     #[test]
     fn test_polar_bear_warning_and_standing_conditions() {
         // Vanilla PolarBear.PolarBearMeleeAttackGoal:

@@ -62,6 +62,8 @@ pub struct OcelotEntity {
 }
 
 impl OcelotEntity {
+    pub const XP_REWARD: u32 = combat::OCELOT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let ocelot = Self {
@@ -78,27 +80,13 @@ impl OcelotEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Arc::downgrade(&mob_arc));
 
         // Vanilla Ocelot attributes: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 3.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MAX_HEALTH, combat::OCELOT_MAX_HEALTH);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MOVEMENT_SPEED, combat::OCELOT_BASE_MOVEMENT_SPEED);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::OCELOT_BASE_ATTACK_DAMAGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(combat::OCELOT_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -249,6 +237,14 @@ impl Animal for OcelotEntity {
 }
 
 impl Mob for OcelotEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -366,11 +362,11 @@ impl Mob for OcelotEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .is_running::<TemptGoal>();
 
-        if tempted && !self.is_trusting() && is_food && dist_sqr < 9.0 {
+        if tempted && !self.is_trusting() && is_food && dist_sqr < combat::OCELOT_TRUST_FEED_DISTANCE_SQR {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
 
             let mut rng = rand::rng();
-            if combat::calculate_ocelot_trust_success(rng.random_range(0..3)) {
+            if combat::calculate_ocelot_trust_success(rng.random_range(0..combat::OCELOT_TRUST_CHANCE_IN_THREE)) {
                 self.set_trusting(true);
                 self.get_entity().world.load().send_entity_status(
                     self.get_entity(),
@@ -441,5 +437,23 @@ mod tests {
         assert!(combat::should_ocelot_avoid_player(false));
         assert!(!combat::should_ocelot_avoid_player(true));
     }
+
+    #[test]
+    fn test_ocelot_parity_constants() {
+        assert_eq!(OcelotEntity::XP_REWARD, 1);
+        assert_eq!(combat::OCELOT_MAX_HEALTH, 10.0);
+        assert_eq!(combat::OCELOT_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::OCELOT_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(combat::OCELOT_CROUCH_SPEED_MOD, 0.6);
+        assert_eq!(combat::OCELOT_WALK_SPEED_MOD, 0.8);
+        assert_eq!(combat::OCELOT_SPRINT_SPEED_MOD, 1.33);
+        assert_eq!(combat::OCELOT_TRUST_CHANCE_IN_THREE, 3);
+        assert_eq!(combat::OCELOT_TRUST_FEED_DISTANCE_SQR, 9.0);
+        assert_eq!(combat::OCELOT_AMBIENT_INTERVAL, 900);
+        assert_eq!(combat::OCELOT_AVOID_PLAYER_DISTANCE, 16.0);
+        assert_eq!(combat::OCELOT_EVENT_TRUST_PARTICLES, 41);
+        assert_eq!(combat::OCELOT_EVENT_SMOKE_PARTICLES, 40);
+    }
 }
+
 

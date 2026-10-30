@@ -16,6 +16,7 @@ use pumpkin_protocol::codec::var_int::VarInt;
 use rand::RngExt;
 use uuid::Uuid;
 
+use crate::entity::combat;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
@@ -128,13 +129,15 @@ pub struct CatEntity {
 }
 
 impl CatEntity {
+    pub const XP_REWARD: u32 = combat::CAT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let cat = Self {
             mob_entity,
             variant: AtomicU8::new(CatVariant::Black.id()),
             sound_variant: AtomicU8::new(0), // Default to classic
-            collar_color: AtomicU8::new(14), // Default to red
+            collar_color: AtomicU8::new(combat::CAT_DEFAULT_COLLAR_COLOR),
             tamable_data: TamableData::default(),
             is_lying: AtomicBool::new(false),
             relax_state_one: AtomicBool::new(false),
@@ -151,27 +154,13 @@ impl CatEntity {
         };
 
         // Vanilla Cat: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 3.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MAX_HEALTH, combat::CAT_MAX_HEALTH);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MOVEMENT_SPEED, combat::CAT_BASE_MOVEMENT_SPEED);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::CAT_BASE_ATTACK_DAMAGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(combat::CAT_MAX_HEALTH as f32);
         // Captured by the tempt goal, which re-reads the tame state from the cat on every start
         // attempt (`CatTemptGoal#canUse`).
         let tempt_weak = mob_arc.weak_ref();
@@ -471,6 +460,14 @@ impl TamableAnimal for CatEntity {
 }
 
 impl Mob for CatEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -685,7 +682,7 @@ impl Mob for CatEntity {
             self.play_eating_sound();
 
             let mut rng = rand::rng();
-            if rng.random_range(0..3) == 0 {
+            if rng.random_range(0..combat::CAT_TAME_CHANCE_IN_THREE) == 0 {
                 self.set_tame(true, Some(player.gameprofile.id));
                 self.set_sitting(true);
                 let variant_id = self.variant.load(Ordering::Relaxed);
@@ -719,8 +716,26 @@ impl Mob for CatEntity {
 }
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_cat_food_healing() {
         assert_eq!(crate::entity::combat::get_cat_food_healing(), 1.0);
     }
+
+    #[test]
+    fn test_cat_parity_constants() {
+        assert_eq!(CatEntity::XP_REWARD, 1);
+        assert_eq!(combat::CAT_MAX_HEALTH, 10.0);
+        assert_eq!(combat::CAT_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::CAT_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(combat::CAT_TEMPT_SPEED_MOD, 0.6);
+        assert_eq!(combat::CAT_WALK_SPEED_MOD, 0.8);
+        assert_eq!(combat::CAT_SPRINT_SPEED_MOD, 1.33);
+        assert_eq!(combat::CAT_PANIC_SPEED_MOD, 1.5);
+        assert_eq!(combat::CAT_DEFAULT_COLLAR_COLOR, 14);
+        assert_eq!(combat::CAT_TAME_CHANCE_IN_THREE, 3);
+        assert_eq!(combat::CAT_AVOID_PLAYER_DISTANCE_SPRINT, 16.0);
+    }
 }
+

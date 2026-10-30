@@ -5258,6 +5258,7 @@ pub fn is_mob_leashable(entity_type: &pumpkin_data::entity::EntityType) -> bool 
     if entity_type == &EntityType::BAT
         || entity_type == &EntityType::VILLAGER
         || entity_type == &EntityType::WANDERING_TRADER
+        || entity_type == &EntityType::PANDA
     {
         return false;
     }
@@ -8157,6 +8158,105 @@ pub fn create_illusioner_invisibility_effect() -> pumpkin_data::potion::Effect {
         blend: false,
     }
 }
+
+
+// =========================================================================
+// Gap 226: Wolf, Cat, Ocelot, Fox, Panda & Polar Bear Combat & Behavior Parity
+// Mirroring vanilla Minecraft Java 26.3
+// =========================================================================
+
+/// Wolf combat and attribute constants, mirroring vanilla `Wolf.java:94-118, 432-446`.
+pub const WOLF_START_HEALTH: f64 = 8.0;
+pub const WOLF_TAME_HEALTH: f64 = 40.0;
+pub const WOLF_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const WOLF_BASE_ATTACK_DAMAGE: f64 = 4.0;
+pub const WOLF_XP_REWARD: u32 = 3;
+pub const WOLF_DEFAULT_COLLAR_COLOR: u8 = 14; // DyeColor.RED
+pub const WOLF_ARMOR_REPAIR_UNIT: f32 = 0.125;
+pub const WOLF_TAME_CHANCE_IN_THREE: u32 = 3;
+pub const WOLF_DEFAULT_TAIL_ANGLE: f32 = std::f32::consts::PI / 5.0;
+pub const WOLF_ANGRY_TAIL_ANGLE: f32 = 1.539_380_4;
+pub const WOLF_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
+pub const WOLF_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
+
+/// Cat combat and attribute constants, mirroring vanilla `Cat.java:73-88, 105-110`.
+pub const CAT_MAX_HEALTH: f64 = 10.0;
+pub const CAT_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const CAT_BASE_ATTACK_DAMAGE: f64 = 3.0;
+pub const CAT_TEMPT_SPEED_MOD: f64 = 0.6;
+pub const CAT_WALK_SPEED_MOD: f64 = 0.8;
+pub const CAT_SPRINT_SPEED_MOD: f64 = 1.33;
+pub const CAT_PANIC_SPEED_MOD: f64 = 1.5;
+pub const CAT_DEFAULT_COLLAR_COLOR: u8 = 14; // DyeColor.RED
+pub const CAT_XP_REWARD: u32 = 1;
+pub const CAT_TAME_CHANCE_IN_THREE: u32 = 3;
+pub const CAT_AVOID_PLAYER_DISTANCE_SPRINT: f32 = 16.0;
+
+/// Ocelot combat and attribute constants, mirroring vanilla `Ocelot.java:59-64, 110-120`.
+pub const OCELOT_MAX_HEALTH: f64 = 10.0;
+pub const OCELOT_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const OCELOT_BASE_ATTACK_DAMAGE: f64 = 3.0;
+pub const OCELOT_CROUCH_SPEED_MOD: f64 = 0.6;
+pub const OCELOT_WALK_SPEED_MOD: f64 = 0.8;
+pub const OCELOT_SPRINT_SPEED_MOD: f64 = 1.33;
+pub const OCELOT_TRUST_CHANCE_IN_THREE: u32 = 3;
+pub const OCELOT_TRUST_FEED_DISTANCE_SQR: f64 = 9.0;
+pub const OCELOT_XP_REWARD: u32 = 1;
+pub const OCELOT_AMBIENT_INTERVAL: i32 = 900;
+pub const OCELOT_AVOID_PLAYER_DISTANCE: f32 = 16.0;
+pub const OCELOT_EVENT_TRUST_PARTICLES: u8 = 41;
+pub const OCELOT_EVENT_SMOKE_PARTICLES: u8 = 40;
+
+/// Fox combat and attribute constants, mirroring vanilla `Fox.java:111-125, 140-155`.
+pub const FOX_MAX_HEALTH: f64 = 10.0;
+pub const FOX_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const FOX_BASE_ATTACK_DAMAGE: f64 = 2.0;
+pub const FOX_SAFE_FALL_DISTANCE: f64 = 5.0;
+pub const FOX_FOLLOW_RANGE: f64 = 32.0;
+pub const FOX_XP_REWARD: u32 = 1;
+pub const FOX_PANIC_SPEED: f64 = 2.2;
+pub const FOX_BREED_SPEED: f64 = 1.0;
+pub const FOX_SEEK_SHELTER_SPEED: f64 = 1.25;
+pub const FOX_MELEE_ATTACK_SPEED: f32 = 1.2;
+pub const FOX_AVOID_PLAYER_DISTANCE: f32 = 16.0;
+pub const FOX_AVOID_PLAYER_WALK_SPEED: f64 = 1.6;
+pub const FOX_AVOID_PLAYER_SPRINT_SPEED: f64 = 1.4;
+pub const FOX_AVOID_WOLF_DISTANCE: f32 = 8.0;
+pub const FOX_AVOID_POLAR_BEAR_DISTANCE: f32 = 8.0;
+pub const FOX_FLAG_SITTING: u8 = 1;
+pub const FOX_FLAG_CROUCHING: u8 = 4;
+pub const FOX_FLAG_INTERESTED: u8 = 8;
+pub const FOX_FLAG_POUNCING: u8 = 16;
+pub const FOX_FLAG_SLEEPING: u8 = 32;
+pub const FOX_FLAG_FACEPLANTED: u8 = 64;
+pub const FOX_FLAG_DEFENDING: u8 = 128;
+
+/// Panda combat and attribute constants, mirroring vanilla `Panda.java:80-95, 110-120, 480-490`.
+pub const PANDA_MAX_HEALTH: f64 = 20.0;
+pub const PANDA_WEAK_MAX_HEALTH: f64 = 10.0;
+pub const PANDA_BASE_MOVEMENT_SPEED: f64 = 0.15;
+pub const PANDA_LAZY_MOVEMENT_SPEED: f64 = 0.07;
+pub const PANDA_BASE_ATTACK_DAMAGE: f64 = 6.0;
+pub const PANDA_XP_REWARD: u32 = 1;
+pub const PANDA_TOTAL_ROLL_STEPS: i32 = 32;
+pub const PANDA_TOTAL_UNHAPPY_TIME: i32 = 32;
+pub const PANDA_EAT_TICK_INTERVAL: i32 = 5;
+pub const PANDA_BREED_TARGET_RANGE: f64 = 8.0;
+pub const PANDA_FLAG_SNEEZE: u8 = 2;
+pub const PANDA_FLAG_ROLL: u8 = 4;
+pub const PANDA_FLAG_SIT: u8 = 8;
+pub const PANDA_FLAG_ON_BACK: u8 = 16;
+
+/// Polar Bear combat and attribute constants, mirroring vanilla `PolarBear.java:58-66, 110-120, 205-207`.
+pub const POLAR_BEAR_MAX_HEALTH: f64 = 30.0;
+pub const POLAR_BEAR_BASE_MOVEMENT_SPEED: f64 = 0.25;
+pub const POLAR_BEAR_BASE_ATTACK_DAMAGE: f64 = 6.0;
+pub const POLAR_BEAR_FOLLOW_RANGE: f64 = 20.0;
+pub const POLAR_BEAR_XP_REWARD: u32 = 2;
+pub const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
+pub const POLAR_BEAR_WARNING_SOUND_TICKS: i32 = 40;
+pub const POLAR_BEAR_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
+pub const POLAR_BEAR_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
 #[cfg(test)]
 mod tests {

@@ -5251,3 +5251,57 @@ eck, part 1): nhận 100% full damage (damage).
     - Converted attribute initialization to `set_attribute_base` using combat constants.
     - Synced step sound volume in unit test `test_endermite_despawn_and_xp_parity`.
   - All 7 unit tests verified and passing across creeper, silverfish, endermite, and combat suites with 0 warnings.
+
+
+### Gap 226: Wolf, Cat, Ocelot, Fox, Panda & Polar Bear Combat, Taming, Breeding, Trust, Sitting & Anger Parity
+- **Vanilla Reference**:
+  - `Wolf.java:94-118, 432-446`:
+    - Base Attributes: `WOLF_START_HEALTH = 8.0` khi hoang dã, `WOLF_TAME_HEALTH = 40.0` sau khi thuần hóa, `WOLF_BASE_MOVEMENT_SPEED = 0.3`, `WOLF_BASE_ATTACK_DAMAGE = 4.0`, `WOLF_XP_REWARD = 3`.
+    - Taming & Armor Repair: 1/3 tỷ lệ thuần hóa bằng xương (`WOLF_TAME_CHANCE_IN_THREE = 3`), mặc định vòng cổ màu đỏ (`WOLF_DEFAULT_COLLAR_COLOR = 14`), phục hồi 1/8 độ bền giáp mỗi vảy Armadillo (`WOLF_ARMOR_REPAIR_UNIT = 0.125`).
+    - Tail Angle & Anger: Đuôi hoang dã `PI / 5` (`WOLF_DEFAULT_TAIL_ANGLE`), đuôi tức giận `1.5393804` rad (`WOLF_ANGRY_TAIL_ANGLE`), đuôi thuần hóa tỷ lệ theo máu `(0.55 - damageRatio * 0.4) * PI`. Thời gian tức giận `400..=780` ticks (`WOLF_PERSISTENT_ANGER_MIN_TICKS = 400`, `WOLF_PERSISTENT_ANGER_MAX_TICKS = 780`).
+  - `Cat.java:73-88, 105-110, 200-205`:
+    - Base Attributes: `CAT_MAX_HEALTH = 10.0`, `CAT_BASE_MOVEMENT_SPEED = 0.3`, `CAT_BASE_ATTACK_DAMAGE = 3.0`, `CAT_XP_REWARD = 1`.
+    - Movement Modifiers: Dụ bằng cá `TEMPT_SPEED_MOD = 0.6`, đi bộ `WALK_SPEED_MOD = 0.8`, chạy nước rút `SPRINT_SPEED_MOD = 1.33`, hoảng sợ `PANIC_SPEED_MOD = 1.5`, tránh người chơi `16.0` blocks.
+    - Taming & Collar: 1/3 tỷ lệ thuần hóa bằng cá (`CAT_TAME_CHANCE_IN_THREE = 3`), màu vòng cổ mặc định đỏ (`CAT_DEFAULT_COLLAR_COLOR = 14`).
+  - `Ocelot.java:59-64, 110-120, 160-175`:
+    - Base Attributes: `OCELOT_MAX_HEALTH = 10.0`, `OCELOT_BASE_MOVEMENT_SPEED = 0.3`, `OCELOT_BASE_ATTACK_DAMAGE = 3.0`, `OCELOT_XP_REWARD = 1`.
+    - Trust Mechanics: Khoảng cách tối đa để cho ăn tin tưởng `player.distanceToSqr(this) < 9.0` (`OCELOT_TRUST_FEED_DISTANCE_SQR = 9.0`), 1/3 tỷ lệ tin tưởng (`OCELOT_TRUST_CHANCE_IN_THREE = 3`), phát sự kiện hạt tim (`OCELOT_EVENT_TRUST_PARTICLES = 41`) hoặc khói (`OCELOT_EVENT_SMOKE_PARTICLES = 40`), chu kỳ kêu ambient `900` ticks (`OCELOT_AMBIENT_INTERVAL = 900`).
+  - `Fox.java:111-125, 140-155, 230-245`:
+    - Base Attributes: `FOX_MAX_HEALTH = 10.0`, `FOX_BASE_MOVEMENT_SPEED = 0.3`, `FOX_BASE_ATTACK_DAMAGE = 2.0`, `FOX_SAFE_FALL_DISTANCE = 5.0`, `FOX_FOLLOW_RANGE = 32.0`, `FOX_XP_REWARD = 1`.
+    - Speeds & Avoidance: Hoảng loạn tốc độ `2.2` (`FOX_PANIC_SPEED`), sinh sản `1.0` (`FOX_BREED_SPEED`), tìm nơi trú ẩn `1.25` (`FOX_SEEK_SHELTER_SPEED`), tấn công cận chiến `1.2` (`FOX_MELEE_ATTACK_SPEED`). Tránh người chơi `16.0` blocks (đi `1.6`, chạy `1.4`), tránh sói hoang và gấu bắc cực `8.0` blocks.
+    - Behavior Flags: `FLAG_SITTING = 1`, `FLAG_CROUCHING = 4`, `FLAG_INTERESTED = 8`, `FLAG_POUNCING = 16`, `FLAG_SLEEPING = 32`, `FLAG_FACEPLANTED = 64`, `FLAG_DEFENDING = 128`.
+  - `Panda.java:80-95, 110-120, 200-214, 480-490`:
+    - Base Attributes & Genes: `PANDA_MAX_HEALTH = 20.0`, gene Yếu (Weak) `PANDA_WEAK_MAX_HEALTH = 10.0`, `PANDA_BASE_MOVEMENT_SPEED = 0.15`, gene Lười (Lazy) `PANDA_LAZY_MOVEMENT_SPEED = 0.07`, `PANDA_BASE_ATTACK_DAMAGE = 6.0`, `PANDA_XP_REWARD = 1`.
+    - Behavior & Leashing: `PANDA_TOTAL_ROLL_STEPS = 32`, `PANDA_TOTAL_UNHAPPY_TIME = 32`, chu kỳ ăn trúc `PANDA_EAT_TICK_INTERVAL = 5`, phạm vi tìm kiếm tre sinh sản `8.0` blocks (`PANDA_BREED_TARGET_RANGE = 8.0`). Miễn nhiễm dây dắt: `canBeLeashed() -> false` (`is_mob_leashable` trả về `false`).
+  - `PolarBear.java:58-66, 110-120, 205-207`:
+    - Base Attributes: `POLAR_BEAR_MAX_HEALTH = 30.0`, `POLAR_BEAR_BASE_MOVEMENT_SPEED = 0.25`, `POLAR_BEAR_BASE_ATTACK_DAMAGE = 6.0`, `POLAR_BEAR_FOLLOW_RANGE = 20.0`, `POLAR_BEAR_XP_REWARD = 2`.
+    - Standing & Warning Sound: Thời gian hoạt ảnh đứng hai chân `6.0` ticks (`POLAR_BEAR_STAND_ANIMATION_TICKS = 6.0`), thời gian hồi giữa các lần gầm cảnh báo `40` ticks (2 giây, `POLAR_BEAR_WARNING_SOUND_TICKS = 40`), thời gian tức giận `400..=780` ticks (`POLAR_BEAR_PERSISTENT_ANGER_MIN_TICKS = 400`, `POLAR_BEAR_PERSISTENT_ANGER_MAX_TICKS = 780`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants for Wolf, Cat, Ocelot, Fox, Panda, and Polar Bear.
+    - Updated `is_mob_leashable` to disallow Panda leashing mirroring `Panda.java:214`.
+  - Updated `WolfEntity` in `crates/pumpkin-core/src/entity/passive/wolf.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Synced collar color, taming health `WOLF_TAME_HEALTH`, taming probability, and experience reward (`WOLF_XP_REWARD`).
+    - Added unit test `test_wolf_parity_constants`.
+  - Updated `CatEntity` in `crates/pumpkin-core/src/entity/passive/cat.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Synced collar color, taming probability, and experience reward (`CAT_XP_REWARD`).
+    - Added unit test `test_cat_parity_constants`.
+  - Updated `OcelotEntity` in `crates/pumpkin-core/src/entity/passive/ocelot.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Synced feed distance square `OCELOT_TRUST_FEED_DISTANCE_SQR` and experience reward (`OCELOT_XP_REWARD`).
+    - Added unit test `test_ocelot_parity_constants`.
+  - Updated `FoxEntity` in `crates/pumpkin-core/src/entity/passive/fox.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Synced safe fall distance, follow range, behavior flags, and experience reward (`FOX_XP_REWARD`).
+    - Added unit test `test_fox_parity_constants`.
+  - Updated `PandaEntity` in `crates/pumpkin-core/src/entity/passive/panda.rs`:
+    - Converted attribute initialization and `set_attributes()` to `set_attribute_base`.
+    - Synced weak health, lazy speed, normal speed, and experience reward (`PANDA_XP_REWARD`).
+    - Added unit test `test_panda_parity_constants`.
+  - Updated `PolarBearEntity` in `crates/pumpkin-core/src/entity/passive/polar_bear.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Synced warning sound ticks and experience reward (`POLAR_BEAR_XP_REWARD`).
+    - Added unit test `test_polar_bear_parity_constants`.
+  - All 53 unit tests verified and passing across `entity::passive::` and 92 unit tests in `entity::combat::`.

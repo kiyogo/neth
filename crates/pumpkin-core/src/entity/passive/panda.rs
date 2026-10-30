@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicI32, AtomicU8, Ordering},
@@ -131,6 +132,8 @@ pub struct PandaEntity {
 }
 
 impl PandaEntity {
+    pub const XP_REWARD: u32 = combat::PANDA_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let gene = PandaGene::random_gene();
@@ -173,7 +176,11 @@ impl PandaEntity {
 
         // Vanilla Panda: MAX_HEALTH = 20.0 (weak: 10.0), MOVEMENT_SPEED = 0.15 (lazy: 0.07), ATTACK_DAMAGE = 6.0
         mob_arc.set_attributes();
-        let max_hp = if mob_arc.is_weak() { 10.0 } else { 20.0 };
+        let max_hp = if mob_arc.is_weak() {
+            combat::PANDA_WEAK_MAX_HEALTH as f32
+        } else {
+            combat::PANDA_MAX_HEALTH as f32
+        };
         mob_arc.mob_entity.living_entity.set_health(max_hp);
 
         mob_arc
@@ -216,29 +223,21 @@ impl PandaEntity {
 
     /// Vanilla `Panda.setAttributes`: weak pandas have 10 max health, lazy pandas have 0.07 speed.
     pub fn set_attributes(&self) {
-        let mut attributes = self
-            .mob_entity
-            .living_entity
-            .attributes
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let max_health = if self.is_weak() {
+            combat::PANDA_WEAK_MAX_HEALTH
+        } else {
+            combat::PANDA_MAX_HEALTH
+        };
+        self.mob_entity.living_entity.set_attribute_base(&Attributes::MAX_HEALTH, max_health);
 
-        let max_health = if self.is_weak() { 10.0 } else { 20.0 };
-        if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-            health.base_value = max_health;
-            health.dirty.store(true, Ordering::Relaxed);
-        }
+        let speed = if self.is_lazy() {
+            combat::PANDA_LAZY_MOVEMENT_SPEED
+        } else {
+            combat::PANDA_BASE_MOVEMENT_SPEED
+        };
+        self.mob_entity.living_entity.set_attribute_base(&Attributes::MOVEMENT_SPEED, speed);
 
-        let speed = if self.is_lazy() { 0.07 } else { 0.15 };
-        if let Some(spd) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-            spd.base_value = speed;
-            spd.dirty.store(true, Ordering::Relaxed);
-        }
-
-        if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-            damage.base_value = 6.0;
-            damage.dirty.store(true, Ordering::Relaxed);
-        }
+        self.mob_entity.living_entity.set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::PANDA_BASE_ATTACK_DAMAGE);
     }
 
     #[must_use]
@@ -376,6 +375,14 @@ impl Animal for PandaEntity {
 }
 
 impl Mob for PandaEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -558,5 +565,29 @@ impl CustomSound for PandaEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityPandaHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_panda_parity_constants() {
+        assert_eq!(PandaEntity::XP_REWARD, 1);
+        assert_eq!(combat::PANDA_MAX_HEALTH, 20.0);
+        assert_eq!(combat::PANDA_WEAK_MAX_HEALTH, 10.0);
+        assert_eq!(combat::PANDA_BASE_MOVEMENT_SPEED, 0.15);
+        assert_eq!(combat::PANDA_LAZY_MOVEMENT_SPEED, 0.07);
+        assert_eq!(combat::PANDA_BASE_ATTACK_DAMAGE, 6.0);
+        assert_eq!(combat::PANDA_TOTAL_ROLL_STEPS, 32);
+        assert_eq!(combat::PANDA_TOTAL_UNHAPPY_TIME, 32);
+        assert_eq!(combat::PANDA_EAT_TICK_INTERVAL, 5);
+        assert_eq!(combat::PANDA_BREED_TARGET_RANGE, 8.0);
+        assert_eq!(combat::PANDA_FLAG_SNEEZE, 2);
+        assert_eq!(combat::PANDA_FLAG_ROLL, 4);
+        assert_eq!(combat::PANDA_FLAG_SIT, 8);
+        assert_eq!(combat::PANDA_FLAG_ON_BACK, 16);
+        assert!(!combat::is_mob_leashable(&EntityType::PANDA));
     }
 }

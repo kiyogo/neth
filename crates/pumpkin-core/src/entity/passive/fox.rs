@@ -87,6 +87,8 @@ pub struct FoxEntity {
 }
 
 impl FoxEntity {
+    pub const XP_REWARD: u32 = combat::FOX_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let fox = Self {
@@ -363,6 +365,14 @@ impl Animal for FoxEntity {
 }
 
 impl Mob for FoxEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -620,5 +630,32 @@ mod tests {
         assert_eq!(FoxVariant::from_name("red"), FoxVariant::Red);
         assert_eq!(FoxVariant::from_name("snow"), FoxVariant::Snow);
     }
+
+    #[test]
+    fn test_fox_parity_constants() {
+        assert_eq!(FoxEntity::XP_REWARD, 1);
+        assert_eq!(combat::FOX_MAX_HEALTH, 10.0);
+        assert_eq!(combat::FOX_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::FOX_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(combat::FOX_SAFE_FALL_DISTANCE, 5.0);
+        assert_eq!(combat::FOX_FOLLOW_RANGE, 32.0);
+        assert_eq!(combat::FOX_PANIC_SPEED, 2.2);
+        assert_eq!(combat::FOX_BREED_SPEED, 1.0);
+        assert_eq!(combat::FOX_SEEK_SHELTER_SPEED, 1.25);
+        assert_eq!(combat::FOX_MELEE_ATTACK_SPEED, 1.2);
+        assert_eq!(combat::FOX_AVOID_PLAYER_DISTANCE, 16.0);
+        assert_eq!(combat::FOX_AVOID_PLAYER_WALK_SPEED, 1.6);
+        assert_eq!(combat::FOX_AVOID_PLAYER_SPRINT_SPEED, 1.4);
+        assert_eq!(combat::FOX_AVOID_WOLF_DISTANCE, 8.0);
+        assert_eq!(combat::FOX_AVOID_POLAR_BEAR_DISTANCE, 8.0);
+        assert_eq!(combat::FOX_FLAG_SITTING, 1);
+        assert_eq!(combat::FOX_FLAG_CROUCHING, 4);
+        assert_eq!(combat::FOX_FLAG_INTERESTED, 8);
+        assert_eq!(combat::FOX_FLAG_POUNCING, 16);
+        assert_eq!(combat::FOX_FLAG_SLEEPING, 32);
+        assert_eq!(combat::FOX_FLAG_FACEPLANTED, 64);
+        assert_eq!(combat::FOX_FLAG_DEFENDING, 128);
+    }
 }
+
 

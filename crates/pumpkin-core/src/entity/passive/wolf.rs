@@ -61,13 +61,15 @@ pub struct WolfEntity {
 }
 
 impl WolfEntity {
+    pub const XP_REWARD: u32 = combat::WOLF_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let wolf = Self {
             mob_entity,
             variant: AtomicU8::new(WolfVariant::Pale.id()),
             sound_variant: AtomicU8::new(WolfSoundVariant::Classic as u8),
-            collar_color: AtomicU8::new(14), // Default to red
+            collar_color: AtomicU8::new(combat::WOLF_DEFAULT_COLLAR_COLOR),
             tamable_data: TamableData::default(),
             ageable_data: crate::entity::ageable::AgeableData::default(),
             neutral_data: NeutralData::default(),
@@ -83,27 +85,13 @@ impl WolfEntity {
         };
 
         // Vanilla Wolf attributes: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 4.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 8.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 4.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(8.0);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MAX_HEALTH, combat::WOLF_START_HEALTH);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::MOVEMENT_SPEED, combat::WOLF_BASE_MOVEMENT_SPEED);
+        mob_arc.mob_entity.living_entity.set_attribute_base(&Attributes::ATTACK_DAMAGE, combat::WOLF_BASE_ATTACK_DAMAGE);
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(combat::WOLF_START_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -281,6 +269,14 @@ impl NeutralMob for WolfEntity {
 }
 
 impl Mob for WolfEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -681,11 +677,11 @@ impl Mob for WolfEntity {
         } else if item == &Item::BONE && !self.mob_entity.is_attacking() {
             item_stack.decrement_unless_creative(player.gamemode.load(), 1);
             let mut rng = rand::rng();
-            if rng.random_range(0..3) == 0 {
+            if rng.random_range(0..combat::WOLF_TAME_CHANCE_IN_THREE) == 0 {
                 TamableAnimal::tame(self, player.gameprofile.id);
                 self.set_ordered_to_sit(true);
-                self.mob_entity.living_entity.set_max_health(40.0);
-                self.mob_entity.living_entity.set_health(40.0);
+                self.mob_entity.living_entity.set_max_health(combat::WOLF_TAME_HEALTH as f32);
+                self.mob_entity.living_entity.set_health(combat::WOLF_TAME_HEALTH as f32);
                 self.spawn_taming_particles(true);
                 let variant_id = self.variant.load(Ordering::Relaxed);
                 let variant_str = WolfVariant::all()
@@ -737,9 +733,26 @@ mod tests {
         let tail = combat::calculate_wolf_tail_angle(false, true, 40.0, 40.0);
         assert!((tail - 0.55 * std::f32::consts::PI).abs() < 1e-5);
     }
+
+    #[test]
+    fn test_wolf_parity_constants() {
+        assert_eq!(WolfEntity::XP_REWARD, 3);
+        assert_eq!(combat::WOLF_START_HEALTH, 8.0);
+        assert_eq!(combat::WOLF_TAME_HEALTH, 40.0);
+        assert_eq!(combat::WOLF_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::WOLF_BASE_ATTACK_DAMAGE, 4.0);
+        assert_eq!(combat::WOLF_DEFAULT_COLLAR_COLOR, 14);
+        assert_eq!(combat::WOLF_ARMOR_REPAIR_UNIT, 0.125);
+        assert_eq!(combat::WOLF_TAME_CHANCE_IN_THREE, 3);
+        assert_eq!(combat::WOLF_DEFAULT_TAIL_ANGLE, std::f32::consts::PI / 5.0);
+        assert_eq!(combat::WOLF_ANGRY_TAIL_ANGLE, 1.539_380_4);
+        assert_eq!(combat::WOLF_PERSISTENT_ANGER_MIN_TICKS, 400);
+        assert_eq!(combat::WOLF_PERSISTENT_ANGER_MAX_TICKS, 780);
+    }
 }
 
 impl WolfEntity {
+    
     pub fn get_collar_color(&self) -> u8 {
         self.collar_color.load(Ordering::Relaxed)
     }
@@ -794,3 +807,4 @@ impl WolfEntity {
         self.shake_anim_o.store(0.0);
     }
 }
+
