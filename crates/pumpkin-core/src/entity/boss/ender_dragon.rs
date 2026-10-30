@@ -301,22 +301,15 @@ impl EnderDragonEntity {
 
         let mob_entity = MobEntity::new(entity);
         // Vanilla EnderDragon: MAX_HEALTH = 200.0, CAMERA_DISTANCE = 16.0
-        {
-            let mut attributes = mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 200.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(camera) = attributes.get_mut(&Attributes::CAMERA_DISTANCE.id) {
-                camera.base_value = 16.0;
-                camera.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_entity.living_entity.set_health(200.0);
+        mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            f64::from(crate::entity::combat::ENDER_DRAGON_MAX_HEALTH),
+        );
+        mob_entity.living_entity.set_attribute_base(
+            &Attributes::CAMERA_DISTANCE,
+            crate::entity::combat::ENDER_DRAGON_CAMERA_DISTANCE,
+        );
+        mob_entity.living_entity.set_health(crate::entity::combat::ENDER_DRAGON_MAX_HEALTH);
 
         Arc::new(Self {
             mob_entity,
@@ -347,6 +340,16 @@ impl EnderDragonEntity {
             flame_count: Mutex::new(0),
             nearest_crystal_id: Mutex::new(None),
         })
+    }
+
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::ENDER_DRAGON_RESPAWN_KILL_XP
     }
 
     pub fn reset_flame_count(&self) {
@@ -1190,6 +1193,9 @@ mod tests {
     #[test]
     fn test_ender_dragon_combat_and_crystal_parity() {
         assert_eq!(ENDER_DRAGON_MAX_HEALTH, 200.0);
+        assert_eq!(ENDER_DRAGON_CAMERA_DISTANCE, 16.0);
+        assert_eq!(ENDER_DRAGON_FIRST_KILL_XP, 12000);
+        assert_eq!(ENDER_DRAGON_RESPAWN_KILL_XP, 500);
         assert_eq!(ENDER_DRAGON_HEAD_COLLISION_DAMAGE, 10.0);
         assert_eq!(ENDER_DRAGON_WING_DAMAGE, 5.0);
         assert_eq!(ENDER_DRAGON_CRYSTAL_EXPLOSION_DAMAGE, 10.0);

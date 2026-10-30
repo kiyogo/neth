@@ -8718,6 +8718,28 @@ pub const WANDERING_TRADER_MAX_SPAWN_CHANCE: i32 = 75;
 /// Mirrors vanilla WanderingTraderSpawner.java:25 (SPAWN_CHANCE_INCREASE = 25).
 pub const WANDERING_TRADER_SPAWN_CHANCE_INCREASE: i32 = 25;
 
+/// Ender Dragon camera distance (16.0).
+/// Mirrors vanilla EnderDragon.java:createAttributes (Attributes.CAMERA_DISTANCE, 16.0).
+pub const ENDER_DRAGON_CAMERA_DISTANCE: f64 = 16.0;
+
+/// Wither movement speed (0.6).
+/// Mirrors vanilla WitherBoss.java:createAttributes (Attributes.MOVEMENT_SPEED, 0.6F).
+pub const WITHER_MOVEMENT_SPEED: f64 = 0.6;
+
+/// Wither flying speed (0.6).
+/// Mirrors vanilla WitherBoss.java:createAttributes (Attributes.FLYING_SPEED, 0.6F).
+pub const WITHER_FLYING_SPEED: f64 = 0.6;
+
+/// Wither follow range (40.0 blocks).
+/// Mirrors vanilla WitherBoss.java:createAttributes (Attributes.FOLLOW_RANGE, 40.0).
+pub const WITHER_FOLLOW_RANGE: f64 = 40.0;
+
+/// Wither experience reward on death (50 XP).
+/// Mirrors vanilla WitherBoss.java:xpReward = 50.
+pub const WITHER_XP_REWARD: u32 = 50;
+
+
+
 
 #[cfg(test)]
 mod tests {
@@ -12904,5 +12926,44 @@ mod tests {
         assert_eq!(WANDERING_TRADER_MIN_SPAWN_CHANCE, 25);
         assert_eq!(WANDERING_TRADER_MAX_SPAWN_CHANCE, 75);
         assert_eq!(WANDERING_TRADER_SPAWN_CHANCE_INCREASE, 25);
+    }
+
+    #[test]
+    fn test_boss_mobs_parity() {
+        // Ender Dragon (EnderDragon.java:createAttributes, getExperienceReward)
+        assert_eq!(ENDER_DRAGON_MAX_HEALTH, 200.0);
+        assert_eq!(ENDER_DRAGON_CAMERA_DISTANCE, 16.0);
+        assert_eq!(ENDER_DRAGON_FIRST_KILL_XP, 12000);
+        assert_eq!(ENDER_DRAGON_RESPAWN_KILL_XP, 500);
+        assert_eq!(ENDER_DRAGON_HEAD_COLLISION_DAMAGE, 10.0);
+        assert_eq!(ENDER_DRAGON_WING_DAMAGE, 5.0);
+        assert_eq!(ENDER_DRAGON_DEATH_MAX_TICKS, 200);
+
+        // Wither (WitherBoss.java:createAttributes, xpReward)
+        assert_eq!(WITHER_MAX_HEALTH, 300.0);
+        assert_eq!(WITHER_MOVEMENT_SPEED, 0.6);
+        assert_eq!(WITHER_FLYING_SPEED, 0.6);
+        assert_eq!(WITHER_FOLLOW_RANGE, 40.0);
+        assert_eq!(WITHER_ARMOR_POINTS, 4.0);
+        assert_eq!(WITHER_INVULNERABLE_TICKS, 220);
+        assert_eq!(WITHER_XP_REWARD, 50);
+
+        // Warden & Sonic Boom (Warden.java:createAttributes, SonicBoom.java)
+        assert_eq!(WARDEN_MAX_HEALTH, 500.0);
+        assert_eq!(WARDEN_MOVEMENT_SPEED_WHEN_FIGHTING, 0.3);
+        assert_eq!(WARDEN_KNOCKBACK_RESISTANCE, 1.0);
+        assert_eq!(WARDEN_ATTACK_KNOCKBACK, 1.5);
+        assert_eq!(WARDEN_ATTACK_DAMAGE, 30.0);
+        assert_eq!(WARDEN_FOLLOW_RANGE, 24.0);
+        assert_eq!(WARDEN_XP_REWARD, 5);
+
+        assert_eq!(SONIC_BOOM_DISTANCE_XZ, 15.0);
+        assert_eq!(SONIC_BOOM_DISTANCE_Y, 20.0);
+        assert_eq!(SONIC_BOOM_VERTICAL_KNOCKBACK, 0.5);
+        assert_eq!(SONIC_BOOM_HORIZONTAL_KNOCKBACK, 2.5);
+        assert_eq!(SONIC_BOOM_COOLDOWN, 40);
+        assert_eq!(SONIC_BOOM_CHARGE_DURATION, 34);
+        assert_eq!(SONIC_BOOM_TOTAL_DURATION, 60);
+        assert_eq!(SONIC_BOOM_DAMAGE, 10.0);
     }
 }

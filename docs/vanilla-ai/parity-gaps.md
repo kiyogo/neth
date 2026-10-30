@@ -5656,3 +5656,36 @@ eck, part 1): nhận 100% full damage (damage).
   - Updated `TraderLlamaEntity` in `crates/pumpkin-core/src/entity/passive/trader_llama.rs`:
     - Implemented `can_be_leashed(&self) -> bool { true }`.
   - All 29 unit tests verified and passing across Villager, Wandering Trader, and Trader Llama suites.
+
+### Gap 235: Boss Mobs (Ender Dragon, Wither & Warden) Attributes, Phases, Armor, Invulnerability & Sonic Boom Parity
+- **Vanilla Reference**:
+  - `EnderDragon.java:createAttributes, getExperienceReward, canBeLeashed`:
+    - Base Attributes: `MAX_HEALTH = 200.0`, `CAMERA_DISTANCE = 16.0`.
+    - Leashing: `canBeLeashed() -> false`.
+    - XP Reward: `ENDER_DRAGON_FIRST_KILL_XP = 12000`, `ENDER_DRAGON_RESPAWN_KILL_XP = 500`.
+    - Parts & Combat: `HEAD_COLLISION_DAMAGE = 10.0`, `WING_DAMAGE = 5.0`, `CRYSTAL_EXPLOSION_DAMAGE = 10.0`, `CRYSTAL_HEAL_INTERVAL_TICKS = 10`, `SITTING_DAMAGE_TAKEOFF_THRESHOLD = 50.0`, `DEATH_MAX_TICKS = 200`.
+  - `WitherBoss.java:createAttributes, canBeLeashed`:
+    - Base Attributes: `MAX_HEALTH = 300.0`, `MOVEMENT_SPEED = 0.6`, `FLYING_SPEED = 0.6`, `FOLLOW_RANGE = 40.0`, `ARMOR = 4.0`.
+    - Leashing: `canBeLeashed() -> false`.
+    - Invulnerability & Shield: `INVULNERABLE_TICKS = 220` (11 giây khi triệu hồi). Khi `health <= max_health / 2.0` (150 HP), kích hoạt Wither Armor chắn toàn bộ sát thương tên (`should_wither_deflect_projectile`).
+    - XP Reward: `WITHER_XP_REWARD = 50`.
+  - `Warden.java:createAttributes, canBeLeashed, dampensVibrations, SonicBoom.java`:
+    - Base Attributes: `MAX_HEALTH = 500.0`, `MOVEMENT_SPEED = 0.3`, `KNOCKBACK_RESISTANCE = 1.0`, `ATTACK_KNOCKBACK = 1.5`, `ATTACK_DAMAGE = 30.0`, `FOLLOW_RANGE = 24.0`, `xpReward = 5`.
+    - Leashing & Vibrations: `canBeLeashed() -> false`, `dampensVibrations() -> true`.
+    - Sonic Boom: `DISTANCE_XZ = 15.0`, `DISTANCE_Y = 20.0`, `KNOCKBACK_VERTICAL = 0.5`, `KNOCKBACK_HORIZONTAL = 2.5`, `COOLDOWN = 40` ticks, `CHARGE_DURATION = 34` ticks, `TOTAL_DURATION = 60` ticks, `DAMAGE = 10.0F` (xuyên giáp).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `ENDER_DRAGON_CAMERA_DISTANCE`, `WITHER_MOVEMENT_SPEED`, `WITHER_FLYING_SPEED`, `WITHER_FOLLOW_RANGE`, `WITHER_XP_REWARD`.
+    - Added unit test `test_boss_mobs_parity`.
+  - Updated `EnderDragonEntity` in `crates/pumpkin-core/src/entity/boss/ender_dragon.rs`:
+    - Converted attribute initialization to `set_attribute_base` (Max Health 200.0, Camera Distance 16.0).
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `get_base_experience_reward(&self) -> u32 { ENDER_DRAGON_RESPAWN_KILL_XP }`.
+    - Updated unit test `test_ender_dragon_combat_and_crystal_parity`.
+  - Updated `WitherEntity` in `crates/pumpkin-core/src/entity/boss/wither.rs`:
+    - Converted attribute initialization to `set_attribute_base` (Max Health 300.0, Movement Speed 0.6, Flying Speed 0.6, Follow Range 40.0, Armor 4.0).
+    - Implemented `can_be_leashed(&self) -> bool { false }`.
+    - Updated unit test `test_wither_boss_constants_and_shield_parity`.
+  - Updated `WardenEntity` in `crates/pumpkin-core/src/entity/mob/warden.rs`:
+    - Implemented `can_be_leashed(&self) -> bool { false }` and `dampens_vibrations(&self) -> bool { true }`.
+    - Updated unit test `test_warden_sonic_boom_constants_and_knockback_parity`.
+  - All 8 unit tests verified and passing across Ender Dragon, Wither, and Warden test suites.

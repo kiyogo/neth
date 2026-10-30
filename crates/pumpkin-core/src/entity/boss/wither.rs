@@ -80,35 +80,30 @@ impl WitherEntity {
         };
 
         // Vanilla WitherBoss: MAX_HEALTH = 300.0, MOVEMENT_SPEED = 0.6, FLYING_SPEED = 0.6, FOLLOW_RANGE = 40.0, ARMOR = 4.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 300.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.6;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(flying) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
-                flying.base_value = 0.6;
-                flying.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(follow) = attributes.get_mut(&Attributes::FOLLOW_RANGE.id) {
-                follow.base_value = 40.0;
-                follow.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(armor) = attributes.get_mut(&Attributes::ARMOR.id) {
-                armor.base_value = 4.0;
-                armor.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(300.0);
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MAX_HEALTH,
+            f64::from(crate::entity::combat::WITHER_MAX_HEALTH),
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::MOVEMENT_SPEED,
+            crate::entity::combat::WITHER_MOVEMENT_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::FLYING_SPEED,
+            crate::entity::combat::WITHER_FLYING_SPEED,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::FOLLOW_RANGE,
+            crate::entity::combat::WITHER_FOLLOW_RANGE,
+        );
+        mob_arc.mob_entity.living_entity.set_attribute_base(
+            &Attributes::ARMOR,
+            crate::entity::combat::WITHER_ARMOR_POINTS,
+        );
+        mob_arc
+            .mob_entity
+            .living_entity
+            .set_health(crate::entity::combat::WITHER_MAX_HEALTH);
 
         {
             let mut goal_selector = mob_arc
@@ -189,6 +184,10 @@ impl WitherEntity {
     }
 
     #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
     pub fn is_powered(&self) -> bool {
         let living = &self.mob_entity.living_entity;
         crate::entity::combat::is_wither_powered(living.health.load(), living.get_max_health())
@@ -766,6 +765,10 @@ mod tests {
         assert_eq!(crate::entity::combat::WITHER_MAX_HEALTH, 300.0);
         assert_eq!(crate::entity::combat::WITHER_ARMOR_POINTS, 4.0);
         assert_eq!(crate::entity::combat::WITHER_SPAWN_EXPLOSION_RADIUS, 7.0);
+        assert_eq!(crate::entity::combat::WITHER_MOVEMENT_SPEED, 0.6);
+        assert_eq!(crate::entity::combat::WITHER_FLYING_SPEED, 0.6);
+        assert_eq!(crate::entity::combat::WITHER_FOLLOW_RANGE, 40.0);
+        assert_eq!(crate::entity::combat::WITHER_XP_REWARD, 50);
 
         assert!(crate::entity::combat::is_wither_powered(150.0, 300.0));
         assert!(crate::entity::combat::is_wither_powered(50.0, 300.0));

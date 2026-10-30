@@ -563,6 +563,16 @@ impl WardenEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub const fn can_be_leashed(&self) -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn dampens_vibrations(&self) -> bool {
+        true
+    }
+
     pub fn emerge(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         entity.set_pose(EntityPose::Emerging);
@@ -952,6 +962,11 @@ mod tests {
         assert_eq!(calculate_warden_heartbeat_delay(0), 40);
         assert_eq!(calculate_warden_heartbeat_delay(40), 25);
         assert_eq!(calculate_warden_heartbeat_delay(80), 10);
+        assert_eq!(crate::entity::combat::WITHER_XP_REWARD, 50);
+        assert_eq!(crate::entity::combat::WITHER_MOVEMENT_SPEED, 0.6);
+        assert_eq!(crate::entity::combat::WITHER_FLYING_SPEED, 0.6);
+        assert_eq!(crate::entity::combat::WITHER_FOLLOW_RANGE, 40.0);
+        assert_eq!(crate::entity::combat::ENDER_DRAGON_CAMERA_DISTANCE, 16.0);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DAMAGE, 10.0);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_XZ, 15.0);
         assert_eq!(crate::entity::combat::SONIC_BOOM_DISTANCE_Y, 20.0);
