@@ -8308,6 +8308,39 @@ pub const LLAMA_CHEST_SLOTS_PER_STRENGTH: usize = 3;
 pub const LLAMA_XP_REWARD: u32 = 2;
 pub const TRADER_LLAMA_DESPAWN_DELAY_TICKS: i32 = 47999;
 
+
+// =========================================================================
+// Gap 228: Cow, Mooshroom, Sheep, Pig & Chicken Combat & Farm Mechanics Parity
+// Mirroring vanilla Minecraft Java 26.3
+// =========================================================================
+
+/// Cow & Mooshroom attribute constants, mirroring vanilla `AbstractCow.java:18-20`.
+pub const COW_MAX_HEALTH: f64 = 10.0;
+pub const COW_BASE_MOVEMENT_SPEED: f64 = 0.2;
+pub const COW_XP_REWARD: u32 = 2;
+pub const MOOSHROOM_SHEAR_MUSHROOM_COUNT: usize = 5;
+
+/// Sheep attribute and shearing constants, mirroring vanilla `Sheep.java:50-52`.
+pub const SHEEP_MAX_HEALTH: f64 = 8.0;
+pub const SHEEP_BASE_MOVEMENT_SPEED: f64 = 0.23;
+pub const SHEEP_XP_REWARD: u32 = 2;
+pub const SHEEP_SHEAR_WOOL_MIN: usize = 1;
+pub const SHEEP_SHEAR_WOOL_MAX: usize = 3;
+
+/// Pig attribute and saddled speed constants, mirroring vanilla `Pig.java:42-45`.
+pub const PIG_MAX_HEALTH: f64 = 10.0;
+pub const PIG_BASE_MOVEMENT_SPEED: f64 = 0.25;
+pub const PIG_BOOST_SPEED: f64 = 0.35;
+pub const PIG_XP_REWARD: u32 = 2;
+
+/// Chicken attribute and egg timing constants, mirroring vanilla `Chicken.java:45-50`.
+pub const CHICKEN_MAX_HEALTH: f64 = 4.0;
+pub const CHICKEN_BASE_MOVEMENT_SPEED: f64 = 0.25;
+pub const CHICKEN_XP_REWARD: u32 = 2;
+pub const CHICKEN_EGG_TIME_MIN: i32 = 6000;
+pub const CHICKEN_EGG_TIME_MAX: i32 = 12000;
+pub const CHICKEN_JOCKEY_CHANCE: f64 = 0.05;
+
 #[cfg(test)]
 mod tests {
     use super::*;

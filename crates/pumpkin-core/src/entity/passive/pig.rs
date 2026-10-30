@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, AtomicU8, Ordering},
@@ -49,6 +50,8 @@ pub struct PigEntity {
 }
 
 impl PigEntity {
+    pub const XP_REWARD: u32 = combat::PIG_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let world = entity.world.load();
         let biome = world.get_biome(&entity.block_pos.load());
@@ -65,23 +68,15 @@ impl PigEntity {
         let mob_arc = Arc::new(pig);
 
         // Vanilla Pig attributes: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.25
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.25;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::PIG_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::PIG_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::PIG_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -174,6 +169,14 @@ impl Animal for PigEntity {
 }
 
 impl Mob for PigEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -346,5 +349,19 @@ impl ItemSteerable for PigEntity {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat;
+
+    #[test]
+    fn test_pig_parity_constants() {
+        assert_eq!(PigEntity::XP_REWARD, 2);
+        assert_eq!(combat::PIG_MAX_HEALTH, 10.0);
+        assert_eq!(combat::PIG_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(combat::PIG_BOOST_SPEED, 0.35);
     }
 }

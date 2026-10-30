@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering, Ordering::Relaxed},
@@ -49,6 +50,8 @@ pub struct ChickenEntity {
 }
 
 impl ChickenEntity {
+    pub const XP_REWARD: u32 = combat::CHICKEN_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let world = entity.world.load();
         let biome = world.get_biome(&entity.block_pos.load());
@@ -66,23 +69,15 @@ impl ChickenEntity {
         let mob_arc = Arc::new(chicken);
 
         // Vanilla Chicken attributes: MAX_HEALTH = 4.0, MOVEMENT_SPEED = 0.25
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 4.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.25;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(4.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::CHICKEN_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::CHICKEN_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::CHICKEN_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -181,6 +176,14 @@ impl Animal for ChickenEntity {
 }
 
 impl Mob for ChickenEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -322,5 +325,21 @@ impl Mob for ChickenEntity {
             item_stack,
             sound_variant.ambient_sound(self.is_baby()),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat;
+
+    #[test]
+    fn test_chicken_parity_constants() {
+        assert_eq!(ChickenEntity::XP_REWARD, 2);
+        assert_eq!(combat::CHICKEN_MAX_HEALTH, 4.0);
+        assert_eq!(combat::CHICKEN_BASE_MOVEMENT_SPEED, 0.25);
+        assert_eq!(combat::CHICKEN_EGG_TIME_MIN, 6000);
+        assert_eq!(combat::CHICKEN_EGG_TIME_MAX, 12000);
+        assert_eq!(combat::CHICKEN_JOCKEY_CHANCE, 0.05);
     }
 }

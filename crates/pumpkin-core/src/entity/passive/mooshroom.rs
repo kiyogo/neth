@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, AtomicI32, Ordering},
@@ -86,6 +87,8 @@ pub struct MooshroomEntity {
 }
 
 impl MooshroomEntity {
+    pub const XP_REWARD: u32 = combat::COW_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let mooshroom = Self {
@@ -103,23 +106,15 @@ impl MooshroomEntity {
         };
 
         // Vanilla Mooshroom (AbstractCow): MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.2;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::COW_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::COW_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::COW_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -361,6 +356,14 @@ impl Animal for MooshroomEntity {
 }
 
 impl Mob for MooshroomEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -547,5 +550,18 @@ impl CustomSound for MooshroomEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityCowHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mooshroom_parity_constants() {
+        assert_eq!(MooshroomEntity::XP_REWARD, 2);
+        assert_eq!(combat::COW_MAX_HEALTH, 10.0);
+        assert_eq!(combat::COW_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(combat::MOOSHROOM_SHEAR_MUSHROOM_COUNT, 5);
     }
 }

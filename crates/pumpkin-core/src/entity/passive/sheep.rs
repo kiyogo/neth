@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicU8, Ordering},
@@ -52,6 +53,8 @@ pub struct SheepEntity {
 }
 
 impl SheepEntity {
+    pub const XP_REWARD: u32 = combat::SHEEP_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         let sheep = Self {
@@ -62,23 +65,15 @@ impl SheepEntity {
         let mob_arc = Arc::new(sheep);
 
         // Vanilla Sheep attributes: MAX_HEALTH = 8.0, MOVEMENT_SPEED = 0.23
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 8.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.23;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(8.0);
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::SHEEP_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::SHEEP_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::SHEEP_MAX_HEALTH as f32);
 
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
@@ -221,6 +216,14 @@ impl Animal for SheepEntity {
 }
 
 impl Mob for SheepEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     /// Publishes the wool color and sheared state that `entities/sheep` predicates match on,
     /// so only the entry for this sheep's color is eligible and a sheared sheep drops none.
     fn populate_loot_context(&self, params: &mut LootContextParameters) {
@@ -317,6 +320,16 @@ impl CustomSound for SheepEntity {
 
 #[cfg(test)]
 mod tests {
+    use crate::entity::combat;
+
+    #[test]
+    fn test_sheep_parity_constants() {
+        assert_eq!(crate::entity::passive::sheep::SheepEntity::XP_REWARD, 2);
+        assert_eq!(combat::SHEEP_MAX_HEALTH, 8.0);
+        assert_eq!(combat::SHEEP_BASE_MOVEMENT_SPEED, 0.23);
+        assert_eq!(combat::SHEEP_SHEAR_WOOL_MIN, 1);
+        assert_eq!(combat::SHEEP_SHEAR_WOOL_MAX, 3);
+    }
     use pumpkin_util::loot_table::{
         LootCondition, LootEntityProperties, LootEntityProperty, LootEntityPropertyValue,
         LootEntityTarget,

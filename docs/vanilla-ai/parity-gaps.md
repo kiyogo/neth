@@ -5361,3 +5361,46 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
     - Added unit test `test_trader_llama_parity_constants`.
   - All 19 unit tests verified and passing across equine and camelid test suites.
+
+
+### Gap 228: Cow, Mooshroom, Sheep, Pig & Chicken Combat, Farm Animal Attributes, Shearing & Egg Timing Parity
+- **Vanilla Reference**:
+  - `AbstractCow.java:18-20` & `Cow.java`:
+    - Base Attributes: `COW_MAX_HEALTH = 10.0`, `COW_BASE_MOVEMENT_SPEED = 0.2`, `COW_XP_REWARD = 2`.
+  - `MushroomCow.java:40-60`:
+    - Base Attributes: Kế thừa `AbstractCow` với `COW_MAX_HEALTH = 10.0`, `COW_BASE_MOVEMENT_SPEED = 0.2`, `COW_XP_REWARD = 2`.
+    - Shearing: Cắt tỉa thả 5 nấm đỏ/nâu (`MOOSHROOM_SHEAR_MUSHROOM_COUNT = 5`), biến thành bò thường.
+  - `Sheep.java:50-52`:
+    - Base Attributes: `SHEEP_MAX_HEALTH = 8.0`, `SHEEP_BASE_MOVEMENT_SPEED = 0.23`, `SHEEP_XP_REWARD = 2`.
+    - Shearing: Rơi từ 1 đến 3 len cùng màu (`SHEEP_SHEAR_WOOL_MIN = 1`, `SHEEP_SHEAR_WOOL_MAX = 3`). Mọc lại lông sau khi ăn khối cỏ.
+  - `Pig.java:42-45`:
+    - Base Attributes: `PIG_MAX_HEALTH = 10.0`, `PIG_BASE_MOVEMENT_SPEED = 0.25`, `PIG_BOOST_SPEED = 0.35`, `PIG_XP_REWARD = 2`.
+    - Saddling: Có thể đặt yên và điều khiển bằng cần câu cà rốt.
+  - `Chicken.java:45-50`:
+    - Base Attributes: `CHICKEN_MAX_HEALTH = 4.0`, `CHICKEN_BASE_MOVEMENT_SPEED = 0.25`, `CHICKEN_XP_REWARD = 2`.
+    - Egg Laying: Đẻ trứng mỗi 6000 đến 12000 ticks (`CHICKEN_EGG_TIME_MIN = 6000`, `CHICKEN_EGG_TIME_MAX = 12000`, 5 đến 10 phút).
+    - Chicken Jockey: 5% tỷ lệ spawn gà có baby zombie cưỡi (`CHICKEN_JOCKEY_CHANCE = 0.05`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants for Cow, Mooshroom, Sheep, Pig, and Chicken.
+  - Updated `CowEntity` in `crates/pumpkin-core/src/entity/passive/cow.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_cow_parity_constants`.
+  - Updated `MooshroomEntity` in `crates/pumpkin-core/src/entity/passive/mooshroom.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_mooshroom_parity_constants`.
+  - Updated `SheepEntity` in `crates/pumpkin-core/src/entity/passive/sheep.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_sheep_parity_constants`.
+  - Updated `PigEntity` in `crates/pumpkin-core/src/entity/passive/pig.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_pig_parity_constants`.
+  - Updated `ChickenEntity` in `crates/pumpkin-core/src/entity/passive/chicken.rs`:
+    - Converted attribute initialization to `set_attribute_base`.
+    - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
+    - Added unit test `test_chicken_parity_constants`.
+  - All 17 unit tests verified and passing across farm animal test suites.
