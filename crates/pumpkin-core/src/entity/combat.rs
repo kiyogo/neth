@@ -8376,6 +8376,38 @@ pub const RABBIT_EVIL_ATTACK_DAMAGE_BONUS: f64 = 5.0;
 pub const RABBIT_EVIL_TYPE_ID: i32 = 99;
 pub const RABBIT_XP_REWARD: u32 = 2;
 
+
+// =========================================================================
+// Gap 230: Bat, Parrot & Bee Flying Movement, Pollination, Sting Damage & Toxicity Parity
+// Mirroring vanilla Minecraft Java 26.3
+// =========================================================================
+
+/// Bat attribute and resting flag constants, mirroring vanilla `Bat.java:42-45`.
+pub const BAT_MAX_HEALTH: f64 = 6.0;
+pub const BAT_XP_REWARD: u32 = 0;
+pub const BAT_FLAG_RESTING: u8 = 1;
+
+/// Parrot attribute and poison duration constants, mirroring vanilla `Parrot.java:48-52, 230-240`.
+pub const PARROT_MAX_HEALTH: f64 = 6.0;
+pub const PARROT_FLYING_SPEED: f64 = 0.4;
+pub const PARROT_BASE_MOVEMENT_SPEED: f64 = 0.2;
+pub const PARROT_BASE_ATTACK_DAMAGE: f64 = 3.0;
+pub const PARROT_XP_REWARD: u32 = 2;
+pub const PARROT_TAME_CHANCE_IN_THREE: u32 = 3;
+pub const PARROT_POISON_DURATION_TICKS: i32 = 900;
+
+/// Bee attribute, sting poison duration, death timer and anger constants, mirroring vanilla `Bee.java:60-65, 130-140`.
+pub const BEE_MAX_HEALTH: f64 = 10.0;
+pub const BEE_FLYING_SPEED: f64 = 0.6;
+pub const BEE_BASE_MOVEMENT_SPEED: f64 = 0.3;
+pub const BEE_BASE_ATTACK_DAMAGE: f64 = 2.0;
+pub const BEE_XP_REWARD: u32 = 2;
+pub const BEE_POISON_DURATION_NORMAL_TICKS: i32 = 200;
+pub const BEE_POISON_DURATION_HARD_TICKS: i32 = 360;
+pub const BEE_TIME_UNTIL_DEATH_AFTER_STING: i32 = 1200;
+pub const BEE_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
+pub const BEE_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
+
 #[cfg(test)]
 mod tests {
     use super::*;

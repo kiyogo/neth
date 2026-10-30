@@ -74,6 +74,8 @@ pub struct ParrotEntity {
 }
 
 impl ParrotEntity {
+    pub const XP_REWARD: u32 = combat::PARROT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -98,32 +100,24 @@ impl ParrotEntity {
             Arc::downgrade(&mob_arc)
         };
 
-        // Vanilla Parrot: MAX_HEALTH = 6.0, FLYING_SPEED = 0.4, MOVEMENT_SPEED = 0.2, ATTACK_DAMAGE = 3.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 6.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(flying) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
-                flying.base_value = 0.4;
-                flying.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.2;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 3.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(6.0);
+        // Vanilla Parrot: MAX_HEALTH = 6.0
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::PARROT_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::FLYING_SPEED,
+                combat::PARROT_FLYING_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::PARROT_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::ATTACK_DAMAGE,
+                combat::PARROT_BASE_ATTACK_DAMAGE,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::PARROT_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -228,6 +222,14 @@ impl TamableAnimal for ParrotEntity {
 }
 
 impl Mob for ParrotEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
     }
@@ -361,6 +363,18 @@ impl CustomSound for ParrotEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parrot_parity_constants() {
+        assert_eq!(ParrotEntity::XP_REWARD, 2);
+        assert_eq!(combat::PARROT_MAX_HEALTH, 6.0);
+        assert_eq!(combat::PARROT_FLYING_SPEED, 0.4);
+        assert_eq!(combat::PARROT_BASE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(combat::PARROT_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(combat::PARROT_TAME_CHANCE_IN_THREE, 3);
+        assert_eq!(combat::PARROT_POISON_DURATION_TICKS, 900);
+    }
+
     use pumpkin_data::item::Item;
     use pumpkin_data::tag::{self, Taggable};
 

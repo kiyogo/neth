@@ -5440,3 +5440,32 @@ eck, part 1): nhận 100% full damage (damage).
     - Implemented `get_base_experience_reward(&self) -> u32` returning `Self::XP_REWARD`.
     - Added unit test `test_rabbit_parity_constants`.
   - All 14 unit tests verified and passing across amphibian, caprine, and leporid test suites.
+
+### Gap 230: Bat, Parrot & Bee Flying Movement, Pollination, Sting Damage & Toxicity Parity
+- **Vanilla Reference**:
+  - Bat.java:50-55, 120-135:
+    - Base Attributes: BAT_MAX_HEALTH = 6.0, BAT_XP_REWARD = 0, canBeLeashed() -> false.
+    - Roosting & Wake Logic: FLAG_RESTING = 1, thức dậy khi khối phía trên không còn cứng hoặc người chơi trong bán kính 4 block. Pitch âm thanh getVoicePitch = (random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F.
+  - Parrot.java:70-85, 135-150, 320-335:
+    - Base Attributes: PARROT_MAX_HEALTH = 6.0, PARROT_FLYING_SPEED = 0.4, PARROT_BASE_MOVEMENT_SPEED = 0.2, PARROT_BASE_ATTACK_DAMAGE = 3.0, PARROT_XP_REWARD = 2.
+    - Taming & Toxicity: 1/3 tỷ lệ thuần hóa bằng hạt giống (PARROT_TAME_CHANCE_IN_THREE = 3). Ăn bánh quy (#minecraft:parrot_poisonous_food) bị nhiễm độc chết người kéo dài 900 ticks (45 giây, PARROT_POISON_DURATION_TICKS = 900).
+  - Bee.java:120-145, 230-245, 510-530:
+    - Base Attributes: BEE_MAX_HEALTH = 10.0, BEE_FLYING_SPEED = 0.6, BEE_BASE_MOVEMENT_SPEED = 0.3, BEE_BASE_ATTACK_DAMAGE = 2.0, BEE_XP_REWARD = 2.
+    - Sting & Death: Chích mục tiêu gây hiệu ứng Poison trong 200 ticks (Normal) hoặc 360 ticks (Hard). Ong mất ngòi (hasStung) và chết sau 1200 ticks (60 giây, BEE_TIME_UNTIL_DEATH_AFTER_STING = 1200). Persistent anger kéo dài 400 đến 780 ticks (BEE_PERSISTENT_ANGER_MIN_TICKS = 400, BEE_PERSISTENT_ANGER_MAX_TICKS = 780).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added constants for Bat, Parrot, and Bee flying speed, attack damage, toxicity durations, sting timer, and persistent anger intervals.
+  - Updated BatEntity in crates/pumpkin-core/src/entity/mob/bat.rs:
+    - Converted attribute initialization to set_attribute_base.
+    - Implemented get_base_experience_reward(&self) -> u32 returning Self::XP_REWARD.
+    - Added unit tests 	est_bat_parity_constants and 	est_bat_voice_pitch_and_roosting_wake.
+  - Updated ParrotEntity in crates/pumpkin-core/src/entity/passive/parrot.rs:
+    - Converted attribute initialization to set_attribute_base.
+    - Implemented get_base_experience_reward(&self) -> u32 returning Self::XP_REWARD.
+    - Added unit test 	est_parrot_parity_constants.
+  - Updated BeeEntity in crates/pumpkin-core/src/entity/passive/bee.rs:
+    - Converted attribute initialization to set_attribute_base.
+    - Implemented get_base_experience_reward(&self) -> u32 returning Self::XP_REWARD.
+    - Added unit test 	est_bee_parity_constants.
+  - All unit tests verified and passing across aerial mob test suites.
+

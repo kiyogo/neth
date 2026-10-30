@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::{
     Arc,
     atomic::{AtomicI32, AtomicU8, Ordering},
@@ -90,6 +91,8 @@ pub struct BeeEntity {
 }
 
 impl BeeEntity {
+    pub const XP_REWARD: u32 = combat::BEE_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         *mob_entity
@@ -115,32 +118,24 @@ impl BeeEntity {
         };
         let mob_arc = Arc::new(bee);
 
-        // Vanilla Bee: MAX_HEALTH = 10.0, FLYING_SPEED = 0.6, MOVEMENT_SPEED = 0.3, ATTACK_DAMAGE = 2.0
-        {
-            let mut attributes = mob_arc
-                .mob_entity
-                .living_entity
-                .attributes
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if let Some(health) = attributes.get_mut(&Attributes::MAX_HEALTH.id) {
-                health.base_value = 10.0;
-                health.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(flying) = attributes.get_mut(&Attributes::FLYING_SPEED.id) {
-                flying.base_value = 0.6;
-                flying.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(speed) = attributes.get_mut(&Attributes::MOVEMENT_SPEED.id) {
-                speed.base_value = 0.3;
-                speed.dirty.store(true, Ordering::Relaxed);
-            }
-            if let Some(damage) = attributes.get_mut(&Attributes::ATTACK_DAMAGE.id) {
-                damage.base_value = 2.0;
-                damage.dirty.store(true, Ordering::Relaxed);
-            }
-        }
-        mob_arc.mob_entity.living_entity.set_health(10.0);
+        // Vanilla Bee: MAX_HEALTH = 10.0
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MAX_HEALTH,
+                combat::BEE_MAX_HEALTH,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::FLYING_SPEED,
+                combat::BEE_FLYING_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::MOVEMENT_SPEED,
+                combat::BEE_BASE_MOVEMENT_SPEED,
+            );
+            mob_arc.mob_entity.living_entity.set_attribute_base(
+                &Attributes::ATTACK_DAMAGE,
+                combat::BEE_BASE_ATTACK_DAMAGE,
+            );
+            mob_arc.mob_entity.living_entity.set_health(combat::BEE_MAX_HEALTH as f32);
 
         {
             let mut goal_selector = mob_arc
@@ -265,6 +260,14 @@ impl NeutralMob for BeeEntity {
 }
 
 impl Mob for BeeEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
+            0
+        } else {
+            Self::XP_REWARD
+        }
+    }
+
     fn as_ageable(&self) -> Option<&dyn AgeableMob> {
         Some(self)
     }
@@ -444,5 +447,24 @@ impl CustomSound for BeeEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityBeeHurt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bee_parity_constants() {
+        assert_eq!(BeeEntity::XP_REWARD, 2);
+        assert_eq!(combat::BEE_MAX_HEALTH, 10.0);
+        assert_eq!(combat::BEE_FLYING_SPEED, 0.6);
+        assert_eq!(combat::BEE_BASE_MOVEMENT_SPEED, 0.3);
+        assert_eq!(combat::BEE_BASE_ATTACK_DAMAGE, 2.0);
+        assert_eq!(combat::BEE_POISON_DURATION_NORMAL_TICKS, 200);
+        assert_eq!(combat::BEE_POISON_DURATION_HARD_TICKS, 360);
+        assert_eq!(combat::BEE_TIME_UNTIL_DEATH_AFTER_STING, 1200);
+        assert_eq!(combat::BEE_PERSISTENT_ANGER_MIN_TICKS, 400);
+        assert_eq!(combat::BEE_PERSISTENT_ANGER_MAX_TICKS, 780);
     }
 }

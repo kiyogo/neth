@@ -1,3 +1,4 @@
+use crate::entity::combat;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering::Relaxed};
@@ -31,12 +32,14 @@ pub struct BatEntity {
 }
 
 impl BatEntity {
+    pub const XP_REWARD: u32 = combat::BAT_XP_REWARD;
+
     pub fn new(entity: Entity) -> Arc<Self> {
         let mob_entity = MobEntity::new(entity);
         mob_entity
             .living_entity
-            .set_attribute_base(&Attributes::MAX_HEALTH, 6.0);
-        mob_entity.living_entity.health.store(6.0);
+            .set_attribute_base(&Attributes::MAX_HEALTH, combat::BAT_MAX_HEALTH);
+        mob_entity.living_entity.health.store(combat::BAT_MAX_HEALTH as f32);
         mob_entity.living_entity.collides.store(false, Relaxed);
         let bat = Self {
             mob_entity,
@@ -217,6 +220,10 @@ impl BatEntity {
 }
 
 impl Mob for BatEntity {
+    fn get_base_experience_reward(&self) -> u32 {
+        Self::XP_REWARD
+    }
+
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
         let flags: u8 = if self.is_roosting() { ROOSTING_FLAG } else { 0 };
@@ -315,6 +322,14 @@ impl CustomSound for BatEntity {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bat_parity_constants() {
+        assert_eq!(BatEntity::XP_REWARD, 0);
+        assert_eq!(combat::BAT_MAX_HEALTH, 6.0);
+        assert_eq!(combat::BAT_FLAG_RESTING, 1);
+    }
     #[test]
     fn test_bat_voice_pitch_and_roosting_wake() {
         // Vanilla Bat.java:67 getVoicePitch() = super.getVoicePitch() * 0.95F
