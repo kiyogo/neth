@@ -112,7 +112,12 @@ impl BlockBehaviour for ChiseledBookshelfBlock {
                 .as_any()
                 .downcast_ref::<ChiseledBookshelfBlockEntity>()
         {
-            return Some((block_entity.last_interacted_slot.load(Ordering::Relaxed) + 1) as u8);
+            let slot = block_entity.last_interacted_slot.load(Ordering::Relaxed);
+            return Some(if (0..6).contains(&slot) {
+                (slot + 1) as u8
+            } else {
+                0
+            });
         }
         None
     }

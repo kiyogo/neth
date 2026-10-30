@@ -264,8 +264,30 @@ impl Inventory for JukeboxBlockEntity {
         *self
             .record_stack
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = stack;
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = stack.clone();
+        if let Some(playable) = stack.get_data_component::<JukeboxPlayableImpl>()
+            && let Some(song_name) = playable.song.rsplit(':').next()
+            && let Some(song) = JukeboxSong::from_name(song_name)
+        {
+            self.start_playing(song.length_in_ticks());
+        }
         self.mark_dirty();
+    }
+
+    fn get_max_count_per_stack(&self) -> u8 {
+        1
+    }
+
+    fn is_valid_slot_for(&self, slot: usize, stack: &ItemStack) -> bool {
+        // Vanilla JukeboxBlockEntity.java:144:
+        // canPlaceItem: itemStack.has(DataComponents.JUKEBOX_PLAYABLE) && this.getItem(slot).isEmpty()
+        if slot != 0 || !self.is_empty() {
+            return false;
+        }
+        if stack.is_empty() {
+            return true;
+        }
+        stack.get_data_component::<JukeboxPlayableImpl>().is_some()
     }
 
     fn mark_dirty(&self) {

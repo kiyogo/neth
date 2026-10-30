@@ -7999,6 +7999,47 @@ pub fn can_take_brewing_ingredient_through_bottom(is_glass_bottle: bool) -> bool
     is_glass_bottle
 }
 
+/// Vanilla `CampfireBlockEntity.java:43-44` & `CampfireBlock.java:60-65`:
+pub const CAMPFIRE_NUM_SLOTS: usize = 4;
+pub const CAMPFIRE_BURN_COOL_SPEED: i32 = 2;
+pub const CAMPFIRE_NORMAL_DAMAGE: f32 = 1.0;
+pub const CAMPFIRE_SOUL_DAMAGE: f32 = 2.0;
+pub const CAMPFIRE_SMOKE_HEIGHT_NORMAL: i32 = 10;
+pub const CAMPFIRE_SMOKE_HEIGHT_SIGNAL: i32 = 24;
+
+/// Vanilla `ChiseledBookShelfBlockEntity.java:25, 69` & `ChiseledBookShelfBlock.java:189`:
+pub const CHISELED_BOOKSHELF_MAX_BOOKS: usize = 6;
+pub const CHISELED_BOOKSHELF_MAX_STACK_SIZE: u8 = 1;
+
+/// Vanilla `JukeboxBlockEntity.java:133-145`:
+pub const JUKEBOX_MAX_STACK_SIZE: u8 = 1;
+
+/// Vanilla `CampfireBlockEntity.java:91`:
+/// Unlit campfire cool-down speed: decreases cooking progress by 2 per tick clamped to [0, total_time].
+#[must_use]
+pub fn calculate_campfire_cool_down(current_progress: i32, total_time: i32) -> i32 {
+    (current_progress - CAMPFIRE_BURN_COOL_SPEED).clamp(0, total_time)
+}
+
+/// Vanilla `ChiseledBookShelfBlock.java:189`:
+/// Comparator output is `lastInteractedSlot + 1` (values 1..6), or 0 if no slot has been interacted with.
+#[must_use]
+pub fn calculate_chiseled_bookshelf_comparator_output(last_interacted_slot: i8) -> u8 {
+    if (0..6).contains(&last_interacted_slot) {
+        (last_interacted_slot + 1) as u8
+    } else {
+        0
+    }
+}
+
+/// Vanilla `JukeboxBlockEntity.java:144`:
+/// Jukebox can accept record only when empty and item has JukeboxPlayable component.
+#[must_use]
+pub fn can_place_record_in_jukebox(is_empty: bool, has_jukebox_playable: bool) -> bool {
+    is_empty && has_jukebox_playable
+}
+
+
 
 
 
@@ -14175,6 +14216,41 @@ mod tests {
         assert_eq!(calculate_beacon_primary_amplifier(4, false), 0);
         assert_eq!(calculate_beacon_primary_amplifier(4, true), 1);
     }
+
+    #[test]
+    fn test_campfire_chiseled_bookshelf_and_jukebox_parity() {
+        assert_eq!(CAMPFIRE_NUM_SLOTS, 4);
+        assert_eq!(CAMPFIRE_BURN_COOL_SPEED, 2);
+        assert_eq!(CAMPFIRE_NORMAL_DAMAGE, 1.0);
+        assert_eq!(CAMPFIRE_SOUL_DAMAGE, 2.0);
+        assert_eq!(CAMPFIRE_SMOKE_HEIGHT_NORMAL, 10);
+        assert_eq!(CAMPFIRE_SMOKE_HEIGHT_SIGNAL, 24);
+
+        // Campfire cool-down decreases by 2 per tick
+        assert_eq!(calculate_campfire_cool_down(100, 600), 98);
+        assert_eq!(calculate_campfire_cool_down(1, 600), 0);
+        assert_eq!(calculate_campfire_cool_down(0, 600), 0);
+        assert_eq!(calculate_campfire_cool_down(700, 600), 600);
+
+        // Chiseled Bookshelf constants & comparator output
+        assert_eq!(CHISELED_BOOKSHELF_MAX_BOOKS, 6);
+        assert_eq!(CHISELED_BOOKSHELF_MAX_STACK_SIZE, 1);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(-1), 0);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(0), 1);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(1), 2);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(2), 3);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(3), 4);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(4), 5);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(5), 6);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(6), 0);
+
+        // Jukebox constants & insertion rules
+        assert_eq!(JUKEBOX_MAX_STACK_SIZE, 1);
+        assert!(can_place_record_in_jukebox(true, true));
+        assert!(!can_place_record_in_jukebox(false, true)); // already has disc
+        assert!(!can_place_record_in_jukebox(true, false)); // item is not a music disc
+    }
+
 
 
 }

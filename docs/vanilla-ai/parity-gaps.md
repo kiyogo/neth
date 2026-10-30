@@ -6123,3 +6123,38 @@ ound_to_orb_size tiers.
     - Added constants and helpers (`calculate_beacon_range`, `calculate_beacon_effect_duration_ticks`, `calculate_beacon_primary_amplifier`, `can_take_brewing_ingredient_through_bottom`).
     - Added comprehensive unit test `test_brewing_stand_and_beacon_parity`.
   - All unit tests verified and passing across the brewing stand and beacon suites.
+
+### Gap 248: Campfire, Chiseled Bookshelf & Jukebox Block Entities Filtering, Stack Sizes, Occupied State & Comparator Parity
+- **Vanilla Reference**:
+  - `CampfireBlockEntity.java:43-44, 85-98` & `CampfireBlock.java:60-65, 112-120, 154-156`:
+    - Slot definitions: `NUM_SLOTS = 4`.
+    - Unlit cool-down rate: `BURN_COOL_SPEED = 2` (reduces cooking progress by 2 ticks per tick when unlit: `Mth.clamp(cookingProgress[slot] - 2, 0, cookingTime[slot])`).
+    - Fire damage: Normal campfire deals `1.0 HP` (half heart), Soul campfire deals `2.0 HP` (one full heart) of `campfire` damage type to standing living entities without Frost Walker or Fire Resistance.
+    - Signal fire: `Blocks.HAY_BLOCK` directly underneath sets `SIGNAL_FIRE = true`, boosting smoke particle rise height from 10 to 24 blocks.
+    - Dousing: shovels and water douse campfire into unlit state, damaging shovel by 1 durability.
+  - `ChiseledBookShelfBlockEntity.java:25, 69-76, 83, 93` & `ChiseledBookShelfBlock.java:185-190`:
+    - Storage capacity: `MAX_BOOKS_IN_STORAGE = 6` (slots 0..=5).
+    - Stack size limit: `getMaxStackSize() = 1`.
+    - Input filtering: `acceptsItemType(ItemStack)` only allows `#minecraft:bookshelf_books` (Book, Enchanted Book, Written Book, Writable Book, Knowledge Book).
+    - Last interacted slot: tracks slot (0..=5) on addition or removal (`lastInteractedSlot = interactedSlot`).
+    - Comparator signal: outputs `lastInteractedSlot + 1` (signals 1 to 6), or 0 if empty / no interaction.
+  - `JukeboxBlockEntity.java:133-150` & `JukeboxBlock.java:226-241`:
+    - Stack size limit: `getMaxStackSize() = 1`.
+    - Input filtering: `canPlaceItem(slot, stack)` only allows items with `DataComponents.JUKEBOX_PLAYABLE` when slot 0 is empty.
+    - Automation: insertion via hopper starts playback if valid, removal stops playback.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`:
+    - Implemented `get_max_count_per_stack(&self) -> u8 { 1 }`.
+    - Implemented `is_valid_slot_for`: rejects non-book items by verifying against `tag::Item::MINECRAFT_BOOKSHELF_BOOKS`.
+    - Fixed `set_stack`, `remove_stack`, and `remove_stack_specific` to accurately record `last_interacted_slot` on hopper or inventory manipulation.
+  - Updated `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Fixed `get_comparator_output` to return `0` when `last_interacted_slot` is `-1` instead of underflowing.
+  - Updated `crates/pumpkin-core/src/block/entities/jukebox.rs`:
+    - Implemented `get_max_count_per_stack(&self) -> u8 { 1 }`.
+    - Implemented `is_valid_slot_for`: rejects non-music discs and prevents insertion when already containing a record.
+    - Updated `set_stack` to automatically trigger playback if a playable disc is inserted via hopper.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added constants `CAMPFIRE_NUM_SLOTS`, `CAMPFIRE_BURN_COOL_SPEED`, `CAMPFIRE_NORMAL_DAMAGE`, `CAMPFIRE_SOUL_DAMAGE`, `CAMPFIRE_SMOKE_HEIGHT_NORMAL`, `CAMPFIRE_SMOKE_HEIGHT_SIGNAL`, `CHISELED_BOOKSHELF_MAX_BOOKS`, `CHISELED_BOOKSHELF_MAX_STACK_SIZE`, `JUKEBOX_MAX_STACK_SIZE`.
+    - Added helper functions `calculate_campfire_cool_down`, `calculate_chiseled_bookshelf_comparator_output`, and `can_place_record_in_jukebox`.
+    - Added unit test `test_campfire_chiseled_bookshelf_and_jukebox_parity`.
+  - All unit tests verified and passing across the campfire, chiseled bookshelf, and jukebox suites.

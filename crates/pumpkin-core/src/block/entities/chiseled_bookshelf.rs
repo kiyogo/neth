@@ -208,6 +208,10 @@ impl Inventory for ChiseledBookshelfBlockEntity {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let removed = std::mem::replace(&mut items[slot], ItemStack::EMPTY.clone());
+        if !removed.is_empty() && (0..Self::INVENTORY_SIZE).contains(&slot) {
+            self.last_interacted_slot
+                .store(slot as i8, Ordering::Relaxed);
+        }
         self.mark_dirty();
         removed
     }
@@ -218,7 +222,12 @@ impl Inventory for ChiseledBookshelfBlockEntity {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let res = if !items[slot].is_empty() && amount > 0 {
-            items[slot].split(amount)
+            let split_item = items[slot].split(amount);
+            if (0..Self::INVENTORY_SIZE).contains(&slot) {
+                self.last_interacted_slot
+                    .store(slot as i8, Ordering::Relaxed);
+            }
+            split_item
         } else {
             ItemStack::EMPTY.clone()
         };
@@ -232,7 +241,28 @@ impl Inventory for ChiseledBookshelfBlockEntity {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         items[slot] = stack;
+        if (0..Self::INVENTORY_SIZE).contains(&slot) {
+            self.last_interacted_slot
+                .store(slot as i8, Ordering::Relaxed);
+        }
         self.mark_dirty();
+    }
+
+    fn get_max_count_per_stack(&self) -> u8 {
+        1
+    }
+
+    fn is_valid_slot_for(&self, slot: usize, stack: &ItemStack) -> bool {
+        if slot >= Self::INVENTORY_SIZE {
+            return false;
+        }
+        if stack.is_empty() {
+            return true;
+        }
+        use pumpkin_data::tag::Taggable;
+        stack
+            .get_item()
+            .has_tag(&pumpkin_data::tag::Item::MINECRAFT_BOOKSHELF_BOOKS)
     }
 
     fn mark_dirty(&self) {
