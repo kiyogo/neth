@@ -20,6 +20,41 @@ use pumpkin_util::text::TextComponent;
 #[pumpkin_block("minecraft:enchanting_table")]
 pub struct EnchantingTableBlock;
 
+impl EnchantingTableBlock {
+    pub const MAX_BOOKSHELVES: i32 = 15;
+    pub const TOTAL_BOOKSHELF_POSITIONS: usize = 32;
+}
+
+/// Vanilla `EnchantmentHelper.getEnchantmentCost`:
+/// `selected = random.nextInt(8) + 1 + (bookcases >> 1) + random.nextInt(bookcases + 1)`
+#[must_use]
+pub const fn calculate_enchantment_cost(slot: usize, mut bookcases: i32, selected: i32) -> i32 {
+    if bookcases > 15 {
+        bookcases = 15;
+    }
+    let cost = match slot {
+        0 => {
+            let c = selected / 3;
+            if c < 1 { 1 } else { c }
+        }
+        1 => {
+            let c = selected * 2 / 3 + 1;
+            if c < 1 { 1 } else { c }
+        }
+        2 => {
+            let b2 = bookcases * 2;
+            let c = if selected > b2 { selected } else { b2 };
+            if c < 1 { 1 } else { c }
+        }
+        _ => 0,
+    };
+    if cost < (slot as i32 + 1) {
+        0
+    } else {
+        cost
+    }
+}
+
 impl BlockBehaviour for EnchantingTableBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = EnchantingTableBlockEntity::new(*args.position);

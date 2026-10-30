@@ -162,14 +162,19 @@ impl EnchantingTableScreenHandler {
     }
 
     fn calculate_level_requirement(&self, random: &mut LegacyRand, slot: usize) -> i32 {
-        let b = self.bookshelf_count;
+        let b = self.bookshelf_count.min(15);
         let level = random.next_bounded_i32(8) + 1 + (b >> 1) + random.next_bounded_i32(b + 1);
 
-        match slot {
+        let cost = match slot {
             0 => (level / 3).max(1),
-            1 => (level * 2 / 3 + 7).max(1),
+            1 => (level * 2 / 3 + 1).max(1),
             2 => level.max(b * 2).max(1),
             _ => 0,
+        };
+        if cost < (slot as i32 + 1) {
+            0
+        } else {
+            cost
         }
     }
 

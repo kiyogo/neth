@@ -6408,3 +6408,32 @@ ound_to_orb_size tiers.
     - Exported helper function calculate_conduit_effect_range(active_size) matching vanilla formula (active_size / 7) * 16.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_conduit_activation_range_and_durations_parity.
+
+### Gap 259: Enchanting Table Bookshelf Power, Book Animation & Clamping Parity
+- **Vanilla Reference**:
+  - EnchantingTableBlock.java:28-40:
+    - BOOKSHELF_OFFSETS: 32 potential outer positions in a 5x5 ring across 2 vertical levels (y = 0 and y = 1, Math.abs(x) == 2 || Math.abs(z) == 2).
+    - Valid bookshelf requires #minecraft:enchantment_power_provider at offset and #minecraft:enchantment_power_transmitter at midpoint.
+  - EnchantingTableBlockEntity.java:30-45:
+    - Book animation rotation and flip mechanics (Mth.clamp, 
+otDir * 0.4F, max = 0.2F).
+  - EnchantmentHelper.java:503-519:
+    - ookcases capped at 15 (if (bookcases > 15) { bookcases = 15; }).
+    - Level requirements:
+      - Slot 0: max(selected / 3, 1).
+      - Slot 1: selected * 2 / 3 + 1.
+      - Slot 2: max(selected, bookcases * 2).
+  - EnchantmentMenu.java:106-108:
+    - Slot costs below their minimum button index threshold (cost < slot + 1) are zeroed out: slot 0 requires >= 1, slot 1 requires >= 2, slot 2 requires >= 3.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-inventory/src/enchanting/enchanting_screen_handler.rs:
+    - Fixed formula in calculate_level_requirement for slot 1 from erroneous level * 2 / 3 + 7 to vanilla (level * 2 / 3 + 1).max(1).
+    - Added bookshelf clamping to 15 (self.bookshelf_count.min(15)).
+    - Enforced minimum slot cost thresholds (if cost < (slot as i32 + 1) { 0 } else { cost }).
+  - Updated crates/pumpkin-core/src/block/blocks/enchanting_table.rs:
+    - Exported constants MAX_BOOKSHELVES = 15 and TOTAL_BOOKSHELF_POSITIONS = 32.
+    - Added helper calculate_enchantment_cost(slot, bookcases, selected).
+  - Updated crates/pumpkin-core/src/block/entities/enchanting_table.rs:
+    - Exported constant MAX_BOOKSHELVES = 15.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_enchanting_table_bookshelves_and_cost_parity.

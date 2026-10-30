@@ -14682,6 +14682,36 @@ mod tests {
     }
 
     #[test]
+    fn test_enchanting_table_bookshelves_and_cost_parity() {
+        use crate::block::blocks::enchanting_table::{
+            EnchantingTableBlock, calculate_enchantment_cost,
+        };
+        use crate::block::entities::enchanting_table::EnchantingTableBlockEntity;
+
+        assert_eq!(EnchantingTableBlock::MAX_BOOKSHELVES, 15);
+        assert_eq!(EnchantingTableBlock::TOTAL_BOOKSHELF_POSITIONS, 32);
+        assert_eq!(EnchantingTableBlockEntity::MAX_BOOKSHELVES, 15);
+
+        // 0 bookshelves, selected = 10
+        assert_eq!(calculate_enchantment_cost(0, 0, 10), 3);
+        assert_eq!(calculate_enchantment_cost(1, 0, 10), 7);
+        assert_eq!(calculate_enchantment_cost(2, 0, 10), 10);
+
+        // 15 bookshelves, selected = 18
+        assert_eq!(calculate_enchantment_cost(0, 15, 18), 6);
+        assert_eq!(calculate_enchantment_cost(1, 15, 18), 13);
+        assert_eq!(calculate_enchantment_cost(2, 15, 18), 30); // Level 30 max
+
+        // Clamping bookcases > 15:
+        assert_eq!(calculate_enchantment_cost(2, 25, 18), 30);
+
+        // Minimum slot threshold (slot 0 >= 1, slot 1 >= 2, slot 2 >= 3):
+        assert_eq!(calculate_enchantment_cost(0, 0, 1), 1);
+        assert_eq!(calculate_enchantment_cost(1, 0, 1), 0); // 1 < 2 => 0
+        assert_eq!(calculate_enchantment_cost(2, 0, 1), 0); // 1 < 3 => 0
+    }
+
+    #[test]
     fn test_conduit_activation_range_and_durations_parity() {
         use crate::block::entities::conduit::{
             ConduitBlockEntity, calculate_conduit_effect_range,

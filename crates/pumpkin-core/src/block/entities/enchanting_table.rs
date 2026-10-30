@@ -55,6 +55,7 @@ impl BlockEntity for EnchantingTableBlockEntity {
 
 impl EnchantingTableBlockEntity {
     pub const ID: &'static str = "minecraft:enchanting_table";
+    pub const MAX_BOOKSHELVES: i32 = 15;
     const COMPONENT_FIELDS: ComponentFields = &[(DataComponent::CustomName, "CustomName")];
 
     /// Creates an entity with empty component state at the supplied position.
