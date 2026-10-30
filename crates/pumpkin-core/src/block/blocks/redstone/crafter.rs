@@ -106,6 +106,8 @@ pub struct CrafterBlock;
 impl CrafterBlock {
     pub const CRAFTING_TICK_DELAY: u32 = 4;
     pub const MAX_CRAFTING_TICKS: i32 = 6;
+    pub const CRAFTER_ADVANCEMENT_DIAMETER: f64 = 17.0;
+    pub const CONTAINER_SIZE: usize = 9;
 
     fn dispense_from(world: &Arc<World>, pos: &BlockPos, block: &Block) {
         let Some(block_entity) = world.get_block_entity(pos) else {

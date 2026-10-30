@@ -15193,4 +15193,20 @@ mod tests {
         assert_eq!(DropperBlockEntity::INVENTORY_SIZE, 9);
     }
 
+    #[test]
+    fn test_crafter_constants_and_timing_parity() {
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::entities::crafter::CrafterBlockEntity;
+
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+
+        assert_eq!(CrafterBlockEntity::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlockEntity::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlockEntity::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlockEntity::INVENTORY_SIZE, 9);
+    }
+
 }

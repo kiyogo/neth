@@ -6724,3 +6724,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Replaced hardcoded schedule tick delay with `Self::TRIGGER_DURATION`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_dispenser_and_dropper_timing_and_container_size_parity`.
+
+
+### Gap 275: Crafter Crafting Tick Delays, Container Size & Advancement Radius Parity
+- **Vanilla Reference**:
+  - CrafterBlock.java:45-55 & CrafterBlockEntity.java:35-48:
+    - `MAX_CRAFTING_TICKS = 6`: Visual crafting animation lasts 6 game ticks.
+    - `CRAFTING_TICK_DELAY = 4`: Delay between receiving pulse and crafting output is 4 ticks.
+    - `CRAFTER_ADVANCEMENT_DIAMETER = 17`: Radius 17 blocks around crafter for crafting advancement triggers.
+    - `CONTAINER_SIZE = 9`: 3x3 crafting grid.
+    - `CONTAINER_WIDTH = 3`, `CONTAINER_HEIGHT = 3`.
+    - Comparator signal: outputs count of slots that are either non-empty or disabled (0..9).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Exported constants `MAX_CRAFTING_TICKS = 6`, `CRAFTING_TICK_DELAY = 4`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, and `CONTAINER_SIZE = 9`.
+  - Updated `crates/pumpkin-core/src/block/entities/crafter.rs`:
+    - Exported constants `CONTAINER_SIZE = 9`, `CONTAINER_WIDTH = 3`, `CONTAINER_HEIGHT = 3`, and `INVENTORY_SIZE = 9`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_crafter_constants_and_timing_parity`.

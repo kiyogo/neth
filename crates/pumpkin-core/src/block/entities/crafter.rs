@@ -173,6 +173,9 @@ impl BlockEntity for CrafterBlockEntity {
 
 impl CrafterBlockEntity {
     pub const INVENTORY_SIZE: usize = 9;
+    pub const CONTAINER_SIZE: usize = 9;
+    pub const CONTAINER_WIDTH: usize = 3;
+    pub const CONTAINER_HEIGHT: usize = 3;
     pub const ID: &'static str = "minecraft:crafter";
 
     #[must_use]
