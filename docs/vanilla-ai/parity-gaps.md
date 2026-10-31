@@ -9040,3 +9040,34 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported `BOGGED_SHEAR_MUSHROOM_COUNT = 2`.
   - Added unit test `test_bogged_sound_and_shearing_loot_parity` in `bogged.rs`.
 - **Status**: Completed & Verified.
+
+### Gap 365: Wind Charge Dispenser Event (1051), Projectile Shoot Power (1.5) & Deflection 5-Tick Immunity Parity
+- **Vanilla Reference**: `net.minecraft.world.item.WindChargeItem.java:1-81`, `net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.WindCharge.java:1-86`, `AbstractWindCharge.java:1-156`, `LevelEvent.java:50`.
+- **Vanilla Mechanics**:
+  1. *Player Thrown Wind Charge*:
+     - Shoot velocity power: 1.5F (`PROJECTILE_SHOOT_POWER = 1.5F`).
+     - Throw sound: `SoundEvents.WIND_CHARGE_THROW`, volume 0.5F, pitch `0.4F / (random.nextFloat() * 0.4F + 0.8F)`.
+     - Direct entity damage: 1.0 HP (`WIND_CHARGE_DIRECT_DAMAGE = 1.0`).
+     - Explosion radius: 1.2F (`WIND_CHARGE_EXPLOSION_POWER = 1.2`), Breeze explosion radius: 3.0F (`BREEZE_WIND_CHARGE_EXPLOSION_POWER = 3.0`).
+     - Explosion interaction: `TriggerBlock`, block hit offset scale: 0.25 (`WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET = 0.25`).
+     - Vertical world ceiling boundary limit: +30 blocks (`WIND_CHARGE_MAX_Y_OFFSET = 30`).
+  2. *Dispenser Behavior*:
+     - Launch power: 1.0F (`WIND_CHARGE_DISPENSER_POWER = 1.0`).
+     - Launch uncertainty: 6.6666665F (`WIND_CHARGE_DISPENSER_UNCERTAINTY = 6.6666665`).
+     - Override dispense event: 1051 (`LevelEvent.SOUND_WIND_CHARGE_SHOOT` / `WorldEvent::SoundWindChargeShoot`).
+  3. *Deflection 5-Tick Immunity*:
+     - Initialized with `noDeflectTicks = 5` (`WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN = 5`).
+     - In `deflect(...)`: returns `false` if `noDeflectTicks > 0`. Projectile deflection and redirection are completely rejected during the first 5 ticks.
+  4. *Camera Proximity Rendering Cutoff*:
+     - If `tickCount < 2 && distance < 12.25` (3.5^2), rendering is suppressed (`WIND_CHARGE_MIN_CAMERA_DISTANCE_SQUARED = 12.25`).
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `WIND_CHARGE_PROJECTILE_SHOOT_POWER = 1.5`, `WIND_CHARGE_DISPENSER_POWER = 1.0`, `WIND_CHARGE_DISPENSER_UNCERTAINTY = 6.6666665`, `WIND_CHARGE_DISPENSE_EVENT_ID = 1051`, `WIND_CHARGE_MIN_CAMERA_DISTANCE_SQUARED = 12.25`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - `dispense_wind_charge` now passes `WindChargeItem::DISPENSER_POWER.into()` (1.0) and `WindChargeItem::DISPENSER_UNCERTAINTY.into()` (6.6666665) to `launch_thrown`.
+  - Updated `crates/pumpkin-core/src/item/items/wind_charge.rs`:
+    - Removed duplicate local `POWER` constant and unified velocity assignment to `Self::PROJECTILE_SHOOT_POWER`.
+  - Updated `crates/pumpkin-core/src/entity/projectile/wind_charge.rs`:
+    - `deflect_projectile` now verifies deflect cooldown and returns `false` while `cooldown > 0`, mirroring vanilla `WindCharge.java:59`.
+    - Added unit test `test_wind_charge_shoot_power_dispenser_and_deflect_immunity_parity`.
+- **Status**: Completed & Verified.

@@ -385,9 +385,6 @@ impl DispenserBlock {
     const DEFAULT_PROJECTILE_UNCERTAINTY: f64 = 6.0;
     const POTION_PROJECTILE_POWER: f64 = 1.375;
     const POTION_PROJECTILE_UNCERTAINTY: f64 = 3.0;
-    // Fire charges and wind charges share these values.
-    const FIREBALL_PROJECTILE_POWER: f64 = 1.0;
-    const FIREBALL_PROJECTILE_UNCERTAINTY: f64 = 6.666_666_5;
     const FIREWORK_PROJECTILE_POWER: f64 = 0.5;
     const FIREWORK_PROJECTILE_UNCERTAINTY: f64 = 1.0;
 
@@ -841,8 +838,8 @@ impl DispenserBlock {
         Self::launch_thrown(
             ctx,
             &thrown,
-            Self::FIREBALL_PROJECTILE_POWER,
-            Self::FIREBALL_PROJECTILE_UNCERTAINTY,
+            crate::item::items::wind_charge::WindChargeItem::DISPENSER_POWER.into(),
+            crate::item::items::wind_charge::WindChargeItem::DISPENSER_UNCERTAINTY.into(),
         );
         Self::finish_projectile_launch(
             ctx,

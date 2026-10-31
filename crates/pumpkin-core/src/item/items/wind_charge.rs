@@ -41,8 +41,6 @@ impl ItemMetadata for WindChargeItem {
     }
 }
 
-const POWER: f32 = 1.5;
-
 impl ItemBehaviour for WindChargeItem {
     fn normal_use(&self, item: &Item, player: &Player) {
         let (yaw, pitch) = player.rotation();
@@ -82,7 +80,7 @@ impl ItemBehaviour for WindChargeItem {
         let entity = Entity::new(world.clone(), spawn_pos, &EntityType::WIND_CHARGE);
 
         let wind_charge = ThrownItemEntity::new(entity, player.get_entity(), WIND_CHARGE_GRAVITY);
-        wind_charge.set_velocity_from(pitch, yaw, 0.0, POWER, 1.0);
+        wind_charge.set_velocity_from(pitch, yaw, 0.0, Self::PROJECTILE_SHOOT_POWER, 1.0);
 
         world.spawn_entity(Arc::new(WindChargeEntity::new_normal(wind_charge)));
 

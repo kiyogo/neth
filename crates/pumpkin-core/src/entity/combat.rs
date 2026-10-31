@@ -8712,6 +8712,36 @@ pub const WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN: u8 = 5;
 /// `Vec3 scaledNormal = Vec3.atLowerCornerOf(collisionNormal).multiply(0.25, 0.25, 0.25);`
 pub const WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET: f64 = 0.25;
 
+/// Projectile shoot power for a thrown Wind Charge (1.5F).
+///
+/// Mirrors vanilla `WindChargeItem.java:20`:
+/// `public static final float PROJECTILE_SHOOT_POWER = 1.5F;`
+pub const WIND_CHARGE_PROJECTILE_SHOOT_POWER: f32 = 1.5;
+
+/// Dispenser shoot power for Wind Charge (1.0F).
+///
+/// Mirrors vanilla `WindChargeItem.java:77`:
+/// `.power(1.0F)`
+pub const WIND_CHARGE_DISPENSER_POWER: f32 = 1.0;
+
+/// Dispenser shoot uncertainty for Wind Charge (6.6666665F).
+///
+/// Mirrors vanilla `WindChargeItem.java:76`:
+/// `.uncertainty(6.6666665F)`
+pub const WIND_CHARGE_DISPENSER_UNCERTAINTY: f32 = 6.6666665;
+
+/// Dispense event ID for Wind Charge (1051 - SOUND_WIND_CHARGE_SHOOT).
+///
+/// Mirrors vanilla `WindChargeItem.java:78` and `LevelEvent.java:50`:
+/// `.overrideDispenseEvent(1051)`
+pub const WIND_CHARGE_DISPENSE_EVENT_ID: i32 = 1051;
+
+/// Minimum camera distance squared for rendering Wind Charge in first 2 ticks (3.5^2 = 12.25).
+///
+/// Mirrors vanilla `WindCharge.java:28`:
+/// `private static final float MIN_CAMERA_DISTANCE_SQUARED = Mth.square(3.5F);`
+pub const WIND_CHARGE_MIN_CAMERA_DISTANCE_SQUARED: f32 = 12.25;
+
 /// Direct entity hit damage for Large Fireball (6.0 HP).
 ///
 /// Mirrors vanilla `LargeFireball.java:48`:

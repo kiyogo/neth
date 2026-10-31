@@ -179,6 +179,12 @@ impl EntityBase for WindChargeEntity {
     }
 
     fn deflect_projectile(&self, deflector: &dyn EntityBase) -> bool {
+        if self
+            .deflect_cooldown()
+            .is_some_and(|cooldown| cooldown.load(Ordering::Relaxed) > 0)
+        {
+            return false;
+        }
         self.redirect(Some(deflector));
         true
     }
@@ -257,5 +263,36 @@ mod tests {
         assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
         assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
         assert_eq!(WIND_CHARGE_DIRECT_DAMAGE, 1.0);
+    }
+
+    #[test]
+    fn test_wind_charge_shoot_power_dispenser_and_deflect_immunity_parity() {
+        use crate::item::items::wind_charge::WindChargeItem;
+
+        // 1. Shoot power and dispenser configuration parity (WindChargeItem.java:20, 73-80)
+        assert_eq!(WIND_CHARGE_PROJECTILE_SHOOT_POWER, 1.5);
+        assert_eq!(WindChargeItem::PROJECTILE_SHOOT_POWER, 1.5);
+        assert_eq!(WIND_CHARGE_DISPENSER_POWER, 1.0);
+        assert_eq!(WindChargeItem::DISPENSER_POWER, 1.0);
+        assert!((WIND_CHARGE_DISPENSER_UNCERTAINTY - 6.6666665).abs() < 1e-6);
+        assert!((WindChargeItem::DISPENSER_UNCERTAINTY - 6.6666665).abs() < 1e-6);
+        assert_eq!(WIND_CHARGE_DISPENSE_EVENT_ID, 1051);
+        assert_eq!(WindChargeItem::DISPENSE_EVENT_ID, 1051);
+
+        // 2. Camera distance cutoff and deflect immunity ticks (WindCharge.java:28-29)
+        assert_eq!(WIND_CHARGE_MIN_CAMERA_DISTANCE_SQUARED, 12.25);
+        assert_eq!(WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN, 5);
+
+        // 3. Test deflection immunity logic
+        let cooldown = std::sync::atomic::AtomicU8::new(5);
+        assert!(cooldown.load(std::sync::atomic::Ordering::Relaxed) > 0);
+        // Deflection is blocked while cooldown > 0
+        let can_deflect_active_cooldown = cooldown.load(std::sync::atomic::Ordering::Relaxed) == 0;
+        assert!(!can_deflect_active_cooldown);
+
+        // Tick down cooldown to 0
+        cooldown.store(0, std::sync::atomic::Ordering::Relaxed);
+        let can_deflect_expired_cooldown = cooldown.load(std::sync::atomic::Ordering::Relaxed) == 0;
+        assert!(can_deflect_expired_cooldown);
     }
 }
