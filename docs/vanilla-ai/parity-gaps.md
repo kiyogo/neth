@@ -7901,3 +7901,38 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Added synchronization of `WorldEvent::SoundBrewingStandBrew` (1035) on brew completion in `do_brew`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_brewing_stand_brew_time_fuel_bottle_mask_and_comparator_parity`.
+
+### Gap 318: Hopper Transfer Cooldown (8 Ticks / 0.4s), Push/Pull Priority, Lock State & Comparator Output Parity
+- **Vanilla Reference**:
+  - `HopperBlock.java:1-180`, `HopperBlockEntity.java:1-350`, `Hopper.java:1-35`:
+    - Timing & capacity parameters:
+      - Transfer item speed: `MOVE_ITEM_SPEED = 8` game ticks (0.4s).
+      - Inactive cooldown indicator: `NO_COOLDOWN_TIME = -1`.
+      - Inventory capacity: `HOPPER_CONTAINER_SIZE = 5` slots (`CONTAINER_SIZE = 5`).
+      - Suction bounding box: `SUCK_AABB` from $Y + 11/16$ to $Y + 2$ (`[0.0, 11.0 / 16.0, 0.0]` to `[1.0, 2.0, 1.0]`).
+    - Facing constraint:
+      - Only 5 directions allowed: `DOWN`, `NORTH`, `SOUTH`, `WEST`, `EAST`.
+      - Placing on ceiling or floor (`direction.getAxis() == Axis.Y`) maps to `FacingHopper::Down`.
+    - Redstone locking behavior:
+      - When receiving redstone signal (`hasNeighborSignal`), sets `ENABLED = false`.
+      - Disabled/locked hopper cannot transfer items out (`ejectItems`), take items from container above, or suck in loose item entities.
+    - Transfer priority:
+      - Push first (`ejectItems`): tries to push 1 item to attached container facing.
+      - Pull second (`suckInItems`): if hopper inventory is not full, pulls 1 item from container above or collects loose item entity.
+      - If block above has full cube collision and lacks `#minecraft:does_not_block_hoppers`, loose item suction is blocked.
+    - Comparator analog output calculation:
+      - Uses standard container formula `Mth.lerpDiscrete(totalPercent, 0, 15)`.
+      - Output:
+        - 0 items: signal 0.
+        - 1 item (stack 64): `floor(1.0 + (1/320)*14.0) = 1` (even a single item yields signal 1).
+        - 1 full stack of 64 (20%): `floor(1.0 + 0.2 * 14.0) = 3`.
+        - 2 full stacks of 64 (40%): `floor(1.0 + 0.4 * 14.0) = 6`.
+        - 3 full stacks of 64 (60%): `floor(1.0 + 0.6 * 14.0) = 9`.
+        - 4 full stacks of 64 (80%): `floor(1.0 + 0.8 * 14.0) = 12`.
+        - 5 full stacks of 64 (100%): `floor(1.0 + 1.0 * 14.0) = 15`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Exported constants `HOPPER_CONTAINER_SIZE`, `CONTAINER_SIZE`, `MOVE_ITEM_SPEED`, `NO_COOLDOWN_TIME`, `SUCK_AABB_Y_MIN`, `SUCK_AABB_Y_MAX`, `MIN_COMPARATOR_OUTPUT`, and `MAX_COMPARATOR_OUTPUT`.
+    - Exported helpers `calculate_facing_from_direction`, `is_enabled`, `is_suction_blocked`, and `calculate_container_comparator_output`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_hopper_transfer_cooldown_lock_state_facing_and_comparator_parity`.

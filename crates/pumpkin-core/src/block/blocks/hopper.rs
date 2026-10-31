@@ -56,8 +56,16 @@ impl HopperBlock {
     pub const HOPPER_CONTAINER_SIZE: usize = 5;
     pub const CONTAINER_SIZE: usize = 5;
     pub const MOVE_ITEM_SPEED: i32 = 8;
+    pub const NO_COOLDOWN_TIME: i32 = -1;
+    pub const SUCK_AABB_Y_MIN: f64 = 11.0 / 16.0;
+    pub const SUCK_AABB_Y_MAX: f64 = 2.0;
     pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
     pub const MAX_COMPARATOR_OUTPUT: u8 = 15;
+
+    #[must_use]
+    pub fn is_suction_blocked(is_full_cube: bool, has_does_not_block_tag: bool) -> bool {
+        is_full_cube && !has_does_not_block_tag
+    }
 
     pub fn calculate_facing_from_direction(direction: BlockDirection) -> FacingHopper {
         match direction {

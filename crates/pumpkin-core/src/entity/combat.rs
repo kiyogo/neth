@@ -17419,4 +17419,61 @@ mod tests {
         // 3 bottles + 64 ingredient + 64 fuel (total = 5.0, percent = 1.0) -> floor(1 + 1.0 * 14) = 15
         assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 1.0, 1.0, 1.0, 1.0]), 15);
     }
+
+    #[test]
+    fn test_hopper_transfer_cooldown_lock_state_facing_and_comparator_parity() {
+        use crate::block::blocks::hopper::HopperBlock;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::FacingHopper;
+
+        // Parity Constants Verification
+        assert_eq!(HopperBlock::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlock::NO_COOLDOWN_TIME, -1);
+        assert_eq!(HopperBlock::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::SUCK_AABB_Y_MIN, 11.0 / 16.0);
+        assert_eq!(HopperBlock::SUCK_AABB_Y_MAX, 2.0);
+        assert_eq!(HopperBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(HopperBlock::MAX_COMPARATOR_OUTPUT, 15);
+
+        // Facing derivation: Up and Down map to Down, horizontals preserve direction
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Up), FacingHopper::Down);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Down), FacingHopper::Down);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::North), FacingHopper::North);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::South), FacingHopper::South);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::West), FacingHopper::West);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::East), FacingHopper::East);
+
+        // Redstone Lock: Powered hopper is disabled
+        assert!(HopperBlock::is_enabled(false));
+        assert!(!HopperBlock::is_enabled(true));
+
+        // Suction blockage: full cube blocks loose item suction unless in does_not_block_hoppers tag
+        assert!(HopperBlock::is_suction_blocked(true, false));
+        assert!(!HopperBlock::is_suction_blocked(true, true));
+        assert!(!HopperBlock::is_suction_blocked(false, false));
+        assert!(!HopperBlock::is_suction_blocked(false, true));
+
+        // Comparator Output according to Vanilla Container Formula
+        // Empty hopper
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[0, 0, 0, 0, 0], &[64, 64, 64, 64, 64]), 0);
+
+        // 1 item in slot 0 (even 1 item gives signal 1)
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[1, 0, 0, 0, 0], &[64, 64, 64, 64, 64]), 1);
+
+        // 1 full stack of 64 (fullness = 0.2) -> floor(1 + 0.2 * 14) = 3
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 0, 0, 0, 0], &[64, 64, 64, 64, 64]), 3);
+
+        // 2 full stacks (fullness = 0.4) -> floor(1 + 0.4 * 14) = 6
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 64, 0, 0, 0], &[64, 64, 64, 64, 64]), 6);
+
+        // 3 full stacks (fullness = 0.6) -> floor(1 + 0.6 * 14) = 9
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 64, 64, 0, 0], &[64, 64, 64, 64, 64]), 9);
+
+        // 4 full stacks (fullness = 0.8) -> floor(1 + 0.8 * 14) = 12
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 64, 64, 64, 0], &[64, 64, 64, 64, 64]), 12);
+
+        // 5 full stacks (fullness = 1.0) -> floor(1 + 1.0 * 14) = 15
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 64, 64, 64, 64], &[64, 64, 64, 64, 64]), 15);
+    }
 }
