@@ -15,6 +15,35 @@ use crate::block::{BlockBehaviour, NormalUseArgs, OnPlaceArgs, PlacedArgs, UseWi
 #[pumpkin_block("minecraft:vault")]
 pub struct VaultBlock;
 
+impl VaultBlock {
+    pub const ACTIVATION_RANGE: f64 = 4.0;
+    pub const DEACTIVATION_RANGE: f64 = 4.5;
+
+    #[must_use]
+    pub fn is_valid_key(item_id: u16, is_ominous: bool) -> bool {
+        if is_ominous {
+            item_id == Item::OMINOUS_TRIAL_KEY.id
+        } else {
+            item_id == Item::TRIAL_KEY.id
+        }
+    }
+
+    #[must_use]
+    pub const fn can_insert_key(state: VaultState) -> bool {
+        !matches!(state, VaultState::Ejecting | VaultState::Unlocking)
+    }
+
+    #[must_use]
+    pub fn is_within_activation_range(distance_sq: f64) -> bool {
+        distance_sq <= Self::ACTIVATION_RANGE * Self::ACTIVATION_RANGE
+    }
+
+    #[must_use]
+    pub fn is_within_deactivation_range(distance_sq: f64) -> bool {
+        distance_sq <= Self::DEACTIVATION_RANGE * Self::DEACTIVATION_RANGE
+    }
+}
+
 impl BlockBehaviour for VaultBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = VaultLikeProperties::default(args.block);

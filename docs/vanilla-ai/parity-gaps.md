@@ -8395,3 +8395,19 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `PROJECTILE_SHOOT_POWER`, `COOLDOWN_TICKS`, `DISPENSE_EVENT_ID`, `DISPENSER_UNCERTAINTY`, `DISPENSER_POWER`, `PLAYER_EXPLOSION_RADIUS`, `BREEZE_EXPLOSION_RADIUS`, and `DEFLECT_COOLDOWN_TICKS` to `WindChargeItem`.
   - Added `get_cooldown_ticks` and `calculate_throw_pitch` to `WindChargeItem`.
   - Added unit test `test_wind_charge_physics_radius_cooldown_and_dispense_parity` verifying shoot power, throw pitch formula across random boundaries, explosion radii, deflect cooldown, and dispenser configuration.
+
+### Gap 338: Vault Ominous & Regular Reward Looting, Key Validation & Activation Range Parity
+
+- **Vanilla Reference**: `VaultBlock.java:1-104`, `VaultConfig.java:1-71`, `VaultState.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Vaults are interactive containers that eject trial loot rewards when opened with the appropriate key.
+  - Regular vaults require a standard Trial Key (`Items.TRIAL_KEY`), while Ominous vaults require an Ominous Trial Key (`Items.OMINOUS_TRIAL_KEY`).
+  - Insertion is permitted only when not currently in `Unlocking` or `Ejecting` state.
+  - Player activation range is 4.0 blocks (`ACTIVATION_RANGE = 4.0`), while deactivation range is 4.5 blocks (`DEACTIVATION_RANGE = 4.5`).
+  - Players who have already received rewards from a particular vault are remembered (`rewarded_players` set) and rejected with sound `SoundEvents.VAULT_REJECT_REWARDED_PLAYER`.
+  - Wrong key insertion triggers `SoundEvents.VAULT_INSERT_ITEM_FAIL`.
+  - Successful unlocking consumes 1 key, plays `SoundEvents.VAULT_INSERT_ITEM` and `SoundEvents.VAULT_OPEN_SHUTTER`, grants advancement `UnderLockAndKey` (regular) or `Revaulting` (ominous), ejects loot, and returns to active state.
+- **Neth Changes**:
+  - Added constants `ACTIVATION_RANGE = 4.0` and `DEACTIVATION_RANGE = 4.5` to `VaultBlock`.
+  - Added helpers `is_valid_key`, `can_insert_key`, `is_within_activation_range`, and `is_within_deactivation_range`.
+  - Added unit test `test_vault_key_validation_activation_range_and_states_parity` covering key validity matrices, activation distance thresholds, and allowed states.

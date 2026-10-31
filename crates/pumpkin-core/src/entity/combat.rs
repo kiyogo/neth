@@ -18664,4 +18664,41 @@ mod tests {
         // Cooldown ticks helper matches 10 ticks
         assert_eq!(WindChargeItem::get_cooldown_ticks(), 10);
     }
+
+    #[test]
+    fn test_vault_key_validation_activation_range_and_states_parity() {
+        use crate::block::blocks::vault::VaultBlock;
+        use pumpkin_data::block_properties::VaultState;
+        use pumpkin_data::item::Item;
+
+        // Constants parity with Vanilla VaultConfig.java
+        assert_eq!(VaultBlock::ACTIVATION_RANGE, 4.0);
+        assert_eq!(VaultBlock::DEACTIVATION_RANGE, 4.5);
+
+        // Activation range checks (squared distances)
+        assert!(VaultBlock::is_within_activation_range(0.0));
+        assert!(VaultBlock::is_within_activation_range(16.0)); // 4.0^2
+        assert!(!VaultBlock::is_within_activation_range(16.01));
+
+        // Deactivation range checks (squared distances)
+        assert!(VaultBlock::is_within_deactivation_range(16.0));
+        assert!(VaultBlock::is_within_deactivation_range(20.25)); // 4.5^2
+        assert!(!VaultBlock::is_within_deactivation_range(20.26));
+
+        // Regular Vault key validation: Trial Key only
+        assert!(VaultBlock::is_valid_key(Item::TRIAL_KEY.id, false));
+        assert!(!VaultBlock::is_valid_key(Item::OMINOUS_TRIAL_KEY.id, false));
+        assert!(!VaultBlock::is_valid_key(Item::STICK.id, false));
+
+        // Ominous Vault key validation: Ominous Trial Key only
+        assert!(VaultBlock::is_valid_key(Item::OMINOUS_TRIAL_KEY.id, true));
+        assert!(!VaultBlock::is_valid_key(Item::TRIAL_KEY.id, true));
+        assert!(!VaultBlock::is_valid_key(Item::EMERALD.id, true));
+
+        // Can insert key states
+        assert!(VaultBlock::can_insert_key(VaultState::Active));
+        assert!(VaultBlock::can_insert_key(VaultState::Inactive));
+        assert!(!VaultBlock::can_insert_key(VaultState::Unlocking));
+        assert!(!VaultBlock::can_insert_key(VaultState::Ejecting));
+    }
 }
