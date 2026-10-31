@@ -9577,3 +9577,35 @@ eq 	ext{None}$.
     - Decremented grace timer in `LivingEntity.tick`.
     - Updated `cause_fall_damage` to compute and use `effective_fall_distance` when falling after a wind charge impulse.
 - **Status**: Completed & Verified.
+
+### Gap 381: Mace Heavy Weapon Smash Attack Damage Scaling, Wind Burst & Impact Pos Parity
+- **Vanilla Reference**: `net.minecraft.world.item.MaceItem.java:1-157`, `data/minecraft/enchantment/wind_burst.json:1-68`, `data/minecraft/enchantment/density.json:1-35`, `data/minecraft/enchantment/breach.json:1-35`.
+- **Vanilla Mechanics**:
+  1. *Smash Attack Initiation & Thresholds (`MaceItem.java:28-33, 41-45, 126-128`)*:
+     - Default attack damage is `5.0` (`DEFAULT_ATTACK_DAMAGE = 5`).
+     - Default attack speed modifier is `-3.4F` (`DEFAULT_ATTACK_SPEED = -3.4F`).
+     - Can initiate smash attack if `fallDistance > 1.5F` and not fall flying (gliding with elytra).
+     - Heavy smash sound & 2x AOE knockback when `fallDistance > 5.0F` (`SMASH_ATTACK_HEAVY_THRESHOLD = 5.0F`).
+     - AOE knockback radius around victim is `3.5F` blocks, with base horizontal power `0.7F`.
+  2. *Smash Attack Fall Damage Negation (`MaceItem.java:55, 75-79`)*:
+     - Attacker upward velocity is reset to `0.01F` (`getDeltaMovement().with(Direction.Axis.Y, 0.01F)`).
+     - Attacker invokes `attacker.setIgnoreFallDamageFromCurrentImpulse(true, this.calculateImpactPosition(attacker))`.
+     - Impact position calculation: If attacker is already ignoring fall damage from a prior impulse and the recorded impulse Y is lower than or equal to current Y (`currentImpulseImpactPos.y <= attacker.position().y`), the lower launch position is preserved; otherwise current position is used.
+     - Attacker fall distance is reset to `0.0F`.
+  3. *Smash Attack Damage Scaling & Density (`MaceItem.java:95-109`, `density.json`)*:
+     - Base smash bonus: `fallDistance <= 3.0` -> `4.0 * fallDistance`; `3.0 < fallDistance <= 8.0` -> `12.0 + 2.0 * (fallDistance - 3.0)`; `fallDistance > 8.0` -> `22.0 + (fallDistance - 8.0)`.
+     - Density enchantment: adds `0.5 * level * fallDistance` extra damage across all levels (I to V).
+  4. *Wind Burst Enchantment Trigger & Explosion (`wind_burst.json`)*:
+     - Triggers on hit if `fallDistance > 1.5 && !is_fall_flying`.
+     - Triggers an actual trigger explosion centered at the attacker with `radius = 3.5`, `BlockInteraction.TRIGGER_BLOCK`, damage calculator with knockback multipliers `[1.2, 1.75, 2.2]` for levels I-III, `Particle.GUST_EMITTER_SMALL`, `Particle.GUST_EMITTER_LARGE`, and sound `SoundEvents.WIND_CHARGE_WIND_BURST`.
+  5. *Breach Enchantment Mechanics (`breach.json`)*:
+     - Reduces victim effective armor defense by `0.15 * level` (15% per level, up to 60% at level IV).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `MACE_DEFAULT_ATTACK_DAMAGE`, `MACE_DEFAULT_ATTACK_SPEED`, `MACE_SMASH_ATTACK_FALL_THRESHOLD`, `MACE_SMASH_ATTACK_HEAVY_THRESHOLD`, `MACE_SMASH_ATTACK_KNOCKBACK_RADIUS`, `MACE_SMASH_ATTACK_KNOCKBACK_POWER`, `MACE_WIND_BURST_RADIUS`, `MACE_WIND_BURST_POWERS`, `MACE_DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK`, `MACE_BREACH_ARMOR_REDUCTION_PER_LEVEL`.
+    - Added helper functions `calculate_mace_impact_position`, `calculate_mace_smash_damage_with_density`, `get_mace_wind_burst_power`, `can_trigger_mace_wind_burst`, `calculate_mace_breach_effective_armor`.
+    - Added comprehensive unit test `test_mace_smash_attack_damage_scaling_wind_burst_and_impact_pos_parity`.
+  - In `crates/pumpkin-core/src/entity/player.rs`:
+    - Updated smash attack fall damage negation to call `calculate_mace_impact_position` and `set_ignore_fall_damage_from_current_impulse(true, impact_pos)`.
+    - Replaced hardcoded vertical velocity boost for Wind Burst with vanilla `Explosion` execution (radius 3.5, `BlockInteraction::TriggerBlock`, knockback multipliers `[1.2, 1.75, 2.2]`, gust emitter particles, and `Sound::EntityWindChargeWindBurst`).
+- **Status**: Completed & Verified.

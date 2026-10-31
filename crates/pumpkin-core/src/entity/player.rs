@@ -1506,6 +1506,14 @@ impl Player {
             let velocity = attacker.velocity.load();
             self.set_velocity(Vector3::new(velocity.x, f64::from(0.01f32), velocity.z));
 
+            // Vanilla MaceItem.java:55, 75-79:
+            // attacker.setIgnoreFallDamageFromCurrentImpulse(true, this.calculateImpactPosition(attacker));
+            let impact_pos = crate::entity::combat::calculate_mace_impact_position(
+                attacker.pos.load(),
+                self.living_entity.current_impulse_impact_pos.load(),
+            );
+            self.living_entity.set_ignore_fall_damage_from_current_impulse(true, impact_pos);
+
             let fall_distance = self.living_entity.fall_distance.load();
             let sound = if !victim_entity.on_ground.load(Ordering::Relaxed) {
                 Sound::ItemMaceSmashAir
@@ -1520,15 +1528,29 @@ impl Player {
             self.living_entity.fall_distance.store(0.0);
             if let Some(enchantments) = item_stack.get_data_component::<EnchantmentsImpl>() {
                 for (enchantment, level) in enchantments.enchantment.iter() {
-                    if **enchantment == Enchantment::WIND_BURST {
-                        let boost_y = 0.5 + 0.25 * (*level as f64);
-                        let vel = self.living_entity.entity.velocity.load();
-                        self.set_velocity(Vector3::new(vel.x, boost_y, vel.z));
-                        world.play_sound(
+                    if **enchantment == Enchantment::WIND_BURST && *level > 0 {
+                        // Vanilla wind_burst.json:
+                        // Triggers a trigger explosion at attacker with radius 3.5 and knockback_multiplier [1.2, 1.75, 2.2]
+                        let kb_mult = crate::entity::combat::get_mace_wind_burst_power(*level as u32);
+                        let calculator = Arc::new(crate::world::SimpleExplosionDamageCalculator::new(
+                            false,
+                            false,
+                            Some(kb_mult),
+                            Some(&pumpkin_data::tag::Block::MINECRAFT_BLOCKS_WIND_CHARGE_EXPLOSIONS),
+                        ));
+                        let explosion = crate::world::Explosion::new(
+                            crate::entity::combat::MACE_WIND_BURST_RADIUS,
+                            attacker.pos.load(),
+                            crate::world::BlockInteraction::TriggerBlock,
+                        )
+                        .with_damage_calculator(calculator)
+                        .with_source_entity_type(Some(&pumpkin_data::entity::EntityType::WIND_CHARGE))
+                        .with_particles_and_sound(
+                            pumpkin_data::particle::Particle::GustEmitterSmall,
+                            pumpkin_data::particle::Particle::GustEmitterLarge,
                             Sound::EntityWindChargeWindBurst,
-                            SoundCategory::Players,
-                            &self.living_entity.entity.pos.load(),
                         );
+                        world.run_explosion(&explosion);
                     }
                 }
             }

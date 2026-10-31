@@ -156,6 +156,130 @@ pub fn can_smash_attack(attacker: &LivingEntity) -> bool {
         && !attacker.entity.is_fall_flying()
 }
 
+/// Base attack damage for Mace (+5.0).
+///
+/// Mirrors vanilla `MaceItem.java:28, 41`:
+/// `private static final int DEFAULT_ATTACK_DAMAGE = 5;`
+pub const MACE_DEFAULT_ATTACK_DAMAGE: f32 = 5.0;
+
+/// Base attack speed modifier for Mace (-3.4F).
+///
+/// Mirrors vanilla `MaceItem.java:29, 42`:
+/// `private static final float DEFAULT_ATTACK_SPEED = -3.4F;`
+pub const MACE_DEFAULT_ATTACK_SPEED: f32 = -3.4;
+
+/// Minimum fall distance threshold required to initiate a Mace Smash Attack (1.5 blocks).
+///
+/// Mirrors vanilla `MaceItem.java:30`:
+/// `public static final float SMASH_ATTACK_FALL_THRESHOLD = 1.5F;`
+pub const MACE_SMASH_ATTACK_FALL_THRESHOLD: f32 = 1.5;
+
+/// Fall distance threshold for a heavy smash attack sound & 2x knockback (5.0 blocks).
+///
+/// Mirrors vanilla `MaceItem.java:31`:
+/// `private static final float SMASH_ATTACK_HEAVY_THRESHOLD = 5.0F;`
+pub const MACE_SMASH_ATTACK_HEAVY_THRESHOLD: f32 = 5.0;
+
+/// AOE knockback radius around victim upon a successful smash attack (3.5 blocks).
+///
+/// Mirrors vanilla `MaceItem.java:32`:
+/// `public static final float SMASH_ATTACK_KNOCKBACK_RADIUS = 3.5F;`
+pub const MACE_SMASH_ATTACK_KNOCKBACK_RADIUS: f32 = 3.5;
+
+/// Base horizontal knockback power for smash attack shockwave (0.7F).
+///
+/// Mirrors vanilla `MaceItem.java:33`:
+/// `private static final float SMASH_ATTACK_KNOCKBACK_POWER = 0.7F;`
+pub const MACE_SMASH_ATTACK_KNOCKBACK_POWER: f32 = 0.7;
+
+/// Wind Burst enchantment knockback multipliers per level: [1.2, 1.75, 2.2].
+///
+/// Mirrors vanilla `wind_burst.json`:
+/// Level 1: 1.2, Level 2: 1.75, Level 3: 2.2.
+/// Wind Burst explosion radius around attacker (3.5 blocks).
+///
+/// Mirrors vanilla `wind_burst.json`:
+/// `"radius": 3.5`
+pub const MACE_WIND_BURST_RADIUS: f32 = 3.5;
+
+/// Wind Burst enchantment knockback multipliers per level: [1.2, 1.75, 2.2].
+///
+/// Mirrors vanilla `wind_burst.json`:
+/// Level 1: 1.2, Level 2: 1.75, Level 3: 2.2.
+pub const MACE_WIND_BURST_POWERS: [f32; 3] = [1.2, 1.75, 2.2];
+
+/// Density enchantment extra damage per level per fallen block (0.5).
+///
+/// Mirrors vanilla `density.json`:
+/// `base: 0.5, per_level_above_first: 0.5`
+pub const MACE_DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK: f64 = 0.5;
+
+/// Breach enchantment armor reduction fraction per level (0.15 = 15%).
+///
+/// Mirrors vanilla `breach.json`:
+/// `base: -0.15, per_level_above_first: -0.15`
+pub const MACE_BREACH_ARMOR_REDUCTION_PER_LEVEL: f32 = 0.15;
+
+/// Calculates the impact position for fall damage negation upon a successful mace smash attack.
+///
+/// Mirrors vanilla `MaceItem.calculateImpactPosition` (MaceItem.java:75-79):
+/// ```java
+/// return attacker.isIgnoringFallDamageFromCurrentImpulse() && attacker.currentImpulseImpactPos.y <= attacker.position().y
+///    ? attacker.currentImpulseImpactPos
+///    : attacker.position();
+/// ```
+#[must_use]
+pub fn calculate_mace_impact_position(
+    current_pos: pumpkin_util::math::vector3::Vector3<f64>,
+    current_impulse_impact_pos: Option<pumpkin_util::math::vector3::Vector3<f64>>,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    if let Some(impulse_pos) = current_impulse_impact_pos {
+        if impulse_pos.y <= current_pos.y {
+            return impulse_pos;
+        }
+    }
+    current_pos
+}
+
+/// Calculates total bonus smash damage including Density enchantment.
+///
+/// Mirrors vanilla `MaceItem.java:95-109`:
+/// `(damage + EnchantmentHelper.modifyFallBasedDamage(...) * fallDistance)`
+#[must_use]
+pub fn calculate_mace_smash_damage_with_density(fall_distance: f64, density_level: u32) -> f64 {
+    mace_smash_damage_bonus(fall_distance) + (density_level as f64) * MACE_DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK * fall_distance
+}
+
+/// Returns Wind Burst knockback multiplier for given enchantment level.
+#[must_use]
+pub fn get_mace_wind_burst_power(level: u32) -> f32 {
+    match level {
+        1 => MACE_WIND_BURST_POWERS[0],
+        2 => MACE_WIND_BURST_POWERS[1],
+        3.. => MACE_WIND_BURST_POWERS[2],
+        0 => 0.0,
+    }
+}
+
+/// Checks if Wind Burst should trigger on smash attack.
+#[must_use]
+pub const fn can_trigger_mace_wind_burst(
+    fall_distance: f32,
+    is_fall_flying: bool,
+    wind_burst_level: u32,
+) -> bool {
+    wind_burst_level > 0
+        && fall_distance > MACE_SMASH_ATTACK_FALL_THRESHOLD
+        && !is_fall_flying
+}
+
+/// Calculates effective armor under Breach enchantment reduction.
+#[must_use]
+pub fn calculate_mace_breach_effective_armor(defense: f32, breach_level: u32) -> f32 {
+    let reduction = (breach_level as f32 * MACE_BREACH_ARMOR_REDUCTION_PER_LEVEL).min(1.0);
+    defense * (1.0 - reduction)
+}
+
 /// Vanilla `MaceItem.getAttackDamageBonus`, before the enchantment part.
 pub fn mace_smash_damage_bonus(fall_distance: f64) -> f64 {
     if fall_distance <= 3.0 {
@@ -21505,5 +21629,62 @@ mod tests {
         // Regular TNT explosions affect them if mob_griefing or block interaction allows
         assert!(should_explosion_affect_blocklike_entities(false, true, false));
         assert!(should_explosion_affect_blocklike_entities(false, false, true));
+    }
+
+    #[test]
+    fn test_mace_smash_attack_damage_scaling_wind_burst_and_impact_pos_parity() {
+        use pumpkin_util::math::vector3::Vector3;
+
+        // 1. Mace Attributes & Thresholds Parity (MaceItem.java:28-33)
+        assert_eq!(MACE_DEFAULT_ATTACK_DAMAGE, 5.0);
+        assert_eq!(MACE_DEFAULT_ATTACK_SPEED, -3.4);
+        assert_eq!(MACE_SMASH_ATTACK_FALL_THRESHOLD, 1.5);
+        assert_eq!(MACE_SMASH_ATTACK_HEAVY_THRESHOLD, 5.0);
+        assert_eq!(MACE_SMASH_ATTACK_KNOCKBACK_RADIUS, 3.5);
+        assert_eq!(MACE_SMASH_ATTACK_KNOCKBACK_POWER, 0.7);
+
+        // 2. Smash Attack Piecewise Scaling (MaceItem.java:95-105)
+        // At 1.5m: 4.0 * 1.5 = 6.0
+        assert_eq!(mace_smash_damage_bonus(1.5), 6.0);
+        // At 3.0m: 4.0 * 3.0 = 12.0
+        assert_eq!(mace_smash_damage_bonus(3.0), 12.0);
+        // At 5.0m: 12.0 + 2.0 * (5.0 - 3.0) = 16.0
+        assert_eq!(mace_smash_damage_bonus(5.0), 16.0);
+        // At 8.0m: 12.0 + 2.0 * (8.0 - 3.0) = 22.0
+        assert_eq!(mace_smash_damage_bonus(8.0), 22.0);
+        // At 10.0m: 22.0 + (10.0 - 8.0) = 24.0
+        assert_eq!(mace_smash_damage_bonus(10.0), 24.0);
+
+        // 3. Density Enchantment Scaling (density.json, MaceItem.java:108)
+        assert_eq!(MACE_DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK, 0.5);
+        // Density V at 10m fall: 24.0 + 5 * 0.5 * 10 = 24.0 + 25.0 = 49.0
+        assert_eq!(calculate_mace_smash_damage_with_density(10.0, 5), 49.0);
+        // Density III at 4m fall: (12.0 + 2.0 * 1.0) + 3 * 0.5 * 4 = 14.0 + 6.0 = 20.0
+        assert_eq!(calculate_mace_smash_damage_with_density(4.0, 3), 20.0);
+
+        // 4. Wind Burst Knockback Multipliers & Triggers (wind_burst.json)
+        assert_eq!(get_mace_wind_burst_power(1), 1.2);
+        assert_eq!(get_mace_wind_burst_power(2), 1.75);
+        assert_eq!(get_mace_wind_burst_power(3), 2.2);
+        assert!(can_trigger_mace_wind_burst(1.6, false, 1));
+        assert!(!can_trigger_mace_wind_burst(1.5, false, 1));
+        assert!(!can_trigger_mace_wind_burst(3.0, true, 1));
+        assert!(!can_trigger_mace_wind_burst(3.0, false, 0));
+
+        // 5. Breach Armor Reduction (breach.json)
+        assert_eq!(MACE_BREACH_ARMOR_REDUCTION_PER_LEVEL, 0.15);
+        // 20 armor with Breach IV (60% reduction) -> 8.0
+        assert!((calculate_mace_breach_effective_armor(20.0, 4) - 8.0).abs() < 1e-6);
+
+        // 6. Impact Position Calculation Parity (MaceItem.java:75-79)
+        let current = Vector3::new(10.0, 70.0, 10.0);
+        // If no prior impulse: uses current position
+        assert_eq!(calculate_mace_impact_position(current, None), current);
+        // If prior impulse at Y=64 (lower than current Y=70): preserves Y=64
+        let prior_lower = Vector3::new(10.0, 64.0, 10.0);
+        assert_eq!(calculate_mace_impact_position(current, Some(prior_lower)), prior_lower);
+        // If prior impulse at Y=75 (higher than current Y=70): resets to current Y=70
+        let prior_higher = Vector3::new(10.0, 75.0, 10.0);
+        assert_eq!(calculate_mace_impact_position(current, Some(prior_higher)), current);
     }
 }
