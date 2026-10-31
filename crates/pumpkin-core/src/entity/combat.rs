@@ -7593,6 +7593,54 @@ pub const CREAKING_STEP_SOUND_VOLUME: f32 = 0.15;
 /// `this.playSound(SoundEvents.CREAKING_STEP, 0.15F, 1.0F);`
 pub const CREAKING_STEP_SOUND_PITCH: f32 = 1.0;
 
+/// Creaking look detection cone size (0.5).
+///
+/// Mirrors vanilla `Creaking.java:471`:
+/// `this.isLookingAtMe(player, 0.5, false, true, ...)`
+pub const CREAKING_LOOK_CONE_SIZE: f64 = 0.5;
+
+/// Whether Creaking look detection adjusts for distance (false).
+///
+/// Mirrors vanilla `Creaking.java:471` passing `false` for `adjustForDistance` to `LivingEntity.isLookingAtMe`.
+pub const CREAKING_LOOK_ADJUST_FOR_DISTANCE: bool = false;
+
+/// Creaking look dot product threshold: `1.0 - 0.5 = 0.5`.
+///
+/// Mirrors vanilla `LivingEntity.java:1772`:
+/// `dot > 1.0 - coneSize / (adjustForDistance ? dist : 1.0)`
+pub const CREAKING_LOOK_DOT_THRESHOLD: f64 = 1.0 - CREAKING_LOOK_CONE_SIZE;
+
+/// Creaking entity status for attack animation (4).
+///
+/// Mirrors vanilla `Creaking.java:148`:
+/// `this.level().broadcastEntityEvent(this, (byte)4);`
+pub const CREAKING_STATUS_ATTACK: i8 = 4;
+
+/// Creaking entity status for invulnerability sway animation (66).
+///
+/// Mirrors vanilla `Creaking.java:167`:
+/// `this.level().broadcastEntityEvent(this, (byte)66);`
+pub const CREAKING_STATUS_INVULNERABLE_SWAY: i8 = 66;
+
+/// Calculate whether an entity or player is looking at the Creaking given dot product.
+///
+/// Mirrors vanilla `LivingEntity.java:1762-1781` with `coneSize = 0.5` and `adjustForDistance = false`.
+#[inline]
+#[must_use]
+pub const fn is_creaking_gaze(dot: f64) -> bool {
+    dot > CREAKING_LOOK_DOT_THRESHOLD
+}
+
+/// Calculate whether player wearing disguise bypasses Creaking gaze freeze.
+///
+/// Mirrors vanilla `Creaking.java:470`:
+/// `(!active || LivingEntity.PLAYER_NOT_WEARING_DISGUISE_ITEM.test(player))`
+#[inline]
+#[must_use]
+pub const fn should_creaking_freeze_from_player(is_active: bool, is_disguised: bool) -> bool {
+    !is_active || !is_disguised
+}
+
 /// Skeleton max health (20.0 HP).
 ///
 /// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
@@ -21087,5 +21135,35 @@ mod tests {
         assert!(!CreakingHeartBlock::should_play_hurt_call(95));
         assert!(CreakingHeartBlock::should_emit_dual_particles(51));
         assert!(!CreakingHeartBlock::should_emit_dual_particles(50));
+    }
+
+    #[test]
+    fn test_creaking_gaze_freeze_carved_pumpkin_and_sway_status_parity() {
+        // 1. Look cone and dot threshold constants (Creaking.java:471, LivingEntity.java:1772)
+        assert_eq!(CREAKING_LOOK_CONE_SIZE, 0.5);
+        assert!(!CREAKING_LOOK_ADJUST_FOR_DISTANCE);
+        assert_eq!(CREAKING_LOOK_DOT_THRESHOLD, 0.5);
+
+        // 2. Gaze detection dot product threshold test
+        assert!(is_creaking_gaze(0.5001));
+        assert!(is_creaking_gaze(0.8));
+        assert!(is_creaking_gaze(1.0));
+        assert!(!is_creaking_gaze(0.5));
+        assert!(!is_creaking_gaze(0.4999));
+        assert!(!is_creaking_gaze(0.0));
+        assert!(!is_creaking_gaze(-1.0));
+
+        // 3. Disguise / Carved Pumpkin bypass logic (Creaking.java:470)
+        // Dormant/inactive creaking: always activates & freezes regardless of disguise
+        assert!(should_creaking_freeze_from_player(false, false));
+        assert!(should_creaking_freeze_from_player(false, true));
+
+        // Active creaking: carved pumpkin wearer bypasses freeze, undisguised freezes
+        assert!(should_creaking_freeze_from_player(true, false));
+        assert!(!should_creaking_freeze_from_player(true, true));
+
+        // 4. Entity status events (Creaking.java:148, 167)
+        assert_eq!(CREAKING_STATUS_ATTACK, 4);
+        assert_eq!(CREAKING_STATUS_INVULNERABLE_SWAY, 66);
     }
 }

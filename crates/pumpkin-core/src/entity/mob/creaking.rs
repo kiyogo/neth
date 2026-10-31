@@ -43,6 +43,10 @@ pub const CREAKING_GRAY: i32 = 6250335;
 pub const INVULNERABILITY_ANIMATION_DURATION: i32 = 8;
 pub const TWITCH_DEATH_DURATION: i32 = 45;
 pub const MAX_PLAYER_STUCK_COUNTER: i32 = 4;
+pub const LOOK_CONE_SIZE: f64 = crate::entity::combat::CREAKING_LOOK_CONE_SIZE;
+pub const LOOK_DOT_THRESHOLD: f64 = crate::entity::combat::CREAKING_LOOK_DOT_THRESHOLD;
+pub const STATUS_ATTACK: i8 = crate::entity::combat::CREAKING_STATUS_ATTACK;
+pub const STATUS_INVULNERABLE_SWAY: i8 = crate::entity::combat::CREAKING_STATUS_INVULNERABLE_SWAY;
 
 fn creaking_can_move(mob: &dyn Mob) -> bool {
     mob.as_creaking().map_or(true, |c| c.can_move())
@@ -295,6 +299,7 @@ impl CreakingEntity {
             (yaw.cos() * cos_pitch) as f64,
         );
 
+        let world = player_entity.world.load_full();
         let targets_y = [eye_y, feet_y, mid_y];
         for target_y in targets_y {
             let target = Vector3::new(creaking_pos.x, target_y, creaking_pos.z);
@@ -303,15 +308,26 @@ impl CreakingEntity {
             if distance > 0.001 {
                 let norm_dir = Vector3::new(dir.x / distance, dir.y / distance, dir.z / distance);
                 let dot = look_dir.dot(&norm_dir);
-                if dot > 1.0 - 0.5 / distance {
-                    return true;
+                // Vanilla Creaking.java:471 & LivingEntity.java:1772: coneSize = 0.5, adjustForDistance = false -> dot > 0.5
+                if crate::entity::combat::is_creaking_gaze(dot) {
+                    // Vanilla LivingEntity.java:1773-1775: Line of sight check with Block.VISUAL
+                    let clip_result = world.clip(&pumpkin_world::clip::ClipContext::new(
+                        player_eye_pos,
+                        target,
+                        pumpkin_world::clip::ClipBlock::Visual,
+                        pumpkin_world::clip::ClipFluid::None,
+                    ));
+                    if clip_result.is_miss {
+                        return true;
+                    }
                 }
             }
         }
         false
     }
 
-    fn is_player_disguised(player: &Player) -> bool {
+    #[must_use]
+    pub fn is_player_disguised(player: &Player) -> bool {
         let equipment = player.living_entity.entity_equipment.try_lock();
         if let Ok(equipment) = equipment
             && let Some(head_stack) = equipment.equipment.get(&EquipmentSlot::HEAD)
@@ -344,7 +360,9 @@ impl CreakingEntity {
             {
                 has_potential_target = true;
                 let is_disguised = Self::is_player_disguised(&player);
-                if (!active || !is_disguised) && self.is_looking_at_me(&player) {
+                if crate::entity::combat::should_creaking_freeze_from_player(active, is_disguised)
+                    && self.is_looking_at_me(&player)
+                {
                     if active {
                         return false;
                     }
@@ -560,7 +578,7 @@ impl Mob for CreakingEntity {
         let world = entity.world.load();
         world.broadcast_to_chunk(
             entity.chunk_pos.load(),
-            &CEntityStatus::new(entity.entity_id, 4),
+            &CEntityStatus::new(entity.entity_id, STATUS_ATTACK),
         );
         self.play_sound(Sound::EntityCreakingAttack);
     }
@@ -584,7 +602,7 @@ impl Mob for CreakingEntity {
                 let world = entity.world.load();
                 world.broadcast_to_chunk(
                     entity.chunk_pos.load(),
-                    &CEntityStatus::new(entity.entity_id, 66),
+                    &CEntityStatus::new(entity.entity_id, STATUS_INVULNERABLE_SWAY),
                 );
 
                 if let Some(home_pos) = self.get_home_pos()
@@ -672,5 +690,17 @@ mod tests {
         let can_use_portal_unbound = !is_heart_bound_unbound;
         assert!(!fire_immune_unbound);
         assert!(can_use_portal_unbound);
+
+        // 6. Gaze cone & pumpkin disguise parity (Creaking.java:470-471, LivingEntity.java:1762-1781)
+        assert_eq!(LOOK_CONE_SIZE, 0.5);
+        assert_eq!(LOOK_DOT_THRESHOLD, 0.5);
+        assert_eq!(STATUS_ATTACK, 4);
+        assert_eq!(STATUS_INVULNERABLE_SWAY, 66);
+        assert!(crate::entity::combat::is_creaking_gaze(0.51));
+        assert!(!crate::entity::combat::is_creaking_gaze(0.49));
+        assert!(crate::entity::combat::should_creaking_freeze_from_player(false, false));
+        assert!(crate::entity::combat::should_creaking_freeze_from_player(false, true));
+        assert!(crate::entity::combat::should_creaking_freeze_from_player(true, false));
+        assert!(!crate::entity::combat::should_creaking_freeze_from_player(true, true));
     }
 }

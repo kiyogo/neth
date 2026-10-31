@@ -9446,3 +9446,39 @@ eq 	ext{None}$.
     - Exported `RESIN_` parity constants.
     - Added unit test `test_resin_clump_drop_count_and_smelting_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 377: Creaking Gaze Freezing / Unfreezing Mechanics, Carved Pumpkin Bypass & Invulnerability Sway Animation Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.creaking.Creaking.java:128-135, 142-181, 215-241, 455-490`, `net.minecraft.world.entity.LivingEntity.java:217-224, 1762-1781`, `data/minecraft/tags/item/gaze_disguise_equipment.json:1-5`.
+- **Vanilla Mechanics**:
+  1. *Gaze Cone & Dot Product Threshold*:
+     - In Vanilla `Creaking.java:471`, `this.isLookingAtMe(player, 0.5, false, true, this.getEyeY(), this.getY() + 0.5 * this.getScale(), (this.getEyeY() + this.getY()) / 2.0)`.
+     - In `LivingEntity.java:1772`, the gaze formula is:
+       `dot > 1.0 - coneSize / (adjustForDistance ? dist : 1.0)`.
+     - Because `adjustForDistance` is `false` for Creaking (`CREAKING_LOOK_ADJUST_FOR_DISTANCE = false`), the denominator is strictly `1.0`, yielding a constant 60-degree cone threshold: `dot > 1.0 - 0.5 = 0.5` (`CREAKING_LOOK_DOT_THRESHOLD = 0.5`).
+     - Gaze targets 3 vertical height points on the Creaking: `getEyeY()`, `getY() + 0.5 * getScale()`, and `(getEyeY() + getY()) / 2.0`.
+     - Line of sight check is performed using `ClipContext.Block.VISUAL` and `ClipContext.Fluid.NONE` from player's eye to each target height. If `clip.is_miss` is true, player has clear visual line of sight.
+  2. *Carved Pumpkin Disguise Bypass Logic*:
+     - Vanilla `Creaking.java:470`: `(!active || LivingEntity.PLAYER_NOT_WEARING_DISGUISE_ITEM.test(player))`.
+     - Tag `#minecraft:gaze_disguise_equipment` contains `minecraft:carved_pumpkin`.
+     - When dormant/inactive (`active == false`): Player looking at Creaking activates it within 144.0 blocks sq (12m) regardless of whether they wear a carved pumpkin.
+     - When active (`active == true`): Wearing a carved pumpkin bypasses the gaze check, meaning looking at an active Creaking does NOT freeze it; the Creaking continues pursuing and attacking normally. Undisguised players looking at an active Creaking freeze it (`can_move = false`).
+  3. *Freeze & Unfreeze Sounds & Velocity Zeroing*:
+     - When transition from moving to frozen occurs (`now_can_move == false && can_move == true`): calls `stop_in_place()` (zeroing velocity and stopping navigator) and plays `SoundEvents.CREAKING_FREEZE` (`Sound::EntityCreakingFreeze`).
+     - When transition from frozen to moving occurs (`now_can_move == true && can_move == false`): plays `SoundEvents.CREAKING_UNFREEZE` (`Sound::EntityCreakingUnfreeze`).
+  4. *Invulnerability Sway Animation & Status Byte*:
+     - Normal damage against a heart-bound Creaking does not deplete health; instead it triggers status byte 66 (`CREAKING_STATUS_INVULNERABLE_SWAY = 66`), duration 8 ticks (`INVULNERABILITY_ANIMATION_DURATION = 8`), and plays `Sound::EntityCreakingSway`.
+     - When the damage source is attributed to a player, it triggers `creakingHeartBlockEntity.creakingHurt()`.
+  5. *Attack Animation & Status Byte*:
+     - When attacking a target, Creaking broadcasts status byte 4 (`CREAKING_STATUS_ATTACK = 4`), duration 15 ticks (`ATTACK_ANIMATION_DURATION = 15`), and plays `Sound::EntityCreakingAttack`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported parity constants: `CREAKING_LOOK_CONE_SIZE = 0.5`, `CREAKING_LOOK_ADJUST_FOR_DISTANCE = false`, `CREAKING_LOOK_DOT_THRESHOLD = 0.5`, `CREAKING_STATUS_ATTACK = 4`, `CREAKING_STATUS_INVULNERABLE_SWAY = 66`.
+    - Added helper functions `is_creaking_gaze(dot)` and `should_creaking_freeze_from_player(is_active, is_disguised)`.
+    - Added comprehensive unit test `test_creaking_gaze_freeze_carved_pumpkin_and_sway_status_parity`.
+  - In `crates/pumpkin-core/src/entity/mob/creaking.rs`:
+    - Exported constants `LOOK_CONE_SIZE`, `LOOK_DOT_THRESHOLD`, `STATUS_ATTACK`, `STATUS_INVULNERABLE_SWAY`.
+    - Refactored `is_looking_at_me()` to use `is_creaking_gaze()` with `world.clip()` visual raycast across eye, feet, and mid heights.
+    - Updated `check_can_move()` to use `should_creaking_freeze_from_player()`.
+    - Updated `on_attack()` and `pre_damage()` to use `STATUS_ATTACK` (4) and `STATUS_INVULNERABLE_SWAY` (66).
+    - Updated unit tests to verify gaze cone, disguise bypass, and status event parity.
+- **Status**: Completed & Verified.
