@@ -8796,3 +8796,28 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Implemented `calculate_knockback_power(distance, fall_distance, knockback_resistance)`.
   - Added unit test `test_mace_durability_repair_smash_sounds_and_knockback_power_parity` in `crates/pumpkin-core/src/entity/combat.rs`.
 - **Status**: Completed & Verified.
+
+### Gap 358: Tuff Family 1.21 Blocks (Tuff, Tuff Bricks, Polished Tuff, Chiseled Tuff) Hardness (1.5), Blast Resistance (6.0), Sound Types & Note Block Instrument (Basedrum) Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.Blocks:4928-4949`, `net.minecraft.world.level.block.SoundType:322-342`, `net.minecraft.world.level.block.state.properties.NoteBlockInstrument`, `recipes/*tuff*stonecutting*.json`.
+- **Vanilla Mechanics**:
+  1. *Physical & Tool Properties*: All 14 blocks in the 1.21 Tuff family (`TUFF`, `TUFF_SLAB`, `TUFF_STAIRS`, `TUFF_WALL`, `CHISELED_TUFF`, `POLISHED_TUFF`, `POLISHED_TUFF_SLAB`, `POLISHED_TUFF_STAIRS`, `POLISHED_TUFF_WALL`, `TUFF_BRICKS`, `TUFF_BRICK_SLAB`, `TUFF_BRICK_STAIRS`, `TUFF_BRICK_WALL`, `CHISELED_TUFF_BRICKS`) share identical hardness of `1.5F`, blast resistance of `6.0F`, and require correct tool for drops (`requiresCorrectToolForDrops`).
+  2. *Note Block Instrument*: All 14 Tuff blocks act as note block bases playing `NoteBlockInstrument.BASEDRUM` (`instrument(NoteBlockInstrument.BASEDRUM)`).
+  3. *Sound Types*:
+     - `SoundType.TUFF` (`volume = 1.0F, pitch = 1.0F`): `TUFF`, `TUFF_SLAB`, `TUFF_STAIRS`, `TUFF_WALL`, `CHISELED_TUFF`.
+     - `SoundType.POLISHED_TUFF` (`volume = 1.0F, pitch = 1.0F`): `POLISHED_TUFF`, `POLISHED_TUFF_SLAB`, `POLISHED_TUFF_STAIRS`, `POLISHED_TUFF_WALL`.
+     - `SoundType.TUFF_BRICKS` (`volume = 1.0F, pitch = 1.0F`): `TUFF_BRICKS`, `TUFF_BRICK_SLAB`, `TUFF_BRICK_STAIRS`, `TUFF_BRICK_WALL`, `CHISELED_TUFF_BRICKS`.
+  4. *Stonecutting Parity*: Exactly 25 valid recipes in vanilla:
+     - From `TUFF`: 13 recipes (`CHISELED_TUFF`, `POLISHED_TUFF`, `POLISHED_TUFF_SLAB`, `POLISHED_TUFF_STAIRS`, `POLISHED_TUFF_WALL`, `TUFF_BRICKS`, `TUFF_BRICK_SLAB`, `TUFF_BRICK_STAIRS`, `TUFF_BRICK_WALL`, `CHISELED_TUFF_BRICKS`, `TUFF_SLAB`, `TUFF_STAIRS`, `TUFF_WALL`).
+     - From `POLISHED_TUFF`: 8 recipes (`POLISHED_TUFF_SLAB`, `POLISHED_TUFF_STAIRS`, `POLISHED_TUFF_WALL`, `TUFF_BRICKS`, `TUFF_BRICK_SLAB`, `TUFF_BRICK_STAIRS`, `TUFF_BRICK_WALL`, `CHISELED_TUFF_BRICKS`).
+     - From `TUFF_BRICKS`: 4 recipes (`TUFF_BRICK_SLAB`, `TUFF_BRICK_STAIRS`, `TUFF_BRICK_WALL`, `CHISELED_TUFF_BRICKS`).
+- **Implementation**:
+  - Created `crates/pumpkin-core/src/block/blocks/tuff.rs`:
+    - Defined `TuffBlock`, `TuffSoundType`, and `TuffSoundGroup`.
+    - Exported constants `HARDNESS = 1.5`, `BLAST_RESISTANCE = 6.0`, `INSTRUMENT = NoteblockInstrument::Basedrum`, `SOUND_VOLUME = 1.0`, `SOUND_PITCH = 1.0`.
+    - Defined `TUFF_FAMILY` containing all 14 `BlockId`s, and implemented `is_tuff_family`.
+    - Implemented `sound_type_for_block`, `sound_group_for_type`, and `sound_group_for_block`.
+    - Implemented `is_valid_stonecutting_recipe` covering all 25 stonecutting recipes.
+    - Implemented `BlockMetadata` and `BlockBehaviour` for `TuffBlock`.
+  - Registered `pub mod tuff;` in `crates/pumpkin-core/src/block/blocks/mod.rs` and registered `TuffBlock` in `crates/pumpkin-core/src/block/registry.rs`.
+  - Added unit test `test_tuff_family_properties_sounds_and_stonecutting_parity`.
+- **Status**: Completed & Verified.

@@ -54,6 +54,7 @@ pub mod structure_void;
 pub mod tinted_glass;
 pub mod walls;
 pub mod weathering_copper;
+pub mod tuff;
 
 // Decorative & furnishings
 pub mod banners;

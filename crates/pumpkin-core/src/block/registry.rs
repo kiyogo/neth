@@ -154,6 +154,7 @@ use crate::block::blocks::dried_ghast::DriedGhastBlock;
 use crate::block::blocks::frogspawn::FrogspawnBlock;
 use crate::block::blocks::hanging_moss::HangingMossBlock;
 use crate::block::blocks::heavy_core::HeavyCoreBlock;
+use crate::block::blocks::tuff::TuffBlock;
 use crate::block::blocks::shelf::ShelfBlock;
 use crate::block::blocks::signs::SignBlock;
 use crate::block::blocks::slabs::SlabBlock;
@@ -451,6 +452,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(SculkCatalystBlock);
     manager.register(SculkShriekerBlock);
     manager.register(HeavyCoreBlock);
+    manager.register(TuffBlock);
     manager.register(DriedGhastBlock);
     manager.register(FrogspawnBlock);
     manager.register(HangingMossBlock);
