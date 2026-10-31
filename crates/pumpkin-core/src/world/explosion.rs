@@ -206,6 +206,7 @@ pub struct Explosion {
     pub(super) small_particle: Particle,
     pub(super) large_particle: Particle,
     pub(super) sound: Sound,
+    pub(super) source_entity_type: Option<&'static EntityType>,
 }
 
 pub struct ExplosionResult {
@@ -226,7 +227,14 @@ impl Explosion {
             small_particle: Particle::Explosion,
             large_particle: Particle::ExplosionEmitter,
             sound: Sound::EntityGenericExplode,
+            source_entity_type: None,
         }
+    }
+
+    #[must_use]
+    pub const fn with_source_entity_type(mut self, entity_type: Option<&'static EntityType>) -> Self {
+        self.source_entity_type = entity_type;
+        self
     }
 
     #[must_use]
@@ -510,8 +518,30 @@ impl Explosion {
                 0.0
             };
 
-            let knockback_power = (1.0 - distance) * exposure * knockback_multiplier * (1.0 - knockback_resistance);
+            let knockback_power = crate::entity::combat::calculate_explosion_knockback_power(
+                distance,
+                exposure,
+                knockback_multiplier,
+                knockback_resistance,
+            );
             let knockback = direction * knockback_power;
+
+            // Vanilla ServerPlayer.java:1357-1363:
+            // When an entity is hit by a player-thrown WIND_CHARGE explosion, set impulse context
+            // so they do not take fall damage if they land at or above their launch height.
+            if let Some(living) = entity_base.get_living_entity()
+                && crate::entity::combat::should_ignore_fall_damage_from_explosion(self.source_entity_type)
+            {
+                living.set_ignore_fall_damage_from_current_impulse(true, entity.pos.load());
+            }
+
+            // Vanilla ServerExplosion.java:201:
+            // Redirectable projectiles (fireballs, wind charges) hit by explosion
+            if crate::entity::combat::is_redirectable_projectile(entity.entity_type) {
+                entity.add_velocity(knockback);
+                entity.velocity_dirty.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+
             // Vanilla `ServerExplosion.hurtEntities`: creative flyers get no knockback.
             if entity_base
                 .get_player()
@@ -669,19 +699,23 @@ impl Explosion {
                 0
             }
             BlockInteraction::TriggerBlock => {
-                let (blocks, affected_positions) = self.get_blocks_to_destroy(world);
-                for (pos, (block, _state)) in &blocks {
-                    let pumpkin_block = world.block_registry.get_pumpkin_block(block.id);
-                    if let Some(pumpkin_block) = pumpkin_block {
-                        pumpkin_block.explode(ExplodeArgs {
-                            world,
-                            block,
-                            position: pos,
-                        });
+                let mob_griefing = world.level_info.load().game_rules.mob_griefing;
+                let is_breeze = self.source_entity_type == Some(&EntityType::BREEZE_WIND_CHARGE);
+                if crate::entity::combat::can_explosion_trigger_blocks(true, is_breeze, mob_griefing) {
+                    let (blocks, affected_positions) = self.get_blocks_to_destroy(world);
+                    for (pos, (block, _state)) in &blocks {
+                        let pumpkin_block = world.block_registry.get_pumpkin_block(block.id);
+                        if let Some(pumpkin_block) = pumpkin_block {
+                            pumpkin_block.explode(ExplodeArgs {
+                                world,
+                                block,
+                                position: pos,
+                            });
+                        }
                     }
-                }
-                if self.create_fire {
-                    Self::place_fire(world, &affected_positions, &mut fire_roll);
+                    if self.create_fire {
+                        Self::place_fire(world, &affected_positions, &mut fire_roll);
+                    }
                 }
                 0
             }

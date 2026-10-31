@@ -114,20 +114,23 @@ impl WindChargeEntity {
     }
 
     pub fn create_explosion(&self, position: Vector3<f64>) {
-        let (power, calculator, sound) = match self.kind {
+        let (power, calculator, sound, entity_type) = match self.kind {
             WindChargeKind::Normal { .. } => (
                 crate::entity::combat::WIND_CHARGE_EXPLOSION_POWER,
                 WIND_CHARGE_EXPLOSION_DAMAGE_CALCULATOR.clone(),
                 Sound::EntityWindChargeWindBurst,
+                Some(&pumpkin_data::entity::EntityType::WIND_CHARGE),
             ),
             WindChargeKind::Breeze => (
                 crate::entity::combat::BREEZE_WIND_CHARGE_EXPLOSION_POWER,
                 BREEZE_WIND_CHARGE_EXPLOSION_DAMAGE_CALCULATOR.clone(),
                 Sound::EntityBreezeWindBurst,
+                Some(&pumpkin_data::entity::EntityType::BREEZE_WIND_CHARGE),
             ),
         };
         let explosion = Explosion::new(power, position, BlockInteraction::TriggerBlock)
             .with_damage_calculator(calculator)
+            .with_source_entity_type(entity_type)
             .with_particles_and_sound(
                 Particle::GustEmitterSmall,
                 Particle::GustEmitterLarge,

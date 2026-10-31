@@ -9539,3 +9539,41 @@ eq 	ext{None}$.
     - Exported `CREAKING_HEART_DECORATOR_` and `PALE_MOSS_DECORATOR_` parity constants.
     - Added unit test `test_creaking_heart_decorator_and_pale_oak_tree_generation_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 380: Wind Charge Explosion Knockback & Breeze Entity Attack / Wind Charge Projectile Deflection Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge.java:1-156`, `net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.WindCharge.java:1-86`, `net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.BreezeWindCharge.java:1-42`, `net.minecraft.world.entity.monster.breeze.Breeze.java:42-73, 197-203, 264-266`, `net.minecraft.world.entity.LivingEntity.java:1793-1845`, `net.minecraft.server.level.ServerPlayer.java:1357-1363`, `net.minecraft.world.level.ServerExplosion.java:184-208, 297-310`, `net.minecraft.world.entity.projectile.ProjectileDeflection.java:11-17`.
+- **Vanilla Mechanics**:
+  1. *Wind Charge Explosion Multipliers & Parameters*:
+     - In `WindCharge.java:24-27`, player-thrown Wind Charge has radius `1.2F` and uses `SimpleExplosionDamageCalculator` with `damagesBlocks = true`, `damagesEntities = false`, and `knockbackMultiplier = Optional.of(1.22F)`.
+     - In `BreezeWindCharge.java:13` and `AbstractWindCharge.java:30-33`, Breeze-fired Wind Charge has radius `3.0F` and uses default knockback multiplier `1.0F` (`Optional.empty()`).
+     - Normal bounding box Y offset is `-0.15F` (`AbstractWindCharge.java:59-60`).
+     - Explosion knockback power scalar formula (`ServerExplosion.java:198`): `(1.0 - dist) * exposure * knockbackMultiplier * (1.0 - knockbackResistance)`.
+  2. *Player-Thrown Wind Charge Fall Damage Negation (`ServerPlayer.java:1357-1363`, `LivingEntity.java:1793-1845`)*:
+     - When hit by an explosion caused by a player `WIND_CHARGE` (and NOT `BREEZE_WIND_CHARGE`), `ServerPlayer.onExplosionHit` invokes `setIgnoreFallDamageFromCurrentImpulse(true, this.position())`.
+     - Records `currentImpulseImpactPos` and sets `currentImpulseContextResetGraceTime = 40` ticks (2 seconds).
+     - In `LivingEntity.causeFallDamage`, effective fall distance is calculated as `effectiveFallDistance = Math.min(fallDistance, this.currentImpulseImpactPos.y - this.getY())`.
+     - If the player lands at or above their launch height (`effectiveFallDistance <= 0.0`), zero fall damage is dealt and impulse context is reset.
+     - If the player lands below their launch height (e.g. into a deep ravine), damage is calculated solely based on the distance fallen below the launch point rather than the entire peak arc.
+  3. *Block Triggers & Blocklike Entities Immunity (`ServerExplosion.java:298-310`)*:
+     - `canTriggerBlocks`: For player wind charges, always triggers blocks (buttons, levers, doors, trapdoors, bells, pots). For Breeze wind charges, only triggers if `mobGriefing` is true (`ServerExplosion.java:301`).
+     - `shouldAffectBlocklikeEntities`: Wind charges (both player and breeze) never destroy or drop blocklike entities (item frames, paintings, armor stands).
+  4. *Breeze Projectile Deflection & Damage Immunity (`Breeze.java:197-203, 264-266`, `ProjectileDeflection.java:11-17`)*:
+     - Breeze deflects all incoming projectiles (`REVERSE` deflection, velocity multiplied by `-0.5`, yaw rotated by `170.0 + rand * 20.0`), playing `SoundEvents.BREEZE_DEFLECT` (1.0 volume, 1.0 pitch), EXCEPT `WIND_CHARGE` and `BREEZE_WIND_CHARGE`.
+     - Breeze is completely immune to damage from other Breeze entities or Breeze wind charges fired by Breeze (`isInvulnerableTo: source.getEntity() instanceof Breeze`), but takes direct hit damage (1.0 HP) from player wind charges.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported parity constants: `WIND_CHARGE_KNOCKBACK_MULTIPLIER = 1.22`, `BREEZE_WIND_CHARGE_KNOCKBACK_MULTIPLIER = 1.0`, `WIND_CHARGE_BOUNDING_BOX_Y_OFFSET = -0.15`, `WIND_CHARGE_FALL_DAMAGE_GRACE_TICKS = 40`.
+    - Added helper functions: `calculate_effective_fall_distance`, `should_ignore_fall_damage_from_explosion`, `can_explosion_trigger_blocks`, `should_explosion_affect_blocklike_entities`, `calculate_explosion_knockback_power`.
+    - Added comprehensive unit test `test_wind_charge_explosion_knockback_fall_damage_and_deflection_parity`.
+  - In `crates/pumpkin-core/src/world/explosion.rs`:
+    - Added `source_entity_type` field and `.with_source_entity_type(...)` builder method to `Explosion`.
+    - Updated `damage_entities` to calculate knockback with `calculate_explosion_knockback_power` and hook into `set_ignore_fall_damage_from_current_impulse` when source is `EntityType::WIND_CHARGE`.
+    - Updated `BlockInteraction::TriggerBlock` to respect `can_explosion_trigger_blocks` checking `mobGriefing` for Breeze wind charges.
+  - In `crates/pumpkin-core/src/entity/projectile/wind_charge.rs`:
+    - Updated `create_explosion` to pass `Some(&EntityType::WIND_CHARGE)` or `Some(&EntityType::BREEZE_WIND_CHARGE)`.
+  - In `crates/pumpkin-core/src/entity/living.rs`:
+    - Added `current_impulse_impact_pos` and `current_impulse_context_reset_grace_time` to `LivingEntity`.
+    - Added methods: `set_ignore_fall_damage_from_current_impulse`, `apply_post_impulse_grace_time`, `is_ignoring_fall_damage_from_current_impulse`, `reset_current_impulse_context`, `try_reset_current_impulse_context`.
+    - Decremented grace timer in `LivingEntity.tick`.
+    - Updated `cause_fall_damage` to compute and use `effective_fall_distance` when falling after a wind charge impulse.
+- **Status**: Completed & Verified.

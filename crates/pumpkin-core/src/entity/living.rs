@@ -153,6 +153,10 @@ pub struct LivingEntity {
     pub remove_arrow_time: AtomicI32,
     /// Timer for removing stuck stingers (`LivingEntity.java:2769-2777`).
     pub remove_stinger_time: AtomicI32,
+    /// Position where entity was hit by a wind charge impulse (`LivingEntity.currentImpulseImpactPos`)
+    pub current_impulse_impact_pos: AtomicCell<Option<Vector3<f64>>>,
+    /// Grace time before resetting wind charge impulse context (`LivingEntity.currentImpulseContextResetGraceTime`)
+    pub current_impulse_context_reset_grace_time: AtomicI32,
 
     water_movement_speed_multiplier: f32,
     livings_flags: AtomicU8,
@@ -325,6 +329,8 @@ impl LivingEntity {
             stinger_count: AtomicI32::new(0),
             remove_arrow_time: AtomicI32::new(0),
             remove_stinger_time: AtomicI32::new(0),
+            current_impulse_impact_pos: AtomicCell::new(None),
+            current_impulse_context_reset_grace_time: AtomicI32::new(0),
             movement_input: AtomicCell::new(Vector3::default()),
             water_movement_speed_multiplier,
             last_block_pos: AtomicCell::new(None),
@@ -856,6 +862,51 @@ impl LivingEntity {
             tracked_data::living_entity::DATA_STINGER_COUNT_ID,
             VarInt(clamped),
         );
+    }
+
+    /// Sets whether to ignore fall damage from the current wind charge impulse.
+    ///
+    /// Mirrors vanilla `LivingEntity.setIgnoreFallDamageFromCurrentImpulse` (LivingEntity.java:1820-1827).
+    pub fn set_ignore_fall_damage_from_current_impulse(&self, ignore: bool, new_pos: Vector3<f64>) {
+        if ignore {
+            self.apply_post_impulse_grace_time(crate::entity::combat::WIND_CHARGE_FALL_DAMAGE_GRACE_TICKS);
+            self.current_impulse_impact_pos.store(Some(new_pos));
+        } else {
+            self.current_impulse_context_reset_grace_time.store(0, Ordering::Relaxed);
+        }
+    }
+
+    /// Applies post-impulse grace time in ticks.
+    ///
+    /// Mirrors vanilla `LivingEntity.applyPostImpulseGraceTime` (LivingEntity.java:1829-1831).
+    pub fn apply_post_impulse_grace_time(&self, ticks: i32) {
+        let current = self.current_impulse_context_reset_grace_time.load(Ordering::Relaxed);
+        self.current_impulse_context_reset_grace_time.store(current.max(ticks), Ordering::Relaxed);
+    }
+
+    /// Returns whether this entity is currently ignoring fall damage from a wind charge impulse.
+    ///
+    /// Mirrors vanilla `LivingEntity.isIgnoringFallDamageFromCurrentImpulse` (LivingEntity.java:1833-1835).
+    #[must_use]
+    pub fn is_ignoring_fall_damage_from_current_impulse(&self) -> bool {
+        self.current_impulse_impact_pos.load().is_some()
+    }
+
+    /// Resets the current impulse context (grace time and impact position).
+    ///
+    /// Mirrors vanilla `LivingEntity.resetCurrentImpulseContext` (LivingEntity.java:1847-1850).
+    pub fn reset_current_impulse_context(&self) {
+        self.current_impulse_context_reset_grace_time.store(0, Ordering::Relaxed);
+        self.current_impulse_impact_pos.store(None);
+    }
+
+    /// Tries to reset the current impulse context if grace time has elapsed.
+    ///
+    /// Mirrors vanilla `LivingEntity.tryResetCurrentImpulseContext` (LivingEntity.java:1837-1841).
+    pub fn try_reset_current_impulse_context(&self) {
+        if self.current_impulse_context_reset_grace_time.load(Ordering::Relaxed) == 0 {
+            self.reset_current_impulse_context();
+        }
     }
 
     pub fn is_blocking(&self) -> bool {
@@ -2300,19 +2351,36 @@ impl LivingEntity {
             return;
         }
 
-        if fall_distance >= 2.0
+        let effective_fall_distance = if self.is_ignoring_fall_damage_from_current_impulse() {
+            let impact_pos = self.current_impulse_impact_pos.load().unwrap_or(self.entity.pos.load());
+            let (eff, landed_above) = crate::entity::combat::calculate_effective_fall_distance(
+                impact_pos.y,
+                self.entity.pos.load().y,
+                f64::from(fall_distance),
+            );
+            if landed_above {
+                self.reset_current_impulse_context();
+            } else {
+                self.try_reset_current_impulse_context();
+            }
+            eff as f32
+        } else {
+            fall_distance
+        };
+
+        if effective_fall_distance >= 2.0
             && let Some(player) = caller.get_player()
         {
             player.increment_stat(
                 StatisticCategory::Custom,
                 CustomStatistic::FallOneCm as i32,
-                (fall_distance * 100.0).round() as i32,
+                (effective_fall_distance * 100.0).round() as i32,
             );
         }
 
         let damage = caller.get_mob().map_or_else(
-            || self.calculate_fall_damage(f64::from(fall_distance), damage_per_distance),
-            |mob| mob.calculate_fall_damage(f64::from(fall_distance), damage_per_distance),
+            || self.calculate_fall_damage(f64::from(effective_fall_distance), damage_per_distance),
+            |mob| mob.calculate_fall_damage(f64::from(effective_fall_distance), damage_per_distance),
         ) as f32;
 
         if damage > 0.0 {
@@ -4508,6 +4576,12 @@ impl EntityBase for LivingEntity {
             self.set_stinger_count(new_stingers);
         }
         self.remove_stinger_time.store(new_stinger_timer, Ordering::Relaxed);
+
+        // Vanilla `LivingEntity.tick` (LivingEntity.java:1829-1845): Auto-decrement wind charge post-impulse grace timer
+        let grace = self.current_impulse_context_reset_grace_time.load(Ordering::Relaxed);
+        if grace > 0 {
+            self.current_impulse_context_reset_grace_time.store(grace - 1, Ordering::Relaxed);
+        }
 
         // Vanilla `LivingEntity.tick` (LivingEntity.java:2780): every 20 ticks (1s), recheck combat status
         let tick_count = self.entity.age.load(Relaxed);

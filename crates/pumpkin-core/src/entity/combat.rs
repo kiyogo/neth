@@ -9245,6 +9245,119 @@ pub const WIND_CHARGE_DISPENSE_EVENT_ID: i32 = 1051;
 /// `private static final float MIN_CAMERA_DISTANCE_SQUARED = Mth.square(3.5F);`
 pub const WIND_CHARGE_MIN_CAMERA_DISTANCE_SQUARED: f32 = 12.25;
 
+/// Knockback multiplier for player-thrown Wind Charge (1.22F).
+///
+/// Mirrors vanilla `WindCharge.java:25`:
+/// `new SimpleExplosionDamageCalculator(true, false, Optional.of(1.22F), ...)`
+pub const WIND_CHARGE_KNOCKBACK_MULTIPLIER: f32 = 1.22;
+
+/// Knockback multiplier for Breeze Wind Charge (1.0F default).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:30-32`:
+/// `new SimpleExplosionDamageCalculator(true, false, Optional.empty(), ...)`
+pub const BREEZE_WIND_CHARGE_KNOCKBACK_MULTIPLIER: f32 = 1.0;
+
+/// Bounding box Y offset for Wind Charges (-0.15F).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:59-60`:
+/// `return new AABB(x - width, y - 0.15F, z - width, x + width, y - 0.15F + height, z + width);`
+pub const WIND_CHARGE_BOUNDING_BOX_Y_OFFSET: f64 = -0.15;
+
+/// Grace duration in ticks during which fall damage from a player-thrown wind charge is negated (40 ticks = 2s).
+///
+/// Mirrors vanilla `LivingEntity.java:1820-1823`:
+/// `this.applyPostImpulseGraceTime(40);`
+pub const WIND_CHARGE_FALL_DAMAGE_GRACE_TICKS: i32 = 40;
+
+/// Calculates effective fall distance and whether the entity landed at or above launch height.
+///
+/// Mirrors vanilla `LivingEntity.java:1796-1798`:
+/// ```java
+/// effectiveFallDistance = Math.min(fallDistance, this.currentImpulseImpactPos.y - this.getY());
+/// boolean hasLandedAboveCurrentImpulseImpactPosY = effectiveFallDistance <= 0.0;
+/// ```
+#[must_use]
+pub fn calculate_effective_fall_distance(
+    impact_pos_y: f64,
+    current_y: f64,
+    raw_fall_distance: f64,
+) -> (f64, bool) {
+    let effective = (impact_pos_y - current_y).min(raw_fall_distance);
+    let landed_above = effective <= 0.0;
+    (effective.max(0.0), landed_above)
+}
+
+/// Checks whether an explosion source grants fall damage immunity to impacted living entities.
+///
+/// Mirrors vanilla `ServerPlayer.java:1362`:
+/// `this.setIgnoreFallDamageFromCurrentImpulse(explosionCausedBy != null && explosionCausedBy.is(EntityTypes.WIND_CHARGE), this.position());`
+#[must_use]
+pub fn should_ignore_fall_damage_from_explosion(source_type: Option<&pumpkin_data::entity::EntityType>) -> bool {
+    source_type == Some(&pumpkin_data::entity::EntityType::WIND_CHARGE)
+}
+
+
+/// Checks whether an explosion can trigger blocks (like doors, trapdoors, levers, buttons).
+///
+/// Mirrors vanilla `ServerExplosion.java:298-302`:
+/// ```java
+/// if (this.blockInteraction != Explosion.BlockInteraction.TRIGGER_BLOCK) return false;
+/// return this.source != null && this.source.is(EntityTypes.BREEZE_WIND_CHARGE) ? this.level.getGameRules().get(GameRules.MOB_GRIEFING) : true;
+/// ```
+#[must_use]
+pub const fn can_explosion_trigger_blocks(
+    is_trigger_block: bool,
+    source_is_breeze_wind_charge: bool,
+    mob_griefing: bool,
+) -> bool {
+    if !is_trigger_block {
+        false
+    } else if source_is_breeze_wind_charge {
+        mob_griefing
+    } else {
+        true
+    }
+}
+
+/// Checks whether an explosion affects block-like entities (item frames, paintings, armor stands).
+///
+/// Mirrors vanilla `ServerExplosion.java:306-310`:
+/// ```java
+/// boolean isNotWindCharge = this.source == null || !this.source.is(EntityTypes.BREEZE_WIND_CHARGE) && !this.source.is(EntityTypes.WIND_CHARGE);
+/// return mobGriefingEnabled ? isNotWindCharge : this.blockInteraction.shouldAffectBlocklikeEntities() && isNotWindCharge;
+/// ```
+#[must_use]
+pub const fn should_explosion_affect_blocklike_entities(
+    source_is_wind_charge_or_breeze: bool,
+    mob_griefing: bool,
+    block_interaction_allows: bool,
+) -> bool {
+    let is_not_wind_charge = !source_is_wind_charge_or_breeze;
+    if mob_griefing {
+        is_not_wind_charge
+    } else {
+        block_interaction_allows && is_not_wind_charge
+    }
+}
+
+/// Calculates explosion knockback power scalar.
+///
+/// Mirrors vanilla `ServerExplosion.java:198`:
+/// `double knockbackPower = (1.0 - dist) * exposure * knockbackMultiplier * (1.0 - knockbackResistance);`
+#[must_use]
+pub fn calculate_explosion_knockback_power(
+    dist_ratio: f64,
+    exposure: f64,
+    knockback_multiplier: f64,
+    knockback_resistance: f64,
+) -> f64 {
+    if dist_ratio > 1.0 {
+        0.0
+    } else {
+        (1.0 - dist_ratio) * exposure * knockback_multiplier * (1.0 - knockback_resistance)
+    }
+}
+
 /// Direct entity hit damage for Large Fireball (6.0 HP).
 ///
 /// Mirrors vanilla `LargeFireball.java:48`:
@@ -21319,5 +21432,78 @@ mod tests {
         assert_eq!(PALE_OAK_TRUNK_BASE_HEIGHT, 6);
         assert_eq!(PALE_OAK_TRUNK_HEIGHT_RAND_A, 2);
         assert_eq!(PALE_OAK_TRUNK_HEIGHT_RAND_B, 1);
+    }
+
+    #[test]
+    fn test_wind_charge_explosion_knockback_fall_damage_and_deflection_parity() {
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Wind Charge Knockback Multiplier Parity (WindCharge.java:25, AbstractWindCharge.java:30)
+        assert_eq!(WIND_CHARGE_KNOCKBACK_MULTIPLIER, 1.22);
+        assert_eq!(BREEZE_WIND_CHARGE_KNOCKBACK_MULTIPLIER, 1.0);
+        assert_eq!(WIND_CHARGE_BOUNDING_BOX_Y_OFFSET, -0.15);
+        assert_eq!(WIND_CHARGE_FALL_DAMAGE_GRACE_TICKS, 40);
+
+        // 2. Explosion Knockback Power Formula (ServerExplosion.java:198)
+        // At center (dist_ratio = 0.0), full exposure (1.0), multiplier 1.22, 0 resistance
+        let full_kb = calculate_explosion_knockback_power(0.0, 1.0, 1.22, 0.0);
+        assert!((full_kb - 1.22).abs() < 1e-6);
+
+        // Halfway (dist_ratio = 0.5), full exposure (1.0), multiplier 1.22, 0 resistance
+        let half_kb = calculate_explosion_knockback_power(0.5, 1.0, 1.22, 0.0);
+        assert!((half_kb - 0.61).abs() < 1e-6);
+
+        // Outside radius (dist_ratio = 1.01) -> 0.0
+        let out_kb = calculate_explosion_knockback_power(1.01, 1.0, 1.22, 0.0);
+        assert_eq!(out_kb, 0.0);
+
+        // With 50% knockback resistance
+        let res_kb = calculate_explosion_knockback_power(0.0, 1.0, 1.22, 0.5);
+        assert!((res_kb - 0.61).abs() < 1e-6);
+
+        // 3. Wind Charge Fall Damage Negation (LivingEntity.java:1796-1798, ServerPlayer.java:1362)
+        assert!(should_ignore_fall_damage_from_explosion(Some(&EntityType::WIND_CHARGE)));
+        assert!(!should_ignore_fall_damage_from_explosion(Some(&EntityType::BREEZE_WIND_CHARGE)));
+        assert!(!should_ignore_fall_damage_from_explosion(Some(&EntityType::CREEPER)));
+        assert!(!should_ignore_fall_damage_from_explosion(None));
+
+        // Player boosted from Y=64, lands at Y=68 (higher): 0 fall damage, landed_above = true
+        let (eff1, landed_above1) = calculate_effective_fall_distance(64.0, 68.0, 12.0);
+        assert_eq!(eff1, 0.0);
+        assert!(landed_above1);
+
+        // Player boosted from Y=64, lands at Y=64 (same level): 0 fall damage, landed_above = true
+        let (eff2, landed_above2) = calculate_effective_fall_distance(64.0, 64.0, 8.0);
+        assert_eq!(eff2, 0.0);
+        assert!(landed_above2);
+
+        // Player boosted from Y=64, fell into ravine at Y=54 (10 blocks lower): effective fall distance = 10.0
+        let (eff3, landed_above3) = calculate_effective_fall_distance(64.0, 54.0, 15.0);
+        assert_eq!(eff3, 10.0);
+        assert!(!landed_above3);
+
+        // 4. Redirectable Projectile Tag Parity (redirectable_projectile.json)
+        assert!(is_redirectable_projectile(&EntityType::FIREBALL));
+        assert!(is_redirectable_projectile(&EntityType::WIND_CHARGE));
+        assert!(is_redirectable_projectile(&EntityType::BREEZE_WIND_CHARGE));
+        assert!(!is_redirectable_projectile(&EntityType::ARROW));
+        assert!(!is_redirectable_projectile(&EntityType::SNOWBALL));
+
+        // 5. Trigger Blocks & Blocklike entities (ServerExplosion.java:298-310)
+        // Player wind charge always triggers blocks
+        assert!(can_explosion_trigger_blocks(true, false, false));
+        assert!(can_explosion_trigger_blocks(true, false, true));
+        // Breeze wind charge only triggers if mob_griefing is true
+        assert!(can_explosion_trigger_blocks(true, true, true));
+        assert!(!can_explosion_trigger_blocks(true, true, false));
+        // Non-trigger explosions do not trigger
+        assert!(!can_explosion_trigger_blocks(false, false, true));
+
+        // Wind charges never affect blocklike entities (paintings, item frames, armor stands)
+        assert!(!should_explosion_affect_blocklike_entities(true, true, true));
+        assert!(!should_explosion_affect_blocklike_entities(true, false, true));
+        // Regular TNT explosions affect them if mob_griefing or block interaction allows
+        assert!(should_explosion_affect_blocklike_entities(false, true, false));
+        assert!(should_explosion_affect_blocklike_entities(false, false, true));
     }
 }
