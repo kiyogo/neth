@@ -7410,3 +7410,36 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_sound_pitch`, `evaluate_redstone_interaction`, and `connects_to_direction`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_doors_trapdoors_and_fence_gates_parity`.
+
+### Gap 302: Bell Resonating Mechanics, Raids Echo & Projectile Ringing Parity
+- **Vanilla Reference**:
+  - `BellBlock.java:44-290`, `BellBlockEntity.java:21-169`:
+    - Sound and event parameters:
+      - Ring: `SoundEvents.BELL_BLOCK`, volume `2.0F`, pitch `1.0F`, event id `EVENT_BELL_RING = 1`.
+      - Resonate: `SoundEvents.BELL_RESONATE`, volume `1.0F`, pitch `1.0F`.
+    - Default state properties:
+      - `DEFAULT_FACING = HorizontalFacing::North`, `DEFAULT_ATTACHMENT = BellAttachment::Floor`, `DEFAULT_POWERED = false`.
+    - Proper hit qualification (`isProperHit`):
+      - Hits on top/bottom faces (`Axis.Y`) or with click height `> 0.8124F` are rejected.
+      - `Floor` attachment: hit face must share the same horizontal axis as bell facing.
+      - `SingleWall` / `DoubleWall` attachment: hit face must be perpendicular to bell facing (different horizontal axis).
+      - `Ceiling` attachment: any valid horizontal face hit under `0.8124F` qualifies.
+    - Redstone power interaction (`neighborChanged`):
+      - Ringing triggers exclusively on rising edge (unpowered -> powered).
+      - Falling edge (powered -> unpowered) resets state without re-ringing.
+    - Bell entity timings & ranges:
+      - Shaking duration: `DURATION = 50` ticks (2.5 seconds).
+      - Raider glow duration: `GLOW_DURATION = 60` ticks (3.0 seconds).
+      - Entity search throttle: `MIN_TICKS_BETWEEN_SEARCHES = 60` ticks.
+      - Resonation duration: `MAX_RESONATION_TICKS = 40` ticks (2.0 seconds).
+      - Delay before resonation: `TICKS_BEFORE_RESONATION = 5` ticks.
+      - Entity radii: `SEARCH_RADIUS = 48.0`, `HEAR_BELL_RADIUS = 32.0`, `HIGHLIGHT_RAIDERS_RADIUS = 48.0`.
+      - Particle count formula: `clamp((nearbyRaiderCount - 21) / -2, 3, 15)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/bell.rs`:
+    - Exported constants `EVENT_BELL_RING = 1`, `SOUND_VOLUME = 2.0`, `SOUND_PITCH = 1.0`, `MAX_HIT_HEIGHT = 0.8124`, `DEFAULT_FACING`, `DEFAULT_ATTACHMENT`, and `DEFAULT_POWERED`.
+    - Exported helpers `is_proper_hit` and `evaluate_neighbor_signal_change`.
+  - Updated `crates/pumpkin-core/src/block/entities/bell.rs`:
+    - Exported helpers `calculate_particle_count`, `is_entity_hearing_bell`, and `is_raider_in_glow_range`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_bell_resonating_proper_hit_and_raiders_parity`.

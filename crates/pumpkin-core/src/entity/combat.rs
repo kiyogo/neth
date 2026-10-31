@@ -16503,4 +16503,72 @@ mod tests {
         assert!(!FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::North));
         assert!(!FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::South));
     }
+#[test]
+    fn test_bell_resonating_proper_hit_and_raiders_parity() {
+        use crate::block::blocks::redstone::bell::BellBlock;
+        use crate::block::entities::bell::BellBlockEntity;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::{BellAttachment, HorizontalFacing};
+
+        // --- BellBlock Constants Parity ---
+        assert_eq!(BellBlock::EVENT_BELL_RING, 1);
+        assert_eq!(BellBlock::SOUND_VOLUME, 2.0);
+        assert_eq!(BellBlock::SOUND_PITCH, 1.0);
+        assert!((BellBlock::MAX_HIT_HEIGHT - 0.8124).abs() < 1e-4);
+        assert_eq!(BellBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(BellBlock::DEFAULT_ATTACHMENT, BellAttachment::Floor);
+        assert!(!BellBlock::DEFAULT_POWERED);
+
+        // --- Redstone activation rule ---
+        assert_eq!(BellBlock::evaluate_neighbor_signal_change(false, true), (true, true));
+        assert_eq!(BellBlock::evaluate_neighbor_signal_change(true, true), (true, false));
+        assert_eq!(BellBlock::evaluate_neighbor_signal_change(true, false), (false, false));
+        assert_eq!(BellBlock::evaluate_neighbor_signal_change(false, false), (false, false));
+
+        // --- Proper Hit mechanics ---
+        // Hit from top or bottom faces never rings
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::Up, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::Down, 0.5));
+        // Hit above 0.8124 height never rings
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::North, 0.85));
+
+        // Floor attachment: hit face must share same axis as facing
+        assert!(BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::North, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::South, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::East, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::West, 0.5));
+
+        // Wall attachments: hit face must NOT share same axis as facing
+        assert!(!BellBlock::is_proper_hit(BellAttachment::SingleWall, HorizontalFacing::North, BlockDirection::North, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::SingleWall, HorizontalFacing::North, BlockDirection::East, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::DoubleWall, HorizontalFacing::North, BlockDirection::South, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::DoubleWall, HorizontalFacing::North, BlockDirection::West, 0.5));
+
+        // Ceiling attachment: any horizontal hit <= 0.8124 height succeeds
+        assert!(BellBlock::is_proper_hit(BellAttachment::Ceiling, HorizontalFacing::North, BlockDirection::North, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::Ceiling, HorizontalFacing::North, BlockDirection::East, 0.5));
+
+        // --- BellBlockEntity Constants & Formulas Parity ---
+        assert_eq!(BellBlockEntity::DURATION, 50);
+        assert_eq!(BellBlockEntity::GLOW_DURATION, 60);
+        assert_eq!(BellBlockEntity::MIN_TICKS_BETWEEN_SEARCHES, 60);
+        assert_eq!(BellBlockEntity::MAX_RESONATION_TICKS, 40);
+        assert_eq!(BellBlockEntity::TICKS_BEFORE_RESONATION, 5);
+        assert_eq!(BellBlockEntity::SEARCH_RADIUS, 48.0);
+        assert_eq!(BellBlockEntity::HEAR_BELL_RADIUS, 32.0);
+        assert_eq!(BellBlockEntity::HIGHLIGHT_RAIDERS_RADIUS, 48.0);
+
+        // Particle count formula: clamp((nearbyRaiderCount - 21) / -2, 3, 15)
+        assert_eq!(BellBlockEntity::calculate_particle_count(0), 10);
+        assert_eq!(BellBlockEntity::calculate_particle_count(1), 10);
+        assert_eq!(BellBlockEntity::calculate_particle_count(21), 3);
+        assert_eq!(BellBlockEntity::calculate_particle_count(50), 3);
+        assert_eq!(BellBlockEntity::calculate_particle_count(-20), 15);
+
+        // Hearing and glowing radii
+        assert!(BellBlockEntity::is_entity_hearing_bell(30.0 * 30.0));
+        assert!(!BellBlockEntity::is_entity_hearing_bell(33.0 * 33.0));
+        assert!(BellBlockEntity::is_raider_in_glow_range(45.0 * 45.0));
+        assert!(!BellBlockEntity::is_raider_in_glow_range(50.0 * 50.0));
+    }
 }

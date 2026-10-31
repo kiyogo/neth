@@ -32,6 +32,22 @@ impl BellBlockEntity {
     pub const HIGHLIGHT_RAIDERS_RADIUS: f64 = 48.0;
 
     #[must_use]
+    pub fn calculate_particle_count(nearby_raider_count: i32) -> i32 {
+        let count = (nearby_raider_count - 21) / -2;
+        count.clamp(3, 15)
+    }
+
+    #[must_use]
+    pub fn is_entity_hearing_bell(dist_sq: f64) -> bool {
+        dist_sq <= Self::HEAR_BELL_RADIUS * Self::HEAR_BELL_RADIUS
+    }
+
+    #[must_use]
+    pub fn is_raider_in_glow_range(dist_sq: f64) -> bool {
+        dist_sq <= Self::HIGHLIGHT_RAIDERS_RADIUS * Self::HIGHLIGHT_RAIDERS_RADIUS
+    }
+
+    #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {
             position,

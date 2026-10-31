@@ -71,22 +71,7 @@ fn is_point_on_bell(
     attachment: BellAttachment,
     block_face: HorizontalFacing,
 ) -> bool {
-    if hit.face == &BlockDirection::Up || hit.face == &BlockDirection::Down {
-        return false;
-    }
-    if hit.cursor_pos.y <= 0.8124f32 {
-        match attachment {
-            BellAttachment::Floor => {
-                hit.face.to_axis() == block_face.to_block_direction().to_axis()
-            }
-            BellAttachment::SingleWall | BellAttachment::DoubleWall => {
-                hit.face.to_axis() != block_face.to_block_direction().to_axis()
-            }
-            BellAttachment::Ceiling => true,
-        }
-    } else {
-        false
-    }
+    BellBlock::is_proper_hit(attachment, block_face, *hit.face, hit.cursor_pos.y)
 }
 
 fn is_single_wall(position: BlockPos, facing: HorizontalFacing, world: &World) -> bool {
@@ -100,6 +85,49 @@ pub struct BellBlock;
 
 impl BellBlock {
     pub const EVENT_BELL_RING: u32 = 1;
+    pub const SOUND_VOLUME: f32 = 2.0;
+    pub const SOUND_PITCH: f32 = 1.0;
+    pub const MAX_HIT_HEIGHT: f32 = 0.8124;
+    pub const DEFAULT_FACING: HorizontalFacing = HorizontalFacing::North;
+    pub const DEFAULT_ATTACHMENT: BellAttachment = BellAttachment::Floor;
+    pub const DEFAULT_POWERED: bool = false;
+
+    #[must_use]
+    pub fn is_proper_hit(
+        attachment: BellAttachment,
+        facing: HorizontalFacing,
+        hit_face: BlockDirection,
+        click_y: f32,
+    ) -> bool {
+        if hit_face == BlockDirection::Up || hit_face == BlockDirection::Down {
+            return false;
+        }
+        if click_y <= Self::MAX_HIT_HEIGHT {
+            match attachment {
+                BellAttachment::Floor => {
+                    hit_face.to_axis() == facing.to_block_direction().to_axis()
+                }
+                BellAttachment::SingleWall | BellAttachment::DoubleWall => {
+                    hit_face.to_axis() != facing.to_block_direction().to_axis()
+                }
+                BellAttachment::Ceiling => true,
+            }
+        } else {
+            false
+        }
+    }
+
+    #[must_use]
+    pub const fn evaluate_neighbor_signal_change(
+        current_powered: bool,
+        has_signal: bool,
+    ) -> (bool, bool) {
+        if current_powered != has_signal {
+            (has_signal, has_signal)
+        } else {
+            (current_powered, false)
+        }
+    }
 }
 
 impl WallMountedBlock for BellBlock {
