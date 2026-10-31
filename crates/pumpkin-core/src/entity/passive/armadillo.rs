@@ -33,6 +33,10 @@ pub const ARMADILLO_BABY_START_AGE: i32 = -48000;
 pub const SCARE_CHECK_INTERVAL: i32 = 80;
 pub const SCARE_DISTANCE_HORIZONTAL: f64 = 7.0;
 pub const SCARE_DISTANCE_VERTICAL: f64 = 2.0;
+pub const BALL_UP_STAY_IN_STATE: u64 = 6000;
+pub const BRUSH_DURABILITY_DAMAGE: i32 = 16;
+pub const PEEK_EVENT_ID: u8 = 64;
+pub const UNROLL_START_THRESHOLD_TICKS: u64 = 30;
 
 fn pick_next_scute_drop_time() -> i32 {
     let rand_ticks = (rand::random::<u32>() % 6000) as i32;
@@ -210,6 +214,37 @@ impl ArmadilloEntity {
         self.get_state() == ArmadilloState::Rolling
             && self.in_state_ticks.load(Ordering::Relaxed)
                 > ArmadilloState::Rolling.animation_duration()
+    }
+
+    pub const fn can_stay_rolled_up_predicate(
+        is_panicking: bool,
+        in_liquid: bool,
+        is_leashed: bool,
+        is_passenger: bool,
+        is_vehicle: bool,
+    ) -> bool {
+        !is_panicking && !in_liquid && !is_leashed && !is_passenger && !is_vehicle
+    }
+
+    pub const fn is_scared_by_predicate(
+        is_undead: bool,
+        is_last_attacker: bool,
+        is_player: bool,
+        is_spectator: bool,
+        is_sprinting: bool,
+        is_passenger: bool,
+    ) -> bool {
+        if is_undead || is_last_attacker {
+            true
+        } else if is_player {
+            if is_spectator {
+                false
+            } else {
+                is_sprinting || is_passenger
+            }
+        } else {
+            false
+        }
     }
 
     pub fn can_stay_rolled_up(&self) -> bool {
@@ -418,6 +453,13 @@ impl Mob for ArmadilloEntity {
             ArmadilloState::Rolling => {
                 if ticks_in_state > ArmadilloState::Rolling.animation_duration() {
                     self.switch_to_state(ArmadilloState::Scared);
+                    if entity.on_ground.load(Ordering::Relaxed) {
+                        world.play_sound(
+                            Sound::EntityArmadilloLand,
+                            SoundCategory::Neutral,
+                            &entity.pos.load(),
+                        );
+                    }
                 }
             }
             ArmadilloState::Scared => {
@@ -426,6 +468,11 @@ impl Mob for ArmadilloEntity {
                 } else if ticks_in_state > ArmadilloState::Scared.animation_duration()
                     && self.danger_detected_recently_ticks.load(Ordering::Relaxed) == 0
                 {
+                    world.play_sound(
+                        Sound::EntityArmadilloUnrollStart,
+                        SoundCategory::Neutral,
+                        &entity.pos.load(),
+                    );
                     self.switch_to_state(ArmadilloState::Unrolling);
                 }
             }

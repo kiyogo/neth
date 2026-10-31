@@ -19522,4 +19522,63 @@ mod tests {
         assert!(!MaceItem::can_trigger_wind_burst(5.0, true, 1)); // fall flying
         assert!(!MaceItem::can_trigger_wind_burst(5.0, false, 0)); // no wind burst
     }
+
+    #[test]
+    fn test_armadillo_rolling_threat_scute_and_unroll_parity() {
+        use crate::entity::passive::armadillo::*;
+
+        // 1. Constants parity with Vanilla Armadillo.java & ArmadilloAi.java
+        assert_eq!(SCARE_CHECK_INTERVAL, 80);
+        assert_eq!(SCARE_DISTANCE_HORIZONTAL, 7.0);
+        assert_eq!(SCARE_DISTANCE_VERTICAL, 2.0);
+        assert_eq!(BALL_UP_STAY_IN_STATE, 6000);
+        assert_eq!(BRUSH_DURABILITY_DAMAGE, 16);
+        assert_eq!(PEEK_EVENT_ID, 64);
+        assert_eq!(UNROLL_START_THRESHOLD_TICKS, 30);
+
+        // State durations
+        assert_eq!(ArmadilloState::Idle.animation_duration(), 0);
+        assert_eq!(ArmadilloState::Rolling.animation_duration(), 10);
+        assert_eq!(ArmadilloState::Scared.animation_duration(), 50);
+        assert_eq!(ArmadilloState::Unrolling.animation_duration(), 30);
+
+        // Shell hiding states
+        assert!(!ArmadilloState::Idle.should_hide_in_shell(0));
+        assert!(!ArmadilloState::Rolling.should_hide_in_shell(5));
+        assert!(ArmadilloState::Rolling.should_hide_in_shell(6));
+        assert!(ArmadilloState::Scared.should_hide_in_shell(0));
+        assert!(ArmadilloState::Scared.should_hide_in_shell(25));
+        assert!(ArmadilloState::Unrolling.should_hide_in_shell(25));
+        assert!(!ArmadilloState::Unrolling.should_hide_in_shell(26));
+
+        // 2. Threat Detection Predicate Parity (Armadillo.java:245-257)
+        // Undead entities scare armadillos
+        assert!(ArmadilloEntity::is_scared_by_predicate(true, false, false, false, false, false));
+        // Last attacker scares armadillos
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, true, false, false, false, false));
+        // Spectator players do NOT scare armadillos
+        assert!(!ArmadilloEntity::is_scared_by_predicate(false, false, true, true, true, true));
+        // Walking / sneaking players do NOT scare armadillos
+        assert!(!ArmadilloEntity::is_scared_by_predicate(false, false, true, false, false, false));
+        // Sprinting players scare armadillos
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, false, true, false, true, false));
+        // Passenger players (in boat/minecart) scare armadillos
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, false, true, false, false, true));
+        // Passive neutral animals (e.g. cow, sheep) do NOT scare armadillos
+        assert!(!ArmadilloEntity::is_scared_by_predicate(false, false, false, false, false, false));
+
+        // 3. Stay Rolled Up Predicate Parity (Armadillo.java:340-342)
+        assert!(ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, false, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(true, false, false, false, false)); // panicking
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, true, false, false, false)); // in liquid
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, true, false, false)); // leashed
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, true, false)); // passenger
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, false, true)); // vehicle
+
+        // 4. Scared Damage Reduction Parity (Armadillo.java:294: (damage - 1.0) / 2.0)
+        assert_eq!(calculate_armadillo_scared_damage(1.0), 0.0);
+        assert_eq!(calculate_armadillo_scared_damage(5.0), 2.0);
+        assert_eq!(calculate_armadillo_scared_damage(11.0), 5.0);
+        assert_eq!(calculate_armadillo_scared_damage(0.5), 0.0);
+    }
 }

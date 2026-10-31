@@ -8662,3 +8662,22 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK = 0.5`, `DENSITY_MAX_LEVEL = 5`, `BREACH_ARMOR_REDUCTION_PER_LEVEL = 0.15`, `BREACH_MAX_LEVEL = 4`, `WIND_BURST_MAX_LEVEL = 3`, `WIND_BURST_FALL_THRESHOLD = 1.5`, and `WIND_BURST_POWERS = [1.2, 1.75, 2.2]` in `MaceItem`.
   - Added helper methods `calculate_density_damage_bonus`, `calculate_total_smash_damage`, `calculate_breach_effective_armor`, `get_wind_burst_power`, and `can_trigger_wind_burst`.
   - Added unit test `test_mace_wind_burst_density_and_breach_enchantments_parity` in `combat.rs`.
+
+### Gap 352: Armadillo Rolling Up, Threat Detection (Undead/Sprinting Players), Scute Brushing Decay & 5-Minute Unroll Parity
+
+- **Vanilla Reference**: `Armadillo.java:1-453`, `ArmadilloAi.java:1-206`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Armadillos (`EntityTypes.ARMADILLO`) implement comprehensive threat sensing, balling-up defense, shedding timers, and unrolling cycles:
+    - **Threat Detection**: `isScaredBy(entity)` senses threats in an inflated AABB box of $(7.0, 2.0, 7.0)$ blocks. Scared by all undead mobs (`#minecraft:undead`), its last attacker, or players who are sprinting or riding vehicles (passengers). Calm when approached by walking/sneaking players or spectators.
+    - **State Cycle & Shell Durations**:
+      - `Idle (0)`: Unscared state.
+      - `Rolling (1)`: 10 ticks duration. Hides in shell after 5 ticks (`ticksInState > 5`).
+      - `Scared (2)`: 50 ticks duration. Completely protected in shell. Emits `SoundEvents.ARMADILLO_LAND` when rolling finishes on ground. Emits periodic peek events (ID 64, `SoundEvents.ARMADILLO_PEEK`) every 150..450 ticks while danger remains.
+      - `Unrolling (3)`: 30 ticks duration. Leaves shell after 26 ticks (`ticksInState >= 26`). Emits `SoundEvents.ARMADILLO_UNROLL_START` when beginning to unroll, and `SoundEvents.ARMADILLO_UNROLL_FINISH` when returning to Idle.
+    - **Shell Damage Reduction**: Reduces incoming damage to `(damage - 1.0) / 2.0` when hidden in shell. Environmental damage (lava, fire, drowning, freezing) forces immediate `rollOut()`.
+    - **Scute Brushing & Shedding**: Brushing adult armadillos with `Items.BRUSH` drops `ARMADILLO_SCUTE` and consumes 16 brush durability (`itemStack.hurtAndBreak(16, player, hand)`). Naturally sheds scutes every 5..10 minutes (6000..12000 ticks). Max ball up duration is 5 minutes (6000 ticks = `BALL_UP_STAY_IN_STATE`).
+- **Neth Changes**:
+  - Exported constants `SCARE_CHECK_INTERVAL = 80`, `SCARE_DISTANCE_HORIZONTAL = 7.0`, `SCARE_DISTANCE_VERTICAL = 2.0`, `BALL_UP_STAY_IN_STATE = 6000`, `BRUSH_DURABILITY_DAMAGE = 16`, `PEEK_EVENT_ID = 64`, and `UNROLL_START_THRESHOLD_TICKS = 30` in `armadillo.rs`.
+  - Added pure helper predicates `is_scared_by_predicate` and `can_stay_rolled_up_predicate`.
+  - Added sound transitions `Sound::EntityArmadilloLand` on rolling completion and `Sound::EntityArmadilloUnrollStart` on unrolling start.
+  - Added unit test `test_armadillo_rolling_threat_scute_and_unroll_parity` in `combat.rs`.
