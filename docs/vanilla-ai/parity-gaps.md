@@ -8283,3 +8283,17 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Exported tier constants `CHANCE_TIER_1` (0.30) to `CHANCE_TIER_5` (1.00) in `ComposterBlock`.
   - Validated hopper directional filtering, level progression, and comparator output `0..8`.
   - Added unit test `test_composter_tiers_progression_and_comparator_parity` covering all stages and hopper semantics.
+
+### Gap 331: Respawn Anchor Charge Levels (0..4), 25 Respawn Stand-up Offsets, Overworld Explosion (Power 5.0) & Comparator Parity
+
+- **Vanilla Reference**: `RespawnAnchorBlock.java:1-241`, `BlockStateProperties.java`.
+- **Description**:
+  - In Vanilla Minecraft, Respawn Anchors store 0 to 4 charges (`CHARGE` property), charged using Glowstone (`Items.GLOWSTONE`).
+  - Right-clicking a charged anchor in an unsupported dimension (e.g. Overworld or End, where `EnvironmentAttributes.RESPAWN_ANCHOR_WORKS` is false) immediately causes a powerful explosion of power 5.0 (`EXPLOSION_POWER = 5.0F`) with block destruction.
+  - Right-clicking in the Nether sets the player's respawn point, playing `SoundEvents.RESPAWN_ANCHOR_SET_SPAWN`.
+  - When players respawn, Vanilla checks 25 candidate stand-up positions around the anchor defined in `RESPAWN_OFFSETS` (8 horizontal, 8 below, 8 above, and 1 directly above: `(0, 1, 0)`).
+  - Emits analog comparator power according to `floor(charges / 4.0 * 15.0)`: 0 charges -> 0, 1 charge -> 3, 2 charges -> 7, 3 charges -> 11, 4 charges -> 15 (`[0, 3, 7, 11, 15]`).
+- **Neth Changes**:
+  - Added constants `NUM_RESPAWN_OFFSETS = 25` and the exact 25 3D coordinates array `RESPAWN_OFFSETS`.
+  - Added helpers `can_be_charged`, `calculate_comparator_signal`, and `get_respawn_candidate_pos`.
+  - Added unit test `test_respawn_anchor_charges_offsets_explosion_and_comparator_parity` covering charging limits, explosion conditions, stand-up offset indexing, and the comparator signal curve.

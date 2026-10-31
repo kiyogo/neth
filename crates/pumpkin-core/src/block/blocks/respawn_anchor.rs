@@ -19,6 +19,69 @@ impl RespawnAnchorBlock {
     pub const MAX_CHARGES: u8 = 4;
     pub const EXPLOSION_POWER: f32 = 5.0;
     pub const MAX_COMPARATOR_SIGNAL: u32 = 15;
+    pub const NUM_RESPAWN_OFFSETS: usize = 25;
+
+    /// Vanilla RespawnAnchorBlock.java:49-65: 25 candidate stand-up positions
+    pub const RESPAWN_OFFSETS: [(i32, i32, i32); 25] = [
+        // Horizontal offsets (same y)
+        (0, 0, -1),
+        (-1, 0, 0),
+        (0, 0, 1),
+        (1, 0, 0),
+        (-1, 0, -1),
+        (1, 0, -1),
+        (-1, 0, 1),
+        (1, 0, 1),
+        // Below offsets (y - 1)
+        (0, -1, -1),
+        (-1, -1, 0),
+        (0, -1, 1),
+        (1, -1, 0),
+        (-1, -1, -1),
+        (1, -1, -1),
+        (-1, -1, 1),
+        (1, -1, 1),
+        // Above offsets (y + 1)
+        (0, 1, -1),
+        (-1, 1, 0),
+        (0, 1, 1),
+        (1, 1, 0),
+        (-1, 1, -1),
+        (1, 1, -1),
+        (-1, 1, 1),
+        (1, 1, 1),
+        // Directly above
+        (0, 1, 0),
+    ];
+
+    #[must_use]
+    pub const fn can_be_charged(charges: u8) -> bool {
+        charges < Self::MAX_CHARGES
+    }
+
+    #[must_use]
+    pub const fn calculate_comparator_signal(charges: u8) -> u8 {
+        let clamped = if charges > Self::MAX_CHARGES {
+            Self::MAX_CHARGES
+        } else {
+            charges
+        };
+        Self::get_scaled_charge_level(clamped, Self::MAX_COMPARATOR_SIGNAL) as u8
+    }
+
+    #[must_use]
+    pub fn get_respawn_candidate_pos(
+        anchor_pos: &pumpkin_util::math::position::BlockPos,
+        offset_index: usize,
+    ) -> Option<pumpkin_util::math::position::BlockPos> {
+        Self::RESPAWN_OFFSETS.get(offset_index).map(|&(dx, dy, dz)| {
+            pumpkin_util::math::position::BlockPos::new(
+                anchor_pos.0.x + dx,
+                anchor_pos.0.y + dy,
+                anchor_pos.0.z + dz,
+            )
+        })
+    }
 
     #[must_use]
     pub const fn should_explode_in_unsupported_dimension(

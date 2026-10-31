@@ -18207,4 +18207,74 @@ mod tests {
         assert!(!ComposterBlock::should_level_increase(0, 0.5, 0.6));
         assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0));
     }
+
+    #[test]
+    fn test_respawn_anchor_charges_offsets_explosion_and_comparator_parity() {
+        use crate::block::blocks::respawn_anchor::RespawnAnchorBlock;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants parity with Vanilla RespawnAnchorBlock.java
+        assert_eq!(RespawnAnchorBlock::MIN_CHARGES, 0);
+        assert_eq!(RespawnAnchorBlock::MAX_CHARGES, 4);
+        assert_eq!(RespawnAnchorBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(RespawnAnchorBlock::MAX_COMPARATOR_SIGNAL, 15);
+        assert_eq!(RespawnAnchorBlock::NUM_RESPAWN_OFFSETS, 25);
+
+        // Scaled charge level & comparator signal curve: [0, 3, 7, 11, 15]
+        let expected_signals = [0u8, 3, 7, 11, 15];
+        for (charge, &expected) in expected_signals.iter().enumerate() {
+            assert_eq!(
+                RespawnAnchorBlock::calculate_comparator_signal(charge as u8),
+                expected
+            );
+            assert_eq!(
+                RespawnAnchorBlock::get_scaled_charge_level(charge as u8, 15),
+                expected as u32
+            );
+        }
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(5), 15); // clamped
+
+        // Charging capacity
+        for charge in 0..4 {
+            assert!(RespawnAnchorBlock::can_be_charged(charge));
+        }
+        assert!(!RespawnAnchorBlock::can_be_charged(4));
+        assert!(!RespawnAnchorBlock::can_be_charged(5));
+
+        // Explosion condition: explodes if charges > 0 and respawn_anchor_works is false
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, false));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(0, true));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, false));
+        assert!(RespawnAnchorBlock::should_explode_in_unsupported_dimension(4, false));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(1, true));
+        assert!(!RespawnAnchorBlock::should_explode_in_unsupported_dimension(4, true));
+
+        // Stand-up respawn candidate offsets (25 positions)
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS.len(), 25);
+        // Verify horizontal offsets (first 8)
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[0], (0, 0, -1));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[1], (-1, 0, 0));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[2], (0, 0, 1));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[3], (1, 0, 0));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[4], (-1, 0, -1));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[5], (1, 0, -1));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[6], (-1, 0, 1));
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[7], (1, 0, 1));
+        // Verify directly above (last)
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS[24], (0, 1, 0));
+
+        let anchor = BlockPos::new(100, 50, -200);
+        assert_eq!(
+            RespawnAnchorBlock::get_respawn_candidate_pos(&anchor, 0),
+            Some(BlockPos::new(100, 50, -201))
+        );
+        assert_eq!(
+            RespawnAnchorBlock::get_respawn_candidate_pos(&anchor, 24),
+            Some(BlockPos::new(100, 51, -200))
+        );
+        assert_eq!(
+            RespawnAnchorBlock::get_respawn_candidate_pos(&anchor, 25),
+            None
+        );
+    }
 }
