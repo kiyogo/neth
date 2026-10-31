@@ -2235,6 +2235,10 @@ pub trait Mob: EntityBase + Send + Sync {
         true
     }
 
+    fn can_use_portal(&self) -> bool {
+        true
+    }
+
     fn is_pushable(&self) -> bool {
         self.get_mob_entity().living_entity.is_pushable()
     }
@@ -2268,6 +2272,10 @@ impl<T: Mob + Send + 'static> EntityBase for T {
 
     fn is_pushed_by_fluids(&self) -> bool {
         Mob::is_pushed_by_fluids(self)
+    }
+
+    fn can_use_portal(&self) -> bool {
+        Mob::can_use_portal(self)
     }
 
     fn is_pushable(&self) -> bool {

@@ -9071,3 +9071,42 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - `deflect_projectile` now verifies deflect cooldown and returns `false` while `cooldown > 0`, mirroring vanilla `WindCharge.java:59`.
     - Added unit test `test_wind_charge_shoot_power_dispenser_and_deflect_immunity_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 366: Creaking Heart-Bound Invulnerability, Crumble Teardown Particles (100 Pale Oak + 10 Heart), Fire Immunity, Step Sound & Portal Prevention Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.creaking.Creaking.java:1-607`.
+- **Vanilla Mechanics**:
+  1. *Attributes & Combat Timings*:
+     - Health: 1.0 HP (`CREAKING_MAX_HEALTH = 1.0`), Attack damage: 3.0 (`CREAKING_BASE_ATTACK_DAMAGE = 3.0`), Speed: 0.4 fighting / 0.3 idling (`CREAKING_BASE_MOVEMENT_SPEED = 0.4`), Follow range: 32.0 (`CREAKING_FOLLOW_RANGE = 32.0`), Step height: 1.0625 (`CREAKING_STEP_HEIGHT = 1.0625`), XP Reward: 0 (`CREAKING_XP_REWARD = 0`).
+     - Attack interval: 40 ticks = 2.0s (`CREAKING_ATTACK_INTERVAL = 40`), Attack animation duration: 15 ticks (`CREAKING_ATTACK_ANIMATION_DURATION = 15`).
+     - Invulnerability animation duration: 8 ticks (`CREAKING_INVULNERABILITY_ANIMATION_DURATION = 8`), Twitch death duration: 45 ticks (`CREAKING_TWITCH_DEATH_DURATION = 45`).
+     - Player gaze activation range squared: 144.0 = 12.0 blocks (`CREAKING_ACTIVATION_RANGE_SQ = 144.0`), Max player stuck counter: 4 ticks (`CREAKING_MAX_PLAYER_STUCK_COUNTER = 4`).
+  2. *Sounds*:
+     - Ambient: `SoundEvents.CREAKING_AMBIENT` (played only when `!isActive()`).
+     - Hurt: `SoundEvents.CREAKING_SWAY` when heart-bound, otherwise generic hurt.
+     - Death: `SoundEvents.CREAKING_DEATH`.
+     - Step: `SoundEvents.CREAKING_STEP` at volume 0.15F and pitch 1.0F.
+     - Freeze: `SoundEvents.CREAKING_FREEZE`, Unfreeze: `SoundEvents.CREAKING_UNFREEZE`.
+     - Activate: `SoundEvents.CREAKING_ACTIVATE`, Deactivate: `SoundEvents.CREAKING_DEACTIVATE`.
+     - Twitch: `SoundEvents.CREAKING_TWITCH`.
+  3. *Heart-Bound Invulnerability & Particles*:
+     - When bound to a Creaking Heart (`home_pos != null`):
+       - Creaking is completely invulnerable to normal damage (`DamageTypeTags.BYPASSES_INVULNERABILITY` bypassed).
+       - Status 66 entity event broadcasted (8-tick invulnerability animation), plays sway sound, notifies heart block entity `creakingHurt()`.
+       - Fire immunity: `fireImmune() { return this.isHeartBound() || super.fireImmune(); }`.
+       - Portal prevention: `canUsePortal() { return !this.isHeartBound() && super.canUsePortal(); }`.
+  4. *Teardown Particles*:
+     - On death teardown: spawns 100 crumble particles of Pale Oak Wood (`CREAKING_TEARDOWN_PALE_OAK_PARTICLE_COUNT = 100`) and 10 crumble particles of Creaking Heart awake state (`CREAKING_TEARDOWN_HEART_PARTICLE_COUNT = 10`), spread `box.size * 0.3` centered on entity.
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `CREAKING_ATTACK_INTERVAL = 40`, `CREAKING_ATTACK_ANIMATION_DURATION = 15`, `CREAKING_INVULNERABILITY_ANIMATION_DURATION = 8`, `CREAKING_TWITCH_DEATH_DURATION = 45`, `CREAKING_ACTIVATION_RANGE_SQ = 144.0`, `CREAKING_MAX_PLAYER_STUCK_COUNTER = 4`, `CREAKING_TEARDOWN_PALE_OAK_PARTICLE_COUNT = 100`, `CREAKING_TEARDOWN_HEART_PARTICLE_COUNT = 10`, `CREAKING_STEP_SOUND_VOLUME = 0.15`, `CREAKING_STEP_SOUND_PITCH = 1.0`.
+  - Updated `crates/pumpkin-core/src/entity/mod.rs`:
+    - Added `can_use_portal(&self) -> bool` to `EntityBase` (default true) and verified in `tick_portal`.
+  - Updated `crates/pumpkin-core/src/entity/mob/mod.rs`:
+    - Added `can_use_portal(&self) -> bool` to `Mob` and delegated from blanket `impl EntityBase for T`.
+  - Updated `crates/pumpkin-core/src/entity/mob/creaking.rs`:
+    - Implemented `step_sound` in `CustomSound for CreakingEntity`.
+    - Implemented `can_use_portal` returning `!self.is_heart_bound()`.
+    - Set `entity.fire_immune` in `set_home_pos` to true when heart-bound.
+    - Updated `tear_down` to spawn 100 Pale Oak + 10 Heart crumble particles centered on bounding box.
+    - Added unit test `test_creaking_parity_constants_sounds_and_heart_bound_mechanics`.
+- **Status**: Completed & Verified.

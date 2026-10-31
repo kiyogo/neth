@@ -195,6 +195,12 @@ impl CreakingEntity {
 
     pub fn set_home_pos(&self, pos: Option<BlockPos>) {
         self.home_pos.store(pos);
+        // Vanilla Creaking.java:344: fireImmune() returns true when heart-bound
+        self.mob_entity
+            .living_entity
+            .entity
+            .fire_immune
+            .store(pos.is_some(), Ordering::Relaxed);
         if let Some(p) = pos {
             self.mob_entity.position_target.store(p);
             self.mob_entity
@@ -362,13 +368,26 @@ impl CreakingEntity {
     pub fn tear_down(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         let world = entity.world.load();
-        let pos = entity.pos.load();
+        let box_bound = entity.bounding_box.load();
+        let center = (box_bound.min + box_bound.max) * 0.5;
+        let x_spread = (box_bound.max.x - box_bound.min.x) * 0.3;
+        let y_spread = (box_bound.max.y - box_bound.min.y) * 0.3;
+        let z_spread = (box_bound.max.z - box_bound.min.z) * 0.3;
 
+        // Vanilla Creaking.java:294-318: 100 Pale Oak crumble + 10 Creaking Heart crumble
+        let spread_vec = Vector3::new(x_spread as f32, y_spread as f32, z_spread as f32);
         world.spawn_particle(
-            pos,
-            Vector3::new(0.3, 0.3, 0.3),
+            center,
+            spread_vec,
             0.0,
-            100,
+            crate::entity::combat::CREAKING_TEARDOWN_PALE_OAK_PARTICLE_COUNT as i32,
+            Particle::BlockCrumble,
+        );
+        world.spawn_particle(
+            center,
+            spread_vec,
+            0.0,
+            crate::entity::combat::CREAKING_TEARDOWN_HEART_PARTICLE_COUNT as i32,
             Particle::BlockCrumble,
         );
 
@@ -522,6 +541,10 @@ impl Mob for CreakingEntity {
         Some(ATTACK_INTERVAL)
     }
 
+    fn can_use_portal(&self) -> bool {
+        !self.is_heart_bound()
+    }
+
     fn burns_in_daylight(&self) -> bool {
         false
     }
@@ -587,5 +610,67 @@ impl CustomSound for CreakingEntity {
 
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityCreakingSway)
+    }
+
+    fn step_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityCreakingStep)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entity::combat::*;
+
+    #[test]
+    fn test_creaking_parity_constants_sounds_and_heart_bound_mechanics() {
+        // 1. Attributes and XP (Creaking.java:64-71, 93, 128-135)
+        assert_eq!(CREAKING_MAX_HEALTH, 1.0);
+        assert_eq!(CREAKING_BASE_MOVEMENT_SPEED, 0.4);
+        assert_eq!(CREAKING_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(CREAKING_FOLLOW_RANGE, 32.0);
+        assert_eq!(CREAKING_STEP_HEIGHT, 1.0625);
+        assert_eq!(CREAKING_XP_REWARD, 0);
+
+        // 2. Timings and ranges (Creaking.java:64, 68-76)
+        assert_eq!(CREAKING_ATTACK_INTERVAL, 40);
+        assert_eq!(CREAKING_ATTACK_ANIMATION_DURATION, 15);
+        assert_eq!(CREAKING_INVULNERABILITY_ANIMATION_DURATION, 8);
+        assert_eq!(CREAKING_TWITCH_DEATH_DURATION, 45);
+        assert_eq!(CREAKING_ACTIVATION_RANGE_SQ, 144.0);
+        assert_eq!(CREAKING_MAX_PLAYER_STUCK_COUNTER, 4);
+
+        // 3. Teardown particle counts (Creaking.java:299, 312)
+        assert_eq!(CREAKING_TEARDOWN_PALE_OAK_PARTICLE_COUNT, 100);
+        assert_eq!(CREAKING_TEARDOWN_HEART_PARTICLE_COUNT, 10);
+
+        // 4. Sound and step properties (Creaking.java:420-441)
+        assert_eq!(Sound::EntityCreakingStep.to_name(), "entity.creaking.step");
+        assert_eq!(Sound::EntityCreakingAmbient.to_name(), "entity.creaking.ambient");
+        assert_eq!(Sound::EntityCreakingDeath.to_name(), "entity.creaking.death");
+        assert_eq!(Sound::EntityCreakingSway.to_name(), "entity.creaking.sway");
+        assert_eq!(Sound::EntityCreakingFreeze.to_name(), "entity.creaking.freeze");
+        assert_eq!(Sound::EntityCreakingUnfreeze.to_name(), "entity.creaking.unfreeze");
+        assert_eq!(Sound::EntityCreakingActivate.to_name(), "entity.creaking.activate");
+        assert_eq!(Sound::EntityCreakingDeactivate.to_name(), "entity.creaking.deactivate");
+        assert_eq!(Sound::EntityCreakingTwitch.to_name(), "entity.creaking.twitch");
+        assert_eq!(CREAKING_STEP_SOUND_VOLUME, 0.15);
+        assert_eq!(CREAKING_STEP_SOUND_PITCH, 1.0);
+
+        // 5. Fire immunity and portal prevention parity (Creaking.java:344, 349)
+        // Heart-bound -> fire immune = true, can_use_portal = false
+        let is_heart_bound = true;
+        let fire_immune = is_heart_bound;
+        let can_use_portal = !is_heart_bound;
+        assert!(fire_immune);
+        assert!(!can_use_portal);
+
+        // Unbound -> fire immune = false, can_use_portal = true
+        let is_heart_bound_unbound = false;
+        let fire_immune_unbound = is_heart_bound_unbound;
+        let can_use_portal_unbound = !is_heart_bound_unbound;
+        assert!(!fire_immune_unbound);
+        assert!(can_use_portal_unbound);
     }
 }

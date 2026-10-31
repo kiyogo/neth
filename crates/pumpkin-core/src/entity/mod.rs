@@ -240,6 +240,10 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         true
     }
 
+    fn can_use_portal(&self) -> bool {
+        true
+    }
+
     fn on_climbable(&self) -> bool {
         let entity = self.get_entity();
         let pos = entity.block_pos.load();
@@ -2292,6 +2296,9 @@ impl Entity {
     }
 
     fn tick_portal(&self, caller: &dyn EntityBase) {
+        if !caller.can_use_portal() {
+            return;
+        }
         if self.portal_cooldown.load(Ordering::Relaxed) > 0 {
             self.portal_cooldown.fetch_sub(1, Ordering::Relaxed);
         }

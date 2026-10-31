@@ -7533,6 +7533,66 @@ pub const CREAKING_FOLLOW_RANGE: f64 = 32.0;
 pub const CREAKING_STEP_HEIGHT: f64 = 1.0625;
 pub const CREAKING_XP_REWARD: u32 = 0;
 
+/// Creaking attack interval in ticks (40 ticks = 2.0s).
+///
+/// Mirrors vanilla `Creaking.java:69`:
+/// `public static final int ATTACK_INTERVAL = 40;`
+pub const CREAKING_ATTACK_INTERVAL: i32 = 40;
+
+/// Creaking attack animation duration in ticks (15 ticks).
+///
+/// Mirrors vanilla `Creaking.java:64`:
+/// `private static final int ATTACK_ANIMATION_DURATION = 15;`
+pub const CREAKING_ATTACK_ANIMATION_DURATION: i32 = 15;
+
+/// Creaking invulnerability animation duration in ticks (8 ticks).
+///
+/// Mirrors vanilla `Creaking.java:74`:
+/// `public static final int INVULNERABILITY_ANIMATION_DURATION = 8;`
+pub const CREAKING_INVULNERABILITY_ANIMATION_DURATION: i32 = 8;
+
+/// Creaking twitch death animation duration in ticks (45 ticks).
+///
+/// Mirrors vanilla `Creaking.java:75`:
+/// `public static final int TWITCH_DEATH_DURATION = 45;`
+pub const CREAKING_TWITCH_DEATH_DURATION: i32 = 45;
+
+/// Activation range squared for player gaze detection on Creaking (144.0 = 12.0 blocks).
+///
+/// Mirrors vanilla `Creaking.java:68`:
+/// `private static final float ACTIVATION_RANGE_SQ = 144.0F;`
+pub const CREAKING_ACTIVATION_RANGE_SQ: f64 = 144.0;
+
+/// Maximum ticks player must be stuck inside Creaking bounding box before unfreezing (4 ticks).
+///
+/// Mirrors vanilla `Creaking.java:76`:
+/// `private static final int MAX_PLAYER_STUCK_COUNTER = 4;`
+pub const CREAKING_MAX_PLAYER_STUCK_COUNTER: i32 = 4;
+
+/// Particle count for Pale Oak Wood crumble particles on Creaking teardown (100).
+///
+/// Mirrors vanilla `Creaking.java:299`:
+/// `serverLevel.sendParticles(..., 100, xSpread, ySpread, zSpread, 0.0);`
+pub const CREAKING_TEARDOWN_PALE_OAK_PARTICLE_COUNT: u32 = 100;
+
+/// Particle count for Creaking Heart crumble particles on Creaking teardown (10).
+///
+/// Mirrors vanilla `Creaking.java:312`:
+/// `serverLevel.sendParticles(..., 10, xSpread, ySpread, zSpread, 0.0);`
+pub const CREAKING_TEARDOWN_HEART_PARTICLE_COUNT: u32 = 10;
+
+/// Creaking step sound volume (0.15F).
+///
+/// Mirrors vanilla `Creaking.java:440`:
+/// `this.playSound(SoundEvents.CREAKING_STEP, 0.15F, 1.0F);`
+pub const CREAKING_STEP_SOUND_VOLUME: f32 = 0.15;
+
+/// Creaking step sound pitch (1.0F).
+///
+/// Mirrors vanilla `Creaking.java:440`:
+/// `this.playSound(SoundEvents.CREAKING_STEP, 0.15F, 1.0F);`
+pub const CREAKING_STEP_SOUND_PITCH: f32 = 1.0;
+
 /// Skeleton max health (20.0 HP).
 ///
 /// Mirrors vanilla `AbstractSkeleton.java` / `Mob.java`:
