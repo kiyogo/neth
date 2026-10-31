@@ -15610,5 +15610,71 @@ mod tests {
         assert!(ChiseledBookshelfBlock::is_slot_occupied(&props, 5));
         assert!(!ChiseledBookshelfBlock::is_slot_occupied(&props, 6));
     }
-}
+#[test]
+    fn test_composter_fill_levels_probabilities_and_comparator_parity() {
+        use crate::block::blocks::composter::ComposterBlock;
+        use pumpkin_data::BlockDirection;
 
+        // Constants verification
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+        assert_eq!(ComposterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ComposterBlock::MAX_COMPARATOR_OUTPUT, 8);
+
+        // Comparator output matches fill level 0..=8
+        for level in 0..=8 {
+            assert_eq!(ComposterBlock::calculate_comparator_output(level), level);
+        }
+        // Clamping above ready (safety)
+        assert_eq!(ComposterBlock::calculate_comparator_output(9), 8);
+        assert_eq!(ComposterBlock::calculate_comparator_output(15), 8);
+
+        // Ready and can compost more states
+        for level in 0..=7 {
+            assert!(!ComposterBlock::is_ready(level));
+        }
+        assert!(ComposterBlock::is_ready(8));
+
+        for level in 0..=6 {
+            assert!(ComposterBlock::can_compost_more(level));
+        }
+        assert!(!ComposterBlock::can_compost_more(7));
+        assert!(!ComposterBlock::can_compost_more(8));
+
+        // Hopper insertion (only from Up face and when level < 7)
+        for level in 0..=6 {
+            assert!(ComposterBlock::can_hopper_insert(level, BlockDirection::Up));
+            assert!(!ComposterBlock::can_hopper_insert(level, BlockDirection::Down));
+            assert!(!ComposterBlock::can_hopper_insert(level, BlockDirection::North));
+        }
+        assert!(!ComposterBlock::can_hopper_insert(7, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(8, BlockDirection::Up));
+
+        // Hopper extraction (only from Down face and when level == 8 READY)
+        for level in 0..=7 {
+            assert!(!ComposterBlock::can_hopper_extract(level, BlockDirection::Down));
+        }
+        assert!(ComposterBlock::can_hopper_extract(8, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::North));
+
+        // Composting chance logic
+        // 30% chance item (seeds, saplings, leaves)
+        assert!(ComposterBlock::should_level_increase(0, 0.3, 0.1));
+        assert!(!ComposterBlock::should_level_increase(0, 0.3, 0.5));
+        // Level 0 does not automatically succeed unless chance passes (vanilla parity)
+        assert!(!ComposterBlock::should_level_increase(0, 0.3, 0.35));
+
+        // 100% chance item (cake, pumpkin pie)
+        assert!(ComposterBlock::should_level_increase(0, 1.0, 0.99));
+        assert!(ComposterBlock::should_level_increase(6, 1.0, 0.5));
+
+        // Full composter (level >= 7) cannot increase further via composting items
+        assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0));
+        assert!(!ComposterBlock::should_level_increase(8, 1.0, 0.0));
+    }
+}

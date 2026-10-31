@@ -6980,3 +6980,37 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported methods `get_last_interacted_slot` and `calculate_comparator_output`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_chiseled_bookshelf_slot_selection_and_comparator_parity`.
+
+
+### Gap 288: Composter Fill Levels (0..=8), Composting Probabilities & Comparator Output Parity
+- **Vanilla Reference**:
+  - `ComposterBlock.java:48-67, 110-153, 218-238, 246-253`:
+    - Fill levels:
+      - `MIN_LEVEL = 0` (empty)
+      - `MAX_LEVEL = 7` (full of compost, scheduled for 20 ticks to turn into ready state)
+      - `READY = 8` (bone meal ready to be extracted)
+      - `NUM_LEVELS = 9` (levels 0..=8)
+      - `FULL_COMPOSTING_TICKS = 20` (1-second delay from level 7 to ready 8)
+      - `COMPOSTER_FILL_EVENT = 1500` (World event: data 1 for successful layer add with particles + sound; data 0 for failed attempt with sound only)
+    - Sounds:
+      - `SoundEvents.COMPOSTER_READY` on transitioning from level 7 to 8.
+      - `SoundEvents.COMPOSTER_EMPTY` on extracting bone meal.
+    - Hopper Sidedness:
+      - Hopper facing into top face (`Direction.UP`): can insert compostable items when `level < 7`.
+      - Hopper beneath pulling from bottom face (`Direction.DOWN`): can extract bone meal when `level == 8`.
+    - Level 0 probability parity:
+      - In vanilla, adding a layer is strictly governed by the item's `Compostable` component probability (`roll < chance`). Level 0 does NOT guarantee 100% success on the first item.
+    - Analog output (Comparator):
+      - Returns `state.getValue(LEVEL)` directly (0 to 8).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/composter.rs`:
+    - Exported constants `READY = 8`, `MIN_LEVEL = 0`, `MAX_LEVEL = 7`, `NUM_LEVELS = 9`, `FULL_COMPOSTING_TICKS = 20`, `COMPOSTER_FILL_EVENT = 1500`, `MIN_COMPARATOR_OUTPUT = 0`, and `MAX_COMPARATOR_OUTPUT = 8`.
+    - Exported helpers `calculate_comparator_output`, `is_ready`, `can_compost_more`, `can_hopper_insert`, `can_hopper_extract`, and `should_level_increase`.
+    - Fixed parity bug where level 0 was erroneously guaranteed to increase regardless of compost chance.
+    - Added missing `Sound::BlockComposterReady` on scheduled tick transition to ready state 8.
+    - Added missing `Sound::BlockComposterEmpty` on extracting bone meal.
+    - Added event sync with data 0 on failed composting attempt matching Vanilla.
+    - Added `placed` method scheduling tick when placed with level 7.
+    - Fixed return action in `normal_use` and `use_with_item` from Pass/Consume to `BlockActionResult::Success` when extracting produce at level 8.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_composter_fill_levels_probabilities_and_comparator_parity`.
