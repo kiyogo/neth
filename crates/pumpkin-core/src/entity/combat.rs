@@ -16192,4 +16192,73 @@ mod tests {
         let order_south = [Facing::South, Facing::Up, Facing::Down, Facing::North, Facing::East, Facing::West];
         assert_eq!(PistonBlock::calculate_facing_from_player(&order_south), Facing::North);
     }
+
+    #[test]
+    fn test_dispenser_and_dropper_timing_facing_and_comparator_parity() {
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use pumpkin_data::block_properties::Facing;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants verification
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DispenserBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DropperBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DispenserBlock::DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DropperBlock::DROP_EVENT_ID, 1000);
+        assert_eq!(DispenserBlock::LAUNCH_EVENT_ID, 1002);
+        assert!((DispenserBlock::DISPENSE_OFFSET_SCALE - 0.7).abs() < 1e-6);
+        assert!(!DispenserBlock::DEFAULT_TRIGGERED);
+        assert!(!DropperBlock::DEFAULT_TRIGGERED);
+        assert_eq!(DispenserBlock::DEFAULT_FACING, Facing::North);
+        assert_eq!(DropperBlock::DEFAULT_FACING, Facing::North);
+
+        // Facing orientation from player order
+        let order_down = [Facing::Down, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Up];
+        assert_eq!(DispenserBlock::calculate_facing_from_player(&order_down), Facing::Up);
+        assert_eq!(DropperBlock::calculate_facing_from_player(&order_down), Facing::Up);
+
+        let order_up = [Facing::Up, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Down];
+        assert_eq!(DispenserBlock::calculate_facing_from_player(&order_up), Facing::Down);
+        assert_eq!(DropperBlock::calculate_facing_from_player(&order_up), Facing::Down);
+
+        let order_north = [Facing::North, Facing::Up, Facing::Down, Facing::South, Facing::East, Facing::West];
+        assert_eq!(DispenserBlock::calculate_facing_from_player(&order_north), Facing::South);
+        assert_eq!(DropperBlock::calculate_facing_from_player(&order_north), Facing::South);
+
+        // Dispense position offsets
+        let pos = BlockPos::new(10, 64, 10);
+        let center = pos.to_centered_f64(); // (10.5, 64.5, 10.5)
+
+        let pos_up = DispenserBlock::calculate_dispense_position(&pos, Facing::Up, 0.7);
+        assert!((pos_up.x - center.x).abs() < 1e-6);
+        assert!((pos_up.y - (center.y + 0.7)).abs() < 1e-6);
+        assert!((pos_up.z - center.z).abs() < 1e-6);
+
+        let pos_down = DispenserBlock::calculate_dispense_position(&pos, Facing::Down, 0.7);
+        assert!((pos_down.x - center.x).abs() < 1e-6);
+        assert!((pos_down.y - (center.y - 0.7)).abs() < 1e-6);
+        assert!((pos_down.z - center.z).abs() < 1e-6);
+
+        let pos_north = DispenserBlock::calculate_dispense_position(&pos, Facing::North, 0.7);
+        assert!((pos_north.x - center.x).abs() < 1e-6);
+        assert!((pos_north.y - center.y).abs() < 1e-6);
+        assert!((pos_north.z - (center.z - 0.7)).abs() < 1e-6);
+
+        let drop_pos = DropperBlock::calculate_drop_position(&pos, Facing::South, 0.7);
+        assert!((drop_pos.x - center.x).abs() < 1e-6);
+        assert!((drop_pos.y - center.y).abs() < 1e-6);
+        assert!((drop_pos.z - (center.z + 0.7)).abs() < 1e-6);
+
+        // Container comparator outputs
+        let max_cap = 9 * 64; // 576 items
+        assert_eq!(DispenserBlock::calculate_comparator_output(0, max_cap), 0);
+        assert_eq!(DropperBlock::calculate_comparator_output(0, max_cap), 0);
+        assert_eq!(DispenserBlock::calculate_comparator_output(1, max_cap), 1);
+        assert_eq!(DispenserBlock::calculate_comparator_output(288, max_cap), 8);
+        assert_eq!(DispenserBlock::calculate_comparator_output(max_cap, max_cap), 15);
+    }
 }

@@ -25,6 +25,7 @@ use pumpkin_inventory::screen_handler::{
     InventoryPlayer, ScreenHandlerFactory, SharedScreenHandler,
 };
 use pumpkin_macros::pumpkin_block;
+use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_util::text::TextComponent;
 use pumpkin_world::tick::TickPriority;
@@ -59,6 +60,45 @@ pub struct DropperBlock;
 impl DropperBlock {
     pub const TRIGGER_DURATION: u32 = 4;
     pub const CONTAINER_SIZE: usize = 9;
+    pub const FAIL_EVENT_ID: i32 = 1001;
+    pub const DROP_EVENT_ID: i32 = 1000;
+    pub const DEFAULT_TRIGGERED: bool = false;
+    pub const DEFAULT_FACING: Facing = Facing::North;
+
+    #[must_use]
+    pub const fn calculate_facing_from_player(facing_order: &[Facing; 6]) -> Facing {
+        facing_order[0].opposite()
+    }
+
+    #[must_use]
+    pub fn calculate_drop_position(
+        pos: &BlockPos,
+        facing: Facing,
+        scale: f64,
+    ) -> Vector3<f64> {
+        let center = pos.to_centered_f64();
+        let normal = to_normal(facing);
+        Vector3::new(
+            normal.x.mul_add(scale, center.x),
+            normal.y.mul_add(scale, center.y),
+            normal.z.mul_add(scale, center.z),
+        )
+    }
+
+    #[must_use]
+    pub const fn calculate_comparator_output(total_items: usize, max_capacity: usize) -> u8 {
+        if total_items == 0 || max_capacity == 0 {
+            0
+        } else {
+            let fullness = total_items as f64 / max_capacity as f64;
+            let val = (fullness * 14.0) as u8 + 1;
+            if val > 15 {
+                15
+            } else {
+                val
+            }
+        }
+    }
 }
 
 type DispenserLikeProperties = pumpkin_data::block_properties::DispenserLikeProperties;
@@ -120,7 +160,9 @@ impl BlockBehaviour for DropperBlock {
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = DispenserLikeProperties::default(args.block);
-        props.facing = args.player.get_entity().get_facing().opposite();
+        props.facing = Self::calculate_facing_from_player(
+            &args.player.get_entity().get_entity_facing_order(),
+        );
         props.to_state_id(args.block)
     }
 

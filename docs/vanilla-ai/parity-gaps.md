@@ -7248,3 +7248,37 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_facing_from_player`, `is_sticky_block`, `can_stick_to_each_other`, `evaluate_piston_behavior`, and `is_pushable_block_type`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_piston_push_limit_reactions_stickiness_and_facing_parity`.
+
+
+### Gap 297: Dropper & Dispenser Directional Dispense Logic, Dropping vs Launching & Container Comparator Parity
+- **Vanilla Reference**:
+  - `DispenserBlock.java:48-188`, `DropperBlock.java:22-73`, `DispenserBlockEntity.java:15-80`:
+    - Container configuration:
+      - `CONTAINER_SIZE = 9` (3x3 grid slots).
+      - Default state: `FACING = Direction.NORTH`, `TRIGGERED = false`.
+    - Placement orientation (`getStateForPlacement`):
+      - Uses `context.getNearestLookingDirection().getOpposite()`.
+      - Faces opposite to player's looking direction, respecting all 6 directions (including Up and Down based on player pitch and yaw).
+    - Triggering & Quasi-connectivity:
+      - Trigger delay: `TRIGGER_DURATION = 4` ticks (4 ticks delay when powered before dispensing/dropping).
+      - Quasi-connectivity: checks `hasNeighborSignal(pos) || hasNeighborSignal(pos.above())`.
+      - When powered: sets `TRIGGERED = true` and schedules tick in 4 ticks.
+      - When unpowered: resets `TRIGGERED = false`.
+    - Dispensing vs Dropping mechanics:
+      - Event sound IDs: `FAIL_EVENT_ID = 1001` (click sound when empty), `DISPENSE_EVENT_ID = 1000` (click/dispense sound), `LAUNCH_EVENT_ID = 1002` (projectile launch sound).
+      - Dispense position offset: `center + normal * 0.7` (`DISPENSE_OFFSET_SCALE = 0.7`).
+      - Dropper: drops item into the world or transfers directly into adjacent facing container (`HopperBlockEntity.getContainerAt(level, pos.relative(direction))`).
+      - Dispenser: launches projectiles, uses buckets, equips gear, or falls back to standard drop behavior.
+    - Comparator signal:
+      - Standard container comparator output: `floor(fullness * 14.0) + (total_items > 0 ? 1 : 0)`, 0 to 15.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Fixed placement facing orientation: replaced `args.player.get_entity().get_facing().opposite()` (which ignored pitch/vertical orientation) with `calculate_facing_from_player(&args.player.get_entity().get_entity_facing_order())` (matching Vanilla `Direction.orderedByNearest(player)[0].opposite()`).
+    - Exported constants `TRIGGER_DURATION = 4`, `CONTAINER_SIZE = 9`, `DISPENSE_OFFSET_SCALE = 0.7`, `FAIL_EVENT_ID = 1001`, `DISPENSE_EVENT_ID = 1000`, `LAUNCH_EVENT_ID = 1002`, `DEFAULT_TRIGGERED = false`, and `DEFAULT_FACING = Facing::North`.
+    - Exported helpers `calculate_facing_from_player`, `calculate_dispense_position`, and `calculate_comparator_output`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Fixed placement facing orientation: replaced `args.player.get_entity().get_facing().opposite()` with `calculate_facing_from_player(&args.player.get_entity().get_entity_facing_order())`.
+    - Exported constants `TRIGGER_DURATION = 4`, `CONTAINER_SIZE = 9`, `FAIL_EVENT_ID = 1001`, `DROP_EVENT_ID = 1000`, `DEFAULT_TRIGGERED = false`, and `DEFAULT_FACING = Facing::North`.
+    - Exported helpers `calculate_facing_from_player`, `calculate_drop_position`, and `calculate_comparator_output`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_dispenser_and_dropper_timing_facing_and_comparator_parity`.
