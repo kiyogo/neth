@@ -9,6 +9,17 @@ use crate::world::explosion::ExplosionInteraction;
 
 pub struct WindChargedMobEffect;
 
+impl WindChargedMobEffect {
+    pub const GUST_BASE_STRENGTH: f32 = 3.0;
+    pub const GUST_RANDOM_STRENGTH: f32 = 2.0;
+    pub const COLOR: i32 = 12438015;
+
+    #[must_use]
+    pub fn calculate_gust_strength(random_factor: f32) -> f32 {
+        Self::GUST_BASE_STRENGTH + random_factor * Self::GUST_RANDOM_STRENGTH
+    }
+}
+
 impl MobEffect for WindChargedMobEffect {
     fn on_mob_death(&self, living: &LivingEntity, _amplifier: u8, _damage_type: &DamageType) {
         let world = living.entity.world.load();

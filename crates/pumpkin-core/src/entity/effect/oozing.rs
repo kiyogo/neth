@@ -11,6 +11,33 @@ use crate::entity::r#type::from_type;
 
 pub struct OozingMobEffect;
 
+impl OozingMobEffect {
+    pub const SLIME_SIZE: i32 = 2;
+    pub const SLIMES_COUNT: usize = 2;
+    pub const SPAWN_Y_OFFSET: f64 = 0.5;
+    pub const COLOR: i32 = 10092451;
+
+    #[must_use]
+    pub const fn number_of_slimes_to_spawn(
+        max_entity_cramming: i32,
+        nearby_slimes: i32,
+        number_requested: i32,
+    ) -> i32 {
+        if max_entity_cramming < 1 {
+            number_requested
+        } else {
+            let available = max_entity_cramming - nearby_slimes;
+            if available <= 0 {
+                0
+            } else if available > number_requested {
+                number_requested
+            } else {
+                available
+            }
+        }
+    }
+}
+
 impl MobEffect for OozingMobEffect {
     fn on_mob_death(&self, living: &LivingEntity, _amplifier: u8, _damage_type: &DamageType) {
         // Slimes are immune

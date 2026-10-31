@@ -4407,6 +4407,23 @@ impl LivingEntity {
             mob.on_damage(damage_type, source.or(cause));
         }
 
+        // Trigger on_mob_hurt for active status effects (Vanilla LivingEntity.java:1256 onMobHurt)
+        let active_effects_vec: Vec<_> = {
+            let effects = self
+                .active_effects
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            effects
+                .values()
+                .map(|e| (e.effect_type, e.amplifier))
+                .collect()
+        };
+        for (effect_type, amplifier) in active_effects_vec {
+            if let Some(mob_effect) = crate::entity::effect::get_mob_effect(effect_type) {
+                mob_effect.on_mob_hurt(self, amplifier, &damage_type, amount);
+            }
+        }
+
         true
     }
 

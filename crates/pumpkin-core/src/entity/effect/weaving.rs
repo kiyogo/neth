@@ -11,6 +11,20 @@ use crate::entity::living::LivingEntity;
 
 pub struct WeavingMobEffect;
 
+impl WeavingMobEffect {
+    pub const MIN_COBWEBS: u32 = 2;
+    pub const MAX_COBWEBS: u32 = 3;
+    pub const CUBE_SEARCH_RADIUS: i32 = 1;
+    pub const MAX_CUBE_SEARCH_ATTEMPTS: usize = 15;
+    pub const COLOR: i32 = 7891290;
+    pub const EVENT_SPAWN_COBWEB: u16 = 3018;
+
+    #[must_use]
+    pub const fn calculate_cobweb_count(random_val: u32) -> u32 {
+        (random_val % 2) + Self::MIN_COBWEBS
+    }
+}
+
 impl MobEffect for WeavingMobEffect {
     fn on_mob_death(&self, living: &LivingEntity, _amplifier: u8, _damage_type: &DamageType) {
         let world = living.entity.world.load();

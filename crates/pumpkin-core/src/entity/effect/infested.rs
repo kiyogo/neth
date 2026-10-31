@@ -11,6 +11,30 @@ use crate::entity::r#type::from_type;
 
 pub struct InfestedMobEffect;
 
+impl InfestedMobEffect {
+    pub const CHANCE_TO_SPAWN: f32 = 0.1;
+    pub const MIN_SILVERFISH: u32 = 1;
+    pub const MAX_SILVERFISH: u32 = 2;
+    pub const COLOR: i32 = 9214860;
+
+    #[must_use]
+    pub fn should_spawn_silverfish(rand_float: f32) -> bool {
+        rand_float <= Self::CHANCE_TO_SPAWN
+    }
+
+    #[must_use]
+    pub const fn calculate_silverfish_count(random_val: u32) -> u32 {
+        (random_val % 2) + Self::MIN_SILVERFISH
+    }
+
+    #[must_use]
+    pub fn is_immune(entity_type: &EntityType) -> bool {
+        entity_type == &EntityType::WITHER
+            || entity_type == &EntityType::ENDER_DRAGON
+            || entity_type == &EntityType::SILVERFISH
+    }
+}
+
 impl MobEffect for InfestedMobEffect {
     fn on_mob_hurt(
         &self,

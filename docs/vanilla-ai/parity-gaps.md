@@ -8849,3 +8849,40 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Integrated item spawner cooldown reset in `reset_after_becoming_ominous` and `tick_server` during ominous active state.
   - Added unit test `test_ominous_item_spawner_timing_ceiling_distribution_and_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 360: 1.21 Combat Mob Effects (Wind Charged, Weaving, Oozing, Infested) Death & Hurt Triggers, Cobweb (3018) & Slime/Silverfish Spawn Parity
+- **Vanilla Reference**: `net.minecraft.world.effect.WindChargedMobEffect:1-41`, `WeavingMobEffect:1-53`, `OozingMobEffect:1-68`, `InfestedMobEffect:1-51`, `MobEffects:70-90`, `LivingEntity:1256, 1466-1470`.
+- **Vanilla Mechanics**:
+  1. *Wind Charged*:
+     - Trigger: On mob killed (`RemovalReason.KILLED`).
+     - Explosion center: `(x, y + bbHeight / 2.0, z)`.
+     - Gust strength: `3.0F + random * 2.0F` (range $[3.0, 5.0]$).
+     - Explosion type: `TRIGGER` (does not break blocks, knocks entities back and activates interactive blocks).
+     - Color: `12438015`.
+  2. *Weaving*:
+     - Trigger: On mob killed (`RemovalReason.KILLED`), if mob is player or `mobGriefing` is true.
+     - Cobweb count: `2..=3` cobwebs randomly sampled in a 1-block cube around mob position.
+     - World event: `3018` (`WorldEvent::AnimationSpawnCobweb`).
+     - Color: `7891290`.
+  3. *Oozing*:
+     - Trigger: On mob killed (`RemovalReason.KILLED`), excluding Slimes (`EntityType::SLIME`).
+     - Spawns: `2` slimes of size `2` (medium slimes) at `(x, y + 0.5, z)`.
+     - Cramming clamp: `clamp(0, maxEntityCramming - nearbySlimes, 2)`.
+     - Color: `10092451`.
+  4. *Infested*:
+     - Trigger: On mob hurt (`onMobHurt`), excluding Wither, Ender Dragon, and Silverfish.
+     - Chance: `0.1` ($10\%$ probability per hit).
+     - Spawn count: `1..=2` silverfish launched along look vector with random rotational spread $\pm \frac{\pi}{2}$.
+     - Sound: `SoundEvents.SILVERFISH_HURT`.
+     - Color: `9214860`.
+  5. *Server Hurt Dispatch*: `LivingEntity.damage_with_context` must dispatch `on_mob_hurt` across all active effects to trigger `InfestedMobEffect`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/effect/`:
+    - `wind_charged.rs`: Exported `GUST_BASE_STRENGTH = 3.0`, `GUST_RANDOM_STRENGTH = 2.0`, `COLOR = 12438015`, and `calculate_gust_strength(random_factor)`.
+    - `weaving.rs`: Exported `MIN_COBWEBS = 2`, `MAX_COBWEBS = 3`, `CUBE_SEARCH_RADIUS = 1`, `MAX_CUBE_SEARCH_ATTEMPTS = 15`, `COLOR = 7891290`, `EVENT_SPAWN_COBWEB = 3018`, and `calculate_cobweb_count(random_val)`.
+    - `oozing.rs`: Exported `SLIME_SIZE = 2`, `SLIMES_COUNT = 2`, `SPAWN_Y_OFFSET = 0.5`, `COLOR = 10092451`, and `number_of_slimes_to_spawn(max_cramming, nearby, requested)`.
+    - `infested.rs`: Exported `CHANCE_TO_SPAWN = 0.1`, `MIN_SILVERFISH = 1`, `MAX_SILVERFISH = 2`, `COLOR = 9214860`, `should_spawn_silverfish`, `calculate_silverfish_count`, and `is_immune`.
+  - In `crates/pumpkin-core/src/entity/living.rs`:
+    - Dispatched `on_mob_hurt` across all active status effects in `damage_with_context`.
+  - Added unit test `test_combat_mob_effects_constants_formulas_and_triggers_parity` in `crates/pumpkin-core/src/entity/effect/mod.rs`.
+- **Status**: Completed & Verified.
