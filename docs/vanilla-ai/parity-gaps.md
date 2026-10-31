@@ -7157,3 +7157,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported methods `get_output_signal` and `set_output_signal`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_comparator_mode_signal_and_item_frame_parity`.
+
+
+### Gap 294: Daylight Detector Daylight/Inverted Modes, Sun Angle, Weather Darkening & Redstone Signal Formula
+- **Vanilla Reference**:
+  - `DaylightDetectorBlock.java:27-110`, `DaylightDetectorBlockEntity.java:18-35`:
+    - Operating modes:
+      - Default state: `POWER = 0`, `INVERTED = false`.
+      - Right-clicking toggles `INVERTED` property and triggers immediate signal update.
+      - Update interval: every 20 ticks (1 second) in `tickEntity`: `level.getGameTime() % 20L == 0L`.
+    - Signal calculation:
+      - Inverted mode: `target = 15 - effective_sky_brightness`. (Noon: 0, Night: 15).
+      - Normal daylight mode:
+        `offset = sun_angle < PI ? 0.0 : 2 * PI;`
+        `sun_angle += (offset - sun_angle) * 0.2;`
+        `target = round(effective_sky_brightness * cos(sun_angle));`
+        `target = clamp(target, 0, 15);`
+    - Sky brightness & weather darkening:
+      - Rain reduces sky light by 5 (`RAIN_SKY_DARKEN_REDUCTION = 5`).
+      - Thunder reduces sky light by another 5 (`THUNDER_SKY_DARKEN_REDUCTION = 5`).
+    - Redstone signal emission:
+      - Emits weak power (`ownSignal = state.getValue(POWER)`).
+      - Does NOT emit strong power (`getDirectSignal` inherits default 0 from `BlockBehaviour`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Exported constants `DEFAULT_POWER = 0`, `DEFAULT_INVERTED = false`, `RAIN_SKY_DARKEN_REDUCTION = 5`, and `THUNDER_SKY_DARKEN_REDUCTION = 5`.
+    - Exported helpers `emits_strong_power`, `calculate_effective_sky_brightness`, `calculate_inverted_signal`, and `calculate_normal_signal`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_daylight_detector_signals_modes_weather_and_power_parity`.

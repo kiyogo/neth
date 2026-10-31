@@ -67,9 +67,64 @@ impl BlockBehaviour for DaylightDetectorBlock {
 impl DaylightDetectorBlock {
     pub const MIN_POWER: u8 = 0;
     pub const MAX_POWER: u8 = 15;
+    pub const DEFAULT_POWER: u8 = 0;
+    pub const DEFAULT_INVERTED: bool = false;
     pub const UPDATE_INTERVAL_TICKS: i64 = 20;
     pub const SHAPE_HEIGHT: f64 = 6.0;
     pub const SUN_ANGLE_LERP_FACTOR: f32 = 0.2;
+    pub const RAIN_SKY_DARKEN_REDUCTION: i32 = 5;
+    pub const THUNDER_SKY_DARKEN_REDUCTION: i32 = 5;
+
+    #[must_use]
+    pub const fn emits_strong_power() -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn calculate_effective_sky_brightness(
+        raw_sky_light: u8,
+        is_raining: bool,
+        is_thundering: bool,
+    ) -> i32 {
+        let mut darken = 0;
+        if is_raining {
+            darken += Self::RAIN_SKY_DARKEN_REDUCTION;
+        }
+        if is_thundering {
+            darken += Self::THUNDER_SKY_DARKEN_REDUCTION;
+        }
+        let result = raw_sky_light as i32 - darken;
+        if result < 0 { 0 } else { result }
+    }
+
+    #[must_use]
+    pub const fn calculate_inverted_signal(effective_sky_brightness: i32) -> u8 {
+        let inv = 15 - effective_sky_brightness;
+        if inv < 0 {
+            0
+        } else if inv > 15 {
+            15
+        } else {
+            inv as u8
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_normal_signal(effective_sky_brightness: i32, sun_angle_radians: f32) -> u8 {
+        if effective_sky_brightness <= 0 {
+            0
+        } else {
+            let offset = if sun_angle_radians < std::f32::consts::PI {
+                0.0
+            } else {
+                std::f32::consts::PI * 2.0
+            };
+            let mut sun_angle = sun_angle_radians;
+            sun_angle += (offset - sun_angle) * Self::SUN_ANGLE_LERP_FACTOR;
+            let target = ((effective_sky_brightness as f32 * cos(sun_angle)) + 0.5).floor() as i32;
+            target.clamp(0, 15) as u8
+        }
+    }
     #[must_use]
     pub fn calculate_signal_strength(
         effective_sky_brightness: i32,

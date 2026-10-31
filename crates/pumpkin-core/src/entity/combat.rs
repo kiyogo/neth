@@ -16007,4 +16007,54 @@ mod tests {
         assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 8), 1);
         assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 9), 2);
     }
+#[test]
+    fn test_daylight_detector_signals_modes_weather_and_power_parity() {
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+        use crate::block::entities::daylight_detector::DaylightDetectorBlockEntity;
+
+        // Constants verification
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_POWER, 0);
+        assert!(!DaylightDetectorBlock::DEFAULT_INVERTED);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert!((DaylightDetectorBlock::SHAPE_HEIGHT - 6.0).abs() < 1e-6);
+        assert_eq!(DaylightDetectorBlock::RAIN_SKY_DARKEN_REDUCTION, 5);
+        assert_eq!(DaylightDetectorBlock::THUNDER_SKY_DARKEN_REDUCTION, 5);
+        assert_eq!(DaylightDetectorBlockEntity::TICK_INTERVAL_TICKS, 20);
+
+        // Does NOT emit strong power (vanilla does not override getDirectSignal)
+        assert!(!DaylightDetectorBlock::emits_strong_power());
+
+        // Weather darkening calculation
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, false), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, true), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, true), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(4, true, false), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(0, false, false), 0);
+
+        // Inverted mode signals (15 - effective sky brightness)
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(15), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(10), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(5), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(0), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(-5), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(20), 0);
+
+        // Normal mode signal at noon (sun angle 0 rad)
+        assert_eq!(DaylightDetectorBlock::calculate_normal_signal(15, 0.0), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_normal_signal(10, 0.0), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_normal_signal(0, 0.0), 0);
+
+        // Check equivalence with calculate_signal_strength
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, false),
+            DaylightDetectorBlock::calculate_normal_signal(15, 0.0)
+        );
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, true),
+            DaylightDetectorBlock::calculate_inverted_signal(15)
+        );
+    }
 }
