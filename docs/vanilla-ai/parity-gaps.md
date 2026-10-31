@@ -7350,3 +7350,26 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_pitch_from_note`, `cycle_note`, `get_particle_color_x`, and `is_tunable_instrument`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_noteblock_pitch_particles_and_instruments_parity`.
+
+
+### Gap 300: Redstone Lamp Light Transitions, Instant Activation & 2-Tick (4 Game Ticks) Deactivation Delay Parity
+- **Vanilla Reference**:
+  - `RedstoneLampBlock.java:15-55`:
+    - Default state: `LIT = false`.
+    - Placement state (`getStateForPlacement`):
+      - Immediately lit if placed at a location receiving power: `context.getLevel().hasNeighborSignal(context.getClickedPos())`.
+    - Activation & deactivation mechanics (`neighborChanged`):
+      - Instant turn on: When unlit lamp receives power, immediately cycles `LIT` to true with flag 2 (`level.setBlock(pos, state.cycle(LIT), 2)`).
+      - Scheduled turn off delay: When lit lamp loses power, schedules block tick with delay of 4 ticks (`DEACTIVATION_DELAY = 4` game ticks = 2 redstone ticks).
+    - Tick execution (`tick`):
+      - When tick executes after 4 ticks: if `state.getValue(LIT) && !level.hasNeighborSignal(pos)` -> turns off lamp (`LIT = false`).
+      - If power was restored during the 4 ticks delay, the lamp remains lit (`!hasNeighborSignal` is false, turn-off aborted).
+    - Light emission:
+      - Lit: emits light level 15 (`LIGHT_LEVEL_LIT = 15`).
+      - Unlit: emits light level 0 (`LIGHT_LEVEL_UNLIT = 0`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/redstone_lamp.rs`:
+    - Exported constants `DELAY = 4`, `DEACTIVATION_DELAY = 4`, `LIGHT_LEVEL_LIT = 15`, `LIGHT_LEVEL_UNLIT = 0`, and `DEFAULT_LIT = false`.
+    - Exported helpers `get_light_emission`, `calculate_lit_on_placement`, `should_turn_on`, `should_schedule_turn_off`, and `should_turn_off_on_tick`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_redstone_lamp_light_delays_and_state_transitions_parity`.

@@ -16403,4 +16403,42 @@ mod tests {
         assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Piglin));
         assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::CustomHead));
     }
+
+    #[test]
+    fn test_redstone_lamp_light_delays_and_state_transitions_parity() {
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+
+        // Constants verification
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::DEACTIVATION_DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+        assert!(!RedstoneLamp::DEFAULT_LIT);
+
+        // Light level emission
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+
+        // Placement lit state
+        assert!(RedstoneLamp::calculate_lit_on_placement(true));
+        assert!(!RedstoneLamp::calculate_lit_on_placement(false));
+
+        // State transition rules
+        // Instant activation upon receiving power
+        assert!(RedstoneLamp::should_turn_on(false, true));
+        assert!(!RedstoneLamp::should_turn_on(false, false));
+        assert!(!RedstoneLamp::should_turn_on(true, true));
+        assert!(!RedstoneLamp::should_turn_on(true, false));
+
+        // 4-tick delay schedule on losing power
+        assert!(RedstoneLamp::should_schedule_turn_off(true, false));
+        assert!(!RedstoneLamp::should_schedule_turn_off(true, true));
+        assert!(!RedstoneLamp::should_schedule_turn_off(false, false));
+        assert!(!RedstoneLamp::should_schedule_turn_off(false, true));
+
+        // Turn off execution on tick check (keeps lit if power restored)
+        assert!(RedstoneLamp::should_turn_off_on_tick(true, false));
+        assert!(!RedstoneLamp::should_turn_off_on_tick(true, true));
+        assert!(!RedstoneLamp::should_turn_off_on_tick(false, false));
+    }
 }

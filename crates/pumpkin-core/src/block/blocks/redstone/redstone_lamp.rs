@@ -14,8 +14,10 @@ pub struct RedstoneLamp;
 
 impl RedstoneLamp {
     pub const DELAY: u32 = 4;
+    pub const DEACTIVATION_DELAY: u32 = Self::DELAY;
     pub const LIGHT_LEVEL_LIT: u8 = 15;
     pub const LIGHT_LEVEL_UNLIT: u8 = 0;
+    pub const DEFAULT_LIT: bool = false;
 
     #[must_use]
     pub const fn get_light_emission(lit: bool) -> u8 {
@@ -24,6 +26,26 @@ impl RedstoneLamp {
         } else {
             Self::LIGHT_LEVEL_UNLIT
         }
+    }
+
+    #[must_use]
+    pub const fn calculate_lit_on_placement(has_signal: bool) -> bool {
+        has_signal
+    }
+
+    #[must_use]
+    pub const fn should_turn_on(is_lit: bool, has_signal: bool) -> bool {
+        !is_lit && has_signal
+    }
+
+    #[must_use]
+    pub const fn should_schedule_turn_off(is_lit: bool, has_signal: bool) -> bool {
+        is_lit && !has_signal
+    }
+
+    #[must_use]
+    pub const fn should_turn_off_on_tick(is_lit: bool, has_signal: bool) -> bool {
+        is_lit && !has_signal
     }
 }
 
