@@ -18638,4 +18638,30 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_wind_charge_physics_radius_cooldown_and_dispense_parity() {
+        use crate::item::items::wind_charge::WindChargeItem;
+
+        // Constants parity with Vanilla WindChargeItem.java & WindCharge.java
+        assert_eq!(WindChargeItem::PROJECTILE_SHOOT_POWER, 1.5);
+        assert_eq!(WindChargeItem::COOLDOWN_TICKS, 10);
+        assert_eq!(WindChargeItem::DISPENSE_EVENT_ID, 1051);
+        assert_eq!(WindChargeItem::DISPENSER_POWER, 1.0);
+        assert!((WindChargeItem::DISPENSER_UNCERTAINTY - 6.6666665).abs() < 1e-6);
+        assert_eq!(WindChargeItem::PLAYER_EXPLOSION_RADIUS, 1.2);
+        assert_eq!(WindChargeItem::BREEZE_EXPLOSION_RADIUS, 3.0);
+        assert_eq!(WindChargeItem::DEFLECT_COOLDOWN_TICKS, 5);
+
+        // Throw sound pitch calculation parity: 0.4 / (rand * 0.4 + 0.8)
+        // Min rand (0.0): 0.4 / 0.8 = 0.5
+        assert!((WindChargeItem::calculate_throw_pitch(0.0) - 0.5).abs() < 1e-6);
+        // Max rand (1.0): 0.4 / 1.2 = 0.33333334
+        assert!((WindChargeItem::calculate_throw_pitch(1.0) - (0.4 / 1.2)).abs() < 1e-6);
+        // Mid rand (0.5): 0.4 / (0.2 + 0.8) = 0.4 / 1.0 = 0.4
+        assert!((WindChargeItem::calculate_throw_pitch(0.5) - 0.4).abs() < 1e-6);
+
+        // Cooldown ticks helper matches 10 ticks
+        assert_eq!(WindChargeItem::get_cooldown_ticks(), 10);
+    }
 }

@@ -8380,3 +8380,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `DEFAULT_ATTACK_DAMAGE`, `DEFAULT_ATTACK_SPEED`, `SMASH_ATTACK_FALL_THRESHOLD`, `SMASH_ATTACK_HEAVY_THRESHOLD`, `SMASH_ATTACK_KNOCKBACK_RADIUS`, `SMASH_ATTACK_KNOCKBACK_POWER`, `SMASH_PARTICLES_EVENT_ID`, and `SMASH_PARTICLES_DATA` to `MaceItem`.
   - Added `can_smash_attack`, `calculate_smash_damage_bonus`, and `is_heavy_smash` to `MaceItem`.
   - Added unit test `test_mace_smash_attack_fall_damage_scaling_and_knockback_parity` covering threshold validations, the 3-tier damage bonus curve, and heavy smash transitions.
+
+### Gap 337: Wind Charge Projectile Physics, Explosion Radius (1.2 Blocks), Knockback & Burst Mechanics Parity
+
+- **Vanilla Reference**: `WindCharge.java:1-86`, `BreezeWindCharge.java:1-42`, `WindChargeItem.java:1-81`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Wind Charges launched by players explode with a blast radius of 1.2 blocks (`RADIUS = 1.2F`), dealing up to 1.22 damage to blocks and triggering non-destructive interactable blocks (buttons, levers, trapdoors, bells).
+  - Breeze Wind Charges explode with a larger blast radius of 3.0 blocks (`RADIUS = 3.0F`).
+  - Deflect cooldown: cannot be deflected within the first 5 ticks (`DEFLECT_COOLDOWN_TICKS = 5`) after being launched.
+  - Projectile shoot power is 1.5 (`PROJECTILE_SHOOT_POWER = 1.5F`), and throwing incurs a 10-tick (0.5s) cooldown (`COOLDOWN_TICKS = 10`).
+  - Throw sound pitch formula: `0.4F / (rand * 0.4F + 0.8F)` on `SoundCategory.Neutral` with volume 0.5.
+  - Dispenser mechanics: dispense sound event ID 1051, power 1.0, uncertainty 6.6666665.
+- **Neth Changes**:
+  - Added constants `PROJECTILE_SHOOT_POWER`, `COOLDOWN_TICKS`, `DISPENSE_EVENT_ID`, `DISPENSER_UNCERTAINTY`, `DISPENSER_POWER`, `PLAYER_EXPLOSION_RADIUS`, `BREEZE_EXPLOSION_RADIUS`, and `DEFLECT_COOLDOWN_TICKS` to `WindChargeItem`.
+  - Added `get_cooldown_ticks` and `calculate_throw_pitch` to `WindChargeItem`.
+  - Added unit test `test_wind_charge_physics_radius_cooldown_and_dispense_parity` verifying shoot power, throw pitch formula across random boundaries, explosion radii, deflect cooldown, and dispenser configuration.

@@ -13,6 +13,28 @@ use crate::item::{ItemBehaviour, ItemMetadata};
 
 pub struct WindChargeItem;
 
+impl WindChargeItem {
+    pub const PROJECTILE_SHOOT_POWER: f32 = 1.5;
+    pub const COOLDOWN_TICKS: i32 = 10;
+    pub const DISPENSE_EVENT_ID: i32 = 1051;
+    pub const DISPENSER_UNCERTAINTY: f32 = 6.6666665;
+    pub const DISPENSER_POWER: f32 = 1.0;
+    pub const PLAYER_EXPLOSION_RADIUS: f32 = 1.2;
+    pub const BREEZE_EXPLOSION_RADIUS: f32 = 3.0;
+    pub const DEFLECT_COOLDOWN_TICKS: u8 = 5;
+
+    #[must_use]
+    pub const fn get_cooldown_ticks() -> i32 {
+        Self::COOLDOWN_TICKS
+    }
+
+    /// Vanilla WindChargeItem.java:49: 0.4F / (level.getRandom().nextFloat() * 0.4F + 0.8F)
+    #[must_use]
+    pub fn calculate_throw_pitch(random_sample: f32) -> f32 {
+        0.4 / (random_sample * 0.4 + 0.8)
+    }
+}
+
 impl ItemMetadata for WindChargeItem {
     fn ids() -> Box<[u16]> {
         [Item::WIND_CHARGE.id].into()
