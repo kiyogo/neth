@@ -15677,4 +15677,88 @@ mod tests {
         assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0));
         assert!(!ComposterBlock::should_level_increase(8, 1.0, 0.0));
     }
+#[test]
+    fn test_cauldron_fluid_types_levels_and_comparator_parity() {
+        use crate::block::blocks::cauldron::CauldronBlock;
+        use pumpkin_data::block_properties::WaterCauldronLikeProperties;
+        use pumpkin_data::{Block, BlockId};
+
+        // Constants verification
+        assert_eq!(CauldronBlock::MIN_FILL_LEVEL, 1);
+        assert_eq!(CauldronBlock::MAX_FILL_LEVEL, 3);
+        assert_eq!(CauldronBlock::LAVA_SIGNAL, 3);
+        assert_eq!(CauldronBlock::EMPTY_SIGNAL, 0);
+        assert_eq!(CauldronBlock::FLOOR_LEVEL, 4);
+        assert!((CauldronBlock::RAIN_FILL_CHANCE - 0.05).abs() < 1e-6);
+        assert!((CauldronBlock::POWDER_SNOW_FILL_CHANCE - 0.10).abs() < 1e-6);
+        assert_eq!(CauldronBlock::DRIP_WATER_EVENT, 1047);
+
+        // Comparator signals:
+        // Empty cauldron: 0
+        assert_eq!(
+            CauldronBlock::calculate_comparator_output(BlockId::CAULDRON, Block::CAULDRON.default_state.id),
+            0
+        );
+
+        // Water cauldron: 1, 2, 3
+        let water_cauldron = &Block::WATER_CAULDRON;
+        for level in 1..=3 {
+            let mut props = WaterCauldronLikeProperties::default(water_cauldron);
+            props.level = level;
+            let state_id = props.to_state_id(water_cauldron);
+            assert_eq!(
+                CauldronBlock::calculate_comparator_output(BlockId::WATER_CAULDRON, state_id),
+                level
+            );
+            assert_eq!(
+                CauldronBlock::is_full(BlockId::WATER_CAULDRON, state_id),
+                level == 3
+            );
+            let expected_height = (6.0 + f64::from(level) * 3.0) / 16.0;
+            assert!(
+                (CauldronBlock::get_content_height(BlockId::WATER_CAULDRON, state_id) - expected_height).abs() < 1e-6
+            );
+        }
+
+        // Powder snow cauldron: 1, 2, 3
+        let snow_cauldron = &Block::POWDER_SNOW_CAULDRON;
+        for level in 1..=3 {
+            let mut props = WaterCauldronLikeProperties::default(snow_cauldron);
+            props.level = level;
+            let state_id = props.to_state_id(snow_cauldron);
+            assert_eq!(
+                CauldronBlock::calculate_comparator_output(BlockId::POWDER_SNOW_CAULDRON, state_id),
+                level
+            );
+            assert_eq!(
+                CauldronBlock::is_full(BlockId::POWDER_SNOW_CAULDRON, state_id),
+                level == 3
+            );
+            let expected_height = (6.0 + f64::from(level) * 3.0) / 16.0;
+            assert!(
+                (CauldronBlock::get_content_height(BlockId::POWDER_SNOW_CAULDRON, state_id) - expected_height).abs() < 1e-6
+            );
+        }
+
+        // Lava cauldron: always 3 signal, always full, content height 0.9375
+        let lava_state = Block::LAVA_CAULDRON.default_state.id;
+        assert_eq!(
+            CauldronBlock::calculate_comparator_output(BlockId::LAVA_CAULDRON, lava_state),
+            3
+        );
+        assert!(CauldronBlock::is_full(BlockId::LAVA_CAULDRON, lava_state));
+        assert!((CauldronBlock::get_content_height(BlockId::LAVA_CAULDRON, lava_state) - 0.9375).abs() < 1e-6);
+
+        // Extinguish fire check
+        assert!(CauldronBlock::can_extinguish_fire(BlockId::WATER_CAULDRON));
+        assert!(CauldronBlock::can_extinguish_fire(BlockId::POWDER_SNOW_CAULDRON));
+        assert!(!CauldronBlock::can_extinguish_fire(BlockId::CAULDRON));
+        assert!(!CauldronBlock::can_extinguish_fire(BlockId::LAVA_CAULDRON));
+
+        // Precipitation fill chances
+        assert!(CauldronBlock::should_rain_fill(0.01));
+        assert!(!CauldronBlock::should_rain_fill(0.06));
+        assert!(CauldronBlock::should_snow_fill(0.05));
+        assert!(!CauldronBlock::should_snow_fill(0.15));
+    }
 }

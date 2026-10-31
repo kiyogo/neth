@@ -7014,3 +7014,33 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Fixed return action in `normal_use` and `use_with_item` from Pass/Consume to `BlockActionResult::Success` when extracting produce at level 8.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_composter_fill_levels_probabilities_and_comparator_parity`.
+
+
+### Gap 289: Cauldron Fluid Types (Water, Lava, Powder Snow), Fill Levels & Comparator Parity
+- **Vanilla Reference**:
+  - `AbstractCauldronBlock.java:25-86`, `CauldronBlock.java:13-66`, `LayeredCauldronBlock.java:25-127`, `LavaCauldronBlock.java:16-52`:
+    - Fluid types & signals:
+      - Empty Cauldron (`Blocks.CAULDRON`):
+        - `isFull = false`
+        - `getAnalogOutputSignal = 0` (inherited from `BlockBehaviour.java`)
+        - `getContentHeight = 0.0`
+        - Precipitation chances: rain 0.05 (5%), snow 0.10 (10%)
+        - World event `1047` on stalactite water drip.
+      - Layered Cauldron (`WATER_CAULDRON` & `POWDER_SNOW_CAULDRON`):
+        - `MIN_FILL_LEVEL = 1`
+        - `MAX_FILL_LEVEL = 3`
+        - `isFull = (level == 3)`
+        - `getAnalogOutputSignal`: returns `level` directly (1, 2, or 3).
+        - `getContentHeight`: `(6.0 + level * 3.0) / 16.0` (level 1 -> 0.5625, level 2 -> 0.75, level 3 -> 0.9375).
+        - Can extinguish burning entities (lowers level by 1, powder snow melts to water).
+      - Lava Cauldron (`LAVA_CAULDRON`):
+        - `isFull = true`
+        - `getAnalogOutputSignal = 3` (always 3)
+        - `getContentHeight = 0.9375` (15.0 / 16.0)
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/cauldron.rs`:
+    - Exported constants `MIN_FILL_LEVEL = 1`, `MAX_FILL_LEVEL = 3`, `LAVA_SIGNAL = 3`, `EMPTY_SIGNAL = 0`, `FLOOR_LEVEL = 4`, `RAIN_FILL_CHANCE = 0.05`, `POWDER_SNOW_FILL_CHANCE = 0.1`, and `DRIP_WATER_EVENT = 1047`.
+    - Exported helpers `calculate_comparator_output`, `is_full`, `get_content_height`, `can_extinguish_fire`, `should_rain_fill`, and `should_snow_fill`.
+    - Refactored `get_comparator_output` on `CauldronBlock` to use `calculate_comparator_output`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_cauldron_fluid_types_levels_and_comparator_parity`.

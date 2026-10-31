@@ -9,7 +9,7 @@ use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::Taggable;
-use pumpkin_data::{Block, BlockId, BlockState};
+use pumpkin_data::{Block, BlockId, BlockState, BlockStateId};
 use pumpkin_world::world::BlockFlags;
 
 pub struct CauldronBlock;
@@ -395,15 +395,7 @@ impl BlockBehaviour for CauldronBlock {
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
-        match args.block.id {
-            BlockId::WATER_CAULDRON | BlockId::POWDER_SNOW_CAULDRON => {
-                let state_id = args.world.get_block_state_id(args.position);
-                let props = WaterCauldronLikeProperties::from_state_id(state_id);
-                Some(props.level)
-            }
-            BlockId::LAVA_CAULDRON => Some(3),
-            _ => Some(0),
-        }
+        Some(Self::calculate_comparator_output(args.block.id, args.state.id))
     }
 
     fn on_entity_collision(&self, args: crate::block::OnEntityCollisionArgs<'_>) {
@@ -492,5 +484,66 @@ impl BlockBehaviour for CauldronBlock {
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {
         false
+    }
+
+}
+
+impl CauldronBlock {
+    pub const MIN_FILL_LEVEL: u8 = 1;
+    pub const MAX_FILL_LEVEL: u8 = 3;
+    pub const LAVA_SIGNAL: u8 = 3;
+    pub const EMPTY_SIGNAL: u8 = 0;
+    pub const FLOOR_LEVEL: i32 = 4;
+    pub const RAIN_FILL_CHANCE: f32 = 0.05;
+    pub const POWDER_SNOW_FILL_CHANCE: f32 = 0.1;
+    pub const DRIP_WATER_EVENT: i32 = 1047;
+
+    pub fn calculate_comparator_output(block_id: BlockId, state_id: BlockStateId) -> u8 {
+        match block_id {
+            BlockId::CAULDRON => Self::EMPTY_SIGNAL,
+            BlockId::WATER_CAULDRON | BlockId::POWDER_SNOW_CAULDRON => {
+                let props = WaterCauldronLikeProperties::from_state_id(state_id);
+                props.level.clamp(Self::MIN_FILL_LEVEL, Self::MAX_FILL_LEVEL)
+            }
+            BlockId::LAVA_CAULDRON => Self::LAVA_SIGNAL,
+            _ => 0,
+        }
+    }
+
+    pub fn is_full(block_id: BlockId, state_id: BlockStateId) -> bool {
+        match block_id {
+            BlockId::CAULDRON => false,
+            BlockId::WATER_CAULDRON | BlockId::POWDER_SNOW_CAULDRON => {
+                let props = WaterCauldronLikeProperties::from_state_id(state_id);
+                props.level >= Self::MAX_FILL_LEVEL
+            }
+            BlockId::LAVA_CAULDRON => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_content_height(block_id: BlockId, state_id: BlockStateId) -> f64 {
+        match block_id {
+            BlockId::CAULDRON => 0.0,
+            BlockId::WATER_CAULDRON | BlockId::POWDER_SNOW_CAULDRON => {
+                let props = WaterCauldronLikeProperties::from_state_id(state_id);
+                let pixel_height = 6.0 + f64::from(props.level) * 3.0;
+                pixel_height / 16.0
+            }
+            BlockId::LAVA_CAULDRON => 0.9375,
+            _ => 0.0,
+        }
+    }
+
+    pub fn can_extinguish_fire(block_id: BlockId) -> bool {
+        matches!(block_id, BlockId::WATER_CAULDRON | BlockId::POWDER_SNOW_CAULDRON)
+    }
+
+    pub fn should_rain_fill(roll: f32) -> bool {
+        roll < Self::RAIN_FILL_CHANCE
+    }
+
+    pub fn should_snow_fill(roll: f32) -> bool {
+        roll < Self::POWDER_SNOW_FILL_CHANCE
     }
 }
