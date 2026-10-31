@@ -7129,3 +7129,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Refactored `on_use` to use `cycle_delay`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_repeater_delays_locking_and_output_parity`.
+
+
+### Gap 293: Comparator Subtraction/Compare Mode Logic, Item Frame Signal Input & Power Parity
+- **Vanilla Reference**:
+  - `ComparatorBlock.java:30-120`, `ComparatorBlockEntity.java:8-35`:
+    - Operating modes:
+      - `MODE = ComparatorMode.COMPARE` (default) vs `ComparatorMode.SUBTRACT`.
+      - Click volume: `CLICK_VOLUME = 0.3F`, Pitch: `CLICK_PITCH_COMPARE = 0.5F`, `CLICK_PITCH_SUBTRACT = 0.55F`.
+    - Signal logic:
+      - Compare mode: if `input_signal >= side_signal` -> outputs `input_signal`, else `0`.
+      - Subtract mode: if `input_signal > side_signal` -> outputs `input_signal - side_signal`, else `0`.
+    - Powered state (`shouldTurnOn`):
+      - `input > side`: turns ON in both Compare and Subtract modes.
+      - `input == side`: turns ON in Compare mode, turns OFF in Subtract mode (`input - side == 0`).
+      - `input < side` or `input == 0`: turns OFF in both modes.
+    - Attached item frame reading behind solid block:
+      - If frame has item: output is `1 + (rotation % 8)` (1 to 8).
+      - If frame is empty: output is 0.
+      - Only reads if exactly 1 item frame hangs on the target block.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/comparator.rs`:
+    - Exported constants `DEFAULT_OUTPUT = 0`.
+    - Exported helpers `should_turn_on` and `calculate_item_frame_output`.
+  - Updated `crates/pumpkin-core/src/block/entities/comparator.rs`:
+    - Exported constants `DEFAULT_OUTPUT = 0`.
+    - Exported methods `get_output_signal` and `set_output_signal`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_comparator_mode_signal_and_item_frame_parity`.

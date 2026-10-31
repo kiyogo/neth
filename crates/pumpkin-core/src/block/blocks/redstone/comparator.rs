@@ -282,6 +282,29 @@ impl ComparatorBlock {
     pub const CLICK_PITCH_SUBTRACT: f32 = 0.55;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_OUTPUT: u8 = 0;
+
+    #[must_use]
+    pub const fn should_turn_on(input_signal: u8, side_signal: u8, is_subtract: bool) -> bool {
+        if input_signal == 0 {
+            false
+        } else if input_signal > side_signal {
+            true
+        } else if input_signal == side_signal {
+            !is_subtract
+        } else {
+            false
+        }
+    }
+
+    #[must_use]
+    pub const fn calculate_item_frame_output(has_item: bool, rotation: u8) -> u8 {
+        if has_item {
+            1 + (rotation % 8)
+        } else {
+            0
+        }
+    }
 
     #[must_use]
     pub const fn calculate_comparator_signal(

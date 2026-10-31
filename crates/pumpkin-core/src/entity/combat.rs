@@ -15946,4 +15946,65 @@ mod tests {
         assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::REDSTONE_TORCH));
         assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::STONE));
     }
+#[test]
+    fn test_comparator_mode_signal_and_item_frame_parity() {
+        use crate::block::blocks::redstone::comparator::ComparatorBlock;
+        use crate::block::entities::comparator::ComparatorBlockEntity;
+
+        // Constants verification
+        assert_eq!(ComparatorBlock::DELAY, 2);
+        assert!((ComparatorBlock::CLICK_VOLUME - 0.3).abs() < 1e-6);
+        assert!((ComparatorBlock::CLICK_PITCH_COMPARE - 0.5).abs() < 1e-6);
+        assert!((ComparatorBlock::CLICK_PITCH_SUBTRACT - 0.55).abs() < 1e-6);
+        assert_eq!(ComparatorBlock::POWER_ON, 15);
+        assert_eq!(ComparatorBlock::POWER_OFF, 0);
+        assert_eq!(ComparatorBlock::DEFAULT_OUTPUT, 0);
+        assert_eq!(ComparatorBlockEntity::DEFAULT_OUTPUT, 0);
+
+        // Click pitch calculation
+        assert!((ComparatorBlock::get_click_pitch(false) - 0.5).abs() < 1e-6);
+        assert!((ComparatorBlock::get_click_pitch(true) - 0.55).abs() < 1e-6);
+
+        // Signal in COMPARE mode (is_subtract = false)
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 5, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 12, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 0, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 5, false), 0);
+
+        // Signal in SUBTRACT mode (is_subtract = true)
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 3, true), 7);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 12, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 0, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 5, true), 0);
+
+        // Powered state logic (should_turn_on)
+        // 1. input > side => ON in both modes
+        assert!(ComparatorBlock::should_turn_on(10, 5, false));
+        assert!(ComparatorBlock::should_turn_on(10, 5, true));
+
+        // 2. input == side => ON in Compare, OFF in Subtract
+        assert!(ComparatorBlock::should_turn_on(10, 10, false));
+        assert!(!ComparatorBlock::should_turn_on(10, 10, true));
+
+        // 3. input < side => OFF in both modes
+        assert!(!ComparatorBlock::should_turn_on(8, 10, false));
+        assert!(!ComparatorBlock::should_turn_on(8, 10, true));
+
+        // 4. input == 0 => OFF in both modes
+        assert!(!ComparatorBlock::should_turn_on(0, 0, false));
+        assert!(!ComparatorBlock::should_turn_on(0, 0, true));
+
+        // Item frame output (1 + rotation % 8 if has item, 0 if empty)
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(false, 0), 0);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(false, 4), 0);
+
+        for rot in 0..8 {
+            assert_eq!(ComparatorBlock::calculate_item_frame_output(true, rot), rot + 1);
+        }
+        // Rotation modulo 8 wrapping
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 8), 1);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 9), 2);
+    }
 }
