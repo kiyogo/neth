@@ -11,7 +11,7 @@ pub mod piston;
 pub mod piston_extension;
 pub mod piston_head;
 
-const MAX_MOVABLE_BLOCKS: usize = 12;
+pub const MAX_MOVABLE_BLOCKS: usize = PistonBlock::MAX_PUSH_LIMIT;
 
 pub struct PistonHandler<'a> {
     world: &'a World,
@@ -80,17 +80,11 @@ impl<'a> PistonHandler<'a> {
     }
 
     fn is_block_sticky(block: &Block) -> bool {
-        block == &Block::SLIME_BLOCK || block == &Block::HONEY_BLOCK
+        PistonBlock::is_sticky_block(block)
     }
 
     fn is_adjacent_block_stuck(state: &Block, adjacent_state: &Block) -> bool {
-        if state == &Block::HONEY_BLOCK && adjacent_state == &Block::SLIME_BLOCK {
-            return false;
-        }
-        if state == &Block::SLIME_BLOCK && adjacent_state == &Block::HONEY_BLOCK {
-            return false;
-        }
-        Self::is_block_sticky(state) || Self::is_block_sticky(adjacent_state)
+        PistonBlock::can_stick_to_each_other(state, adjacent_state)
     }
 
     fn is_piston_head_or_base(&self, pos: BlockPos) -> bool {

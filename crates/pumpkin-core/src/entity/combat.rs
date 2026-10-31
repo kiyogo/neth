@@ -16109,4 +16109,87 @@ mod tests {
         let order_north = [Facing::North, Facing::Up, Facing::Down, Facing::South, Facing::East, Facing::West];
         assert_eq!(ObserverBlock::calculate_facing_from_player(&order_north), Facing::North);
     }
+
+    #[test]
+    fn test_piston_push_limit_reactions_stickiness_and_facing_parity() {
+        use crate::block::blocks::piston::piston::PistonBlock;
+        use pumpkin_data::block_properties::Facing;
+        use pumpkin_data::block_state::PistonBehavior;
+        use pumpkin_data::{Block, BlockDirection};
+
+        // Constants verification (Vanilla: PistonStructureResolver.MAX_PUSH_DEPTH = 12)
+        assert_eq!(PistonBlock::MAX_PUSH_LIMIT, 12);
+        assert_eq!(PistonBlock::TRIGGER_EXTEND, 0);
+        assert_eq!(PistonBlock::TRIGGER_CONTRACT, 1);
+        assert_eq!(PistonBlock::TRIGGER_DROP, 2);
+        assert!((PistonBlock::PLATFORM_THICKNESS - 4.0).abs() < 1e-6);
+        assert!(!PistonBlock::DEFAULT_EXTENDED);
+        assert_eq!(PistonBlock::DEFAULT_FACING, Facing::North);
+
+        // Stickiness verification (Honey and Slime do not stick to each other)
+        assert!(PistonBlock::is_sticky_block(&Block::SLIME_BLOCK));
+        assert!(PistonBlock::is_sticky_block(&Block::HONEY_BLOCK));
+        assert!(!PistonBlock::is_sticky_block(&Block::STONE));
+        assert!(!PistonBlock::is_sticky_block(&Block::DIRT));
+        assert!(!PistonBlock::is_sticky_block(&Block::AIR));
+
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::HONEY_BLOCK));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::SLIME_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::SLIME_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::HONEY_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::STONE));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::STONE));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::STONE, &Block::DIRT));
+
+        // Piston push reactions
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Destroy, true, BlockDirection::North, BlockDirection::North),
+            Some(true)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Destroy, false, BlockDirection::North, BlockDirection::North),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Block, true, BlockDirection::North, BlockDirection::North),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::PushOnly, false, BlockDirection::North, BlockDirection::North),
+            Some(true)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::PushOnly, false, BlockDirection::North, BlockDirection::South),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Ignore, false, BlockDirection::North, BlockDirection::North),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Normal, false, BlockDirection::North, BlockDirection::North),
+            None
+        );
+
+        // Immovable block types
+        assert!(!PistonBlock::is_pushable_block_type(&Block::OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::CRYING_OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::RESPAWN_ANCHOR));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::REINFORCED_DEEPSLATE));
+        assert!(PistonBlock::is_pushable_block_type(&Block::STONE));
+        assert!(PistonBlock::is_pushable_block_type(&Block::OAK_PLANKS));
+
+        // Placement facing: faces opposite to nearest looking direction (including vertical)
+        let order_down = [Facing::Down, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Up];
+        assert_eq!(PistonBlock::calculate_facing_from_player(&order_down), Facing::Up);
+
+        let order_up = [Facing::Up, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Down];
+        assert_eq!(PistonBlock::calculate_facing_from_player(&order_up), Facing::Down);
+
+        let order_north = [Facing::North, Facing::Up, Facing::Down, Facing::South, Facing::East, Facing::West];
+        assert_eq!(PistonBlock::calculate_facing_from_player(&order_north), Facing::South);
+
+        let order_south = [Facing::South, Facing::Up, Facing::Down, Facing::North, Facing::East, Facing::West];
+        assert_eq!(PistonBlock::calculate_facing_from_player(&order_south), Facing::North);
+    }
 }

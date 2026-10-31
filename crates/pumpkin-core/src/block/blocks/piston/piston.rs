@@ -5,7 +5,7 @@ use crate::entity::EntityBase;
 use pumpkin_data::BlockId;
 use pumpkin_data::{
     Block, BlockDirection, BlockState, BlockStateId, FacingExt,
-    block_properties::{MovingPistonLikeProperties, PistonHeadLikeProperties, PistonType},
+    block_properties::{Facing, MovingPistonLikeProperties, PistonHeadLikeProperties, PistonType},
     block_state::PistonBehavior,
     game_event::GameEvent,
     sound::{Sound, SoundCategory},
@@ -26,9 +26,9 @@ use crate::{
 
 use super::PistonHandler;
 
-const TRIGGER_EXTEND: u8 = 0;
-const TRIGGER_CONTRACT: u8 = 1;
-const TRIGGER_DROP: u8 = 2;
+pub const TRIGGER_EXTEND: u8 = 0;
+pub const TRIGGER_CONTRACT: u8 = 1;
+pub const TRIGGER_DROP: u8 = 2;
 
 pub(crate) type PistonProps = pumpkin_data::block_properties::StickyPistonLikeProperties;
 
@@ -41,6 +41,59 @@ impl BlockMetadata for PistonBlock {
 }
 
 impl PistonBlock {
+    pub const MAX_PUSH_LIMIT: usize = 12;
+    pub const TRIGGER_EXTEND: u8 = TRIGGER_EXTEND;
+    pub const TRIGGER_CONTRACT: u8 = TRIGGER_CONTRACT;
+    pub const TRIGGER_DROP: u8 = TRIGGER_DROP;
+    pub const PLATFORM_THICKNESS: f64 = 4.0;
+    pub const DEFAULT_EXTENDED: bool = false;
+    pub const DEFAULT_FACING: Facing = Facing::North;
+
+    #[must_use]
+    pub const fn calculate_facing_from_player(facing_order: &[Facing; 6]) -> Facing {
+        facing_order[0].opposite()
+    }
+
+    #[must_use]
+    pub fn is_sticky_block(block: &Block) -> bool {
+        block == &Block::SLIME_BLOCK || block == &Block::HONEY_BLOCK
+    }
+
+    #[must_use]
+    pub fn can_stick_to_each_other(block_a: &Block, block_b: &Block) -> bool {
+        if (block_a == &Block::HONEY_BLOCK && block_b == &Block::SLIME_BLOCK)
+            || (block_a == &Block::SLIME_BLOCK && block_b == &Block::HONEY_BLOCK)
+        {
+            false
+        } else {
+            Self::is_sticky_block(block_a) || Self::is_sticky_block(block_b)
+        }
+    }
+
+    #[must_use]
+    pub fn evaluate_piston_behavior(
+        behavior: PistonBehavior,
+        can_break: bool,
+        dir: BlockDirection,
+        piston_dir: BlockDirection,
+    ) -> Option<bool> {
+        match behavior {
+            PistonBehavior::Destroy => Some(can_break),
+            PistonBehavior::Block => Some(false),
+            PistonBehavior::PushOnly => Some(dir == piston_dir),
+            PistonBehavior::Ignore => Some(false),
+            PistonBehavior::Normal => None,
+        }
+    }
+
+    #[must_use]
+    pub fn is_pushable_block_type(block: &Block) -> bool {
+        !(block == &Block::OBSIDIAN
+            || block == &Block::CRYING_OBSIDIAN
+            || block == &Block::RESPAWN_ANCHOR
+            || block == &Block::REINFORCED_DEEPSLATE)
+    }
+
     #[must_use]
     pub fn is_movable(
         world: &World,
@@ -57,12 +110,7 @@ impl PistonBlock {
         if state.is_air() {
             return true;
         }
-        // Vanilla hardcoded them aswell
-        if block == &Block::OBSIDIAN
-            || block == &Block::CRYING_OBSIDIAN
-            || block == &Block::RESPAWN_ANCHOR
-            || block == &Block::REINFORCED_DEEPSLATE
-        {
+        if !Self::is_pushable_block_type(block) {
             return false;
         }
         if dir == BlockDirection::Down && pos.0.y == world.get_bottom_y() {
@@ -80,11 +128,8 @@ impl PistonBlock {
         if state.hardness == -1.0 {
             return false;
         }
-        match state.piston_behavior {
-            pumpkin_data::block_state::PistonBehavior::Destroy => return can_break,
-            pumpkin_data::block_state::PistonBehavior::Block => return false,
-            pumpkin_data::block_state::PistonBehavior::PushOnly => return dir == piston_dir,
-            _ => {}
+        if let Some(can_move) = Self::evaluate_piston_behavior(state.piston_behavior.clone(), can_break, dir, piston_dir) {
+            return can_move;
         }
         !has_block_block_entity(block)
     }
@@ -94,7 +139,9 @@ impl BlockBehaviour for PistonBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = PistonProps::default(args.block);
         props.extended = false;
-        props.facing = args.player.get_entity().get_facing().opposite();
+        props.facing = Self::calculate_facing_from_player(
+            &args.player.get_entity().get_entity_facing_order(),
+        );
         props.to_state_id(args.block)
     }
 

@@ -7210,3 +7210,41 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_power_signal`, `emits_power_in_direction`, `get_observed_direction`, `get_output_direction`, `calculate_facing_from_player`, and `is_observed_direction`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_observer_pulse_timing_facing_and_power_parity`.
+
+
+### Gap 296: Piston & Sticky Piston Push Limit (12 Blocks), Push Reaction & Powering Mechanics Parity
+- **Vanilla Reference**:
+  - `PistonBaseBlock.java:43-150, 230-280`, `PistonStructureResolver.java:12-204`:
+    - Push limit: `MAX_PUSH_DEPTH = 12` (max 12 blocks can be pushed at once; resolving fails if `count > 12`).
+    - Events & properties:
+      - `TRIGGER_EXTEND = 0`, `TRIGGER_CONTRACT = 1`, `TRIGGER_DROP = 2`.
+      - `PLATFORM_THICKNESS = 4`.
+      - Default state: `FACING = Direction.NORTH`, `EXTENDED = false`.
+    - Placement orientation (`getStateForPlacement`):
+      - `context.getNearestLookingDirection().getOpposite()`.
+      - Faces opposite to player's looking direction, respecting all 6 directions (including Up and Down based on player pitch and yaw).
+    - Stickiness mechanics (`canStickToEachOther`):
+      - Honey and Slime DO NOT stick to each other (`honey + slime -> false`).
+      - Slime sticks to Slime and normal pushable blocks (`slime + slime -> true`, `slime + block -> true`).
+      - Honey sticks to Honey and normal pushable blocks (`honey + honey -> true`, `honey + block -> true`).
+    - Push reaction behavior (`isPushable`):
+      - Unpushable blocks: Obsidian, Crying Obsidian, Respawn Anchor, Reinforced Deepslate, and blocks with hardness `-1.0` (bedrock, etc.).
+      - `PushReaction.IMMOVEABLE` / `Block`: cannot be pushed.
+      - `PushReaction.POPPED` / `Destroy`: broken/dropped by piston when extended.
+      - `PushReaction.PUSH` / `PushOnly`: only pushable in alignment with piston push direction.
+      - Blocks with Block Entities: cannot be pushed in Vanilla Java Edition.
+      - Extended pistons: cannot be pushed (`state.getValue(EXTENDED) -> false`).
+    - Redstone powering & quasi-connectivity:
+      - Checks 6 neighboring sides around piston (excluding push face).
+      - Directly powered from above (`Direction.DOWN`).
+      - Quasi-connectivity: checks the block above the piston (`pos.above()`) for power in 5 directions (excluding `Direction.DOWN`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/piston/mod.rs`:
+    - Linked `MAX_MOVABLE_BLOCKS` directly to `PistonBlock::MAX_PUSH_LIMIT` (12).
+    - Routed `is_block_sticky` and `is_adjacent_block_stuck` to `PistonBlock` helpers.
+  - Updated `crates/pumpkin-core/src/block/blocks/piston/piston.rs`:
+    - Fixed placement facing orientation: replaced `args.player.get_entity().get_facing().opposite()` (which ignored pitch/vertical orientation) with `calculate_facing_from_player(&args.player.get_entity().get_entity_facing_order())` (matching Vanilla `Direction.orderedByNearest(player)[0].opposite()`).
+    - Exported constants `MAX_PUSH_LIMIT = 12`, `TRIGGER_EXTEND = 0`, `TRIGGER_CONTRACT = 1`, `TRIGGER_DROP = 2`, `PLATFORM_THICKNESS = 4.0`, `DEFAULT_EXTENDED = false`, and `DEFAULT_FACING = Facing::North`.
+    - Exported helpers `calculate_facing_from_player`, `is_sticky_block`, `can_stick_to_each_other`, `evaluate_piston_behavior`, and `is_pushable_block_type`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_piston_push_limit_reactions_stickiness_and_facing_parity`.
