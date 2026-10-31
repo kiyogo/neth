@@ -7582,3 +7582,28 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_initial_velocity`, `calculate_short_fuse`, and `should_prime_on_placement`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_tnt_fuse_impulse_and_placement_parity`.
+
+### Gap 308: Crafter Redstone Triggering, Grid Slot Disabled Masks (0..9) & Comparator Signal Output Parity
+- **Vanilla Reference**:
+  - `CrafterBlock.java:42-240`, `CrafterBlockEntity.java:25-267`:
+    - Timing and container parameters:
+      - Dispense schedule delay: `CRAFTING_TICK_DELAY = 4` game ticks (2 redstone ticks) upon receiving rising edge.
+      - Crafting animation duration: `MAX_CRAFTING_TICKS = 6` game ticks.
+      - Grid dimensions: `CONTAINER_SIZE = 9`, `CONTAINER_WIDTH = 3`, `CONTAINER_HEIGHT = 3`.
+      - Comparator signal range: `MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 9`.
+    - Default state properties:
+      - `DEFAULT_ORIENTATION = Orientation::NorthUp`, `DEFAULT_TRIGGERED = false`, `DEFAULT_CRAFTING = false`.
+    - Comparator signal calculation (`getRedstoneSignal`):
+      - In vanilla, the signal strength is strictly the count of occupied slots plus disabled slots:
+        `signal = sum_{i=0..8} (!itemStack.isEmpty() || isSlotDisabled(i))` (clamped 0..9).
+    - Grid slot disabling & masking:
+      - Disabled slots (`SLOT_DISABLED = 1`) reject hopper item insertion, are skipped during recipe assembly, but count toward comparator output.
+    - Redstone triggering state machine (`neighborChanged` / `evaluate_redstone_trigger`):
+      - Rising edge (`powered && !triggered`): sets `TRIGGERED = true` and schedules block tick with delay 4.
+      - Falling edge (`!powered && triggered`): resets `TRIGGERED = false` and `CRAFTING = false`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Exported constants `CRAFTING_TICK_DELAY`, `MAX_CRAFTING_TICKS`, `CRAFTER_ADVANCEMENT_DIAMETER`, `CONTAINER_SIZE`, `CONTAINER_WIDTH`, `CONTAINER_HEIGHT`, `MIN_COMPARATOR_OUTPUT`, `MAX_COMPARATOR_OUTPUT`, `DEFAULT_ORIENTATION`, `DEFAULT_TRIGGERED`, and `DEFAULT_CRAFTING`.
+    - Exported helpers `calculate_comparator_signal`, `calculate_signal_from_states`, `disabled_slots_to_bitmask`, `bitmask_to_disabled_slots`, `is_slot_valid_for_craft`, and `evaluate_redstone_trigger`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_crafter_redstone_triggers_slots_and_comparator_parity`.

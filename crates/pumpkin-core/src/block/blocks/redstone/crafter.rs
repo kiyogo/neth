@@ -112,6 +112,24 @@ impl CrafterBlock {
     pub const CONTAINER_HEIGHT: usize = 3;
     pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
     pub const MAX_COMPARATOR_OUTPUT: u8 = 9;
+    pub const DEFAULT_ORIENTATION: Orientation = Orientation::NorthUp;
+    pub const DEFAULT_TRIGGERED: bool = false;
+    pub const DEFAULT_CRAFTING: bool = false;
+
+    #[must_use]
+    pub const fn evaluate_redstone_trigger(
+        powered: bool,
+        is_triggered: bool,
+    ) -> (bool, bool) {
+        // Returns (new_triggered, should_schedule_craft)
+        if powered && !is_triggered {
+            (true, true)
+        } else if !powered && is_triggered {
+            (false, false)
+        } else {
+            (is_triggered, false)
+        }
+    }
 
     pub fn calculate_comparator_signal(occupied_count: usize, disabled_count: usize) -> u8 {
         ((occupied_count + disabled_count) as u8).min(Self::MAX_COMPARATOR_OUTPUT)
