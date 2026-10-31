@@ -7832,3 +7832,38 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_comparator_output`, `is_honey_full`, `is_within_smoke_distance`, and `is_player_in_bee_anger_range`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_beehive_honey_levels_smoke_and_harvest_parity`.
+
+### Gap 316: Campfire & Soul Campfire Extinguishing, Cooking Ticks (600 Ticks / 30s), Signal Smoke (Hay Bale) & Smoke Height (10 vs 24 Blocks) Parity
+- **Vanilla Reference**:
+  - `CampfireBlock.java:1-328`, `CampfireBlockEntity.java:1-222`:
+    - Cooking time & cooldown mechanics:
+      - Default recipe cooking time: `DEFAULT_COOKING_TIME = 600` game ticks (30.0s).
+      - Slot capacity: 4 cooking slots (`SLOT_COUNT = 4`).
+      - Cooldown rate when unlit: `BURN_COOL_SPEED = 2` ticks subtracted per tick (`Mth.clamp(progress - 2, 0, cookingTime)`).
+      - Food placement: checks `RecipePropertySet.CAMPFIRE_INPUT`, returns `SUCCESS_SERVER` on placing food or `CONSUME` when all slots are occupied.
+    - Shovel dousing interaction (`useItemOn`):
+      - If player right-clicks a lit campfire with an item tagged `#minecraft:douses_campfires` (`MINECRAFT_DOUSES_CAMPFIRES`, all shovels):
+        - Emits level sound/particle event `1009` (`SoundExtinguishFire`).
+        - Douses campfire, setting state `LIT = false` with full block update (`BlockFlags::NOTIFY_ALL`).
+        - Emits `GameEvent.BLOCK_CHANGE` at block center.
+        - Damages the tool by 1 durability point (`damage_item_in_slot(equipment_slot, 1)`).
+        - Returns interaction `SUCCESS`.
+    - Collision & damage differentiation:
+      - Lit campfire deals `FIRE_DAMAGE_REGULAR = 1.0` campfire damage.
+      - Lit soul campfire deals `FIRE_DAMAGE_SOUL = 2.0` campfire damage.
+      - Damage is negated if entity has `FireResistance` effect or boots enchanted with `FrostWalker`.
+    - Smoke column and signal fire:
+      - Placing a Hay Bale (`Blocks.HAY_BLOCK`) directly beneath sets `SIGNAL_FIRE = true`.
+      - Regular cosy smoke (`ParticleTypes.CAMPFIRE_COSY_SMOKE`): lifetime ~80 ticks, smoke height ~10 blocks (`SMOKE_HEIGHT_REGULAR = 10`).
+      - Signal smoke (`ParticleTypes.CAMPFIRE_SIGNAL_SMOKE`): lifetime ~280 ticks, smoke height ~24 blocks (`SMOKE_HEIGHT_SIGNAL = 24`).
+      - Beehive smoke pacification: lit campfire within 1..=5 blocks directly below pacifies beehive bees.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/campfire.rs`:
+    - Exported constants `DEFAULT_COOKING_TIME`, `BURN_COOL_SPEED`, `SMOKE_HEIGHT_REGULAR`, `SMOKE_HEIGHT_SIGNAL`, `FIRE_DAMAGE_REGULAR`, `FIRE_DAMAGE_SOUL`, and `EVENT_EXTINGUISH_FIRE`.
+    - Implemented shovel dousing check via `tag::Item::MINECRAFT_DOUSES_CAMPFIRES` in `use_with_item`, triggering sound event 1009, setting `lit = false`, emitting `GameEvent::BlockChange`, and damaging shovel durability by 1.
+    - Corrected food slot saturation handling to return `BlockActionResult::Consume` when all 4 slots are occupied.
+    - Exported helpers `douse_campfire_state`, `get_fire_damage`, `get_smoke_height`, and `cool_progress`.
+  - Updated `crates/pumpkin-core/src/block/entities/campfire.rs`:
+    - Exported `DEFAULT_COOKING_TIME` and `BURN_COOL_SPEED` on `CampfireBlockEntity`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_campfire_cooking_dousing_smoke_and_damage_parity`.

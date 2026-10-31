@@ -17320,4 +17320,57 @@ mod tests {
         assert!(!BeehiveBlock::is_player_in_bee_anger_range(0.0, 0.0, 8.01));
         assert!(!BeehiveBlock::is_player_in_bee_anger_range(-8.5, 0.0, 0.0));
     }
+
+    #[test]
+    fn test_campfire_cooking_dousing_smoke_and_damage_parity() {
+        use crate::block::blocks::campfire::CampfireBlock;
+        use crate::block::entities::campfire::CampfireBlockEntity;
+        use pumpkin_data::Block;
+        use pumpkin_data::block_properties::CampfireLikeProperties;
+        use pumpkin_data::tag;
+
+        // Parity Constants Verification
+        assert_eq!(CampfireBlock::DEFAULT_COOKING_TIME, 600);
+        assert_eq!(CampfireBlock::BURN_COOL_SPEED, 2);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_REGULAR, 10);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_SIGNAL, 24);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_REGULAR, 1.0);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_SOUL, 2.0);
+        assert_eq!(CampfireBlock::EVENT_EXTINGUISH_FIRE, 1009);
+
+        assert_eq!(CampfireBlockEntity::DEFAULT_COOKING_TIME, 600);
+        assert_eq!(CampfireBlockEntity::BURN_COOL_SPEED, 2);
+        assert_eq!(CampfireBlockEntity::SLOT_COUNT, 4);
+
+        // Damage parity: Soul campfire deals 2.0 damage, normal campfire deals 1.0
+        assert_eq!(CampfireBlock::get_fire_damage(false), 1.0);
+        assert_eq!(CampfireBlock::get_fire_damage(true), 2.0);
+
+        // Smoke height parity: Signal campfire reaches 24 blocks, cosy campfire reaches 10 blocks
+        assert_eq!(CampfireBlock::get_smoke_height(false), 10);
+        assert_eq!(CampfireBlock::get_smoke_height(true), 24);
+
+        // Cooling rate: 2 ticks per tick, clamped at 0
+        assert_eq!(CampfireBlock::cool_progress(10), 8);
+        assert_eq!(CampfireBlock::cool_progress(3), 1);
+        assert_eq!(CampfireBlock::cool_progress(2), 0);
+        assert_eq!(CampfireBlock::cool_progress(1), 0);
+        assert_eq!(CampfireBlock::cool_progress(0), 0);
+
+        // Shovel dousing state change
+        for block in [&Block::CAMPFIRE, &Block::SOUL_CAMPFIRE] {
+            let mut props = CampfireLikeProperties::default(block);
+            props.lit = true;
+            props.signal_fire = true;
+            let lit_state = props.to_state_id(block);
+
+            let doused_state = CampfireBlock::douse_campfire_state(lit_state, block);
+            let doused_props = CampfireLikeProperties::from_state_id(doused_state);
+            assert!(!doused_props.lit);
+            assert!(doused_props.signal_fire);
+        }
+
+        // Shovels tag in DOUSES_CAMPFIRES
+        assert_eq!(tag::Item::MINECRAFT_DOUSES_CAMPFIRES.2, "minecraft:douses_campfires");
+    }
 }

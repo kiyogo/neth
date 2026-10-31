@@ -6,7 +6,10 @@ use pumpkin_data::{
     effect::StatusEffect,
     fluid::Fluid,
     recipes::{CookingRecipeKind, get_cooking_recipe_with_ingredient},
+    tag::{self, Taggable},
+    game_event::GameEvent, world::WorldEvent,
 };
+use pumpkin_util::math::vector3::Vector3;
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_world::tick::TickPriority;
 
@@ -26,6 +29,46 @@ use std::sync::Arc;
 #[pumpkin_block_from_tag("minecraft:campfires")]
 pub struct CampfireBlock;
 
+impl CampfireBlock {
+    pub const DEFAULT_COOKING_TIME: i32 = 600;
+    pub const BURN_COOL_SPEED: i32 = 2;
+    pub const SMOKE_HEIGHT_REGULAR: i32 = 10;
+    pub const SMOKE_HEIGHT_SIGNAL: i32 = 24;
+    pub const FIRE_DAMAGE_REGULAR: f32 = 1.0;
+    pub const FIRE_DAMAGE_SOUL: f32 = 2.0;
+    pub const EVENT_EXTINGUISH_FIRE: i32 = 1009;
+
+    #[must_use]
+    pub fn douse_campfire_state(state_id: BlockStateId, block: &Block) -> BlockStateId {
+        let mut props = CampfireLikeProperties::from_state_id(state_id);
+        props.lit = false;
+        props.to_state_id(block)
+    }
+
+    #[must_use]
+    pub fn get_fire_damage(is_soul: bool) -> f32 {
+        if is_soul {
+            Self::FIRE_DAMAGE_SOUL
+        } else {
+            Self::FIRE_DAMAGE_REGULAR
+        }
+    }
+
+    #[must_use]
+    pub fn get_smoke_height(signal_fire: bool) -> i32 {
+        if signal_fire {
+            Self::SMOKE_HEIGHT_SIGNAL
+        } else {
+            Self::SMOKE_HEIGHT_REGULAR
+        }
+    }
+
+    #[must_use]
+    pub fn cool_progress(progress: i32) -> i32 {
+        (progress - Self::BURN_COOL_SPEED).max(0)
+    }
+}
+
 impl BlockBehaviour for CampfireBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = CampfireBlockEntity::new(*args.position);
@@ -34,49 +77,75 @@ impl BlockBehaviour for CampfireBlock {
 
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         let state = args.world.get_block_state(args.position);
-        if !CampfireLikeProperties::from_state_id(state.id).lit {
+        let props = CampfireLikeProperties::from_state_id(state.id);
+        if !props.lit {
             return BlockActionResult::PassToDefaultBlockAction;
         }
 
-        let Some(recipe) = get_cooking_recipe_with_ingredient(
+        // Vanilla CampfireBlock.useItemOn: first check campfire cooking recipes
+        if let Some(recipe) = get_cooking_recipe_with_ingredient(
             args.item_stack.item,
             CookingRecipeKind::CampfireCooking,
-        ) else {
-            return BlockActionResult::PassToDefaultBlockAction;
-        };
+        ) {
+            if let Some(block_entity) = args.world.get_block_entity(args.position) {
+                if let Some(campfire) = block_entity.as_any().downcast_ref::<CampfireBlockEntity>() {
+                    for slot in 0..CampfireBlockEntity::SLOT_COUNT {
+                        let mut stored = campfire.items[slot]
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        if !stored.is_empty() {
+                            continue;
+                        }
 
-        let Some(block_entity) = args.world.get_block_entity(args.position) else {
-            return BlockActionResult::PassToDefaultBlockAction;
-        };
-        let Some(campfire) = block_entity.as_any().downcast_ref::<CampfireBlockEntity>() else {
-            return BlockActionResult::PassToDefaultBlockAction;
-        };
+                        *stored = args
+                            .item_stack
+                            .split_unless_creative(args.player.gamemode.load(), 1);
+                        *campfire.cooking_times[slot]
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
+                        *campfire.cooking_total_times[slot]
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner) = recipe.cookingtime;
+                        drop(stored);
 
-        for slot in 0..CampfireBlockEntity::SLOT_COUNT {
-            let mut stored = campfire.items[slot]
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if !stored.is_empty() {
-                continue;
+                        args.player.increment_stat(
+                            pumpkin_data::statistic::StatisticCategory::Custom,
+                            pumpkin_data::statistic::CustomStatistic::InteractWithCampfire as i32,
+                            1,
+                        );
+                        args.world.update_block_entity(&block_entity);
+                        return BlockActionResult::Success;
+                    }
+
+                    // All slots occupied with food, consume interaction
+                    return BlockActionResult::Consume;
+                }
             }
+        }
 
-            *stored = args
-                .item_stack
-                .split_unless_creative(args.player.gamemode.load(), 1);
-            *campfire.cooking_times[slot]
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = 0;
-            *campfire.cooking_total_times[slot]
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = recipe.cookingtime;
-            drop(stored);
-
-            args.player.increment_stat(
-                pumpkin_data::statistic::StatisticCategory::Custom,
-                pumpkin_data::statistic::CustomStatistic::InteractWithCampfire as i32,
-                1,
+        // Vanilla CampfireBlock.useItemOn: dousing campfire with shovels (ItemTags.DOUSES_CAMPFIRES)
+        if args.item_stack.item.has_tag(&tag::Item::MINECRAFT_DOUSES_CAMPFIRES) {
+            args.world.sync_world_event(
+                WorldEvent::SoundExtinguishFire,
+                *args.position,
+                0,
             );
-            args.world.update_block_entity(&block_entity);
+            let mut unlit_props = props;
+            unlit_props.lit = false;
+            args.world.set_block_state(
+                args.position,
+                unlit_props.to_state_id(args.block),
+                BlockFlags::NOTIFY_ALL,
+            );
+            args.world.emit_game_event(
+                GameEvent::BlockChange.name(),
+                Vector3::new(
+                    f64::from(args.position.0.x) + 0.5,
+                    f64::from(args.position.0.y) + 0.5,
+                    f64::from(args.position.0.z) + 0.5,
+                ),
+            );
+            args.player.damage_item_in_slot(args.equipment_slot, 1);
             return BlockActionResult::Success;
         }
 
@@ -106,11 +175,7 @@ impl BlockBehaviour for CampfireBlock {
                 // Campfire damage is prevented by Frost Walker boots or fire resistance.
                 return;
             }
-            let damage_amount = if args.block == &Block::SOUL_CAMPFIRE {
-                2.0
-            } else {
-                1.0
-            };
+            let damage_amount = Self::get_fire_damage(args.block == &Block::SOUL_CAMPFIRE);
             args.entity
                 .damage(args.entity, damage_amount, DamageType::CAMPFIRE);
         }

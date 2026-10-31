@@ -215,6 +215,8 @@ impl BlockEntity for CampfireBlockEntity {
 impl CampfireBlockEntity {
     pub const ID: &'static str = "minecraft:campfire";
     pub const SLOT_COUNT: usize = 4;
+    pub const DEFAULT_COOKING_TIME: i32 = 600;
+    pub const BURN_COOL_SPEED: i32 = 2;
 
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
@@ -270,7 +272,7 @@ impl CampfireBlockEntity {
             let mut progress = progress
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            let cooled = (*progress - 2).max(0);
+            let cooled = (*progress - Self::BURN_COOL_SPEED).max(0);
             if cooled != *progress {
                 *progress = cooled;
                 changed = true;
