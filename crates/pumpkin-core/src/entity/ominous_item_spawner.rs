@@ -1,8 +1,9 @@
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::world::WorldEvent;
@@ -10,6 +11,12 @@ use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::item::ItemEntity;
 use crate::entity::living::LivingEntity;
+use crate::entity::projectile::ThrownItemEntity;
+use crate::entity::projectile::arrow::{ArrowEntity, ArrowPickup};
+use crate::entity::projectile::lingering_potion::LingeringPotionEntity;
+use crate::entity::projectile::small_fireball::SmallFireballEntity;
+use crate::entity::projectile::splash_potion::SplashPotionEntity;
+use crate::entity::projectile::wind_charge::{WIND_CHARGE_GRAVITY, WindChargeEntity};
 use crate::entity::{Entity, EntityBase};
 use crate::server::Server;
 
@@ -174,14 +181,58 @@ impl EntityBase for OminousItemSpawnerEntity {
 
             if !item.is_empty() {
                 let pos = self.entity.pos.load();
-                let item_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
-                let spawned = Arc::new(ItemEntity::new_with_velocity(
-                    item_entity,
-                    item,
-                    Vector3::new(0.0, 0.0, 0.0),
-                    10,
-                ));
-                world.spawn_entity(spawned);
+                let item_id = item.get_item().id;
+
+                if item_id == Item::LINGERING_POTION.id {
+                    let ent = Entity::new(world.clone(), pos, &EntityType::LINGERING_POTION);
+                    let potion = LingeringPotionEntity::new(ent);
+                    potion.set_item_stack(item);
+                    potion.thrown.entity.set_velocity(Vector3::new(0.0, -0.2, 0.0));
+                    world.spawn_entity(Arc::new(potion));
+                } else if item_id == Item::SPLASH_POTION.id {
+                    let ent = Entity::new(world.clone(), pos, &EntityType::SPLASH_POTION);
+                    let potion = SplashPotionEntity::new(ent);
+                    potion.set_item_stack(item);
+                    potion.thrown.entity.set_velocity(Vector3::new(0.0, -0.2, 0.0));
+                    world.spawn_entity(Arc::new(potion));
+                } else if item_id == Item::WIND_CHARGE.id {
+                    let ent = Entity::new(world.clone(), pos, &EntityType::WIND_CHARGE);
+                    let thrown = ThrownItemEntity {
+                        entity: ent,
+                        owner_id: None,
+                        collides_with_projectiles: false,
+                        has_hit: AtomicBool::new(false),
+                        has_left_owner: AtomicBool::new(true),
+                        gravity: WIND_CHARGE_GRAVITY,
+                    };
+                    let wc = WindChargeEntity::new_normal(thrown);
+                    wc.get_entity().set_velocity(Vector3::new(0.0, -0.4, 0.0));
+                    world.spawn_entity(Arc::new(wc));
+                } else if item_id == Item::ARROW.id || item_id == Item::TIPPED_ARROW.id {
+                    let ent = Entity::new(world.clone(), pos, &EntityType::ARROW);
+                    let arrow = ArrowEntity::new_with_item(
+                        ent,
+                        None,
+                        &item,
+                        ArrowPickup::Disallowed,
+                    );
+                    arrow.entity.set_velocity(Vector3::new(0.0, -0.5, 0.0));
+                    world.spawn_entity(Arc::new(arrow));
+                } else if item_id == Item::FIRE_CHARGE.id {
+                    let ent = Entity::new(world.clone(), pos, &EntityType::SMALL_FIREBALL);
+                    let fireball = SmallFireballEntity::new(ent);
+                    fireball.thrown.entity.set_velocity(Vector3::new(0.0, -0.3, 0.0));
+                    world.spawn_entity(Arc::new(fireball));
+                } else {
+                    let item_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
+                    let spawned = Arc::new(ItemEntity::new_with_velocity(
+                        item_entity,
+                        item,
+                        Vector3::new(0.0, 0.0, 0.0),
+                        10,
+                    ));
+                    world.spawn_entity(spawned);
+                }
 
                 world.sync_world_event(
                     WorldEvent::ParticlesTrialSpawnerSpawnItem,

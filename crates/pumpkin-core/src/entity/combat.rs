@@ -8621,6 +8621,44 @@ pub const TRIAL_SPAWNER_EVENT_SPAWN_ITEM: i32 = 3021;
 pub const TRIAL_SPAWNER_REWARD_EJECTION_Y_OFFSET: f64 = 1.2;
 #[allow(dead_code)]
 pub const TRIAL_SPAWNER_REWARD_EJECTION_VELOCITY: f64 = 2.0;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_SPAWN_PARTICLES: i32 = 3011;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_SPAWN_MOB_AT: i32 = 3012;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_EJECT_ITEM: i32 = 3014;
+#[allow(dead_code)]
+pub const OMINOUS_ITEM_SPAWNER_COOLDOWN_TICKS: i64 = 160;
+#[allow(dead_code)]
+pub const OMINOUS_ITEM_SPAWNER_DELAY_MIN: i64 = 60;
+#[allow(dead_code)]
+pub const OMINOUS_ITEM_SPAWNER_DELAY_MAX: i64 = 120;
+#[allow(dead_code)]
+pub const OMINOUS_ITEM_SPAWNER_WARNING_TICKS: i64 = 36;
+
+/// Calculates the duration of Trial Omen effect converted from Bad Omen.
+///
+/// Mirrors vanilla `TrialSpawnerStateData.java:207`:
+/// `int duration = 18000 * (badOmen.getAmplifier() + 1);`
+#[must_use]
+pub const fn calculate_trial_omen_duration(bad_omen_amplifier: u8) -> i32 {
+    TRIAL_SPAWNER_TRIAL_OMEN_PER_BAD_OMEN_LEVEL * (bad_omen_amplifier as i32 + 1)
+}
+
+/// Checks if an ominous item spawner is ready to be spawned during ACTIVE state.
+///
+/// Mirrors vanilla `TrialSpawnerState.java:227`:
+/// `return serverLevel.getGameTime() >= data.cooldownEndsAt;`
+#[must_use]
+pub const fn should_spawn_ominous_item(game_time: i64, cooldown_ends_at: i64) -> bool {
+    game_time >= cooldown_ends_at
+}
+
+/// Checks whether a trial spawner can transition to the Ominous state.
+#[must_use]
+pub const fn can_trial_spawner_become_ominous(is_ominous: bool, has_ominous_player: bool) -> bool {
+    !is_ominous && has_ominous_player
+}
 
 /// Vanilla `VaultConfig.java`, `VaultServerData.java` & `VaultBlockEntity.java`:
 #[allow(dead_code)]
@@ -21687,4 +21725,54 @@ mod tests {
         let prior_higher = Vector3::new(10.0, 75.0, 10.0);
         assert_eq!(calculate_mace_impact_position(current, Some(prior_higher)), current);
     }
+
+    #[test]
+    fn test_trial_spawner_ominous_state_transformation_wave_spawns_and_equipment_parity() {
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+
+        // 1. World Event Parity (TrialSpawner.java:248-250, 267; TrialSpawnerStateData.java:166-174, 183)
+        assert_eq!(TRIAL_SPAWNER_EVENT_SPAWN_PARTICLES, 3011);
+        assert_eq!(TRIAL_SPAWNER_EVENT_SPAWN_MOB_AT, 3012);
+        assert_eq!(TRIAL_SPAWNER_EVENT_DETECT_PLAYER, 3013);
+        assert_eq!(TRIAL_SPAWNER_EVENT_EJECT_ITEM, 3014);
+        assert_eq!(TRIAL_SPAWNER_EVENT_DETECT_PLAYER_OMINOUS, 3019);
+        assert_eq!(TRIAL_SPAWNER_EVENT_BECOME_OMINOUS, 3020);
+        assert_eq!(TRIAL_SPAWNER_EVENT_SPAWN_ITEM, 3021);
+
+        // 2. Bad Omen -> Trial Omen duration parity (TrialSpawnerStateData.java:207)
+        // 18,000 ticks (15 min) * (amplifier + 1)
+        assert_eq!(calculate_trial_omen_duration(0), 18000);
+        assert_eq!(calculate_trial_omen_duration(1), 36000);
+        assert_eq!(calculate_trial_omen_duration(4), 90000); // Bad Omen V -> 75 minutes
+
+        // 3. Ominous transformation transition conditions (TrialSpawnerStateData.java:152)
+        assert!(can_trial_spawner_become_ominous(false, true));
+        assert!(!can_trial_spawner_become_ominous(true, true)); // Already ominous
+        assert!(!can_trial_spawner_become_ominous(false, false)); // No player with bad/trial omen
+
+        // 4. Ominous Item Spawner intervals & timing parity (TrialSpawnerConfig.java:76, OminousItemSpawner.java:24-29)
+        assert_eq!(OMINOUS_ITEM_SPAWNER_COOLDOWN_TICKS, 160);
+        assert_eq!(OMINOUS_ITEM_SPAWNER_DELAY_MIN, 60);
+        assert_eq!(OMINOUS_ITEM_SPAWNER_DELAY_MAX, 120);
+        assert_eq!(OMINOUS_ITEM_SPAWNER_WARNING_TICKS, 36);
+
+        // Cooldown check (TrialSpawnerState.java:227)
+        assert!(!should_spawn_ominous_item(100, 160));
+        assert!(should_spawn_ominous_item(160, 160));
+        assert!(should_spawn_ominous_item(170, 160));
+
+        // 5. Wave mobs scaling parity (TrialSpawnerConfig.java:59, 63)
+        // Normal trial spawner: base total 6.0, add 2.0/player; base simultaneous 2.0, add 1.0/player
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 1), 6);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 1), 2);
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 3), 10);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 3), 4);
+
+        // Ominous trial spawner: higher mob counts and simultaneous caps
+        // e.g. base total 8.0, add 2.5/player; base simultaneous 3.0, add 1.0/player
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(8.0, 2.5, 1), 8);
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(8.0, 2.5, 2), 10);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(3.0, 1.0, 2), 4);
+    }
+
 }

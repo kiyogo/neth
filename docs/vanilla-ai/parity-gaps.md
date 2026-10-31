@@ -9609,3 +9609,44 @@ eq 	ext{None}$.
     - Updated smash attack fall damage negation to call `calculate_mace_impact_position` and `set_ignore_fall_damage_from_current_impulse(true, impact_pos)`.
     - Replaced hardcoded vertical velocity boost for Wind Burst with vanilla `Explosion` execution (radius 3.5, `BlockInteraction::TriggerBlock`, knockback multipliers `[1.2, 1.75, 2.2]`, gust emitter particles, and `Sound::EntityWindChargeWindBurst`).
 - **Status**: Completed & Verified.
+
+### Gap 382: Trial Spawner Ominous State Transformation, Wave Spawns & Mob Equipment Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.java:1-431`, `TrialSpawnerState.java:1-299`, `TrialSpawnerStateData.java:1-326`, `TrialSpawnerConfig.java:1-92`, `OminousItemSpawner.java:1-125`, `items_to_drop_when_ominous.json:1-140`.
+- **Vanilla Mechanics**:
+  1. *Bad Omen to Trial Omen Transformation (`TrialSpawnerStateData.java:152-162, 203-211`)*:
+     - When a player in line of sight of an active or cooling trial spawner has `BAD_OMEN`, it transforms into `TRIAL_OMEN` with duration `18000 * (badOmen.getAmplifier() + 1)` ticks (15 minutes per level, up to 75 minutes at level V).
+     - Plays level event `3020` (`ParticlesTrialSpawnerBecomeOminous`) at player eye position with data 0.
+     - Invokes `trialSpawner.applyOminous(level, pos)`.
+  2. *Ominous State Transformation Mob Clearance & Equipment Dropping (`TrialSpawnerStateData.java:180-200`)*:
+     - Spawner block state sets `OMINOUS = true` and emits level event `3020` at spawner position with data 1.
+     - Discards all existing `current_mobs`: emits level event `3012` (`ParticlesTrialSpawnerSpawnMobAt`) with normal flame particle (data 0) at each mob position.
+     - If the mob had preserved equipment from the trial spawner, it drops that equipment into the world before being removed (`mob.dropPreservedEquipment(level)`).
+     - Resets `total_mobs_spawned = 0`, clears `current_mobs`, sets `next_mob_spawns_at = game_time + ominousConfig.ticks_between_spawn`, and sets `cooldown_ends_at = game_time + 160` (ticks between ominous item spawners).
+  3. *Ominous Item Spawner Ceiling Raycast & Activation (`TrialSpawnerState.java:160-225`, `OminousItemSpawner.java:70-98`)*:
+     - During `ACTIVE` state when `is_ominous == true`, checks every tick if `game_time >= cooldown_ends_at` (160 ticks interval = 8 seconds).
+     - Target entity selection: 50% random chance between eligible mobs and eligible players within `required_player_range` (14 blocks).
+     - Ceiling position calculation: from target entity position, raycasts upward by `entity_height + 2.0 + rand(0..4)`. Positions drop spawner 1.0 block below collision hit in passable air.
+     - Dispenses ominous projectiles / potions:
+       - Lingering potions (Wind Charged, Oozing, Weaving, Infested, Strength, Swiftness, Slow Falling) shot downwards.
+       - Splash potions shot downwards.
+       - Wind charges shot downwards.
+       - Arrows & tipped arrows shot downwards.
+       - Fire charges shot downwards.
+       - Items spawned as item entities.
+     - Plays `SoundEvents.TRIAL_SPAWNER_SPAWN_ITEM_BEGIN` with pitch `(rand - rand) * 0.2 + 1.0` and emits event `3021` (`ParticlesTrialSpawnerSpawnItem`) with data 1 upon projectile launch.
+  4. *Trial Spawner Wave Mob Scaling (`TrialSpawnerConfig.java:59, 63`)*:
+     - `totalMobs`: `floor(base_total + added_per_player * (players - 1))`.
+     - `simultaneousMobs`: `floor(base_simul + added_per_player * (players - 1))`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/entities/trial_spawner.rs`:
+    - Updated `apply_ominous` to drop preserved equipment from mobs before removing, and schedule `cooldown_ends_at` to `game_time + ticks_between_item_spawners()`.
+    - Added `spawn_ominous_item_spawner`, `calculate_position_to_spawn_item_spawner`, and `pick_item_to_dispense_when_ominous`.
+    - Hooked `spawn_ominous_item_spawner` into `TrialSpawnerState::Active` when spawner is ominous.
+    - Used `world.play_sound_fine` with randomized pitch for ominous item spawner activation.
+  - In `crates/pumpkin-core/src/entity/ominous_item_spawner.rs`:
+    - Updated `tick` to shoot projectiles (lingering potion, splash potion, wind charge, arrow, fire charge) downward with velocity and emit world event 3021 with data 1.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `TRIAL_SPAWNER_EVENT_SPAWN_PARTICLES = 3011`, `TRIAL_SPAWNER_EVENT_SPAWN_MOB_AT = 3012`, `TRIAL_SPAWNER_EVENT_EJECT_ITEM = 3014`, `OMINOUS_ITEM_SPAWNER_COOLDOWN_TICKS = 160`, `OMINOUS_ITEM_SPAWNER_DELAY_MIN = 60`, `OMINOUS_ITEM_SPAWNER_DELAY_MAX = 120`, `OMINOUS_ITEM_SPAWNER_WARNING_TICKS = 36`.
+    - Added helper functions `calculate_trial_omen_duration`, `should_spawn_ominous_item`, `can_trial_spawner_become_ominous`.
+    - Added comprehensive unit test `test_trial_spawner_ominous_state_transformation_wave_spawns_and_equipment_parity`.
+- **Status**: Completed & Verified.

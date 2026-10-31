@@ -20,7 +20,7 @@ use rand::RngExt;
 use uuid::Uuid;
 
 use super::BlockEntity;
-use crate::entity::EntityBase;
+use crate::entity::{Entity, EntityBase};
 use crate::world::World;
 
 /// Flame particle type used by trial spawners for world events.
@@ -895,13 +895,27 @@ impl TrialSpawner {
                     block_pos,
                     TrialSpawnerFlameParticle::Normal.encode(),
                 );
+                // Drop preserved equipment before removing (TrialSpawnerStateData.java:185)
+                if let Some(living) = entity.get_living_entity() {
+                    let equipment = living
+                        .entity_equipment
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    for item in equipment.equipment.values() {
+                        if !item.is_empty() {
+                            world.drop_stack_at(ent.pos.load(), item.clone());
+                        }
+                    }
+                }
                 world.remove_entity(entity.as_ref());
             }
         }
 
         self.data.reset_after_becoming_ominous(game_time);
         self.data.next_mob_spawns_at =
-            game_time + i64::from(self.active_config().ticks_between_spawn);
+            game_time + i64::from(self.ominous_config().ticks_between_spawn);
+        self.data.cooldown_ends_at =
+            game_time + self.ominous_config().ticks_between_item_spawners();
     }
 
     pub fn try_detect_players(&mut self, world: &Arc<World>, spawner_pos: BlockPos) -> bool {
@@ -1364,8 +1378,8 @@ impl TrialSpawner {
 
                 self.try_detect_players(world, spawner_pos);
 
-                if self.is_ominous && game_time >= self.data.cooldown_ends_at {
-                    self.data.cooldown_ends_at = game_time + self.ominous_config().ticks_between_item_spawners();
+                if self.is_ominous {
+                    self.spawn_ominous_item_spawner(world, spawner_pos);
                 }
 
                 let (total_mobs_needed, max_simultaneous, ticks_between_spawn) = {
@@ -1464,6 +1478,260 @@ impl TrialSpawner {
                     TrialSpawnerState::Cooldown
                 }
             }
+        }
+    }
+
+    pub fn spawn_ominous_item_spawner(&mut self, world: &Arc<World>, spawner_pos: BlockPos) {
+        let game_time = world
+            .level_time
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .query_gametime();
+
+        if game_time < self.data.cooldown_ends_at {
+            return;
+        }
+
+        let item_to_dispense = self.pick_item_to_dispense_when_ominous(world, spawner_pos);
+        if item_to_dispense.is_empty() {
+            return;
+        }
+
+        if let Some(pos) = self.calculate_position_to_spawn_item_spawner(world, spawner_pos) {
+            let entity = Entity::new(world.clone(), pos, &EntityType::OMINOUS_ITEM_SPAWNER);
+            let delay = rand::rng().random_range(
+                crate::entity::ominous_item_spawner::DEFAULT_MIN_SPAWN_TICKS
+                    ..=crate::entity::ominous_item_spawner::DEFAULT_MAX_SPAWN_TICKS,
+            );
+            let item_spawner = Arc::new(crate::entity::ominous_item_spawner::OminousItemSpawnerEntity::new_with_delay(
+                entity,
+                item_to_dispense,
+                delay,
+            ));
+            world.spawn_entity(item_spawner);
+
+            let mut rng = rand::rng();
+            let pitch = (rng.random::<f32>() - rng.random::<f32>()) * 0.2 + 1.0;
+            let sound_pos = BlockPos::floored(pos.x, pos.y, pos.z);
+            world.play_sound_fine(
+                Sound::BlockTrialSpawnerSpawnItemBegin,
+                SoundCategory::Blocks,
+                &sound_pos.to_f64(),
+                1.0,
+                pitch,
+            );
+            self.data.cooldown_ends_at =
+                game_time + self.ominous_config().ticks_between_item_spawners();
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_position_to_spawn_item_spawner(
+        &self,
+        world: &Arc<World>,
+        spawner_pos: BlockPos,
+    ) -> Option<Vector3<f64>> {
+        let center = spawner_pos.to_centered_f64();
+        let max_dist_sq = f64::from(self.config.required_player_range * self.config.required_player_range);
+
+        // 1. Collect nearby eligible players
+        let nearby_players: Vec<Arc<crate::entity::player::Player>> = self
+            .data
+            .registered_players
+            .iter()
+            .filter_map(|uuid| world.get_player_by_uuid(*uuid))
+            .filter(|player| {
+                let mode = player.gamemode.load();
+                if mode == pumpkin_util::GameMode::Creative || mode == pumpkin_util::GameMode::Spectator {
+                    return false;
+                }
+                let ent = player.get_entity();
+                ent.is_alive() && ent.pos.load().squared_distance_to_vec(&center) <= max_dist_sq
+            })
+            .collect();
+
+        if nearby_players.is_empty() {
+            return None;
+        }
+
+        // 2. Collect nearby eligible mobs
+        let nearby_mobs: Vec<Arc<dyn EntityBase>> = self
+            .data
+            .current_mobs
+            .iter()
+            .filter_map(|uuid| world.get_entity_by_uuid(*uuid))
+            .filter(|mob| {
+                let ent = mob.get_entity();
+                ent.is_alive() && ent.pos.load().squared_distance_to_vec(&center) <= max_dist_sq
+            })
+            .collect();
+
+        // 3. Choose target entity (50/50 between mobs and players if both exist)
+        let mut rng = rand::rng();
+        let choose_mobs = if !nearby_mobs.is_empty() && !nearby_players.is_empty() {
+            rng.random_bool(0.5)
+        } else {
+            !nearby_mobs.is_empty()
+        };
+
+        let (entity_pos, bb_height) = if choose_mobs && !nearby_mobs.is_empty() {
+            let idx = rng.random_range(0..nearby_mobs.len());
+            let target = &nearby_mobs[idx];
+            let ent = target.get_entity();
+            (ent.pos.load(), f64::from(ent.get_eye_height()) * 1.1)
+        } else if !nearby_players.is_empty() {
+            let idx = rng.random_range(0..nearby_players.len());
+            let target = &nearby_players[idx];
+            let ent = target.get_entity();
+            (ent.pos.load(), f64::from(ent.get_eye_height()) * 1.1)
+        } else {
+            return None;
+        };
+
+        // 4. Calculate position above entity
+        let extra_y = f64::from(rng.random_range(0..4));
+        let try_spawn_pos = Vector3::new(
+            entity_pos.x,
+            entity_pos.y + bb_height + 2.0 + extra_y,
+            entity_pos.z,
+        );
+
+        let hit = world.clip(&pumpkin_world::clip::ClipContext::new(
+            entity_pos,
+            try_spawn_pos,
+            pumpkin_world::clip::ClipBlock::Visual,
+            pumpkin_world::clip::ClipFluid::None,
+        ));
+
+        let candidate_pos = if !hit.is_miss {
+            Vector3::new(
+                f64::from(hit.block_pos.0.x) + 0.5,
+                f64::from(hit.block_pos.0.y) - 1.0 + 0.5,
+                f64::from(hit.block_pos.0.z) + 0.5,
+            )
+        } else {
+            try_spawn_pos
+        };
+
+        let check_block_pos = BlockPos::floored(candidate_pos.x, candidate_pos.y, candidate_pos.z);
+        if world.get_block(&check_block_pos).is_air() {
+            Some(candidate_pos)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn pick_item_to_dispense_when_ominous(
+        &self,
+        world: &Arc<World>,
+        _spawner_pos: BlockPos,
+    ) -> ItemStack {
+        if let Some(table_name) = &self.active_config().items_to_drop_when_ominous {
+            if let Some(loot_table) = world.get_loot_table(table_name) {
+                let seed = rand::random::<i64>();
+                let items = loot_table.generate_loot(seed);
+                if let Some(item) = items.into_iter().next() {
+                    return item;
+                }
+            }
+        }
+
+        let mut rng = rand::rng();
+        match rng.random_range(0..12) {
+            0 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::WIND_CHARGED.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            1 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::OOZING.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            2 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::WEAVING.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            3 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::INFESTED.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            4 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::STRENGTH.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            5 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::SWIFTNESS.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            6 => {
+                let mut stack = ItemStack::new(1, &Item::LINGERING_POTION);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::SLOW_FALLING.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            7 => ItemStack::new(1, &Item::ARROW),
+            8 => {
+                let mut stack = ItemStack::new(1, &Item::TIPPED_ARROW);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::POISON.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            9 => {
+                let mut stack = ItemStack::new(1, &Item::TIPPED_ARROW);
+                stack.set_data_component(pumpkin_data::data_component_impl::PotionContentsImpl {
+                    potion_id: Some(pumpkin_data::potion::Potion::SLOWNESS.id as i32),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                });
+                stack
+            }
+            10 => ItemStack::new(1, &Item::FIRE_CHARGE),
+            _ => ItemStack::new(1, &Item::WIND_CHARGE),
         }
     }
 
