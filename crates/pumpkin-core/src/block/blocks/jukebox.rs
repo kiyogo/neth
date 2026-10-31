@@ -30,6 +30,41 @@ use tracing::error;
 pub struct JukeboxBlock;
 
 impl JukeboxBlock {
+    /// Vanilla JukeboxSong.java:44: SONG_END_PADDING_TICKS = 20
+    pub const SONG_END_PADDING_TICKS: u64 = 20;
+    /// Vanilla JukeboxSongPlayer.java:15: PLAY_EVENT_INTERVAL_TICKS = 20
+    pub const PLAY_EVENT_INTERVAL_TICKS: u64 = 20;
+    /// Vanilla GameEvent.java:47: JUKEBOX_PLAY notification radius = 10 blocks
+    pub const ALLAY_HEARING_RANGE: f64 = 10.0;
+    /// Vanilla JukeboxBlock.java:95: emits 15 when playing, 0 when stopped
+    pub const REDSTONE_SIGNAL_PLAYING: u8 = 15;
+    pub const REDSTONE_SIGNAL_STOPPED: u8 = 0;
+    /// Vanilla JukeboxBlockEntity.java:54: offsetRandomXZ(0.7F) => [-0.35, 0.35]
+    pub const POP_OUT_HORIZONTAL_OFFSET_MAX: f32 = 0.7;
+    pub const POP_OUT_Y_OFFSET: f64 = 1.01;
+    pub const POP_OUT_PICKUP_DELAY_TICKS: u32 = 10;
+    /// Vanilla LevelEvents: 1010 = Play record, 1011 = Stop record
+    pub const EVENT_PLAY_RECORD: i32 = 1010;
+    pub const EVENT_STOP_RECORD: i32 = 1011;
+
+    /// Calculates total playback duration in ticks including the 20-tick song end padding
+    #[must_use]
+    pub const fn calculate_total_playback_ticks(length_in_ticks: u64) -> u64 {
+        length_in_ticks + Self::SONG_END_PADDING_TICKS
+    }
+
+    /// Determines if a song has finished given elapsed ticks and song base length
+    #[must_use]
+    pub const fn has_song_finished(elapsed_ticks: u64, length_in_ticks: u64) -> bool {
+        elapsed_ticks >= Self::calculate_total_playback_ticks(length_in_ticks)
+    }
+
+    /// Evaluates if an Allay can hear and dance to this jukebox at the given distance
+    #[must_use]
+    pub fn can_allay_hear_jukebox(distance_squared: f64) -> bool {
+        distance_squared <= Self::ALLAY_HEARING_RANGE * Self::ALLAY_HEARING_RANGE
+    }
+
     fn has_record_state(_block: &Block, state_id: BlockStateId) -> bool {
         JukeboxLikeProperties::from_state_id(state_id).has_record
     }

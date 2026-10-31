@@ -7660,3 +7660,44 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_section`, `calculate_hit_slot`, `calculate_comparator_output`, `is_slot_occupied`, `slot_bitmask_from_properties`, `get_occupied_slot_count`, and `get_relative_hit_coords`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_chiseled_bookshelf_slot_raycasting_and_comparator_parity`.
+
+### Gap 311: Jukebox Record Playback, Song Duration Ticking, Comparator Output (1..15) & Allay Dance Mechanics Parity
+- **Vanilla Reference**:
+  - `JukeboxBlock.java:30-117`, `JukeboxBlockEntity.java:22-169`, `JukeboxSongPlayer.java:14-94`, `JukeboxSong.java:19-58`, `JukeboxSongs.java:13-80`, `Allay.java:94-114, 221-224, 319-329, 388-392, 516-546`:
+    - Timing and duration parameters:
+      - Song end padding: `SONG_END_PADDING_TICKS = 20` ticks (1.0 second extra active time after audio track completion).
+      - Periodic play event interval: `PLAY_EVENT_INTERVAL_TICKS = 20` ticks (emits `GameEvent.JUKEBOX_PLAY` every second).
+      - Allay dance hearing radius: `ALLAY_HEARING_RANGE = 10.0` blocks (`GameEvent.JUKEBOX_PLAY` notification radius).
+      - Redstone power level: `REDSTONE_SIGNAL_PLAYING = 15`, `REDSTONE_SIGNAL_STOPPED = 0`.
+      - Record pop out parameters:
+        - Horizontal offset: `offsetRandomXZ(0.7F)` -> random in `[-0.35, 0.35]` on X and Z axes.
+        - Vertical offset: `atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5)`.
+        - Default pickup delay: 10 ticks (0.5 seconds).
+      - Visual/sound level events:
+        - `EVENT_PLAY_RECORD = 1010` (LevelEvent for client audio start).
+        - `EVENT_STOP_RECORD = 1011` (LevelEvent for client audio stop).
+    - Playback ticking and state machine:
+      - While playing, every 20 ticks:
+        - Emits `GameEvent.JUKEBOX_PLAY` (radius 10 blocks) which triggers nearby Allays to dance.
+        - Spawns note particle (`ParticleTypes.NOTE`) at `(pos.x + 0.5, pos.y + 1.2, pos.z + 0.5)` with pitch color `nextInt(4) / 24.0F`.
+      - On completion (`elapsedTicks >= lengthInTicks + SONG_END_PADDING_TICKS`):
+        - Stops playback, turns off redstone signal (15 -> 0), updates adjacent neighbors, and emits `GameEvent.JUKEBOX_STOP_PLAY` & `levelEvent(1011)`.
+    - Allay dance synchronization:
+      - Listening to `GameEvent.JUKEBOX_PLAY` within 10 blocks sets `jukeboxPos` and starts dancing (`is_dancing = true`).
+      - Listening to `GameEvent.JUKEBOX_STOP_PLAY` or moving > 10 blocks away stops dancing (`is_dancing = false`).
+      - Every 20 ticks, Allay verifies that `jukeboxPos` is still a valid Jukebox block within 10 blocks.
+    - Music disc comparator output strengths (1..15):
+      - 13: 1, Cat: 2, Blocks: 3, Chirp: 4, Far: 5, Mall: 6, Mellohi: 7, Stal: 8, Strad: 9, Ward: 10.
+      - 11: 11, Wait: 12, Pigstep: 13, Otherside: 14, 5: 15.
+      - 1.20+ Discs: Relic: 14, Precipice: 13, Creator: 12, Creator Music Box: 11, Tears: 10, Lava Chicken: 9, Bounce: 8.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/jukebox.rs`:
+    - Exported constants `SONG_END_PADDING_TICKS`, `PLAY_EVENT_INTERVAL_TICKS`, `ALLAY_HEARING_RANGE`, `REDSTONE_SIGNAL_PLAYING`, `REDSTONE_SIGNAL_STOPPED`, `POP_OUT_HORIZONTAL_OFFSET_MAX`, `POP_OUT_Y_OFFSET`, `POP_OUT_PICKUP_DELAY_TICKS`, `EVENT_PLAY_RECORD`, and `EVENT_STOP_RECORD`.
+    - Exported helpers `calculate_total_playback_ticks`, `has_song_finished`, and `can_allay_hear_jukebox`.
+  - Updated `crates/pumpkin-core/src/block/entities/jukebox.rs`:
+    - Synchronized playback ticking with 20-tick song end padding and periodic `GameEvent::JukeboxPlay` + note particle emissions.
+    - Added neighbor redstone updates and `GameEvent::JukeboxStopPlay` upon playback completion.
+  - Updated `crates/pumpkin-core/src/entity/passive/allay.rs`:
+    - Added `jukebox_pos` tracking, `set_jukebox_playing`, and `should_stop_dancing` periodic validation.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_jukebox_song_durations_comparator_and_allay_dance_parity`.

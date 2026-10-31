@@ -8,6 +8,8 @@ use pumpkin_data::jukebox_song::JukeboxSong;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_nbt::tag::NbtTag;
 use pumpkin_util::math::position::BlockPos;
+use pumpkin_util::math::vector3::Vector3;
+use crate::block::blocks::jukebox::JukeboxBlock;
 
 use crate::block::entities::BlockEntity;
 use crate::world::World;
@@ -85,18 +87,47 @@ impl BlockEntity for JukeboxBlockEntity {
         }
     }
 
-    fn tick(&self, _world: &Arc<World>) {
+    fn tick(&self, world: &Arc<World>) {
         // Increment ticks if we're playing
         let song_length = self.song_length_ticks.load(Ordering::Relaxed);
         if song_length > 0 {
             let ticks = self
                 .ticks_since_song_started
                 .fetch_add(1, Ordering::Relaxed);
+            // Periodic JukeboxPlay game event every 20 ticks (1s)
+            if ticks % JukeboxBlock::PLAY_EVENT_INTERVAL_TICKS == 0 {
+                world.emit_game_event(
+                    pumpkin_data::game_event::GameEvent::JukeboxPlay.name(),
+                    self.position.to_centered_f64(),
+                );
+                // Note particle at bottom center + (0.0, 1.2, 0.0)
+                let note_pos = Vector3::new(
+                    f64::from(self.position.0.x) + 0.5,
+                    f64::from(self.position.0.y) + 1.2,
+                    f64::from(self.position.0.z) + 0.5,
+                );
+                let color_idx = (ticks / 20) % 24;
+                world.spawn_particle(
+                    note_pos,
+                    Vector3::new(color_idx as f32 / 24.0, 0.0f32, 0.0f32),
+                    1.0,
+                    0,
+                    pumpkin_data::particle::Particle::Note,
+                );
+            }
             // Check if song has finished
             if ticks >= song_length {
                 self.stop_playing();
-                // TODO: Update block state to has_record = false? Or just stop redstone?
-                // In vanilla, the disc stays but music stops and redstone turns off
+                world.update_neighbors(&self.position, None);
+                world.emit_game_event(
+                    pumpkin_data::game_event::GameEvent::JukeboxStopPlay.name(),
+                    self.position.to_centered_f64(),
+                );
+                world.sync_world_event(
+                    pumpkin_data::world::WorldEvent::SoundStopJukeboxSong,
+                    self.position,
+                    0,
+                );
             }
         }
     }
@@ -158,7 +189,8 @@ impl JukeboxBlockEntity {
     fn song_length(record: &ItemStack) -> Option<u64> {
         let playable = record.get_data_component::<JukeboxPlayableImpl>()?;
         let song_name = playable.song.rsplit(':').next()?;
-        JukeboxSong::from_name(song_name).map(|song| song.length_in_ticks())
+        JukeboxSong::from_name(song_name)
+            .map(|song| song.length_in_ticks() + JukeboxBlock::SONG_END_PADDING_TICKS)
     }
 
     /// Get the current record stack
@@ -195,8 +227,10 @@ impl JukeboxBlockEntity {
     /// Start playing a song with the given length in ticks
     pub fn start_playing(&self, length_in_ticks: u64) {
         self.ticks_since_song_started.store(0, Ordering::Relaxed);
-        self.song_length_ticks
-            .store(length_in_ticks, Ordering::Relaxed);
+        self.song_length_ticks.store(
+            length_in_ticks + JukeboxBlock::SONG_END_PADDING_TICKS,
+            Ordering::Relaxed,
+        );
         self.mark_dirty();
     }
 
@@ -336,7 +370,7 @@ mod tests {
         assert_eq!(entity.ticks_since_song_started.load(Ordering::Relaxed), 20);
         assert_eq!(
             entity.song_length_ticks.load(Ordering::Relaxed),
-            JukeboxSong::Pigstep.length_in_ticks()
+            JukeboxSong::Pigstep.length_in_ticks() + JukeboxBlock::SONG_END_PADDING_TICKS
         );
     }
 
@@ -363,7 +397,7 @@ mod tests {
 
     #[test]
     fn does_not_restore_finished_song() {
-        let length = JukeboxSong::Pigstep.length_in_ticks();
+        let length = JukeboxSong::Pigstep.length_in_ticks() + JukeboxBlock::SONG_END_PADDING_TICKS;
         let entity = JukeboxBlockEntity::from_nbt(
             &jukebox_nbt(Some(length as i64)),
             BlockPos::new(0, 64, 0),

@@ -17004,4 +17004,76 @@ mod tests {
         assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(5), 6);
         assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(6), 0);
     }
+
+    #[test]
+    fn test_jukebox_song_durations_comparator_and_allay_dance_parity() {
+        use crate::block::blocks::jukebox::JukeboxBlock;
+        use pumpkin_data::jukebox_song::JukeboxSong;
+
+        // Constants verification
+        assert_eq!(JukeboxBlock::SONG_END_PADDING_TICKS, 20);
+        assert_eq!(JukeboxBlock::PLAY_EVENT_INTERVAL_TICKS, 20);
+        assert_eq!(JukeboxBlock::ALLAY_HEARING_RANGE, 10.0);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_PLAYING, 15);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_STOPPED, 0);
+        assert_eq!(JukeboxBlock::POP_OUT_HORIZONTAL_OFFSET_MAX, 0.7);
+        assert_eq!(JukeboxBlock::POP_OUT_Y_OFFSET, 1.01);
+        assert_eq!(JukeboxBlock::POP_OUT_PICKUP_DELAY_TICKS, 10);
+        assert_eq!(JukeboxBlock::EVENT_PLAY_RECORD, 1010);
+        assert_eq!(JukeboxBlock::EVENT_STOP_RECORD, 1011);
+
+        // Playback duration calculation (lengthInTicks + 20-tick padding)
+        // Pigstep: 149 seconds * 20 = 2980 ticks; total duration = 3000 ticks
+        let pigstep_base = JukeboxSong::Pigstep.length_in_ticks();
+        assert_eq!(pigstep_base, 2980);
+        assert_eq!(JukeboxBlock::calculate_total_playback_ticks(pigstep_base), 3000);
+        assert!(!JukeboxBlock::has_song_finished(2999, pigstep_base));
+        assert!(JukeboxBlock::has_song_finished(3000, pigstep_base));
+        assert!(JukeboxBlock::has_song_finished(3001, pigstep_base));
+
+        // 11: 71 seconds * 20 = 1420 ticks; total = 1440 ticks
+        let eleven_base = JukeboxSong::Id11.length_in_ticks();
+        assert_eq!(eleven_base, 1420);
+        assert_eq!(JukeboxBlock::calculate_total_playback_ticks(eleven_base), 1440);
+        assert!(!JukeboxBlock::has_song_finished(1439, eleven_base));
+        assert!(JukeboxBlock::has_song_finished(1440, eleven_base));
+
+        // 5: 178 seconds * 20 = 3560 ticks; total = 3580 ticks
+        let five_base = JukeboxSong::Id5.length_in_ticks();
+        assert_eq!(five_base, 3560);
+        assert_eq!(JukeboxBlock::calculate_total_playback_ticks(five_base), 3580);
+        assert!(!JukeboxBlock::has_song_finished(3579, five_base));
+        assert!(JukeboxBlock::has_song_finished(3580, five_base));
+
+        // Vanilla comparator output values (0..15)
+        assert_eq!(JukeboxSong::Id13.comparator_output(), 1);
+        assert_eq!(JukeboxSong::Cat.comparator_output(), 2);
+        assert_eq!(JukeboxSong::Blocks.comparator_output(), 3);
+        assert_eq!(JukeboxSong::Chirp.comparator_output(), 4);
+        assert_eq!(JukeboxSong::Far.comparator_output(), 5);
+        assert_eq!(JukeboxSong::Mall.comparator_output(), 6);
+        assert_eq!(JukeboxSong::Mellohi.comparator_output(), 7);
+        assert_eq!(JukeboxSong::Stal.comparator_output(), 8);
+        assert_eq!(JukeboxSong::Strad.comparator_output(), 9);
+        assert_eq!(JukeboxSong::Ward.comparator_output(), 10);
+        assert_eq!(JukeboxSong::Id11.comparator_output(), 11);
+        assert_eq!(JukeboxSong::Wait.comparator_output(), 12);
+        assert_eq!(JukeboxSong::Pigstep.comparator_output(), 13);
+        assert_eq!(JukeboxSong::Otherside.comparator_output(), 14);
+        assert_eq!(JukeboxSong::Id5.comparator_output(), 15);
+        assert_eq!(JukeboxSong::Relic.comparator_output(), 14);
+        assert_eq!(JukeboxSong::Precipice.comparator_output(), 13);
+        assert_eq!(JukeboxSong::Creator.comparator_output(), 12);
+        assert_eq!(JukeboxSong::CreatorMusicBox.comparator_output(), 11);
+        assert_eq!(JukeboxSong::Tears.comparator_output(), 10);
+        assert_eq!(JukeboxSong::LavaChicken.comparator_output(), 9);
+        assert_eq!(JukeboxSong::Bounce.comparator_output(), 8);
+
+        // Allay hearing radius qualification (10.0 blocks / dist_sq <= 100.0)
+        assert!(JukeboxBlock::can_allay_hear_jukebox(0.0));
+        assert!(JukeboxBlock::can_allay_hear_jukebox(25.0)); // 5 blocks
+        assert!(JukeboxBlock::can_allay_hear_jukebox(100.0)); // 10 blocks (edge)
+        assert!(!JukeboxBlock::can_allay_hear_jukebox(100.01)); // just beyond
+        assert!(!JukeboxBlock::can_allay_hear_jukebox(225.0)); // 15 blocks
+    }
 }

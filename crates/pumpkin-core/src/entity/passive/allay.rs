@@ -10,6 +10,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use uuid::Uuid;
 
@@ -36,6 +37,7 @@ pub struct AllayEntity {
     pub dancing: AtomicBool,
     pub can_duplicate: AtomicBool,
     pub duplication_cooldown: AtomicI32,
+    pub jukebox_pos: AtomicCell<Option<BlockPos>>,
     pub owner: AtomicCell<Option<Uuid>>,
     pub heal_timer: AtomicI32,
 }
@@ -59,6 +61,7 @@ impl AllayEntity {
             dancing: AtomicBool::new(false),
             can_duplicate: AtomicBool::new(true),
             duplication_cooldown: AtomicI32::new(0),
+            jukebox_pos: AtomicCell::new(None),
             owner: AtomicCell::new(None),
             heal_timer: AtomicI32::new(0),
         };
@@ -120,6 +123,41 @@ impl AllayEntity {
         self.dancing.store(dancing, Ordering::Relaxed);
         let entity = self.get_entity();
         entity.set_synced_data(pumpkin_data::tracked_data::allay::DATA_DANCING, dancing);
+    }
+
+    #[must_use]
+    pub fn get_jukebox_pos(&self) -> Option<BlockPos> {
+        self.jukebox_pos.load()
+    }
+
+    /// Vanilla Allay.java:319-329: setJukeboxPlaying
+    pub fn set_jukebox_playing(&self, jukebox: BlockPos, is_playing: bool) {
+        if is_playing {
+            if !self.is_dancing() {
+                self.jukebox_pos.store(Some(jukebox));
+                self.set_dancing(true);
+            }
+        } else if self.jukebox_pos.load() == Some(jukebox) || self.jukebox_pos.load().is_none() {
+            self.jukebox_pos.store(None);
+            self.set_dancing(false);
+        }
+    }
+
+    /// Vanilla Allay.java:388-392: shouldStopDancing
+    pub fn should_stop_dancing(&self) -> bool {
+        let Some(pos) = self.jukebox_pos.load() else {
+            return true;
+        };
+        let entity_pos = self.mob_entity.living_entity.entity.pos.load();
+        let dx = f64::from(pos.0.x) + 0.5 - entity_pos.x;
+        let dy = f64::from(pos.0.y) + 0.5 - entity_pos.y;
+        let dz = f64::from(pos.0.z) + 0.5 - entity_pos.z;
+        let dist_sq = dx * dx + dy * dy + dz * dz;
+        if !crate::block::blocks::jukebox::JukeboxBlock::can_allay_hear_jukebox(dist_sq) {
+            return true;
+        }
+        let world = self.mob_entity.living_entity.entity.world.load();
+        world.get_block(&pos).id != pumpkin_data::Block::JUKEBOX.id
     }
 
     #[must_use]
@@ -217,6 +255,12 @@ impl Mob for AllayEntity {
             if living.health.load() < living.get_max_health() {
                 living.heal(1.0);
             }
+        }
+
+        // Vanilla Allay.java:221-224: if (this.isDancing() && this.shouldStopDancing() && this.tickCount % 20 == 0)
+        if self.is_dancing() && timer % 20 == 0 && self.should_stop_dancing() {
+            self.set_dancing(false);
+            self.jukebox_pos.store(None);
         }
 
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..100) == 0 {
