@@ -7760,3 +7760,40 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_comparator_output`, `is_ready`, `can_compost_more`, `can_hopper_insert`, `can_hopper_extract`, `should_level_increase`, and `calculate_bone_meal_spawn_pos`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_composter_fill_levels_fermentation_and_bone_meal_parity`.
+
+### Gap 314: Cauldron Water/Lava/Powder Snow Levels (0..3), Potion Boiling, Extinguishing & Freeze Thawing Parity
+- **Vanilla Reference**:
+  - `AbstractCauldronBlock.java:25-104`, `CauldronBlock.java:13-66`, `LayeredCauldronBlock.java:25-127`, `LavaCauldronBlock.java:16-52`:
+    - Level states and capacities:
+      - Fill level range: `MIN_FILL_LEVEL = 1`, `MAX_FILL_LEVEL = 3`.
+      - Empty cauldron (`BlockId::CAULDRON`): comparator signal 0, `is_full = false`.
+      - Layered cauldrons (`BlockId::WATER_CAULDRON`, `BlockId::POWDER_SNOW_CAULDRON`): property `LEVEL` (1 to 3).
+        - Comparator signal: matches `LEVEL` (1 to 3).
+        - Full when `LEVEL == 3`.
+      - Lava cauldron (`BlockId::LAVA_CAULDRON`): always full (level 3), comparator signal 3.
+    - Precipitation and filling probabilities:
+      - Rain filling: `RAIN_FILL_CHANCE = 0.05` (5% chance to fill empty cauldron to water level 1, or cycle water level +1).
+      - Powder snow filling: `POWDER_SNOW_FILL_CHANCE = 0.1` (10% chance to fill empty cauldron to powder snow level 1, or cycle powder snow level +1).
+    - Fluid content heights (`getContentHeight`):
+      - Height formula: `(6.0 + level * 3.0) / 16.0` blocks.
+      - Level 1: 0.5625 (9/16 blocks).
+      - Level 2: 0.75 (12/16 blocks).
+      - Level 3: 0.9375 (15/16 blocks).
+      - Lava cauldron: 0.9375 (15/16 blocks).
+    - Inside collision & status effects:
+      - Lava cauldron: executes `CLEAR_FREEZE` (instantly resets entity frozen ticks to 0), `LAVA_IGNITE` (sets on fire for 15s), and `lavaHurt` (4.0 lava damage).
+      - Water cauldron: extinguishes entity on fire, calling `lowerFillLevel` (decrements level by 1; reverts to empty cauldron if level hits 0).
+      - Powder snow cauldron: when on-fire entity enters, converts powder snow to water cauldron before lowering level (`Blocks.WATER_CAULDRON.setValue(LEVEL, level - 1)`).
+    - Stalactite drip reception:
+      - Empty cauldron: accepts water drip -> water cauldron level 1, lava drip -> lava cauldron.
+      - Water cauldron: accepts water drip when `level < 3` -> increments level +1; rejects lava drip.
+      - Powder snow / lava cauldron: rejects stalactite drip.
+      - Audio/visual drip events:
+        - Water drip event: `DRIP_WATER_EVENT = 1047`.
+        - Lava drip event: `DRIP_LAVA_EVENT = 1046`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/cauldron.rs`:
+    - Exported constants `MIN_FILL_LEVEL`, `MAX_FILL_LEVEL`, `LAVA_SIGNAL`, `EMPTY_SIGNAL`, `FLOOR_LEVEL`, `RAIN_FILL_CHANCE`, `POWDER_SNOW_FILL_CHANCE`, `DRIP_WATER_EVENT`, and `DRIP_LAVA_EVENT`.
+    - Exported helpers `calculate_comparator_output`, `is_full`, `get_content_height`, `can_extinguish_fire`, `should_rain_fill`, `should_snow_fill`, `lower_fill_level_on_extinguish`, `can_receive_drip`, and `get_drip_event`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_cauldron_levels_extinguish_thaw_and_comparator_parity`.

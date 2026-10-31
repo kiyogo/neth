@@ -497,6 +497,35 @@ impl CauldronBlock {
     pub const RAIN_FILL_CHANCE: f32 = 0.05;
     pub const POWDER_SNOW_FILL_CHANCE: f32 = 0.1;
     pub const DRIP_WATER_EVENT: i32 = 1047;
+    pub const DRIP_LAVA_EVENT: i32 = 1046;
+
+    /// Evaluates resulting block and level when an on-fire entity extinguishes inside
+    /// Vanilla LayeredCauldronBlock.java:84-97
+    #[must_use]
+    pub const fn lower_fill_level_on_extinguish(current_level: u8, _is_powder_snow: bool) -> (BlockId, u8) {
+        if current_level > 1 {
+            (BlockId::WATER_CAULDRON, current_level - 1)
+        } else {
+            (BlockId::CAULDRON, 0)
+        }
+    }
+
+    /// Evaluates stalactite drip reception eligibility
+    /// Vanilla AbstractCauldronBlock.java:88-100, CauldronBlock.java:48-51, LayeredCauldronBlock.java:50-52
+    #[must_use]
+    pub fn can_receive_drip(block_id: BlockId, is_water_drip: bool, current_level: u8) -> bool {
+        match block_id {
+            BlockId::CAULDRON => true,
+            BlockId::WATER_CAULDRON => is_water_drip && current_level < Self::MAX_FILL_LEVEL,
+            BlockId::POWDER_SNOW_CAULDRON | BlockId::LAVA_CAULDRON => false,
+            _ => false,
+        }
+    }
+
+    #[must_use]
+    pub const fn get_drip_event(is_water: bool) -> i32 {
+        if is_water { Self::DRIP_WATER_EVENT } else { Self::DRIP_LAVA_EVENT }
+    }
 
     pub fn calculate_comparator_output(block_id: BlockId, state_id: BlockStateId) -> u8 {
         match block_id {

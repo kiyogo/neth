@@ -17209,4 +17209,72 @@ mod tests {
         assert!(ComposterBlock::should_level_increase(6, 1.0, 0.99));
         assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0)); // cannot increase beyond 7
     }
+
+    #[test]
+    fn test_cauldron_levels_extinguish_thaw_and_comparator_parity() {
+        use crate::block::blocks::cauldron::CauldronBlock;
+        use pumpkin_data::{Block, BlockId};
+
+        // Constants verification
+        assert_eq!(CauldronBlock::MIN_FILL_LEVEL, 1);
+        assert_eq!(CauldronBlock::MAX_FILL_LEVEL, 3);
+        assert_eq!(CauldronBlock::LAVA_SIGNAL, 3);
+        assert_eq!(CauldronBlock::EMPTY_SIGNAL, 0);
+        assert_eq!(CauldronBlock::FLOOR_LEVEL, 4);
+        assert_eq!(CauldronBlock::RAIN_FILL_CHANCE, 0.05);
+        assert_eq!(CauldronBlock::POWDER_SNOW_FILL_CHANCE, 0.1);
+        assert_eq!(CauldronBlock::DRIP_WATER_EVENT, 1047);
+        assert_eq!(CauldronBlock::DRIP_LAVA_EVENT, 1046);
+
+        // Comparator output per block type and state
+        let empty_state = Block::CAULDRON.default_state.id;
+        assert_eq!(CauldronBlock::calculate_comparator_output(BlockId::CAULDRON, empty_state), 0);
+        assert!(!CauldronBlock::is_full(BlockId::CAULDRON, empty_state));
+
+        let lava_state = Block::LAVA_CAULDRON.default_state.id;
+        assert_eq!(CauldronBlock::calculate_comparator_output(BlockId::LAVA_CAULDRON, lava_state), 3);
+        assert!(CauldronBlock::is_full(BlockId::LAVA_CAULDRON, lava_state));
+
+        for lvl in 1..=3 {
+            let lvl_str = lvl.to_string();
+            let water_state = Block::WATER_CAULDRON.from_properties(&[("level", &lvl_str)]).to_state_id(&Block::WATER_CAULDRON);
+            assert_eq!(CauldronBlock::calculate_comparator_output(BlockId::WATER_CAULDRON, water_state), lvl);
+            assert_eq!(CauldronBlock::is_full(BlockId::WATER_CAULDRON, water_state), lvl == 3);
+
+            let snow_state = Block::POWDER_SNOW_CAULDRON.from_properties(&[("level", &lvl_str)]).to_state_id(&Block::POWDER_SNOW_CAULDRON);
+            assert_eq!(CauldronBlock::calculate_comparator_output(BlockId::POWDER_SNOW_CAULDRON, snow_state), lvl);
+            assert_eq!(CauldronBlock::is_full(BlockId::POWDER_SNOW_CAULDRON, snow_state), lvl == 3);
+        }
+
+        // Fluid content height
+        assert_eq!(CauldronBlock::get_content_height(BlockId::CAULDRON, empty_state), 0.0);
+        assert_eq!(CauldronBlock::get_content_height(BlockId::LAVA_CAULDRON, lava_state), 0.9375);
+        let water_lvl1 = Block::WATER_CAULDRON.from_properties(&[("level", "1")]).to_state_id(&Block::WATER_CAULDRON);
+        let water_lvl2 = Block::WATER_CAULDRON.from_properties(&[("level", "2")]).to_state_id(&Block::WATER_CAULDRON);
+        let water_lvl3 = Block::WATER_CAULDRON.from_properties(&[("level", "3")]).to_state_id(&Block::WATER_CAULDRON);
+        assert_eq!(CauldronBlock::get_content_height(BlockId::WATER_CAULDRON, water_lvl1), 0.5625);
+        assert_eq!(CauldronBlock::get_content_height(BlockId::WATER_CAULDRON, water_lvl2), 0.75);
+        assert_eq!(CauldronBlock::get_content_height(BlockId::WATER_CAULDRON, water_lvl3), 0.9375);
+
+        // Extinguish state transitions (water & powder snow)
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(3, false), (BlockId::WATER_CAULDRON, 2));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(2, false), (BlockId::WATER_CAULDRON, 1));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(1, false), (BlockId::CAULDRON, 0));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(3, true), (BlockId::WATER_CAULDRON, 2));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(1, true), (BlockId::CAULDRON, 0));
+
+        // Dripstone drip reception
+        assert!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, true, 0));
+        assert!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, false, 0));
+        assert!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 1));
+        assert!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 2));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 3)); // full
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, false, 1)); // lava on water
+        assert!(!CauldronBlock::can_receive_drip(BlockId::POWDER_SNOW_CAULDRON, true, 1));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::LAVA_CAULDRON, true, 3));
+
+        // Drip events
+        assert_eq!(CauldronBlock::get_drip_event(true), 1047);
+        assert_eq!(CauldronBlock::get_drip_event(false), 1046);
+    }
 }
