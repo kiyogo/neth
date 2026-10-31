@@ -767,6 +767,21 @@ impl BlockBehaviour for WeatheringCopperStairBlock {
 #[derive(Default)]
 pub struct WeatheringCopperTrapDoorBlock;
 
+impl WeatheringCopperTrapDoorBlock {
+    pub const HARDNESS: f32 = 3.0;
+    pub const BLAST_RESISTANCE: f32 = 6.0;
+
+    #[must_use]
+    pub const fn can_open_by_hand() -> bool {
+        true
+    }
+
+    #[must_use]
+    pub const fn can_open_by_wind_charge() -> bool {
+        true
+    }
+}
+
 impl ChangeOverTimeBlock<WeatherState> for WeatheringCopperTrapDoorBlock {
     fn get_age(&self, block: &Block) -> Option<WeatherState> {
         get_weather_state(block)
@@ -887,6 +902,21 @@ impl BlockBehaviour for WeatheringCopperSlabBlock {
 #[derive(Default)]
 pub struct WeatheringCopperDoorBlock;
 
+impl WeatheringCopperDoorBlock {
+    pub const HARDNESS: f32 = 3.0;
+    pub const BLAST_RESISTANCE: f32 = 6.0;
+
+    #[must_use]
+    pub const fn can_open_by_hand() -> bool {
+        true
+    }
+
+    #[must_use]
+    pub const fn can_open_by_wind_charge() -> bool {
+        true
+    }
+}
+
 impl ChangeOverTimeBlock<WeatherState> for WeatheringCopperDoorBlock {
     fn get_age(&self, block: &Block) -> Option<WeatherState> {
         get_weather_state(block)
@@ -975,6 +1005,32 @@ impl BlockBehaviour for WeatheringCopperDoorBlock {
 /// Weathering copper grate blocks.
 #[derive(Default)]
 pub struct WeatheringCopperGrateBlock;
+
+impl WeatheringCopperGrateBlock {
+    pub const HARDNESS: f32 = 3.0;
+    pub const BLAST_RESISTANCE: f32 = 6.0;
+    pub const DEFAULT_WATERLOGGED: bool = false;
+
+    #[must_use]
+    pub const fn can_mob_spawn() -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn is_redstone_conductor() -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn is_suffocating() -> bool {
+        false
+    }
+
+    #[must_use]
+    pub const fn is_view_blocking() -> bool {
+        false
+    }
+}
 
 impl ChangeOverTimeBlock<WeatherState> for WeatheringCopperGrateBlock {
     fn get_age(&self, block: &Block) -> Option<WeatherState> {

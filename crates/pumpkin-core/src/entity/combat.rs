@@ -19769,4 +19769,31 @@ mod tests {
         assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::EjectingReward));
         assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::Cooldown));
     }
+    #[test]
+    fn test_copper_grate_door_trapdoor_hardness_blast_and_interaction_parity() {
+        use crate::block::blocks::weathering_copper::{
+            WeatheringCopperDoorBlock, WeatheringCopperGrateBlock, WeatheringCopperTrapDoorBlock,
+        };
+
+        // 1. Copper Grate parity (Blocks.java:5144-5152)
+        assert_eq!(WeatheringCopperGrateBlock::HARDNESS, 3.0);
+        assert_eq!(WeatheringCopperGrateBlock::BLAST_RESISTANCE, 6.0);
+        assert_eq!(WeatheringCopperGrateBlock::DEFAULT_WATERLOGGED, false);
+        assert!(!WeatheringCopperGrateBlock::can_mob_spawn());
+        assert!(!WeatheringCopperGrateBlock::is_redstone_conductor());
+        assert!(!WeatheringCopperGrateBlock::is_suffocating());
+        assert!(!WeatheringCopperGrateBlock::is_view_blocking());
+
+        // 2. Copper Door parity (BlockSetType.COPPER, Blocks.java:5115-5125)
+        assert_eq!(WeatheringCopperDoorBlock::HARDNESS, 3.0);
+        assert_eq!(WeatheringCopperDoorBlock::BLAST_RESISTANCE, 6.0);
+        assert!(WeatheringCopperDoorBlock::can_open_by_hand());
+        assert!(WeatheringCopperDoorBlock::can_open_by_wind_charge());
+
+        // 3. Copper Trapdoor parity (BlockSetType.COPPER, Blocks.java:5126-5136)
+        assert_eq!(WeatheringCopperTrapDoorBlock::HARDNESS, 3.0);
+        assert_eq!(WeatheringCopperTrapDoorBlock::BLAST_RESISTANCE, 6.0);
+        assert!(WeatheringCopperTrapDoorBlock::can_open_by_hand());
+        assert!(WeatheringCopperTrapDoorBlock::can_open_by_wind_charge());
+    }
 }

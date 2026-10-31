@@ -8755,3 +8755,22 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Added helper functions `get_light_level`, `get_spinning_mob_speed`, and `is_capable_of_spawning` on `TrialSpawnerBlock`.
   - Updated `TrialSpawnerBlockEntity` reward ejection intervals from 20 to 30 ticks (`TIME_BETWEEN_EACH_EJECTION`).
   - Added unit test `test_trial_spawner_shutter_audio_ejection_interval_and_light_levels_parity` in `combat.rs`.
+
+### Gap 356: Copper Family 1.21 Blocks (Copper Grate, Copper Door, Copper Trapdoor) Hardness (3.0), Blast Resistance (6.0), BlockSetType Hand/Wind Opening & Mob Spawn Prohibition Parity
+
+- **Vanilla Reference**: `Blocks.java:5115-5152`, `BlockSetType.java:47-63`, `WeatheringCopperGrateBlock.java:1-30`, `WaterloggedTransparentBlock.java:1-59`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the copper family building blocks and mechanisms implement specific physical properties, transparency, mob spawn blocking, and opening rules:
+    - **Copper Grate (`COPPER_GRATE`, `EXPOSED_COPPER_GRATE`, `WEATHERED_COPPER_GRATE`, `OXIDIZED_COPPER_GRATE`, and Waxed variants)**:
+      - `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`.
+      - Implements `WaterloggedTransparentBlock` with default `WATERLOGGED = false`.
+      - Mobs cannot spawn on top of copper grates (`isValidSpawn = Blocks::never`).
+      - Non-redstone conductor (`isRedstoneConductor = Blocks::never`), does not suffocate entities (`isSuffocating = Blocks::never`), and does not block entity view (`isViewBlocking = Blocks::never`).
+    - **Copper Door & Copper Trapdoor (`COPPER_DOOR`, `COPPER_TRAPDOOR`, and weathering/waxed variants)**:
+      - `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`.
+      - `BlockSetType.COPPER`: Unlike Iron Doors/Trapdoors, Copper Doors and Trapdoors can be opened by hand (`canOpenByHand = true`) AND can be blown open by Wind Charges (`canOpenByWindCharge = true`).
+      - Sounds: `SoundEvents.COPPER_DOOR_OPEN`, `SoundEvents.COPPER_DOOR_CLOSE`, `SoundEvents.COPPER_TRAPDOOR_OPEN`, `SoundEvents.COPPER_TRAPDOOR_CLOSE`.
+- **Neth Changes**:
+  - Exported constants `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`, `DEFAULT_WATERLOGGED = false`, and helpers `can_mob_spawn`, `is_redstone_conductor`, `is_suffocating`, and `is_view_blocking` on `WeatheringCopperGrateBlock`.
+  - Exported constants `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`, and helpers `can_open_by_hand` and `can_open_by_wind_charge` on `WeatheringCopperDoorBlock` and `WeatheringCopperTrapDoorBlock`.
+  - Added unit test `test_copper_grate_door_trapdoor_hardness_blast_and_interaction_parity` in `combat.rs`.
