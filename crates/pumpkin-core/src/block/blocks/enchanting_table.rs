@@ -6,7 +6,7 @@ use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, PathComputationType, PlacedArgs,
 };
-use pumpkin_data::{Block, BlockState, BlockStateId, translation};
+use pumpkin_data::{Block, BlockState, translation};
 use pumpkin_inventory::enchanting::enchanting_screen_handler::EnchantingTableScreenHandler;
 use pumpkin_inventory::player::player_inventory::PlayerInventory;
 use pumpkin_inventory::screen_handler::{
@@ -23,6 +23,40 @@ pub struct EnchantingTableBlock;
 impl EnchantingTableBlock {
     pub const MAX_BOOKSHELVES: i32 = 15;
     pub const TOTAL_BOOKSHELF_POSITIONS: usize = 32;
+
+    /// Vanilla EnchantingTableBlock.java:31-34:
+    /// All 32 candidate bookshelf offsets surrounding the enchanting table:
+    /// x in -2..=2, z in -2..=2, y in 0..=1, filtered by (|x| == 2 || |z| == 2).
+    pub const BOOKSHELF_OFFSETS: [(i32, i32, i32); 32] = [
+        // y = 0 (16 offsets)
+        (-2, 0, -2), (-1, 0, -2), (0, 0, -2), (1, 0, -2), (2, 0, -2),
+        (-2, 0, -1),                                       (2, 0, -1),
+        (-2, 0,  0),                                       (2, 0,  0),
+        (-2, 0,  1),                                       (2, 0,  1),
+        (-2, 0,  2), (-1, 0,  2), (0, 0,  2), (1, 0,  2), (2, 0,  2),
+        // y = 1 (16 offsets)
+        (-2, 1, -2), (-1, 1, -2), (0, 1, -2), (1, 1, -2), (2, 1, -2),
+        (-2, 1, -1),                                       (2, 1, -1),
+        (-2, 1,  0),                                       (2, 1,  0),
+        (-2, 1,  1),                                       (2, 1,  1),
+        (-2, 1,  2), (-1, 1,  2), (0, 1,  2), (1, 1,  2), (2, 1,  2),
+    ];
+
+    /// Vanilla EnchantingTableBlock.java:43:
+    /// The intermediate block between table and bookshelf must be at (offset.x / 2, offset.y, offset.z / 2).
+    #[must_use]
+    pub const fn get_transmitter_offset(offset: (i32, i32, i32)) -> (i32, i32, i32) {
+        (offset.0 / 2, offset.1, offset.2 / 2)
+    }
+
+    #[must_use]
+    pub fn is_valid_bookshelf_at_offset(
+        _offset: (i32, i32, i32),
+        is_bookshelf_at_offset: bool,
+        is_transmitter_clear: bool,
+    ) -> bool {
+        is_bookshelf_at_offset && is_transmitter_clear
+    }
 }
 
 /// Vanilla `EnchantmentHelper.getEnchantmentCost`:
@@ -80,48 +114,18 @@ impl BlockBehaviour for EnchantingTableBlock {
         args: GetScreenHandlerFactoryArgs<'_>,
     ) -> Option<Box<dyn ScreenHandlerFactory>> {
         let mut bookshelf_count = 0;
+        for &offset in &Self::BOOKSHELF_OFFSETS {
+            let shelf_pos = args.position.add(offset.0, offset.1, offset.2);
+            let trans_offset = Self::get_transmitter_offset(offset);
+            let trans_pos = args.position.add(trans_offset.0, trans_offset.1, trans_offset.2);
 
-        for off_z in -1..=1 {
-            for off_x in -1..=1 {
-                if (off_z != 0 || off_x != 0)
-                    && args
-                        .world
-                        .get_block_state(&args.position.add(off_x, 0, off_z))
-                        .id
-                        == BlockStateId::AIR
-                    && args
-                        .world
-                        .get_block_state(&args.position.add(off_x, 1, off_z))
-                        .id
-                        == BlockStateId::AIR
-                // Air
-                {
-                    for off_y in 0..=1 {
-                        if Self::is_bookshelf(
-                            args.world,
-                            &args.position.add(off_x * 2, off_y, off_z * 2),
-                        ) {
-                            bookshelf_count += 1;
-                        }
-                        if off_x != 0 && off_z != 0 {
-                            if Self::is_bookshelf(
-                                args.world,
-                                &args.position.add(off_x * 2, off_y, off_z),
-                            ) {
-                                bookshelf_count += 1;
-                            }
-                            if Self::is_bookshelf(
-                                args.world,
-                                &args.position.add(off_x, off_y, off_z * 2),
-                            ) {
-                                bookshelf_count += 1;
-                            }
-                        }
-                    }
-                }
+            if Self::is_bookshelf(args.world, &shelf_pos)
+                && Self::is_transmitter(args.world, &trans_pos)
+            {
+                bookshelf_count += 1;
             }
         }
-        let bookshelf_count = bookshelf_count.min(15);
+        let bookshelf_count = bookshelf_count.min(Self::MAX_BOOKSHELVES);
 
         let seed = args.player.enchantment_seed();
         Some(Box::new(EnchantingTableScreenFactory {
@@ -136,10 +140,16 @@ impl BlockBehaviour for EnchantingTableBlock {
 }
 
 impl EnchantingTableBlock {
-    fn is_bookshelf(world: &Arc<crate::world::World>, pos: &BlockPos) -> bool {
+    pub fn is_bookshelf(world: &Arc<crate::world::World>, pos: &BlockPos) -> bool {
         let state = world.get_block_state(pos);
         let block = pumpkin_data::Block::from_state_id(state.id);
         block == &Block::BOOKSHELF
+    }
+
+    pub fn is_transmitter(world: &Arc<crate::world::World>, pos: &BlockPos) -> bool {
+        let state = world.get_block_state(pos);
+        let block = pumpkin_data::Block::from_state_id(state.id);
+        block == &Block::AIR || block == &Block::CAVE_AIR || block == &Block::VOID_AIR
     }
 }
 

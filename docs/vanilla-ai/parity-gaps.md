@@ -8314,3 +8314,19 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `LODESTONE_COMPASS_TRANSLATION_KEY` and block/item identification helpers on `CompassItem`.
   - Added `should_replace_stack`, `create_lodestone_tracker`, and `tick_tracker` implementing Vanilla's dimension-checking and broken-lodestone invalidation logic.
   - Added unit test `test_lodestone_compass_binding_tracking_and_transmutation_parity` verifying binding, cross-dimension retention, and broken lodestone invalidation.
+
+### Gap 333: Enchanting Table Bookshelf Detection (32 Positions, Max 15 Bookshelves) & Level Cost Parity
+
+- **Vanilla Reference**: `EnchantingTableBlock.java:1-112`, `EnchantmentMenu.java:1-266`, `EnchantmentHelper.java:31-48`.
+- **Description**:
+  - In Vanilla Minecraft, enchanting tables search 32 candidate bookshelf positions in a 5x2x5 ring around the table (`x` in `-2..=2`, `z` in `-2..=2`, `y` in `0..=1`, filtered by `|x| == 2 || |z| == 2`).
+  - For each offset, the block at `pos + offset` must be a valid bookshelf (`ENCHANTMENT_POWER_PROVIDER`), and the intermediate transmitter block between table and bookshelf at `pos + (offset.x / 2, offset.y, offset.z / 2)` must be passable/replaceable (`ENCHANTMENT_POWER_TRANSMITTER`).
+  - Bookshelf count caps at 15 for level calculations.
+  - Cost formula per slot:
+    - Slot 0 (top): `Math.max(selected / 3, 1)`, requires `cost >= 1`.
+    - Slot 1 (middle): `selected * 2 / 3 + 1`, requires `cost >= 2`.
+    - Slot 2 (bottom): `Math.max(selected, bookcases * 2)`, requires `cost >= 3` (reaching level 30 with 15 bookcases).
+- **Neth Changes**:
+  - Replaced the flawed nested-radius scanner with Vanilla's exact `BOOKSHELF_OFFSETS` (32 coordinates).
+  - Added `get_transmitter_offset` computing `(dx / 2, dy, dz / 2)` per candidate position and `is_transmitter` for passable air detection.
+  - Added unit test `test_enchanting_table_bookshelf_offsets_transmitters_and_cost_parity` verifying offset boundaries, raycast intermediate transmitter positions, and 3-slot cost formulas.

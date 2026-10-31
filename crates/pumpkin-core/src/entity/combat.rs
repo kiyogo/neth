@@ -18340,4 +18340,94 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_enchanting_table_bookshelf_offsets_transmitters_and_cost_parity() {
+        use crate::block::blocks::enchanting_table::EnchantingTableBlock;
+
+        // Constants verification
+        assert_eq!(EnchantingTableBlock::MAX_BOOKSHELVES, 15);
+        assert_eq!(EnchantingTableBlock::TOTAL_BOOKSHELF_POSITIONS, 32);
+        assert_eq!(EnchantingTableBlock::BOOKSHELF_OFFSETS.len(), 32);
+
+        // Verify all 32 offsets satisfy Vanilla filter:
+        // x in -2..=2, z in -2..=2, y in 0..=1, and (|x| == 2 || |z| == 2)
+        for &(dx, dy, dz) in &EnchantingTableBlock::BOOKSHELF_OFFSETS {
+            assert!(dx >= -2 && dx <= 2);
+            assert!(dy >= 0 && dy <= 1);
+            assert!(dz >= -2 && dz <= 2);
+            assert!(dx.abs() == 2 || dz.abs() == 2);
+
+            // Transmitter offset must match Vanilla: (dx / 2, dy, dz / 2)
+            let trans = EnchantingTableBlock::get_transmitter_offset((dx, dy, dz));
+            assert_eq!(trans, (dx / 2, dy, dz / 2));
+            assert!(trans.0 >= -1 && trans.0 <= 1);
+            assert!(trans.2 >= -1 && trans.2 <= 1);
+            assert_eq!(trans.1, dy);
+        }
+
+        // Specific transmitter coordinates verification
+        // Corner bookshelf at (-2, 0, -2) -> intermediate transmitter at (-1, 0, -1)
+        assert_eq!(
+            EnchantingTableBlock::get_transmitter_offset((-2, 0, -2)),
+            (-1, 0, -1)
+        );
+        // Face bookshelf at (0, 0, 2) -> intermediate transmitter at (0, 0, 1)
+        assert_eq!(
+            EnchantingTableBlock::get_transmitter_offset((0, 0, 2)),
+            (0, 0, 1)
+        );
+        // Diagonal offset at (2, 1, 1) -> intermediate transmitter at (1, 1, 0)
+        assert_eq!(
+            EnchantingTableBlock::get_transmitter_offset((2, 1, 1)),
+            (1, 1, 0)
+        );
+
+        // Validation helper
+        assert!(EnchantingTableBlock::is_valid_bookshelf_at_offset((2, 0, 0), true, true));
+        assert!(!EnchantingTableBlock::is_valid_bookshelf_at_offset((2, 0, 0), true, false));
+        assert!(!EnchantingTableBlock::is_valid_bookshelf_at_offset((2, 0, 0), false, true));
+
+        // Cost calculation parity with Vanilla EnchantmentHelper.java:
+        // Slot 0 (top): max(selected / 3, 1), requires cost >= 1
+        // Slot 1 (middle): selected * 2 / 3 + 1, requires cost >= 2
+        // Slot 2 (bottom): max(selected, bookcases * 2), requires cost >= 3
+
+        // Zero bookcases: selected = 10
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(0, 0, 10),
+            3
+        );
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(1, 0, 10),
+            7
+        );
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(2, 0, 10),
+            10
+        );
+
+        // 15 bookcases: selected = 24
+        // Slot 0: 24 / 3 = 8
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(0, 15, 24),
+            8
+        );
+        // Slot 1: 24 * 2 / 3 + 1 = 17
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(1, 15, 24),
+            17
+        );
+        // Slot 2: max(24, 15 * 2 = 30) = 30 (max level 30 enchantment!)
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(2, 15, 24),
+            30
+        );
+
+        // Cap at 15 bookcases: passing 20 bookcases should clamp to 15
+        assert_eq!(
+            crate::block::blocks::enchanting_table::calculate_enchantment_cost(2, 20, 24),
+            30
+        );
+    }
 }
