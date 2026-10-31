@@ -7936,3 +7936,36 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_facing_from_direction`, `is_enabled`, `is_suction_blocked`, and `calculate_container_comparator_output`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_hopper_transfer_cooldown_lock_state_facing_and_comparator_parity`.
+
+### Gap 319: Dispenser & Dropper Projectile/Item Ejection Vectors, Fail Click Sound (1001) & Shoot Sound (1000) Parity
+- **Vanilla Reference**:
+  - `DispenserBlock.java:1-160`, `DropperBlock.java:1-80`, `DefaultDispenseItemBehavior.java:1-90`:
+    - Timing & capacity:
+      - Trigger redstone delay: `TRIGGER_DURATION = 4` game ticks.
+      - Container slots: 9 inventory slots (`CONTAINER_SIZE = 9`, 3x3 grid).
+    - Audio and visual world events:
+      - Empty container activation: plays fail click sound `FAIL_EVENT_ID = 1001` (`WorldEvent.SoundDispenserFail`).
+      - Successful item drop / dispense: plays sound `DISPENSE_EVENT_ID = 1000` (`WorldEvent.SoundDispenserDispense`).
+      - Projectile launch: plays sound `LAUNCH_EVENT_ID = 1002` (`WorldEvent.SoundDispenserLaunchProjectile`).
+      - Shoot smoke animation: emits smoke particles in facing direction `SMOKE_EVENT_ID = 2000` (`WorldEvent.ParticlesShootSmoke` with 3D direction code).
+    - Item ejection vector and offset geometry:
+      - Center offset scale: `DISPENSE_OFFSET_SCALE = 0.7`.
+      - Vertical spawn Y adjustment: `-0.125` for `Facing::Up` and `Facing::Down`.
+      - Horizontal spawn Y adjustment: `-0.15625` for horizontal directions.
+      - Velocity accuracy: `ACCURACY_DEFAULT = 6.0` with spread factor `SPREAD_FACTOR = 0.017_227_5`.
+      - Ejection velocity base: `pow = random.nextDouble() * 0.1 + 0.2` along face normal.
+    - Dropper container insertion vs drop:
+      - If adjacent block facing the dropper has a container (`HopperBlockEntity::getContainerAt`), pushes 1 item into that container.
+      - If no container or container is full, drops item into the world as an item entity.
+    - Comparator analog output calculation:
+      - Uses standard container formula `Mth.lerpDiscrete(totalPercent, 0, 15)` over 9 slots (`totalPercent = sum(count / max_stack) / 9.0`).
+      - Values: 0 items = 0; 1 item = 1; 1 full stack = 2; 3 full stacks = 5; 6 full stacks = 10; 9 full stacks = 15.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Exported constants `TRIGGER_DURATION`, `CONTAINER_SIZE`, `DISPENSE_OFFSET_SCALE`, `FAIL_EVENT_ID`, `DISPENSE_EVENT_ID`, `LAUNCH_EVENT_ID`, `SMOKE_EVENT_ID`, `ACCURACY_DEFAULT`, `SPREAD_FACTOR`, `Y_OFFSET_VERTICAL`, and `Y_OFFSET_HORIZONTAL`.
+    - Exported helpers `get_ejection_y_offset` and `calculate_container_comparator_signal`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Fixed empty dropper scheduled tick event to emit `WorldEvent::SoundDispenserFail` (1001) instead of 1000.
+    - Exported constants and helpers matching `DispenserBlock`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_dispenser_dropper_ejection_events_and_comparator_parity`.

@@ -62,8 +62,38 @@ impl DropperBlock {
     pub const CONTAINER_SIZE: usize = 9;
     pub const FAIL_EVENT_ID: i32 = 1001;
     pub const DROP_EVENT_ID: i32 = 1000;
+    pub const SMOKE_EVENT_ID: i32 = 2000;
+    pub const ACCURACY_DEFAULT: f64 = 6.0;
+    pub const SPREAD_FACTOR: f64 = 0.017_227_5;
+    pub const Y_OFFSET_VERTICAL: f64 = 0.125;
+    pub const Y_OFFSET_HORIZONTAL: f64 = 0.15625;
     pub const DEFAULT_TRIGGERED: bool = false;
     pub const DEFAULT_FACING: Facing = Facing::North;
+
+    #[must_use]
+    pub fn get_ejection_y_offset(facing: Facing) -> f64 {
+        match facing {
+            Facing::Up | Facing::Down => Self::Y_OFFSET_VERTICAL,
+            _ => Self::Y_OFFSET_HORIZONTAL,
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_container_comparator_signal(fill_fractions: &[f32; 9]) -> u8 {
+        let mut total = 0.0;
+        let mut has_items = false;
+        for &f in fill_fractions {
+            if f > 0.0 {
+                has_items = true;
+                total += f.clamp(0.0, 1.0);
+            }
+        }
+        if !has_items {
+            return 0;
+        }
+        let percent = total / 9.0;
+        (1.0 + percent * 14.0).floor() as u8
+    }
 
     #[must_use]
     pub const fn calculate_facing_from_player(facing_order: &[Facing; 6]) -> Facing {
@@ -278,7 +308,7 @@ impl BlockBehaviour for DropperBlock {
                 );
             } else {
                 args.world
-                    .sync_world_event(WorldEvent::SoundDispenserDispense, *args.position, 0);
+                    .sync_world_event(WorldEvent::SoundDispenserFail, *args.position, 0);
             }
         }
     }

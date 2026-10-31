@@ -17476,4 +17476,79 @@ mod tests {
         // 5 full stacks (fullness = 1.0) -> floor(1 + 1.0 * 14) = 15
         assert_eq!(HopperBlock::calculate_container_comparator_output(&[64, 64, 64, 64, 64], &[64, 64, 64, 64, 64]), 15);
     }
+
+    #[test]
+    fn test_dispenser_dropper_ejection_events_and_comparator_parity() {
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use pumpkin_data::block_properties::Facing;
+
+        // Constants verification
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DispenserBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DispenserBlock::DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DispenserBlock::LAUNCH_EVENT_ID, 1002);
+        assert_eq!(DispenserBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DispenserBlock::ACCURACY_DEFAULT, 6.0);
+        assert_eq!(DispenserBlock::SPREAD_FACTOR, 0.017_227_5);
+        assert_eq!(DispenserBlock::Y_OFFSET_VERTICAL, 0.125);
+        assert_eq!(DispenserBlock::Y_OFFSET_HORIZONTAL, 0.15625);
+
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DropperBlock::DROP_EVENT_ID, 1000);
+        assert_eq!(DropperBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DropperBlock::ACCURACY_DEFAULT, 6.0);
+        assert_eq!(DropperBlock::SPREAD_FACTOR, 0.017_227_5);
+        assert_eq!(DropperBlock::Y_OFFSET_VERTICAL, 0.125);
+        assert_eq!(DropperBlock::Y_OFFSET_HORIZONTAL, 0.15625);
+
+        // Vertical vs Horizontal Ejection Y-offset
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::North), 0.15625);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::South), 0.15625);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::West), 0.15625);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::East), 0.15625);
+
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::North), 0.15625);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::South), 0.15625);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::West), 0.15625);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::East), 0.15625);
+
+        // 9-slot Container Comparator Output Parity
+        // 0 items -> 0
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&[0.0; 9]), 0);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&[0.0; 9]), 0);
+
+        // 1 full stack in 9-slot container (1/9) -> floor(1 + 14/9) = 2
+        let mut one_stack = [0.0; 9];
+        one_stack[0] = 1.0;
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&one_stack), 2);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&one_stack), 2);
+
+        // 3 full stacks (3/9 = 1/3) -> floor(1 + 14/3) = 5
+        let mut three_stacks = [0.0; 9];
+        three_stacks[0] = 1.0;
+        three_stacks[1] = 1.0;
+        three_stacks[2] = 1.0;
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&three_stacks), 5);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&three_stacks), 5);
+
+        // 6 full stacks (6/9 = 2/3) -> floor(1 + 28/3) = 10
+        let mut six_stacks = [0.0; 9];
+        for i in 0..6 {
+            six_stacks[i] = 1.0;
+        }
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&six_stacks), 10);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&six_stacks), 10);
+
+        // 9 full stacks (9/9 = 1.0) -> floor(1 + 14) = 15
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
+    }
 }
