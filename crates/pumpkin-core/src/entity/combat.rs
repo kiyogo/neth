@@ -9711,6 +9711,71 @@ pub const BOGGED_BASE_MOVEMENT_SPEED: f64 = 0.25;
 
 
 
+/// Minecraft 1.21 Trial Omen Mob Effects parity helpers:
+/// - WindChargedMobEffect.java: Gust burst explosion on death (strength 3.0..5.0)
+/// - WeavingMobEffect.java: Cobwebs spawned on death (2..3 cobwebs)
+/// - OozingMobEffect.java: Slimes spawned on death (2 medium size-2 slimes, capped by maxEntityCramming)
+/// - InfestedMobEffect.java: Silverfish spawned on hurt (10% chance, 1..2 silverfish)
+pub struct TrialOmenEffects;
+
+impl TrialOmenEffects {
+    // Wind Charged (WindChargedMobEffect.java)
+    pub const WIND_CHARGED_MIN_GUST_STRENGTH: f32 = 3.0;
+    pub const WIND_CHARGED_MAX_GUST_STRENGTH: f32 = 5.0;
+
+    #[must_use]
+    pub fn calculate_wind_charged_gust_strength(random_fraction: f32) -> f32 {
+        Self::WIND_CHARGED_MIN_GUST_STRENGTH + random_fraction.clamp(0.0, 1.0) * 2.0
+    }
+
+    // Weaving (WeavingMobEffect.java)
+    pub const WEAVING_MIN_COBWEBS: i32 = 2;
+    pub const WEAVING_MAX_COBWEBS: i32 = 3;
+    pub const WEAVING_MAX_SEARCH_ATTEMPTS: i32 = 15;
+    pub const WEAVING_SEARCH_RADIUS: i32 = 1;
+    pub const EVENT_COBWEB_PLACEMENT: u16 = 3018;
+
+    #[must_use]
+    pub const fn can_weaving_spawn_cobwebs(is_player: bool, mob_griefing: bool) -> bool {
+        is_player || mob_griefing
+    }
+
+    // Oozing (OozingMobEffect.java)
+    pub const OOZING_SLIME_SIZE: u8 = 2;
+    pub const OOZING_DEFAULT_SLIMES: i32 = 2;
+    pub const OOZING_CHECK_RADIUS: f64 = 2.0;
+
+    #[must_use]
+    pub const fn calculate_oozing_slimes_to_spawn(
+        max_entity_cramming: i32,
+        nearby_slimes: i32,
+        requested: i32,
+    ) -> i32 {
+        if max_entity_cramming < 1 {
+            requested
+        } else {
+            let available = max_entity_cramming - nearby_slimes;
+            if available <= 0 {
+                0
+            } else if available < requested {
+                available
+            } else {
+                requested
+            }
+        }
+    }
+
+    // Infested (InfestedMobEffect.java)
+    pub const INFESTED_SPAWN_CHANCE: f32 = 0.10;
+    pub const INFESTED_MIN_SILVERFISH: i32 = 1;
+    pub const INFESTED_MAX_SILVERFISH: i32 = 2;
+
+    #[must_use]
+    pub fn should_infested_spawn_silverfish(roll: f32) -> bool {
+        roll <= Self::INFESTED_SPAWN_CHANCE
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -18973,5 +19038,56 @@ mod tests {
         assert!(!OminousItemSpawnerEntity::should_spawn_item(99, 100));
         assert!(OminousItemSpawnerEntity::should_spawn_item(100, 100));
         assert!(OminousItemSpawnerEntity::should_spawn_item(101, 100));
+    }
+    #[test]
+    fn test_trial_omen_mob_effects_wind_charged_weaving_oozing_infested_parity() {
+        use crate::entity::combat::TrialOmenEffects;
+
+        // 1. Wind Charged (WindChargedMobEffect.java:23: 3.0F + random * 2.0F)
+        assert_eq!(TrialOmenEffects::WIND_CHARGED_MIN_GUST_STRENGTH, 3.0);
+        assert_eq!(TrialOmenEffects::WIND_CHARGED_MAX_GUST_STRENGTH, 5.0);
+        assert!((TrialOmenEffects::calculate_wind_charged_gust_strength(0.0) - 3.0).abs() < 1e-6);
+        assert!((TrialOmenEffects::calculate_wind_charged_gust_strength(0.5) - 4.0).abs() < 1e-6);
+        assert!((TrialOmenEffects::calculate_wind_charged_gust_strength(1.0) - 5.0).abs() < 1e-6);
+
+        // 2. Weaving (WeavingMobEffect.java:27: player || mobGriefing)
+        assert_eq!(TrialOmenEffects::WEAVING_MIN_COBWEBS, 2);
+        assert_eq!(TrialOmenEffects::WEAVING_MAX_COBWEBS, 3);
+        assert_eq!(TrialOmenEffects::WEAVING_MAX_SEARCH_ATTEMPTS, 15);
+        assert_eq!(TrialOmenEffects::WEAVING_SEARCH_RADIUS, 1);
+        assert_eq!(TrialOmenEffects::EVENT_COBWEB_PLACEMENT, 3018);
+
+        assert!(TrialOmenEffects::can_weaving_spawn_cobwebs(true, false)); // player death always spawns
+        assert!(TrialOmenEffects::can_weaving_spawn_cobwebs(false, true)); // mob death with mobGriefing
+        assert!(!TrialOmenEffects::can_weaving_spawn_cobwebs(false, false)); // mob death without mobGriefing blocked
+
+        // 3. Oozing (OozingMobEffect.java:30-32: numberOfSlimesToSpawn)
+        assert_eq!(TrialOmenEffects::OOZING_SLIME_SIZE, 2); // medium slimes
+        assert_eq!(TrialOmenEffects::OOZING_DEFAULT_SLIMES, 2);
+        assert_eq!(TrialOmenEffects::OOZING_CHECK_RADIUS, 2.0);
+
+        // No cramming limit (cramming < 1) -> all requested spawn
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(0, 50, 2), 2);
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(-1, 50, 2), 2);
+
+        // Cramming limit active (e.g. 24 max cramming)
+        // 10 nearby slimes -> 24 - 10 = 14 available -> spawns 2
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(24, 10, 2), 2);
+        // 23 nearby slimes -> 24 - 23 = 1 available -> spawns 1
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(24, 23, 2), 1);
+        // 24 nearby slimes -> 0 available -> spawns 0
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(24, 24, 2), 0);
+        // 30 nearby slimes -> 0 available -> spawns 0
+        assert_eq!(TrialOmenEffects::calculate_oozing_slimes_to_spawn(24, 30, 2), 0);
+
+        // 4. Infested (InfestedMobEffect.java:21-29: 10% chance on hurt, 1..2 silverfish)
+        assert_eq!(TrialOmenEffects::INFESTED_SPAWN_CHANCE, 0.10);
+        assert_eq!(TrialOmenEffects::INFESTED_MIN_SILVERFISH, 1);
+        assert_eq!(TrialOmenEffects::INFESTED_MAX_SILVERFISH, 2);
+
+        assert!(TrialOmenEffects::should_infested_spawn_silverfish(0.05));
+        assert!(TrialOmenEffects::should_infested_spawn_silverfish(0.10));
+        assert!(!TrialOmenEffects::should_infested_spawn_silverfish(0.1001));
+        assert!(!TrialOmenEffects::should_infested_spawn_silverfish(0.50));
     }
 }

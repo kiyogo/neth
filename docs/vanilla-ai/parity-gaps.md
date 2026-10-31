@@ -8534,3 +8534,25 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants DEFAULT_MIN_SPAWN_TICKS = 60, DEFAULT_MAX_SPAWN_TICKS = 120, and TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND = 36 in entity/ominous_item_spawner.rs.
   - Added helper methods should_play_warning_sound, should_spawn_item, and is_delay_within_range.
   - Added unit test 	est_ominous_item_spawner_delay_sound_and_spawn_parity in combat.rs.
+
+### Gap 345: Trial Omen Mob Effects: Wind Charged, Weaving, Oozing & Infested Parity
+
+- **Vanilla Reference**: `WindChargedMobEffect.java:1-41`, `WeavingMobEffect.java:1-53`, `OozingMobEffect.java:1-68`, `InfestedMobEffect.java:1-51`, `MobEffects.java:115-122`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Trial Chambers feature 4 distinct ominous potion effects applied to mobs:
+    1. **Wind Charged** (`WindChargedMobEffect.java`):
+       - On mob death (`reason == Entity.RemovalReason.KILLED`), detonates a wind burst explosion at vertical center (`mob.getY() + mob.getBbHeight() / 2.0F`).
+       - Gust strength scales randomly between 3.0 and 5.0 (`3.0F + random * 2.0F`), emitting small and large gust particles and sound `SoundEvents.BREEZE_WIND_CHARGE_BURST`.
+    2. **Weaving** (`WeavingMobEffect.java`):
+       - On mob death (`reason == KILLED`), spawns 2 to 3 cobwebs (`randomBetweenInclusive(2, 3)`) in a 3x3x3 cube around the victim (`pos, 1`), provided `mob instanceof Player || mobGriefing == true`.
+       - Cobwebs only place on replaceable blocks whose underside block face is sturdy upwards (`isFaceSturdy(Direction.UP)`), emitting event 3018 (`ParticlesCobwebPlacement`).
+    3. **Oozing** (`OozingMobEffect.java`):
+       - On mob death (`reason == KILLED`), spawns 2 medium slimes (`SLIME_SIZE = 2`) at `(x, y + 0.5, z)`.
+       - Respects gamerule `maxEntityCramming`: calculates `clamp(0, maxEntityCramming - nearbySlimes, 2)` checking slimes within radius 2.0 blocks (`RADIUS_TO_CHECK_SLIMES = 2`). If cramming is disabled (< 1), spawns all 2 slimes.
+    4. **Infested** (`InfestedMobEffect.java`):
+       - On mob hurt (`onMobHurt`), roll 10% chance (`INFESTED_SPAWN_CHANCE = 0.10`).
+       - On success, spawns 1 to 2 silverfish (`randomBetweenInclusive(1, 2)`) launched outwards at `0.3 * (1.0, 1.5, 1.0)` rotated by `[-PI/2, PI/2]` with sound `SoundEvents.SILVERFISH_HURT`.
+- **Neth Changes**:
+  - Defined `TrialOmenEffects` in `crates/pumpkin-core/src/entity/combat.rs`.
+  - Added constants and helpers `calculate_wind_charged_gust_strength`, `can_weaving_spawn_cobwebs`, `calculate_oozing_slimes_to_spawn`, and `should_infested_spawn_silverfish`.
+  - Added unit test `test_trial_omen_mob_effects_wind_charged_weaving_oozing_infested_parity` in `combat.rs`.
