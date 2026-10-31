@@ -5,6 +5,7 @@ use pumpkin_data::block_properties::{VaultLikeProperties, VaultState};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_data::world::WorldEvent;
 use pumpkin_macros::pumpkin_block;
 use pumpkin_world::world::BlockFlags;
 
@@ -41,6 +42,50 @@ impl VaultBlock {
     #[must_use]
     pub fn is_within_deactivation_range(distance_sq: f64) -> bool {
         distance_sq <= Self::DEACTIVATION_RANGE * Self::DEACTIVATION_RANGE
+    }
+
+    pub const INSERT_FAIL_SOUND_COOLDOWN_TICKS: i64 = 15;
+    pub const DISPLAY_ITEM_CYCLE_TICK_RATE: u32 = 20;
+    pub const DELAY_BEFORE_FIRST_EJECTION_TICKS: u32 = 20;
+    pub const DELAY_BETWEEN_EJECTIONS_TICKS: u32 = 20;
+    pub const DELAY_AFTER_LAST_EJECTION_TICKS: u32 = 20;
+    pub const EVENT_VAULT_ACTIVATE: i32 = 3015;
+    pub const EVENT_VAULT_DEACTIVATE: i32 = 3016;
+    pub const EVENT_VAULT_EJECT_ITEM: i32 = 3017;
+    pub const LIGHT_LEVEL_HALF_LIT: u8 = 6;
+    pub const LIGHT_LEVEL_LIT: u8 = 12;
+    pub const EJECTION_Y_OFFSET: f64 = 1.2;
+    pub const EJECTION_VELOCITY: f64 = 2.0;
+
+    #[must_use]
+    pub fn get_light_level(state: VaultState) -> u8 {
+        match state {
+            VaultState::Inactive => Self::LIGHT_LEVEL_HALF_LIT,
+            VaultState::Active | VaultState::Unlocking | VaultState::Ejecting => {
+                Self::LIGHT_LEVEL_LIT
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn can_play_insert_fail_sound(current_tick: i64, last_fail_tick: i64) -> bool {
+        current_tick >= last_fail_tick + Self::INSERT_FAIL_SOUND_COOLDOWN_TICKS
+    }
+
+    #[must_use]
+    pub fn calculate_ejection_progress(remaining_items: usize, total_ejections: usize) -> f32 {
+        if total_ejections <= 1 {
+            1.0
+        } else {
+            let rem = remaining_items.clamp(1, total_ejections);
+            1.0 - (rem - 1) as f32 / (total_ejections - 1) as f32
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_ejection_pitch(remaining_items: usize, total_ejections: usize) -> f32 {
+        let progress = Self::calculate_ejection_progress(remaining_items, total_ejections);
+        0.8 + 0.4 * progress
     }
 }
 
@@ -80,26 +125,33 @@ impl BlockBehaviour for VaultBlock {
             item_id == Item::TRIAL_KEY.id
         };
 
-        if !is_valid_key {
-            args.world.play_sound(
-                Sound::BlockVaultInsertItemFail,
-                SoundCategory::Blocks,
-                &args.position.to_f64(),
-            );
-            return BlockActionResult::Success;
-        }
-
         if let Some(block_entity) = args.world.get_block_entity(args.position)
             && let Some(vault_entity) = block_entity.as_any().downcast_ref::<VaultBlockEntity>()
         {
+            let current_tick = args.world.get_world_age();
+            if !is_valid_key {
+                if vault_entity.can_play_insert_fail_sound(current_tick) {
+                    args.world.play_sound(
+                        Sound::BlockVaultInsertItemFail,
+                        SoundCategory::Blocks,
+                        &args.position.to_f64(),
+                    );
+                    vault_entity.set_last_insert_fail_timestamp(current_tick);
+                }
+                return BlockActionResult::Success;
+            }
+
             let player_uuid = args.player.gameprofile.id;
 
             if vault_entity.has_rewarded(&player_uuid) {
-                args.world.play_sound(
-                    Sound::BlockVaultRejectRewardedPlayer,
-                    SoundCategory::Blocks,
-                    &args.position.to_f64(),
-                );
+                if vault_entity.can_play_insert_fail_sound(current_tick) {
+                    args.world.play_sound(
+                        Sound::BlockVaultRejectRewardedPlayer,
+                        SoundCategory::Blocks,
+                        &args.position.to_f64(),
+                    );
+                    vault_entity.set_last_insert_fail_timestamp(current_tick);
+                }
                 return BlockActionResult::Success;
             }
 
@@ -141,12 +193,6 @@ impl BlockBehaviour for VaultBlock {
                 BlockFlags::NOTIFY_ALL,
             );
 
-            args.world.play_sound(
-                Sound::BlockVaultEjectItem,
-                SoundCategory::Blocks,
-                &args.position.to_f64(),
-            );
-
             // Generate loot from Loot Table according to vanilla parity
             let loot_table_key = vault_entity.get_loot_table_key(props.ominous);
             let seed = (args.position.0.x as i64).wrapping_mul(3129871)
@@ -181,7 +227,22 @@ impl BlockBehaviour for VaultBlock {
                 };
             }
 
-            for stack in loot_stacks {
+            let total_drops = loot_stacks.len();
+            for (idx, stack) in loot_stacks.into_iter().enumerate() {
+                let remaining = total_drops - idx;
+                let pitch = VaultBlock::calculate_ejection_pitch(remaining, total_drops);
+                args.world.play_sound_fine(
+                    Sound::BlockVaultEjectItem,
+                    SoundCategory::Blocks,
+                    &args.position.to_f64(),
+                    1.0,
+                    pitch,
+                );
+                args.world.sync_world_event(
+                    WorldEvent::AnimationVaultEjectItem,
+                    *args.position,
+                    0,
+                );
                 args.world.drop_stack(args.position, stack);
             }
 

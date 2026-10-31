@@ -2,6 +2,7 @@ use super::BlockEntity;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
 use rustc_hash::FxHashSet;
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Mutex;
 use uuid::Uuid;
 
@@ -11,6 +12,7 @@ pub struct VaultBlockEntity {
     pub server_data: Mutex<Option<NbtCompound>>,
     pub shared_data: Mutex<Option<NbtCompound>>,
     pub rewarded_players: Mutex<FxHashSet<Uuid>>,
+    pub last_insert_fail_timestamp: AtomicI64,
 }
 
 impl BlockEntity for VaultBlockEntity {
@@ -55,6 +57,7 @@ impl BlockEntity for VaultBlockEntity {
             server_data: Mutex::new(nbt.get_compound("server_data").cloned()),
             shared_data: Mutex::new(nbt.get_compound("shared_data").cloned()),
             rewarded_players: Mutex::new(rewarded_players),
+            last_insert_fail_timestamp: AtomicI64::new(0),
         }
     }
 
@@ -121,6 +124,7 @@ impl VaultBlockEntity {
             server_data: Mutex::new(None),
             shared_data: Mutex::new(None),
             rewarded_players: Mutex::new(FxHashSet::default()),
+            last_insert_fail_timestamp: AtomicI64::new(0),
         }
     }
 
@@ -129,6 +133,15 @@ impl VaultBlockEntity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .contains(player_id)
+    }
+
+    pub fn can_play_insert_fail_sound(&self, current_tick: i64) -> bool {
+        let last = self.last_insert_fail_timestamp.load(Ordering::Relaxed);
+        current_tick >= last + crate::block::blocks::vault::VaultBlock::INSERT_FAIL_SOUND_COOLDOWN_TICKS
+    }
+
+    pub fn set_last_insert_fail_timestamp(&self, current_tick: i64) {
+        self.last_insert_fail_timestamp.store(current_tick, Ordering::Relaxed);
     }
 
     pub fn mark_rewarded(&self, player_id: Uuid) {

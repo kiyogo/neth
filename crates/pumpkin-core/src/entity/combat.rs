@@ -19682,4 +19682,53 @@ mod tests {
         assert_eq!(impulse_in.x, 0.0);
         assert_eq!(impulse_in.z, 0.0);
     }
+    #[test]
+    fn test_vault_shutter_audio_particles_graduated_pitch_and_cooldown_parity() {
+        use crate::block::blocks::vault::VaultBlock;
+        use pumpkin_data::block_properties::VaultState;
+
+        // Constants parity
+        assert_eq!(VaultBlock::INSERT_FAIL_SOUND_COOLDOWN_TICKS, 15);
+        assert_eq!(VaultBlock::DISPLAY_ITEM_CYCLE_TICK_RATE, 20);
+        assert_eq!(VaultBlock::DELAY_BEFORE_FIRST_EJECTION_TICKS, 20);
+        assert_eq!(VaultBlock::DELAY_BETWEEN_EJECTIONS_TICKS, 20);
+        assert_eq!(VaultBlock::DELAY_AFTER_LAST_EJECTION_TICKS, 20);
+        assert_eq!(VaultBlock::EVENT_VAULT_ACTIVATE, 3015);
+        assert_eq!(VaultBlock::EVENT_VAULT_DEACTIVATE, 3016);
+        assert_eq!(VaultBlock::EVENT_VAULT_EJECT_ITEM, 3017);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_HALF_LIT, 6);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_LIT, 12);
+        assert_eq!(VaultBlock::EJECTION_Y_OFFSET, 1.2);
+        assert_eq!(VaultBlock::EJECTION_VELOCITY, 2.0);
+
+        // Light level per state
+        assert_eq!(VaultBlock::get_light_level(VaultState::Inactive), 6);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Active), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Unlocking), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Ejecting), 12);
+
+        // Fail sound cooldown (15 ticks)
+        assert!(VaultBlock::can_play_insert_fail_sound(15, 0));
+        assert!(VaultBlock::can_play_insert_fail_sound(100, 80));
+        assert!(!VaultBlock::can_play_insert_fail_sound(14, 0));
+        assert!(!VaultBlock::can_play_insert_fail_sound(85, 75));
+
+        // Graduated pitch progress: 0.8 at start, 1.2 at end
+        // Single item: progress = 1.0 -> pitch = 1.2
+        assert_eq!(VaultBlock::calculate_ejection_progress(1, 1), 1.0);
+        assert!((VaultBlock::calculate_ejection_pitch(1, 1) - 1.2).abs() < 1e-5);
+
+        // 5 items total:
+        // When 5 remain (1st item): progress = 0.0 -> pitch = 0.8
+        assert_eq!(VaultBlock::calculate_ejection_progress(5, 5), 0.0);
+        assert!((VaultBlock::calculate_ejection_pitch(5, 5) - 0.8).abs() < 1e-5);
+
+        // When 3 remain (3rd item): progress = 0.5 -> pitch = 1.0
+        assert_eq!(VaultBlock::calculate_ejection_progress(3, 5), 0.5);
+        assert!((VaultBlock::calculate_ejection_pitch(3, 5) - 1.0).abs() < 1e-5);
+
+        // When 1 remains (5th item): progress = 1.0 -> pitch = 1.2
+        assert_eq!(VaultBlock::calculate_ejection_progress(1, 5), 1.0);
+        assert!((VaultBlock::calculate_ejection_pitch(1, 5) - 1.2).abs() < 1e-5);
+    }
 }

@@ -8698,3 +8698,32 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants WIND_CHARGE_MAX_Y_OFFSET = 30, WIND_CHARGE_EXPLOSION_RADIUS = 1.2, WIND_CHARGE_INERTIA = 1.0, WIND_CHARGE_DEFLECT_COOLDOWN = 5, and WIND_CHARGE_DIRECT_DAMAGE = 1.0 in wind_charge.rs and combat.rs.
   - Added pure helper methods can_collide_with_entity, can_hit_entity, should_explode_at_y, and calculate_wind_charge_launch_impulse.
   - Added unit test 	est_wind_charge_burst_physics_y_cutoff_and_collision_parity in combat.rs.
+
+### Gap 354: Vault Shutter Audio/Particle Events (3015/3016/3017), Graduated Ejection Pitch (0.8..1.2), Failed Key 15-Tick Sound Cooldown & Light Levels (6/12) Parity
+
+- **Vanilla Reference**: `VaultState.java:14-55, 57-60, 84-100, 138-153`, `VaultServerData.java:18-35, 129-132`, `VaultBlockEntity.java:263-278, 353-361`, `VaultBlock.java:48-61`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Vault container incorporates stateful timings, particle world events, light level transitions, fail sound cooldowns, and progressive item ejection pitch:
+    - **World Events**:
+      - `AnimationVaultActivate (3015)`: Dispatched when entering `ACTIVE` state with ominous flag data (`isOminous ? 1 : 0`).
+      - `AnimationVaultDeactivate (3016)`: Dispatched when entering `INACTIVE` state (`isOminous ? 1 : 0`).
+      - `AnimationVaultEjectItem (3017)`: Dispatched with data 0 for each ejected item above the vault.
+    - **Dynamic Light Levels**:
+      - `INACTIVE` state emits light level 6 (`HALF_LIT = 6`).
+      - `ACTIVE`, `UNLOCKING`, and `EJECTING` states emit light level 12 (`LIT = 12`).
+    - **Failed Insertion Sound Cooldown (15 Ticks)**:
+      - When an invalid key is inserted or a player who has already claimed rewards tries to open the vault again, failure sounds (`SoundEvents.VAULT_INSERT_ITEM_FAIL` and `SoundEvents.VAULT_REJECT_REWARDED_PLAYER`) are throttled by a 15-tick cooldown (`INSERT_FAIL_SOUND_COOLDOWN_TICKS = 15`), preventing sound spam from fast clicks.
+    - **Graduated Ejection Pitch (0.8..1.2)**:
+      - As items are ejected, `SoundEvents.VAULT_EJECT_ITEM` plays at increasing pitch calculated from ejection progress:
+        $$\text{Progress} = \begin{cases} 1.0 & \text{if } \text{total} \le 1 \\ 1.0 - \frac{\text{remaining} - 1}{\text{total} - 1} & \text{otherwise} \end{cases}$$
+        $$\text{Pitch} = 0.8 + 0.4 \times \text{Progress}$$
+        This produces a rising musical crescendo from 0.8 up to 1.2 on the final drop.
+    - **Timings**:
+      - Display item loot cycling rate is 20 ticks (1 second).
+      - Delay before first ejection, between ejections, and after last ejection are all 20 ticks.
+- **Neth Changes**:
+  - Exported constants `INSERT_FAIL_SOUND_COOLDOWN_TICKS = 15`, `DISPLAY_ITEM_CYCLE_TICK_RATE = 20`, `DELAY_BEFORE_FIRST_EJECTION_TICKS = 20`, `DELAY_BETWEEN_EJECTIONS_TICKS = 20`, `DELAY_AFTER_LAST_EJECTION_TICKS = 20`, `EVENT_VAULT_ACTIVATE = 3015`, `EVENT_VAULT_DEACTIVATE = 3016`, `EVENT_VAULT_EJECT_ITEM = 3017`, `LIGHT_LEVEL_HALF_LIT = 6`, `LIGHT_LEVEL_LIT = 12`, `EJECTION_Y_OFFSET = 1.2`, and `EJECTION_VELOCITY = 2.0` in `VaultBlock`.
+  - Added helper functions `get_light_level`, `can_play_insert_fail_sound`, `calculate_ejection_progress`, and `calculate_ejection_pitch`.
+  - Added `last_insert_fail_timestamp` with atomic access and fail sound cooldown throttling to `VaultBlockEntity`.
+  - Updated item ejection in `VaultBlock` to emit `WorldEvent::AnimationVaultEjectItem` and calculate increasing pitch per item via `calculate_ejection_pitch`.
+  - Added unit test `test_vault_shutter_audio_particles_graduated_pitch_and_cooldown_parity` in `combat.rs`.
