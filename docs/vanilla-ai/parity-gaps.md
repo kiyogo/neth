@@ -9340,3 +9340,37 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported `CREAKING_HEART_` parity constants and calculation functions.
     - Added unit test `test_creaking_heart_natural_xp_comparator_signal_and_hurt_progress_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 374: Eyeblossom State Transform Cascade Delay (`[d*5, d*10]` Ticks), Idle Sound Chance (1/700) & Bee Poisoning (25 Ticks) Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.EyeblossomBlock.java:25-48, 51-86, 89-105, 106-166`, `net.minecraft.world.level.block.FlowerPotBlock.java:128-143, 148-154`, `net.minecraft.world.entity.animal.bee.Bee.java:660-669`.
+- **Vanilla Mechanics**:
+  1. *Cascade Scheduled Tick Delay & Neighbor Search*:
+     - When an Eyeblossom transforms (Open -> Closed or Closed -> Open), it scans adjacent blocks in `[-3, 3]` horizontally and `[-2, 2]` vertically (`EYEBLOSSOM_XZ_RANGE = 3`, `EYEBLOSSOM_Y_RANGE = 2`).
+     - For each nearby eyeblossom sharing the old block state, it schedules a tick with delay:
+       `delay = random.nextIntBetweenInclusive((int)(distance * 5.0), (int)(distance * 10.0))` (`CASCADE_MIN_DELAY_FACTOR = 5.0`, `CASCADE_MAX_DELAY_FACTOR = 10.0`).
+       For adjacent blocks ($d = 1.0$), delay is in $[5, 10]$ ticks. For maximum diagonal corner ($d = \sqrt{22} pprox 4.6904$), delay is in $[23, 46]$ ticks.
+  2. *Ambient Idle Sound*:
+     - When an Eyeblossom is in the `OPEN` state, during `animateTick` it rolls a 1 in 700 chance (`EYEBLOSSOM_IDLE_SOUND_CHANCE = 700`).
+     - If the block directly below is `Blocks.PALE_MOSS_BLOCK`, it plays `SoundEvents.EYEBLOSSOM_IDLE` at SoundSource `AMBIENT`, volume 1.0, pitch 1.0.
+  3. *Bee Interaction & Poisoning*:
+     - When an entity touches an Eyeblossom in non-peaceful difficulty, it checks: `entity instanceof Bee bee && Bee.attractsBees(state) && !bee.hasEffect(MobEffects.POISON)`.
+     - In Vanilla, only `Blocks.OPEN_EYEBLOSSOM` is tagged `#minecraft:bee_attractive`. `CLOSED_EYEBLOSSOM` is NOT attractive and does NOT poison bees.
+     - When touched by a bee without poison, it applies `MobEffects.POISON` for 25 ticks with amplifier 0 (`EYEBLOSSOM_BEE_POISON_TICKS = 25`).
+  4. *Suspicious Stew & Particle Color*:
+     - Open eyeblossom stew effect: `MobEffects.BLINDNESS` for 11.0 seconds (`OPEN_STEW_DURATION_SECONDS = 11.0`). Trail particle color: `16545810` (0xFC7932 / orange-gold).
+     - Closed eyeblossom stew effect: `MobEffects.NAUSEA` for 7.0 seconds (`CLOSED_STEW_DURATION_SECONDS = 7.0`). Trail particle color: `6250335` (0x5F5F5F / grey).
+  5. *Potted Eyeblossom Parity (`FlowerPotBlock.java`)*:
+     - When potted eyeblossom transforms between `POTTED_OPEN_EYEBLOSSOM` and `POTTED_CLOSED_EYEBLOSSOM`, it spawns the transform particle matching the new type (orange-gold for potted open, grey for potted closed) and plays the long switch sound (`SoundEvents.EYEBLOSSOM_OPEN_LONG` or `SoundEvents.EYEBLOSSOM_CLOSE_LONG`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/plant/eyeblossom.rs`:
+    - Exported constants `EYEBLOSSOM_XZ_RANGE = 3`, `EYEBLOSSOM_Y_RANGE = 2`, `OPEN_PARTICLE_COLOR = 16_545_810`, `CLOSED_PARTICLE_COLOR = 6_250_335`, `EYEBLOSSOM_IDLE_SOUND_CHANCE = 700`, `EYEBLOSSOM_BEE_POISON_TICKS = 25`, `OPEN_STEW_DURATION_SECONDS = 11.0`, `CLOSED_STEW_DURATION_SECONDS = 7.0`, `CASCADE_MIN_DELAY_FACTOR = 5.0`, `CASCADE_MAX_DELAY_FACTOR = 10.0`.
+    - Added helper methods `calculate_cascade_delay`, `should_play_idle_sound`, `should_poison_bee`.
+    - Updated `random_tick()` to trigger ambient idle sound when open and on pale moss block.
+    - Updated `on_entity_collision()` to only poison bees when flower is open, difficulty is not peaceful, and bee does not already have poison.
+    - Updated `transform_particle()` to support `POTTED_OPEN_EYEBLOSSOM`.
+  - In `crates/pumpkin-core/src/block/blocks/flower_pots.rs`:
+    - Added transform particle emission and long switch sound playback upon potted eyeblossom state transition.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `EYEBLOSSOM_` parity constants and calculation functions.
+    - Added unit test `test_eyeblossom_state_cascade_idle_sound_and_bee_poison_parity`.
+- **Status**: Completed & Verified.

@@ -1,6 +1,7 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{BlockBehaviour, PathComputationType, RandomTickArgs, UseWithItemArgs};
 use pumpkin_data::flower_pot_transformations::get_potted_item;
+use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, BlockId, BlockState};
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_world::world::BlockFlags;
@@ -63,6 +64,26 @@ impl BlockBehaviour for FlowerPotBlock {
                 args.position,
                 next_block.default_state.id,
                 BlockFlags::NOTIFY_ALL,
+            );
+
+            // Parity with vanilla FlowerPotBlock.java:139-142:
+            // Potted eyeblossom transform emits particles and plays the long switch sound
+            let mut rng = rand::rng();
+            crate::block::blocks::plant::eyeblossom::spawn_transform_particle(
+                args.world,
+                next_block,
+                args.position,
+                &mut rng,
+            );
+            let sound = if is_open {
+                Sound::BlockEyeblossomCloseLong
+            } else {
+                Sound::BlockEyeblossomOpenLong
+            };
+            args.world.play_sound(
+                sound,
+                SoundCategory::Blocks,
+                &args.position.to_centered_f64(),
             );
         }
     }

@@ -22,14 +22,70 @@ use crate::{
     world::World,
 };
 
-const EYEBLOSSOM_XZ_RANGE: i32 = 3;
-const EYEBLOSSOM_Y_RANGE: i32 = 2;
+/// Search range along horizontal X and Z axes mirroring vanilla `EyeblossomBlock.java:26`:
+/// `private static final int EYEBLOSSOM_XZ_RANGE = 3;`
+pub const EYEBLOSSOM_XZ_RANGE: i32 = 3;
 
-/// Trail particle colors from vanilla `EyeblossomBlock.Type.particleColor`.
-const OPEN_PARTICLE_COLOR: i32 = 16_545_810;
-const CLOSED_PARTICLE_COLOR: i32 = 6_250_335;
+/// Search range along vertical Y axis mirroring vanilla `EyeblossomBlock.java:27`:
+/// `private static final int EYEBLOSSOM_Y_RANGE = 2;`
+pub const EYEBLOSSOM_Y_RANGE: i32 = 2;
+
+/// Trail particle color for open eyeblossom mirroring vanilla `EyeblossomBlock.Type.OPEN`:
+/// `16545810` (0xFC7932 / orange-gold trail).
+pub const OPEN_PARTICLE_COLOR: i32 = 16_545_810;
+
+/// Trail particle color for closed eyeblossom mirroring vanilla `EyeblossomBlock.Type.CLOSED`:
+/// `6250335` (0x5F5F5F / grey trail).
+pub const CLOSED_PARTICLE_COLOR: i32 = 6_250_335;
+
+/// Idle ambient sound chance: 1 in 700 ticks when open and resting on a pale moss block.
+/// Mirroring vanilla `EyeblossomBlock.java:42`: `random.nextInt(700) == 0`.
+pub const EYEBLOSSOM_IDLE_SOUND_CHANCE: u32 = 700;
+
+/// Duration in ticks of the poison effect applied to bees touching an open eyeblossom.
+/// Mirroring vanilla `EyeblossomBlock.java:103`: `new MobEffectInstance(MobEffects.POISON, 25)`.
+pub const EYEBLOSSOM_BEE_POISON_TICKS: i32 = 25;
+
+/// Suspicious stew duration in seconds from vanilla `EyeblossomBlock.java:107`:
+/// `OPEN(true, MobEffects.BLINDNESS, 11.0F, ...)` -> 11.0s (220 ticks).
+pub const OPEN_STEW_DURATION_SECONDS: f32 = 11.0;
+
+/// Suspicious stew duration in seconds from vanilla `EyeblossomBlock.java:108`:
+/// `CLOSED(false, MobEffects.NAUSEA, 7.0F, ...)` -> 7.0s (140 ticks).
+pub const CLOSED_STEW_DURATION_SECONDS: f32 = 7.0;
+
+/// Multipliers for cascade scheduled tick delay mirroring vanilla `EyeblossomBlock.java:82`:
+/// `random.nextIntBetweenInclusive((int)(distance * 5.0), (int)(distance * 10.0))`.
+pub const CASCADE_MIN_DELAY_FACTOR: f64 = 5.0;
+pub const CASCADE_MAX_DELAY_FACTOR: f64 = 10.0;
 
 pub struct EyeblossomBlock;
+
+impl EyeblossomBlock {
+    pub const XZ_RANGE: i32 = EYEBLOSSOM_XZ_RANGE;
+    pub const Y_RANGE: i32 = EYEBLOSSOM_Y_RANGE;
+    pub const OPEN_PARTICLE: i32 = OPEN_PARTICLE_COLOR;
+    pub const CLOSED_PARTICLE: i32 = CLOSED_PARTICLE_COLOR;
+    pub const IDLE_SOUND_CHANCE: u32 = EYEBLOSSOM_IDLE_SOUND_CHANCE;
+    pub const BEE_POISON_TICKS: i32 = EYEBLOSSOM_BEE_POISON_TICKS;
+    pub const OPEN_STEW_SECONDS: f32 = OPEN_STEW_DURATION_SECONDS;
+    pub const CLOSED_STEW_SECONDS: f32 = CLOSED_STEW_DURATION_SECONDS;
+
+    #[must_use]
+    pub fn calculate_cascade_delay(distance: f64, rng: &mut impl RngExt) -> u32 {
+        calculate_cascade_delay(distance, rng)
+    }
+
+    #[must_use]
+    pub fn should_play_idle_sound(is_open: bool, below_block: &Block, roll: u32) -> bool {
+        should_play_idle_sound(is_open, below_block, roll)
+    }
+
+    #[must_use]
+    pub fn should_poison_bee(difficulty: Difficulty, is_open: bool, has_poison: bool) -> bool {
+        should_poison_bee(difficulty, is_open, has_poison)
+    }
+}
 
 impl BlockMetadata for EyeblossomBlock {
     fn ids() -> Box<[BlockId]> {
@@ -77,9 +133,22 @@ impl BlockBehaviour for EyeblossomBlock {
     }
 
     fn random_tick(&self, args: RandomTickArgs<'_>) {
-        let was_open = args.block == &Block::OPEN_EYEBLOSSOM;
+        let is_open = args.block == &Block::OPEN_EYEBLOSSOM;
+        let mut rng = rand::rng();
+
+        // Parity with vanilla EyeblossomBlock.java:42-46:
+        // Idle sound emits only when open, 1/700 chance, and block below is pale moss block.
+        let below = args.world.get_block(&args.position.down());
+        if should_play_idle_sound(is_open, below, rng.random_range(0..EYEBLOSSOM_IDLE_SOUND_CHANCE)) {
+            args.world.play_sound(
+                Sound::BlockEyeblossomIdle,
+                SoundCategory::Ambient,
+                &args.position.to_centered_f64(),
+            );
+        }
+
         if try_changing_state(args.world, args.block, args.position) {
-            let sound = if was_open {
+            let sound = if is_open {
                 Sound::BlockEyeblossomCloseLong
             } else {
                 Sound::BlockEyeblossomOpenLong
@@ -93,17 +162,28 @@ impl BlockBehaviour for EyeblossomBlock {
     }
 
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
-        {
-            if args.world.level_info.load().difficulty == Difficulty::Peaceful {
-                return;
-            }
+        // Parity with vanilla EyeblossomBlock.java:89-99:
+        // Peaceful difficulty ignores poison.
+        if args.world.level_info.load().difficulty == Difficulty::Peaceful {
+            return;
+        }
 
-            if args.entity.get_entity().entity_type == &EntityType::BEE
-                && let Some(living_entity) = args.entity.get_living_entity()
-            {
+        // Vanilla checks: entity instanceof Bee && Bee.attractsBees(state)
+        // In vanilla, only OPEN_EYEBLOSSOM is in the #minecraft:bee_attractive tag.
+        // CLOSED_EYEBLOSSOM does not attract bees and thus does not poison them.
+        let is_open = args.block == &Block::OPEN_EYEBLOSSOM;
+        if !is_open {
+            return;
+        }
+
+        if args.entity.get_entity().entity_type == &EntityType::BEE
+            && let Some(living_entity) = args.entity.get_living_entity()
+        {
+            // Vanilla checks !bee.hasEffect(MobEffects.POISON)
+            if !living_entity.has_effect(&StatusEffect::POISON) {
                 let effect = pumpkin_data::potion::Effect {
                     effect_type: &StatusEffect::POISON,
-                    duration: 25,
+                    duration: EYEBLOSSOM_BEE_POISON_TICKS,
                     amplifier: 0,
                     ambient: false,
                     show_particles: true,
@@ -117,6 +197,31 @@ impl BlockBehaviour for EyeblossomBlock {
 }
 
 impl PlantBlockBase for EyeblossomBlock {}
+
+/// Computes the cascade tick delay according to vanilla formula in `EyeblossomBlock.java:82`:
+/// `random.nextIntBetweenInclusive((int)(distance * 5.0), (int)(distance * 10.0))`
+#[must_use]
+pub fn calculate_cascade_delay(distance: f64, rng: &mut impl RngExt) -> u32 {
+    let min_delay = (distance * CASCADE_MIN_DELAY_FACTOR) as u32;
+    let max_delay = (distance * CASCADE_MAX_DELAY_FACTOR) as u32;
+    if min_delay >= max_delay {
+        min_delay
+    } else {
+        rng.random_range(min_delay..=max_delay)
+    }
+}
+
+/// Checks whether the ambient idle sound should play, mirroring `EyeblossomBlock.java:42-46`.
+#[must_use]
+pub fn should_play_idle_sound(is_open: bool, below_block: &Block, roll: u32) -> bool {
+    is_open && roll == 0 && below_block == &Block::PALE_MOSS_BLOCK
+}
+
+/// Checks whether a bee should receive the poison effect, mirroring `EyeblossomBlock.java:92-96`.
+#[must_use]
+pub fn should_poison_bee(difficulty: Difficulty, is_open: bool, has_poison: bool) -> bool {
+    difficulty != Difficulty::Peaceful && is_open && !has_poison
+}
 
 pub fn try_changing_state(world: &Arc<World>, current_block: &Block, pos: &BlockPos) -> bool {
     let is_open = current_block == &Block::OPEN_EYEBLOSSOM;
@@ -148,13 +253,7 @@ pub fn try_changing_state(world: &Arc<World>, current_block: &Block, pos: &Block
                 if nearby_block == current_block {
                     let dist_sqr = (dx * dx + dy * dy + dz * dz) as f64;
                     let distance = dist_sqr.sqrt();
-                    let min_delay = (distance * 5.0) as u32;
-                    let max_delay = (distance * 10.0) as u32;
-                    let delay = if min_delay >= max_delay {
-                        min_delay
-                    } else {
-                        rng.random_range(min_delay..=max_delay)
-                    };
+                    let delay = calculate_cascade_delay(distance, &mut rng);
                     world.schedule_block_tick(
                         current_block,
                         nearby_pos,
@@ -171,7 +270,7 @@ pub fn try_changing_state(world: &Arc<World>, current_block: &Block, pos: &Block
 
 /// Emits the `minecraft:trail` particle that marks a flower changing state,
 /// mirroring vanilla `EyeblossomBlock.Type.spawnTransformParticle`.
-fn spawn_transform_particle(
+pub fn spawn_transform_particle(
     world: &Arc<World>,
     new_block: &Block,
     pos: &BlockPos,
@@ -188,8 +287,9 @@ fn spawn_transform_particle(
 
 /// Builds that particle. Vanilla runs this on the type the flower turned *into*,
 /// so `new_block` is the new state and the color comes from it.
-fn transform_particle(new_block: &Block, pos: &BlockPos, rng: &mut impl RngExt) -> ParticleOptions {
-    let color = if new_block == &Block::OPEN_EYEBLOSSOM {
+#[must_use]
+pub fn transform_particle(new_block: &Block, pos: &BlockPos, rng: &mut impl RngExt) -> ParticleOptions {
+    let color = if new_block == &Block::OPEN_EYEBLOSSOM || new_block == &Block::POTTED_OPEN_EYEBLOSSOM {
         OPEN_PARTICLE_COLOR
     } else {
         CLOSED_PARTICLE_COLOR
@@ -213,9 +313,15 @@ fn transform_particle(new_block: &Block, pos: &BlockPos, rng: &mut impl RngExt) 
 #[cfg(test)]
 mod tests {
     use pumpkin_protocol::java::client::play::ParticleOptions;
+    use pumpkin_util::Difficulty;
     use rand::{SeedableRng, rngs::StdRng};
 
-    use super::{Block, BlockPos, CLOSED_PARTICLE_COLOR, OPEN_PARTICLE_COLOR, transform_particle};
+    use super::{
+        Block, BlockPos, CLOSED_PARTICLE_COLOR, CLOSED_STEW_DURATION_SECONDS,
+        EYEBLOSSOM_BEE_POISON_TICKS, EYEBLOSSOM_IDLE_SOUND_CHANCE, EYEBLOSSOM_XZ_RANGE,
+        EYEBLOSSOM_Y_RANGE, EyeblossomBlock, OPEN_PARTICLE_COLOR, OPEN_STEW_DURATION_SECONDS,
+        calculate_cascade_delay, should_play_idle_sound, should_poison_bee, transform_particle,
+    };
 
     /// Vanilla bounds: `lifetime` is `0.5 + random()`, so it lies in `[0.5, 1.5)`,
     /// and the velocity components in `[-0.5, 0.5)` and `[1.0, 2.0)`.
@@ -257,5 +363,60 @@ mod tests {
         let ParticleOptions::Trail { color, .. } = closed;
         assert_eq!(color, CLOSED_PARTICLE_COLOR);
         assert_ne!(CLOSED_PARTICLE_COLOR, OPEN_PARTICLE_COLOR);
+
+        let potted_open = transform_particle(&Block::POTTED_OPEN_EYEBLOSSOM, &pos, &mut rng);
+        let ParticleOptions::Trail { color: potted_color, .. } = potted_open;
+        assert_eq!(potted_color, OPEN_PARTICLE_COLOR);
+    }
+
+    #[test]
+    fn test_eyeblossom_cascade_delay_and_sound_parity() {
+        let mut rng = StdRng::seed_from_u64(0x1234_5678);
+
+        // Range constants parity with EyeblossomBlock.java:26-27
+        assert_eq!(EYEBLOSSOM_XZ_RANGE, 3);
+        assert_eq!(EYEBLOSSOM_Y_RANGE, 2);
+        assert_eq!(EyeblossomBlock::XZ_RANGE, 3);
+        assert_eq!(EyeblossomBlock::Y_RANGE, 2);
+
+        // Distance 1.0 (adjacent) -> min = (1.0 * 5.0) = 5, max = (1.0 * 10.0) = 10
+        for _ in 0..100 {
+            let delay = calculate_cascade_delay(1.0, &mut rng);
+            assert!((5..=10).contains(&delay), "delay {delay} out of range [5, 10]");
+        }
+
+        // Distance sqrt(22) ≈ 4.6904 (diagonal corner: dx=3, dy=2, dz=3)
+        let max_dist = (9.0 + 4.0 + 9.0_f64).sqrt();
+        let expected_min = (max_dist * 5.0) as u32; // 23
+        let expected_max = (max_dist * 10.0) as u32; // 46
+        assert_eq!(expected_min, 23);
+        assert_eq!(expected_max, 46);
+        for _ in 0..100 {
+            let delay = calculate_cascade_delay(max_dist, &mut rng);
+            assert!(
+                (expected_min..=expected_max).contains(&delay),
+                "delay {delay} out of range [{expected_min}, {expected_max}]"
+            );
+        }
+
+        // Idle sound parity with EyeblossomBlock.java:42-46 (1 in 700 chance, open, pale moss)
+        assert_eq!(EYEBLOSSOM_IDLE_SOUND_CHANCE, 700);
+        assert!(should_play_idle_sound(true, &Block::PALE_MOSS_BLOCK, 0));
+        assert!(!should_play_idle_sound(false, &Block::PALE_MOSS_BLOCK, 0));
+        assert!(!should_play_idle_sound(true, &Block::PALE_MOSS_BLOCK, 1));
+        assert!(!should_play_idle_sound(true, &Block::GRASS_BLOCK, 0));
+
+        // Bee poison parity with EyeblossomBlock.java:92-96 & 103 (25 ticks, difficulty != Peaceful)
+        assert_eq!(EYEBLOSSOM_BEE_POISON_TICKS, 25);
+        assert!(should_poison_bee(Difficulty::Normal, true, false));
+        assert!(should_poison_bee(Difficulty::Hard, true, false));
+        assert!(should_poison_bee(Difficulty::Easy, true, false));
+        assert!(!should_poison_bee(Difficulty::Peaceful, true, false));
+        assert!(!should_poison_bee(Difficulty::Normal, false, false)); // closed eyeblossom does not poison
+        assert!(!should_poison_bee(Difficulty::Normal, true, true)); // already poisoned
+
+        // Stew durations parity with EyeblossomBlock.java:107-108
+        assert_eq!(OPEN_STEW_DURATION_SECONDS, 11.0);
+        assert_eq!(CLOSED_STEW_DURATION_SECONDS, 7.0);
     }
 }
