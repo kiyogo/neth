@@ -113,17 +113,79 @@ impl BlockBehaviour for ChiseledBookshelfBlock {
                 .downcast_ref::<ChiseledBookshelfBlockEntity>()
         {
             let slot = block_entity.last_interacted_slot.load(Ordering::Relaxed);
-            return Some(if (0..6).contains(&slot) {
-                (slot + 1) as u8
-            } else {
-                0
-            });
+            return Some(Self::calculate_comparator_output(slot));
         }
         None
     }
 }
 
 impl ChiseledBookshelfBlock {
+    pub const MAX_BOOKS_IN_STORAGE: usize = 6;
+    pub const BOOKS_PER_ROW: usize = 3;
+    pub const ROWS: usize = 2;
+    pub const COLUMNS: usize = 3;
+    pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
+    pub const MAX_COMPARATOR_OUTPUT: u8 = 6;
+
+    pub fn get_section(relative_coordinate: f32, max_sections: usize) -> usize {
+        let targeted_pixel = relative_coordinate * 16.0;
+        let section_size = 16.0 / max_sections as f32;
+        let section = (targeted_pixel / section_size).floor() as isize;
+        section.clamp(0, (max_sections - 1) as isize) as usize
+    }
+
+    pub fn calculate_hit_slot(hit_x: f32, hit_y: f32) -> usize {
+        let row = Self::get_section(1.0 - hit_y, Self::ROWS);
+        let column = Self::get_section(hit_x, Self::COLUMNS);
+        column + row * Self::COLUMNS
+    }
+
+    pub fn calculate_comparator_output(last_interacted_slot: i8) -> u8 {
+        if (0..Self::MAX_BOOKS_IN_STORAGE as i8).contains(&last_interacted_slot) {
+            (last_interacted_slot + 1) as u8
+        } else {
+            0
+        }
+    }
+
+    pub fn is_slot_occupied(properties: &ChiseledBookshelfLikeProperties, slot: usize) -> bool {
+        match slot {
+            0 => properties.slot_0_occupied,
+            1 => properties.slot_1_occupied,
+            2 => properties.slot_2_occupied,
+            3 => properties.slot_3_occupied,
+            4 => properties.slot_4_occupied,
+            5 => properties.slot_5_occupied,
+            _ => false,
+        }
+    }
+
+    pub fn slot_bitmask_from_properties(properties: &ChiseledBookshelfLikeProperties) -> u8 {
+        let mut mask = 0u8;
+        if properties.slot_0_occupied {
+            mask |= 1 << 0;
+        }
+        if properties.slot_1_occupied {
+            mask |= 1 << 1;
+        }
+        if properties.slot_2_occupied {
+            mask |= 1 << 2;
+        }
+        if properties.slot_3_occupied {
+            mask |= 1 << 3;
+        }
+        if properties.slot_4_occupied {
+            mask |= 1 << 4;
+        }
+        if properties.slot_5_occupied {
+            mask |= 1 << 5;
+        }
+        mask
+    }
+
+    pub fn get_occupied_slot_count(properties: &ChiseledBookshelfLikeProperties) -> usize {
+        Self::slot_bitmask_from_properties(properties).count_ones() as usize
+    }
     fn try_add_book(
         world: &Arc<World>,
         player: &Player,
@@ -178,11 +240,7 @@ impl ChiseledBookshelfBlock {
     }
 
     fn get_slot_for_hit(hit: &BlockHitResult<'_>, facing: HorizontalFacing) -> Option<i8> {
-        Self::get_hit_pos(hit, facing).map(|position| {
-            let i = i8::from(position.y < 0.5);
-            let j = Self::get_column(position.x);
-            j + i * 3
-        })
+        Self::get_hit_pos(hit, facing).map(|pos| Self::calculate_hit_slot(pos.x, pos.y) as i8)
     }
 
     fn get_hit_pos(hit: &BlockHitResult<'_>, facing: HorizontalFacing) -> Option<Vector2<f32>> {
@@ -199,21 +257,6 @@ impl ChiseledBookshelfBlock {
             HorizontalFacing::South => Some(Vector2::new(hit.cursor_pos.x, hit.cursor_pos.y)),
             HorizontalFacing::West => Some(Vector2::new(hit.cursor_pos.z, hit.cursor_pos.y)),
             HorizontalFacing::East => Some(Vector2::new(1.0 - hit.cursor_pos.z, hit.cursor_pos.y)),
-        }
-    }
-
-    // Magic numbers for the slots
-    // These are based on the vanilla chiseled bookshelf implementation
-    const OFFSET_SLOT_0: f32 = 0.375;
-    const OFFSET_SLOT_1: f32 = 0.6875;
-
-    fn get_column(x: f32) -> i8 {
-        if x < Self::OFFSET_SLOT_0 {
-            0
-        } else if x < Self::OFFSET_SLOT_1 {
-            1
-        } else {
-            2
         }
     }
 

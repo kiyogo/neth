@@ -46,7 +46,7 @@ impl BlockEntity for ChiseledBookshelfBlockEntity {
         let mut bookshelf = Self {
             position,
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
-            last_interacted_slot: AtomicI8::new(-1),
+            last_interacted_slot: AtomicI8::new(Self::DEFAULT_LAST_INTERACTED_SLOT),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
         };
@@ -104,7 +104,13 @@ impl BlockEntity for ChiseledBookshelfBlockEntity {
 }
 
 impl ChiseledBookshelfBlockEntity {
-    pub const INVENTORY_SIZE: usize = 6;
+    pub const DEFAULT_LAST_INTERACTED_SLOT: i8 = -1;
+    pub const MAX_BOOKS_IN_STORAGE: usize = 6;
+    pub const BOOKS_PER_ROW: usize = 3;
+    pub const ROWS: usize = 2;
+    pub const COLUMNS: usize = 3;
+    pub const MAX_STACK_SIZE: u8 = 1;
+    pub const INVENTORY_SIZE: usize = Self::MAX_BOOKS_IN_STORAGE;
     pub const ID: &'static str = "minecraft:chiseled_bookshelf";
 
     #[must_use]
@@ -112,9 +118,22 @@ impl ChiseledBookshelfBlockEntity {
         Self {
             position,
             items: RwLock::new(from_fn(|_| ItemStack::EMPTY.clone())),
-            last_interacted_slot: AtomicI8::new(-1),
+            last_interacted_slot: AtomicI8::new(Self::DEFAULT_LAST_INTERACTED_SLOT),
             dirty: AtomicBool::new(false),
             comparator_dirty: AtomicBool::new(false),
+        }
+    }
+
+    pub fn get_last_interacted_slot(&self) -> i8 {
+        self.last_interacted_slot.load(Ordering::Relaxed)
+    }
+
+    pub fn calculate_comparator_output(&self) -> u8 {
+        let slot = self.get_last_interacted_slot();
+        if (0..Self::MAX_BOOKS_IN_STORAGE as i8).contains(&slot) {
+            (slot + 1) as u8
+        } else {
+            0
         }
     }
 
@@ -249,7 +268,7 @@ impl Inventory for ChiseledBookshelfBlockEntity {
     }
 
     fn get_max_count_per_stack(&self) -> u8 {
-        1
+        Self::MAX_STACK_SIZE
     }
 
     fn is_valid_slot_for(&self, slot: usize, stack: &ItemStack) -> bool {

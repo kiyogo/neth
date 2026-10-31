@@ -6949,3 +6949,34 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported `MIN_COMPARATOR_SIGNAL = 1` and `MAX_COMPARATOR_SIGNAL = 15`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_lectern_pulse_duration_and_comparator_signal_parity`.
+
+
+### Gap 287: Chiseled Bookshelf Slot Bitmask, Comparator Output & Redstone Interaction Parity
+- **Vanilla Reference**:
+  - `ChiseledBookShelfBlock.java:34-67, 180-192`, `ChiseledBookShelfBlockEntity.java:24-51, 118-121`, `SelectableSlotContainer.java:12-51`:
+    - Storage layout and dimensions:
+      - `MAX_BOOKS_IN_STORAGE = 6`
+      - `BOOKS_PER_ROW = 3`
+      - `ROWS = 2`
+      - `COLUMNS = 3`
+      - `MAX_STACK_SIZE = 1`
+      - `DEFAULT_LAST_INTERACTED_SLOT = -1`
+      - `MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 6`
+    - Slot selection:
+      - `SelectableSlotContainer.getHitSlot` calculates coordinates by dividing 16 pixels by `maxSections`:
+        `getSection(relativeCoord, maxSections) = clamp(floor(relativeCoord * 16.0 / (16.0 / maxSections)), 0, maxSections - 1)`
+      - Top row (y in [0.5..1.0]): slots 0, 1, 2
+      - Bottom row (y in [0.0..0.5]): slots 3, 4, 5
+      - Replaces inaccurate magic offsets `0.375` and `0.6875` with vanilla's exact section division.
+    - Analog output (Comparator):
+      - Returns `lastInteractedSlot + 1` (1 to 6) if slot in `0..5`, or `0` if not interacted (`lastInteractedSlot == -1` or invalid).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Exported constants `MAX_BOOKS_IN_STORAGE = 6`, `BOOKS_PER_ROW = 3`, `ROWS = 2`, `COLUMNS = 3`, `MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 6`.
+    - Exported helpers `get_section`, `calculate_hit_slot`, `calculate_comparator_output`, `is_slot_occupied`, `slot_bitmask_from_properties`, and `get_occupied_slot_count`.
+    - Refactored `get_comparator_output` and `get_slot_for_hit` to use the exact Vanilla `SelectableSlotContainer` formula.
+  - Updated `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`:
+    - Exported constants `DEFAULT_LAST_INTERACTED_SLOT = -1`, `MAX_BOOKS_IN_STORAGE = 6`, `BOOKS_PER_ROW = 3`, `ROWS = 2`, `COLUMNS = 3`, `MAX_STACK_SIZE = 1`, and `INVENTORY_SIZE = 6`.
+    - Exported methods `get_last_interacted_slot` and `calculate_comparator_output`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_chiseled_bookshelf_slot_selection_and_comparator_parity`.
