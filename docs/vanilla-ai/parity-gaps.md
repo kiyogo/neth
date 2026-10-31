@@ -8153,3 +8153,32 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `ACTIVE_TICKS_REGULAR = 30`, `ACTIVE_TICKS_CALIBRATED = 10`, `COOLDOWN_TICKS = 10`, `LISTENER_RANGE_REGULAR = 8`, `LISTENER_RANGE_CALIBRATED = 16`, `get_redstone_strength_for_distance`, and `can_output_weak_power`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sculk_sensor_frequencies_cooldown_and_comparator_parity`.
+
+### Gap 326: Sculk Shrieker Warning Levels (0..4), Shriek Cooldown (10s / 200 Ticks), Warden Spawning Distance (48 Blocks) & Particle/Sound Parity
+- **Vanilla Reference**:
+  - `SculkShriekerBlock.java:1-120`, `SculkShriekerBlockEntity.java:1-200`, `WardenSpawnTracker.java:1-120`:
+    - Shrieker timing & properties:
+      - Block properties: `SHRIEKING` (boolean), `CAN_SUMMON` (boolean), `WATERLOGGED` (boolean).
+      - Shriek sound & animation duration: `SHRIEKING_TICKS = 90` game ticks (4.5s).
+      - Particle event: `WorldEvent.ParticlesSculkShriek` (`EVENT_SCULK_SHRIEK = 3007`).
+      - Sound emission: `GameEvent.SHRIEK` and warning sound radius `WARNING_SOUND_RADIUS = 10` blocks.
+    - Warden spawn tracking & cooldowns:
+      - Max warning level: `MAX_WARNING_LEVEL = 4`.
+      - Warning level cooldown: `WARNING_LEVEL_INCREASE_COOLDOWN = 200` ticks (10.0 seconds).
+      - Warning level decay: decrements warning level by 1 every `DECREASE_WARNING_LEVEL_EVERY_INTERVAL = 12000` ticks (10 minutes).
+      - Player search radius: `PLAYER_SEARCH_RADIUS = 16.0` blocks around shrieker.
+      - Warden proximity detection: `WARNING_CHECK_DIAMETER = 48.0` blocks (48x48x48 box). If a Warden exists within 48 blocks, shrieker does not warn or summon.
+    - Warden summoning parameters:
+      - When warning level reaches 4: summons Warden (`WARDEN_SPAWN_ATTEMPTS = 20`, horizontal range `WARDEN_SPAWN_RANGE_XZ = 5`, vertical range `WARDEN_SPAWN_RANGE_Y = 6`).
+      - Applies Darkness effect around shrieker within `DARKNESS_RADIUS = 40.0` blocks.
+      - Sounds by warning level: 1 = `WARDEN_NEARBY_CLOSE`, 2 = `WARDEN_NEARBY_CLOSER`, 3 = `WARDEN_NEARBY_CLOSEST`, 4 = `WARDEN_LISTENING_ANGRY`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/sculk/sculk_shrieker.rs`:
+    - Exported constants `WARNING_SOUND_RADIUS = 10`, `WARDEN_SPAWN_ATTEMPTS = 20`, `WARDEN_SPAWN_RANGE_XZ = 5`, `WARDEN_SPAWN_RANGE_Y = 6`, `DARKNESS_RADIUS = 40.0`, `SHRIEKING_TICKS = 90`, and `EVENT_SCULK_SHRIEK = 3007`.
+  - Updated `crates/pumpkin-core/src/block/entities/sculk_shrieker.rs`:
+    - Exported constants `DEFAULT_WARNING_LEVEL = 0`, `WARNING_SOUND_RADIUS = 10`, `WARDEN_SPAWN_ATTEMPTS = 20`, `WARDEN_SPAWN_RANGE_XZ = 5`, `WARDEN_SPAWN_RANGE_Y = 6`, `DARKNESS_RADIUS = 40.0`, `SHRIEKING_TICKS = 90`, and `EVENT_SCULK_SHRIEK = 3007`.
+  - Updated `crates/pumpkin-core/src/entity/mob/warden_spawn_tracker.rs`:
+    - Exported constants `MAX_WARNING_LEVEL = 4`, `PLAYER_SEARCH_RADIUS = 16.0`, `WARNING_CHECK_DIAMETER = 48.0`, `DECREASE_WARNING_LEVEL_EVERY_INTERVAL = 12000`, and `WARNING_LEVEL_INCREASE_COOLDOWN = 200`.
+    - Made `increase_warning_level`, `get_warning_level`, and `clear_cooldown` public methods.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sculk_shrieker_warning_levels_cooldown_and_warden_spawning_parity`.

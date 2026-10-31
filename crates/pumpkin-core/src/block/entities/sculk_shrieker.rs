@@ -62,6 +62,15 @@ impl BlockEntity for SculkShriekerBlockEntity {
 
 impl SculkShriekerBlockEntity {
     pub const ID: &'static str = "minecraft:sculk_shrieker";
+    pub const DEFAULT_WARNING_LEVEL: i32 = 0;
+    pub const WARNING_SOUND_RADIUS: i32 = 10;
+    pub const WARDEN_SPAWN_ATTEMPTS: i32 = 20;
+    pub const WARDEN_SPAWN_RANGE_XZ: i32 = 5;
+    pub const WARDEN_SPAWN_RANGE_Y: i32 = 6;
+    pub const DARKNESS_RADIUS: f64 = 40.0;
+    pub const SHRIEKING_TICKS: u32 = 90;
+    pub const EVENT_SCULK_SHRIEK: u32 = 3007;
+
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {

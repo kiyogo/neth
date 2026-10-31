@@ -8,10 +8,10 @@ use crate::entity::{EntityBase, player::Player};
 use crate::world::World;
 
 pub const MAX_WARNING_LEVEL: i32 = 4;
-const PLAYER_SEARCH_RADIUS: f64 = 16.0;
-const WARNING_CHECK_DIAMETER: f64 = 48.0;
-const DECREASE_WARNING_LEVEL_EVERY_INTERVAL: i32 = 12000;
-const WARNING_LEVEL_INCREASE_COOLDOWN: i32 = 200;
+pub const PLAYER_SEARCH_RADIUS: f64 = 16.0;
+pub const WARNING_CHECK_DIAMETER: f64 = 48.0;
+pub const DECREASE_WARNING_LEVEL_EVERY_INTERVAL: i32 = 12000;
+pub const WARNING_LEVEL_INCREASE_COOLDOWN: i32 = 200;
 
 #[derive(Clone, Copy, Default)]
 pub struct WardenSpawnTracker {
@@ -21,6 +21,12 @@ pub struct WardenSpawnTracker {
 }
 
 impl WardenSpawnTracker {
+    pub const MAX_WARNING_LEVEL: i32 = MAX_WARNING_LEVEL;
+    pub const PLAYER_SEARCH_RADIUS: f64 = PLAYER_SEARCH_RADIUS;
+    pub const WARNING_CHECK_DIAMETER: f64 = WARNING_CHECK_DIAMETER;
+    pub const DECREASE_WARNING_LEVEL_EVERY_INTERVAL: i32 = DECREASE_WARNING_LEVEL_EVERY_INTERVAL;
+    pub const WARNING_LEVEL_INCREASE_COOLDOWN: i32 = WARNING_LEVEL_INCREASE_COOLDOWN;
+
     pub const fn tick(&mut self) {
         if self.ticks_since_last_warning >= DECREASE_WARNING_LEVEL_EVERY_INTERVAL {
             self.set_warning_level(self.warning_level - 1);
@@ -98,7 +104,7 @@ impl WardenSpawnTracker {
             .collect()
     }
 
-    const fn increase_warning_level(&mut self) {
+    pub const fn increase_warning_level(&mut self) {
         if !self.on_cooldown() {
             self.ticks_since_last_warning = 0;
             self.cooldown_ticks = WARNING_LEVEL_INCREASE_COOLDOWN;
@@ -115,6 +121,15 @@ impl WardenSpawnTracker {
     #[must_use]
     pub const fn warning_level(&self) -> i32 {
         self.warning_level
+    }
+
+    #[must_use]
+    pub const fn get_warning_level(&self) -> i32 {
+        self.warning_level
+    }
+
+    pub const fn clear_cooldown(&mut self) {
+        self.cooldown_ticks = 0;
     }
 
     pub const fn set_warning_level(&mut self, warning_level: i32) {

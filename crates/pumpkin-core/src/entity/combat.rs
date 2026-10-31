@@ -17957,4 +17957,83 @@ mod tests {
         ));
     }
 
+
+    #[test]
+    fn test_sculk_shrieker_warning_levels_cooldown_and_warden_spawning_parity() {
+        use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;
+        use crate::block::entities::sculk_shrieker::SculkShriekerBlockEntity;
+        use crate::entity::mob::warden_spawn_tracker::WardenSpawnTracker;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Block and entity constants parity
+        assert_eq!(SculkShriekerBlock::WARNING_SOUND_RADIUS, 10);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_ATTEMPTS, 20);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_XZ, 5);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_Y, 6);
+        assert_eq!(SculkShriekerBlock::DARKNESS_RADIUS, 40.0);
+        assert_eq!(SculkShriekerBlock::SHRIEKING_TICKS, 90);
+        assert_eq!(SculkShriekerBlock::EVENT_SCULK_SHRIEK, 3007);
+
+        assert_eq!(SculkShriekerBlockEntity::DEFAULT_WARNING_LEVEL, 0);
+        assert_eq!(SculkShriekerBlockEntity::WARNING_SOUND_RADIUS, 10);
+        assert_eq!(SculkShriekerBlockEntity::WARDEN_SPAWN_ATTEMPTS, 20);
+        assert_eq!(SculkShriekerBlockEntity::WARDEN_SPAWN_RANGE_XZ, 5);
+        assert_eq!(SculkShriekerBlockEntity::WARDEN_SPAWN_RANGE_Y, 6);
+        assert_eq!(SculkShriekerBlockEntity::DARKNESS_RADIUS, 40.0);
+        assert_eq!(SculkShriekerBlockEntity::SHRIEKING_TICKS, 90);
+        assert_eq!(SculkShriekerBlockEntity::EVENT_SCULK_SHRIEK, 3007);
+
+        // Tracker constants parity
+        assert_eq!(WardenSpawnTracker::MAX_WARNING_LEVEL, 4);
+        assert_eq!(WardenSpawnTracker::PLAYER_SEARCH_RADIUS, 16.0);
+        assert_eq!(WardenSpawnTracker::WARNING_CHECK_DIAMETER, 48.0);
+        assert_eq!(WardenSpawnTracker::DECREASE_WARNING_LEVEL_EVERY_INTERVAL, 12000);
+        assert_eq!(WardenSpawnTracker::WARNING_LEVEL_INCREASE_COOLDOWN, 200);
+
+        // Tracker state and warning level increase progression
+        let mut tracker = WardenSpawnTracker::default();
+        assert_eq!(tracker.get_warning_level(), 0);
+
+        tracker.increase_warning_level();
+        assert_eq!(tracker.get_warning_level(), 1);
+
+        tracker.clear_cooldown();
+        tracker.increase_warning_level();
+        assert_eq!(tracker.get_warning_level(), 2);
+
+        tracker.clear_cooldown();
+        tracker.increase_warning_level();
+        assert_eq!(tracker.get_warning_level(), 3);
+
+        tracker.clear_cooldown();
+        tracker.increase_warning_level();
+        assert_eq!(tracker.get_warning_level(), 4);
+
+        // Clamped at MAX_WARNING_LEVEL = 4
+        tracker.clear_cooldown();
+        tracker.increase_warning_level();
+        assert_eq!(tracker.get_warning_level(), 4);
+
+        // Cooldown tick countdown
+        for _ in 0..WardenSpawnTracker::WARNING_LEVEL_INCREASE_COOLDOWN {
+            tracker.tick();
+        }
+
+        // Warning level decay after 12000 ticks interval
+        let mut decay_tracker = WardenSpawnTracker::default();
+        decay_tracker.increase_warning_level(); // 1
+        decay_tracker.clear_cooldown();
+        decay_tracker.increase_warning_level(); // 2
+        assert_eq!(decay_tracker.get_warning_level(), 2);
+
+        for _ in 0..=12000 {
+            decay_tracker.tick();
+        }
+        assert_eq!(decay_tracker.get_warning_level(), 1);
+
+        // Block entity initialization
+        let entity = SculkShriekerBlockEntity::new(BlockPos::new(0, 64, 0));
+        assert_eq!(*entity.warning_level.lock().unwrap(), 0);
+    }
+
 }
