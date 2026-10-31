@@ -21,6 +21,46 @@ impl BlockMetadata for BeehiveBlock {
     }
 }
 
+impl BeehiveBlock {
+    /// Vanilla BeehiveBlock.java:67: MAX_HONEY_LEVELS = 5
+    pub const MAX_HONEY_LEVEL: u8 = 5;
+    pub const MIN_HONEY_LEVEL: u8 = 0;
+    /// Vanilla CampfireBlock.java:258: checks pos.below(1..=5)
+    pub const MAX_CAMPFIRE_SMOKE_DISTANCE: i32 = 5;
+    pub const HONEYCOMB_HARVEST_AMOUNT: u8 = 3;
+    /// Vanilla BeehiveBlock.java:114: AABB(pos).inflate(8.0, 6.0, 8.0)
+    pub const BEE_ANGER_RANGE_HORIZONTAL: f64 = 8.0;
+    pub const BEE_ANGER_RANGE_VERTICAL: f64 = 6.0;
+    /// Vanilla BeehiveBlock.java:226: 70% chance to drip honey when honey_level >= 5
+    pub const DRIP_PARTICLE_CHANCE: f32 = 0.7;
+
+    #[must_use]
+    pub const fn calculate_comparator_output(honey_level: u8) -> u8 {
+        if honey_level > Self::MAX_HONEY_LEVEL {
+            Self::MAX_HONEY_LEVEL
+        } else {
+            honey_level
+        }
+    }
+
+    #[must_use]
+    pub const fn is_honey_full(honey_level: u8) -> bool {
+        honey_level >= Self::MAX_HONEY_LEVEL
+    }
+
+    #[must_use]
+    pub const fn is_within_smoke_distance(vertical_distance: i32) -> bool {
+        vertical_distance >= 1 && vertical_distance <= Self::MAX_CAMPFIRE_SMOKE_DISTANCE
+    }
+
+    #[must_use]
+    pub fn is_player_in_bee_anger_range(dx: f64, dy: f64, dz: f64) -> bool {
+        dx.abs() <= Self::BEE_ANGER_RANGE_HORIZONTAL
+            && dy.abs() <= Self::BEE_ANGER_RANGE_VERTICAL
+            && dz.abs() <= Self::BEE_ANGER_RANGE_HORIZONTAL
+    }
+}
+
 pub fn is_smokey_pos(world: &Arc<crate::world::World>, pos: BlockPos) -> bool {
     use pumpkin_data::block_properties::CampfireLikeProperties;
     for i in 1..=5 {
@@ -75,6 +115,13 @@ impl BlockBehaviour for BeehiveBlock {
                 1,
             );
 
+            let is_smokey = is_smokey_pos(args.world, *args.position);
+            if is_smokey {
+                args.player.trigger_advancement(
+                    crate::entity::player::advancement::trigger::AdvancementTrigger::SafelyHarvestHoney,
+                );
+            }
+
             let mut new_props = props;
             new_props.honey_level = 0;
             let (block, _) = args.world.get_block_and_state_id(args.position);
@@ -109,6 +156,13 @@ impl BlockBehaviour for BeehiveBlock {
                 Item::GLASS_BOTTLE.id as i32,
                 1,
             );
+
+            let is_smokey = is_smokey_pos(args.world, *args.position);
+            if is_smokey {
+                args.player.trigger_advancement(
+                    crate::entity::player::advancement::trigger::AdvancementTrigger::SafelyHarvestHoney,
+                );
+            }
 
             let is_smokey = is_smokey_pos(args.world, *args.position);
             if is_smokey {

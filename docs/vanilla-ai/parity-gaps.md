@@ -7797,3 +7797,38 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_comparator_output`, `is_full`, `get_content_height`, `can_extinguish_fire`, `should_rain_fill`, `should_snow_fill`, `lower_fill_level_on_extinguish`, `can_receive_drip`, and `get_drip_event`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_cauldron_levels_extinguish_thaw_and_comparator_parity`.
+
+### Gap 315: Beehive & Bee Nest Honey Level (0..5), Smoke Pacification, Campfire Distance (<= 5 Blocks) & Shearing/Bottling Parity
+- **Vanilla Reference**:
+  - `BeehiveBlock.java:64-358`, `BeehiveBlockEntity.java:23-450`, `CampfireBlock.java:257-272`:
+    - Honey capacity and state parameters:
+      - Honey level range: `MIN_HONEY_LEVEL = 0`, `MAX_HONEY_LEVELS = 5`.
+      - Default state: `HONEY_LEVEL = 0`, `FACING = Direction.NORTH`.
+      - Comparator analog output: outputs `HONEY_LEVEL` directly (0 when empty, 1 to 5 when filled).
+    - Campfire smoke pacification mechanics (`isSmokeyPos`):
+      - Scans vertically up to 5 blocks directly below (`pos.below(1..=5)`).
+      - If a lit campfire (`CampfireBlock.isLitCampfire(state)`) is found within this range, smoke reaches and pacifies the bees.
+    - Honey harvesting interactions (`useItemOn`):
+      - Shears interaction (`itemStack.is(Items.SHEARS)`):
+        - Requires `HONEY_LEVEL >= 5`.
+        - Drops 3x `Items.HONEYCOMB`, plays `SoundEvents.BEEHIVE_SHEAR`, damages shears by 1, emits `GameEvent.SHEAR`.
+        - Resets `HONEY_LEVEL` to 0.
+        - If pacified by smoke, triggers `SafelyHarvestHoney` advancement without provoking bees.
+        - If not pacified by smoke, angers nearby bees and releases occupants with `EMERGENCY` anger status.
+      - Glass bottle interaction (`itemStack.is(Items.GLASS_BOTTLE)`):
+        - Requires `HONEY_LEVEL >= 5`.
+        - Consumes 1x glass bottle, yields 1x `Items.HONEY_BOTTLE`, plays `SoundEvents.BOTTLE_FILL`, emits `GameEvent.FLUID_PICKUP`.
+        - Resets `HONEY_LEVEL` to 0.
+        - If pacified by smoke, triggers `SafelyHarvestHoney` advancement without provoking bees.
+        - If not pacified by smoke, angers nearby bees and releases occupants with `EMERGENCY` anger status.
+    - Bee anger radius (`angerNearbyBees`):
+      - Bounds: `AABB(pos).inflate(8.0, 6.0, 8.0)` (8 blocks horizontal, 6 blocks vertical).
+    - Dripping particle visual (`animateTick`):
+      - When `HONEY_LEVEL >= 5`: 70% chance (`!(random < 0.3F)`) to spawn `ParticleTypes.DRIPPING_HONEY` beneath the hive.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/beehive.rs`:
+    - Exported constants `MAX_HONEY_LEVEL`, `MIN_HONEY_LEVEL`, `MAX_CAMPFIRE_SMOKE_DISTANCE`, `HONEYCOMB_HARVEST_AMOUNT`, `BEE_ANGER_RANGE_HORIZONTAL`, `BEE_ANGER_RANGE_VERTICAL`, and `DRIP_PARTICLE_CHANCE`.
+    - Updated shearing interaction to trigger `SafelyHarvestHoney` advancement when harvesting honeycombs while pacified by campfire smoke.
+    - Exported helpers `calculate_comparator_output`, `is_honey_full`, `is_within_smoke_distance`, and `is_player_in_bee_anger_range`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_beehive_honey_levels_smoke_and_harvest_parity`.

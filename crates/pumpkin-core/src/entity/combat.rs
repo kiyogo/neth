@@ -17277,4 +17277,47 @@ mod tests {
         assert_eq!(CauldronBlock::get_drip_event(true), 1047);
         assert_eq!(CauldronBlock::get_drip_event(false), 1046);
     }
+
+    #[test]
+    fn test_beehive_honey_levels_smoke_and_harvest_parity() {
+        use crate::block::blocks::beehive::BeehiveBlock;
+
+        // Constants verification
+        assert_eq!(BeehiveBlock::MAX_HONEY_LEVEL, 5);
+        assert_eq!(BeehiveBlock::MIN_HONEY_LEVEL, 0);
+        assert_eq!(BeehiveBlock::MAX_CAMPFIRE_SMOKE_DISTANCE, 5);
+        assert_eq!(BeehiveBlock::HONEYCOMB_HARVEST_AMOUNT, 3);
+        assert_eq!(BeehiveBlock::BEE_ANGER_RANGE_HORIZONTAL, 8.0);
+        assert_eq!(BeehiveBlock::BEE_ANGER_RANGE_VERTICAL, 6.0);
+        assert_eq!(BeehiveBlock::DRIP_PARTICLE_CHANCE, 0.7);
+
+        // Comparator analog signal matches honey level (0..=5)
+        for lvl in 0..=5 {
+            assert_eq!(BeehiveBlock::calculate_comparator_output(lvl), lvl);
+        }
+        assert_eq!(BeehiveBlock::calculate_comparator_output(6), 5); // clamped
+
+        // Full honey check (ready for shear/bottle harvest)
+        assert!(BeehiveBlock::is_honey_full(5));
+        assert!(BeehiveBlock::is_honey_full(6));
+        assert!(!BeehiveBlock::is_honey_full(4));
+        assert!(!BeehiveBlock::is_honey_full(0));
+
+        // Campfire vertical smoke distance (1..=5 blocks directly below)
+        assert!(!BeehiveBlock::is_within_smoke_distance(0));
+        assert!(BeehiveBlock::is_within_smoke_distance(1));
+        assert!(BeehiveBlock::is_within_smoke_distance(3));
+        assert!(BeehiveBlock::is_within_smoke_distance(5));
+        assert!(!BeehiveBlock::is_within_smoke_distance(6));
+        assert!(!BeehiveBlock::is_within_smoke_distance(-1));
+
+        // Bee anger box bounds (AABB inflate 8.0 horizontal, 6.0 vertical)
+        assert!(BeehiveBlock::is_player_in_bee_anger_range(0.0, 0.0, 0.0));
+        assert!(BeehiveBlock::is_player_in_bee_anger_range(8.0, 6.0, 8.0));
+        assert!(BeehiveBlock::is_player_in_bee_anger_range(-8.0, -6.0, -8.0));
+        assert!(!BeehiveBlock::is_player_in_bee_anger_range(8.01, 0.0, 0.0));
+        assert!(!BeehiveBlock::is_player_in_bee_anger_range(0.0, 6.01, 0.0));
+        assert!(!BeehiveBlock::is_player_in_bee_anger_range(0.0, 0.0, 8.01));
+        assert!(!BeehiveBlock::is_player_in_bee_anger_range(-8.5, 0.0, 0.0));
+    }
 }
