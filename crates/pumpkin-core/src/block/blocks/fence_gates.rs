@@ -77,6 +77,42 @@ pub fn toggle_fence_gate(
 #[pumpkin_block_from_tag("minecraft:fence_gates")]
 pub struct FenceGateBlock;
 
+impl FenceGateBlock {
+    pub const SOUND_VOLUME: f32 = 1.0;
+    pub const SOUND_PITCH_BASE: f32 = 0.9;
+    pub const SOUND_PITCH_RANGE: f32 = 0.1;
+    pub const DEFAULT_OPEN: bool = false;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_IN_WALL: bool = false;
+
+    #[must_use]
+    pub const fn calculate_sound_pitch(rand_float: f32) -> f32 {
+        rand_float * Self::SOUND_PITCH_RANGE + Self::SOUND_PITCH_BASE
+    }
+
+    #[must_use]
+    pub const fn evaluate_redstone_interaction(
+        current_open: bool,
+        current_powered: bool,
+        has_signal: bool,
+    ) -> (bool, bool, bool) {
+        if current_powered != has_signal {
+            let should_play = current_open != has_signal;
+            (has_signal, has_signal, should_play)
+        } else {
+            (current_powered, current_open, false)
+        }
+    }
+
+    #[must_use]
+    pub fn connects_to_direction(
+        gate_facing: pumpkin_data::block_properties::HorizontalFacing,
+        query_dir: pumpkin_data::block_properties::HorizontalFacing,
+    ) -> bool {
+        gate_facing.to_axis() == query_dir.rotate_clockwise().to_axis()
+    }
+}
+
 impl BlockBehaviour for FenceGateBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut fence_gate_props = FenceGateProperties::default(args.block);

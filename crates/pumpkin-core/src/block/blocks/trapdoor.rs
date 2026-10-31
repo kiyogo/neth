@@ -65,6 +65,40 @@ fn get_sound(block: &Block, open: bool) -> Sound {
 #[pumpkin_block_from_tag("minecraft:trapdoors")]
 pub struct TrapDoorBlock;
 
+impl TrapDoorBlock {
+    pub const SOUND_VOLUME: f32 = 1.0;
+    pub const SOUND_PITCH_BASE: f32 = 0.9;
+    pub const SOUND_PITCH_RANGE: f32 = 0.1;
+    pub const DEFAULT_OPEN: bool = false;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_WATERLOGGED: bool = false;
+    pub const DEFAULT_HALF: Half = Half::Bottom;
+
+    #[must_use]
+    pub const fn calculate_sound_pitch(rand_float: f32) -> f32 {
+        rand_float * Self::SOUND_PITCH_RANGE + Self::SOUND_PITCH_BASE
+    }
+
+    #[must_use]
+    pub fn can_open_by_hand(block: &Block) -> bool {
+        can_open_trapdoor(block)
+    }
+
+    #[must_use]
+    pub const fn evaluate_redstone_interaction(
+        current_open: bool,
+        current_powered: bool,
+        has_signal: bool,
+    ) -> (bool, bool, bool) {
+        if current_powered != has_signal {
+            let should_play = current_open != has_signal;
+            (has_signal, has_signal, should_play)
+        } else {
+            (current_powered, current_open, false)
+        }
+    }
+}
+
 impl BlockBehaviour for TrapDoorBlock {
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         {

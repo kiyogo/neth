@@ -154,6 +154,35 @@ fn get_hinge(
 pub struct DoorBlock;
 
 impl DoorBlock {
+    pub const SOUND_VOLUME: f32 = 1.0;
+    pub const SOUND_PITCH_BASE: f32 = 0.9;
+    pub const SOUND_PITCH_RANGE: f32 = 0.1;
+    pub const DEFAULT_OPEN: bool = false;
+    pub const DEFAULT_POWERED: bool = false;
+
+    #[must_use]
+    pub const fn calculate_sound_pitch(rand_float: f32) -> f32 {
+        rand_float * Self::SOUND_PITCH_RANGE + Self::SOUND_PITCH_BASE
+    }
+
+    #[must_use]
+    pub fn can_open_by_hand(block: &Block) -> bool {
+        can_open_door(block)
+    }
+
+    #[must_use]
+    pub const fn evaluate_redstone_interaction(
+        current_open: bool,
+        current_powered: bool,
+        has_signal: bool,
+    ) -> (bool, bool, bool) {
+        if current_powered != has_signal {
+            let should_play = current_open != has_signal;
+            (has_signal, has_signal, should_play)
+        } else {
+            (current_powered, current_open, false)
+        }
+    }
     #[must_use]
     pub fn is_wooden_door(world: &World, block_pos: &BlockPos) -> bool {
         let block = world.get_block(block_pos);
@@ -216,8 +245,10 @@ impl BlockBehaviour for DoorBlock {
         door_props.facing = facing;
         door_props.half = DoubleBlockHalf::Lower;
         door_props.hinge = get_hinge(args.world, args.position, args.use_item_on, facing);
-        door_props.open = false;
-        door_props.powered = false;
+        let powered = block_receives_redstone_power(args.world, args.position)
+            || block_receives_redstone_power(args.world, &args.position.up());
+        door_props.open = powered;
+        door_props.powered = powered;
         door_props.to_state_id(args.block)
     }
 

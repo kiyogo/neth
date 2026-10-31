@@ -7373,3 +7373,40 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_light_emission`, `calculate_lit_on_placement`, `should_turn_on`, `should_schedule_turn_off`, and `should_turn_off_on_tick`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_redstone_lamp_light_delays_and_state_transitions_parity`.
+
+### Gap 301: Trapdoor, Door & Fence Gate Redstone Open/Close State, Powering Mechanics & Sound Pitch Parity
+- **Vanilla Reference**:
+  - `DoorBlock.java:41-268`, `TrapDoorBlock.java:38-185`, `FenceGateBlock.java:38-202`:
+    - Sound parameters:
+      - Volume: `SOUND_VOLUME = 1.0F` (SoundSource.BLOCKS).
+      - Pitch: `SOUND_PITCH_BASE = 0.9F`, `SOUND_PITCH_RANGE = 0.1F` (`randomFloat * 0.1F + 0.9F`).
+    - Default state properties:
+      - `DEFAULT_OPEN = false`, `DEFAULT_POWERED = false`.
+      - Trapdoor: `DEFAULT_WATERLOGGED = false`, `DEFAULT_HALF = Half.BOTTOM`.
+      - Fence Gate: `DEFAULT_IN_WALL = false`.
+    - Initial placement powered state (`getStateForPlacement`):
+      - Door: opened & powered if `level.hasNeighborSignal(pos) || level.hasNeighborSignal(pos.above())`.
+      - Trapdoor: opened & powered if `level.hasNeighborSignal(pos)`.
+      - Fence Gate: opened & powered if `level.hasNeighborSignal(pos)`.
+    - Redstone reaction (`neighborChanged` / `evaluate_redstone_interaction`):
+      - If redstone signal differs from powered state: update `powered = signal`.
+      - If open state differs from signal: set `open = signal` and trigger open/close sound and block open/close game event.
+      - If open state already matches signal (e.g. door was opened manually prior to receiving power): suppress sound and keep open.
+    - Hand interaction permissions:
+      - Wooden & Copper doors/trapdoors: `can_open_by_hand` returns `true`.
+      - Iron doors & trapdoors: `can_open_by_hand` returns `false`.
+    - Fence Gate directional connection (`connectsToDirection`):
+      - Connects perpendicularly to facing: `gate_facing.to_axis() == query_dir.rotate_clockwise().to_axis()`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/doors.rs`:
+    - Fixed initial placement to evaluate neighboring signals for both lower and upper blocks (`hasNeighborSignal(pos) || hasNeighborSignal(pos.up())`).
+    - Exported constants `SOUND_VOLUME`, `SOUND_PITCH_BASE`, `SOUND_PITCH_RANGE`, `DEFAULT_OPEN`, `DEFAULT_POWERED`.
+    - Exported helpers `calculate_sound_pitch`, `can_open_by_hand`, and `evaluate_redstone_interaction`.
+  - Updated `crates/pumpkin-core/src/block/blocks/trapdoor.rs`:
+    - Exported constants `SOUND_VOLUME`, `SOUND_PITCH_BASE`, `SOUND_PITCH_RANGE`, `DEFAULT_OPEN`, `DEFAULT_POWERED`, `DEFAULT_WATERLOGGED`, and `DEFAULT_HALF`.
+    - Exported helpers `calculate_sound_pitch`, `can_open_by_hand`, and `evaluate_redstone_interaction`.
+  - Updated `crates/pumpkin-core/src/block/blocks/fence_gates.rs`:
+    - Exported constants `SOUND_VOLUME`, `SOUND_PITCH_BASE`, `SOUND_PITCH_RANGE`, `DEFAULT_OPEN`, `DEFAULT_POWERED`, and `DEFAULT_IN_WALL`.
+    - Exported helpers `calculate_sound_pitch`, `evaluate_redstone_interaction`, and `connects_to_direction`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_doors_trapdoors_and_fence_gates_parity`.
