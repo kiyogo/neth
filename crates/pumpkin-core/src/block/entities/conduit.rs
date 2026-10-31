@@ -38,6 +38,32 @@ impl ConduitBlockEntity {
     pub const MIN_ACTIVE_SIZE: usize = 16;
     pub const MIN_KILL_SIZE: usize = 42;
     pub const KILL_RANGE: f64 = 8.0;
+    pub const ATTACK_DAMAGE: f32 = 4.0;
+    pub const EFFECT_DURATION_TICKS: i32 = 260;
+    pub const TOTAL_FRAME_POSITIONS: usize = 42;
+    pub const UPDATE_INTERVAL_TICKS: u64 = 40;
+    pub const AMBIENT_SOUND_INTERVAL_TICKS: u64 = 80;
+
+    #[must_use]
+    pub const fn is_active_size(active_size: usize) -> bool {
+        active_size >= Self::MIN_ACTIVE_SIZE
+    }
+
+    #[must_use]
+    pub const fn is_hunting_size(active_size: usize) -> bool {
+        active_size >= Self::MIN_KILL_SIZE
+    }
+
+    /// Vanilla ConduitBlockEntity.java:142-145:
+    /// Validates if an offset (ox, oy, oz) in the 5x5x5 volume (-2..=2) is a valid frame position
+    #[must_use]
+    pub const fn is_valid_frame_block_offset(ox: i32, oy: i32, oz: i32) -> bool {
+        let (ax, ay, az) = (ox.abs(), oy.abs(), oz.abs());
+        (ax > 1 || ay > 1 || az > 1)
+            && ((ox == 0 && (ay == 2 || az == 2))
+                || (oy == 0 && (ax == 2 || az == 2))
+                || (oz == 0 && (ax == 2 || ay == 2)))
+    }
 
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {

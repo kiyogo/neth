@@ -8348,3 +8348,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
 - **Neth Changes**:
   - Exported `calculate_effect_range`, `calculate_effect_duration_ticks`, `calculate_pyramid_blocks_for_layer`, `calculate_total_pyramid_blocks`, `is_valid_base_block`, and `is_secondary_effect_allowed`.
   - Added unit test `test_beacon_pyramid_levels_radius_duration_and_buffs_parity` verifying pyramid geometry, cumulative layer block counts, effect ranges, duration formulas, and secondary effect permissions.
+
+### Gap 335: Conduit Frame Activation (16..42 Blocks), Conduit Power Range (32..96 Blocks) & Attack Mechanics Parity
+
+- **Vanilla Reference**: `ConduitBlockEntity.java:1-261`, `BlockTags.java`, `MobEffects.java`.
+- **Description**:
+  - In Vanilla Minecraft, Conduits require a 3x3x3 water cage (all 26 adjacent surrounding blocks must be water) to activate.
+  - The activation frame consists of up to 42 designated positions in a 5x5x5 volume (`(ax > 1 || ay > 1 || az > 1) && (ox == 0 && (ay == 2 || az == 2) || oy == 0 && (ax == 2 || az == 2) || oz == 0 && (ax == 2 || ay == 2))`).
+  - Minimum blocks required to activate is 16 (`MIN_ACTIVE_SIZE = 16`).
+  - Conduit Power effect range is calculated as `(active_size / 7) * 16`, stepping through 32, 48, 64, 80, and 96 blocks.
+  - Duration is 260 ticks (13 seconds) applied to players in water or rain.
+  - At full frame completion (`active_size >= 42`), the conduit enters hunting mode, acquiring hostile enemy mobs in water or rain within 8 blocks (`KILL_RANGE = 8.0`) and attacking them every 40 ticks for 4.0 magic damage (`ATTACK_DAMAGE = 4.0`, 2 hearts) playing `SoundEvents.CONDUIT_ATTACK_TARGET`.
+- **Neth Changes**:
+  - Added constants `TOTAL_FRAME_POSITIONS = 42`, `ATTACK_DAMAGE = 4.0`, `EFFECT_DURATION_TICKS = 260`, `UPDATE_INTERVAL_TICKS = 40`, and `AMBIENT_SOUND_INTERVAL_TICKS = 80`.
+  - Added `is_active_size`, `is_hunting_size`, and `is_valid_frame_block_offset`.
+  - Added unit test `test_conduit_frame_activation_range_hunting_and_attack_parity` validating all 42 frame geometry coordinates, non-frame rejection, tiered effect ranges (32 to 96), and hunting mode transitions.

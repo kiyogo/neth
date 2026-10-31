@@ -18496,4 +18496,89 @@ mod tests {
         assert!(BeaconBlockEntity::is_secondary_effect_allowed(4));
         assert!(BeaconBlockEntity::is_secondary_effect_allowed(5));
     }
+
+    #[test]
+    fn test_conduit_frame_activation_range_hunting_and_attack_parity() {
+        use crate::block::entities::conduit::{
+            calculate_conduit_effect_range, ConduitBlockEntity,
+        };
+
+        // Constants parity with Vanilla ConduitBlockEntity.java
+        assert_eq!(ConduitBlockEntity::MIN_ACTIVE_SIZE, 16);
+        assert_eq!(ConduitBlockEntity::MIN_KILL_SIZE, 42);
+        assert_eq!(ConduitBlockEntity::TOTAL_FRAME_POSITIONS, 42);
+        assert_eq!(ConduitBlockEntity::KILL_RANGE, 8.0);
+        assert_eq!(ConduitBlockEntity::ATTACK_DAMAGE, 4.0);
+        assert_eq!(ConduitBlockEntity::EFFECT_DURATION, 13);
+        assert_eq!(ConduitBlockEntity::EFFECT_DURATION_TICKS, 260);
+        assert_eq!(ConduitBlockEntity::UPDATE_INTERVAL_TICKS, 40);
+        assert_eq!(ConduitBlockEntity::AMBIENT_SOUND_INTERVAL_TICKS, 80);
+
+        // Frame positions count verification across 5x5x5 volume (-2..=2)
+        let mut valid_offsets_count = 0;
+        for ox in -2..=2 {
+            for oy in -2..=2 {
+                for oz in -2..=2 {
+                    if ConduitBlockEntity::is_valid_frame_block_offset(ox, oy, oz) {
+                        valid_offsets_count += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(valid_offsets_count, 42);
+
+        // Core offsets that must NOT be frame blocks
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(0, 0, 0));
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(1, 0, 0));
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(0, 1, 0));
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(0, 0, 1));
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(1, 1, 1));
+        // Extreme outer corners (2, 2, 2) are NOT frame blocks (conduit rings are 3 orthogonal circles)
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(2, 2, 2));
+        assert!(!ConduitBlockEntity::is_valid_frame_block_offset(-2, -2, -2));
+
+        // Ring positions that ARE frame blocks:
+        // Ring 1 (XY plane, z=0):
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(2, 0, 0));
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(0, 2, 0));
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(-2, 0, 0));
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(0, -2, 0));
+        // Ring 2 (YZ plane, x=0):
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(0, 2, 0));
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(0, 0, 2));
+        // Ring 3 (XZ plane, y=0):
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(2, 0, 0));
+        assert!(ConduitBlockEntity::is_valid_frame_block_offset(0, 0, 2));
+
+        // Effect range formula: (active_size / 7) * 16
+        // Under 16: inactive (below threshold)
+        for size in 0..16 {
+            assert!(!ConduitBlockEntity::is_active_size(size));
+            assert!(!ConduitBlockEntity::is_hunting_size(size));
+        }
+
+        // Active range tiers:
+        // 16..20 blocks: 32 blocks range
+        for size in 16..21 {
+            assert!(ConduitBlockEntity::is_active_size(size));
+            assert!(!ConduitBlockEntity::is_hunting_size(size));
+            assert_eq!(calculate_conduit_effect_range(size), 32);
+        }
+        // 21..27 blocks: 48 blocks range
+        for size in 21..28 {
+            assert_eq!(calculate_conduit_effect_range(size), 48);
+        }
+        // 28..34 blocks: 64 blocks range
+        for size in 28..35 {
+            assert_eq!(calculate_conduit_effect_range(size), 64);
+        }
+        // 35..41 blocks: 80 blocks range
+        for size in 35..42 {
+            assert_eq!(calculate_conduit_effect_range(size), 80);
+        }
+        // 42 blocks (full complete frame): 96 blocks range + hunting mode active!
+        assert!(ConduitBlockEntity::is_active_size(42));
+        assert!(ConduitBlockEntity::is_hunting_size(42));
+        assert_eq!(calculate_conduit_effect_range(42), 96);
+    }
 }
