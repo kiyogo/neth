@@ -8356,6 +8356,38 @@ pub const CRAFTER_MAX_CRAFTING_TICKS: i32 = 6;
 pub const CRAFTER_FAIL_EVENT_ID: i32 = 1050;
 pub const CRAFTER_CRAFT_EVENT_ID: i32 = 1049;
 
+/// Crafter white smoke shoot particles event ID (2010).
+/// Mirrors vanilla CrafterBlock.java:222 (`level.levelEvent(2010, pos, direction.get3DDataValue())`).
+pub const CRAFTER_PARTICLES_EVENT_ID: i32 = 2010;
+
+/// Crafter advancement detection box diameter (17.0 blocks).
+/// Mirrors vanilla CrafterBlock.java:49 (`CRAFTER_ADVANCEMENT_DIAMETER = 17`).
+pub const CRAFTER_ADVANCEMENT_DIAMETER: f64 = 17.0;
+
+/// Crafter item dispense offset scale along facing normal (0.7).
+/// Mirrors vanilla CrafterBlock.java:214 (`centerPos.relative(direction, 0.7)`).
+pub const CRAFTER_DISPENSE_OFFSET_SCALE: f64 = 0.7;
+
+/// Crafter item spawn dispense speed velocity factor (6).
+/// Mirrors vanilla CrafterBlock.java:215 (`DefaultDispenseItemBehavior.spawnItem(level, remaining, 6, direction, itemSpawnOffset)`).
+pub const CRAFTER_DISPENSE_SPEED: i32 = 6;
+
+/// Crafter slot state disabled value (1).
+/// Mirrors vanilla CrafterBlockEntity.java:29 (`SLOT_DISABLED = 1`).
+pub const CRAFTER_SLOT_DISABLED: i32 = 1;
+
+/// Crafter slot state enabled value (0).
+/// Mirrors vanilla CrafterBlockEntity.java:30 (`SLOT_ENABLED = 0`).
+pub const CRAFTER_SLOT_ENABLED: i32 = 0;
+
+/// Crafter container data index for triggered state (9).
+/// Mirrors vanilla CrafterBlockEntity.java:31 (`DATA_TRIGGERED = 9`).
+pub const CRAFTER_DATA_TRIGGERED: usize = 9;
+
+/// Crafter container data total count (10).
+/// Mirrors vanilla CrafterBlockEntity.java:32 (`NUM_DATA = 10`).
+pub const CRAFTER_NUM_DATA: usize = 10;
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]

@@ -440,3 +440,74 @@ impl BlockBehaviour for CrafterBlock {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_crafter_parity_constants() {
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+        assert_eq!(crate::entity::combat::CRAFTER_PARTICLES_EVENT_ID, 2010);
+        assert_eq!(crate::entity::combat::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(crate::entity::combat::CRAFTER_DISPENSE_OFFSET_SCALE, 0.7);
+        assert_eq!(crate::entity::combat::CRAFTER_DISPENSE_SPEED, 6);
+        assert_eq!(crate::entity::combat::CRAFTER_SLOT_DISABLED, 1);
+        assert_eq!(crate::entity::combat::CRAFTER_SLOT_ENABLED, 0);
+        assert_eq!(crate::entity::combat::CRAFTER_DATA_TRIGGERED, 9);
+        assert_eq!(crate::entity::combat::CRAFTER_NUM_DATA, 10);
+    }
+
+    #[test]
+    fn test_crafter_redstone_trigger_evaluation() {
+        // (powered, is_triggered) -> (new_triggered, should_schedule_craft)
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, false), (true, true));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, true), (false, false));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, true), (true, false));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, false), (false, false));
+    }
+
+    #[test]
+    fn test_crafter_comparator_signal_and_disabled_slots() {
+        // Redstone signal equals count of occupied or disabled slots (0..=9)
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 2), 7);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(9, 0), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 5), 9); // capped at 9
+
+        // Bitmask conversions
+        let mut disabled = [false; 9];
+        disabled[0] = true;
+        disabled[4] = true;
+        disabled[8] = true;
+        let mask = CrafterBlock::disabled_slots_to_bitmask(&disabled);
+        assert_eq!(mask, 1 | (1 << 4) | (1 << 8));
+        assert_eq!(CrafterBlock::bitmask_to_disabled_slots(mask), disabled);
+
+        // Signal from states
+        let occupied = [true, false, false, true, false, false, false, false, false];
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 4); // slots 0 (both), 3 (occ), 4 (dis), 8 (dis)
+    }
+
+    #[test]
+    fn test_crafter_advancement_range_and_slot_validity() {
+        assert!(CrafterBlock::is_player_within_advancement_range(8.5, 8.5, 8.5));
+        assert!(!CrafterBlock::is_player_within_advancement_range(8.6, 0.0, 0.0));
+        assert!(!CrafterBlock::is_player_within_advancement_range(0.0, 9.0, 0.0));
+
+        assert!(CrafterBlock::is_slot_valid_for_craft(true, false));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(true, true)); // disabled slot
+        assert!(!CrafterBlock::is_slot_valid_for_craft(false, false)); // empty slot
+    }
+}

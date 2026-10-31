@@ -9188,3 +9188,36 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Saved and loaded `SniffCooldown` in NBT.
     - Added unit test `test_sniffer_digging_durations_and_state_transitions_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 369: Crafter Block Fail Sound (1050), Crafter Craft Sound (1049) & Redstone Power Trigger Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.CrafterBlock.java:1-240`, `CrafterBlockEntity.java:1-267`.
+- **Vanilla Mechanics**:
+  1. *Properties & Timings*:
+     - Container size: 9 slots (3x3 grid) (`CRAFTER_CONTAINER_SIZE = 9`, `CRAFTER_CONTAINER_WIDTH = 3`, `CRAFTER_CONTAINER_HEIGHT = 3`).
+     - Crafting tick delay: 4 ticks (`CRAFTING_TICK_DELAY = 4`). On receiving redstone power, schedules tick in 4 ticks.
+     - Max crafting ticks: 6 ticks (`MAX_CRAFTING_TICKS = 6`). Block entity counts down crafting ticks to reset block state `CRAFTING = false`.
+     - Advancement detection box: 17.0 blocks diameter (`CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `AABB.ofSize(centerPos, 17.0, 17.0, 17.0)`).
+  2. *Redstone Trigger & State Machine*:
+     - When receiving signal while not triggered:
+       - Schedules block tick after 4 ticks (`CRAFTING_TICK_DELAY = 4`).
+       - Updates block state `TRIGGERED = true` and block entity `setTriggered(true)`.
+     - When losing signal while triggered:
+       - Resets block state `TRIGGERED = false` and `CRAFTING = false`.
+       - Resets block entity `setTriggered(false)`.
+  3. *World Events & Sounds*:
+     - Craft fail (no valid recipe or empty result):
+       - `level.levelEvent(1050, pos, 0)` -> `WorldEvent::SoundCrafterFail` (1050).
+     - Craft success and dispense into world:
+       - Item spawn offset: `pos.to_centered_f64() + facing_normal * 0.7` (`CRAFTER_DISPENSE_OFFSET_SCALE = 0.7`).
+       - Item spawn velocity factor: 6 (`CRAFTER_DISPENSE_SPEED = 6`).
+       - `level.levelEvent(1049, pos, 0)` -> `WorldEvent::SoundCrafterCraft` (1049).
+       - `level.levelEvent(2010, pos, direction.get3DDataValue())` -> `WorldEvent::ParticlesShootWhiteSmoke` (2010).
+  4. *Analog Output Signal (Comparator)*:
+     - Returns number of slots that are occupied or disabled (range 0..=9) (`CrafterBlockEntity::getRedstoneSignal()`).
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `CRAFTER_PARTICLES_EVENT_ID = 2010`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `CRAFTER_DISPENSE_OFFSET_SCALE = 0.7`, `CRAFTER_DISPENSE_SPEED = 6`, `CRAFTER_SLOT_DISABLED = 1`, `CRAFTER_SLOT_ENABLED = 0`, `CRAFTER_DATA_TRIGGERED = 9`, `CRAFTER_NUM_DATA = 10`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Verified `CRAFTING_TICK_DELAY = 4`, `MAX_CRAFTING_TICKS = 6`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010`.
+    - Added comprehensive unit tests in `crafter.rs` verifying constants, redstone trigger evaluation, comparator signals, disabled slots bitmasks, and advancement bounding ranges.
+- **Status**: Completed & Verified.
