@@ -18277,4 +18277,67 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn test_lodestone_compass_binding_tracking_and_transmutation_parity() {
+        use crate::item::items::compass::CompassItem;
+        use pumpkin_data::data_component_impl::{LodestoneTarget, LodestoneTrackerImpl};
+        use pumpkin_data::{Block, item::Item};
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants and item checks parity with Vanilla CompassItem.java
+        assert_eq!(
+            CompassItem::LODESTONE_COMPASS_TRANSLATION_KEY,
+            "item.minecraft.lodestone_compass"
+        );
+        assert!(CompassItem::is_lodestone(Block::LODESTONE.id));
+        assert!(!CompassItem::is_lodestone(Block::STONE.id));
+
+        assert!(CompassItem::is_compass(Item::COMPASS.id));
+        assert!(!CompassItem::is_compass(Item::RECOVERY_COMPASS.id));
+        assert!(CompassItem::is_recovery_compass(Item::RECOVERY_COMPASS.id));
+
+        // Stack replacement logic:
+        // In survival with count == 1, replace existing stack in hand.
+        // Otherwise (count > 1 or creative), consume 1 and create a new stack.
+        assert!(CompassItem::should_replace_stack(false, 1));
+        assert!(!CompassItem::should_replace_stack(false, 2));
+        assert!(!CompassItem::should_replace_stack(false, 64));
+        assert!(!CompassItem::should_replace_stack(true, 1));
+        assert!(!CompassItem::should_replace_stack(true, 64));
+
+        // Create lodestone tracker
+        let pos = BlockPos::new(120, 70, -350);
+        let tracker = CompassItem::create_lodestone_tracker("minecraft:overworld", &pos);
+        assert!(tracker.tracked);
+        assert_eq!(
+            tracker.target,
+            Some(LodestoneTarget {
+                dimension: "minecraft:overworld".to_string(),
+                x: 120,
+                y: 70,
+                z: -350,
+            })
+        );
+
+        // Tracker ticking across dimensions (Vanilla LodestoneTracker.java:28-30)
+        // If player is in a different dimension, the tracker is retained unchanged
+        let ticked_diff_dim = CompassItem::tick_tracker(&tracker, "minecraft:the_nether", false);
+        assert_eq!(ticked_diff_dim, tracker);
+
+        // Tracker ticking in same dimension:
+        // If lodestone block is present, tracker is retained
+        let ticked_present = CompassItem::tick_tracker(&tracker, "minecraft:overworld", true);
+        assert_eq!(ticked_present, tracker);
+
+        // If lodestone block is broken/absent in same dimension, target becomes None but tracked remains true (spins randomly)
+        let ticked_broken = CompassItem::tick_tracker(&tracker, "minecraft:overworld", false);
+        assert_eq!(
+            ticked_broken,
+            LodestoneTrackerImpl {
+                target: None,
+                tracked: true,
+            }
+        );
+    }
 }

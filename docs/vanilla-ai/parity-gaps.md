@@ -8297,3 +8297,20 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `NUM_RESPAWN_OFFSETS = 25` and the exact 25 3D coordinates array `RESPAWN_OFFSETS`.
   - Added helpers `can_be_charged`, `calculate_comparator_signal`, and `get_respawn_candidate_pos`.
   - Added unit test `test_respawn_anchor_charges_offsets_explosion_and_comparator_parity` covering charging limits, explosion conditions, stand-up offset indexing, and the comparator signal curve.
+
+### Gap 332: Lodestone Compass Binding, Component Tracking, Dimension Validation & Transmutation Parity
+
+- **Vanilla Reference**: `CompassItem.java:1-76`, `LodestoneTracker.java:1-40`, `DataComponents.java`.
+- **Description**:
+  - In Vanilla Minecraft, interacting with a Lodestone (`Blocks.LODESTONE`) using a Compass binds the compass to that lodestone, locking its coordinates (`GlobalPos`).
+  - Plays sound `SoundEvents.LODESTONE_COMPASS_LOCK` at the lodestone location with volume 1.0, pitch 1.0 on `SoundSource.PLAYERS`.
+  - Sets the custom name to `item.minecraft.lodestone_compass` and applies `DataComponents.LODESTONE_TRACKER` (`target: Optional<GlobalPos>`, `tracked: bool`).
+  - In Survival with a single compass in hand (`count == 1`), the stack in hand is mutated in place. With multiple compasses or in Creative, 1 compass is consumed and a new Lodestone Compass is added to inventory (or dropped if inventory is full).
+  - While ticking in inventory (`LodestoneTracker.tick`):
+    - If the player is in a different dimension, the tracker remains intact and the compass needle spins chaotically.
+    - If the player is in the same dimension and the lodestone block still exists at the coordinates, tracking continues.
+    - If the lodestone block at the targeted coordinates has been broken/removed, the target is reset to `None` while keeping `tracked: true`, causing the compass to lose lock and spin erratically.
+- **Neth Changes**:
+  - Added constants `LODESTONE_COMPASS_TRANSLATION_KEY` and block/item identification helpers on `CompassItem`.
+  - Added `should_replace_stack`, `create_lodestone_tracker`, and `tick_tracker` implementing Vanilla's dimension-checking and broken-lodestone invalidation logic.
+  - Added unit test `test_lodestone_compass_binding_tracking_and_transmutation_parity` verifying binding, cross-dimension retention, and broken lodestone invalidation.

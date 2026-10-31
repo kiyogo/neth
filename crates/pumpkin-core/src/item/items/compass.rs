@@ -15,6 +15,69 @@ use pumpkin_util::math::vector3::Vector3;
 
 pub struct CompassItem;
 
+impl CompassItem {
+    pub const LODESTONE_COMPASS_TRANSLATION_KEY: &'static str = "item.minecraft.lodestone_compass";
+
+    #[must_use]
+    pub fn is_lodestone(block_id: pumpkin_data::BlockId) -> bool {
+        block_id == pumpkin_data::BlockId::LODESTONE
+    }
+
+    #[must_use]
+    pub fn is_compass(item_id: u16) -> bool {
+        item_id == Item::COMPASS.id
+    }
+
+    #[must_use]
+    pub fn is_recovery_compass(item_id: u16) -> bool {
+        item_id == Item::RECOVERY_COMPASS.id
+    }
+
+    #[must_use]
+    pub const fn should_replace_stack(creative: bool, count: u8) -> bool {
+        !creative && count == 1
+    }
+
+    #[must_use]
+    pub fn create_lodestone_tracker(dimension: &str, pos: &BlockPos) -> LodestoneTrackerImpl {
+        LodestoneTrackerImpl {
+            target: Some(LodestoneTarget {
+                dimension: dimension.to_string(),
+                x: pos.0.x,
+                y: pos.0.y,
+                z: pos.0.z,
+            }),
+            tracked: true,
+        }
+    }
+
+    /// Vanilla LodestoneTracker.java:26-40:
+    /// In the same dimension, verifies if the lodestone block still exists.
+    /// If destroyed, resets target to None while keeping tracked: true.
+    #[must_use]
+    pub fn tick_tracker(
+        tracker: &LodestoneTrackerImpl,
+        current_dimension: &str,
+        is_lodestone_at_pos: bool,
+    ) -> LodestoneTrackerImpl {
+        if tracker.tracked {
+            if let Some(target) = &tracker.target {
+                if target.dimension != current_dimension {
+                    return tracker.clone();
+                }
+                if is_lodestone_at_pos {
+                    return tracker.clone();
+                }
+                return LodestoneTrackerImpl {
+                    target: None,
+                    tracked: true,
+                };
+            }
+        }
+        tracker.clone()
+    }
+}
+
 impl ItemMetadata for CompassItem {
     fn ids() -> Box<[u16]> {
         Box::new([Item::COMPASS.id, Item::RECOVERY_COMPASS.id])
