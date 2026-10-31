@@ -7867,3 +7867,37 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported `DEFAULT_COOKING_TIME` and `BURN_COOL_SPEED` on `CampfireBlockEntity`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_campfire_cooking_dousing_smoke_and_damage_parity`.
+
+### Gap 317: Brewing Stand Brew Time (400 Ticks / 20s), Blaze Powder Fuel (20 Uses), Slot Bottle Masks & Comparator Output Parity
+- **Vanilla Reference**:
+  - `BrewingStandBlock.java:1-122`, `BrewingStandBlockEntity.java:1-330`, `AbstractContainerMenu.java:493-518`:
+    - Timing & fuel parameters:
+      - Total brewing time: `BREWING_TIME_TICKS = 400` game ticks (20.0s).
+      - Fuel source: 1x Blaze Powder consumed gives `DEFAULT_FUEL_USES = 20` brewing uses (`fuel = 20`).
+      - Inventory capacity: `INVENTORY_SIZE = 5` slots:
+        - Slot 0, 1, 2: Potion containers (max stack size 1).
+        - Slot 3: Brewing ingredient / reagent (e.g., Nether Wart, Redstone, Glowstone, max stack 64).
+        - Slot 4: Fuel slot (Blaze Powder, max stack 64).
+    - Audio/visual world event:
+      - On brewing completion, emits `WorldEvent.SoundBrewingStandBrew = 1035` (`level.levelEvent(1035, pos, 0)`).
+    - Block state bottle indicators:
+      - 3 boolean block properties: `HAS_BOTTLE_0`, `HAS_BOTTLE_1`, `HAS_BOTTLE_2`.
+      - Bitmask representation: `b0 | (b1 << 1) | (b2 << 2)` yielding 0..=7.
+    - Comparator analog output calculation:
+      - Uses standard container formula `Mth.lerpDiscrete(totalPercent, 0, 15)`.
+      - Divided across 5 inventory slots (`totalPercent = sum(count / max_stack) / 5.0`).
+      - Results:
+        - Empty stand (0 items): signal 0.
+        - 1 bottle (total = 1.0, 20%): `floor(1.0 + 0.2 * 14.0) = 3`.
+        - 2 bottles (total = 2.0, 40%): `floor(1.0 + 0.4 * 14.0) = 6`.
+        - 3 bottles (total = 3.0, 60%): `floor(1.0 + 0.6 * 14.0) = 9`.
+        - 3 bottles + 64 ingredient (total = 4.0, 80%): `floor(1.0 + 0.8 * 14.0) = 12`.
+        - 3 bottles + 64 ingredient + 64 fuel (total = 5.0, 100%): `floor(1.0 + 1.0 * 14.0) = 15`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/brewing_stand.rs`:
+    - Exported constants `BREWING_TIME_TICKS`, `DEFAULT_FUEL_USES`, `INVENTORY_SIZE`, `EVENT_BREW_COMPLETE`, `SLOT_POTION_0`, `SLOT_POTION_1`, `SLOT_POTION_2`, `SLOT_INGREDIENT`, and `SLOT_FUEL`.
+    - Exported helpers `calculate_bottle_bitmask` and `calculate_comparator_signal`.
+  - Updated `crates/pumpkin-core/src/block/entities/brewing_stand.rs`:
+    - Added synchronization of `WorldEvent::SoundBrewingStandBrew` (1035) on brew completion in `do_brew`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_brewing_stand_brew_time_fuel_bottle_mask_and_comparator_parity`.

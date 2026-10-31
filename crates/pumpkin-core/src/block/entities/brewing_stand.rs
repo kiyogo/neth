@@ -318,7 +318,8 @@ impl BrewingStandBlockEntity {
         // Like vanilla, the next brew is started by `tick` so it goes through `BrewingStartEvent`.
         self.brew_time.store(0, Ordering::Relaxed);
 
-        // Play sound at the center of the block
+        // Play sound and sync world event 1035 (SoundBrewingStandBrew) matching Vanilla
+        world.sync_world_event(pumpkin_data::world::WorldEvent::SoundBrewingStandBrew, self.position, 0);
         let pos = Vector3::new(
             self.position.0.x as f64 + 0.5,
             self.position.0.y as f64 + 0.5,

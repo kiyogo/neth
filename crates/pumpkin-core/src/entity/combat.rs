@@ -17373,4 +17373,50 @@ mod tests {
         // Shovels tag in DOUSES_CAMPFIRES
         assert_eq!(tag::Item::MINECRAFT_DOUSES_CAMPFIRES.2, "minecraft:douses_campfires");
     }
+
+    #[test]
+    fn test_brewing_stand_brew_time_fuel_bottle_mask_and_comparator_parity() {
+        use crate::block::blocks::brewing_stand::BrewingStandBlock;
+
+        // Parity Constants Verification
+        assert_eq!(BrewingStandBlock::BREWING_TIME_TICKS, 400);
+        assert_eq!(BrewingStandBlock::DEFAULT_FUEL_USES, 20);
+        assert_eq!(BrewingStandBlock::INVENTORY_SIZE, 5);
+        assert_eq!(BrewingStandBlock::EVENT_BREW_COMPLETE, 1035);
+
+        assert_eq!(BrewingStandBlock::SLOT_POTION_0, 0);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_1, 1);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_2, 2);
+        assert_eq!(BrewingStandBlock::SLOT_INGREDIENT, 3);
+        assert_eq!(BrewingStandBlock::SLOT_FUEL, 4);
+
+        // Bottle Bitmask (0..=7)
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, false, false), 0);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, false, false), 1);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, true, false), 2);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, true, false), 3);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, false, true), 4);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, false, true), 5);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, true, true), 6);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, true, true), 7);
+
+        // Comparator Output according to Vanilla Container Formula
+        // Empty container -> 0
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[0.0, 0.0, 0.0, 0.0, 0.0]), 0);
+
+        // 1 bottle (total = 1.0, percent = 0.2) -> floor(1 + 0.2 * 14) = 3
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 0.0, 0.0, 0.0, 0.0]), 3);
+
+        // 2 bottles (total = 2.0, percent = 0.4) -> floor(1 + 0.4 * 14) = 6
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 1.0, 0.0, 0.0, 0.0]), 6);
+
+        // 3 bottles (total = 3.0, percent = 0.6) -> floor(1 + 0.6 * 14) = 9
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 1.0, 1.0, 0.0, 0.0]), 9);
+
+        // 3 bottles + 64 ingredient (total = 4.0, percent = 0.8) -> floor(1 + 0.8 * 14) = 12
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 1.0, 1.0, 1.0, 0.0]), 12);
+
+        // 3 bottles + 64 ingredient + 64 fuel (total = 5.0, percent = 1.0) -> floor(1 + 1.0 * 14) = 15
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 1.0, 1.0, 1.0, 1.0]), 15);
+    }
 }

@@ -48,6 +48,41 @@ impl ScreenHandlerFactory for BrewingScreenFactory {
 #[pumpkin_block("minecraft:brewing_stand")]
 pub struct BrewingStandBlock;
 
+impl BrewingStandBlock {
+    pub const BREWING_TIME_TICKS: i32 = 400;
+    pub const DEFAULT_FUEL_USES: i32 = 20;
+    pub const INVENTORY_SIZE: usize = 5;
+    pub const EVENT_BREW_COMPLETE: i32 = 1035;
+
+    pub const SLOT_POTION_0: usize = 0;
+    pub const SLOT_POTION_1: usize = 1;
+    pub const SLOT_POTION_2: usize = 2;
+    pub const SLOT_INGREDIENT: usize = 3;
+    pub const SLOT_FUEL: usize = 4;
+
+    #[must_use]
+    pub fn calculate_bottle_bitmask(b0: bool, b1: bool, b2: bool) -> u8 {
+        (if b0 { 1 } else { 0 }) | (if b1 { 2 } else { 0 }) | (if b2 { 4 } else { 0 })
+    }
+
+    #[must_use]
+    pub fn calculate_comparator_signal(fill_fractions: &[f32; 5]) -> u8 {
+        let mut total = 0.0;
+        let mut has_items = false;
+        for &f in fill_fractions {
+            if f > 0.0 {
+                has_items = true;
+                total += f.clamp(0.0, 1.0);
+            }
+        }
+        if !has_items {
+            return 0;
+        }
+        let percent = total / 5.0;
+        (1.0 + percent * 14.0).floor() as u8
+    }
+}
+
 impl BlockBehaviour for BrewingStandBlock {
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
