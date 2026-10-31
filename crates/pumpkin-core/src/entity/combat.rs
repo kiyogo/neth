@@ -10636,6 +10636,27 @@ pub const PALE_MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE: f32 = 0.6;
 #[allow(dead_code)]
 pub const PALE_MOSS_PATCH_BONEMEAL_EDGE_CHANCE: f32 = 0.75;
 
+// =========================================================================
+// Gap 376: Resin Clump Face Drop Count (1:1 per Face), Thickness (1 Pixel) & Brick Smelting (200 Ticks / 0.1 XP) Parity
+// Vanilla References:
+// - `net.minecraft.world.level.block.MultifaceBlock.java:30-77, 106-138, 151-165, 184-201`
+// - `data/minecraft/loot_table/blocks/resin_clump.json:1-97`
+// - `data/minecraft/recipe/resin_brick.json:1-9`
+// - `data/minecraft/recipe/resin_block.json:1-9`
+// - `data/minecraft/recipe/resin_bricks.json:1-9`
+// =========================================================================
+
+#[allow(dead_code)]
+pub const RESIN_CLUMP_THICKNESS: f64 = 1.0 / 16.0;
+#[allow(dead_code)]
+pub const RESIN_SMELTING_COOKING_TIME_TICKS: u32 = 200;
+#[allow(dead_code)]
+pub const RESIN_SMELTING_XP: f32 = 0.1;
+#[allow(dead_code)]
+pub const RESIN_BLOCK_CRAFT_COUNT: u32 = 9;
+#[allow(dead_code)]
+pub const RESIN_BRICKS_CRAFT_COUNT: u32 = 4;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -20812,6 +20833,56 @@ mod tests {
         assert_eq!(BREEZE_STUCK_SHOOT_MEMORY_TICKS, 60);
         assert_eq!(BREEZE_POST_LAND_SHOOT_MEMORY_TICKS, 100);
         assert_eq!(BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET, 100);
+    }
+
+    #[test]
+    fn test_resin_clump_drop_count_and_smelting_parity() {
+        use crate::block::blocks::sculk::sculk_vein::MultifaceBlock;
+        use pumpkin_data::block_properties::GlowLichenLikeProperties;
+
+        // 1. Thickness & Recipe constants parity (resin_clump.json, resin_brick.json, resin_block.json)
+        assert_eq!(RESIN_CLUMP_THICKNESS, 1.0 / 16.0);
+        assert_eq!(MultifaceBlock::THICKNESS, 1.0 / 16.0);
+        assert_eq!(RESIN_SMELTING_COOKING_TIME_TICKS, 200);
+        assert_eq!(MultifaceBlock::COOKING_TIME, 200);
+        assert_eq!(RESIN_SMELTING_XP, 0.1);
+        assert_eq!(MultifaceBlock::SMELT_XP, 0.1);
+        assert_eq!(RESIN_BLOCK_CRAFT_COUNT, 9);
+        assert_eq!(MultifaceBlock::BLOCK_CRAFT_COUNT, 9);
+        assert_eq!(RESIN_BRICKS_CRAFT_COUNT, 4);
+        assert_eq!(MultifaceBlock::BRICKS_CRAFT_COUNT, 4);
+
+        // 2. Drop count formula parity: exactly 1 drop per active face (resin_clump.json: 1 + N - 1 = N)
+        let mut props = GlowLichenLikeProperties {
+            down: false,
+            up: false,
+            north: false,
+            south: false,
+            west: false,
+            east: false,
+            waterlogged: false,
+        };
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 0);
+        assert!(!MultifaceBlock::has_faces(&props));
+
+        props.down = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 1);
+        assert!(MultifaceBlock::has_faces(&props));
+
+        props.north = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 2);
+
+        props.up = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 3);
+
+        props.south = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 4);
+
+        props.west = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 5);
+
+        props.east = true;
+        assert_eq!(MultifaceBlock::calculate_drop_count(&props), 6);
     }
 
     #[test]

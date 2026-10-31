@@ -9419,3 +9419,30 @@ eq 	ext{None}$.
     - Exported `PALE_MOSS_CARPET_` and `PALE_HANGING_MOSS_` parity constants.
     - Added unit test `test_pale_moss_carpet_and_hanging_moss_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 376: Resin Clump Face Drop Count (1:1 per Face), Thickness (1 Pixel) & Brick Smelting (200 Ticks / 0.1 XP) Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.MultifaceBlock.java:30-77, 106-138, 151-165, 184-201`, `data/minecraft/loot_table/blocks/resin_clump.json:1-97`, `data/minecraft/recipe/resin_brick.json:1-9`, `data/minecraft/recipe/resin_block.json:1-9`, `data/minecraft/recipe/resin_bricks.json:1-9`.
+- **Vanilla Mechanics**:
+  1. *Resin Clump Drop Count Scaling*:
+     - When broken by a player (with any tool or bare hand), the number of resin clumps dropped scales exactly 1:1 with the number of active faces on the block (`resin_clump.json`: base 1 + 1 for each active face in `[down, up, north, south, west, east]` - 1 = $N$ active faces).
+     - Unlike Glow Lichen or Sculk Vein, Resin Clumps do NOT require shears or Silk Touch to drop items.
+  2. *Bounding Box & Physical Thickness*:
+     - Resin Clump surface layer thickness: 1 pixel ($1/16 = 0.0625$, $16 	imes 16 	imes 1$) per active face (`RESIN_CLUMP_THICKNESS = 1.0 / 16.0`).
+     - Hardness: 0.0 (instant break), blast resistance: 0.0, replaceable, non-colliding (`noCollision()`).
+  3. *Face Attachment & Solid Support Check*:
+     - Can attach to any adjacent surface whose facing side is solid (`state.is_side_solid(face_dir.opposite()) || state.is_full_cube()`).
+     - When neighbor blocks update, any face losing solid support is detached; if all faces are detached, the block becomes Air.
+  4. *Smelting & Crafting Recipes*:
+     - Smelting `minecraft:resin_clump` in a furnace yields `minecraft:resin_brick` in 200 ticks (10s) and grants 0.1 experience (`RESIN_SMELTING_COOKING_TIME_TICKS = 200`, `RESIN_SMELTING_XP = 0.1`).
+     - Crafting 9 Resin Clumps yields 1 Block of Resin (`RESIN_BLOCK_CRAFT_COUNT = 9`). Crafting 1 Block of Resin yields 9 Resin Clumps.
+     - Crafting 4 Resin Bricks (2x2 grid) yields 1 Resin Bricks block (`RESIN_BRICKS_CRAFT_COUNT = 4`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/sculk/sculk_vein.rs`:
+    - Exported constants `RESIN_CLUMP_THICKNESS = 1.0 / 16.0`, `RESIN_SMELTING_COOKING_TIME_TICKS = 200`, `RESIN_SMELTING_XP = 0.1`, `RESIN_BLOCK_CRAFT_COUNT = 9`, `RESIN_BRICKS_CRAFT_COUNT = 4`.
+    - Added helper functions `calculate_resin_clump_drop_count`, `has_active_faces`, `can_attach_to_face`.
+    - Improved multiface support verification to check `is_side_solid(opposite)` across all faces.
+    - Added unit test `test_resin_clump_and_multiface_parity`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `RESIN_` parity constants.
+    - Added unit test `test_resin_clump_drop_count_and_smelting_parity`.
+- **Status**: Completed & Verified.
