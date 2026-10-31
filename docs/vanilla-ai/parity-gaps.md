@@ -8083,3 +8083,32 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `TICK_INTERVAL_TICKS = 20`, `MAX_POWER = 15`, and `SHAPE_HEIGHT_PIXELS = 6.0`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_daylight_detector_inverted_sky_light_and_comparator_parity`.
+
+### Gap 324: Chiseled Bookshelf Book Slots (6 Slots), Insertion/Removal Bitmask, Raycast Slot Detection & Comparator Output (1..6) Parity
+- **Vanilla Reference**:
+  - `ChiseledBookShelfBlock.java:1-200`, `ChiseledBookShelfBlockEntity.java:1-120`, `SelectableSlotContainer.java:1-30`:
+    - Storage capacity & layout:
+      - 6 total book slots (`MAX_BOOKS_IN_STORAGE = 6`).
+      - 2 rows x 3 columns (`ROWS = 2`, `COLUMNS = 3`, `BOOKS_PER_ROW = 3`).
+      - Max stack size per slot: `1` (`getMaxStackSize = 1`).
+      - Accepts only items matching `#minecraft:bookshelf_books` (`acceptsItemType`).
+    - Raycasting hit slot calculation:
+      - Relative hit coordinates mapped based on block facing (`North`, `South`, `West`, `East`).
+      - Row determined by `(1.0 - hit_y) * 2` (top row = 0, bottom row = 1).
+      - Column determined by `hit_x * 3` (left = 0, center = 1, right = 2).
+      - Target slot = `column + row * 3` (slots 0..5).
+    - Block state properties & bitmask:
+      - 6 boolean properties `slot_0_occupied` .. `slot_5_occupied`.
+      - On book insertion or removal, block entity updates all 6 slot occupancy states and emits `GameEvent.BLOCK_CHANGE`.
+    - Comparator analog output calculation:
+      - Output is determined by the last interacted slot: `lastInteractedSlot + 1`.
+      - Range: 1 to 6 (`MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 6`).
+      - If no slot has been interacted with (`DEFAULT_LAST_INTERACTED_SLOT = -1`), output is `0`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`:
+    - Fixed `update_state` to update all 6 slot occupancy states (`slot_0_occupied` .. `slot_5_occupied`) according to current item stacks in inventory.
+    - Verified `DEFAULT_LAST_INTERACTED_SLOT = -1`, `MAX_BOOKS_IN_STORAGE = 6`, `BOOKS_PER_ROW = 3`, `ROWS = 2`, `COLUMNS = 3`, `MAX_STACK_SIZE = 1`, and `calculate_comparator_output`.
+  - Updated `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Verified `calculate_hit_slot`, `calculate_comparator_output`, `slot_bitmask_from_properties`, and `get_occupied_slot_count`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_chiseled_bookshelf_slots_raycast_and_comparator_parity`.

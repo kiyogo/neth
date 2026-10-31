@@ -148,20 +148,16 @@ impl ChiseledBookshelfBlockEntity {
                 .store(slot as i8, Ordering::Relaxed);
             self.mark_dirty();
 
-            let occupied = !self
+            let items = self
                 .items
                 .read()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)[slot]
-                .is_empty();
-            match slot {
-                0 => properties.slot_0_occupied = occupied,
-                1 => properties.slot_1_occupied = occupied,
-                2 => properties.slot_2_occupied = occupied,
-                3 => properties.slot_3_occupied = occupied,
-                4 => properties.slot_4_occupied = occupied,
-                5 => properties.slot_5_occupied = occupied,
-                _ => {}
-            }
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            properties.slot_0_occupied = !items[0].is_empty();
+            properties.slot_1_occupied = !items[1].is_empty();
+            properties.slot_2_occupied = !items[2].is_empty();
+            properties.slot_3_occupied = !items[3].is_empty();
+            properties.slot_4_occupied = !items[4].is_empty();
+            properties.slot_5_occupied = !items[5].is_empty();
 
             world.set_block_state(
                 &self.position,

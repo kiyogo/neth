@@ -17779,4 +17779,76 @@ mod tests {
         assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(20), 15); // clamped
     }
 
+
+    #[test]
+    fn test_chiseled_bookshelf_slots_raycast_and_comparator_parity() {
+        use crate::block::blocks::chiseled_bookshelf::ChiseledBookshelfBlock;
+        use crate::block::entities::chiseled_bookshelf::ChiseledBookshelfBlockEntity;
+        use pumpkin_data::block_properties::{ChiseledBookshelfLikeProperties, HorizontalFacing};
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants parity
+        assert_eq!(ChiseledBookshelfBlock::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlock::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlock::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlock::COLUMNS, 3);
+        assert_eq!(ChiseledBookshelfBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ChiseledBookshelfBlock::MAX_COMPARATOR_OUTPUT, 6);
+        assert_eq!(ChiseledBookshelfBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(ChiseledBookshelfBlock::DEFAULT_SLOT_OCCUPIED, false);
+
+        assert_eq!(ChiseledBookshelfBlockEntity::DEFAULT_LAST_INTERACTED_SLOT, -1);
+        assert_eq!(ChiseledBookshelfBlockEntity::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlockEntity::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlockEntity::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlockEntity::COLUMNS, 3);
+        assert_eq!(ChiseledBookshelfBlockEntity::MAX_STACK_SIZE, 1);
+        assert_eq!(ChiseledBookshelfBlockEntity::INVENTORY_SIZE, 6);
+
+        // Raycast hit slot detection: 2 rows x 3 columns
+        // Top row (hit_y = 0.8) -> row 0
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.8), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.8), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.8), 2);
+
+        // Bottom row (hit_y = 0.2) -> row 1
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.2), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.2), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.2), 5);
+
+        // Comparator output formula parity: last_interacted_slot + 1 (1..6), or 0 if un-interacted
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(-1), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(0), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(1), 2);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(2), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(3), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(4), 5);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(5), 6);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(6), 0); // out of range
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(-2), 0);
+
+        // Block entity initial comparator output
+        let entity = ChiseledBookshelfBlockEntity::new(BlockPos::new(0, 64, 0));
+        assert_eq!(entity.get_last_interacted_slot(), -1);
+        assert_eq!(entity.calculate_comparator_output(), 0);
+
+        // Properties bitmask and occupied count
+        let mut props = ChiseledBookshelfLikeProperties::default(&pumpkin_data::Block::CHISELED_BOOKSHELF);
+        props.slot_0_occupied = true;
+        props.slot_2_occupied = true;
+        props.slot_5_occupied = true;
+
+        assert_eq!(
+            ChiseledBookshelfBlock::slot_bitmask_from_properties(&props),
+            (1 << 0) | (1 << 2) | (1 << 5)
+        );
+        assert_eq!(ChiseledBookshelfBlock::get_occupied_slot_count(&props), 3);
+        assert!(ChiseledBookshelfBlock::is_slot_occupied(&props, 0));
+        assert!(!ChiseledBookshelfBlock::is_slot_occupied(&props, 1));
+        assert!(ChiseledBookshelfBlock::is_slot_occupied(&props, 2));
+        assert!(!ChiseledBookshelfBlock::is_slot_occupied(&props, 3));
+        assert!(!ChiseledBookshelfBlock::is_slot_occupied(&props, 4));
+        assert!(ChiseledBookshelfBlock::is_slot_occupied(&props, 5));
+    }
+
 }
