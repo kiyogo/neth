@@ -139,6 +139,11 @@ impl ComposterBlock {
     pub const BONE_MEAL_Y_OFFSET: f64 = 1.01;
     pub const BONE_MEAL_HORIZONTAL_OFFSET_MAX: f32 = 0.7;
     pub const BONE_MEAL_PICKUP_DELAY_TICKS: u32 = 10;
+    pub const CHANCE_TIER_1: f32 = 0.30;
+    pub const CHANCE_TIER_2: f32 = 0.50;
+    pub const CHANCE_TIER_3: f32 = 0.65;
+    pub const CHANCE_TIER_4: f32 = 0.85;
+    pub const CHANCE_TIER_5: f32 = 1.00;
 
     #[must_use]
     pub fn calculate_bone_meal_spawn_pos(

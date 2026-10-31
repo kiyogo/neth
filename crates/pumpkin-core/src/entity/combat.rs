@@ -18136,4 +18136,75 @@ mod tests {
         assert_eq!(TargetBlock::calculate_comparator_signal(20), 15); // clamped
     }
 
+
+    #[test]
+    fn test_composter_tiers_progression_and_comparator_parity() {
+        use crate::block::blocks::composter::ComposterBlock;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants parity with Vanilla ComposterBlock.java
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+        assert_eq!(ComposterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ComposterBlock::MAX_COMPARATOR_OUTPUT, 8);
+
+        // Tier chances
+        assert!((ComposterBlock::CHANCE_TIER_1 - 0.30).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_2 - 0.50).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_3 - 0.65).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_4 - 0.85).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_5 - 1.00).abs() < 1e-6);
+
+        // Comparator output corresponds directly to level 0..8
+        for lvl in 0..=8 {
+            assert_eq!(ComposterBlock::calculate_comparator_output(lvl), lvl);
+        }
+        assert_eq!(ComposterBlock::calculate_comparator_output(9), 8);
+
+        // Readiness and composting capability
+        for lvl in 0..=7 {
+            assert!(!ComposterBlock::is_ready(lvl));
+        }
+        assert!(ComposterBlock::is_ready(8));
+
+        for lvl in 0..7 {
+            assert!(ComposterBlock::can_compost_more(lvl));
+            assert!(ComposterBlock::can_hopper_insert(lvl, BlockDirection::Up));
+            assert!(!ComposterBlock::can_hopper_insert(lvl, BlockDirection::Down));
+            assert!(!ComposterBlock::can_hopper_insert(lvl, BlockDirection::North));
+        }
+        assert!(!ComposterBlock::can_compost_more(7));
+        assert!(!ComposterBlock::can_compost_more(8));
+        assert!(!ComposterBlock::can_hopper_insert(7, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(8, BlockDirection::Up));
+
+        // Hopper extraction: only when ready (level 8) and extracting from below (Down)
+        for lvl in 0..=7 {
+            assert!(!ComposterBlock::can_hopper_extract(lvl, BlockDirection::Down));
+        }
+        assert!(ComposterBlock::can_hopper_extract(8, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::East));
+
+        // Bone meal drop offsets
+        assert_eq!(ComposterBlock::BONE_MEAL_Y_OFFSET, 1.01);
+        assert_eq!(ComposterBlock::BONE_MEAL_HORIZONTAL_OFFSET_MAX, 0.7);
+        assert_eq!(ComposterBlock::BONE_MEAL_PICKUP_DELAY_TICKS, 10);
+
+        let pos = BlockPos::new(10, 64, -20);
+        let drop_pos = ComposterBlock::calculate_bone_meal_spawn_pos(&pos, 0.1, -0.2);
+        assert!((drop_pos.x - 10.6).abs() < 1e-6);
+        assert!((drop_pos.y - 65.01).abs() < 1e-6);
+        assert!((drop_pos.z - (-19.7)).abs() < 1e-6);
+
+        // should_level_increase helper
+        assert!(ComposterBlock::should_level_increase(0, 0.5, 0.2));
+        assert!(!ComposterBlock::should_level_increase(0, 0.5, 0.6));
+        assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0));
+    }
 }

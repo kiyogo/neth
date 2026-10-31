@@ -8268,3 +8268,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `ACTIVATION_TICKS_ARROWS = 20`, `ACTIVATION_TICKS_OTHER = 8`, `MIN_POWER = 1`, `MAX_POWER = 15`, `DEFAULT_POWER = 0`, `BULLSEYE_MIN_DISTANCE = 30.0`, `is_arrow_projectile`, and `calculate_power_from_distance`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_target_block_bullseye_delay_and_comparator_parity`.
+
+### Gap 330: Composter Fill Chances (30%, 50%, 65%, 85%, 100%), Level Progression (0..8) & Bone Meal Harvest Parity
+
+- **Vanilla Reference**: `ComposterBlock.java:1-361`, `Compostable.java:1-40`, `WorldlyContainer.java`.
+- **Description**:
+  - In Vanilla Minecraft, composters feature an 8-stage fill progression (`LEVEL` 0..7) leading to a ready state (`LEVEL = 8`) that produces bone meal when harvested.
+  - Items compost with predefined tier chances: Tier 1 (30%), Tier 2 (50%), Tier 3 (65%), Tier 4 (85%), and Tier 5 (100%).
+  - Hopper interactions are strictly directional: items can only be inserted from above (`Direction.UP`) when `level < 7`, and bone meal can only be extracted from below (`Direction.DOWN`) when `level == 8`.
+  - Bone meal drops at `y + 1.01` with horizontal random offset up to `0.7` and default pickup delay of 10 ticks.
+  - Full composting tick delay is 20 ticks before transitioning from stage 7 to stage 8 (`SoundEvents.COMPOSTER_READY`).
+  - Emits analog comparator signal equal to its current fill level (`0..8`).
+- **Neth Changes**:
+  - Exported tier constants `CHANCE_TIER_1` (0.30) to `CHANCE_TIER_5` (1.00) in `ComposterBlock`.
+  - Validated hopper directional filtering, level progression, and comparator output `0..8`.
+  - Added unit test `test_composter_tiers_progression_and_comparator_parity` covering all stages and hopper semantics.
