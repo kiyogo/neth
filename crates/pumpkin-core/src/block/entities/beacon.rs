@@ -32,6 +32,7 @@ pub const BEACON_MAX_LEVELS: i32 = 4;
 pub const BEACON_LEVELS_NEEDED_FOR_SECONDARY: i32 = 4;
 pub const BEACON_BLOCKS_CHECK_PER_TICK: i32 = 10;
 pub const BEACON_EFFECT_INTERVAL_TICKS: u64 = 80;
+pub const TOTAL_PYRAMID_BLOCKS_MAX: i32 = 164;
 
 const MAX_LEVELS: i32 = BEACON_MAX_LEVELS;
 const BLOCKS_CHECK_PER_TICK: i32 = BEACON_BLOCKS_CHECK_PER_TICK;
@@ -93,6 +94,51 @@ impl BeaconBlockEntity {
     #[must_use]
     pub fn secondary_effect(&self) -> Option<&'static StatusEffect> {
         decode_effect(self.secondary_effect.load(Ordering::Relaxed))
+    }
+
+    /// Vanilla BeaconBlockEntity.java:270: range = levels * 10 + 10
+    #[must_use]
+    pub const fn calculate_effect_range(levels: i32) -> f64 {
+        (levels * 10 + 10) as f64
+    }
+
+    /// Vanilla BeaconBlockEntity.java:276: durationTicks = (9 + levels * 2) * 20
+    #[must_use]
+    pub const fn calculate_effect_duration_ticks(levels: i32) -> i32 {
+        (9 + levels * 2) * 20
+    }
+
+    /// Vanilla BeaconBlockEntity.java:200-225: layer dimensions (2 * step + 1)^2
+    #[must_use]
+    pub const fn calculate_pyramid_blocks_for_layer(step: i32) -> i32 {
+        let side = 2 * step + 1;
+        side * side
+    }
+
+    /// Total blocks required for pyramid up to the specified level (up to 4 levels = 164 blocks)
+    #[must_use]
+    pub const fn calculate_total_pyramid_blocks(levels: i32) -> i32 {
+        let mut total = 0;
+        let mut step = 1;
+        while step <= levels && step <= BEACON_MAX_LEVELS {
+            total += Self::calculate_pyramid_blocks_for_layer(step);
+            step += 1;
+        }
+        total
+    }
+
+    #[must_use]
+    pub fn is_valid_base_block(block: &Block) -> bool {
+        block == &Block::IRON_BLOCK
+            || block == &Block::GOLD_BLOCK
+            || block == &Block::DIAMOND_BLOCK
+            || block == &Block::EMERALD_BLOCK
+            || block == &Block::NETHERITE_BLOCK
+    }
+
+    #[must_use]
+    pub const fn is_secondary_effect_allowed(levels: i32) -> bool {
+        levels >= BEACON_LEVELS_NEEDED_FOR_SECONDARY
     }
 
     fn mark_dirty(&self) {

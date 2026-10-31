@@ -8330,3 +8330,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Replaced the flawed nested-radius scanner with Vanilla's exact `BOOKSHELF_OFFSETS` (32 coordinates).
   - Added `get_transmitter_offset` computing `(dx / 2, dy, dz / 2)` per candidate position and `is_transmitter` for passable air detection.
   - Added unit test `test_enchanting_table_bookshelf_offsets_transmitters_and_cost_parity` verifying offset boundaries, raycast intermediate transmitter positions, and 3-slot cost formulas.
+
+### Gap 334: Beacon Pyramid Structures (1..4 Levels), Mineral Base Blocks, Effect Radius & Tier Buffs Parity
+
+- **Vanilla Reference**: `BeaconBlockEntity.java:1-395`, `BeaconMenu.java:1-120`, `BlockTags.java`.
+- **Description**:
+  - In Vanilla Minecraft, Beacons evaluate 1 to 4 pyramid layers directly below them:
+    - Layer 1 (`y - 1`): 3x3 (9 blocks)
+    - Layer 2 (`y - 2`): 5x5 (25 blocks, cumulative 34)
+    - Layer 3 (`y - 3`): 7x7 (49 blocks, cumulative 83)
+    - Layer 4 (`y - 4`): 9x9 (81 blocks, cumulative 164)
+  - Pyramid base blocks must be valid mineral blocks: Iron, Gold, Diamond, Emerald, or Netherite blocks (`BlockTags.BEACON_BASE_BLOCKS`).
+  - Effect radius scales as `levels * 10 + 10` (20, 30, 40, 50 blocks).
+  - Effect duration in game ticks is `(9 + levels * 2) * 20` (220, 260, 300, 340 ticks; 11s to 17s).
+  - Pulse check occurs every 80 game ticks (`BEACON_EFFECT_INTERVAL_TICKS = 80`).
+  - Secondary power (Regeneration or Tier II primary effect) is unlocked strictly when `levels >= 4`.
+- **Neth Changes**:
+  - Exported `calculate_effect_range`, `calculate_effect_duration_ticks`, `calculate_pyramid_blocks_for_layer`, `calculate_total_pyramid_blocks`, `is_valid_base_block`, and `is_secondary_effect_allowed`.
+  - Added unit test `test_beacon_pyramid_levels_radius_duration_and_buffs_parity` verifying pyramid geometry, cumulative layer block counts, effect ranges, duration formulas, and secondary effect permissions.

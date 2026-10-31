@@ -18430,4 +18430,70 @@ mod tests {
             30
         );
     }
+
+    #[test]
+    fn test_beacon_pyramid_levels_radius_duration_and_buffs_parity() {
+        use crate::block::entities::beacon::{
+            BeaconBlockEntity, BEACON_BLOCKS_CHECK_PER_TICK, BEACON_EFFECT_INTERVAL_TICKS,
+            BEACON_LEVELS_NEEDED_FOR_SECONDARY, BEACON_MAX_LEVELS, TOTAL_PYRAMID_BLOCKS_MAX,
+        };
+        use pumpkin_data::Block;
+
+        // Constants parity with Vanilla BeaconBlockEntity.java
+        assert_eq!(BEACON_MAX_LEVELS, 4);
+        assert_eq!(BEACON_LEVELS_NEEDED_FOR_SECONDARY, 4);
+        assert_eq!(BEACON_BLOCKS_CHECK_PER_TICK, 10);
+        assert_eq!(BEACON_EFFECT_INTERVAL_TICKS, 80);
+        assert_eq!(TOTAL_PYRAMID_BLOCKS_MAX, 164);
+
+        // Pyramid layer block counts: (2 * step + 1)^2
+        // Layer 1: 3x3 = 9
+        assert_eq!(BeaconBlockEntity::calculate_pyramid_blocks_for_layer(1), 9);
+        // Layer 2: 5x5 = 25
+        assert_eq!(BeaconBlockEntity::calculate_pyramid_blocks_for_layer(2), 25);
+        // Layer 3: 7x7 = 49
+        assert_eq!(BeaconBlockEntity::calculate_pyramid_blocks_for_layer(3), 49);
+        // Layer 4: 9x9 = 81
+        assert_eq!(BeaconBlockEntity::calculate_pyramid_blocks_for_layer(4), 81);
+
+        // Cumulative pyramid block counts
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(0), 0);
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(1), 9);
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(2), 34);
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(3), 83);
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(4), 164);
+        assert_eq!(BeaconBlockEntity::calculate_total_pyramid_blocks(5), 164); // clamped to max 4
+
+        // Effect range parity: levels * 10 + 10
+        assert_eq!(BeaconBlockEntity::calculate_effect_range(0), 10.0);
+        assert_eq!(BeaconBlockEntity::calculate_effect_range(1), 20.0);
+        assert_eq!(BeaconBlockEntity::calculate_effect_range(2), 30.0);
+        assert_eq!(BeaconBlockEntity::calculate_effect_range(3), 40.0);
+        assert_eq!(BeaconBlockEntity::calculate_effect_range(4), 50.0);
+
+        // Effect duration ticks parity: (9 + levels * 2) * 20
+        assert_eq!(BeaconBlockEntity::calculate_effect_duration_ticks(0), 180); // 9s
+        assert_eq!(BeaconBlockEntity::calculate_effect_duration_ticks(1), 220); // 11s
+        assert_eq!(BeaconBlockEntity::calculate_effect_duration_ticks(2), 260); // 13s
+        assert_eq!(BeaconBlockEntity::calculate_effect_duration_ticks(3), 300); // 15s
+        assert_eq!(BeaconBlockEntity::calculate_effect_duration_ticks(4), 340); // 17s
+
+        // Valid base blocks: Iron, Gold, Diamond, Emerald, Netherite blocks
+        assert!(BeaconBlockEntity::is_valid_base_block(&Block::IRON_BLOCK));
+        assert!(BeaconBlockEntity::is_valid_base_block(&Block::GOLD_BLOCK));
+        assert!(BeaconBlockEntity::is_valid_base_block(&Block::DIAMOND_BLOCK));
+        assert!(BeaconBlockEntity::is_valid_base_block(&Block::EMERALD_BLOCK));
+        assert!(BeaconBlockEntity::is_valid_base_block(&Block::NETHERITE_BLOCK));
+
+        assert!(!BeaconBlockEntity::is_valid_base_block(&Block::STONE));
+        assert!(!BeaconBlockEntity::is_valid_base_block(&Block::COPPER_BLOCK));
+        assert!(!BeaconBlockEntity::is_valid_base_block(&Block::OBSIDIAN));
+
+        // Secondary effect permission
+        for lvl in 0..4 {
+            assert!(!BeaconBlockEntity::is_secondary_effect_allowed(lvl));
+        }
+        assert!(BeaconBlockEntity::is_secondary_effect_allowed(4));
+        assert!(BeaconBlockEntity::is_secondary_effect_allowed(5));
+    }
 }
