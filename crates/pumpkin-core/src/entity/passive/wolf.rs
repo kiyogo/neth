@@ -305,6 +305,7 @@ impl Mob for WolfEntity {
         Some(self)
     }
 
+
     fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
         self.set_ordered_to_sit(false);
     }
@@ -756,6 +757,95 @@ mod tests {
 }
 
 impl WolfEntity {
+    pub fn handle_wolf_armor_damage(&self, damage: f32, damage_type_name: &str) -> bool {
+        if !combat::can_wolf_armor_absorb_damage(damage_type_name) {
+            return false;
+        }
+
+        let mut current_armor = {
+            let equip = self
+                .mob_entity
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equip
+                .equipment
+                .get(&pumpkin_data::data_component_impl::EquipmentSlot::BODY)
+                .cloned()
+                .unwrap_or_else(|| ItemStack::EMPTY.clone())
+        };
+
+        if current_armor.is_empty() || current_armor.item.id != Item::WOLF_ARMOR.id {
+            return false;
+        }
+
+        let max_damage = current_armor.get_max_damage().unwrap_or(combat::WOLF_ARMOR_MAX_DURABILITY);
+        let damage_before = current_armor.get_damage();
+        let (_rem_damage, new_damage, crack_changed, broken) =
+            combat::calculate_wolf_armor_damage_absorption(damage, damage_before, max_damage);
+
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+
+        if broken {
+            {
+                let mut equip = self
+                    .mob_entity
+                    .living_entity
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                equip
+                    .equipment
+                    .remove(&pumpkin_data::data_component_impl::EquipmentSlot::BODY);
+            }
+            self.mob_entity.living_entity.send_equipment_changes(&[(
+                pumpkin_data::data_component_impl::EquipmentSlot::BODY,
+                ItemStack::EMPTY.clone(),
+            )]);
+            world.play_sound(
+                pumpkin_data::sound::Sound::ItemWolfArmorBreak,
+                pumpkin_data::sound::SoundCategory::Neutral,
+                &pos,
+            );
+        } else {
+            current_armor.set_damage(new_damage);
+            {
+                let mut equip = self
+                    .mob_entity
+                    .living_entity
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                equip
+                    .equipment
+                    .insert(pumpkin_data::data_component_impl::EquipmentSlot::BODY, current_armor.clone());
+            }
+            self.mob_entity.living_entity.send_equipment_changes(&[(
+                pumpkin_data::data_component_impl::EquipmentSlot::BODY,
+                current_armor,
+            )]);
+
+            world.play_sound(
+                pumpkin_data::sound::Sound::ItemWolfArmorDamage,
+                pumpkin_data::sound::SoundCategory::Neutral,
+                &pos,
+            );
+
+            if crack_changed {
+                world.play_sound(
+                    pumpkin_data::sound::Sound::ItemWolfArmorCrack,
+                    pumpkin_data::sound::SoundCategory::Neutral,
+                    &pos,
+                );
+            }
+        }
+
+        true
+    }
+
     
     pub fn get_collar_color(&self) -> u8 {
         self.collar_color.load(Ordering::Relaxed)

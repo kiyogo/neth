@@ -6786,6 +6786,105 @@ pub fn can_repair_wolf_armor(is_sitting: bool, is_damaged: bool, has_armor: bool
     is_sitting && is_damaged && has_armor
 }
 
+pub const WOLF_ARMOR_MAX_DURABILITY: i32 = 64;
+pub const WOLF_ARMOR_DEFENSE: i32 = 11;
+pub const WOLF_ARMOR_CRACK_FRACTION_LOW: f32 = 0.95;
+pub const WOLF_ARMOR_CRACK_FRACTION_MEDIUM: f32 = 0.69;
+pub const WOLF_ARMOR_CRACK_FRACTION_HIGH: f32 = 0.32;
+
+/// Calculates crackiness level of Wolf Armor from current damage and max damage.
+///
+/// Mirrors vanilla `Crackiness.java:7, 18-25, 32-34`:
+/// `Crackiness.WOLF_ARMOR = new Crackiness(0.95F, 0.69F, 0.32F);`
+/// fraction = (maxDamage - damage) / maxDamage
+/// - fraction >= 0.95: None (0)
+/// - 0.69 <= fraction < 0.95: Low (1)
+/// - 0.32 <= fraction < 0.69: Medium (2)
+/// - fraction < 0.32: High (3)
+#[must_use]
+pub fn calculate_wolf_armor_crackiness(damage: i32, max_damage: i32) -> u8 {
+    let max = max_damage.max(1) as f32;
+    let fraction = ((max_damage - damage) as f32) / max;
+    if fraction < WOLF_ARMOR_CRACK_FRACTION_HIGH {
+        3
+    } else if fraction < WOLF_ARMOR_CRACK_FRACTION_MEDIUM {
+        2
+    } else if fraction < WOLF_ARMOR_CRACK_FRACTION_LOW {
+        1
+    } else {
+        0
+    }
+}
+
+/// Checks whether a damage source can be absorbed by wolf armor.
+///
+/// Mirrors vanilla `Wolf.java:427-429`:
+/// Absorbs all damage except sources in `#minecraft:bypasses_wolf_armor`.
+#[must_use]
+pub fn can_wolf_armor_absorb_damage(damage_type: &str) -> bool {
+    let stripped = damage_type.strip_prefix("minecraft:").unwrap_or(damage_type);
+    !matches!(
+        stripped,
+        "out_of_world"
+            | "generic_kill"
+            | "cramming"
+            | "drown"
+            | "dry_out"
+            | "freeze"
+            | "in_wall"
+            | "indirect_magic"
+            | "magic"
+            | "outside_border"
+            | "starve"
+            | "thorns"
+            | "wither"
+    )
+}
+
+/// Computes damage absorption of Wolf Armor.
+///
+/// Returns (remaining_wolf_damage, new_armor_damage, crack_level_changed, is_broken).
+#[must_use]
+pub fn calculate_wolf_armor_damage_absorption(
+    damage: f32,
+    current_armor_damage: i32,
+    max_damage: i32,
+) -> (f32, i32, bool, bool) {
+    let armor_damage_addition = damage.ceil() as i32;
+    let new_armor_damage = current_armor_damage + armor_damage_addition;
+    let broken = new_armor_damage >= max_damage;
+    let old_crack = calculate_wolf_armor_crackiness(current_armor_damage, max_damage);
+    let new_crack = calculate_wolf_armor_crackiness(new_armor_damage.min(max_damage), max_damage);
+    let crack_changed = old_crack != new_crack;
+    let remaining_wolf_damage = if broken {
+        (new_armor_damage - max_damage) as f32
+    } else {
+        0.0
+    };
+    (
+        remaining_wolf_damage,
+        new_armor_damage.min(max_damage),
+        crack_changed,
+        broken,
+    )
+}
+
+/// Encodes RGB color components into a 24-bit integer color code for dyed wolf armor.
+#[must_use]
+pub const fn make_wolf_armor_rgb(r: u8, g: u8, b: u8) -> u32 {
+    ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
+}
+
+/// Extracts (r, g, b) components from a 24-bit dyed wolf armor integer color code.
+#[must_use]
+pub const fn get_wolf_armor_rgb(color_code: u32) -> (u8, u8, u8) {
+    (
+        ((color_code >> 16) & 0xFF) as u8,
+        ((color_code >> 8) & 0xFF) as u8,
+        (color_code & 0xFF) as u8,
+    )
+}
+
 /// Returns minimum ticks a fox must hold food in mouth before consuming it (600 ticks = 30 seconds).
 ///
 /// Mirrors vanilla `Fox.java:132, 217`:
@@ -19290,5 +19389,85 @@ mod tests {
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 64), 1);
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(32, 64), 8);
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(64, 64), 15);
+    }
+
+    #[test]
+    fn test_wolf_armor_durability_crackiness_and_damage_absorption_parity() {
+        use super::*;
+
+        // 1. Constants parity with Vanilla Wolf.java, ArmorMaterials.java & Crackiness.java
+        assert_eq!(WOLF_ARMOR_MAX_DURABILITY, 64);
+        assert_eq!(WOLF_ARMOR_DEFENSE, 11);
+        assert_eq!(WOLF_ARMOR_REPAIR_UNIT, 0.125);
+        assert_eq!(WOLF_ARMOR_CRACK_FRACTION_LOW, 0.95);
+        assert_eq!(WOLF_ARMOR_CRACK_FRACTION_MEDIUM, 0.69);
+        assert_eq!(WOLF_ARMOR_CRACK_FRACTION_HIGH, 0.32);
+
+        // 2. Crackiness level transitions (Crackiness.WOLF_ARMOR)
+        // Level 0 (None): fraction >= 0.95 (durability 64..61, damage 0..3)
+        assert_eq!(calculate_wolf_armor_crackiness(0, 64), 0);
+        assert_eq!(calculate_wolf_armor_crackiness(3, 64), 0);
+
+        // Level 1 (Low): 0.69 <= fraction < 0.95 (durability 60..45, damage 4..19)
+        assert_eq!(calculate_wolf_armor_crackiness(4, 64), 1);
+        assert_eq!(calculate_wolf_armor_crackiness(19, 64), 1);
+
+        // Level 2 (Medium): 0.32 <= fraction < 0.69 (durability 44..21, damage 20..43)
+        assert_eq!(calculate_wolf_armor_crackiness(20, 64), 2);
+        assert_eq!(calculate_wolf_armor_crackiness(43, 64), 2);
+
+        // Level 3 (High): fraction < 0.32 (durability 20..1, damage 44..63)
+        assert_eq!(calculate_wolf_armor_crackiness(44, 64), 3);
+        assert_eq!(calculate_wolf_armor_crackiness(63, 64), 3);
+
+        // 3. Damage absorption predicate parity (bypasses_wolf_armor tag)
+        assert!(can_wolf_armor_absorb_damage("player_attack"));
+        assert!(can_wolf_armor_absorb_damage("mob_attack"));
+        assert!(can_wolf_armor_absorb_damage("arrow"));
+        assert!(can_wolf_armor_absorb_damage("explosion"));
+        assert!(can_wolf_armor_absorb_damage("fall"));
+        assert!(can_wolf_armor_absorb_damage("in_fire"));
+        assert!(can_wolf_armor_absorb_damage("lightning"));
+
+        assert!(!can_wolf_armor_absorb_damage("magic"));
+        assert!(!can_wolf_armor_absorb_damage("indirect_magic"));
+        assert!(!can_wolf_armor_absorb_damage("drown"));
+        assert!(!can_wolf_armor_absorb_damage("freeze"));
+        assert!(!can_wolf_armor_absorb_damage("wither"));
+        assert!(!can_wolf_armor_absorb_damage("thorns"));
+        assert!(!can_wolf_armor_absorb_damage("starve"));
+        assert!(!can_wolf_armor_absorb_damage("in_wall"));
+        assert!(!can_wolf_armor_absorb_damage("cramming"));
+        assert!(!can_wolf_armor_absorb_damage("out_of_world"));
+        assert!(!can_wolf_armor_absorb_damage("generic_kill"));
+
+        // 4. Damage absorption calculation
+        // Take 3.5 damage (ceil = 4) from 0 damage -> crack transition (0 -> 1)
+        let (rem1, new_dmg1, crack_changed1, broken1) =
+            calculate_wolf_armor_damage_absorption(3.5, 0, 64);
+        assert_eq!(rem1, 0.0);
+        assert_eq!(new_dmg1, 4);
+        assert!(crack_changed1);
+        assert!(!broken1);
+
+        // Take 2.0 damage from 4 damage -> same crack level (1 -> 1)
+        let (rem2, new_dmg2, crack_changed2, broken2) =
+            calculate_wolf_armor_damage_absorption(2.0, 4, 64);
+        assert_eq!(rem2, 0.0);
+        assert_eq!(new_dmg2, 6);
+        assert!(!crack_changed2);
+        assert!(!broken2);
+
+        // Breaking armor: 60 damage + 5 damage = 65 (overflow 1.0 to wolf)
+        let (rem3, new_dmg3, _crack_changed3, broken3) =
+            calculate_wolf_armor_damage_absorption(5.0, 60, 64);
+        assert_eq!(rem3, 1.0);
+        assert_eq!(new_dmg3, 64);
+        assert!(broken3);
+
+        // 5. RGB Dyeing encode / decode
+        let color = make_wolf_armor_rgb(200, 100, 50);
+        assert_eq!(color, (200 << 16) | (100 << 8) | 50);
+        assert_eq!(get_wolf_armor_rgb(color), (200, 100, 50));
     }
 }

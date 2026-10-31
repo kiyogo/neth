@@ -8621,3 +8621,23 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Added helpers `drop_pot_sherds`, `is_breaks_decorated_pot_tool`, `is_impact_projectile`, and `get_decorations` on `DecoratedPotBlockEntity`.
   - Updated `broken` to drop intact pot on bare hands or silk touch mining, and shatter on tool breaking.
   - Added unit test `test_decorated_pot_projectile_shattering_tools_and_drops_parity` in `combat.rs`.
+
+### Gap 350: Wolf Armor Durability, Dyeing (RGB / Overlay), Crack Stages (0..3) & Wolf Defense Damage Absorption Parity
+
+- **Vanilla Reference**: `Wolf.java:108-111, 410-430, 467-478`, `Crackiness.java:7, 18-25, 32-34`, `ArmorMaterials.java:ARMADILLO_SCUTE`, `ArmorType.java:BODY`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Wolf Armor (`Items.WOLF_ARMOR`) features custom durability mechanics, full damage absorption, crack progression, and repair:
+    - **Durability & Defense**: Crafted from 6 Armadillo Scutes (`ARMADILLO_SCUTE`), durability is 64 (`ArmorType.BODY(16) * multiplier(4) = 64`), defense is 11, toughness is 0.0, and knockback resistance is 0.0.
+    - **100% Damage Absorption**: When wearing wolf armor, the wolf absorbs 100% of incoming damage from all damage sources that do NOT bypass wolf armor (`!source.is(DamageTypeTags.BYPASSES_WOLF_ARMOR)`). Incoming damage rounds up to ceiling and damages the wolf armor (`ceil(damage)`), leaving the wolf undamaged until the armor breaks.
+    - **Crackiness Progression (0..3)**: Visual and acoustic crack tiers based on remaining durability fraction (`(maxDamage - damage) / maxDamage`):
+      - `Level 0 (None)`: fraction $\ge$ 0.95 (damage 0..3)
+      - `Level 1 (Low)`: 0.69 $\le$ fraction < 0.95 (damage 4..19)
+      - `Level 2 (Medium)`: 0.32 $\le$ fraction < 0.69 (damage 20..43)
+      - `Level 3 (High)`: fraction < 0.32 (damage 44..63)
+      - Upon transitioning between crack tiers, the wolf emits `SoundEvents.WOLF_ARMOR_CRACK` and spawns 20 `ARMADILLO_SCUTE` item particles. When destroyed, it emits `SoundEvents.WOLF_ARMOR_BREAK`.
+    - **Repair in Sitting Pose**: Repairable using `ARMADILLO_SCUTE` only while in sitting pose, restoring 12.5% max durability (`64 * 0.125 = 8` durability points) per scute and playing `SoundEvents.WOLF_ARMOR_REPAIR`.
+    - **RGB Dyeing**: Supports 24-bit RGB color encoding and decoding in `DyedItemColor` component.
+- **Neth Changes**:
+  - Exported constants `WOLF_ARMOR_MAX_DURABILITY = 64`, `WOLF_ARMOR_DEFENSE = 11`, `WOLF_ARMOR_REPAIR_UNIT = 0.125`, `WOLF_ARMOR_CRACK_FRACTION_LOW = 0.95`, `WOLF_ARMOR_CRACK_FRACTION_MEDIUM = 0.69`, and `WOLF_ARMOR_CRACK_FRACTION_HIGH = 0.32` in `combat.rs`.
+  - Added helpers `calculate_wolf_armor_crackiness`, `can_wolf_armor_absorb_damage`, `calculate_wolf_armor_damage_absorption`, `make_wolf_armor_rgb`, `get_wolf_armor_rgb`, and method `handle_wolf_armor_damage` on `WolfEntity`.
+  - Added unit test `test_wolf_armor_durability_crackiness_and_damage_absorption_parity` in `combat.rs`.
