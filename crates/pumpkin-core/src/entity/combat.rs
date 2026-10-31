@@ -17595,4 +17595,45 @@ mod tests {
         assert!(!EndPortalFrameBlock::is_facing_inward(Facing::West, BlockDirection::North));
         assert!(!EndPortalFrameBlock::is_facing_inward(Facing::South, BlockDirection::South));
     }
+
+    #[test]
+    fn test_nether_portal_dimensions_cooldown_delays_and_ignition_parity() {
+        use crate::block::blocks::nether_portal::NetherPortalBlock;
+        use crate::world::portal::nether::NetherPortal;
+        use pumpkin_data::Block;
+
+        // Constants verification
+        assert_eq!(NetherPortalBlock::MIN_WIDTH, 2);
+        assert_eq!(NetherPortalBlock::MAX_WIDTH, 21);
+        assert_eq!(NetherPortalBlock::MIN_HEIGHT, 3);
+        assert_eq!(NetherPortalBlock::MAX_HEIGHT, 21);
+        assert_eq!(NetherPortalBlock::DEFAULT_PORTAL_COOLDOWN, 300);
+        assert_eq!(NetherPortalBlock::DEFAULT_SURVIVAL_DELAY, 80);
+        assert_eq!(NetherPortalBlock::DEFAULT_CREATIVE_DELAY, 1);
+        assert_eq!(NetherPortalBlock::NON_PLAYER_DELAY, 0);
+
+        assert_eq!(NetherPortal::MIN_WIDTH, 2);
+        assert_eq!(NetherPortal::MAX_WIDTH, 21);
+        assert_eq!(NetherPortal::MIN_HEIGHT, 3);
+        assert_eq!(NetherPortal::MAX_HEIGHT, 21);
+        assert_eq!(NetherPortal::FRAME_BLOCK, Block::OBSIDIAN);
+
+        // Portal dimension validation bounds
+        // Minimal interior (2x3)
+        assert!(NetherPortalBlock::is_valid_portal_dimension(2, 3));
+        // Maximal interior (21x21)
+        assert!(NetherPortalBlock::is_valid_portal_dimension(21, 21));
+        // Intermediate sizes
+        assert!(NetherPortalBlock::is_valid_portal_dimension(3, 4));
+        assert!(NetherPortalBlock::is_valid_portal_dimension(10, 15));
+
+        // Invalid dimensions (below minimum or above maximum)
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(1, 3));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(0, 3));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(2, 2));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(2, 1));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(22, 21));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(21, 22));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(100, 100));
+    }
 }

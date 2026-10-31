@@ -24,6 +24,23 @@ use crate::{
 pub struct NetherPortalBlock;
 
 impl NetherPortalBlock {
+    pub const MIN_WIDTH: u32 = 2;
+    pub const MAX_WIDTH: u32 = 21;
+    pub const MIN_HEIGHT: u32 = 3;
+    pub const MAX_HEIGHT: u32 = 21;
+    pub const DEFAULT_PORTAL_COOLDOWN: u32 = 300;
+    pub const DEFAULT_SURVIVAL_DELAY: u32 = 80;
+    pub const DEFAULT_CREATIVE_DELAY: u32 = 1;
+    pub const NON_PLAYER_DELAY: u32 = 0;
+
+    #[must_use]
+    pub const fn is_valid_portal_dimension(width: u32, height: u32) -> bool {
+        width >= Self::MIN_WIDTH
+            && width <= Self::MAX_WIDTH
+            && height >= Self::MIN_HEIGHT
+            && height <= Self::MAX_HEIGHT
+    }
+
     /// Gets the portal delay time based on entity type and gamemode
     #[must_use]
     pub fn get_portal_time(world: &Arc<World>, entity: &dyn EntityBase) -> u32 {

@@ -8000,3 +8000,30 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported `END_SPAWN_X = 100`, `END_SPAWN_Y = 49`, `END_SPAWN_Z = 0`, `PORTAL_MIN_Y`, `PORTAL_MAX_Y`, and `PORTAL_THICKNESS`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_end_portal_frame_eye_insertion_pattern_and_teleportation_parity`.
+
+### Gap 321: Nether Portal Shape Validation (2x3 to 21x21 Interior), Frame Dimensions, Ignition, Entity Cooldown & Travel Delay Parity
+- **Vanilla Reference**:
+  - PortalShape.java:1-260, NetherPortalBlock.java:1-150, BaseFireBlock.java:50-70, Entity.java:3100-3200:
+    - Portal interior dimension limits:
+      - Minimum inner width: MIN_WIDTH = 2 obsidian blocks between columns.
+      - Maximum inner width: MAX_WIDTH = 21 obsidian blocks.
+      - Minimum inner height: MIN_HEIGHT = 3 obsidian blocks from bottom to top.
+      - Maximum inner height: MAX_HEIGHT = 21 obsidian blocks.
+      - Valid frame materials: Blocks.OBSIDIAN.
+    - Portal ignition & creation:
+      - When fire is placed (BaseFireBlock.onPlace), checks if it is inside a valid obsidian frame (PortalShape.findEmptyPortalShape).
+      - Fills valid interior rectangle with Blocks.NETHER_PORTAL with matching AXIS (Direction.Axis.X or Direction.Axis.Z).
+    - Teleportation timing & portal cooldowns:
+      - Default portal cooldown: DEFAULT_PORTAL_COOLDOWN = 300 game ticks (15.0 seconds) for entities leaving portal.
+      - Survival / Adventure player portal travel delay: DEFAULT_SURVIVAL_DELAY = 80 game ticks (4.0 seconds inside portal before teleporting).
+      - Creative player portal travel delay: DEFAULT_CREATIVE_DELAY = 1 game tick (instantaneous).
+      - Non-player entity portal travel delay: NON_PLAYER_DELAY = 0 (instant teleportation upon collision).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/nether_portal.rs:
+    - Exported constants DEFAULT_PORTAL_COOLDOWN = 300, DEFAULT_SURVIVAL_DELAY = 80, DEFAULT_CREATIVE_DELAY = 1, and NON_PLAYER_DELAY = 0.
+    - Exported helper get_portal_travel_delay(is_player, is_creative).
+  - Updated crates/pumpkin-core/src/world/portal/nether.rs:
+    - Exported MIN_WIDTH = 2, MAX_WIDTH = 21, MIN_HEIGHT = 3, MAX_HEIGHT = 21.
+    - Exported is_valid_inner_dimensions(width, height).
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_nether_portal_dimensions_cooldown_delays_and_ignition_parity.

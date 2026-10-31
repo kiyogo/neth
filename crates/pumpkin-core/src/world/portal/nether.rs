@@ -228,11 +228,11 @@ pub struct NetherPortal {
 }
 
 impl NetherPortal {
-    const MIN_WIDTH: u32 = 2;
-    const MAX_WIDTH: u32 = 21;
-    const MAX_HEIGHT: u32 = 21;
-    const MIN_HEIGHT: u32 = 3;
-    const FRAME_BLOCK: Block = Block::OBSIDIAN;
+    pub const MIN_WIDTH: u32 = 2;
+    pub const MAX_WIDTH: u32 = 21;
+    pub const MIN_HEIGHT: u32 = 3;
+    pub const MAX_HEIGHT: u32 = 21;
+    pub const FRAME_BLOCK: Block = Block::OBSIDIAN;
 
     #[must_use]
     pub const fn is_valid(&self) -> bool {
