@@ -8388,6 +8388,38 @@ pub const CRAFTER_DATA_TRIGGERED: usize = 9;
 /// Mirrors vanilla CrafterBlockEntity.java:32 (`NUM_DATA = 10`).
 pub const CRAFTER_NUM_DATA: usize = 10;
 
+/// Vanilla `TrialSpawner.java:56-61`, `TrialSpawnerState.java:46-47` & `TrialSpawnerStateData.java:46, 122`:
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_DEFAULT_TARGET_COOLDOWN_LENGTH: i64 = 36000;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_DETECT_PLAYER_SPAWN_BUFFER: i64 = 40;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_DEFAULT_PLAYER_SCAN_RANGE: i32 = 14;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_MAX_MOB_TRACKING_DISTANCE: f64 = 47.0;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_DELAY_BEFORE_EJECT: i64 = 40;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_TIME_BETWEEN_EJECTIONS: i64 = 30;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_PLAYER_DETECTION_INTERVAL: i64 = 20;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_TRIAL_OMEN_PER_BAD_OMEN_LEVEL: i32 = 18000;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_SPAWNING_AMBIENT_SOUND_CHANCE: f32 = 0.02;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_DETECT_PLAYER: i32 = 3013;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_DETECT_PLAYER_OMINOUS: i32 = 3019;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_BECOME_OMINOUS: i32 = 3020;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_EVENT_SPAWN_ITEM: i32 = 3021;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_REWARD_EJECTION_Y_OFFSET: f64 = 1.2;
+#[allow(dead_code)]
+pub const TRIAL_SPAWNER_REWARD_EJECTION_VELOCITY: f64 = 2.0;
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]
@@ -20196,5 +20228,76 @@ mod tests {
 
         let immune_power = MaceItem::calculate_knockback_power(1.5, 6.0, 1.0);
         assert_eq!(immune_power, 0.0);
+    }
+    #[test]
+    fn test_trial_spawner_cooldown_shutter_ejection_and_throttled_detection_parity() {
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+
+        // 1. Constants parity with Vanilla TrialSpawner.java & TrialSpawnerState.java
+        assert_eq!(TRIAL_SPAWNER_DEFAULT_TARGET_COOLDOWN_LENGTH, 36000);
+        assert_eq!(TRIAL_SPAWNER_DETECT_PLAYER_SPAWN_BUFFER, 40);
+        assert_eq!(TRIAL_SPAWNER_DEFAULT_PLAYER_SCAN_RANGE, 14);
+        assert_eq!(TRIAL_SPAWNER_MAX_MOB_TRACKING_DISTANCE, 47.0);
+        assert_eq!(TRIAL_SPAWNER_DELAY_BEFORE_EJECT, 40);
+        assert_eq!(TRIAL_SPAWNER_TIME_BETWEEN_EJECTIONS, 30);
+        assert_eq!(TRIAL_SPAWNER_PLAYER_DETECTION_INTERVAL, 20);
+        assert_eq!(TRIAL_SPAWNER_TRIAL_OMEN_PER_BAD_OMEN_LEVEL, 18000);
+        assert_eq!(TRIAL_SPAWNER_SPAWNING_AMBIENT_SOUND_CHANCE, 0.02);
+        assert_eq!(TRIAL_SPAWNER_EVENT_DETECT_PLAYER, 3013);
+        assert_eq!(TRIAL_SPAWNER_EVENT_DETECT_PLAYER_OMINOUS, 3019);
+        assert_eq!(TRIAL_SPAWNER_EVENT_BECOME_OMINOUS, 3020);
+        assert_eq!(TRIAL_SPAWNER_EVENT_SPAWN_ITEM, 3021);
+        assert_eq!(TRIAL_SPAWNER_REWARD_EJECTION_Y_OFFSET, 1.2);
+        assert_eq!(TRIAL_SPAWNER_REWARD_EJECTION_VELOCITY, 2.0);
+
+        // Also check TrialSpawnerBlock constants match
+        assert_eq!(TrialSpawnerBlock::DEFAULT_COOLDOWN_TICKS, 36000);
+        assert_eq!(TrialSpawnerBlock::DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB, 40);
+        assert_eq!(TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION, 30);
+        assert_eq!(TrialSpawnerBlock::PLAYER_DETECTION_INTERVAL, 20);
+        assert_eq!(TrialSpawnerBlock::TRIAL_OMEN_PER_BAD_OMEN_LEVEL, 18000);
+        assert_eq!(TrialSpawnerBlock::SPAWNING_AMBIENT_SOUND_CHANCE, 0.02);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_DETECT_PLAYER, 3013);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS, 3019);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_BECOME_OMINOUS, 3020);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_SPAWN_ITEM, 3021);
+        assert_eq!(TrialSpawnerBlock::REWARD_EJECTION_Y_OFFSET, 1.2);
+        assert_eq!(TrialSpawnerBlock::REWARD_EJECTION_VELOCITY, 2.0);
+
+        // 2. Staggered player detection throttle formula parity: (pos.as_long() + game_time) % 20 != 0
+        let pos_long = 123456789_i64;
+        let valid_tick = 20 - (pos_long % 20);
+        assert!(!TrialSpawnerBlock::is_player_detection_throttled(pos_long, valid_tick));
+        assert!(TrialSpawnerBlock::is_player_detection_throttled(pos_long, valid_tick + 1));
+        assert!(TrialSpawnerBlock::is_player_detection_throttled(pos_long, valid_tick + 19));
+        assert!(!TrialSpawnerBlock::is_player_detection_throttled(pos_long, valid_tick + 20));
+
+        // 3. Shutter opening formula parity (TrialSpawnerStateData.java:214-215):
+        // cooldown_started_at = cooldown_ends_at - target_cooldown_length
+        // ready when game_time >= cooldown_started_at + 40
+        let cooldown_ends_at = 46000_i64;
+        let target_cooldown = 36000_i64;
+        let cooldown_started_at = 10000_i64; // 46000 - 36000
+        assert!(!TrialSpawnerBlock::is_ready_to_open_shutter(cooldown_started_at + 39, cooldown_ends_at, target_cooldown));
+        assert!(TrialSpawnerBlock::is_ready_to_open_shutter(cooldown_started_at + 40, cooldown_ends_at, target_cooldown));
+        assert!(TrialSpawnerBlock::is_ready_to_open_shutter(cooldown_started_at + 50, cooldown_ends_at, target_cooldown));
+
+        // 4. Item ejection interval formula parity (TrialSpawnerStateData.java:219-220):
+        // (game_time - cooldown_started_at) % 30 == 0
+        assert!(TrialSpawnerBlock::is_ready_to_eject_items(cooldown_started_at + 60, cooldown_ends_at, target_cooldown));
+        assert!(!TrialSpawnerBlock::is_ready_to_eject_items(cooldown_started_at + 61, cooldown_ends_at, target_cooldown));
+        assert!(TrialSpawnerBlock::is_ready_to_eject_items(cooldown_started_at + 90, cooldown_ends_at, target_cooldown));
+        assert!(TrialSpawnerBlock::is_ready_to_eject_items(cooldown_started_at + 120, cooldown_ends_at, target_cooldown));
+
+        // 5. Cooldown completion parity
+        assert!(!TrialSpawnerBlock::is_cooldown_finished(cooldown_ends_at - 1, cooldown_ends_at));
+        assert!(TrialSpawnerBlock::is_cooldown_finished(cooldown_ends_at, cooldown_ends_at));
+        assert!(TrialSpawnerBlock::is_cooldown_finished(cooldown_ends_at + 1, cooldown_ends_at));
+
+        // 6. Additional players count helper parity: max(0, detected - 1)
+        assert_eq!(TrialSpawnerBlock::count_additional_players(0), 0);
+        assert_eq!(TrialSpawnerBlock::count_additional_players(1), 0);
+        assert_eq!(TrialSpawnerBlock::count_additional_players(2), 1);
+        assert_eq!(TrialSpawnerBlock::count_additional_players(5), 4);
     }
 }

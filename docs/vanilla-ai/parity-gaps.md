@@ -9221,3 +9221,34 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Verified `CRAFTING_TICK_DELAY = 4`, `MAX_CRAFTING_TICKS = 6`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010`.
     - Added comprehensive unit tests in `crafter.rs` verifying constants, redstone trigger evaluation, comparator signals, disabled slots bitmasks, and advancement bounding ranges.
 - **Status**: Completed & Verified.
+
+### Gap 370: Trial Spawner Target Cooldown (36,000 Ticks), Shutter & Ejection Timings (40 / 30 Ticks), Periodic Player Detection Throttling (20 Ticks) & State Transitions Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.java:1-435`, `TrialSpawnerState.java:1-240`, `TrialSpawnerStateData.java:1-320`, `PlayerDetector.java:1-85`.
+- **Vanilla Mechanics**:
+  1. *Cooldowns & Timings*:
+     - Default target cooldown length: 36,000 ticks = 30 minutes in-game (`DEFAULT_TARGET_COOLDOWN_LENGTH = 36000`).
+     - Detection spawn delay: 40 ticks (`DETECT_PLAYER_SPAWN_BUFFER = 40`).
+     - Shutter opening delay: 40 ticks after killing the last mob (`DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB = 40.0F`). Computed as `(float)serverLevel.getGameTime() >= (float)(cooldownEndsAt - targetCooldownLength) + 40.0F`.
+     - Reward ejection interval: 30 ticks (`TIME_BETWEEN_EACH_EJECTION = 30`). Evaluated as `(float)(serverLevel.getGameTime() - (cooldownEndsAt - targetCooldownLength)) % 30.0F == 0.0F`.
+     - Bad Omen to Trial Omen duration scaling: 18,000 ticks per amplifier level (`TRIAL_OMEN_PER_BAD_OMEN_LEVEL = 18000`).
+     - Ominous item spawner interval: 160 ticks (`TICKS_BETWEEN_ITEM_SPAWNERS = 160`).
+  2. *Player Detection & Line-of-Sight*:
+     - Periodic detection check is throttled and staggered by block position: `(pos.asLong() + level.getGameTime()) % 20L != 0L` (`PLAYER_DETECTION_INTERVAL = 20`).
+     - Line-of-sight requirement: the first player detected (`registered_players.is_empty()`) requires a direct line-of-sight raycast from the spawner center to the player's eye position. Subsequent players within `requiredPlayerRange` do not require line-of-sight (`requireLineOfSight = false`).
+     - World events on player detection: emits `level.levelEvent(3019, pos, detectedPlayers.size())` (`ParticlesTrialSpawnerDetectPlayerOminous`) if ominous, or `level.levelEvent(3013, pos, detectedPlayers.size())` (`ParticlesTrialSpawnerDetectPlayer`) if normal.
+  3. *Reward Ejection & State Machine Transitions*:
+     - Reward items are dispensed upwards with an ejection vertical offset of 1.2 blocks (`Vec3.atBottomCenterOf(pos).relative(Direction.UP, 1.2)`) and velocity factor 2 (`DefaultDispenseItemBehavior.spawnItem(..., 2, Direction.UP)`), accompanied by `level.levelEvent(3014, pos, 0)` (`AnimationTrialSpawnerEjectItem`).
+     - While in `COOLDOWN`: normal players do not re-trigger the spawner. However, if a player with Bad Omen / Trial Omen approaches, `tryDetectPlayers` detects them, transforms Bad Omen into Trial Omen, broadcasts event 3020, calls `applyOminous()`, and because `detectedPlayers` becomes non-empty, immediately transitions the spawner from `COOLDOWN` to `ACTIVE` (bypassing normal cooldown). When cooldown elapses naturally without ominous trigger (`isCooldownFinished`), it clears ominous status, resets state data, and transitions back to `WAITING_FOR_PLAYERS`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/trial_spawner.rs`:
+    - Exported constants `PLAYER_DETECTION_INTERVAL = 20`, `TRIAL_OMEN_PER_BAD_OMEN_LEVEL = 18000`, `SPAWNING_AMBIENT_SOUND_CHANCE = 0.02`, `EVENT_TRIAL_SPAWNER_SPAWN_PARTICLES = 3011`, `EVENT_TRIAL_SPAWNER_SPAWN_MOB_AT = 3012`, `EVENT_TRIAL_SPAWNER_DETECT_PLAYER = 3013`, `EVENT_TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS = 3019`, `EVENT_TRIAL_SPAWNER_BECOME_OMINOUS = 3020`, `EVENT_TRIAL_SPAWNER_SPAWN_ITEM = 3021`, `REWARD_EJECTION_Y_OFFSET = 1.2`, `REWARD_EJECTION_VELOCITY = 2.0`.
+    - Added helper methods `is_player_detection_throttled`, `is_ready_to_open_shutter`, `is_ready_to_eject_items`, `is_cooldown_finished`, and `count_additional_players`.
+  - In `crates/pumpkin-core/src/block/entities/trial_spawner.rs`:
+    - Updated `PlayerDetector::detect` to accept `require_line_of_sight: bool` with raycast obstruction validation.
+    - Updated `TrialSpawnerStateData::try_detect_players` and `TrialSpawner::try_detect_players` to utilize position-staggered 20-tick throttling, first-player line-of-sight checks, and world events 3013 / 3019.
+    - Updated `TrialSpawner::tick_and_get_next` state transitions for `WaitingForRewardEjection`, `EjectingReward`, and `Cooldown` to mirror vanilla Java exactly.
+    - Updated `eject_reward` to spawn reward items with vertical offset 1.2 above block base (`REWARD_EJECTION_Y_OFFSET`).
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `TRIAL_SPAWNER_` parity constants.
+    - Added unit test `test_trial_spawner_cooldown_shutter_ejection_and_throttled_detection_parity`.
+- **Status**: Completed & Verified.

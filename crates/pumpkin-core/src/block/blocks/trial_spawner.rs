@@ -42,7 +42,19 @@ impl TrialSpawnerBlock {
 
     pub const DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB: i64 = 40;
     pub const TIME_BETWEEN_EACH_EJECTION: i64 = 30;
+    pub const PLAYER_DETECTION_INTERVAL: i64 = 20;
+    pub const TRIAL_OMEN_PER_BAD_OMEN_LEVEL: i32 = 18000;
+    pub const SPAWNING_AMBIENT_SOUND_CHANCE: f32 = 0.02;
+    pub const EVENT_TRIAL_SPAWNER_SPAWN_PARTICLES: i32 = 3011;
+    pub const EVENT_TRIAL_SPAWNER_SPAWN_MOB_AT: i32 = 3012;
+    pub const EVENT_TRIAL_SPAWNER_DETECT_PLAYER: i32 = 3013;
     pub const EVENT_TRIAL_SPAWNER_EJECT_ITEM: i32 = 3014;
+    pub const EVENT_TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS: i32 = 3019;
+    pub const EVENT_TRIAL_SPAWNER_BECOME_OMINOUS: i32 = 3020;
+    pub const EVENT_TRIAL_SPAWNER_SPAWN_ITEM: i32 = 3021;
+    pub const REWARD_EJECTION_Y_OFFSET: f64 = 1.2;
+    pub const REWARD_EJECTION_VELOCITY: f64 = 2.0;
+
     pub const LIGHT_LEVEL_INACTIVE: u8 = 0;
     pub const LIGHT_LEVEL_WAITING_FOR_PLAYERS: u8 = 4;
     pub const LIGHT_LEVEL_ACTIVE: u8 = 8;
@@ -50,6 +62,33 @@ impl TrialSpawnerBlock {
     pub const SPINNING_MOB_SPEED_INACTIVE: f64 = -1.0;
     pub const SPINNING_MOB_SPEED_WAITING_FOR_PLAYERS: f64 = 200.0;
     pub const SPINNING_MOB_SPEED_ACTIVE: f64 = 1000.0;
+
+    #[must_use]
+    pub fn is_player_detection_throttled(pos_as_long: i64, game_time: i64) -> bool {
+        (pos_as_long.wrapping_add(game_time)) % Self::PLAYER_DETECTION_INTERVAL != 0
+    }
+
+    #[must_use]
+    pub fn is_ready_to_open_shutter(game_time: i64, cooldown_ends_at: i64, target_cooldown_length: i64) -> bool {
+        let cooldown_started_at = cooldown_ends_at - target_cooldown_length;
+        game_time as f32 >= (cooldown_started_at as f32) + Self::DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB as f32
+    }
+
+    #[must_use]
+    pub fn is_ready_to_eject_items(game_time: i64, cooldown_ends_at: i64, target_cooldown_length: i64) -> bool {
+        let cooldown_started_at = cooldown_ends_at - target_cooldown_length;
+        ((game_time - cooldown_started_at) as f32) % (Self::TIME_BETWEEN_EACH_EJECTION as f32) == 0.0
+    }
+
+    #[must_use]
+    pub fn is_cooldown_finished(game_time: i64, cooldown_ends_at: i64) -> bool {
+        game_time >= cooldown_ends_at
+    }
+
+    #[must_use]
+    pub fn count_additional_players(detected_count: usize) -> usize {
+        detected_count.saturating_sub(1)
+    }
 
     #[must_use]
     pub fn get_light_level(state: TrialSpawnerState) -> u8 {
