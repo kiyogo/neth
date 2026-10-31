@@ -7282,3 +7282,37 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_facing_from_player`, `calculate_drop_position`, and `calculate_comparator_output`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_dispenser_and_dropper_timing_facing_and_comparator_parity`.
+
+
+### Gap 298: Tripwire & Tripwire Hook Tension, Disarming (Shears) & Signal Delay Parity
+- **Vanilla Reference**:
+  - `TripWireHookBlock.java:33-215`, `TripWireBlock.java:27-185`:
+    - Geometry & range:
+      - `WIRE_DIST_MIN = 1`, `WIRE_DIST_MAX = 42` (maximum tripwire span between hooks is 40 blocks, receiver hook position <= 41).
+      - Line formation (`can_form_line`): `receiverPos > 1` (must have at least 1 tripwire block between opposing hooks).
+      - Default states:
+        - Hook: `FACING = HorizontalFacing.NORTH`, `POWERED = false`, `ATTACHED = false`.
+        - Tripwire: `POWERED = false`, `ATTACHED = false`, `DISARMED = false`.
+    - Timings & rechecking:
+      - `RECHECK_PERIOD = 10` ticks (both tripwire and tripwire hook schedule 10 ticks recheck).
+    - Sound parameters:
+      - `TRIPWIRE_CLICK_ON`: Volume `0.4F`, Pitch `0.6F`.
+      - `TRIPWIRE_CLICK_OFF`: Volume `0.4F`, Pitch `0.5F`.
+      - `TRIPWIRE_ATTACH`: Volume `0.4F`, Pitch `0.7F`.
+      - `TRIPWIRE_DETACH`: Volume `0.4F`, Pitch `1.2F`.
+    - Shears disarming & trigger bypass:
+      - Breaking tripwire with `Item::SHEARS` sets `DISARMED = true`, preventing hook triggering when broken.
+      - Entity triggers: Bats (`EntityType::BAT`) and Spectator players are ignored and do not trip wires.
+      - Hook activation requires `wireArmed && wirePowered` (`!disarmed && powered`).
+    - Redstone signal emission:
+      - Weak power: emits 15 in all directions when powered (`getSignal`).
+      - Strong power: emits 15 only in direction `facing == query_facing` (into attached wall) when powered (`getDirectSignal`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs`:
+    - Exported constants `WIRE_DIST_MIN = 1`, `WIRE_DIST_MAX = 42`, `RECHECK_PERIOD_TICKS = 10`, `POWER_ON = 15`, `POWER_OFF = 0`, `DEFAULT_POWERED = false`, `DEFAULT_ATTACHED = false`, `DEFAULT_FACING = HorizontalFacing::North`, `CLICK_ON_VOLUME = 0.4`, `CLICK_ON_PITCH = 0.6`, `CLICK_OFF_VOLUME = 0.4`, `CLICK_OFF_PITCH = 0.5`, `ATTACH_VOLUME = 0.4`, `ATTACH_PITCH = 0.7`, `DETACH_VOLUME = 0.4`, and `DETACH_PITCH = 1.2`.
+    - Exported helpers `emits_weak_power`, `emits_strong_power`, and `can_form_line`.
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/tripwire.rs`:
+    - Exported constants `RECHECK_PERIOD_TICKS = 10`, `DEFAULT_POWERED = false`, `DEFAULT_ATTACHED = false`, and `DEFAULT_DISARMED = false`.
+    - Exported helpers `is_entity_trigger_ignored`, `can_disarm_with_shears`, and `calculate_hook_power`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_tripwire_and_hook_tension_disarm_and_signal_parity`.

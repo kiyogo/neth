@@ -168,6 +168,25 @@ impl BlockBehaviour for TripwireBlock {
 }
 
 impl TripwireBlock {
+    pub const RECHECK_PERIOD_TICKS: u32 = 10;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_ATTACHED: bool = false;
+    pub const DEFAULT_DISARMED: bool = false;
+
+    #[must_use]
+    pub fn is_entity_trigger_ignored(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+        entity_type == &pumpkin_data::entity::EntityType::BAT
+    }
+
+    #[must_use]
+    pub fn can_disarm_with_shears(held_item: &pumpkin_data::item::Item) -> bool {
+        held_item == &pumpkin_data::item::Item::SHEARS
+    }
+
+    #[must_use]
+    pub const fn calculate_hook_power(wire_armed: bool, wire_powered: bool) -> bool {
+        wire_armed && wire_powered
+    }
     fn update(world: &Arc<World>, pos: &BlockPos, state_id: BlockStateId) {
         for dir in [BlockDirection::South, BlockDirection::West] {
             for i in 1..42 {

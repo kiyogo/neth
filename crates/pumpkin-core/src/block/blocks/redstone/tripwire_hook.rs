@@ -138,6 +138,45 @@ impl TripwireHookBlock {
     pub const RECHECK_PERIOD_TICKS: u32 = 10;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_ATTACHED: bool = false;
+    pub const DEFAULT_FACING: pumpkin_data::block_properties::HorizontalFacing =
+        pumpkin_data::block_properties::HorizontalFacing::North;
+    pub const CLICK_ON_VOLUME: f32 = 0.4;
+    pub const CLICK_ON_PITCH: f32 = 0.6;
+    pub const CLICK_OFF_VOLUME: f32 = 0.4;
+    pub const CLICK_OFF_PITCH: f32 = 0.5;
+    pub const ATTACH_VOLUME: f32 = 0.4;
+    pub const ATTACH_PITCH: f32 = 0.7;
+    pub const DETACH_VOLUME: f32 = 0.4;
+    pub const DETACH_PITCH: f32 = 1.2;
+
+    #[must_use]
+    pub const fn emits_weak_power(powered: bool) -> u8 {
+        if powered {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
+
+    #[must_use]
+    pub fn emits_strong_power(
+        powered: bool,
+        hook_facing: pumpkin_data::block_properties::HorizontalFacing,
+        query_dir: pumpkin_data::block_properties::HorizontalFacing,
+    ) -> u8 {
+        if powered && hook_facing == query_dir {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
+
+    #[must_use]
+    pub const fn can_form_line(receiver_pos: i32) -> bool {
+        receiver_pos > 1
+    }
 
     #[must_use]
     pub const fn is_in_wire_range(distance: i32) -> bool {

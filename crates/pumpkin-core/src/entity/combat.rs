@@ -16261,4 +16261,81 @@ mod tests {
         assert_eq!(DispenserBlock::calculate_comparator_output(288, max_cap), 8);
         assert_eq!(DispenserBlock::calculate_comparator_output(max_cap, max_cap), 15);
     }
+
+    #[test]
+    fn test_tripwire_and_hook_tension_disarm_and_signal_parity() {
+        use crate::block::blocks::redstone::tripwire::TripwireBlock;
+        use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+
+        // TripwireHook constants
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MIN, 1);
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MAX, 42);
+        assert_eq!(TripwireHookBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireHookBlock::POWER_ON, 15);
+        assert_eq!(TripwireHookBlock::POWER_OFF, 0);
+        assert!(!TripwireHookBlock::DEFAULT_POWERED);
+        assert!(!TripwireHookBlock::DEFAULT_ATTACHED);
+        assert_eq!(TripwireHookBlock::DEFAULT_FACING, HorizontalFacing::North);
+
+        assert!((TripwireHookBlock::CLICK_ON_VOLUME - 0.4).abs() < 1e-6);
+        assert!((TripwireHookBlock::CLICK_ON_PITCH - 0.6).abs() < 1e-6);
+        assert!((TripwireHookBlock::CLICK_OFF_VOLUME - 0.4).abs() < 1e-6);
+        assert!((TripwireHookBlock::CLICK_OFF_PITCH - 0.5).abs() < 1e-6);
+        assert!((TripwireHookBlock::ATTACH_VOLUME - 0.4).abs() < 1e-6);
+        assert!((TripwireHookBlock::ATTACH_PITCH - 0.7).abs() < 1e-6);
+        assert!((TripwireHookBlock::DETACH_VOLUME - 0.4).abs() < 1e-6);
+        assert!((TripwireHookBlock::DETACH_PITCH - 1.2).abs() < 1e-6);
+
+        // Tripwire constants
+        assert_eq!(TripwireBlock::RECHECK_PERIOD_TICKS, 10);
+        assert!(!TripwireBlock::DEFAULT_POWERED);
+        assert!(!TripwireBlock::DEFAULT_ATTACHED);
+        assert!(!TripwireBlock::DEFAULT_DISARMED);
+
+        // Wire range & line formation
+        assert!(!TripwireHookBlock::is_in_wire_range(0));
+        assert!(TripwireHookBlock::is_in_wire_range(1));
+        assert!(TripwireHookBlock::is_in_wire_range(41));
+        assert!(!TripwireHookBlock::is_in_wire_range(42));
+
+        assert!(!TripwireHookBlock::can_form_line(0));
+        assert!(!TripwireHookBlock::can_form_line(1));
+        assert!(TripwireHookBlock::can_form_line(2));
+        assert!(TripwireHookBlock::can_form_line(41));
+
+        // Power emissions
+        assert_eq!(TripwireHookBlock::emits_weak_power(true), 15);
+        assert_eq!(TripwireHookBlock::emits_weak_power(false), 0);
+
+        assert_eq!(
+            TripwireHookBlock::emits_strong_power(true, HorizontalFacing::North, HorizontalFacing::North),
+            15
+        );
+        assert_eq!(
+            TripwireHookBlock::emits_strong_power(true, HorizontalFacing::North, HorizontalFacing::South),
+            0
+        );
+        assert_eq!(
+            TripwireHookBlock::emits_strong_power(false, HorizontalFacing::North, HorizontalFacing::North),
+            0
+        );
+
+        // Shears disarming and entity trigger ignores
+        assert!(TripwireBlock::can_disarm_with_shears(&Item::SHEARS));
+        assert!(!TripwireBlock::can_disarm_with_shears(&Item::DIAMOND_SWORD));
+        assert!(!TripwireBlock::can_disarm_with_shears(&Item::STICK));
+
+        assert!(TripwireBlock::is_entity_trigger_ignored(&EntityType::BAT));
+        assert!(!TripwireBlock::is_entity_trigger_ignored(&EntityType::ZOMBIE));
+        assert!(!TripwireBlock::is_entity_trigger_ignored(&EntityType::ARROW));
+
+        // Hook activation condition
+        assert!(TripwireBlock::calculate_hook_power(true, true));
+        assert!(!TripwireBlock::calculate_hook_power(false, true)); // Disarmed prevents hook trigger!
+        assert!(!TripwireBlock::calculate_hook_power(true, false));
+        assert!(!TripwireBlock::calculate_hook_power(false, false));
+    }
 }
