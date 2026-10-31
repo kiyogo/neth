@@ -8519,3 +8519,18 @@ edstone/copper_bulb.rs.
   - Exported constants DEFAULT_POWERED = false, DEFAULT_LIT = false, COMPARATOR_SIGNAL_LIT = 15, and COMPARATOR_SIGNAL_UNLIT = 0.
   - Added helpers get_comparator_output_value, evaluate_t_flip_flop, and get_light_level matching Vanilla weathering decay.
   - Added unit test 	est_copper_bulb_t_flip_flop_rising_edge_light_levels_and_comparator_parity in combat.rs.
+
+### Gap 344: Ominous Item Spawner Ticking, Delay (60..120 Ticks), Item Drop & Warning Sound Parity
+
+- **Vanilla Reference**: OminousItemSpawner.java:1-184.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the OminousItemSpawner is an intangible helper entity spawned by ominous trial spawners above player combat areas:
+    - Randomized spawn item delay: between 60 and 120 ticks (3.0 to 6.0 seconds), stored in NBT tag spawn_item_after_ticks.
+    - Warning sound cue: exactly 36 ticks before item drop (	ickCount == spawnItemAfterTicks - 36), plays SoundEvents.TRIAL_SPAWNER_ABOUT_TO_SPAWN_ITEM.
+    - Item release: when reaching spawnItemAfterTicks, ejects its stored item or projectile downwards (Direction.DOWN), emits world event 3021 (ParticlesTrialSpawnerSpawnItem), emits GameEvent.ENTITY_PLACE, and removes itself.
+    - Physics and resistance: 
+oPhysics = true, immune to all incoming entity/environmental damage (hurtServer -> false), cannot hold passengers (canAddPassenger -> false), and ignores piston pushes (PushReaction.IGNORE_ENTITY).
+- **Neth Changes**:
+  - Exported constants DEFAULT_MIN_SPAWN_TICKS = 60, DEFAULT_MAX_SPAWN_TICKS = 120, and TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND = 36 in entity/ominous_item_spawner.rs.
+  - Added helper methods should_play_warning_sound, should_spawn_item, and is_delay_within_range.
+  - Added unit test 	est_ominous_item_spawner_delay_sound_and_spawn_parity in combat.rs.

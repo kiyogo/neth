@@ -18938,4 +18938,40 @@ mod tests {
         assert_eq!(CopperBulbBlock::get_light_level(BlockId::WEATHERED_COPPER_BULB, false), 0);
         assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, false), 0);
     }
+    #[test]
+    fn test_ominous_item_spawner_delay_sound_and_spawn_parity() {
+        use crate::entity::ominous_item_spawner::{
+            DEFAULT_MIN_SPAWN_TICKS, DEFAULT_MAX_SPAWN_TICKS, TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND,
+            OminousItemSpawnerEntity,
+        };
+
+        // Constants parity with Vanilla OminousItemSpawner.java
+        assert_eq!(DEFAULT_MIN_SPAWN_TICKS, 60); // 3.0s minimum delay
+        assert_eq!(DEFAULT_MAX_SPAWN_TICKS, 120); // 6.0s maximum delay
+        assert_eq!(TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND, 36); // 1.8s sound warning before spawn
+
+        // Range validation
+        assert!(OminousItemSpawnerEntity::is_delay_within_range(60));
+        assert!(OminousItemSpawnerEntity::is_delay_within_range(90));
+        assert!(OminousItemSpawnerEntity::is_delay_within_range(120));
+        assert!(!OminousItemSpawnerEntity::is_delay_within_range(59));
+        assert!(!OminousItemSpawnerEntity::is_delay_within_range(121));
+
+        // Sound warning timing parity: tick == delay - 36
+        // For delay = 100: warning at tick 64
+        assert!(!OminousItemSpawnerEntity::should_play_warning_sound(63, 100));
+        assert!(OminousItemSpawnerEntity::should_play_warning_sound(64, 100));
+        assert!(!OminousItemSpawnerEntity::should_play_warning_sound(65, 100));
+
+        // For min delay = 60: warning at tick 24
+        assert!(OminousItemSpawnerEntity::should_play_warning_sound(24, 60));
+
+        // For max delay = 120: warning at tick 84
+        assert!(OminousItemSpawnerEntity::should_play_warning_sound(84, 120));
+
+        // Spawn trigger parity: tick >= delay
+        assert!(!OminousItemSpawnerEntity::should_spawn_item(99, 100));
+        assert!(OminousItemSpawnerEntity::should_spawn_item(100, 100));
+        assert!(OminousItemSpawnerEntity::should_spawn_item(101, 100));
+    }
 }

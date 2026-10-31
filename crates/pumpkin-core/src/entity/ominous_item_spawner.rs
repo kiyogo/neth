@@ -60,6 +60,24 @@ impl OminousItemSpawnerEntity {
     pub fn set_spawn_item_after_ticks(&self, ticks: i64) {
         self.spawn_item_after_ticks.store(ticks, Ordering::Relaxed);
     }
+
+    /// Checks if current tick matches warning sound threshold (tick == spawn_delay - 36)
+    #[must_use]
+    pub const fn should_play_warning_sound(current_tick: i64, spawn_delay: i64) -> bool {
+        current_tick == spawn_delay - TICKS_BEFORE_ABOUT_TO_SPAWN_SOUND
+    }
+
+    /// Checks if spawner has reached or passed spawn delay
+    #[must_use]
+    pub const fn should_spawn_item(current_tick: i64, spawn_delay: i64) -> bool {
+        current_tick >= spawn_delay
+    }
+
+    /// Validates randomized spawn delay against vanilla range [60..120]
+    #[must_use]
+    pub const fn is_delay_within_range(delay: i64) -> bool {
+        delay >= DEFAULT_MIN_SPAWN_TICKS && delay <= DEFAULT_MAX_SPAWN_TICKS
+    }
 }
 
 impl EntityBase for OminousItemSpawnerEntity {
