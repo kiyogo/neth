@@ -8576,6 +8576,89 @@ pub const fn is_breeze_jump_trail_active(tick: i32) -> bool {
     tick <= BREEZE_JUMP_TRAIL_DURATION_TICKS
 }
 
+// =========================================================================
+// Gap 373: Creaking Heart Natural Drop XP (20-24), Comparator Signal Scaling (32m / 0-15), Resin Clumps (2-3) & Hurt Audio Progress Parity
+// Vanilla References:
+// - `CreakingHeartBlock.java:44-58, 63-71, 106-117, 177-181, 188-195`
+// - `CreakingHeartBlockEntity.java:44-60, 80-97, 110-134, 225-247, 249-284, 338-346`
+// =========================================================================
+
+#[allow(dead_code)]
+pub const CREAKING_HEART_PLAYER_DETECTION_RANGE: f64 = 32.0;
+#[allow(dead_code)]
+pub const CREAKING_HEART_CREAKING_ROAMING_RADIUS: f64 = 32.0;
+#[allow(dead_code)]
+pub const CREAKING_HEART_DISTANCE_CREAKING_TOO_FAR: f64 = 34.0;
+#[allow(dead_code)]
+pub const CREAKING_HEART_SPAWN_RANGE_XZ: i32 = 16;
+#[allow(dead_code)]
+pub const CREAKING_HEART_SPAWN_RANGE_Y: i32 = 8;
+#[allow(dead_code)]
+pub const CREAKING_HEART_ATTEMPTS_PER_SPAWN: i32 = 5;
+#[allow(dead_code)]
+pub const CREAKING_HEART_UPDATE_TICKS: i32 = 20;
+#[allow(dead_code)]
+pub const CREAKING_HEART_UPDATE_TICKS_VARIANCE: i32 = 5;
+#[allow(dead_code)]
+pub const CREAKING_HEART_HURT_CALL_TOTAL_TICKS: i32 = 100;
+#[allow(dead_code)]
+pub const CREAKING_HEART_NUMBER_OF_HURT_CALLS: i32 = 10;
+#[allow(dead_code)]
+pub const CREAKING_HEART_HURT_CALL_INTERVAL: i32 = 10;
+#[allow(dead_code)]
+pub const CREAKING_HEART_HURT_CALL_PARTICLE_TICKS: i32 = 50;
+#[allow(dead_code)]
+pub const CREAKING_HEART_MAX_RESIN_DEPTH: i32 = 2;
+#[allow(dead_code)]
+pub const CREAKING_HEART_MAX_RESIN_SEARCH_COUNT: i32 = 64;
+#[allow(dead_code)]
+pub const CREAKING_HEART_TICKS_GRACE_PERIOD: i32 = 30;
+#[allow(dead_code)]
+pub const CREAKING_HEART_TRAIL_COLOR_TOWARDS_CREAKING: i32 = 16_545_810;
+#[allow(dead_code)]
+pub const CREAKING_HEART_TRAIL_COLOR_TOWARDS_HEART: i32 = 6_250_335;
+#[allow(dead_code)]
+pub const CREAKING_HEART_RESIN_CLUMPS_MIN: i32 = 2;
+#[allow(dead_code)]
+pub const CREAKING_HEART_RESIN_CLUMPS_MAX: i32 = 3;
+#[allow(dead_code)]
+pub const CREAKING_HEART_NATURAL_BREAK_MIN_XP: u32 = 20;
+#[allow(dead_code)]
+pub const CREAKING_HEART_NATURAL_BREAK_MAX_XP: u32 = 24;
+#[allow(dead_code)]
+pub const CREAKING_HEART_COMPARATOR_MAX_DISTANCE: f64 = 32.0;
+#[allow(dead_code)]
+pub const CREAKING_HEART_COMPARATOR_MAX_SIGNAL: i32 = 15;
+
+/// Calculates Creaking Heart comparator output signal based on protector distance (CreakingHeartBlockEntity.java:341-342)
+#[must_use]
+pub fn calculate_creaking_heart_analog_signal(distance: Option<f64>) -> i32 {
+    if let Some(dist) = distance {
+        let clamped = dist.clamp(0.0, CREAKING_HEART_COMPARATOR_MAX_DISTANCE) / CREAKING_HEART_COMPARATOR_MAX_DISTANCE;
+        CREAKING_HEART_COMPARATOR_MAX_SIGNAL - (clamped * CREAKING_HEART_COMPARATOR_MAX_SIGNAL as f64).floor() as i32
+    } else {
+        0
+    }
+}
+
+/// Calculates hurt audio interpolation progress (CreakingHeartBlockEntity.java:89)
+#[must_use]
+pub fn calculate_creaking_heart_hurt_progress(emitter: i32) -> f32 {
+    0.2 + 0.8 * (100 - emitter) as f32 / 100.0
+}
+
+/// Calculates hurt audio sound volume (CreakingHeartBlockEntity.java:92)
+#[must_use]
+pub fn calculate_creaking_heart_hurt_volume(emitter: i32) -> f32 {
+    (emitter as f32 / 2.0 / 100.0) + 0.5
+}
+
+/// Checks if Creaking is too far from heart (CreakingHeartBlockEntity.java:128)
+#[must_use]
+pub const fn is_creaking_too_far_from_heart(distance: f64) -> bool {
+    distance > CREAKING_HEART_DISTANCE_CREAKING_TOO_FAR
+}
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]
@@ -20634,5 +20717,66 @@ mod tests {
         assert_eq!(BREEZE_STUCK_SHOOT_MEMORY_TICKS, 60);
         assert_eq!(BREEZE_POST_LAND_SHOOT_MEMORY_TICKS, 100);
         assert_eq!(BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET, 100);
+    }
+
+    #[test]
+    fn test_creaking_heart_natural_xp_comparator_signal_and_hurt_progress_parity() {
+        use crate::block::blocks::creaking_heart::CreakingHeartBlock;
+
+        // 1. Natural block break XP drop range (CreakingHeartBlock.java:179: 20-24 XP)
+        assert_eq!(CREAKING_HEART_NATURAL_BREAK_MIN_XP, 20);
+        assert_eq!(CREAKING_HEART_NATURAL_BREAK_MAX_XP, 24);
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MIN_XP, 20);
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MAX_XP, 24);
+
+        // 2. Comparator signal scaling parity (CreakingHeartBlockEntity.java:341-342)
+        // Distance 0m -> signal 15
+        assert_eq!(calculate_creaking_heart_analog_signal(Some(0.0)), 15);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(0.0)), 15);
+        // Distance 16m -> scaled = 0.5 -> floor(7.5) = 7 -> signal 15 - 7 = 8
+        assert_eq!(calculate_creaking_heart_analog_signal(Some(16.0)), 8);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(16.0)), 8);
+        // Distance 32m -> scaled = 1.0 -> floor(15.0) = 15 -> signal 15 - 15 = 0
+        assert_eq!(calculate_creaking_heart_analog_signal(Some(32.0)), 0);
+        // Distance > 32m -> clamped to 32m -> signal 0
+        assert_eq!(calculate_creaking_heart_analog_signal(Some(34.0)), 0);
+        // No creaking linked -> signal 0
+        assert_eq!(calculate_creaking_heart_analog_signal(None), 0);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(None), 0);
+
+        // 3. Hurt audio progress & volume formula parity (CreakingHeartBlockEntity.java:89, 92)
+        // Emitter at start (100): progress = 0.2 + 0.8 * 0/100 = 0.2; volume = 100/200 + 0.5 = 1.0
+        assert!((calculate_creaking_heart_hurt_progress(100) - 0.2).abs() < 1e-6);
+        assert!((calculate_creaking_heart_hurt_volume(100) - 1.0).abs() < 1e-6);
+        assert!((CreakingHeartBlock::calculate_hurt_audio_progress(100) - 0.2).abs() < 1e-6);
+        assert!((CreakingHeartBlock::calculate_hurt_audio_volume(100) - 1.0).abs() < 1e-6);
+        // Emitter at end (0): progress = 0.2 + 0.8 * 100/100 = 1.0; volume = 0/200 + 0.5 = 0.5
+        assert!((calculate_creaking_heart_hurt_progress(0) - 1.0).abs() < 1e-6);
+        assert!((calculate_creaking_heart_hurt_volume(0) - 0.5).abs() < 1e-6);
+
+        // 4. Roaming, max distance & player detection parity (CreakingHeartBlockEntity.java:44-46)
+        assert_eq!(CREAKING_HEART_PLAYER_DETECTION_RANGE, 32.0);
+        assert_eq!(CREAKING_HEART_CREAKING_ROAMING_RADIUS, 32.0);
+        assert_eq!(CREAKING_HEART_DISTANCE_CREAKING_TOO_FAR, 34.0);
+        assert!(!is_creaking_too_far_from_heart(34.0));
+        assert!(is_creaking_too_far_from_heart(34.1));
+        assert!(CreakingHeartBlock::is_creaking_too_far(34.1));
+
+        // 5. Resin clump count range on hurt (CreakingHeartBlockEntity.java:232: 2-3 clumps)
+        assert_eq!(CREAKING_HEART_RESIN_CLUMPS_MIN, 2);
+        assert_eq!(CREAKING_HEART_RESIN_CLUMPS_MAX, 3);
+        assert_eq!(CreakingHeartBlock::RESIN_CLUMPS_MIN, 2);
+        assert_eq!(CreakingHeartBlock::RESIN_CLUMPS_MAX, 3);
+
+        // 6. Trail particle colors (towards creaking 16545810, towards heart 6250335)
+        assert_eq!(CREAKING_HEART_TRAIL_COLOR_TOWARDS_CREAKING, 16_545_810);
+        assert_eq!(CREAKING_HEART_TRAIL_COLOR_TOWARDS_HEART, 6_250_335);
+
+        // 7. Hurt call interval & dual particles threshold
+        assert!(CreakingHeartBlock::should_play_hurt_call(100));
+        assert!(CreakingHeartBlock::should_play_hurt_call(90));
+        assert!(!CreakingHeartBlock::should_play_hurt_call(95));
+        assert!(CreakingHeartBlock::should_emit_dual_particles(51));
+        assert!(!CreakingHeartBlock::should_emit_dual_particles(50));
     }
 }

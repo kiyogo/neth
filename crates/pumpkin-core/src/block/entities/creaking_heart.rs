@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::world::World;
 
 use super::BlockEntity;
+use crate::block::blocks::creaking_heart::CreakingHeartBlock;
 
 pub struct CreakingHeartBlockEntity {
     pub position: BlockPos,
@@ -228,7 +229,10 @@ impl CreakingHeartBlockEntity {
                             &resin_pos.to_f64(),
                         );
                         placed += 1;
-                        if placed >= 2 {
+                        let max_clumps = rand::random_range(
+                            CreakingHeartBlock::RESIN_CLUMPS_MIN..=CreakingHeartBlock::RESIN_CLUMPS_MAX,
+                        );
+                        if placed >= max_clumps {
                             return;
                         }
                     }
@@ -259,12 +263,7 @@ impl CreakingHeartBlockEntity {
     }
 
     pub fn compute_analog_output_signal(&self, distance: Option<f64>) -> i32 {
-        if let Some(dist) = distance {
-            let clamped = dist.clamp(0.0, 32.0) / 32.0;
-            15 - (clamped * 15.0).floor() as i32
-        } else {
-            0
-        }
+        CreakingHeartBlock::calculate_analog_output_signal(distance)
     }
 
     fn get_relative(pos: &BlockPos, dir: BlockDirection) -> BlockPos {

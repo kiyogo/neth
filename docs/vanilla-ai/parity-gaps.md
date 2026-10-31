@@ -9308,3 +9308,35 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported parity constants and helper functions.
     - Added unit test `test_breeze_deflection_immunity_jump_particles_and_shoot_timings_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 373: Creaking Heart Natural Drop XP (20-24), Comparator Signal Scaling (32m / 0-15), Resin Clumps (2-3) & Hurt Audio Progress Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.CreakingHeartBlock.java:44-58, 63-71, 106-117, 177-181, 188-195`, `CreakingHeartBlockEntity.java:44-60, 80-97, 110-134, 225-247, 249-284, 338-346`.
+- **Vanilla Mechanics**:
+  1. *Natural Break Drop XP*:
+     - When a naturally generated Creaking Heart (`state.getValue(NATURAL) == true`) is destroyed by a player, it drops 20 to 24 experience points (`this.popExperience(serverLevel, pos, level.getRandom().nextIntBetweenInclusive(20, 24))`) (`NATURAL_BREAK_MIN_XP = 20`, `NATURAL_BREAK_MAX_XP = 24`).
+  2. *Comparator Output Signal Scaling*:
+     - `computeAnalogOutputSignal()` formula: returns 0 if uprooted or no creaking protector is linked. When linked:
+       `scaledDistance = Math.clamp(distance, 0.0, 32.0) / 32.0`
+       `signal = 15 - (int)Math.floor(scaledDistance * 15.0)`
+       At distance 0: output signal is 15. At distance 16: output signal is 8. At distance 32: output signal is 0. Clamped at max distance 32.0 (`COMPARATOR_MAX_DISTANCE = 32.0`, `COMPARATOR_MAX_SIGNAL = 15`).
+  3. *Resin Clumps Spreading & Hurt Emitter Audio*:
+     - When a linked Creaking takes damage, the Heart spreads 2 to 3 clumps of resin (`RESIN_CLUMPS_MIN = 2`, `RESIN_CLUMPS_MAX = 3`) (`level.getRandom().nextIntBetweenInclusive(2, 3)`) around adjacent Pale Oak Logs using BFS within depth 2 and max 64 nodes.
+     - Hurt emitter sound progress: countdown from 100 ticks down to 0, playing `SoundEvents.CREAKING_HEART_HURT` every 10 ticks (`HURT_CALL_INTERVAL = 10`) at interpolated position between protector and heart: `progress = 0.2F + 0.8F * (100 - emitter) / 100.0F`, volume: `emitter / 2.0F / 100.0F + 0.5F`.
+     - Dual trail particle emission: emits particles towards creaking (`16545810`) and towards heart (`6250335`) during the first 50 ticks of the hurt countdown (`emitter > 50`).
+  4. *Range Limits & Grace Period*:
+     - Roaming radius: 32 blocks (`CREAKING_ROAMING_RADIUS = 32`). Too far cutoff: 34 blocks (`DISTANCE_CREAKING_TOO_FAR = 34`).
+     - Player detection range: 32 blocks (`PLAYER_DETECTION_RANGE = 32`).
+     - Ticks grace period before clearing unresolved UUID: 30 ticks (`TICKS_GRACE_PERIOD = 30`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/creaking_heart.rs`:
+    - Exported constants `NATURAL_BREAK_MIN_XP = 20`, `NATURAL_BREAK_MAX_XP = 24`, `COMPARATOR_MAX_DISTANCE = 32.0`, `COMPARATOR_MAX_SIGNAL = 15`, `RESIN_CLUMPS_MIN = 2`, `RESIN_CLUMPS_MAX = 3`, `HURT_CALL_TOTAL_TICKS = 100`, `HURT_CALL_INTERVAL = 10`, `HURT_CALL_PARTICLE_TICKS = 50`, `DISTANCE_CREAKING_TOO_FAR = 34.0`, `PLAYER_DETECTION_RANGE = 32.0`, `TICKS_GRACE_PERIOD = 30`, `TRAIL_COLOR_TOWARDS_CREAKING = 16545810`, `TRAIL_COLOR_TOWARDS_HEART = 6250335`.
+    - Added helper methods `calculate_analog_output_signal`, `calculate_hurt_audio_progress`, `calculate_hurt_audio_volume`, `is_creaking_too_far`, `should_play_hurt_call`, `should_emit_dual_particles`.
+    - Updated `broken()` to spawn experience orbs with 20-24 XP when breaking a natural heart.
+  - In `crates/pumpkin-core/src/block/entities/creaking_heart.rs`:
+    - Updated `compute_analog_output_signal` to delegate to `CreakingHeartBlock::calculate_analog_output_signal`.
+    - Updated `spread_resin` to pick a randomized count of 2 to 3 clumps.
+    - Updated emitter hurt call checks to use `should_play_hurt_call`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `CREAKING_HEART_` parity constants and calculation functions.
+    - Added unit test `test_creaking_heart_natural_xp_comparator_signal_and_hurt_progress_parity`.
+- **Status**: Completed & Verified.

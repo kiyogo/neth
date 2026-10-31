@@ -15,11 +15,27 @@ use crate::block::{BlockBehaviour, BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs
 pub struct CreakingHeartBlock;
 
 impl CreakingHeartBlock {
-    const fn is_pale_oak_log(id: BlockId) -> bool {
+    // Vanilla CreakingHeartBlock.java:44-58, 179 & CreakingHeartBlockEntity.java:44-59 parity constants
+    pub const NATURAL_BREAK_MIN_XP: u32 = crate::entity::combat::CREAKING_HEART_NATURAL_BREAK_MIN_XP;
+    pub const NATURAL_BREAK_MAX_XP: u32 = crate::entity::combat::CREAKING_HEART_NATURAL_BREAK_MAX_XP;
+    pub const COMPARATOR_MAX_DISTANCE: f64 = crate::entity::combat::CREAKING_HEART_COMPARATOR_MAX_DISTANCE;
+    pub const COMPARATOR_MAX_SIGNAL: i32 = crate::entity::combat::CREAKING_HEART_COMPARATOR_MAX_SIGNAL;
+    pub const RESIN_CLUMPS_MIN: i32 = crate::entity::combat::CREAKING_HEART_RESIN_CLUMPS_MIN;
+    pub const RESIN_CLUMPS_MAX: i32 = crate::entity::combat::CREAKING_HEART_RESIN_CLUMPS_MAX;
+    pub const HURT_CALL_TOTAL_TICKS: i32 = crate::entity::combat::CREAKING_HEART_HURT_CALL_TOTAL_TICKS;
+    pub const HURT_CALL_INTERVAL: i32 = crate::entity::combat::CREAKING_HEART_HURT_CALL_INTERVAL;
+    pub const HURT_CALL_PARTICLE_TICKS: i32 = crate::entity::combat::CREAKING_HEART_HURT_CALL_PARTICLE_TICKS;
+    pub const DISTANCE_CREAKING_TOO_FAR: f64 = crate::entity::combat::CREAKING_HEART_DISTANCE_CREAKING_TOO_FAR;
+    pub const PLAYER_DETECTION_RANGE: f64 = crate::entity::combat::CREAKING_HEART_PLAYER_DETECTION_RANGE;
+    pub const TICKS_GRACE_PERIOD: i32 = crate::entity::combat::CREAKING_HEART_TICKS_GRACE_PERIOD;
+    pub const TRAIL_COLOR_TOWARDS_CREAKING: i32 = crate::entity::combat::CREAKING_HEART_TRAIL_COLOR_TOWARDS_CREAKING;
+    pub const TRAIL_COLOR_TOWARDS_HEART: i32 = crate::entity::combat::CREAKING_HEART_TRAIL_COLOR_TOWARDS_HEART;
+
+    pub const fn is_pale_oak_log(id: BlockId) -> bool {
         matches!(id, BlockId::PALE_OAK_LOG | BlockId::STRIPPED_PALE_OAK_LOG)
     }
 
-    fn check_active_logs(
+    pub fn check_active_logs(
         world: &dyn pumpkin_world::world::BlockAccessor,
         pos: &pumpkin_util::math::position::BlockPos,
         axis: Axis,
@@ -34,6 +50,36 @@ impl CreakingHeartBlock {
         let block_b = world.get_block_state_id(&pos_b).to_block_id();
 
         Self::is_pale_oak_log(block_a) && Self::is_pale_oak_log(block_b)
+    }
+
+    #[must_use]
+    pub fn calculate_analog_output_signal(distance: Option<f64>) -> i32 {
+        crate::entity::combat::calculate_creaking_heart_analog_signal(distance)
+    }
+
+    #[must_use]
+    pub fn calculate_hurt_audio_progress(emitter: i32) -> f32 {
+        crate::entity::combat::calculate_creaking_heart_hurt_progress(emitter)
+    }
+
+    #[must_use]
+    pub fn calculate_hurt_audio_volume(emitter: i32) -> f32 {
+        crate::entity::combat::calculate_creaking_heart_hurt_volume(emitter)
+    }
+
+    #[must_use]
+    pub const fn is_creaking_too_far(distance: f64) -> bool {
+        crate::entity::combat::is_creaking_too_far_from_heart(distance)
+    }
+
+    #[must_use]
+    pub const fn should_play_hurt_call(emitter: i32) -> bool {
+        emitter > 0 && emitter % Self::HURT_CALL_INTERVAL == 0
+    }
+
+    #[must_use]
+    pub const fn should_emit_dual_particles(emitter: i32) -> bool {
+        emitter > Self::HURT_CALL_PARTICLE_TICKS
     }
 }
 
@@ -114,6 +160,17 @@ impl BlockBehaviour for CreakingHeartBlock {
             );
             args.world
                 .drop_stack(args.position, ItemStack::new(1, &Item::CREAKING_HEART));
+
+            let state_id = args.world.get_block_state_id(args.position);
+            let props = CreakingHeartLikeProperties::from_state_id(state_id);
+            if props.natural {
+                let xp = rand::random_range(Self::NATURAL_BREAK_MIN_XP..=Self::NATURAL_BREAK_MAX_XP);
+                crate::entity::experience_orb::ExperienceOrbEntity::spawn(
+                    args.world,
+                    args.position.to_centered_f64(),
+                    xp,
+                );
+            }
         }
     }
 }
