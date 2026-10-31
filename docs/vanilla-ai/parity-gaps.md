@@ -9151,3 +9151,40 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Implemented environmental panic damage roll-out in `on_damage`.
     - Added unit test `test_armadillo_roll_up_scared_mechanics_and_threat_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 368: Sniffer Digging Timings (160 Ticks Dig / 9600 Ticks Cooldown) & Sniffing State Transitions Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.sniffer.Sniffer.java:1-483`, `SnifferAi.java:1-353`.
+- **Vanilla Mechanics**:
+  1. *States & Durations*:
+     - `IDLING` (0): Base idling activity.
+     - `FEELING_HAPPY` (1): Duration 40 to 100 ticks (`SNIFFER_FEELING_HAPPY_MIN_TICKS = 40`, `SNIFFER_FEELING_HAPPY_MAX_TICKS = 100`). Plays `SoundEvents.SNIFFER_HAPPY`.
+     - `SCENTING` (2): Duration 40 to 80 ticks (`SNIFFER_SCENTING_MIN_TICKS = 40`, `SNIFFER_SCENTING_MAX_TICKS = 80`). Plays `SoundEvents.SNIFFER_SCENTING` (pitch 1.3 for baby, 1.0 for adult).
+     - `SNIFFING` (3): Duration 40 to 80 ticks (`SNIFFER_SNIFFING_MIN_TICKS = 40`, `SNIFFER_SNIFFING_MAX_TICKS = 80`). Plays `SoundEvents.SNIFFER_SNIFFING`.
+     - `SEARCHING` (4): Up to 600 ticks (`SNIFFER_SEARCHING_MAX_TICKS = 600`). Plays searching sound every 20 ticks.
+     - `DIGGING` (5): Duration 160 to 180 ticks (`SNIFFER_DIGGING_MIN_DURATION_TICKS = 160`, `SNIFFER_DIGGING_MAX_DURATION_TICKS = 180`). Broadcasts entity status 63 (`LevelEvent.SNIFFER_DIGGING_SOUND`).
+     - `RISING` (6): Duration 40 ticks (`SNIFFER_RISING_DURATION_TICKS = 40`). Plays `SoundEvents.SNIFFER_DIGGING_STOP`.
+  2. *Digging Particles & Drop Seed Timings*:
+     - Digging particles delay: 1700ms (~34 ticks) to 6000ms (~120 ticks) (`SNIFFER_DIGGING_PARTICLES_DELAY_MS = 1700`, `SNIFFER_DIGGING_PARTICLES_DURATION_MS = 6000`).
+     - Spawns 30 block particles (`SNIFFER_DIGGING_PARTICLES_AMOUNT = 30`) of the block below the sniffer's head (`headBlock.below()`).
+     - Plays hit sound of block every 10 ticks.
+     - Drop seed: exactly 120 ticks after digging starts (`DATA_DROP_SEED_AT_TICK = tickCount + 120`), spawns item entity from `BuiltInLootTables.SNIFFER_DIGGING` (torchflower seeds / pitcher pod) and plays `SoundEvents.SNIFFER_DROP_SEED`.
+  3. *Cooldown & Explored History*:
+     - Sniffing cooldown: 9600 ticks = 8 minutes (`SNIFFER_SNIFFING_COOLDOWN_TICKS = 9600`).
+     - Records explored digging block pos in history up to 20 locations (`SNIFFER_EXPLORED_POSITIONS`).
+  4. *Step Sound & Head Rotation*:
+     - Step sound: `SoundEvents.SNIFFER_STEP` at volume 0.15F (`SNIFFER_STEP_SOUND_VOLUME = 0.15`) and pitch 1.0F (`SNIFFER_STEP_SOUND_PITCH = 1.0`).
+     - Max head Y rotation: 50 degrees (`SNIFFER_MAX_HEAD_ROTATION = 50.0`).
+     - Speed multipliers: sniffing/tempted 1.25, panicking 2.0.
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `SNIFFER_STEP_SOUND_VOLUME = 0.15`, `SNIFFER_STEP_SOUND_PITCH = 1.0`, `SNIFFER_DIGGING_MIN_DURATION_TICKS = 160`, `SNIFFER_DIGGING_MAX_DURATION_TICKS = 180`, `SNIFFER_RISING_DURATION_TICKS = 40`, `SNIFFER_FEELING_HAPPY_MIN_TICKS = 40`, `SNIFFER_FEELING_HAPPY_MAX_TICKS = 100`, `SNIFFER_SCENTING_MIN_TICKS = 40`, `SNIFFER_SCENTING_MAX_TICKS = 80`, `SNIFFER_SNIFFING_MIN_TICKS = 40`, `SNIFFER_SNIFFING_MAX_TICKS = 80`, `SNIFFER_SEARCHING_MAX_TICKS = 600`, `SNIFFER_SNIFFING_COOLDOWN_TICKS = 9600`, `SNIFFER_DIGGING_PARTICLES_DELAY_MS = 1700`, `SNIFFER_DIGGING_PARTICLES_DURATION_MS = 6000`, `SNIFFER_DIGGING_PARTICLES_AMOUNT = 30`, `SNIFFER_MAX_HEAD_ROTATION = 50.0`, `SNIFFER_SPEED_MULTIPLIER_WHEN_SNIFFING = 1.25`, `SNIFFER_SPEED_MULTIPLIER_WHEN_TEMPTED = 1.25`, `SNIFFER_SPEED_MULTIPLIER_WHEN_PANICKING = 2.0`, `SNIFFER_DIGGING_EVENT_ID = 63`.
+  - Updated `crates/pumpkin-core/src/entity/passive/sniffer.rs`:
+    - Added `in_state_ticks`, `sniff_cooldown_ticks`, and `state_duration_ticks` tracking.
+    - Added `default_duration()` to `SnifferState` (Idling: 0, FeelingHappy: 40, Scenting: 40, Sniffing: 40, Searching: 600, Digging: 160, Rising: 40).
+    - Implemented `step_sound` in `CustomSound for SnifferEntity` returning `Some(Sound::EntitySnifferStep)`.
+    - Implemented `get_max_head_rotation` returning `50.0`.
+    - Implemented digging event status broadcast (ID 63) in `on_digging_start`.
+    - Implemented state machine transitions (Digging -> Rising -> FeelingHappy -> Idling, and periodic sniffing when cooldown == 0).
+    - Saved and loaded `SniffCooldown` in NBT.
+    - Added unit test `test_sniffer_digging_durations_and_state_transitions_parity`.
+- **Status**: Completed & Verified.

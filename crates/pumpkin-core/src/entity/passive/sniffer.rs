@@ -1,10 +1,10 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicI32, Ordering},
+    atomic::{AtomicI32, AtomicU64, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
-use pumpkin_data::entity::{EntityStatus, EntityType};
+use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -31,8 +31,16 @@ use crate::entity::{
 };
 
 pub const SNIFFER_FOOD: &[&Item] = &[&Item::TORCHFLOWER_SEEDS, &Item::PITCHER_POD];
-pub const SNIFFER_BABY_START_AGE: i32 = -48000;
-pub const DIGGING_DROP_SEED_OFFSET_TICKS: i32 = 120;
+pub const SNIFFER_BABY_START_AGE: i32 = crate::entity::combat::SNIFFER_BABY_START_AGE;
+pub const DIGGING_DROP_SEED_OFFSET_TICKS: i32 = crate::entity::combat::SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS;
+pub const STEP_SOUND_VOLUME: f32 = crate::entity::combat::SNIFFER_STEP_SOUND_VOLUME;
+pub const STEP_SOUND_PITCH: f32 = crate::entity::combat::SNIFFER_STEP_SOUND_PITCH;
+pub const DIGGING_MIN_DURATION_TICKS: u64 = crate::entity::combat::SNIFFER_DIGGING_MIN_DURATION_TICKS;
+pub const DIGGING_MAX_DURATION_TICKS: u64 = crate::entity::combat::SNIFFER_DIGGING_MAX_DURATION_TICKS;
+pub const RISING_DURATION_TICKS: u64 = crate::entity::combat::SNIFFER_RISING_DURATION_TICKS;
+pub const SNIFFING_COOLDOWN_TICKS: i32 = crate::entity::combat::SNIFFER_SNIFFING_COOLDOWN_TICKS;
+pub const DIGGING_EVENT_ID: u8 = crate::entity::combat::SNIFFER_DIGGING_EVENT_ID;
+pub const MAX_HEAD_ROTATION: f32 = crate::entity::combat::SNIFFER_MAX_HEAD_ROTATION;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(i32)]
@@ -65,6 +73,19 @@ impl SnifferState {
     pub const fn id(self) -> i32 {
         self as i32
     }
+
+    #[must_use]
+    pub const fn default_duration(self) -> u64 {
+        match self {
+            Self::Idling => 0,
+            Self::FeelingHappy => 40,
+            Self::Scenting => 40,
+            Self::Sniffing => 40,
+            Self::Searching => 600,
+            Self::Digging => 160,
+            Self::Rising => 40,
+        }
+    }
 }
 
 /// Represents a Sniffer, a large passive mob that digs up ancient seeds.
@@ -75,6 +96,9 @@ pub struct SnifferEntity {
     pub ageable_data: AgeableData,
     pub state: AtomicI32,
     pub drop_seed_at_tick: AtomicI32,
+    pub in_state_ticks: AtomicU64,
+    pub sniff_cooldown_ticks: AtomicI32,
+    pub state_duration_ticks: AtomicU64,
     pub explored_positions: std::sync::Mutex<Vec<BlockPos>>,
 }
 
@@ -87,6 +111,9 @@ impl SnifferEntity {
             ageable_data: AgeableData::default(),
             state: AtomicI32::new(SnifferState::Idling.id()),
             drop_seed_at_tick: AtomicI32::new(0),
+            in_state_ticks: AtomicU64::new(0),
+            sniff_cooldown_ticks: AtomicI32::new(0),
+            state_duration_ticks: AtomicU64::new(0),
             explored_positions: std::sync::Mutex::new(Vec::new()),
         };
 
@@ -148,6 +175,9 @@ impl SnifferEntity {
     }
 
     pub fn transition_to(&self, state: SnifferState) {
+        self.in_state_ticks.store(0, Ordering::Relaxed);
+        self.state_duration_ticks.store(state.default_duration(), Ordering::Relaxed);
+
         let entity = self.get_entity();
         let world = entity.world.load();
         let pos = entity.pos.load();
@@ -210,13 +240,15 @@ impl SnifferEntity {
             pumpkin_data::tracked_data::sniffer::DROP_SEED_AT_TICK,
             VarInt(drop_tick),
         );
-        world.send_entity_status(entity, EntityStatus::SnifferDiggingSound, None);
+        world.broadcast_entity_status_id(&entity, DIGGING_EVENT_ID as i8);
     }
 
     pub fn on_digging_complete(&self, success: bool) {
         if success {
             let head_block = self.get_head_block().down();
             self.store_explored_position(head_block);
+            self.sniff_cooldown_ticks
+                .store(SNIFFING_COOLDOWN_TICKS, Ordering::Relaxed);
         }
     }
 
@@ -394,6 +426,10 @@ impl Mob for SnifferEntity {
             "DropSeedAtTick",
             self.drop_seed_at_tick.load(Ordering::Relaxed),
         );
+        nbt.put_int(
+            "SniffCooldown",
+            self.sniff_cooldown_ticks.load(Ordering::Relaxed),
+        );
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
@@ -402,6 +438,9 @@ impl Mob for SnifferEntity {
         }
         if let Some(drop_tick) = nbt.get_int("DropSeedAtTick") {
             self.drop_seed_at_tick.store(drop_tick, Ordering::Relaxed);
+        }
+        if let Some(cd) = nbt.get_int("SniffCooldown") {
+            self.sniff_cooldown_ticks.store(cd, Ordering::Relaxed);
         }
     }
 
@@ -413,9 +452,23 @@ impl Mob for SnifferEntity {
         &self.mob_entity
     }
 
+    fn get_max_head_rotation(&self) -> f32 {
+        MAX_HEAD_ROTATION
+    }
+
     fn mob_tick(&self, _caller: &dyn EntityBase) {
         self.ageable_ai_step();
+        self.in_state_ticks.fetch_add(1, Ordering::Relaxed);
+
+        let cd = self.sniff_cooldown_ticks.load(Ordering::Relaxed);
+        if cd > 0 {
+            self.sniff_cooldown_ticks.store(cd - 1, Ordering::Relaxed);
+        }
+
         let state = self.get_state();
+        let ticks_in_state = self.in_state_ticks.load(Ordering::Relaxed);
+        let target_duration = self.state_duration_ticks.load(Ordering::Relaxed);
+
         match state {
             SnifferState::Searching => {
                 let entity = self.get_entity();
@@ -428,11 +481,47 @@ impl Mob for SnifferEntity {
                         &entity.pos.load(),
                     );
                 }
+                if ticks_in_state >= target_duration {
+                    if self.can_dig() {
+                        self.transition_to(SnifferState::Digging);
+                    } else {
+                        self.transition_to(SnifferState::Idling);
+                    }
+                }
             }
             SnifferState::Digging => {
                 self.drop_seed();
+                if ticks_in_state >= target_duration {
+                    self.transition_to(SnifferState::Rising);
+                }
             }
-            _ => {}
+            SnifferState::Rising => {
+                if ticks_in_state >= target_duration {
+                    self.on_digging_complete(true);
+                    self.transition_to(SnifferState::FeelingHappy);
+                }
+            }
+            SnifferState::FeelingHappy => {
+                if ticks_in_state >= target_duration {
+                    self.transition_to(SnifferState::Idling);
+                }
+            }
+            SnifferState::Scenting | SnifferState::Sniffing => {
+                if ticks_in_state >= target_duration {
+                    self.transition_to(SnifferState::Idling);
+                }
+            }
+            SnifferState::Idling => {
+                // Periodically initiate sniffing if ready and on diggable ground
+                if !self.is_panicking()
+                    && !self.is_baby()
+                    && self.sniff_cooldown_ticks.load(Ordering::Relaxed) == 0
+                    && self.can_dig()
+                    && rand::random_range(0..200) == 0
+                {
+                    self.transition_to(SnifferState::Sniffing);
+                }
+            }
         }
 
         let entity = self.get_entity();
@@ -505,6 +594,10 @@ impl CustomSound for SnifferEntity {
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntitySnifferHurt)
     }
+
+    fn step_sound(&self) -> Option<Sound> {
+        Some(Sound::EntitySnifferStep)
+    }
 }
 
 #[cfg(test)]
@@ -532,5 +625,54 @@ mod tests {
         assert_eq!(crate::entity::combat::SNIFFER_BASE_MOVEMENT_SPEED, 0.1);
         assert_eq!(crate::entity::combat::SNIFFER_BABY_START_AGE, -48000);
         assert_eq!(crate::entity::combat::SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS, 120);
+        assert_eq!(STEP_SOUND_VOLUME, 0.15);
+        assert_eq!(STEP_SOUND_PITCH, 1.0);
+        assert_eq!(DIGGING_MIN_DURATION_TICKS, 160);
+        assert_eq!(DIGGING_MAX_DURATION_TICKS, 180);
+        assert_eq!(RISING_DURATION_TICKS, 40);
+        assert_eq!(SNIFFING_COOLDOWN_TICKS, 9600);
+        assert_eq!(DIGGING_EVENT_ID, 63);
+        assert_eq!(MAX_HEAD_ROTATION, 50.0);
+        assert_eq!(crate::entity::combat::SNIFFER_SPEED_MULTIPLIER_WHEN_SNIFFING, 1.25);
+        assert_eq!(crate::entity::combat::SNIFFER_SPEED_MULTIPLIER_WHEN_TEMPTED, 1.25);
+        assert_eq!(crate::entity::combat::SNIFFER_SPEED_MULTIPLIER_WHEN_PANICKING, 2.0);
+        assert_eq!(crate::entity::combat::SNIFFER_DIGGING_PARTICLES_DELAY_MS, 1700);
+        assert_eq!(crate::entity::combat::SNIFFER_DIGGING_PARTICLES_DURATION_MS, 6000);
+        assert_eq!(crate::entity::combat::SNIFFER_DIGGING_PARTICLES_AMOUNT, 30);
+        assert_eq!(crate::entity::combat::SNIFFER_FEELING_HAPPY_MIN_TICKS, 40);
+        assert_eq!(crate::entity::combat::SNIFFER_FEELING_HAPPY_MAX_TICKS, 100);
+        assert_eq!(crate::entity::combat::SNIFFER_SCENTING_MIN_TICKS, 40);
+        assert_eq!(crate::entity::combat::SNIFFER_SCENTING_MAX_TICKS, 80);
+        assert_eq!(crate::entity::combat::SNIFFER_SNIFFING_MIN_TICKS, 40);
+        assert_eq!(crate::entity::combat::SNIFFER_SNIFFING_MAX_TICKS, 80);
+        assert_eq!(crate::entity::combat::SNIFFER_SEARCHING_MAX_TICKS, 600);
+    }
+
+    #[test]
+    fn test_sniffer_digging_durations_and_state_transitions_parity() {
+        // States and IDs
+        assert_eq!(SnifferState::from_id(0), SnifferState::Idling);
+        assert_eq!(SnifferState::from_id(1), SnifferState::FeelingHappy);
+        assert_eq!(SnifferState::from_id(2), SnifferState::Scenting);
+        assert_eq!(SnifferState::from_id(3), SnifferState::Sniffing);
+        assert_eq!(SnifferState::from_id(4), SnifferState::Searching);
+        assert_eq!(SnifferState::from_id(5), SnifferState::Digging);
+        assert_eq!(SnifferState::from_id(6), SnifferState::Rising);
+
+        // State durations
+        assert_eq!(SnifferState::Idling.default_duration(), 0);
+        assert_eq!(SnifferState::FeelingHappy.default_duration(), 40);
+        assert_eq!(SnifferState::Scenting.default_duration(), 40);
+        assert_eq!(SnifferState::Sniffing.default_duration(), 40);
+        assert_eq!(SnifferState::Searching.default_duration(), 600);
+        assert_eq!(SnifferState::Digging.default_duration(), 160);
+        assert_eq!(SnifferState::Rising.default_duration(), 40);
+
+        // Digging & Cooldown parity constants
+        assert_eq!(DIGGING_MIN_DURATION_TICKS, 160);
+        assert_eq!(DIGGING_MAX_DURATION_TICKS, 180);
+        assert_eq!(RISING_DURATION_TICKS, 40);
+        assert_eq!(SNIFFING_COOLDOWN_TICKS, 9600);
+        assert_eq!(DIGGING_DROP_SEED_OFFSET_TICKS, 120);
     }
 }

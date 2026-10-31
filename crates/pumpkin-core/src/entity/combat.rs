@@ -9784,6 +9784,81 @@ pub const SNIFFER_BABY_START_AGE: i32 = -48000;
 /// Mirrors vanilla Sniffer.java:35 (DIGGING_DROP_SEED_OFFSET_TICKS = 120).
 pub const SNIFFER_DIGGING_DROP_SEED_OFFSET_TICKS: i32 = 120;
 
+/// Sniffer step sound volume (0.15).
+/// Mirrors vanilla Sniffer.java:398 (`this.playSound(SoundEvents.SNIFFER_STEP, 0.15F, 1.0F)`).
+pub const SNIFFER_STEP_SOUND_VOLUME: f32 = 0.15;
+
+/// Sniffer step sound pitch (1.0).
+/// Mirrors vanilla Sniffer.java:398.
+pub const SNIFFER_STEP_SOUND_PITCH: f32 = 1.0;
+
+/// Sniffer minimum digging duration in ticks (160 ticks = 8.0s).
+/// Mirrors vanilla SnifferAi.java:83 (`new SnifferAi.Digging(160, 180)`).
+pub const SNIFFER_DIGGING_MIN_DURATION_TICKS: u64 = 160;
+
+/// Sniffer maximum digging duration in ticks (180 ticks = 9.0s).
+/// Mirrors vanilla SnifferAi.java:83.
+pub const SNIFFER_DIGGING_MAX_DURATION_TICKS: u64 = 180;
+
+/// Sniffer rising (finished digging) duration in ticks (40 ticks = 2.0s).
+/// Mirrors vanilla SnifferAi.java:83 (`new SnifferAi.FinishedDigging(40)`).
+pub const SNIFFER_RISING_DURATION_TICKS: u64 = 40;
+
+/// Sniffer feeling happy duration min (40 ticks) and max (100 ticks).
+/// Mirrors vanilla SnifferAi.java:110 (`new SnifferAi.FeelingHappy(40, 100)`).
+pub const SNIFFER_FEELING_HAPPY_MIN_TICKS: u64 = 40;
+pub const SNIFFER_FEELING_HAPPY_MAX_TICKS: u64 = 100;
+
+/// Sniffer scenting duration min (40 ticks) and max (80 ticks).
+/// Mirrors vanilla SnifferAi.java:116 (`new SnifferAi.Scenting(40, 80)`).
+pub const SNIFFER_SCENTING_MIN_TICKS: u64 = 40;
+pub const SNIFFER_SCENTING_MAX_TICKS: u64 = 80;
+
+/// Sniffer sniffing duration min (40 ticks) and max (80 ticks).
+/// Mirrors vanilla SnifferAi.java:117 (`new SnifferAi.Sniffing(40, 80)`).
+pub const SNIFFER_SNIFFING_MIN_TICKS: u64 = 40;
+pub const SNIFFER_SNIFFING_MAX_TICKS: u64 = 80;
+
+/// Sniffer searching duration limit (600 ticks = 30.0s).
+/// Mirrors vanilla SnifferAi.java:279 (`new SnifferAi.Searching(600)`).
+pub const SNIFFER_SEARCHING_MAX_TICKS: u64 = 600;
+
+/// Sniffer sniffing cooldown after digging completes (9600 ticks = 8 minutes).
+/// Mirrors vanilla SnifferAi.java:43 (`SNIFFING_COOLDOWN_TICKS = 9600`).
+pub const SNIFFER_SNIFFING_COOLDOWN_TICKS: i32 = 9600;
+
+/// Sniffer digging particles delay in milliseconds (1700ms = ~34 ticks).
+/// Mirrors vanilla Sniffer.java:69 (`DIGGING_PARTICLES_DELAY_TICKS = 1700`).
+pub const SNIFFER_DIGGING_PARTICLES_DELAY_MS: i64 = 1700;
+
+/// Sniffer digging particles duration in milliseconds (6000ms = 120 ticks).
+/// Mirrors vanilla Sniffer.java:70 (`DIGGING_PARTICLES_DURATION_TICKS = 6000`).
+pub const SNIFFER_DIGGING_PARTICLES_DURATION_MS: i64 = 6000;
+
+/// Sniffer digging particles count per burst (30).
+/// Mirrors vanilla Sniffer.java:71 (`DIGGING_PARTICLES_AMOUNT = 30`).
+pub const SNIFFER_DIGGING_PARTICLES_AMOUNT: u32 = 30;
+
+/// Sniffer maximum head Y rotation (50 degrees).
+/// Mirrors vanilla Sniffer.java:418 (`getMaxHeadYRot() { return 50; }`).
+pub const SNIFFER_MAX_HEAD_ROTATION: f32 = 50.0;
+
+/// Sniffer speed multiplier when sniffing / searching (1.25).
+/// Mirrors vanilla SnifferAi.java:46 (`SPEED_MULTIPLIER_WHEN_SNIFFING = 1.25F`).
+pub const SNIFFER_SPEED_MULTIPLIER_WHEN_SNIFFING: f64 = 1.25;
+
+/// Sniffer speed multiplier when tempted by torchflower seeds (1.25).
+/// Mirrors vanilla SnifferAi.java:47 (`SPEED_MULTIPLIER_WHEN_TEMPTED = 1.25F`).
+pub const SNIFFER_SPEED_MULTIPLIER_WHEN_TEMPTED: f64 = 1.25;
+
+/// Sniffer speed multiplier when panicking (2.0).
+/// Mirrors vanilla SnifferAi.java:45 (`SPEED_MULTIPLIER_WHEN_PANICKING = 2.0F`).
+pub const SNIFFER_SPEED_MULTIPLIER_WHEN_PANICKING: f64 = 2.0;
+
+/// Sniffer entity event status ID for digging sound/animation (63).
+/// Mirrors vanilla Sniffer.java:246 (`this.level().broadcastEntityEvent(this, (byte)63)`).
+pub const SNIFFER_DIGGING_EVENT_ID: u8 = 63;
+
 /// Armadillo base max health (12.0 HP / 6 hearts).
 /// Mirrors vanilla Armadillo.java:93 (Attributes.MAX_HEALTH, 12.0).
 pub const ARMADILLO_MAX_HEALTH: f32 = 12.0;
