@@ -7969,3 +7969,34 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants and helpers matching `DispenserBlock`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_dispenser_dropper_ejection_events_and_comparator_parity`.
+
+### Gap 320: End Portal Frame Eye Insertion, Activation Pattern (12 Frames) & Dimension Teleportation Parity
+- **Vanilla Reference**:
+  - `EndPortalFrameBlock.java:1-120`, `EndPortalBlock.java:1-110`, `EnderEyeItem.java:1-100`:
+    - Frame properties & comparator:
+      - Block properties: `FACING` (Direction.NORTH default) and `HAS_EYE` (false default).
+      - Comparator signal: outputs 15 if `HAS_EYE == true`, 0 if false (`state.getValue(HAS_EYE) ? 15 : 0`).
+    - Eye insertion interactions (`EnderEyeItem.useOn`):
+      - Right-clicking empty frame with Eye of Ender consumes 1 item (`shrink(1)`).
+      - Sets `HAS_EYE = true`, pushes overlapping entities up, updates neighbor comparator output.
+      - Emits level sound/particle event `1503` (`WorldEvent.EndPortalFrameFill` = 1503).
+    - Portal shape validation (`getOrCreatePortalShape`):
+      - 5x5 boundary with corners empty (`?`):
+        - Top 3 frames face NORTH (`v` -> pointing inward towards center).
+        - Bottom 3 frames face SOUTH (`^` -> pointing inward towards center).
+        - Left 3 frames face WEST (`>` -> pointing inward towards center).
+        - Right 3 frames face EAST (`<` -> pointing inward towards center).
+      - Total frames required: `PORTAL_FRAME_COUNT = 12` with eyes.
+      - Interior center: `PORTAL_INNER_SIZE = 3` (3x3 grid of `Blocks.END_PORTAL`).
+      - On pattern completion: fills center with `END_PORTAL` and emits global world event `1038` (`WorldEvent.SoundEndPortalSpawn`).
+    - Dimension teleportation coordinates & geometry:
+      - End Portal dimensions: `Block.column(16.0, 6.0, 12.0)` (thickness 0.375, height 0.375 to 0.75).
+      - The End spawn point coordinates: `(100, 49, 0)` (`ServerLevel.END_SPAWN_POINT`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/end_portal_frame.rs`:
+    - Exported constants `COMPARATOR_SIGNAL_EYE`, `COMPARATOR_SIGNAL_EMPTY`, `EVENT_FRAME_FILL`, `EVENT_PORTAL_SPAWN`, `PORTAL_FRAME_COUNT`, and `PORTAL_INNER_SIZE`.
+    - Exported helpers `is_valid_frame_count` and `is_facing_inward`.
+  - Updated `crates/pumpkin-core/src/block/blocks/end_portal.rs`:
+    - Exported `END_SPAWN_X = 100`, `END_SPAWN_Y = 49`, `END_SPAWN_Z = 0`, `PORTAL_MIN_Y`, `PORTAL_MAX_Y`, and `PORTAL_THICKNESS`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_end_portal_frame_eye_insertion_pattern_and_teleportation_parity`.

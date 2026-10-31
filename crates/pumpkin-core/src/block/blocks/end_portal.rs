@@ -10,6 +10,15 @@ use pumpkin_macros::pumpkin_block;
 #[pumpkin_block("minecraft:end_portal")]
 pub struct EndPortalBlock;
 
+impl EndPortalBlock {
+    pub const END_SPAWN_X: i32 = 100;
+    pub const END_SPAWN_Y: i32 = 49;
+    pub const END_SPAWN_Z: i32 = 0;
+    pub const PORTAL_MIN_Y: f64 = 6.0 / 16.0; // 0.375
+    pub const PORTAL_MAX_Y: f64 = 12.0 / 16.0; // 0.75
+    pub const PORTAL_THICKNESS: f64 = 6.0 / 16.0;
+}
+
 impl BlockBehaviour for EndPortalBlock {
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
         let target_world =

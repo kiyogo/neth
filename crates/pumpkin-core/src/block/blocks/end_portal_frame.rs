@@ -24,6 +24,19 @@ impl EndPortalFrameBlock {
     pub const EVENT_PORTAL_SPAWN: u32 = 1038;
     pub const PORTAL_FRAME_COUNT: usize = 12;
     pub const PORTAL_INNER_SIZE: usize = 3;
+
+    #[must_use]
+    pub const fn is_valid_frame_count(count: usize) -> bool {
+        count == Self::PORTAL_FRAME_COUNT
+    }
+
+    #[must_use]
+    pub fn is_facing_inward(
+        frame_facing: pumpkin_data::block_properties::Facing,
+        direction_from_center: pumpkin_data::BlockDirection,
+    ) -> bool {
+        frame_facing == direction_from_center.to_facing().opposite()
+    }
 }
 
 impl BlockBehaviour for EndPortalFrameBlock {

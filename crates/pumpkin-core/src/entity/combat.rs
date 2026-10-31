@@ -17551,4 +17551,48 @@ mod tests {
         assert_eq!(DispenserBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
         assert_eq!(DropperBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
     }
+
+    #[test]
+    fn test_end_portal_frame_eye_insertion_pattern_and_teleportation_parity() {
+        use crate::block::blocks::end_portal::EndPortalBlock;
+        use crate::block::blocks::end_portal_frame::{EndPortalFrameBlock, calculate_end_portal_frame_comparator_signal};
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::Facing;
+
+        // Constants verification
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EYE, 15);
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EMPTY, 0);
+        assert_eq!(EndPortalFrameBlock::EVENT_FRAME_FILL, 1503);
+        assert_eq!(EndPortalFrameBlock::EVENT_PORTAL_SPAWN, 1038);
+        assert_eq!(EndPortalFrameBlock::PORTAL_FRAME_COUNT, 12);
+        assert_eq!(EndPortalFrameBlock::PORTAL_INNER_SIZE, 3);
+
+        assert_eq!(EndPortalBlock::END_SPAWN_X, 100);
+        assert_eq!(EndPortalBlock::END_SPAWN_Y, 49);
+        assert_eq!(EndPortalBlock::END_SPAWN_Z, 0);
+        assert_eq!(EndPortalBlock::PORTAL_MIN_Y, 6.0 / 16.0);
+        assert_eq!(EndPortalBlock::PORTAL_MAX_Y, 12.0 / 16.0);
+        assert_eq!(EndPortalBlock::PORTAL_THICKNESS, 6.0 / 16.0);
+
+        // Comparator Output: eye inserted = 15, empty = 0
+        assert_eq!(calculate_end_portal_frame_comparator_signal(true), 15);
+        assert_eq!(calculate_end_portal_frame_comparator_signal(false), 0);
+
+        // Frame count validation
+        assert!(EndPortalFrameBlock::is_valid_frame_count(12));
+        assert!(!EndPortalFrameBlock::is_valid_frame_count(11));
+        assert!(!EndPortalFrameBlock::is_valid_frame_count(13));
+
+        // Inward facing pattern validation: frames must face towards the 3x3 center
+        assert!(EndPortalFrameBlock::is_facing_inward(Facing::South, BlockDirection::North));
+        assert!(EndPortalFrameBlock::is_facing_inward(Facing::North, BlockDirection::South));
+        assert!(EndPortalFrameBlock::is_facing_inward(Facing::East, BlockDirection::West));
+        assert!(EndPortalFrameBlock::is_facing_inward(Facing::West, BlockDirection::East));
+
+        // Invalid facings (facing outwards or parallel)
+        assert!(!EndPortalFrameBlock::is_facing_inward(Facing::North, BlockDirection::North));
+        assert!(!EndPortalFrameBlock::is_facing_inward(Facing::East, BlockDirection::North));
+        assert!(!EndPortalFrameBlock::is_facing_inward(Facing::West, BlockDirection::North));
+        assert!(!EndPortalFrameBlock::is_facing_inward(Facing::South, BlockDirection::South));
+    }
 }
