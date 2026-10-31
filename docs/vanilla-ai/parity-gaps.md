@@ -9482,3 +9482,28 @@ eq 	ext{None}$.
     - Updated `on_attack()` and `pre_damage()` to use `STATUS_ATTACK` (4) and `STATUS_INVULNERABLE_SWAY` (66).
     - Updated unit tests to verify gaze cone, disguise bypass, and status event parity.
 - **Status**: Completed & Verified.
+
+### Gap 378: Pale Oak Boat & Chest Boat Crafting Recipes, Type Attributes & Entity Drops Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.EntityTypes.java:736-751`, `net.minecraft.world.entity.vehicle.boat.Boat.java:1-18`, `net.minecraft.world.entity.vehicle.boat.ChestBoat.java:1-18`, `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:807-814`, `net.minecraft.world.entity.vehicle.boat.AbstractChestBoat.java:38-45`, `data/minecraft/recipe/pale_oak_boat.json:1-14`, `data/minecraft/recipe/pale_oak_chest_boat.json:1-11`.
+- **Vanilla Mechanics**:
+  1. *Entity Attributes & Dimensions*:
+     - `EntityType.PALE_OAK_BOAT` and `EntityType.PALE_OAK_CHEST_BOAT` are registered with dimensions `sized(1.375F, 0.5625F)` (width 1.375, height 0.5625) (`BOAT_WIDTH = 1.375`, `BOAT_HEIGHT = 0.5625`), `eyeHeight(0.5625F)`, `clientTrackingRange(10)`, and `.noLootTable()`.
+     - Passenger ride height in `Boat.java:16` and `ChestBoat.java:16` is `dimensions.height() / 3.0F` = $0.5625 / 3.0 = 0.1875$ blocks (`BOAT_RIDE_HEIGHT_RATIO = 1.0 / 3.0`), while Bamboo Raft ride height is `height * 0.8888889F` (`RAFT_RIDE_HEIGHT_RATIO = 0.888_888_9`).
+     - Single passenger X offset in `AbstractChestBoat.java:43` is 0.15 blocks (`CHEST_BOAT_PASSENGER_OFFSET_X = 0.15`), and 0.0 when 2 passengers are seated.
+  2. *Entity Drops Parity*:
+     - In Vanilla Minecraft, boats and minecarts do not possess loot table JSON files (`noLootTable()`). Instead, when destroyed by damage (and `doEntityDrops` is enabled), they drop their corresponding Item supplier (`getDropItem()` in `AbstractBoat.java:807-809`).
+     - Previously in Neth, `kill_and_drop_self()` strictly queried `pumpkin_data::loot_table::get_loot_table(&key)`, which always returned `None` for boats and non-chest minecarts, causing boats to drop nothing upon being destroyed by players.
+     - Implemented `VehicleEntity::get_default_vehicle_drop_item(entity_type)` fallback covering all 11 boat and raft wood types (including Pale Oak Boat and Pale Oak Chest Boat) and all 7 minecart variants.
+  3. *Crafting Recipes*:
+     - `pale_oak_boat`: Shaped recipe from 5 Pale Oak Planks in `["# #", "###"]` pattern.
+     - `pale_oak_chest_boat`: Shapeless recipe from 1 Pale Oak Boat + 1 Chest.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported parity constants: `BOAT_WIDTH = 1.375`, `BOAT_HEIGHT = 0.5625`, `BOAT_RIDE_HEIGHT_RATIO = 1.0 / 3.0`, `RAFT_RIDE_HEIGHT_RATIO = 0.888_888_9`, `CHEST_BOAT_PASSENGER_OFFSET_X = 0.15`.
+    - Added unit test `test_boat_dimensions_ride_height_and_pale_oak_drop_parity`.
+  - In `crates/pumpkin-core/src/entity/vehicle/vehicle.rs`:
+    - Added `VehicleEntity::get_default_vehicle_drop_item()` mapping all boat and minecart entity types to their respective items.
+    - Updated `kill_and_drop_self()` to drop the default vehicle item stack when no loot table exists.
+  - In `crates/pumpkin-core/src/entity/vehicle/boat/passengers.rs`:
+    - Replaced hardcoded constants with `BOAT_RIDE_HEIGHT_RATIO`, `RAFT_RIDE_HEIGHT_RATIO`, and `CHEST_BOAT_PASSENGER_OFFSET_X`.
+- **Status**: Completed & Verified.

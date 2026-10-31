@@ -65,7 +65,7 @@ impl BoatEntity {
     }
 
     fn get_single_passenger_x_offset(&self) -> f32 {
-        if self.is_chest_boat() { 0.15 } else { 0.0 }
+        if self.is_chest_boat() { crate::entity::combat::CHEST_BOAT_PASSENGER_OFFSET_X } else { 0.0 }
     }
 
     fn ride_height(&self) -> f64 {
@@ -73,9 +73,9 @@ impl BoatEntity {
         if entity.entity_type == &EntityType::BAMBOO_RAFT
             || entity.entity_type == &EntityType::BAMBOO_CHEST_RAFT
         {
-            f64::from(entity.height() * 0.888_888_9)
+            f64::from(entity.height() * crate::entity::combat::RAFT_RIDE_HEIGHT_RATIO)
         } else {
-            f64::from(entity.height() / 3.0)
+            f64::from(entity.height() * crate::entity::combat::BOAT_RIDE_HEIGHT_RATIO)
         }
     }
 }

@@ -2,6 +2,9 @@ use crossbeam::atomic::AtomicCell;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use crate::entity::Entity;
+use pumpkin_data::entity::EntityType;
+use pumpkin_data::item::Item;
+use pumpkin_data::item_stack::ItemStack;
 use pumpkin_protocol::java::client::play::Metadata;
 
 use crate::entity::EntityBase;
@@ -204,10 +207,52 @@ impl VehicleEntity {
                 for stack in crate::world::loot::generate_loot(loot_table, seed) {
                     world.drop_stack(&pos, stack);
                 }
+            } else if let Some(item) = Self::get_default_vehicle_drop_item(&self.entity.entity_type) {
+                let pos = self.entity.block_pos.load();
+                world.drop_stack(&pos, ItemStack::new(1, item));
             }
         }
 
         self.entity.remove();
+    }
+
+    /// Vanilla parity: vehicle entity drop items when no loot table exists.
+    ///
+    /// Mirrors vanilla `EntityTypes.java` (boatFactory & chestBoatFactory) and `AbstractBoat.java:807-809`.
+    #[must_use]
+    pub fn get_default_vehicle_drop_item(entity_type: &EntityType) -> Option<&'static Item> {
+        match entity_type.id {
+            id if id == EntityType::OAK_BOAT.id => Some(&Item::OAK_BOAT),
+            id if id == EntityType::OAK_CHEST_BOAT.id => Some(&Item::OAK_CHEST_BOAT),
+            id if id == EntityType::SPRUCE_BOAT.id => Some(&Item::SPRUCE_BOAT),
+            id if id == EntityType::SPRUCE_CHEST_BOAT.id => Some(&Item::SPRUCE_CHEST_BOAT),
+            id if id == EntityType::BIRCH_BOAT.id => Some(&Item::BIRCH_BOAT),
+            id if id == EntityType::BIRCH_CHEST_BOAT.id => Some(&Item::BIRCH_CHEST_BOAT),
+            id if id == EntityType::JUNGLE_BOAT.id => Some(&Item::JUNGLE_BOAT),
+            id if id == EntityType::JUNGLE_CHEST_BOAT.id => Some(&Item::JUNGLE_CHEST_BOAT),
+            id if id == EntityType::ACACIA_BOAT.id => Some(&Item::ACACIA_BOAT),
+            id if id == EntityType::ACACIA_CHEST_BOAT.id => Some(&Item::ACACIA_CHEST_BOAT),
+            id if id == EntityType::DARK_OAK_BOAT.id => Some(&Item::DARK_OAK_BOAT),
+            id if id == EntityType::DARK_OAK_CHEST_BOAT.id => Some(&Item::DARK_OAK_CHEST_BOAT),
+            id if id == EntityType::MANGROVE_BOAT.id => Some(&Item::MANGROVE_BOAT),
+            id if id == EntityType::MANGROVE_CHEST_BOAT.id => Some(&Item::MANGROVE_CHEST_BOAT),
+            id if id == EntityType::CHERRY_BOAT.id => Some(&Item::CHERRY_BOAT),
+            id if id == EntityType::CHERRY_CHEST_BOAT.id => Some(&Item::CHERRY_CHEST_BOAT),
+            id if id == EntityType::PALE_OAK_BOAT.id => Some(&Item::PALE_OAK_BOAT),
+            id if id == EntityType::PALE_OAK_CHEST_BOAT.id => Some(&Item::PALE_OAK_CHEST_BOAT),
+            id if id == EntityType::POPLAR_BOAT.id => Some(&Item::POPLAR_BOAT),
+            id if id == EntityType::POPLAR_CHEST_BOAT.id => Some(&Item::POPLAR_CHEST_BOAT),
+            id if id == EntityType::BAMBOO_RAFT.id => Some(&Item::BAMBOO_RAFT),
+            id if id == EntityType::BAMBOO_CHEST_RAFT.id => Some(&Item::BAMBOO_CHEST_RAFT),
+            id if id == EntityType::MINECART.id => Some(&Item::MINECART),
+            id if id == EntityType::CHEST_MINECART.id => Some(&Item::CHEST_MINECART),
+            id if id == EntityType::FURNACE_MINECART.id => Some(&Item::FURNACE_MINECART),
+            id if id == EntityType::TNT_MINECART.id => Some(&Item::TNT_MINECART),
+            id if id == EntityType::HOPPER_MINECART.id => Some(&Item::HOPPER_MINECART),
+            id if id == EntityType::COMMAND_BLOCK_MINECART.id => Some(&Item::COMMAND_BLOCK_MINECART),
+            id if id == EntityType::SPAWNER_MINECART.id => Some(&Item::MINECART),
+            _ => None,
+        }
     }
 
     pub fn damage_with_context(&self, amount: f32, source: Option<&dyn EntityBase>) -> bool {

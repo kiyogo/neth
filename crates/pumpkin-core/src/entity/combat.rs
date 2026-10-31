@@ -3612,6 +3612,36 @@ pub const BOAT_TIME_TO_EJECT: f32 = 60.0;
 /// private static final float PADDLE_SPEED = (float) (Math.PI / 8);
 pub const BOAT_PADDLE_SPEED: f32 = core::f32::consts::PI / 8.0;
 
+/// Boat width (1.375 blocks).
+///
+/// Mirrors vanilla `EntityTypes.java:740`:
+/// `EntityType.Builder.of(...).sized(1.375F, 0.5625F)`
+pub const BOAT_WIDTH: f32 = 1.375;
+
+/// Boat height (0.5625 blocks = 9/16).
+///
+/// Mirrors vanilla `EntityTypes.java:740`:
+/// `EntityType.Builder.of(...).sized(1.375F, 0.5625F)`
+pub const BOAT_HEIGHT: f32 = 0.5625;
+
+/// Boat passenger ride height ratio: `height / 3.0 = 0.5625 / 3.0 = 0.1875` (3/16 blocks).
+///
+/// Mirrors vanilla `Boat.java:16` and `ChestBoat.java:16`:
+/// `dimensions.height() / 3.0F`
+pub const BOAT_RIDE_HEIGHT_RATIO: f32 = 1.0 / 3.0;
+
+/// Bamboo raft passenger ride height ratio: `height * 0.8888889`.
+///
+/// Mirrors vanilla `Raft.java:16`:
+/// `dimensions.height() * 0.8888889F`
+pub const RAFT_RIDE_HEIGHT_RATIO: f32 = 0.888_888_9;
+
+/// Single passenger X offset for Chest Boats (0.15 blocks).
+///
+/// Mirrors vanilla `AbstractChestBoat.java:43`:
+/// `return (float)(this.getPassengers().size() > 1 ? 0 : 0.15);`
+pub const CHEST_BOAT_PASSENGER_OFFSET_X: f32 = 0.15;
+
 /// Default gravity acceleration for Minecarts on land or in air (0.04).
 /// Mirrors vanilla AbstractMinecart.java:277:
 /// 
@@ -21165,5 +21195,43 @@ mod tests {
         // 4. Entity status events (Creaking.java:148, 167)
         assert_eq!(CREAKING_STATUS_ATTACK, 4);
         assert_eq!(CREAKING_STATUS_INVULNERABLE_SWAY, 66);
+    }
+
+    #[test]
+    fn test_boat_dimensions_ride_height_and_pale_oak_drop_parity() {
+        use crate::entity::vehicle::vehicle::VehicleEntity;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+
+        // 1. Boat Dimensions & Ride Height Parity (EntityTypes.java:740, Boat.java:16)
+        assert_eq!(BOAT_WIDTH, 1.375);
+        assert_eq!(BOAT_HEIGHT, 0.5625);
+        assert!((BOAT_RIDE_HEIGHT_RATIO - 1.0 / 3.0).abs() < 1e-6);
+        assert!((RAFT_RIDE_HEIGHT_RATIO - 0.888_888_9).abs() < 1e-6);
+        assert_eq!(CHEST_BOAT_PASSENGER_OFFSET_X, 0.15);
+
+        // 2. Pale Oak Boat and Chest Boat drop item mappings (EntityTypes.java:738, 746)
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::PALE_OAK_BOAT), Some(&Item::PALE_OAK_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::PALE_OAK_CHEST_BOAT), Some(&Item::PALE_OAK_CHEST_BOAT));
+
+        // 3. All other boat wood types drop item verification
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::OAK_BOAT), Some(&Item::OAK_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::OAK_CHEST_BOAT), Some(&Item::OAK_CHEST_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::BIRCH_BOAT), Some(&Item::BIRCH_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::SPRUCE_BOAT), Some(&Item::SPRUCE_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::JUNGLE_BOAT), Some(&Item::JUNGLE_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::ACACIA_BOAT), Some(&Item::ACACIA_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::DARK_OAK_BOAT), Some(&Item::DARK_OAK_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::MANGROVE_BOAT), Some(&Item::MANGROVE_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::CHERRY_BOAT), Some(&Item::CHERRY_BOAT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::BAMBOO_RAFT), Some(&Item::BAMBOO_RAFT));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::BAMBOO_CHEST_RAFT), Some(&Item::BAMBOO_CHEST_RAFT));
+
+        // 4. Minecarts drop item verification (AbstractMinecart.java:166)
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::MINECART), Some(&Item::MINECART));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::CHEST_MINECART), Some(&Item::CHEST_MINECART));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::FURNACE_MINECART), Some(&Item::FURNACE_MINECART));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::TNT_MINECART), Some(&Item::TNT_MINECART));
+        assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::HOPPER_MINECART), Some(&Item::HOPPER_MINECART));
     }
 }
