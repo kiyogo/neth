@@ -14,6 +14,13 @@ impl MaceItem {
     pub const SMASH_ATTACK_KNOCKBACK_POWER: f32 = 0.7;
     pub const SMASH_PARTICLES_EVENT_ID: i32 = 2013;
     pub const SMASH_PARTICLES_DATA: i32 = 750;
+    pub const DURABILITY: u32 = 500;
+    pub const ENCHANTABILITY: u32 = 15;
+    pub const MINING_SPEED: f32 = 1.0;
+    pub const MINING_DURABILITY_COST: u32 = 2;
+    pub const WEAPON_DURABILITY_COST: u32 = 1;
+    pub const ATTACKER_RESET_DELTA_Y: f64 = 0.01;
+    pub const KNOCKBACK_UPWARD_BURST: f64 = 0.7;
 
     // Density enchantment constants (Vanilla Enchantments.java:1165-1181)
     pub const DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK: f64 = 0.5;
@@ -95,6 +102,45 @@ impl MaceItem {
         wind_burst_level > 0
             && fall_distance >= Self::WIND_BURST_FALL_THRESHOLD
             && !is_fall_flying
+    }
+
+    #[must_use]
+    pub fn is_valid_repair_item(item_id: u16) -> bool {
+        item_id == Item::BREEZE_ROD.id
+    }
+
+    #[must_use]
+    pub fn get_smash_sound(target_on_ground: bool, fall_distance: f32) -> pumpkin_data::sound::Sound {
+        if target_on_ground {
+            if fall_distance > Self::SMASH_ATTACK_HEAVY_THRESHOLD {
+                pumpkin_data::sound::Sound::ItemMaceSmashGroundHeavy
+            } else {
+                pumpkin_data::sound::Sound::ItemMaceSmashGround
+            }
+        } else {
+            pumpkin_data::sound::Sound::ItemMaceSmashAir
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_knockback_power(
+        distance: f64,
+        fall_distance: f32,
+        knockback_resistance: f64,
+    ) -> f64 {
+        if distance > Self::SMASH_ATTACK_KNOCKBACK_RADIUS as f64 {
+            return 0.0;
+        }
+        let multiplier = if fall_distance > Self::SMASH_ATTACK_HEAVY_THRESHOLD {
+            2.0
+        } else {
+            1.0
+        };
+        let power = (Self::SMASH_ATTACK_KNOCKBACK_RADIUS as f64 - distance)
+            * (Self::SMASH_ATTACK_KNOCKBACK_POWER as f64)
+            * multiplier
+            * (1.0 - knockback_resistance);
+        power.max(0.0)
     }
 }
 

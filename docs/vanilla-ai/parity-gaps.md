@@ -8774,3 +8774,25 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`, `DEFAULT_WATERLOGGED = false`, and helpers `can_mob_spawn`, `is_redstone_conductor`, `is_suffocating`, and `is_view_blocking` on `WeatheringCopperGrateBlock`.
   - Exported constants `HARDNESS = 3.0`, `BLAST_RESISTANCE = 6.0`, and helpers `can_open_by_hand` and `can_open_by_wind_charge` on `WeatheringCopperDoorBlock` and `WeatheringCopperTrapDoorBlock`.
   - Added unit test `test_copper_grate_door_trapdoor_hardness_blast_and_interaction_parity` in `combat.rs`.
+
+### Gap 357: Mace Durability (500), Breeze Rod Anvil Repair, 3-Tier Smash Audio (Air/Ground/Heavy), Knockback Multiplier (2x >5m) & Upward Impulse (0.7) Parity
+- **Vanilla Reference**: `net.minecraft.world.item.MaceItem:38-79, 115-157`, `net.minecraft.world.item.Items:2243-2254`, `net.minecraft.world.level.block.LevelEvent:2013`.
+- **Vanilla Mechanics**:
+  1. *Durability & Repairability*: Mace possesses exactly 500 max durability and 15 enchantability (`Item.Properties().durability(500).enchantable(15)`). In an anvil (`isValidRepairItem`), it can only be repaired using `Items.BREEZE_ROD` (`repairIngredient.test(stack)`).
+  2. *Durability Consumption*: Mace consumes 1 durability on attacking mobs/players and 2 durability when breaking non-instant blocks (`MINING_DURABILITY_COST = 2`, `WEAPON_DURABILITY_COST = 1`).
+  3. *Tiered Smash Attack Audio Parity*:
+     - In air target hit: `SoundEvents.MACE_SMASH_AIR` (`ItemMaceSmashAir`).
+     - On ground target hit with fall distance $\le 5.0\text{m}$: `SoundEvents.MACE_SMASH_GROUND` (`ItemMaceSmashGround`).
+     - On ground target hit with fall distance $> 5.0\text{m}$: `SoundEvents.MACE_SMASH_GROUND_HEAVY` (`ItemMaceSmashGroundHeavy`).
+  4. *Knockback & Launch Impulse Parity*:
+     - Nearby entities within 3.5m radius are knocked back with power: `(3.5 - distance) * 0.7 * (fallDistance > 5.0 ? 2.0 : 1.0) * (1.0 - knockbackResistance)`.
+     - Entities within blast receive upward vertical impulse `KNOCKBACK_UPWARD_BURST = 0.7`.
+     - Attacker vertical velocity reset upon smash landing: `ATTACKER_RESET_DELTA_Y = 0.01`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/item/items/mace.rs`:
+    - Exported `DURABILITY = 500`, `ENCHANTABILITY = 15`, `MINING_SPEED = 1.0`, `MINING_DURABILITY_COST = 2`, `WEAPON_DURABILITY_COST = 1`, `ATTACKER_RESET_DELTA_Y = 0.01`, `KNOCKBACK_UPWARD_BURST = 0.7`.
+    - Implemented `is_valid_repair_item(item_id)` validating against `Item::BREEZE_ROD.id`.
+    - Implemented `get_smash_sound(target_on_ground, fall_distance)` returning tiered sounds (`ItemMaceSmashAir`, `ItemMaceSmashGround`, `ItemMaceSmashGroundHeavy`).
+    - Implemented `calculate_knockback_power(distance, fall_distance, knockback_resistance)`.
+  - Added unit test `test_mace_durability_repair_smash_sounds_and_knockback_power_parity` in `crates/pumpkin-core/src/entity/combat.rs`.
+- **Status**: Completed & Verified.

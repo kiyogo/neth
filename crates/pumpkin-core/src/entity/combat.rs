@@ -19796,4 +19796,54 @@ mod tests {
         assert!(WeatheringCopperTrapDoorBlock::can_open_by_hand());
         assert!(WeatheringCopperTrapDoorBlock::can_open_by_wind_charge());
     }
+    #[test]
+    fn test_mace_durability_repair_smash_sounds_and_knockback_power_parity() {
+        use crate::item::items::mace::MaceItem;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::sound::Sound;
+
+        // 1. Constants parity (MaceItem.java:38-79, Items.java:2243-2254)
+        assert_eq!(MaceItem::DURABILITY, 500);
+        assert_eq!(MaceItem::ENCHANTABILITY, 15);
+        assert_eq!(MaceItem::MINING_SPEED, 1.0);
+        assert_eq!(MaceItem::MINING_DURABILITY_COST, 2);
+        assert_eq!(MaceItem::WEAPON_DURABILITY_COST, 1);
+        assert_eq!(MaceItem::ATTACKER_RESET_DELTA_Y, 0.01);
+        assert_eq!(MaceItem::KNOCKBACK_UPWARD_BURST, 0.7);
+
+        // 2. Anvil repair material parity (Breeze Rod only)
+        assert!(MaceItem::is_valid_repair_item(Item::BREEZE_ROD.id));
+        assert!(!MaceItem::is_valid_repair_item(Item::IRON_INGOT.id));
+        assert!(!MaceItem::is_valid_repair_item(Item::HEAVY_CORE.id));
+
+        // 3. Tiered smash audio parity
+        // In air: ItemMaceSmashAir regardless of fall height
+        assert_eq!(MaceItem::get_smash_sound(false, 3.0), Sound::ItemMaceSmashAir);
+        assert_eq!(MaceItem::get_smash_sound(false, 7.0), Sound::ItemMaceSmashAir);
+
+        // On ground: standard vs heavy (threshold 5.0m)
+        assert_eq!(MaceItem::get_smash_sound(true, 3.0), Sound::ItemMaceSmashGround);
+        assert_eq!(MaceItem::get_smash_sound(true, 5.0), Sound::ItemMaceSmashGround);
+        assert_eq!(MaceItem::get_smash_sound(true, 5.1), Sound::ItemMaceSmashGroundHeavy);
+        assert_eq!(MaceItem::get_smash_sound(true, 10.0), Sound::ItemMaceSmashGroundHeavy);
+
+        // 4. Knockback power formula parity
+        // Beyond 3.5m radius => 0 power
+        assert_eq!(MaceItem::calculate_knockback_power(3.6, 3.0, 0.0), 0.0);
+
+        // Normal smash (fall distance <= 5.0m): multiplier = 1.0
+        let normal_power = MaceItem::calculate_knockback_power(1.5, 3.0, 0.0);
+        assert!((normal_power - 1.4).abs() < 1e-5); // (3.5 - 1.5) * 0.7 * 1.0
+
+        // Heavy smash (fall distance > 5.0m): multiplier = 2.0
+        let heavy_power = MaceItem::calculate_knockback_power(1.5, 6.0, 0.0);
+        assert!((heavy_power - 2.8).abs() < 1e-5); // (3.5 - 1.5) * 0.7 * 2.0
+
+        // Knockback resistance scaling
+        let resisted_power = MaceItem::calculate_knockback_power(1.5, 6.0, 0.5);
+        assert!((resisted_power - 1.4).abs() < 1e-5); // 2.8 * (1.0 - 0.5)
+
+        let immune_power = MaceItem::calculate_knockback_power(1.5, 6.0, 1.0);
+        assert_eq!(immune_power, 0.0);
+    }
 }
