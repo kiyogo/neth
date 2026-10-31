@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicI32, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicU64, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
@@ -30,13 +30,16 @@ use crate::entity::{
 
 pub const ARMADILLO_FOOD: &[&Item] = &[&Item::SPIDER_EYE];
 pub const ARMADILLO_BABY_START_AGE: i32 = -48000;
-pub const SCARE_CHECK_INTERVAL: i32 = 80;
-pub const SCARE_DISTANCE_HORIZONTAL: f64 = 7.0;
-pub const SCARE_DISTANCE_VERTICAL: f64 = 2.0;
+pub const SCARE_CHECK_INTERVAL: i32 = crate::entity::combat::ARMADILLO_SCARE_CHECK_INTERVAL;
+pub const SCARE_DISTANCE_HORIZONTAL: f64 = crate::entity::combat::ARMADILLO_SCARE_DISTANCE_HORIZONTAL;
+pub const SCARE_DISTANCE_VERTICAL: f64 = crate::entity::combat::ARMADILLO_SCARE_DISTANCE_VERTICAL;
 pub const BALL_UP_STAY_IN_STATE: u64 = 6000;
-pub const BRUSH_DURABILITY_DAMAGE: i32 = 16;
-pub const PEEK_EVENT_ID: u8 = 64;
-pub const UNROLL_START_THRESHOLD_TICKS: u64 = 30;
+pub const BRUSH_DURABILITY_DAMAGE: i32 = crate::entity::combat::ARMADILLO_BRUSH_DURABILITY_DAMAGE;
+pub const PEEK_EVENT_ID: u8 = crate::entity::combat::ARMADILLO_PEEK_EVENT_ID;
+pub const UNROLL_START_THRESHOLD_TICKS: u64 = crate::entity::combat::ARMADILLO_UNROLL_DURATION_TICKS;
+pub const DANGER_THRESHOLD: i32 = crate::entity::combat::ARMADILLO_DANGER_THRESHOLD;
+pub const STEP_SOUND_VOLUME: f32 = crate::entity::combat::ARMADILLO_STEP_SOUND_VOLUME;
+pub const STEP_SOUND_PITCH: f32 = crate::entity::combat::ARMADILLO_STEP_SOUND_PITCH;
 
 fn pick_next_scute_drop_time() -> i32 {
     let rand_ticks = (rand::random::<u32>() % 6000) as i32;
@@ -125,6 +128,8 @@ pub struct ArmadilloEntity {
     pub in_state_ticks: AtomicU64,
     pub scute_time: AtomicI32,
     pub danger_detected_recently_ticks: AtomicI32,
+    pub next_peek_timer: AtomicI32,
+    pub danger_was_around: AtomicBool,
 }
 
 impl ArmadilloEntity {
@@ -138,6 +143,8 @@ impl ArmadilloEntity {
             in_state_ticks: AtomicU64::new(0),
             scute_time: AtomicI32::new(pick_next_scute_drop_time()),
             danger_detected_recently_ticks: AtomicI32::new(0),
+            next_peek_timer: AtomicI32::new(0),
+            danger_was_around: AtomicBool::new(false),
         };
 
         // Initialize attributes: Max Health = 12.0, Movement Speed = 0.14
@@ -280,6 +287,15 @@ impl ArmadilloEntity {
         }
     }
 
+    #[must_use]
+    pub fn pick_next_peek_timer(&self) -> i32 {
+        ArmadilloState::Scared.animation_duration() as i32
+            + rand::random_range(
+                crate::entity::combat::ARMADILLO_PEEK_MIN_TICKS
+                    ..=crate::entity::combat::ARMADILLO_PEEK_MAX_TICKS,
+            )
+    }
+
     pub fn brush_off_scute(&self, player: &Arc<Player>) -> bool {
         if self.is_baby() {
             return false;
@@ -293,7 +309,7 @@ impl ArmadilloEntity {
         ));
         world.spawn_entity(item_entity);
         world.play_sound(Sound::EntityArmadilloBrush, SoundCategory::Neutral, &pos);
-        player.damage_held_item(16);
+        player.damage_held_item(BRUSH_DURABILITY_DAMAGE);
         true
     }
 
@@ -317,8 +333,22 @@ impl ArmadilloEntity {
             return true;
         }
 
+        let last_attacker_id = self
+            .mob_entity
+            .living_entity
+            .last_attacker_id
+            .load(Ordering::Relaxed);
+        if last_attacker_id != 0 && living_entity.get_entity().entity_id == last_attacker_id {
+            return true;
+        }
+
         if target_type == &EntityType::PLAYER {
             let target_ent = living_entity.get_entity();
+            if let Some(player) = living_entity.get_player() {
+                if player.gamemode.load() == pumpkin_util::GameMode::Spectator {
+                    return false;
+                }
+            }
             if target_ent.is_sprinting() || target_ent.has_vehicle() {
                 return true;
             }
@@ -400,16 +430,18 @@ impl Mob for ArmadilloEntity {
         }
     }
 
-    fn on_damage(&self, _damage_type: DamageType, source: Option<&dyn EntityBase>) {
-        if self.get_entity().is_alive()
-            && let Some(src) = source
-            && src.get_entity().entity_type != &EntityType::ITEM
-        {
-            self.danger_detected_recently_ticks
-                .store(SCARE_CHECK_INTERVAL, Ordering::Relaxed);
-            if self.can_stay_rolled_up() {
-                self.danger_detected_recently_ticks
-                    .store(80, Ordering::Relaxed);
+    fn on_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) {
+        if self.get_entity().is_alive() {
+            if let Some(src) = source {
+                if src.get_entity().entity_type != &EntityType::ITEM {
+                    self.danger_detected_recently_ticks
+                        .store(SCARE_CHECK_INTERVAL, Ordering::Relaxed);
+                    if self.can_stay_rolled_up() {
+                        self.roll_up();
+                    }
+                }
+            } else if crate::entity::combat::is_armadillo_panic_environmental_damage(&damage_type) {
+                self.roll_out();
             }
         }
     }
@@ -424,9 +456,48 @@ impl Mob for ArmadilloEntity {
                 .store(danger_ticks - 1, Ordering::Relaxed);
         }
 
+        let peek_timer = self.next_peek_timer.load(Ordering::Relaxed);
+        if peek_timer > 0 {
+            self.next_peek_timer
+                .store(peek_timer - 1, Ordering::Relaxed);
+        }
+
         let entity = self.get_entity();
         let world = entity.world.load();
 
+        // Threat sensing every 5 ticks (mirrors SensorType.ARMADILLO_SCARE_DETECTED)
+        let age = entity.age.load(Ordering::Relaxed);
+        if age % 5 == 0 && entity.is_alive() && self.can_stay_rolled_up() {
+            let pos = entity.pos.load();
+            let mut threat_detected = false;
+
+            for player in world.get_nearby_players(pos, SCARE_DISTANCE_HORIZONTAL) {
+                if self.is_scared_by(player.as_ref()) {
+                    threat_detected = true;
+                    break;
+                }
+            }
+
+            if !threat_detected {
+                let nearby = world.get_nearby_entities(pos, SCARE_DISTANCE_HORIZONTAL);
+                for (_, nearby_ent) in nearby {
+                    if self.is_scared_by(nearby_ent.as_ref()) {
+                        threat_detected = true;
+                        break;
+                    }
+                }
+            }
+
+            if threat_detected {
+                self.danger_detected_recently_ticks
+                    .store(SCARE_CHECK_INTERVAL, Ordering::Relaxed);
+                if self.get_state() == ArmadilloState::Idle {
+                    self.roll_up();
+                }
+            }
+        }
+
+        // Natural scute shed drop (5 to 10 minutes)
         if entity.is_alive() && !self.is_baby() {
             let scute_time = self.scute_time.fetch_sub(1, Ordering::Relaxed) - 1;
             if scute_time <= 0 {
@@ -446,42 +517,62 @@ impl Mob for ArmadilloEntity {
             }
         }
 
-        let state = self.get_state();
-        let ticks_in_state = self.in_state_ticks.load(Ordering::Relaxed);
+        // State machine updates (mirrors ArmadilloAi.java:143-171)
+        if self.should_switch_to_scared_state() {
+            self.switch_to_state(ArmadilloState::Scared);
+            if entity.on_ground.load(Ordering::Relaxed) {
+                world.play_sound(
+                    Sound::EntityArmadilloLand,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                );
+            }
+        } else {
+            let state = self.get_state();
+            let current_danger_ticks = self.danger_detected_recently_ticks.load(Ordering::Relaxed);
+            let danger_is_around = current_danger_ticks > DANGER_THRESHOLD;
+            let was_around = self.danger_was_around.load(Ordering::Relaxed);
 
-        match state {
-            ArmadilloState::Rolling => {
-                if ticks_in_state > ArmadilloState::Rolling.animation_duration() {
-                    self.switch_to_state(ArmadilloState::Scared);
-                    if entity.on_ground.load(Ordering::Relaxed) {
-                        world.play_sound(
-                            Sound::EntityArmadilloLand,
-                            SoundCategory::Neutral,
-                            &entity.pos.load(),
-                        );
+            if danger_is_around != was_around {
+                self.next_peek_timer
+                    .store(self.pick_next_peek_timer(), Ordering::Relaxed);
+            }
+            self.danger_was_around
+                .store(danger_is_around, Ordering::Relaxed);
+
+            match state {
+                ArmadilloState::Scared => {
+                    if !self.can_stay_rolled_up() {
+                        self.roll_out();
+                    } else {
+                        if self.next_peek_timer.load(Ordering::Relaxed) == 0
+                            && entity.on_ground.load(Ordering::Relaxed)
+                            && danger_is_around
+                        {
+                            world.broadcast_entity_status_id(&entity, PEEK_EVENT_ID as i8);
+                            self.next_peek_timer
+                                .store(self.pick_next_peek_timer(), Ordering::Relaxed);
+                        }
+
+                        if (current_danger_ticks as u64) < ArmadilloState::Unrolling.animation_duration() {
+                            world.play_sound(
+                                Sound::EntityArmadilloUnrollStart,
+                                SoundCategory::Neutral,
+                                &entity.pos.load(),
+                            );
+                            self.switch_to_state(ArmadilloState::Unrolling);
+                        }
                     }
                 }
-            }
-            ArmadilloState::Scared => {
-                if !self.can_stay_rolled_up() {
-                    self.roll_out();
-                } else if ticks_in_state > ArmadilloState::Scared.animation_duration()
-                    && self.danger_detected_recently_ticks.load(Ordering::Relaxed) == 0
-                {
-                    world.play_sound(
-                        Sound::EntityArmadilloUnrollStart,
-                        SoundCategory::Neutral,
-                        &entity.pos.load(),
-                    );
-                    self.switch_to_state(ArmadilloState::Unrolling);
+                ArmadilloState::Unrolling => {
+                    if (current_danger_ticks as u64) > ArmadilloState::Unrolling.animation_duration() {
+                        self.switch_to_state(ArmadilloState::Scared);
+                    } else if self.in_state_ticks.load(Ordering::Relaxed) > ArmadilloState::Unrolling.animation_duration() {
+                        self.roll_out();
+                    }
                 }
+                ArmadilloState::Rolling | ArmadilloState::Idle => {}
             }
-            ArmadilloState::Unrolling => {
-                if ticks_in_state > ArmadilloState::Unrolling.animation_duration() {
-                    self.roll_out();
-                }
-            }
-            ArmadilloState::Idle => {}
         }
 
         if entity.is_alive()
@@ -550,6 +641,10 @@ impl CustomSound for ArmadilloEntity {
             Sound::EntityArmadilloHurt
         })
     }
+
+    fn step_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityArmadilloStep)
+    }
 }
 
 #[cfg(test)]
@@ -578,5 +673,59 @@ mod tests {
         assert_eq!(crate::entity::combat::ARMADILLO_ROLL_DURATION_TICKS, 10);
         assert_eq!(crate::entity::combat::ARMADILLO_SCARED_DURATION_TICKS, 50);
         assert_eq!(crate::entity::combat::ARMADILLO_UNROLL_DURATION_TICKS, 30);
+        assert_eq!(STEP_SOUND_VOLUME, 0.15);
+        assert_eq!(STEP_SOUND_PITCH, 1.0);
+        assert_eq!(BRUSH_DURABILITY_DAMAGE, 16);
+        assert_eq!(DANGER_THRESHOLD, 75);
+        assert_eq!(SCARE_CHECK_INTERVAL, 80);
+        assert_eq!(SCARE_DISTANCE_HORIZONTAL, 7.0);
+        assert_eq!(SCARE_DISTANCE_VERTICAL, 2.0);
+        assert_eq!(PEEK_EVENT_ID, 64);
+        assert_eq!(crate::entity::combat::ARMADILLO_PEEK_MIN_TICKS, 100);
+        assert_eq!(crate::entity::combat::ARMADILLO_PEEK_MAX_TICKS, 400);
+        assert_eq!(crate::entity::combat::ARMADILLO_MIN_SCUTE_DROP_TICKS, 6000);
+        assert_eq!(crate::entity::combat::ARMADILLO_MAX_SCUTE_DROP_TICKS, 12000);
+    }
+
+    #[test]
+    fn test_armadillo_roll_up_scared_mechanics_and_threat_parity() {
+        // State durations
+        assert_eq!(ArmadilloState::Idle.animation_duration(), 0);
+        assert_eq!(ArmadilloState::Rolling.animation_duration(), 10);
+        assert_eq!(ArmadilloState::Scared.animation_duration(), 50);
+        assert_eq!(ArmadilloState::Unrolling.animation_duration(), 30);
+
+        // Shell hiding states
+        assert!(!ArmadilloState::Idle.should_hide_in_shell(0));
+        assert!(!ArmadilloState::Rolling.should_hide_in_shell(5));
+        assert!(ArmadilloState::Rolling.should_hide_in_shell(6));
+        assert!(ArmadilloState::Scared.should_hide_in_shell(0));
+        assert!(ArmadilloState::Scared.should_hide_in_shell(50));
+        assert!(ArmadilloState::Unrolling.should_hide_in_shell(25));
+        assert!(!ArmadilloState::Unrolling.should_hide_in_shell(26));
+
+        // Predicate checks
+        assert!(ArmadilloEntity::is_scared_by_predicate(true, false, false, false, false, false));
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, true, false, false, false, false));
+        assert!(!ArmadilloEntity::is_scared_by_predicate(false, false, true, true, true, true));
+        assert!(!ArmadilloEntity::is_scared_by_predicate(false, false, true, false, false, false));
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, false, true, false, true, false));
+        assert!(ArmadilloEntity::is_scared_by_predicate(false, false, true, false, false, true));
+
+        // Can stay rolled up checks
+        assert!(ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, false, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(true, false, false, false, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, true, false, false, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, true, false, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, true, false));
+        assert!(!ArmadilloEntity::can_stay_rolled_up_predicate(false, false, false, false, true));
+
+        // Environmental panic damage check
+        assert!(crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::IN_FIRE));
+        assert!(crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::LAVA));
+        assert!(crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::CACTUS));
+        assert!(crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::FREEZE));
+        assert!(!crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::GENERIC));
+        assert!(!crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::PLAYER_ATTACK));
     }
 }

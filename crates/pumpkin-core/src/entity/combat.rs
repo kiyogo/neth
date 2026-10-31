@@ -9808,6 +9808,62 @@ pub const ARMADILLO_SCARED_DURATION_TICKS: u64 = 50;
 /// Mirrors vanilla Armadillo.java:410.
 pub const ARMADILLO_UNROLL_DURATION_TICKS: u64 = 30;
 
+/// Armadillo step sound volume (0.15).
+/// Mirrors vanilla Armadillo.java:371 (`this.playSound(SoundEvents.ARMADILLO_STEP, 0.15F, 1.0F)`).
+pub const ARMADILLO_STEP_SOUND_VOLUME: f32 = 0.15;
+
+/// Armadillo step sound pitch (1.0).
+/// Mirrors vanilla Armadillo.java:371.
+pub const ARMADILLO_STEP_SOUND_PITCH: f32 = 1.0;
+
+/// Durability damage dealt to brush when brushing an armadillo (16 points).
+/// Mirrors vanilla Armadillo.java:319 (`itemStack.hurtAndBreak(16, player, hand.asEquipmentSlot())`).
+pub const ARMADILLO_BRUSH_DURABILITY_DAMAGE: i32 = 16;
+
+/// Minimum ticks an armadillo remains rolled up while danger is still around (75 ticks).
+/// Mirrors vanilla ArmadilloAi.java:129 (`DANGER_DETECTED_RECENTLY_DANGER_THRESHOLD = 75`).
+pub const ARMADILLO_DANGER_THRESHOLD: i32 = 75;
+
+/// Armadillo scare detection memory expiry & check interval (80 ticks).
+/// Mirrors vanilla Armadillo.java:61 (`SCARE_CHECK_INTERVAL = 80`).
+pub const ARMADILLO_SCARE_CHECK_INTERVAL: i32 = 80;
+
+/// Horizontal scare distance threshold for armadillo threat detection (7.0 blocks).
+/// Mirrors vanilla Armadillo.java:62 (`SCARE_DISTANCE_HORIZONTAL = 7.0`).
+pub const ARMADILLO_SCARE_DISTANCE_HORIZONTAL: f64 = 7.0;
+
+/// Vertical scare distance threshold for armadillo threat detection (2.0 blocks).
+/// Mirrors vanilla Armadillo.java:63 (`SCARE_DISTANCE_VERTICAL = 2.0`).
+pub const ARMADILLO_SCARE_DISTANCE_VERTICAL: f64 = 2.0;
+
+/// Entity event ID for armadillo peek animation broadcast (64).
+/// Mirrors vanilla Armadillo.java:226 & ArmadilloAi.java:159 (`level.broadcastEntityEvent(body, (byte)64)`).
+pub const ARMADILLO_PEEK_EVENT_ID: u8 = 64;
+
+/// Minimum ticks between armadillo scute natural shed drops (6000 ticks = 5 minutes).
+/// Mirrors vanilla Armadillo.java:163.
+pub const ARMADILLO_MIN_SCUTE_DROP_TICKS: i32 = 6000;
+
+/// Maximum ticks between armadillo scute natural shed drops (12000 ticks = 10 minutes).
+/// Mirrors vanilla Armadillo.java:163.
+pub const ARMADILLO_MAX_SCUTE_DROP_TICKS: i32 = 12000;
+
+/// Minimum random ticks before next peek animation when in scared state (100 ticks).
+/// Mirrors vanilla ArmadilloAi.java:174 (`nextIntBetweenInclusive(100, 400)`).
+pub const ARMADILLO_PEEK_MIN_TICKS: i32 = 100;
+
+/// Maximum random ticks before next peek animation when in scared state (400 ticks).
+/// Mirrors vanilla ArmadilloAi.java:174 (`nextIntBetweenInclusive(100, 400)`).
+pub const ARMADILLO_PEEK_MAX_TICKS: i32 = 400;
+
+/// Returns true if the damage type causes an armadillo to panic and roll out
+/// instead of curling into its shell (fire, lava, cactus, freezing, etc.).
+/// Mirrors vanilla Armadillo.java:309-311 and DamageTypeTags.PANIC_ENVIRONMENTAL_CAUSES.
+#[must_use]
+pub fn is_armadillo_panic_environmental_damage(damage_type: &pumpkin_data::damage::DamageType) -> bool {
+    damage_type.has_tag(&pumpkin_data::tag::DamageType::MINECRAFT_PANIC_ENVIRONMENTAL_CAUSES)
+}
+
 /// Strider base max health (20.0 HP / 10 hearts).
 /// Mirrors vanilla Strider.java / Mob.java (Attributes.MAX_HEALTH, 20.0).
 pub const STRIDER_MAX_HEALTH: f32 = 20.0;

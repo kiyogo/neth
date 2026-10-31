@@ -9110,3 +9110,44 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Updated `tear_down` to spawn 100 Pale Oak + 10 Heart crumble particles centered on bounding box.
     - Added unit test `test_creaking_parity_constants_sounds_and_heart_bound_mechanics`.
 - **Status**: Completed & Verified.
+
+### Gap 367: Armadillo Roll-Up Scared Mechanics (60 Ticks Min Duration / Danger Threshold 75), Brush Scute Drop (16 Durability Damage), Damage Reduction ((dmg - 1) / 2) & Threat Sensors Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.armadillo.Armadillo.java:1-453`, `ArmadilloAi.java:1-206`, `SensorType.java:26-27`.
+- **Vanilla Mechanics**:
+  1. *Attributes & States*:
+     - Max health: 12.0 HP (`ARMADILLO_MAX_HEALTH = 12.0`), Movement speed: 0.14 (`ARMADILLO_BASE_MOVEMENT_SPEED = 0.14`), XP Reward: 2 (`ARMADILLO_XP_REWARD = 2`).
+     - States & Durations:
+       - `IDLE`: id 0, animation duration 0 ticks, never hides in shell.
+       - `ROLLING`: id 1, animation duration 10 ticks (`ARMADILLO_ROLL_DURATION_TICKS = 10`), hides in shell after 5 ticks.
+       - `SCARED`: id 2, animation duration 50 ticks (`ARMADILLO_SCARED_DURATION_TICKS = 50`), always hides in shell.
+       - `UNROLLING`: id 3, animation duration 30 ticks (`ARMADILLO_UNROLL_DURATION_TICKS = 30`), hides in shell for first 26 ticks (`ticksInState < 26L`).
+  2. *Threat Sensors & Predicates*:
+     - Sensor runs every 5 ticks (`MobSensor(5, Armadillo::isScaredBy, Armadillo::canStayRolledUp, MemoryModuleType.DANGER_DETECTED_RECENTLY, 80)`).
+     - Horizontal scare distance: 7.0 blocks (`ARMADILLO_SCARE_DISTANCE_HORIZONTAL = 7.0`), vertical scare distance: 2.0 blocks (`ARMADILLO_SCARE_DISTANCE_VERTICAL = 2.0`).
+     - `isScaredBy`: Scared by Undead mobs (`EntityTypeTags.UNDEAD`), last attacker mob (`getLastHurtByMob() == entity`), or non-spectator players who are sprinting or riding vehicles.
+     - `canStayRolledUp`: Returns true if not panicking, not in liquid, not leashed, and not a passenger/vehicle.
+  3. *State Transitions & Peek Mechanics*:
+     - Danger threshold: 75 ticks (`ARMADILLO_DANGER_THRESHOLD = 75`).
+     - Peek timer: 50 ticks + random 100 to 400 ticks (`ARMADILLO_PEEK_MIN_TICKS = 100`, `ARMADILLO_PEEK_MAX_TICKS = 400`).
+     - Broadcasts entity status 64 (`ARMADILLO_PEEK_EVENT_ID = 64`) to client to trigger peek animation and peek sound (`SoundEvents.ARMADILLO_PEEK`).
+     - When danger ticks drop below `UNROLLING.animationDuration()` (30 ticks), switches to `UNROLLING` and plays `ARMADILLO_UNROLL_START`.
+     - If danger reappears while unrolling (> 30 ticks), immediately switches back to `SCARED`.
+  4. *Damage Reduction & Environmental Panic*:
+     - Reduced damage formula when hidden in shell: `damage = (damage - 1.0F) / 2.0F`. Plays `SoundEvents.ARMADILLO_HURT_REDUCED`.
+     - Environmental damage (`DamageTypeTags.PANIC_ENVIRONMENTAL_CAUSES` - fire, lava, cactus, freeze): triggers `rollOut()` immediately so armadillo flees rather than staying curled in fire.
+  5. *Interactions & Sounds*:
+     - Brushing with brush drops armadillo scute (`Items.ARMADILLO_SCUTE`), plays `SoundEvents.ARMADILLO_BRUSH`, and deals 16 durability damage to brush (`ARMADILLO_BRUSH_DURABILITY_DAMAGE = 16`).
+     - Natural scute shed interval: 6000 to 12000 ticks (5 to 10 minutes).
+     - Step sound: `SoundEvents.ARMADILLO_STEP` at volume 0.15F (`ARMADILLO_STEP_SOUND_VOLUME = 0.15`) and pitch 1.0F (`ARMADILLO_STEP_SOUND_PITCH = 1.0`).
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `ARMADILLO_STEP_SOUND_VOLUME = 0.15`, `ARMADILLO_STEP_SOUND_PITCH = 1.0`, `ARMADILLO_BRUSH_DURABILITY_DAMAGE = 16`, `ARMADILLO_DANGER_THRESHOLD = 75`, `ARMADILLO_SCARE_CHECK_INTERVAL = 80`, `ARMADILLO_SCARE_DISTANCE_HORIZONTAL = 7.0`, `ARMADILLO_SCARE_DISTANCE_VERTICAL = 2.0`, `ARMADILLO_PEEK_EVENT_ID = 64`, `ARMADILLO_MIN_SCUTE_DROP_TICKS = 6000`, `ARMADILLO_MAX_SCUTE_DROP_TICKS = 12000`, `ARMADILLO_PEEK_MIN_TICKS = 100`, `ARMADILLO_PEEK_MAX_TICKS = 400`.
+    - Added helper function `is_armadillo_panic_environmental_damage` matching `tag::DamageType::MINECRAFT_PANIC_ENVIRONMENTAL_CAUSES`.
+  - Updated `crates/pumpkin-core/src/entity/passive/armadillo.rs`:
+    - Implemented `step_sound` in `CustomSound for ArmadilloEntity` returning `Some(Sound::EntityArmadilloStep)`.
+    - Implemented periodic threat sensor checking every 5 ticks for undead entities, last attacker, and sprinting/riding players within `(7.0, 2.0, 7.0)`.
+    - Implemented peek animation countdown & entity status 64 broadcast.
+    - Implemented unroll start threshold (30 ticks) and danger re-scare transition back to `SCARED`.
+    - Implemented environmental panic damage roll-out in `on_damage`.
+    - Added unit test `test_armadillo_roll_up_scared_mechanics_and_threat_parity`.
+- **Status**: Completed & Verified.
