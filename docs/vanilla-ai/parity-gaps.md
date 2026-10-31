@@ -8917,3 +8917,44 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - In `crates/pumpkin-core/src/entity/ai/goal/breeze_attack.rs`:
     - Updated `BreezeAttackGoal` to integrate `is_too_close_for_jump`, `is_target_within_shoot_range`, `calculate_aim_target_y`, `PROJECTILE_MOVEMENT_SCALE`, `SHOOT_INITIAL_DELAY_TICKS`, and `SHOOT_COOLDOWN_TICKS`.
 - **Status**: Completed & Verified.
+
+### Gap 362: Bad Omen, Trial Omen & Raid Omen Transformation Mechanics, Timings (18,000 Ticks / Level, 600 Ticks Raid Omen), Village Check & Event 3020 Parity
+- **Vanilla Reference**: `net.minecraft.world.effect.BadOmenMobEffect:1-36`, `RaidOmenMobEffect:1-33`, `MobEffects:50-95`, `TrialSpawnerStateData:46, 202-210`, `OminousBottleAmplifier:1-42`.
+- **Vanilla Mechanics**:
+  1. *Bad Omen Effect*:
+     - Applied by drinking Ominous Bottle (duration 120,000 ticks = 100 minutes, amplifier 0..=4 for levels I..V).
+     - Color: `745784`. Audio on added: `SoundEvents.APPLY_EFFECT_BAD_OMEN`.
+     - Ticking behavior: evaluates every tick (`shouldApplyEffectTickThisTick -> true`).
+     - Village trigger: when carried by a player (non-spectator, world difficulty != Peaceful) in village bounds:
+       - Converts Bad Omen into `RAID_OMEN` with duration 600 ticks (30 seconds) preserving amplifier.
+       - Sets `raid_omen_position` and consumes/removes Bad Omen.
+  2. *Trial Omen Transformation*:
+     - Triggered when a player carrying `BAD_OMEN` is detected in line-of-sight by a Trial Spawner:
+       - Duration: `18000 * (bad_omen_amplifier + 1)` (18,000 ticks = 15 minutes per amplifier level, up to 90,000 ticks / 75 minutes for level V).
+       - Removes `BAD_OMEN`, applies `TRIAL_OMEN` with amplifier 0.
+       - Plays level event `3020` (`WorldEvent::AnimationTrialSpawnerBecomeOminous`) at player eye position.
+       - Transforms spawner into ominous active trial mode.
+     - Color: `1484454`. Audio on added: `SoundEvents.APPLY_EFFECT_TRIAL_OMEN`. Particle: `ParticleTypes.TRIAL_OMEN`.
+  3. *Raid Omen Effect*:
+     - Countdown duration: 600 ticks (30 seconds).
+     - Color: `14565464`. Audio on added: `SoundEvents.APPLY_EFFECT_RAID_OMEN`. Particle: `ParticleTypes.RAID_OMEN`.
+     - Execution trigger: `shouldApplyEffectTickThisTick` fires when `remainingDuration == 1`:
+       - Invokes `raids.createOrExtendRaid(player, raidOmenPosition)`.
+       - Clears `raid_omen_position` and triggers `RaidTrigger` statistic.
+- **Implementation**:
+  - Created `crates/pumpkin-core/src/entity/effect/bad_omen.rs`:
+    - Defined `BadOmenMobEffect` implementing `MobEffect`.
+    - Exported constants `COLOR = 745784`, `RAID_OMEN_DURATION = 600`, `OMINOUS_BOTTLE_EFFECT_DURATION = 120_000`, `MIN_AMPLIFIER = 0`, `MAX_AMPLIFIER = 4`.
+    - Implemented `calculate_trial_omen_duration(bad_omen_amplifier)`.
+    - Implemented `apply_effect_tick` checking village POI and applying `RAID_OMEN`.
+  - Created `crates/pumpkin-core/src/entity/effect/trial_omen.rs`:
+    - Defined `TrialOmenMobEffect` implementing `MobEffect`.
+    - Exported constants `COLOR = 1484454`, `TRIAL_OMEN_PER_BAD_OMEN_LEVEL = 18_000`, `EVENT_BECOME_OMINOUS = 3020`.
+    - Implemented `calculate_duration_from_bad_omen(bad_omen_amplifier)`.
+  - Updated `crates/pumpkin-core/src/entity/effect/raid_omen.rs`:
+    - Exported constants `COLOR = 14565464`, `DURATION = 600`.
+  - Updated `crates/pumpkin-core/src/entity/effect/mod.rs`:
+    - Exported modules `bad_omen` and `trial_omen`.
+    - Registered `BAD_OMEN` and `TRIAL_OMEN` in `get_mob_effect`.
+    - Added unit test `test_omen_effects_and_transformation_parity`.
+- **Status**: Completed & Verified.

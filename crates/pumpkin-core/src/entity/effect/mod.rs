@@ -1,3 +1,4 @@
+pub mod bad_omen;
 pub mod hunger;
 pub mod infested;
 pub mod oozing;
@@ -5,6 +6,7 @@ pub mod poison;
 pub mod raid_omen;
 pub mod regeneration;
 pub mod saturation;
+pub mod trial_omen;
 pub mod weaving;
 pub mod wind_charged;
 pub mod wither;
@@ -46,6 +48,8 @@ pub static POISON: poison::PoisonMobEffect = poison::PoisonMobEffect;
 pub static WITHER: wither::WitherMobEffect = wither::WitherMobEffect;
 pub static HUNGER: hunger::HungerMobEffect = hunger::HungerMobEffect;
 pub static SATURATION: saturation::SaturationMobEffect = saturation::SaturationMobEffect;
+pub static BAD_OMEN: bad_omen::BadOmenMobEffect = bad_omen::BadOmenMobEffect;
+pub static TRIAL_OMEN: trial_omen::TrialOmenMobEffect = trial_omen::TrialOmenMobEffect;
 pub static RAID_OMEN: raid_omen::RaidOmenMobEffect = raid_omen::RaidOmenMobEffect;
 pub static INFESTED: infested::InfestedMobEffect = infested::InfestedMobEffect;
 pub static OOZING: oozing::OozingMobEffect = oozing::OozingMobEffect;
@@ -74,6 +78,10 @@ pub fn get_mob_effect(effect: &'static StatusEffect) -> Option<&'static dyn MobE
         Some(&WEAVING)
     } else if effect == &StatusEffect::WIND_CHARGED {
         Some(&WIND_CHARGED)
+    } else if effect == &StatusEffect::BAD_OMEN {
+        Some(&BAD_OMEN)
+    } else if effect == &StatusEffect::TRIAL_OMEN {
+        Some(&TRIAL_OMEN)
     } else {
         None
     }
@@ -201,5 +209,48 @@ mod tests {
         assert!(get_mob_effect(&StatusEffect::WEAVING).is_some());
         assert!(get_mob_effect(&StatusEffect::OOZING).is_some());
         assert!(get_mob_effect(&StatusEffect::INFESTED).is_some());
+        assert!(get_mob_effect(&StatusEffect::BAD_OMEN).is_some());
+        assert!(get_mob_effect(&StatusEffect::TRIAL_OMEN).is_some());
+        assert!(get_mob_effect(&StatusEffect::RAID_OMEN).is_some());
+    }
+
+    #[test]
+    fn test_omen_effects_and_transformation_parity() {
+        use crate::entity::effect::bad_omen::BadOmenMobEffect;
+        use crate::entity::effect::trial_omen::TrialOmenMobEffect;
+        use crate::entity::effect::raid_omen::RaidOmenMobEffect;
+
+        // 1. Bad Omen parity (BadOmenMobEffect.java:1-36, MobEffects.java:BAD_OMEN)
+        assert_eq!(BadOmenMobEffect::COLOR, 745784);
+        assert_eq!(StatusEffect::BAD_OMEN.color, 745784);
+        assert_eq!(BadOmenMobEffect::RAID_OMEN_DURATION, 600);
+        assert_eq!(BadOmenMobEffect::OMINOUS_BOTTLE_EFFECT_DURATION, 120_000);
+        assert_eq!(BadOmenMobEffect::MIN_AMPLIFIER, 0);
+        assert_eq!(BadOmenMobEffect::MAX_AMPLIFIER, 4);
+
+        // 2. Trial Omen transformation parity (TrialSpawnerStateData.java:46, 202-210)
+        // Duration: 18000 ticks (15 min) * (bad_omen_amplifier + 1)
+        assert_eq!(TrialOmenMobEffect::COLOR, 1484454);
+        assert_eq!(StatusEffect::TRIAL_OMEN.color, 1484454);
+        assert_eq!(TrialOmenMobEffect::TRIAL_OMEN_PER_BAD_OMEN_LEVEL, 18_000);
+        assert_eq!(TrialOmenMobEffect::EVENT_BECOME_OMINOUS, 3020);
+
+        assert_eq!(TrialOmenMobEffect::calculate_duration_from_bad_omen(0), 18_000);   // Level I: 15 min
+        assert_eq!(TrialOmenMobEffect::calculate_duration_from_bad_omen(1), 36_000);   // Level II: 30 min
+        assert_eq!(TrialOmenMobEffect::calculate_duration_from_bad_omen(2), 54_000);   // Level III: 45 min
+        assert_eq!(TrialOmenMobEffect::calculate_duration_from_bad_omen(3), 72_000);   // Level IV: 60 min
+        assert_eq!(TrialOmenMobEffect::calculate_duration_from_bad_omen(4), 90_000);   // Level V: 75 min
+
+        // 3. Raid Omen parity (RaidOmenMobEffect.java:1-33, MobEffects.java:RAID_OMEN)
+        assert_eq!(RaidOmenMobEffect::COLOR, 14565464);
+        assert_eq!(StatusEffect::RAID_OMEN.color, 14565464);
+        assert_eq!(RaidOmenMobEffect::DURATION, 600); // 30 seconds
+        assert!(RAID_OMEN.should_apply_effect_tick(1, 0));
+        assert!(!RAID_OMEN.should_apply_effect_tick(2, 0));
+        assert!(!RAID_OMEN.should_apply_effect_tick(600, 0));
+
+        // Bad Omen ticks every tick to check village proximity
+        assert!(BAD_OMEN.should_apply_effect_tick(1, 0));
+        assert!(BAD_OMEN.should_apply_effect_tick(100, 0));
     }
 }

@@ -3,6 +3,11 @@ use crate::entity::living::LivingEntity;
 
 pub struct RaidOmenMobEffect;
 
+impl RaidOmenMobEffect {
+    pub const COLOR: u32 = 14565464;
+    pub const DURATION: i32 = 600;
+}
+
 impl MobEffect for RaidOmenMobEffect {
     fn should_apply_effect_tick(&self, duration: i32, _amplifier: u8) -> bool {
         duration == 1
