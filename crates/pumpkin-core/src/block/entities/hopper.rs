@@ -187,9 +187,24 @@ impl BlockEntity for HopperBlockEntity {
 impl HopperBlockEntity {
     pub const INVENTORY_SIZE: usize = 5;
     pub const HOPPER_CONTAINER_SIZE: usize = 5;
+    pub const CONTAINER_SIZE: usize = 5;
     pub const MOVE_ITEM_SPEED: i32 = 8;
     pub const NO_COOLDOWN_TIME: i32 = -1;
     pub const ID: &'static str = "minecraft:hopper";
+
+    #[must_use]
+    pub fn is_on_cooldown(&self) -> bool {
+        self.cooldown_time.load(Ordering::Relaxed) > 0
+    }
+
+    #[must_use]
+    pub fn get_cooldown(&self) -> i32 {
+        self.cooldown_time.load(Ordering::Relaxed)
+    }
+
+    pub fn set_cooldown(&self, cooldown: i32) {
+        self.cooldown_time.store(cooldown, Ordering::Relaxed);
+    }
 
     /// Creates an empty container with component storage at the supplied position.
     #[must_use]
@@ -216,7 +231,7 @@ impl HopperBlockEntity {
                 success |= self.suck_in_items(world);
             }
             if success {
-                self.cooldown_time.store(8, Ordering::Relaxed);
+                self.cooldown_time.store(Self::MOVE_ITEM_SPEED, Ordering::Relaxed);
                 self.mark_dirty();
             }
         }

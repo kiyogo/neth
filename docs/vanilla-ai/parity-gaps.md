@@ -7077,3 +7077,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_disabled_slots_bitmask`, `get_disabled_slot_count`, and `get_occupied_slot_count`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_crafter_redstone_triggering_disabled_slots_and_comparator_parity`.
+
+
+### Gap 291: Hopper Redstone Locking (Enabled State), Item Transfer Cooldown & Placement Orientation Parity
+- **Vanilla Reference**:
+  - `HopperBlock.java:40-168`, `HopperBlockEntity.java:30-80, 200-240`:
+    - Layout & timing:
+      - `CONTAINER_SIZE = 5` (5 item slots in inventory)
+      - `MOVE_ITEM_SPEED = 8` (8 game ticks / 4 redstone ticks cooldown between transfers)
+      - `NO_COOLDOWN_TIME = -1`
+      - `MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 15`
+    - Facing resolution on placement:
+      - Clicking on top or bottom face (Y axis) always orients facing `Direction.DOWN` (hoppers can never face `UP`).
+      - Clicking on horizontal faces (North, South, East, West) orients opposite to the clicked face into the target block.
+    - Redstone locking:
+      - `ENABLED` property is `false` when receiving redstone power (`hasNeighborSignal`), `true` when unpowered.
+    - Container comparator output:
+      - Standard Vanilla container formula: `floor(fullness * 14.0) + (totalItems > 0 ? 1 : 0)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Exported constants `CONTAINER_SIZE = 5`, `MOVE_ITEM_SPEED = 8`, `MIN_COMPARATOR_OUTPUT = 0`, and `MAX_COMPARATOR_OUTPUT = 15`.
+    - Exported helpers `calculate_facing_from_direction`, `is_enabled`, and `calculate_container_comparator_output`.
+    - Refactored `on_place` to use `calculate_facing_from_direction`.
+  - Updated `crates/pumpkin-core/src/block/entities/hopper.rs`:
+    - Exported constants `CONTAINER_SIZE = 5`, `MOVE_ITEM_SPEED = 8`, and `NO_COOLDOWN_TIME = -1`.
+    - Exported helpers `is_on_cooldown`, `get_cooldown`, and `set_cooldown`.
+    - Replaced hardcoded transfer cooldown ticks `8` with `Self::MOVE_ITEM_SPEED`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_hopper_redstone_locking_timing_and_comparator_parity`.

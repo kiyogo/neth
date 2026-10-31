@@ -15823,4 +15823,60 @@ mod tests {
         assert!(!CrafterBlock::is_slot_valid_for_craft(false, false));
         assert!(!CrafterBlock::is_slot_valid_for_craft(false, true));
     }
+#[test]
+    fn test_hopper_redstone_locking_timing_and_comparator_parity() {
+        use crate::block::blocks::hopper::HopperBlock;
+        use crate::block::entities::hopper::HopperBlockEntity;
+        use pumpkin_data::block_properties::FacingHopper;
+        use pumpkin_data::BlockDirection;
+
+        // Constants verification
+        assert_eq!(HopperBlock::HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(HopperBlock::MAX_COMPARATOR_OUTPUT, 15);
+
+        assert_eq!(HopperBlockEntity::INVENTORY_SIZE, 5);
+        assert_eq!(HopperBlockEntity::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlockEntity::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlockEntity::NO_COOLDOWN_TIME, -1);
+
+        // Placement facing resolution
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::North), FacingHopper::North);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::East), FacingHopper::East);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::South), FacingHopper::South);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::West), FacingHopper::West);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Up), FacingHopper::Down);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Down), FacingHopper::Down);
+
+        // Redstone locking (enabled state)
+        assert!(HopperBlock::is_enabled(false));  // unpowered => enabled (unlocked)
+        assert!(!HopperBlock::is_enabled(true));  // powered => disabled (locked)
+
+        // Comparator signal calculations (standard 5-slot container formula)
+        // 1. Completely empty
+        let empty_counts = [0u8; 5];
+        let max_stacks = [64u8; 5];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&empty_counts, &max_stacks), 0);
+
+        // 2. Single item (1/64 in slot 0) => minimum signal 1
+        let mut single_item = [0u8; 5];
+        single_item[0] = 1;
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&single_item, &max_stacks), 1);
+
+        // 3. Exactly 1 full stack of 64 in slot 0 => fullness = 0.2 => floor(0.2 * 14) + 1 = 3
+        let mut one_stack = [0u8; 5];
+        one_stack[0] = 64;
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&one_stack, &max_stacks), 3);
+
+        // 4. Completely full (5 stacks of 64) => fullness = 1.0 => floor(14) + 1 = 15
+        let full_stacks = [64u8; 5];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&full_stacks, &max_stacks), 15);
+
+        // 5. Single unstackable item (e.g. sword, max_stack = 1) in slot 0 => fullness = 0.2 => signal 3
+        let unstackable_counts = [1, 0, 0, 0, 0];
+        let unstackable_max = [1, 64, 64, 64, 64];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&unstackable_counts, &unstackable_max), 3);
+    }
 }

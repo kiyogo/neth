@@ -54,7 +54,50 @@ pub struct HopperBlock;
 
 impl HopperBlock {
     pub const HOPPER_CONTAINER_SIZE: usize = 5;
+    pub const CONTAINER_SIZE: usize = 5;
     pub const MOVE_ITEM_SPEED: i32 = 8;
+    pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
+    pub const MAX_COMPARATOR_OUTPUT: u8 = 15;
+
+    pub fn calculate_facing_from_direction(direction: BlockDirection) -> FacingHopper {
+        match direction {
+            BlockDirection::North => FacingHopper::North,
+            BlockDirection::East => FacingHopper::East,
+            BlockDirection::South => FacingHopper::South,
+            BlockDirection::West => FacingHopper::West,
+            BlockDirection::Up | BlockDirection::Down => FacingHopper::Down,
+        }
+    }
+
+    pub fn is_enabled(has_neighbor_signal: bool) -> bool {
+        !has_neighbor_signal
+    }
+
+    pub fn calculate_container_comparator_output(slot_counts: &[u8], max_stack_sizes: &[u8]) -> u8 {
+        let mut total_filled = 0.0f32;
+        let mut has_items = false;
+        let num_slots = slot_counts.len();
+        if num_slots == 0 {
+            return 0;
+        }
+
+        for i in 0..num_slots {
+            let count = slot_counts[i] as f32;
+            let max_stack = max_stack_sizes[i].max(1) as f32;
+            if count > 0.0 {
+                has_items = true;
+                total_filled += count / max_stack;
+            }
+        }
+
+        if !has_items {
+            return 0;
+        }
+
+        let fullness = total_filled / num_slots as f32;
+        let signal = (fullness * 14.0).floor() as u8 + 1;
+        signal.min(15)
+    }
 }
 
 type HopperLikeProperties = pumpkin_data::block_properties::HopperLikeProperties;
@@ -91,13 +134,7 @@ impl BlockBehaviour for HopperBlock {
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = HopperLikeProperties::default(args.block);
-        props.facing = match args.direction {
-            BlockDirection::North => FacingHopper::North,
-            BlockDirection::East => FacingHopper::East,
-            BlockDirection::South => FacingHopper::South,
-            BlockDirection::West => FacingHopper::West,
-            BlockDirection::Up | BlockDirection::Down => FacingHopper::Down,
-        };
+        props.facing = Self::calculate_facing_from_direction(args.direction);
         props.enabled = true;
         props.to_state_id(args.block)
     }
