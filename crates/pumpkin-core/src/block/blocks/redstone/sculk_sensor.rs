@@ -51,6 +51,28 @@ impl SculkSensorBlock {
     pub const COOLDOWN_TICKS: u32 = 10;
     pub const LISTENER_RANGE_REGULAR: u32 = 8;
     pub const LISTENER_RANGE_CALIBRATED: u32 = 16;
+    pub const DEFAULT_PHASE: SculkSensorPhase = SculkSensorPhase::Inactive;
+    pub const DEFAULT_POWER: u8 = 0;
+    pub const DEFAULT_WATERLOGGED: bool = false;
+    pub const DEFAULT_FACING: HorizontalFacing = HorizontalFacing::North;
+    pub const TONE_MAP: [u8; 16] = [0, 0, 2, 4, 6, 7, 9, 10, 12, 14, 15, 18, 19, 21, 22, 24];
+
+    #[must_use]
+    pub fn get_resonance_pitch_for_frequency(frequency: u8) -> f32 {
+        let note = Self::TONE_MAP[(frequency as usize).min(15)];
+        crate::block::blocks::note::NoteBlock::get_pitch_from_note(note)
+    }
+
+    #[must_use]
+    pub const fn get_phase_transition_on_tick(
+        current_phase: SculkSensorPhase,
+    ) -> (SculkSensorPhase, u8, Option<u32>) {
+        match current_phase {
+            SculkSensorPhase::Active => (SculkSensorPhase::Cooldown, 0, Some(Self::COOLDOWN_TICKS)),
+            SculkSensorPhase::Cooldown => (SculkSensorPhase::Inactive, 0, None),
+            SculkSensorPhase::Inactive => (SculkSensorPhase::Inactive, 0, None),
+        }
+    }
 
     #[must_use]
     pub fn get_active_ticks(block_id: BlockId) -> u32 {
@@ -188,9 +210,11 @@ impl BlockBehaviour for SculkSensorBlock {
         if args.block.id == BlockId::CALIBRATED_SCULK_SENSOR {
             let mut props = CalibratedSculkSensorLikeProperties::default(args.block);
             props.facing = args.player.living_entity.entity.get_horizontal_facing();
+            props.waterlogged = args.replacing.water_source();
             props.to_state_id(args.block)
         } else {
-            let props = SculkSensorLikeProperties::default(args.block);
+            let mut props = SculkSensorLikeProperties::default(args.block);
+            props.waterlogged = args.replacing.water_source();
             props.to_state_id(args.block)
         }
     }

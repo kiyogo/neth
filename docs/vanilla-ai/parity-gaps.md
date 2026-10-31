@@ -7503,3 +7503,29 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_weak_power`, `get_strong_power`, `get_attached_position`, and `get_axis_ordinal`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_lightning_rod_pulse_power_and_orientations_parity`.
+
+### Gap 305: Sculk Sensor & Calibrated Sculk Sensor Frequency, Vibration Listeners, 30/10 Tick Cool-down & Comparator Output Parity
+- **Vanilla Reference**:
+  - `SculkSensorBlock.java:44-288`, `CalibratedSculkSensorBlock.java:21-75`:
+    - Timing and listening range parameters:
+      - Active duration: standard sensor stays active for `ACTIVE_TICKS_REGULAR = 30` ticks (1.5 seconds); calibrated sensor stays active for `ACTIVE_TICKS_CALIBRATED = 10` ticks (0.5 second).
+      - Cooldown duration: both variants enter cooldown for `COOLDOWN_TICKS = 10` ticks (0.5 second) before returning to inactive.
+      - Vibration listener range: standard = `LISTENER_RANGE_REGULAR = 8` blocks radius; calibrated = `LISTENER_RANGE_CALIBRATED = 16` blocks radius.
+    - Default block properties:
+      - `DEFAULT_PHASE = SculkSensorPhase::Inactive`, `DEFAULT_POWER = 0`, `DEFAULT_WATERLOGGED = false`, `DEFAULT_FACING = HorizontalFacing::North` (for calibrated sensor).
+    - Redstone signal emission rules:
+      - Weak power: emits `POWER` (1 to 15) when in `ACTIVE` phase. Calibrated sensor suppresses power back towards its calibration facing (`direction != FACING`) to prevent wire feedback loops.
+      - Strong power: emits strong power exclusively upwards (`direction == Direction.UP`).
+      - Distance attenuation formula (`getRedstoneStrengthForDistance`):
+        `power = max(1, 15 - floor((15.0 / listenerRadius) * distance))`.
+      - Comparator output (`getAnalogOutputSignal`):
+        Outputs `lastVibrationFrequency` (1 to 15) while `PHASE == ACTIVE`, and 0 otherwise.
+    - Amethyst resonance pitch bend:
+      - Uses chromatic tone mapping `[0, 0, 2, 4, 6, 7, 9, 10, 12, 14, 15, 18, 19, 21, 22, 24]` transposed via Note Block pitch formula $2^{(	ext{note}-12)/12}$.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs`:
+    - Updated `on_place` to preserve `waterlogged` state when placed inside water sources for both sensor variants.
+    - Exported constants `ACTIVE_TICKS_REGULAR`, `ACTIVE_TICKS_CALIBRATED`, `COOLDOWN_TICKS`, `LISTENER_RANGE_REGULAR`, `LISTENER_RANGE_CALIBRATED`, `DEFAULT_PHASE`, `DEFAULT_POWER`, `DEFAULT_WATERLOGGED`, `DEFAULT_FACING`, `TONE_MAP`.
+    - Exported helpers `get_resonance_pitch_for_frequency`, `get_phase_transition_on_tick`, `get_active_ticks`, `get_listener_range`, `get_redstone_strength_for_distance`, `can_output_weak_power`, and `emits_strong_power`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sculk_sensor_frequencies_timings_and_calibrated_parity`.

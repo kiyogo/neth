@@ -16671,4 +16671,86 @@ mod tests {
         assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::North), 2);
         assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::South), 2);
     }
+#[test]
+    fn test_sculk_sensor_frequencies_timings_and_calibrated_parity() {
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use pumpkin_data::block_properties::{HorizontalFacing, SculkSensorPhase};
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // Constants verification
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+        assert_eq!(SculkSensorBlock::DEFAULT_PHASE, SculkSensorPhase::Inactive);
+        assert_eq!(SculkSensorBlock::DEFAULT_POWER, 0);
+        assert!(!SculkSensorBlock::DEFAULT_WATERLOGGED);
+        assert_eq!(SculkSensorBlock::DEFAULT_FACING, HorizontalFacing::North);
+
+        // Active duration and listener range per block variant
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::SCULK_SENSOR), 30);
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::CALIBRATED_SCULK_SENSOR), 10);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::SCULK_SENSOR), 8);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::CALIBRATED_SCULK_SENSOR), 16);
+
+        // Distance-to-power attenuation formula: max(1, 15 - floor((15 / radius) * distance))
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 8), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(4.0, 8), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 8), 1);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(12.0, 8), 1);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 16), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 16), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(16.0, 16), 1);
+
+        // Strong power is exclusively upwards
+        assert!(SculkSensorBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::North));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::South));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::East));
+        assert!(!SculkSensorBlock::emits_strong_power(BlockDirection::West));
+
+        // Calibrated sensor suppresses power back towards its calibration facing
+        assert!(!SculkSensorBlock::can_output_weak_power(
+            BlockId::CALIBRATED_SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::North,
+        ));
+        assert!(SculkSensorBlock::can_output_weak_power(
+            BlockId::CALIBRATED_SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::South,
+        ));
+        assert!(SculkSensorBlock::can_output_weak_power(
+            BlockId::CALIBRATED_SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::East,
+        ));
+        assert!(SculkSensorBlock::can_output_weak_power(
+            BlockId::SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::North,
+        ));
+
+        // Resonance pitch bend across 16 frequencies: toneMap = [0, 0, 2, 4, 6, 7, 9, 10, 12, 14, 15, 18, 19, 21, 22, 24]
+        assert!((SculkSensorBlock::get_resonance_pitch_for_frequency(0) - 0.5).abs() < 1e-5);
+        assert!((SculkSensorBlock::get_resonance_pitch_for_frequency(1) - 0.5).abs() < 1e-5);
+        assert!((SculkSensorBlock::get_resonance_pitch_for_frequency(8) - 1.0).abs() < 1e-5);
+        assert!((SculkSensorBlock::get_resonance_pitch_for_frequency(15) - 2.0).abs() < 1e-5);
+
+        // Scheduled tick phase transitions: Active -> Cooldown (10 ticks) -> Inactive
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Active),
+            (SculkSensorPhase::Cooldown, 0, Some(10))
+        );
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Cooldown),
+            (SculkSensorPhase::Inactive, 0, None)
+        );
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Inactive),
+            (SculkSensorPhase::Inactive, 0, None)
+        );
+    }
 }
