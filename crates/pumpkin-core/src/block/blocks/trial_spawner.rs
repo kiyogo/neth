@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use pumpkin_macros::pumpkin_block;
 
+use pumpkin_data::block_properties::TrialSpawnerState;
+
 use crate::block::entities::trial_spawner::TrialSpawnerBlockEntity;
 use crate::block::{BlockBehaviour, BrokenArgs, PlacedArgs};
 
@@ -36,6 +38,45 @@ impl TrialSpawnerBlock {
     #[must_use]
     pub fn is_within_mob_tracking_distance(distance_sq: f64) -> bool {
         distance_sq <= Self::MAX_MOB_TRACKING_DISTANCE * Self::MAX_MOB_TRACKING_DISTANCE
+    }
+
+    pub const DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB: i64 = 40;
+    pub const TIME_BETWEEN_EACH_EJECTION: i64 = 30;
+    pub const EVENT_TRIAL_SPAWNER_EJECT_ITEM: i32 = 3014;
+    pub const LIGHT_LEVEL_INACTIVE: u8 = 0;
+    pub const LIGHT_LEVEL_WAITING_FOR_PLAYERS: u8 = 4;
+    pub const LIGHT_LEVEL_ACTIVE: u8 = 8;
+    pub const LIGHT_LEVEL_COOLDOWN: u8 = 0;
+    pub const SPINNING_MOB_SPEED_INACTIVE: f64 = -1.0;
+    pub const SPINNING_MOB_SPEED_WAITING_FOR_PLAYERS: f64 = 200.0;
+    pub const SPINNING_MOB_SPEED_ACTIVE: f64 = 1000.0;
+
+    #[must_use]
+    pub fn get_light_level(state: TrialSpawnerState) -> u8 {
+        match state {
+            TrialSpawnerState::Inactive | TrialSpawnerState::Cooldown => Self::LIGHT_LEVEL_INACTIVE,
+            TrialSpawnerState::WaitingForPlayers => Self::LIGHT_LEVEL_WAITING_FOR_PLAYERS,
+            TrialSpawnerState::Active
+            | TrialSpawnerState::WaitingForRewardEjection
+            | TrialSpawnerState::EjectingReward => Self::LIGHT_LEVEL_ACTIVE,
+        }
+    }
+
+    #[must_use]
+    pub fn get_spinning_mob_speed(state: TrialSpawnerState) -> f64 {
+        match state {
+            TrialSpawnerState::Inactive
+            | TrialSpawnerState::WaitingForRewardEjection
+            | TrialSpawnerState::EjectingReward
+            | TrialSpawnerState::Cooldown => Self::SPINNING_MOB_SPEED_INACTIVE,
+            TrialSpawnerState::WaitingForPlayers => Self::SPINNING_MOB_SPEED_WAITING_FOR_PLAYERS,
+            TrialSpawnerState::Active => Self::SPINNING_MOB_SPEED_ACTIVE,
+        }
+    }
+
+    #[must_use]
+    pub fn is_capable_of_spawning(state: TrialSpawnerState) -> bool {
+        matches!(state, TrialSpawnerState::WaitingForPlayers | TrialSpawnerState::Active)
     }
 }
 

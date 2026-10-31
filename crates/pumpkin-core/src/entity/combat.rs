@@ -19731,4 +19731,42 @@ mod tests {
         assert_eq!(VaultBlock::calculate_ejection_progress(1, 5), 1.0);
         assert!((VaultBlock::calculate_ejection_pitch(1, 5) - 1.2).abs() < 1e-5);
     }
+    #[test]
+    fn test_trial_spawner_shutter_audio_ejection_interval_and_light_levels_parity() {
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+        use pumpkin_data::block_properties::TrialSpawnerState;
+
+        // Constants parity
+        assert_eq!(TrialSpawnerBlock::DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB, 40);
+        assert_eq!(TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION, 30);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_EJECT_ITEM, 3014);
+        assert_eq!(TrialSpawnerBlock::LIGHT_LEVEL_INACTIVE, 0);
+        assert_eq!(TrialSpawnerBlock::LIGHT_LEVEL_WAITING_FOR_PLAYERS, 4);
+        assert_eq!(TrialSpawnerBlock::LIGHT_LEVEL_ACTIVE, 8);
+        assert_eq!(TrialSpawnerBlock::LIGHT_LEVEL_COOLDOWN, 0);
+
+        // Light level mappings
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::Inactive), 0);
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::WaitingForPlayers), 4);
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::Active), 8);
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::WaitingForRewardEjection), 8);
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::EjectingReward), 8);
+        assert_eq!(TrialSpawnerBlock::get_light_level(TrialSpawnerState::Cooldown), 0);
+
+        // Spinning mob speeds
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::Inactive), -1.0);
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::WaitingForPlayers), 200.0);
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::Active), 1000.0);
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::WaitingForRewardEjection), -1.0);
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::EjectingReward), -1.0);
+        assert_eq!(TrialSpawnerBlock::get_spinning_mob_speed(TrialSpawnerState::Cooldown), -1.0);
+
+        // Spawning capability
+        assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::Inactive));
+        assert!(TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::WaitingForPlayers));
+        assert!(TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::Active));
+        assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::WaitingForRewardEjection));
+        assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::EjectingReward));
+        assert!(!TrialSpawnerBlock::is_capable_of_spawning(TrialSpawnerState::Cooldown));
+    }
 }

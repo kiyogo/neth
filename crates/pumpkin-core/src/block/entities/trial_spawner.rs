@@ -1290,7 +1290,7 @@ impl TrialSpawner {
                         SoundCategory::Blocks,
                         &spawner_pos.to_f64(),
                     );
-                    self.data.next_mob_spawns_at = game_time + 20;
+                    self.data.next_mob_spawns_at = game_time + crate::block::blocks::trial_spawner::TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION;
                     TrialSpawnerState::EjectingReward
                 } else {
                     TrialSpawnerState::WaitingForRewardEjection
@@ -1307,7 +1307,7 @@ impl TrialSpawner {
                             SoundCategory::Blocks,
                             &spawner_pos.to_f64(),
                         );
-                        self.data.next_mob_spawns_at = game_time + 20;
+                        self.data.next_mob_spawns_at = game_time + crate::block::blocks::trial_spawner::TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION;
                         TrialSpawnerState::EjectingReward
                     } else {
                         world.play_sound(
@@ -1315,7 +1315,7 @@ impl TrialSpawner {
                             SoundCategory::Blocks,
                             &spawner_pos.to_f64(),
                         );
-                        self.data.next_mob_spawns_at = game_time + 20;
+                        self.data.next_mob_spawns_at = game_time + crate::block::blocks::trial_spawner::TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION;
                         TrialSpawnerState::Cooldown
                     }
                 } else {

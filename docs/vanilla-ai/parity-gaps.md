@@ -8727,3 +8727,31 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Added `last_insert_fail_timestamp` with atomic access and fail sound cooldown throttling to `VaultBlockEntity`.
   - Updated item ejection in `VaultBlock` to emit `WorldEvent::AnimationVaultEjectItem` and calculate increasing pitch per item via `calculate_ejection_pitch`.
   - Added unit test `test_vault_shutter_audio_particles_graduated_pitch_and_cooldown_parity` in `combat.rs`.
+
+### Gap 355: Trial Spawner Shutter Audio/Particle Events (3014), Ejection Interval (30 Ticks), State Light Levels (0/4/8) & Mob Spinning Speeds Parity
+
+- **Vanilla Reference**: `TrialSpawnerState.java:33-61, 116-140`, `TrialSpawner.java:1-431`, `TrialSpawnerBlock.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Trial Spawner states (`TrialSpawnerState`) follow precise timings, light emission, spinning mob speeds, audio transitions, and particle world events:
+    - **World Events**:
+      - `AnimationTrialSpawnerEjectItem (3014)`: Dispatched when ejecting reward items into the world above the spawner block.
+    - **State Light Levels**:
+      - `INACTIVE` (0) and `COOLDOWN` (0) emit light level 0.
+      - `WAITING_FOR_PLAYERS` (4) emits light level 4.
+      - `ACTIVE` (8), `WAITING_FOR_REWARD_EJECTION` (8), and `EJECTING_REWARD` (8) emit light level 8.
+    - **Spinning Mob Speed**:
+      - `INACTIVE`, `WAITING_FOR_REWARD_EJECTION`, `EJECTING_REWARD`, and `COOLDOWN` set spinning mob speed to -1.0.
+      - `WAITING_FOR_PLAYERS` sets spinning mob speed to 200.0.
+      - `ACTIVE` sets spinning mob speed to 1000.0.
+    - **Shutter and Ejection Timings**:
+      - `DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB = 40.0F`: Exactly 40 ticks (2.0s) delay after all wave mobs have died before opening the shutter.
+      - `TIME_BETWEEN_EACH_EJECTION = 30`: Exactly 30 ticks (1.5s) delay between consecutive reward drops for detected players.
+      - Shutter opening sound `SoundEvents.TRIAL_SPAWNER_OPEN_SHUTTER` played upon transitioning to `EJECTING_REWARD`.
+      - Shutter closing sound `SoundEvents.TRIAL_SPAWNER_CLOSE_SHUTTER` played upon exhausting reward queue and transitioning to `COOLDOWN`.
+    - **Spawning Capability**:
+      - Only `WAITING_FOR_PLAYERS` and `ACTIVE` states are capable of spawning entities (`isCapableOfSpawning() == true`).
+- **Neth Changes**:
+  - Exported constants `DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB = 40`, `TIME_BETWEEN_EACH_EJECTION = 30`, `EVENT_TRIAL_SPAWNER_EJECT_ITEM = 3014`, `LIGHT_LEVEL_INACTIVE = 0`, `LIGHT_LEVEL_WAITING_FOR_PLAYERS = 4`, `LIGHT_LEVEL_ACTIVE = 8`, `LIGHT_LEVEL_COOLDOWN = 0`, `SPINNING_MOB_SPEED_INACTIVE = -1.0`, `SPINNING_MOB_SPEED_WAITING_FOR_PLAYERS = 200.0`, and `SPINNING_MOB_SPEED_ACTIVE = 1000.0` on `TrialSpawnerBlock`.
+  - Added helper functions `get_light_level`, `get_spinning_mob_speed`, and `is_capable_of_spawning` on `TrialSpawnerBlock`.
+  - Updated `TrialSpawnerBlockEntity` reward ejection intervals from 20 to 30 ticks (`TIME_BETWEEN_EACH_EJECTION`).
+  - Added unit test `test_trial_spawner_shutter_audio_ejection_interval_and_light_levels_parity` in `combat.rs`.
