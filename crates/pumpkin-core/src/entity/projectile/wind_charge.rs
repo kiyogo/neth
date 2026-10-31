@@ -63,6 +63,23 @@ pub static BREEZE_WIND_CHARGE_EXPLOSION_DAMAGE_CALCULATOR: LazyLock<
 });
 
 impl WindChargeEntity {
+    pub const MAX_Y_OFFSET: i32 = 30;
+
+    #[must_use]
+    pub const fn can_collide_with_entity(is_wind_charge: bool) -> bool {
+        !is_wind_charge
+    }
+
+    #[must_use]
+    pub const fn can_hit_entity(is_wind_charge: bool, is_end_crystal: bool) -> bool {
+        !is_wind_charge && !is_end_crystal
+    }
+
+    #[must_use]
+    pub const fn should_explode_at_y(current_y: i32, max_world_y: i32) -> bool {
+        current_y > max_world_y + Self::MAX_Y_OFFSET
+    }
+
     #[must_use]
     pub const fn new_normal(thrown_item_entity: ThrownItemEntity) -> Self {
         Self {

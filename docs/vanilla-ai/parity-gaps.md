@@ -8681,3 +8681,20 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Added pure helper predicates `is_scared_by_predicate` and `can_stay_rolled_up_predicate`.
   - Added sound transitions `Sound::EntityArmadilloLand` on rolling completion and `Sound::EntityArmadilloUnrollStart` on unrolling start.
   - Added unit test `test_armadillo_rolling_threat_scute_and_unroll_parity` in `combat.rs`.
+
+### Gap 353: Wind Charge Projectile Burst Physics, Radius (1.2), Player Upward Launch & Knockback Immunity Parity
+
+- **Vanilla Reference**: AbstractWindCharge.java:1-85, WindCharge.java:1-45, BreezeWindCharge.java:1-35, Explosion.java:BlockInteraction.TRIGGER_BLOCKS, DamageTypes.WIND_CHARGE.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Wind Charges (player-thrown WindCharge and mob-fired BreezeWindCharge) implement distinct projectile burst physics, collision criteria, and explosion mechanics:
+    - **Collision Rules**: A wind charge cannot collide with or hit another AbstractWindCharge or EndCrystal (!target.getType().is(EntityTypeTags.DEFLECTS_PROJECTILES) / !(target instanceof AbstractWindCharge) / !(target instanceof EndCrystal)).
+    - **Y Ceiling Cutoff**: If the projectile reaches  > 	ext{maxY} + 30$ (where $	ext{maxY}$ is the world surface limit, typically 320 in the Overworld), the wind charge detonates immediately in mid-air (explode(this.position())).
+    - **Explosion Power & Behavior**:
+      - Player WindCharge: Explosion radius/power is 1.2F, direct damage is 1.0 point (or triggers wind charge damage type). Block interaction is TRIGGER_BLOCKS (interacts with levers, buttons, bells, trapdoors, doors, decorated pots, but does not destroy terrain blocks).
+      - Applies upward impulse to the launcher or hit entities: upwards impulse is boosted when exploding directly beneath the entity, scaling impulse velocity based on distance from center (.0 - 	ext{distance} / 	ext{radius}$).
+    - **Inertia & Gravity**: Flight inertia is 1.0 (no air friction deceleration), gravity is 0.0 (straight-line trajectory).
+    - **Deflection Immunity / Cooldown**: Breeze deflects projectiles, but wind charges deflected have a 5-tick cooldown before they can interact with the deflector again.
+- **Neth Changes**:
+  - Exported constants WIND_CHARGE_MAX_Y_OFFSET = 30, WIND_CHARGE_EXPLOSION_RADIUS = 1.2, WIND_CHARGE_INERTIA = 1.0, WIND_CHARGE_DEFLECT_COOLDOWN = 5, and WIND_CHARGE_DIRECT_DAMAGE = 1.0 in wind_charge.rs and combat.rs.
+  - Added pure helper methods can_collide_with_entity, can_hit_entity, should_explode_at_y, and calculate_wind_charge_launch_impulse.
+  - Added unit test 	est_wind_charge_burst_physics_y_cutoff_and_collision_parity in combat.rs.

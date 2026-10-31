@@ -1917,6 +1917,50 @@ pub const fn calculate_wind_charge_cooldown_ticks() -> i32 {
     10
 }
 
+pub const WIND_CHARGE_MAX_Y_OFFSET: i32 = 30;
+
+/// Calculates whether a wind charge has exceeded the vertical world bound (+30 blocks above world ceiling).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:149-151`:
+/// `if (!this.level().isClientSide() && this.getBlockY() > this.level().getMaxY() + 30)`
+#[must_use]
+pub const fn is_wind_charge_above_max_y(block_y: i32, max_world_y: i32) -> bool {
+    block_y > max_world_y + WIND_CHARGE_MAX_Y_OFFSET
+}
+
+/// Checks if a projectile can hit an entity (wind charges cannot hit other wind charges or end crystals).
+///
+/// Mirrors vanilla `AbstractWindCharge.java:69-75`:
+/// `if (entity instanceof AbstractWindCharge) return false;`
+/// `return entity.is(EntityTypes.END_CRYSTAL) ? false : super.canHitEntity(entity);`
+#[must_use]
+pub const fn can_wind_charge_hit_entity(is_wind_charge: bool, is_end_crystal: bool) -> bool {
+    !is_wind_charge && !is_end_crystal
+}
+
+/// Calculates launch impulse exerted on an entity caught in a wind burst.
+#[must_use]
+pub fn calculate_wind_charge_launch_impulse(
+    explosion_pos: Vector3<f64>,
+    target_pos: Vector3<f64>,
+    radius: f64,
+) -> Vector3<f64> {
+    let diff = target_pos - explosion_pos;
+    let dist = diff.length();
+    if dist >= radius || radius <= 0.0 {
+        return Vector3::new(0.0, 0.0, 0.0);
+    }
+    let factor = 1.0 - (dist / radius);
+    let norm = if dist > 1e-4 {
+        diff.normalize()
+    } else {
+        Vector3::new(0.0, 1.0, 0.0)
+    };
+    // Ensure positive vertical lift if explosion is at feet
+    let lift_y = if norm.y < 0.2 { 0.5 } else { norm.y };
+    Vector3::new(norm.x * factor, lift_y * factor * 1.25, norm.z * factor)
+}
+
 /// Calculates updated position and velocity for Thrown Trident Loyalty return step.
 ///
 /// Mirrors vanilla `ThrownTrident.java:83-87`:
@@ -19580,5 +19624,62 @@ mod tests {
         assert_eq!(calculate_armadillo_scared_damage(5.0), 2.0);
         assert_eq!(calculate_armadillo_scared_damage(11.0), 5.0);
         assert_eq!(calculate_armadillo_scared_damage(0.5), 0.0);
+    }
+
+    #[test]
+    fn test_wind_charge_burst_physics_y_cutoff_and_collision_parity() {
+        use crate::entity::projectile::wind_charge::WindChargeEntity;
+        use super::*;
+
+        // 1. Constants parity with Vanilla AbstractWindCharge.java & WindCharge.java
+        assert_eq!(WIND_CHARGE_DIRECT_DAMAGE, 1.0);
+        assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
+        assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
+        assert_eq!(WIND_CHARGE_DEFAULT_DEFLECT_COOLDOWN, 5);
+        assert_eq!(WIND_CHARGE_BLOCK_HIT_NORMAL_OFFSET, 0.25);
+        assert_eq!(WIND_CHARGE_MAX_Y_OFFSET, 30);
+        assert_eq!(WIND_CHARGE_INERTIA, 1.0);
+        assert_eq!(WindChargeEntity::MAX_Y_OFFSET, 30);
+
+        // 2. Y-Cutoff parity (AbstractWindCharge.java:149: blockY > level.getMaxY() + 30)
+        assert!(!is_wind_charge_above_max_y(320, 320));
+        assert!(!is_wind_charge_above_max_y(350, 320));
+        assert!(is_wind_charge_above_max_y(351, 320)); // exceeds +30
+
+        assert!(!is_wind_charge_above_max_y(128, 128));
+        assert!(!is_wind_charge_above_max_y(158, 128));
+        assert!(is_wind_charge_above_max_y(159, 128));
+
+        assert!(!WindChargeEntity::should_explode_at_y(350, 320));
+        assert!(WindChargeEntity::should_explode_at_y(351, 320));
+
+        // 3. Collision filtering parity (AbstractWindCharge.java:65, 73)
+        // Can hit standard entities
+        assert!(can_wind_charge_hit_entity(false, false));
+        assert!(WindChargeEntity::can_hit_entity(false, false));
+        assert!(WindChargeEntity::can_collide_with_entity(false));
+
+        // Cannot hit or collide with another wind charge
+        assert!(!can_wind_charge_hit_entity(true, false));
+        assert!(!WindChargeEntity::can_hit_entity(true, false));
+        assert!(!WindChargeEntity::can_collide_with_entity(true));
+
+        // Cannot hit end crystal
+        assert!(!can_wind_charge_hit_entity(false, true));
+        assert!(!WindChargeEntity::can_hit_entity(false, true));
+
+        // 4. Launch impulse calculation
+        let exp_pos = Vector3::new(0.0, 64.0, 0.0);
+        // Target outside 1.2 radius (at distance 2.0m)
+        let out_pos = Vector3::new(0.0, 66.0, 0.0);
+        let impulse_out = calculate_wind_charge_launch_impulse(exp_pos, out_pos, 1.2);
+        assert_eq!(impulse_out, Vector3::new(0.0, 0.0, 0.0));
+
+        // Target right above explosion (feet at 64.0, target at 64.2)
+        let in_pos = Vector3::new(0.0, 64.2, 0.0);
+        let impulse_in = calculate_wind_charge_launch_impulse(exp_pos, in_pos, 1.2);
+        assert!(impulse_in.y > 0.5); // upward burst
+        assert_eq!(impulse_in.x, 0.0);
+        assert_eq!(impulse_in.z, 0.0);
     }
 }
