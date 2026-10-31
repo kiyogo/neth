@@ -8737,6 +8737,68 @@ pub const fn is_creaking_too_far_from_heart(distance: f64) -> bool {
     distance > CREAKING_HEART_DISTANCE_CREAKING_TOO_FAR
 }
 
+/// Default probability of placing Creaking Heart decorator in Pale Oak tree (1.0 = 100%).
+///
+/// Mirrors vanilla `data/minecraft/worldgen/feature/pale_oak_creaking.json`:
+/// `{"type": "minecraft:creaking_heart", "probability": 1.0}`
+pub const CREAKING_HEART_DECORATOR_PROBABILITY: f32 = 1.0;
+
+/// Number of adjacent log blocks required on all 6 faces for Creaking Heart generation (6).
+///
+/// Mirrors vanilla `CreakingHeartDecorator.java:41-47`:
+/// `for (Direction dir : Direction.values()) { if (!state.is(BlockTags.LOGS)) return false; }`
+pub const CREAKING_HEART_DECORATOR_REQUIRED_LOGS: usize = 6;
+
+/// Pale Moss tree decorator ground pale moss patch probability (0.8 = 80%).
+///
+/// Mirrors vanilla `data/minecraft/worldgen/feature/pale_oak.json`:
+/// `{"ground_probability": 0.8, ...}`
+pub const PALE_MOSS_DECORATOR_GROUND_PROBABILITY: f32 = 0.8;
+
+/// Pale Moss tree decorator trunk hanging moss probability (0.4 = 40%).
+///
+/// Mirrors vanilla `data/minecraft/worldgen/feature/pale_oak.json`:
+/// `{"trunk_probability": 0.4, ...}`
+pub const PALE_MOSS_DECORATOR_TRUNK_PROBABILITY: f32 = 0.4;
+
+/// Pale Moss tree decorator leaves hanging moss probability (0.15 = 15%).
+///
+/// Mirrors vanilla `data/minecraft/worldgen/feature/pale_oak.json`:
+/// `{"leaves_probability": 0.15, ...}`
+pub const PALE_MOSS_DECORATOR_LEAVES_PROBABILITY: f32 = 0.15;
+
+/// Pale Hanging Moss downward continuation chance per segment (0.5 = 50%).
+///
+/// Mirrors vanilla `PaleMossDecorator.java:77`:
+/// `!(context.random().nextFloat() < 0.5)`
+pub const PALE_HANGING_MOSS_CONTINUATION_CHANCE: f32 = 0.5;
+
+/// Pale Oak trunk base height (6).
+///
+/// Mirrors vanilla `pale_oak.json`:
+/// `"trunk_placer": {"type": "minecraft:dark_oak_trunk_placer", "base_height": 6, "height_rand_a": 2, "height_rand_b": 1}`
+pub const PALE_OAK_TRUNK_BASE_HEIGHT: i32 = 6;
+pub const PALE_OAK_TRUNK_HEIGHT_RAND_A: i32 = 2;
+pub const PALE_OAK_TRUNK_HEIGHT_RAND_B: i32 = 1;
+
+/// Calculate whether all 6 adjacent sides are logs for Creaking Heart placement.
+///
+/// Mirrors vanilla `CreakingHeartDecorator.java:41-47`.
+#[inline]
+#[must_use]
+pub const fn is_valid_creaking_heart_placement(adjacent_logs: usize) -> bool {
+    adjacent_logs == CREAKING_HEART_DECORATOR_REQUIRED_LOGS
+}
+
+/// Calculate whether hanging moss should continue downwards given roll.
+///
+/// Mirrors vanilla `PaleMossDecorator.java:77`.
+#[inline]
+#[must_use]
+pub const fn should_continue_hanging_moss(roll: f32) -> bool {
+    roll >= PALE_HANGING_MOSS_CONTINUATION_CHANCE
+}
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]
@@ -21233,5 +21295,29 @@ mod tests {
         assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::FURNACE_MINECART), Some(&Item::FURNACE_MINECART));
         assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::TNT_MINECART), Some(&Item::TNT_MINECART));
         assert_eq!(VehicleEntity::get_default_vehicle_drop_item(&EntityType::HOPPER_MINECART), Some(&Item::HOPPER_MINECART));
+    }
+
+    #[test]
+    fn test_creaking_heart_decorator_and_pale_oak_tree_generation_parity() {
+        // 1. Creaking Heart Decorator Parity (CreakingHeartDecorator.java, pale_oak_creaking.json)
+        assert_eq!(CREAKING_HEART_DECORATOR_PROBABILITY, 1.0);
+        assert_eq!(CREAKING_HEART_DECORATOR_REQUIRED_LOGS, 6);
+        assert!(is_valid_creaking_heart_placement(6));
+        assert!(!is_valid_creaking_heart_placement(5));
+        assert!(!is_valid_creaking_heart_placement(0));
+
+        // 2. Pale Moss Decorator Probabilities (PaleMossDecorator.java, pale_oak.json)
+        assert_eq!(PALE_MOSS_DECORATOR_GROUND_PROBABILITY, 0.8);
+        assert_eq!(PALE_MOSS_DECORATOR_TRUNK_PROBABILITY, 0.4);
+        assert_eq!(PALE_MOSS_DECORATOR_LEAVES_PROBABILITY, 0.15);
+        assert_eq!(PALE_HANGING_MOSS_CONTINUATION_CHANCE, 0.5);
+        assert!(should_continue_hanging_moss(0.5));
+        assert!(should_continue_hanging_moss(0.8));
+        assert!(!should_continue_hanging_moss(0.49));
+
+        // 3. Pale Oak Trunk Parameters (pale_oak.json)
+        assert_eq!(PALE_OAK_TRUNK_BASE_HEIGHT, 6);
+        assert_eq!(PALE_OAK_TRUNK_HEIGHT_RAND_A, 2);
+        assert_eq!(PALE_OAK_TRUNK_HEIGHT_RAND_B, 1);
     }
 }

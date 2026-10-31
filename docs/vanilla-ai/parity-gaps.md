@@ -9507,3 +9507,35 @@ eq 	ext{None}$.
   - In `crates/pumpkin-core/src/entity/vehicle/boat/passengers.rs`:
     - Replaced hardcoded constants with `BOAT_RIDE_HEIGHT_RATIO`, `RAFT_RIDE_HEIGHT_RATIO`, and `CHEST_BOAT_PASSENGER_OFFSET_X`.
 - **Status**: Completed & Verified.
+
+### Gap 379: Creaking Heart Decorator Placement Chance & Pale Oak Tree Generation Parity
+- **Vanilla Reference**: `net.minecraft.world.level.levelgen.feature.treedecorators.CreakingHeartDecorator.java:17-60`, `net.minecraft.world.level.levelgen.feature.treedecorators.PaleMossDecorator.java:19-84`, `data/minecraft/worldgen/feature/pale_oak_creaking.json:1-46`, `data/minecraft/worldgen/feature/pale_oak.json:1-42`, `data/minecraft/worldgen/feature/pale_oak_bonemeal.json:1-35`.
+- **Vanilla Mechanics**:
+  1. *Creaking Heart Placement Enclosure Condition*:
+     - In Vanilla `CreakingHeartDecorator.java:40-48`, logs are shuffled and filtered:
+       `for (Direction dir : Direction.values()) { if (!context.checkBlock(pos.relative(dir), state -> state.is(BlockTags.LOGS))) return false; }`
+     - A log block in the tree is only eligible to become a Creaking Heart if it is completely surrounded on all 6 adjacent sides (UP, DOWN, NORTH, SOUTH, EAST, WEST) by log blocks (`#minecraft:logs`).
+     - When placed, the Creaking Heart block state is initialized with `AXIS = Y`, `STATE = CreakingHeartState.DORMANT`, and `NATURAL = true`.
+     - In `pale_oak_creaking.json`, the Creaking Heart decorator probability is `1.0` (100% chance to attempt placement if surrounded candidate log exists).
+  2. *Pale Moss Decorator Probabilities*:
+     - Configured in `pale_oak.json` and `pale_oak_creaking.json`:
+       - `ground_probability`: 0.8 (80% chance to spawn a Pale Moss patch at `min_y(logs).above()`).
+       - `trunk_probability`: 0.4 (40% chance per trunk log to spawn hanging moss underneath if air below).
+       - `leaves_probability`: 0.15 (15% chance per foliage leaf block to spawn hanging moss underneath if air below).
+     - Hanging moss growth downward continuation check in `PaleMossDecorator.java:77`: `!(context.random().nextFloat() < 0.5)` (50% chance per segment to continue downwards). Each intermediate segment is placed with `TIP = false` and the final terminating block is placed with `TIP = true`.
+  3. *Pale Oak Trunk Configuration*:
+     - Dark Oak trunk placer in `pale_oak.json`: `base_height = 6`, `height_rand_a = 2`, `height_rand_b = 1`.
+     - Saplings grown with bonemeal (`pale_oak_bonemeal.json`) have `decorators: []` (no Creaking Hearts or Pale Moss).
+- **Implementation**:
+  - In `crates/pumpkin-world/src/generation/feature/features/tree/decorator/creaking_heart.rs`:
+    - Exported constants `DEFAULT_PROBABILITY = 1.0`, `REQUIRED_ADJACENT_LOGS = 6`.
+    - Added helper `is_valid_creaking_heart_placement(adjacent_logs)`.
+    - Added unit test `test_creaking_heart_decorator_parity`.
+  - In `crates/pumpkin-world/src/generation/feature/features/tree/decorator/pale_moss.rs`:
+    - Exported constants `DEFAULT_LEAVES_PROBABILITY = 0.15`, `DEFAULT_TRUNK_PROBABILITY = 0.4`, `DEFAULT_GROUND_PROBABILITY = 0.8`, `CONTINUATION_CHANCE = 0.5`.
+    - Added helper `should_continue_hanging_moss(roll)`.
+    - Added unit test `test_pale_moss_decorator_parity`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `CREAKING_HEART_DECORATOR_` and `PALE_MOSS_DECORATOR_` parity constants.
+    - Added unit test `test_creaking_heart_decorator_and_pale_oak_tree_generation_parity`.
+- **Status**: Completed & Verified.

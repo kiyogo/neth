@@ -10,6 +10,24 @@ use pumpkin_util::{
 
 use crate::generation::proto_chunk::GenerationCache;
 
+/// Default probability of placing Creaking Heart decorator in Pale Oak tree (1.0 = 100%).
+///
+/// Mirrors vanilla `data/minecraft/worldgen/feature/pale_oak_creaking.json`:
+/// `{"type": "minecraft:creaking_heart", "probability": 1.0}`
+pub const DEFAULT_PROBABILITY: f32 = 1.0;
+
+/// Number of adjacent log blocks required on all 6 faces (UP, DOWN, NORTH, SOUTH, EAST, WEST).
+///
+/// Mirrors vanilla `CreakingHeartDecorator.java:41-47`:
+/// `for (Direction dir : Direction.values()) { if (!state.is(BlockTags.LOGS)) return false; }`
+pub const REQUIRED_ADJACENT_LOGS: usize = 6;
+
+#[inline]
+#[must_use]
+pub const fn is_valid_creaking_heart_placement(adjacent_logs: usize) -> bool {
+    adjacent_logs == REQUIRED_ADJACENT_LOGS
+}
+
 pub struct CreakingHeartTreeDecorator {
     pub probability: f32,
 }
@@ -55,5 +73,19 @@ impl CreakingHeartTreeDecorator {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_creaking_heart_decorator_parity() {
+        assert_eq!(DEFAULT_PROBABILITY, 1.0);
+        assert_eq!(REQUIRED_ADJACENT_LOGS, 6);
+        assert!(is_valid_creaking_heart_placement(6));
+        assert!(!is_valid_creaking_heart_placement(5));
+        assert!(!is_valid_creaking_heart_placement(0));
     }
 }
