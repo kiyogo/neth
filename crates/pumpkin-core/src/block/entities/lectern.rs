@@ -127,6 +127,8 @@ impl LecternBlockEntity {
     pub const NUM_DATA: usize = 1;
     pub const SLOT_BOOK: usize = 0;
     pub const NUM_SLOTS: usize = 1;
+    pub const MIN_COMPARATOR_SIGNAL: u8 = 1;
+    pub const MAX_COMPARATOR_SIGNAL: u8 = 15;
 
     #[must_use]
     pub fn new(position: BlockPos) -> Self {

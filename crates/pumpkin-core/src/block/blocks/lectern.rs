@@ -101,6 +101,14 @@ impl LecternBlock {
     /// Vanilla pulse length of a page-turn signal, in game ticks (Vanilla: PAGE_CHANGE_IMPULSE_TICKS = 2).
     pub const PAGE_CHANGE_IMPULSE_TICKS: u32 = 2;
     pub const PAGE_TURN_PULSE_TICKS: u32 = Self::PAGE_CHANGE_IMPULSE_TICKS;
+    pub const PAGE_CHANGE_EVENT: u16 = 1043;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+
+    #[must_use]
+    pub const fn emits_strong_power(direction: BlockDirection) -> bool {
+        matches!(direction, BlockDirection::Up)
+    }
 
     /// The lectern strongly powers the block below it, so its neighbors need
     /// updating whenever the power or book state changes.
@@ -253,15 +261,15 @@ impl BlockBehaviour for LecternBlock {
 
     fn get_weak_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LecternLikeProperties::from_state_id(args.state.id);
-        if props.powered { 15 } else { 0 }
+        if props.powered { Self::POWER_ON } else { Self::POWER_OFF }
     }
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         let props = LecternLikeProperties::from_state_id(args.state.id);
-        if props.powered && args.direction == BlockDirection::Up {
-            15
+        if props.powered && Self::emits_strong_power(args.direction) {
+            Self::POWER_ON
         } else {
-            0
+            Self::POWER_OFF
         }
     }
 

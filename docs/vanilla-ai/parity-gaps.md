@@ -6925,3 +6925,27 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Refactored `on_neighbor_update`, `get_weak_redstone_power`, and `get_strong_redstone_power` to use named constants and helpers.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_redstone_torch_burnout_delays_and_signals_parity`.
+
+### Gap 286: Lectern Book Page Reading, Redstone Output Formula & Comparator Signal Parity
+- **Vanilla Reference**:
+  - LecternBlock.java:45-75, 115-135, LecternBlockEntity.java:18-35:
+    - Redstone pulse on page turn:
+      - `PAGE_CHANGE_IMPULSE_TICKS = 2`: Turn pulse duration is 2 game ticks (1 redstone tick).
+      - `PAGE_CHANGE_EVENT = 1043`: World event ID for SoundPageTurn.
+      - Power levels: `POWER_ON = 15`, `POWER_OFF = 0`.
+    - Signal directionality:
+      - Weak power: outputs 15 in all directions when powered.
+      - Strong power: `direction == Direction.UP && state.getValue(POWERED) ? 15 : 0` (only strongly powers the block underneath).
+    - Analog output (Comparator):
+      - Formula: `floor(progress * 14.0) + (hasBook ? 1 : 0)` where `progress = page / (pageCount - 1.0)`.
+      - Single page book: progress = 1.0 -> power 15.
+      - Multi-page book: scales from page 0 (power 1) to last page (power 15).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Exported constants `PAGE_CHANGE_IMPULSE_TICKS = 2`, `PAGE_TURN_PULSE_TICKS = 2`, `PAGE_CHANGE_EVENT = 1043`, `POWER_ON = 15`, and `POWER_OFF = 0`.
+    - Exported helper `emits_strong_power(direction)`.
+    - Refactored weak and strong power getters to use named constants and helpers.
+  - Updated `crates/pumpkin-core/src/block/entities/lectern.rs`:
+    - Exported `MIN_COMPARATOR_SIGNAL = 1` and `MAX_COMPARATOR_SIGNAL = 15`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_lectern_pulse_duration_and_comparator_signal_parity`.

@@ -15493,4 +15493,41 @@ mod tests {
         assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::Up));
         assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::North));
     }
+
+    #[test]
+    fn test_lectern_pulse_duration_and_comparator_signal_parity() {
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::entities::lectern::{calculate_lectern_comparator_output, LecternBlockEntity};
+        use pumpkin_data::BlockDirection;
+
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_TURN_PULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LecternBlock::POWER_ON, 15);
+        assert_eq!(LecternBlock::POWER_OFF, 0);
+
+        assert_eq!(LecternBlockEntity::MIN_COMPARATOR_SIGNAL, 1);
+        assert_eq!(LecternBlockEntity::MAX_COMPARATOR_SIGNAL, 15);
+
+        // Strong power direction: only Up (powers block beneath)
+        assert!(LecternBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!LecternBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!LecternBlock::emits_strong_power(BlockDirection::North));
+
+        // Comparator signal calculations:
+        // No book => 0
+        assert_eq!(calculate_lectern_comparator_output(false, 0, 5), 0);
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 0), 0);
+
+        // Single page book => always 15
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 1), 15);
+
+        // 15 page book: page 0 => 1, page 7 => 8, page 14 => 15
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 15), 1);
+        assert_eq!(calculate_lectern_comparator_output(true, 7, 15), 8);
+        assert_eq!(calculate_lectern_comparator_output(true, 14, 15), 15);
+
+        // Clamping if page exceeds page_count - 1
+        assert_eq!(calculate_lectern_comparator_output(true, 20, 15), 15);
+    }
 }
