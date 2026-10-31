@@ -55,6 +55,20 @@ impl BreezeEntity {
     pub const SPEED_MULTIPLIER_WHEN_SLIDING: f32 = 0.6;
     pub const POST_LAND_SHOOT_MEMORY_TICKS: i32 = 100;
 
+    // Vanilla Breeze.java:42-50, 62-65 parity constants
+    pub const SLIDE_PARTICLES_AMOUNT: i32 = crate::entity::combat::BREEZE_SLIDE_PARTICLES_AMOUNT;
+    pub const IDLE_PARTICLES_AMOUNT: i32 = crate::entity::combat::BREEZE_IDLE_PARTICLES_AMOUNT;
+    pub const JUMP_TRAIL_PARTICLES_AMOUNT: i32 = crate::entity::combat::BREEZE_JUMP_TRAIL_PARTICLES_AMOUNT;
+    pub const JUMP_CIRCLE_DISTANCE_Y: i32 = crate::entity::combat::BREEZE_JUMP_CIRCLE_DISTANCE_Y;
+    pub const WHIRL_SOUND_FREQUENCY_MIN: i32 = crate::entity::combat::BREEZE_WHIRL_SOUND_FREQUENCY_MIN;
+    pub const WHIRL_SOUND_FREQUENCY_MAX: i32 = crate::entity::combat::BREEZE_WHIRL_SOUND_FREQUENCY_MAX;
+    pub const DEFLECTION_REVERSE_SCALE: f64 = crate::entity::combat::BREEZE_DEFLECTION_REVERSE_SCALE;
+    pub const DEFLECTION_MIN_ROTATION: f32 = crate::entity::combat::BREEZE_DEFLECTION_MIN_ROTATION;
+    pub const DEFLECTION_ROTATION_SPREAD: f32 = crate::entity::combat::BREEZE_DEFLECTION_ROTATION_SPREAD;
+    pub const POST_SLIDE_SHOOT_MEMORY_TICKS: i32 = crate::entity::combat::BREEZE_POST_SLIDE_SHOOT_MEMORY_TICKS;
+    pub const STUCK_SHOOT_MEMORY_TICKS: i32 = crate::entity::combat::BREEZE_STUCK_SHOOT_MEMORY_TICKS;
+    pub const TICKS_TO_REMEMBER_SEEN_TARGET: i32 = crate::entity::combat::BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET;
+
     #[must_use]
     pub const fn calculate_shoot_uncertainty(difficulty_id: u8) -> i32 {
         Self::UNCERTAINTY_BASE - (difficulty_id as i32) * Self::UNCERTAINTY_MULTIPLIER
@@ -104,6 +118,48 @@ impl BreezeEntity {
     pub fn is_within_inner_circle(dx: f64, dy: f64, dz: f64) -> bool {
         (dx * dx + dz * dz) <= (Self::INNER_CIRCLE_MIN_RANGE * Self::INNER_CIRCLE_MIN_RANGE)
             && dy.abs() <= Self::INNER_CIRCLE_MAX_Y
+    }
+
+    #[must_use]
+    pub const fn should_play_ambient_sound(has_target: bool, on_ground: bool) -> bool {
+        crate::entity::combat::should_breeze_play_ambient_sound(has_target, on_ground)
+    }
+
+    #[must_use]
+    pub const fn can_jump_from(is_honey_block: bool, air_blocks_above: i32) -> bool {
+        crate::entity::combat::can_breeze_jump_from_position(is_honey_block, air_blocks_above)
+    }
+
+    #[must_use]
+    pub fn should_deflect_projectile(projectile_type: &EntityType) -> bool {
+        projectile_type != &EntityType::BREEZE_WIND_CHARGE
+            && projectile_type != &EntityType::WIND_CHARGE
+            && crate::entity::projectile::is_projectile(projectile_type)
+    }
+
+    #[must_use]
+    pub const fn is_immune_to_breeze_damage(source_is_breeze: bool) -> bool {
+        source_is_breeze
+    }
+
+    #[must_use]
+    pub fn calculate_deflected_velocity(current_velocity: Vector3<f64>) -> Vector3<f64> {
+        let (vx, vy, vz) = crate::entity::combat::calculate_breeze_deflected_velocity(
+            current_velocity.x,
+            current_velocity.y,
+            current_velocity.z,
+        );
+        Vector3::new(vx, vy, vz)
+    }
+
+    #[must_use]
+    pub fn calculate_deflection_rotation(rand_val: f32) -> f32 {
+        crate::entity::combat::calculate_breeze_deflection_rotation(rand_val)
+    }
+
+    #[must_use]
+    pub const fn is_jump_trail_active(started_tick: i32) -> bool {
+        crate::entity::combat::is_breeze_jump_trail_active(started_tick)
     }
 
     #[must_use]
@@ -191,24 +247,32 @@ impl Mob for BreezeEntity {
             if src_type == &EntityType::BREEZE {
                 return false;
             }
-            if src_type != &EntityType::BREEZE_WIND_CHARGE && src_type != &EntityType::WIND_CHARGE {
-                if crate::entity::projectile::is_projectile(src_type) {
+            if src_type == &EntityType::BREEZE_WIND_CHARGE {
+                if let Some(owner_id) = src.get_owner_id() {
                     let world = self.get_entity().world.load();
-                    world.play_sound_fine(
-                        Sound::EntityBreezeDeflect,
-                        SoundCategory::Hostile,
-                        &self.get_entity().pos.load(),
-                        1.0,
-                        1.0,
-                    );
-                    let proj = src.get_entity();
-                    let velo = proj.velocity.load();
-                    proj.velocity.store(Vector3::new(-velo.x * 0.5, -velo.y * 0.5, -velo.z * 0.5));
-                    let rotation = 170.0 + rand::random::<f32>() * 20.0;
-                    proj.yaw.store(proj.yaw.load() + rotation);
-                    proj.velocity_dirty.store(true, Ordering::Relaxed);
-                    return false;
+                    if let Some(owner_ent) = world.get_entity_by_id(owner_id) {
+                        if owner_ent.get_entity().entity_type == &EntityType::BREEZE {
+                            return false;
+                        }
+                    }
                 }
+            }
+            if Self::should_deflect_projectile(src_type) {
+                let world = self.get_entity().world.load();
+                world.play_sound_fine(
+                    Sound::EntityBreezeDeflect,
+                    SoundCategory::Hostile,
+                    &self.get_entity().pos.load(),
+                    1.0,
+                    1.0,
+                );
+                let proj = src.get_entity();
+                let velo = proj.velocity.load();
+                proj.velocity.store(Self::calculate_deflected_velocity(velo));
+                let rotation = Self::calculate_deflection_rotation(rand::random::<f32>());
+                proj.yaw.store(proj.yaw.load() + rotation);
+                proj.velocity_dirty.store(true, Ordering::Relaxed);
+                return false;
             }
         }
         true
@@ -219,8 +283,10 @@ impl Mob for BreezeEntity {
         let silent = entity.silent.load(Ordering::Relaxed);
         let world = entity.world.load();
 
-        if !silent && rand::random_range(0..80) == 0 {
-            let sound = if entity.on_ground.load(Ordering::Relaxed) {
+        let has_target = self.mob_entity.get_target().is_some();
+        let on_ground = entity.on_ground.load(Ordering::Relaxed);
+        if !silent && Self::should_play_ambient_sound(has_target, on_ground) && rand::random_range(0..80) == 0 {
+            let sound = if on_ground {
                 Sound::EntityBreezeIdleGround
             } else {
                 Sound::EntityBreezeIdleAir

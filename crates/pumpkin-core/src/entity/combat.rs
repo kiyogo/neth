@@ -8460,6 +8460,122 @@ pub const VAULT_EJECTION_Y_OFFSET: f64 = 1.2;
 #[allow(dead_code)]
 pub const VAULT_EJECTION_VELOCITY: f64 = 2.0;
 
+// =========================================================================
+// Gap 372: Breeze Wind Charge Deflection Immunity, Idle Jump Particles & Shoot Inhale Angles/Timings Parity
+// Vanilla References:
+// - `Breeze.java:42-50, 62-65, 129, 158-168, 185-188, 197-203, 245-247, 264-266`
+// - `BreezeAi.java:30-35, 83-104`
+// - `Shoot.java:20-27, 88-96`
+// - `LongJump.java:34-41, 124-168, 203-242`
+// - `Slide.java:32-35, 39-58`
+// - `ShootWhenStuck.java:29-39`
+// =========================================================================
+
+#[allow(dead_code)]
+pub const BREEZE_SLIDE_PARTICLES_AMOUNT: i32 = 20;
+#[allow(dead_code)]
+pub const BREEZE_IDLE_PARTICLES_AMOUNT: i32 = 1;
+#[allow(dead_code)]
+pub const BREEZE_JUMP_TRAIL_PARTICLES_AMOUNT: i32 = 3;
+#[allow(dead_code)]
+pub const BREEZE_JUMP_TRAIL_DURATION_TICKS: i32 = 5;
+#[allow(dead_code)]
+pub const BREEZE_JUMP_CIRCLE_DISTANCE_Y: i32 = 10;
+#[allow(dead_code)]
+pub const BREEZE_WHIRL_SOUND_FREQUENCY_MIN: i32 = 1;
+#[allow(dead_code)]
+pub const BREEZE_WHIRL_SOUND_FREQUENCY_MAX: i32 = 80;
+#[allow(dead_code)]
+pub const BREEZE_DEFLECTION_REVERSE_SCALE: f64 = -0.5;
+#[allow(dead_code)]
+pub const BREEZE_DEFLECTION_MIN_ROTATION: f32 = 170.0;
+#[allow(dead_code)]
+pub const BREEZE_DEFLECTION_ROTATION_SPREAD: f32 = 20.0;
+#[allow(dead_code)]
+pub const BREEZE_POST_SLIDE_SHOOT_MEMORY_TICKS: i32 = 60;
+#[allow(dead_code)]
+pub const BREEZE_STUCK_SHOOT_MEMORY_TICKS: i32 = 60;
+#[allow(dead_code)]
+pub const BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET: i32 = 100;
+#[allow(dead_code)]
+pub const BREEZE_INNER_CIRCLE_MIN_RANGE: f64 = 4.0;
+#[allow(dead_code)]
+pub const BREEZE_INNER_CIRCLE_MAX_Y: f64 = 10.0;
+#[allow(dead_code)]
+pub const BREEZE_FIRING_Y_OFFSET: f64 = 0.3;
+#[allow(dead_code)]
+pub const BREEZE_MAX_HEAD_Y_ROT: i32 = 30;
+#[allow(dead_code)]
+pub const BREEZE_HEAD_ROT_SPEED: i32 = 25;
+#[allow(dead_code)]
+pub const BREEZE_ATTACK_RANGE_MAX_SQRT: f64 = 256.0;
+#[allow(dead_code)]
+pub const BREEZE_PROJECTILE_MOVEMENT_SCALE: f32 = 0.7;
+#[allow(dead_code)]
+pub const BREEZE_SHOOT_INITIAL_DELAY_TICKS: i32 = 15;
+#[allow(dead_code)]
+pub const BREEZE_SHOOT_RECOVER_DELAY_TICKS: i32 = 4;
+#[allow(dead_code)]
+pub const BREEZE_SHOOT_COOLDOWN_TICKS: i32 = 10;
+#[allow(dead_code)]
+pub const BREEZE_UNCERTAINTY_BASE: i32 = 5;
+#[allow(dead_code)]
+pub const BREEZE_UNCERTAINTY_MULTIPLIER: i32 = 4;
+#[allow(dead_code)]
+pub const BREEZE_REQUIRED_AIR_BLOCKS_ABOVE: i32 = 4;
+#[allow(dead_code)]
+pub const BREEZE_JUMP_COOLDOWN_TICKS: i32 = 10;
+#[allow(dead_code)]
+pub const BREEZE_JUMP_COOLDOWN_WHEN_HURT_TICKS: i32 = 2;
+#[allow(dead_code)]
+pub const BREEZE_INHALING_DURATION_TICKS: i32 = 10;
+#[allow(dead_code)]
+pub const BREEZE_DEFAULT_MAX_JUMP_VELOCITY: f32 = 1.4;
+#[allow(dead_code)]
+pub const BREEZE_MAX_JUMP_VELOCITY_MULTIPLIER: f32 = 0.058_333_334;
+#[allow(dead_code)]
+pub const BREEZE_ALLOWED_JUMP_ANGLES: &[i32] = &[40, 55, 60, 75, 80];
+#[allow(dead_code)]
+pub const BREEZE_TOO_CLOSE_FOR_JUMP_DISTANCE: f32 = 4.0;
+#[allow(dead_code)]
+pub const BREEZE_SPEED_MULTIPLIER_WHEN_SLIDING: f32 = 0.6;
+#[allow(dead_code)]
+pub const BREEZE_POST_LAND_SHOOT_MEMORY_TICKS: i32 = 100;
+
+/// Checks if Breeze should play idle ambient sound (Breeze.java:185-188: only if target is null OR not on ground)
+#[must_use]
+pub const fn should_breeze_play_ambient_sound(has_target: bool, on_ground: bool) -> bool {
+    !has_target || !on_ground
+}
+
+/// Checks if Breeze can long jump from current position (LongJump.java:211-225)
+#[must_use]
+pub const fn can_breeze_jump_from_position(is_honey_block: bool, air_blocks_above: i32) -> bool {
+    !is_honey_block && air_blocks_above >= BREEZE_REQUIRED_AIR_BLOCKS_ABOVE
+}
+
+/// Calculates reverse deflection velocity (-0.5 * vel) (ProjectileDeflection.java:13)
+#[must_use]
+pub fn calculate_breeze_deflected_velocity(vx: f64, vy: f64, vz: f64) -> (f64, f64, f64) {
+    (
+        vx * BREEZE_DEFLECTION_REVERSE_SCALE,
+        vy * BREEZE_DEFLECTION_REVERSE_SCALE,
+        vz * BREEZE_DEFLECTION_REVERSE_SCALE,
+    )
+}
+
+/// Calculates deflection yaw rotation (170.0 + rand * 20.0) (ProjectileDeflection.java:12)
+#[must_use]
+pub fn calculate_breeze_deflection_rotation(rand_val: f32) -> f32 {
+    BREEZE_DEFLECTION_MIN_ROTATION + rand_val * BREEZE_DEFLECTION_ROTATION_SPREAD
+}
+
+/// Checks if jump trail particle emission is active (Breeze.java:158-168: <= 5 ticks)
+#[must_use]
+pub const fn is_breeze_jump_trail_active(tick: i32) -> bool {
+    tick <= BREEZE_JUMP_TRAIL_DURATION_TICKS
+}
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]
@@ -20449,5 +20565,74 @@ mod tests {
         assert!(VaultBlock::is_connected_player_in_range(0.0, 4.5));
         assert!(VaultBlock::is_connected_player_in_range(20.25, 4.5)); // 4.5^2 = 20.25
         assert!(!VaultBlock::is_connected_player_in_range(20.26, 4.5));
+    }
+
+    #[test]
+    fn test_breeze_deflection_immunity_jump_particles_and_shoot_timings_parity() {
+        use crate::entity::mob::breeze::BreezeEntity;
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Particle count & timing parity with Vanilla Breeze.java:42-50
+        assert_eq!(BREEZE_SLIDE_PARTICLES_AMOUNT, 20);
+        assert_eq!(BREEZE_IDLE_PARTICLES_AMOUNT, 1);
+        assert_eq!(BREEZE_JUMP_TRAIL_PARTICLES_AMOUNT, 3);
+        assert_eq!(BREEZE_JUMP_TRAIL_DURATION_TICKS, 5);
+        assert_eq!(BREEZE_JUMP_CIRCLE_DISTANCE_Y, 10);
+        assert_eq!(BreezeEntity::SLIDE_PARTICLES_AMOUNT, 20);
+        assert_eq!(BreezeEntity::IDLE_PARTICLES_AMOUNT, 1);
+        assert_eq!(BreezeEntity::JUMP_TRAIL_PARTICLES_AMOUNT, 3);
+        assert_eq!(BreezeEntity::JUMP_CIRCLE_DISTANCE_Y, 10);
+
+        // 2. Whirl sound frequency range (Breeze.java:48-49: [1, 80] ticks)
+        assert_eq!(BREEZE_WHIRL_SOUND_FREQUENCY_MIN, 1);
+        assert_eq!(BREEZE_WHIRL_SOUND_FREQUENCY_MAX, 80);
+        assert_eq!(BreezeEntity::WHIRL_SOUND_FREQUENCY_MIN, 1);
+        assert_eq!(BreezeEntity::WHIRL_SOUND_FREQUENCY_MAX, 80);
+
+        // 3. Projectile deflection reverse velocity and rotation spread parity (ProjectileDeflection.java:11-17)
+        assert_eq!(BREEZE_DEFLECTION_REVERSE_SCALE, -0.5);
+        assert_eq!(BREEZE_DEFLECTION_MIN_ROTATION, 170.0);
+        assert_eq!(BREEZE_DEFLECTION_ROTATION_SPREAD, 20.0);
+        let (dvx, dvy, dvz) = calculate_breeze_deflected_velocity(2.0, -1.0, 4.0);
+        assert!((dvx - (-1.0)).abs() < 1e-6);
+        assert!((dvy - 0.5).abs() < 1e-6);
+        assert!((dvz - (-2.0)).abs() < 1e-6);
+        assert!((calculate_breeze_deflection_rotation(0.0) - 170.0).abs() < 1e-6);
+        assert!((calculate_breeze_deflection_rotation(1.0) - 190.0).abs() < 1e-6);
+        assert!((calculate_breeze_deflection_rotation(0.5) - 180.0).abs() < 1e-6);
+
+        // 4. Deflection rules: does NOT deflect BREEZE_WIND_CHARGE or WIND_CHARGE (Breeze.java:198)
+        assert!(!BreezeEntity::should_deflect_projectile(&EntityType::BREEZE_WIND_CHARGE));
+        assert!(!BreezeEntity::should_deflect_projectile(&EntityType::WIND_CHARGE));
+        assert!(BreezeEntity::should_deflect_projectile(&EntityType::ARROW));
+        assert!(BreezeEntity::should_deflect_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(BreezeEntity::should_deflect_projectile(&EntityType::TRIDENT));
+
+        // 5. Breeze damage invulnerability (Breeze.java:264-266: immune to other Breezes)
+        assert!(BreezeEntity::is_immune_to_breeze_damage(true));
+        assert!(!BreezeEntity::is_immune_to_breeze_damage(false));
+
+        // 6. Ambient sound logic: only when no target OR not on ground (Breeze.java:185-188)
+        assert!(should_breeze_play_ambient_sound(false, true));   // No target, on ground -> plays
+        assert!(should_breeze_play_ambient_sound(false, false));  // No target, in air -> plays
+        assert!(should_breeze_play_ambient_sound(true, false));   // Has target, in air -> plays
+        assert!(!should_breeze_play_ambient_sound(true, true));   // Has target, on ground -> SILENT
+
+        // 7. Long jump environmental prerequisites (LongJump.java:211-225)
+        assert!(can_breeze_jump_from_position(false, 4));
+        assert!(can_breeze_jump_from_position(false, 5));
+        assert!(!can_breeze_jump_from_position(true, 4));  // Blocked on honey block
+        assert!(!can_breeze_jump_from_position(false, 3)); // Blocked if air blocks < 4
+
+        // 8. Jump trail particle duration check (Breeze.java:159)
+        assert!(is_breeze_jump_trail_active(1));
+        assert!(is_breeze_jump_trail_active(5));
+        assert!(!is_breeze_jump_trail_active(6));
+
+        // 9. AI Memory tick expiries parity (Slide.java:56, ShootWhenStuck.java:38, LongJump.java:166)
+        assert_eq!(BREEZE_POST_SLIDE_SHOOT_MEMORY_TICKS, 60);
+        assert_eq!(BREEZE_STUCK_SHOOT_MEMORY_TICKS, 60);
+        assert_eq!(BREEZE_POST_LAND_SHOOT_MEMORY_TICKS, 100);
+        assert_eq!(BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET, 100);
     }
 }

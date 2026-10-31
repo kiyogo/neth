@@ -109,6 +109,13 @@ impl Goal for BreezeAttackGoal {
             };
 
             world.play_sound_fine(
+                Sound::EntityBreezeCharge,
+                SoundCategory::Hostile,
+                &breeze_pos,
+                1.0,
+                1.0,
+            );
+            world.play_sound_fine(
                 Sound::EntityBreezeJump,
                 SoundCategory::Hostile,
                 &breeze_pos,

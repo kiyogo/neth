@@ -9280,3 +9280,31 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported `VAULT_` parity constants.
     - Added unit test `test_vault_reward_ejection_connected_particles_and_sound_pitch_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 372: Breeze Wind Charge Deflection Immunity (Breeze Damage Immunity), Idle Jump Particles (3 Blocks / 5 Ticks), Whirl Audio Frequency & Shoot Inhale Angles/Timings Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.breeze.Breeze.java:42-50, 62-65, 129, 158-168, 185-188, 197-203, 245-247, 264-266`, `BreezeAi.java:30-35, 83-104`, `Shoot.java:20-27, 88-96`, `LongJump.java:34-41, 124-168, 203-242`, `Slide.java:32-35, 39-58`, `ShootWhenStuck.java:29-39`.
+- **Vanilla Mechanics**:
+  1. *Deflection & Damage Immunity*:
+     - Projectile Deflection: Breeze deflects all incoming projectiles (`ProjectileDeflection.REVERSE`) with velocity reversal `-0.5 * vel` (`BREEZE_DEFLECTION_REVERSE_SCALE = -0.5`), random yaw rotation deflection `170.0F + random.nextFloat() * 20.0F` (`DEFLECTION_MIN_ROTATION = 170.0`, `DEFLECTION_ROTATION_SPREAD = 20.0`), and plays `SoundEvents.BREEZE_DEFLECT` (volume 1.0, pitch 1.0, hostile sound source).
+     - Deflection exceptions: Breeze does *NOT* deflect `EntityType.BREEZE_WIND_CHARGE` or `EntityType.WIND_CHARGE` (`Breeze.java:198`).
+     - Damage Invulnerability: `Breeze.isInvulnerableTo(level, source)` checks if `source.getEntity() instanceof Breeze`. A Breeze is completely invulnerable to damage from any other Breeze, including Breeze Wind Charges shot by Breezes.
+  2. *Particle Emission & Audio Frequency*:
+     - Particles: Sliding emits 20 block particles (`SLIDE_PARTICLES_AMOUNT = 20`). Standing/Shooting/Inhaling emits 1 ground particle (`IDLE_PARTICLES_AMOUNT = 1`). Long jumping emits 3 ground trail particles (`JUMP_TRAIL_PARTICLES_AMOUNT = 3`) for the first 5 ticks of the jump (`JUMP_TRAIL_DURATION_TICKS = 5`).
+     - Ambient sounds: `playAmbientSound` only plays idle sounds (`BREEZE_IDLE_GROUND` or `BREEZE_IDLE_AIR`) if `target == null || !onGround`. When engaging a target on ground, ambient sounds remain silent.
+     - Whirl audio: plays `SoundEvents.BREEZE_WHIRL` with randomized tick timer between 1 and 80 ticks inclusive (`WHIRL_SOUND_FREQUENCY_MIN = 1`, `WHIRL_SOUND_FREQUENCY_MAX = 80`), volume `0.8 + 0.2 * rand`, pitch `0.7 + 0.4 * rand`.
+  3. *Jump & Shoot AI Delays and Timings*:
+     - Shoot: `SHOOT_INITIAL_DELAY_TICKS = 15`, `SHOOT_RECOVER_DELAY_TICKS = 4`, `SHOOT_COOLDOWN_TICKS = 10`, `PROJECTILE_MOVEMENT_SCALE = 0.7`. Plays `SoundEvents.BREEZE_INHALE` (1.0, 1.0) on start, and `SoundEvents.BREEZE_SHOOT` (1.5, 1.0) upon projectile spawn. Inaccuracy formula: `5 - difficulty * 4`.
+     - Long Jump: `REQUIRED_AIR_BLOCKS_ABOVE = 4`, cannot jump from honey blocks. Jump velocity formula: `0.058333334 * follow_range`. Allowed angles: `[40, 55, 60, 75, 80]`. Plays `SoundEvents.BREEZE_CHARGE` (1.0, 1.0) during the 10-tick inhaling phase (`INHALING_DURATION_TICKS = 10`), `SoundEvents.BREEZE_JUMP` (1.0, 1.0) on launch, and `SoundEvents.BREEZE_LAND` (1.0, 1.0) on landing. Cooldown is 2 ticks if hurt, 10 ticks otherwise. Sets `BREEZE_SHOOT` memory expiry to 100 ticks.
+     - Slide & Stuck: sliding speed multiplier 0.6 (`SPEED_MULTIPLIER_WHEN_SLIDING = 0.6`). On slide completion or when stuck (passenger/water/levitation), sets `BREEZE_SHOOT` memory with 60 ticks expiry (`POST_SLIDE_SHOOT_MEMORY_TICKS = 60`, `STUCK_SHOOT_MEMORY_TICKS = 60`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/mob/breeze.rs`:
+    - Exported constants `SLIDE_PARTICLES_AMOUNT = 20`, `IDLE_PARTICLES_AMOUNT = 1`, `JUMP_TRAIL_PARTICLES_AMOUNT = 3`, `JUMP_CIRCLE_DISTANCE_Y = 10`, `WHIRL_SOUND_FREQUENCY_MIN = 1`, `WHIRL_SOUND_FREQUENCY_MAX = 80`, `DEFLECTION_REVERSE_SCALE = -0.5`, `DEFLECTION_MIN_ROTATION = 170.0`, `DEFLECTION_ROTATION_SPREAD = 20.0`, `POST_SLIDE_SHOOT_MEMORY_TICKS = 60`, `STUCK_SHOOT_MEMORY_TICKS = 60`, `TICKS_TO_REMEMBER_SEEN_TARGET = 100`.
+    - Added helper methods `should_play_ambient_sound`, `can_jump_from`, `should_deflect_projectile`, `is_immune_to_breeze_damage`, `calculate_deflected_velocity`, `calculate_deflection_rotation`, `is_jump_trail_active`.
+    - Updated `pre_damage` to check `should_deflect_projectile`, deflection velocity & rotation formulas, and immune damage check from Breeze Wind Charges fired by Breezes.
+    - Updated `mob_tick` to check `should_play_ambient_sound(has_target, on_ground)`.
+  - In `crates/pumpkin-core/src/entity/ai/goal/breeze_attack.rs`:
+    - Added `Sound::EntityBreezeCharge` audio playback on jump initiation.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported parity constants and helper functions.
+    - Added unit test `test_breeze_deflection_immunity_jump_particles_and_shoot_timings_parity`.
+- **Status**: Completed & Verified.
