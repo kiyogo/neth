@@ -18738,4 +18738,52 @@ mod tests {
         assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 4), 12);
         assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 4), 5);
     }
+
+    #[test]
+    fn test_decorated_pot_sherds_insert_pitch_shattering_and_comparator_parity() {
+        use crate::block::blocks::decorated_pot::DecoratedPotBlock;
+
+        // Constants parity with Vanilla DecoratedPotBlock.java
+        assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
+        assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
+
+        // Shatter condition: broken with tool and without silk touch
+        assert!(DecoratedPotBlock::can_break_pot_shatter(true, false));
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(true, true)); // silk touch preserves pot
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(false, false)); // fist preserves pot
+
+        // Insert sound pitch calculation: 0.7 + 0.5 * (count / maxStack)
+        // Empty to 1 item in 64-stack: 0.7 + 0.5 * (1 / 64)
+        assert!((DecoratedPotBlock::calculate_insert_pitch(1, 64) - (0.7 + 0.5 * (1.0 / 64.0))).abs() < 1e-6);
+        // Half full (32 / 64): 0.7 + 0.5 * 0.5 = 0.95
+        assert!((DecoratedPotBlock::calculate_insert_pitch(32, 64) - 0.95).abs() < 1e-6);
+        // Full (64 / 64): 0.7 + 0.5 * 1.0 = 1.2
+        assert!((DecoratedPotBlock::calculate_insert_pitch(64, 64) - 1.2).abs() < 1e-6);
+
+        // Comparator output formula parity:
+        // Empty -> 0
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 64), 0);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 16), 0);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 1), 0);
+
+        // 64-stack item:
+        // 1 item -> 1 + floor((1/64) * 14) = 1
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 64), 1);
+        // 32 items -> 1 + floor(0.5 * 14) = 1 + 7 = 8
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(32, 64), 8);
+        // 64 items -> 1 + floor(1.0 * 14) = 1 + 14 = 15
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(64, 64), 15);
+
+        // 16-stack item (e.g. Ender Pearls):
+        // 1 item -> 1 + floor((1/16) * 14) = 1
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 16), 1);
+        // 8 items -> 1 + floor(0.5 * 14) = 8
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(8, 16), 8);
+        // 16 items -> 15
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(16, 16), 15);
+
+        // 1-stack item (e.g. Sword, Elytra):
+        // 1 item -> 1 + floor(1.0 * 14) = 15
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 1), 15);
+    }
 }

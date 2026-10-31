@@ -8426,3 +8426,21 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Exported `DEFAULT_PLAYER_SCAN_RANGE`, `DEFAULT_COOLDOWN_TICKS`, `DETECT_PLAYER_SPAWN_BUFFER_TICKS`, and `MAX_MOB_TRACKING_DISTANCE` on `TrialSpawnerBlock`.
   - Added helpers `calculate_target_total_mobs`, `calculate_target_simultaneous_mobs`, `is_within_player_scan_range`, and `is_within_mob_tracking_distance`.
   - Added unit test `test_trial_spawner_player_scaling_scan_range_and_cooldown_parity` verifying multi-player wave scaling, scan ranges, and cooldown timing.
+
+### Gap 340: Decorated Pot Crafting, Sherd Decoration (4 Faces), Shattering (Loot & Sherds) & Comparator Output Parity
+
+- **Vanilla Reference**: `DecoratedPotBlock.java:1-247`, `DecoratedPotBlockEntity.java:1-120`, `AbstractContainerMenu.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.20+, Decorated Pots feature 4 face slots (`back`, `left`, `right`, `front`) accepting pottery sherds or bricks.
+  - Can hold up to 1 stack of an item type. Right-clicking with items inserts 1 item with progressive pitch bend `0.7F + 0.5F * (count / maxStackSize)` playing `SoundEvents.DECORATED_POT_INSERT` and emitting 7 dust plume particles (`INSERT_DUST_PLUME_PARTICLES = 7`).
+  - Emits analog comparator signal according to container inventory formula:
+    - Empty pot: 0
+    - Non-empty pot: `1 + floor((count / maxStackSize) * 14.0)` (scaling to 15 at a full stack, whether max stack size is 64, 16, or 1).
+  - Breaking mechanics:
+    - Broken with any tool tagged `#minecraft:breaks_decorated_pots` without silk touch: sets `CRACKED = true`, shattering into the 4 constituent sherds/bricks and ejecting stored items with `SoundEvents.DECORATED_POT_SHATTER`.
+    - Broken by hand or with silk touch: preserves the pot intact as a block item with block entity tags.
+    - Hit by projectiles: shatters automatically.
+- **Neth Changes**:
+  - Exported `TOTAL_SHERD_FACES = 4` and `INSERT_DUST_PLUME_PARTICLES = 7` on `DecoratedPotBlock`.
+  - Added helpers `calculate_comparator_output`, `calculate_insert_pitch`, and `can_break_pot_shatter`.
+  - Added unit test `test_decorated_pot_sherds_insert_pitch_shattering_and_comparator_parity` covering pitch interpolation, shattering conditions, and comparator output across 64-stack, 16-stack, and 1-stack items.
