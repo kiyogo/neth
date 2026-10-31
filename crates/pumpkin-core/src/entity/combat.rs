@@ -16940,4 +16940,68 @@ mod tests {
         assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, true), 4);
         assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_OXIDIZED_COPPER_BULB, true), 4);
     }
+#[test]
+    fn test_chiseled_bookshelf_slot_raycasting_and_comparator_parity() {
+        use crate::block::blocks::chiseled_bookshelf::ChiseledBookshelfBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+
+        // Constants verification
+        assert_eq!(ChiseledBookshelfBlock::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlock::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlock::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlock::COLUMNS, 3);
+        assert_eq!(ChiseledBookshelfBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ChiseledBookshelfBlock::MAX_COMPARATOR_OUTPUT, 6);
+        assert_eq!(ChiseledBookshelfBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert!(!ChiseledBookshelfBlock::DEFAULT_SLOT_OCCUPIED);
+
+        // Section subdivision calculation (16.0 / maxSections)
+        assert_eq!(ChiseledBookshelfBlock::get_section(0.1, 3), 0);
+        assert_eq!(ChiseledBookshelfBlock::get_section(0.5, 3), 1);
+        assert_eq!(ChiseledBookshelfBlock::get_section(0.9, 3), 2);
+
+        // 6-slot 2x3 grid mapping from (hit_x, hit_y)
+        // Top row (hit_y > 0.5): slots 0, 1, 2
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.9), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.9), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.9), 2);
+        // Bottom row (hit_y < 0.5): slots 3, 4, 5
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.1), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.1), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.1), 5);
+
+        // Relative hit coordinates by facing
+        // Hit on front face succeeds
+        assert_eq!(
+            ChiseledBookshelfBlock::get_relative_hit_coords(0.25, 0.75, 0.0, HorizontalFacing::North, HorizontalFacing::North),
+            Some((0.75, 0.75))
+        );
+        assert_eq!(
+            ChiseledBookshelfBlock::get_relative_hit_coords(0.25, 0.75, 0.0, HorizontalFacing::South, HorizontalFacing::South),
+            Some((0.25, 0.75))
+        );
+        assert_eq!(
+            ChiseledBookshelfBlock::get_relative_hit_coords(0.0, 0.75, 0.25, HorizontalFacing::West, HorizontalFacing::West),
+            Some((0.25, 0.75))
+        );
+        assert_eq!(
+            ChiseledBookshelfBlock::get_relative_hit_coords(0.0, 0.75, 0.25, HorizontalFacing::East, HorizontalFacing::East),
+            Some((0.75, 0.75))
+        );
+        // Hit on non-front face returns None
+        assert_eq!(
+            ChiseledBookshelfBlock::get_relative_hit_coords(0.25, 0.75, 0.0, HorizontalFacing::South, HorizontalFacing::North),
+            None
+        );
+
+        // Comparator output formula: lastInteractedSlot + 1 (1..=6, or 0 if -1)
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(-1), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(0), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(1), 2);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(2), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(3), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(4), 5);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(5), 6);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(6), 0);
+    }
 }

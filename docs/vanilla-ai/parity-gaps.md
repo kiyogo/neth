@@ -7629,3 +7629,34 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_comparator_output_value`, `evaluate_t_flip_flop`, and `get_light_level`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_copper_bulb_t_flip_flop_and_light_levels_parity`.
+
+### Gap 310: Chiseled Bookshelf Slot Hit Raycasting (0..5), Book Storage & Comparator Output (1..6) Parity
+- **Vanilla Reference**:
+  - `ChiseledBookShelfBlock.java:34-192`, `SelectableSlotContainer.java:1-42`, `ChiseledBookShelfBlockEntity.java:1-120`:
+    - Capacity and layout constants:
+      - Book capacity: `MAX_BOOKS_IN_STORAGE = 6` slots (0 to 5).
+      - Grid dimensions: `ROWS = 2`, `COLUMNS = 3`, `BOOKS_PER_ROW = 3`.
+      - Comparator signal range: `MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 6`.
+    - Default state properties:
+      - `DEFAULT_FACING = HorizontalFacing::North`, `SLOT_X_OCCUPIED = false` for slots 0 through 5.
+    - Precision raycasting hit detection (`SelectableSlotContainer.getHitSlot`):
+      - Slot selection is permitted strictly on the front face matching `FACING`. Hits from top, bottom, sides, or back are ignored.
+      - Relative planar coordinates are computed per horizontal face:
+        - North: `(1.0 - hitX, hitY)`.
+        - South: `(hitX, hitY)`.
+        - West: `(hitZ, hitY)`.
+        - East: `(1.0 - hitZ, hitY)`.
+      - Grid indexing:
+        - `row = clamp(floor((1.0 - hitY) / 0.5), 0, 1)`.
+        - `column = clamp(floor(hitX / (1.0 / 3.0)), 0, 2)`.
+        - `slot = column + row * 3`.
+        - Top row ($Y > 0.5$): slot 0 (left), slot 1 (middle), slot 2 (right).
+        - Bottom row ($Y < 0.5$): slot 3 (left), slot 4 (middle), slot 5 (right).
+    - Comparator analog output (`getAnalogOutputSignal`):
+      - Emits `lastInteractedSlot + 1` (signal strength 1 to 6 upon interaction, 0 when undisturbed).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Exported constants `MAX_BOOKS_IN_STORAGE`, `BOOKS_PER_ROW`, `ROWS`, `COLUMNS`, `MIN_COMPARATOR_OUTPUT`, `MAX_COMPARATOR_OUTPUT`, `DEFAULT_FACING`, and `DEFAULT_SLOT_OCCUPIED`.
+    - Exported helpers `get_section`, `calculate_hit_slot`, `calculate_comparator_output`, `is_slot_occupied`, `slot_bitmask_from_properties`, `get_occupied_slot_count`, and `get_relative_hit_coords`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_chiseled_bookshelf_slot_raycasting_and_comparator_parity`.

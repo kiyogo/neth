@@ -126,6 +126,27 @@ impl ChiseledBookshelfBlock {
     pub const COLUMNS: usize = 3;
     pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
     pub const MAX_COMPARATOR_OUTPUT: u8 = 6;
+    pub const DEFAULT_FACING: HorizontalFacing = HorizontalFacing::North;
+    pub const DEFAULT_SLOT_OCCUPIED: bool = false;
+
+    #[must_use]
+    pub const fn get_relative_hit_coords(
+        cursor_x: f32,
+        cursor_y: f32,
+        cursor_z: f32,
+        hit_face: HorizontalFacing,
+        block_facing: HorizontalFacing,
+    ) -> Option<(f32, f32)> {
+        if hit_face as u8 != block_facing as u8 {
+            return None;
+        }
+        match hit_face {
+            HorizontalFacing::North => Some((1.0 - cursor_x, cursor_y)),
+            HorizontalFacing::South => Some((cursor_x, cursor_y)),
+            HorizontalFacing::West => Some((cursor_z, cursor_y)),
+            HorizontalFacing::East => Some((1.0 - cursor_z, cursor_y)),
+        }
+    }
 
     pub fn get_section(relative_coordinate: f32, max_sections: usize) -> usize {
         let targeted_pixel = relative_coordinate * 16.0;
