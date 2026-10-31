@@ -7185,3 +7185,28 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `emits_strong_power`, `calculate_effective_sky_brightness`, `calculate_inverted_signal`, and `calculate_normal_signal`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_daylight_detector_signals_modes_weather_and_power_parity`.
+
+
+### Gap 295: Observer Detecting Neighbor Updates, 2-Tick Pulse Generation & Placement Orientation Parity
+- **Vanilla Reference**:
+  - `ObserverBlock.java:21-135`:
+    - Default state: `FACING = Direction.SOUTH`, `POWERED = false`.
+    - Placement orientation (`getStateForPlacement`):
+      - Uses `context.getNearestLookingDirection().getOpposite().getOpposite()`, which equals `context.getNearestLookingDirection()`.
+      - Faces directly in the direction the player is looking (including Up and Down based on player pitch and yaw: `Direction.orderedByNearest(player)[0]`).
+    - Detection & update mechanics (`updateShape`):
+      - When a neighbor in direction `FACING` updates: `directionToNeighbour == state.getValue(FACING)` and `!POWERED`.
+      - Schedules block tick with delay of 2 ticks (`DETECTION_DELAY = 2`).
+    - Pulse emission & unpowering (`tick`):
+      - When not powered: sets `POWERED = true`, schedules unpower tick in 2 ticks (`PULSE_DURATION = 2`), and updates neighbors behind observer (`updateNeighborsInFront`).
+      - When powered: sets `POWERED = false`, and updates neighbors behind observer.
+    - Signal power emission (`getSignal`, `getDirectSignal`):
+      - Emits both weak and strong power of 15 (`POWER_ON = 15`) in direction `FACING` (to the neighbor behind the observer).
+      - Redstone wire connects to the output side (`shouldRedstoneWireConnectTo`: `direction == state.getValue(FACING)`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/observer.rs`:
+    - Fixed placement facing orientation: replaced `args.player.get_entity().get_facing()` (which ignored pitch/vertical orientation) with `calculate_facing_from_player(&args.player.get_entity().get_entity_facing_order())` (matching Vanilla `Direction.orderedByNearest(player)[0]`).
+    - Exported constants `PULSE_DURATION = 2`, `DETECTION_DELAY = 2`, `POWER_ON = 15`, `POWER_OFF = 0`, `DEFAULT_POWERED = false`, and `DEFAULT_FACING = Facing::South`.
+    - Exported helpers `get_power_signal`, `emits_power_in_direction`, `get_observed_direction`, `get_output_direction`, `calculate_facing_from_player`, and `is_observed_direction`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_observer_pulse_timing_facing_and_power_parity`.

@@ -5,7 +5,7 @@ use crate::block::{
     OnScheduledTickArgs, OnStateReplacedArgs, PlacedArgs,
 };
 use crate::entity::EntityBase;
-use pumpkin_data::{Block, BlockStateId, FacingExt, block_properties::ObserverLikeProperties};
+use pumpkin_data::{Block, BlockDirection, BlockStateId, FacingExt, block_properties::Facing, block_properties::ObserverLikeProperties};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::{tick::TickPriority, world::BlockFlags};
@@ -18,7 +18,9 @@ pub struct ObserverBlock;
 impl BlockBehaviour for ObserverBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = ObserverLikeProperties::default(args.block);
-        props.facing = args.player.get_entity().get_facing();
+        props.facing = Self::calculate_facing_from_player(
+            &args.player.get_entity().get_entity_facing_order(),
+        );
         props.to_state_id(args.block)
     }
 
@@ -118,6 +120,48 @@ impl ObserverBlock {
     pub const DETECTION_DELAY: u32 = 2;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_FACING: Facing = Facing::South;
+
+    #[must_use]
+    pub const fn get_power_signal(powered: bool) -> u8 {
+        if powered {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
+
+    #[must_use]
+    pub fn emits_power_in_direction(
+        observer_facing: BlockDirection,
+        query_direction: BlockDirection,
+    ) -> bool {
+        observer_facing == query_direction
+    }
+
+    #[must_use]
+    pub const fn get_observed_direction(facing: BlockDirection) -> BlockDirection {
+        facing
+    }
+
+    #[must_use]
+    pub fn get_output_direction(facing: BlockDirection) -> BlockDirection {
+        facing.opposite()
+    }
+
+    #[must_use]
+    pub const fn calculate_facing_from_player(facing_order: &[Facing; 6]) -> Facing {
+        facing_order[0]
+    }
+
+    #[must_use]
+    pub fn is_observed_direction(
+        observer_facing: BlockDirection,
+        neighbor_dir: BlockDirection,
+    ) -> bool {
+        observer_facing == neighbor_dir
+    }
 
     fn update_neighbors(
         world: &Arc<World>,

@@ -16057,4 +16057,56 @@ mod tests {
             DaylightDetectorBlock::calculate_inverted_signal(15)
         );
     }
+
+    #[test]
+    fn test_observer_pulse_timing_facing_and_power_parity() {
+        use crate::block::blocks::redstone::observer::ObserverBlock;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::Facing;
+
+        // Constants verification
+        assert_eq!(ObserverBlock::PULSE_DURATION, 2);
+        assert_eq!(ObserverBlock::DETECTION_DELAY, 2);
+        assert_eq!(ObserverBlock::POWER_ON, 15);
+        assert_eq!(ObserverBlock::POWER_OFF, 0);
+        assert!(!ObserverBlock::DEFAULT_POWERED);
+        assert_eq!(ObserverBlock::DEFAULT_FACING, Facing::South);
+
+        // Power signal logic
+        assert_eq!(ObserverBlock::get_power_signal(true), 15);
+        assert_eq!(ObserverBlock::get_power_signal(false), 0);
+
+        // Observed and output direction logic
+        let directions = [
+            (BlockDirection::North, BlockDirection::South),
+            (BlockDirection::South, BlockDirection::North),
+            (BlockDirection::East, BlockDirection::West),
+            (BlockDirection::West, BlockDirection::East),
+            (BlockDirection::Up, BlockDirection::Down),
+            (BlockDirection::Down, BlockDirection::Up),
+        ];
+
+        for (facing, opposite) in directions {
+            assert_eq!(ObserverBlock::get_observed_direction(facing), facing);
+            assert_eq!(ObserverBlock::get_output_direction(facing), opposite);
+
+            // Power is only emitted in the observer's facing direction (from back to querying block)
+            assert!(ObserverBlock::emits_power_in_direction(facing, facing));
+            assert!(!ObserverBlock::emits_power_in_direction(facing, opposite));
+
+            // Neighbor updates are only observed when matching facing direction
+            assert!(ObserverBlock::is_observed_direction(facing, facing));
+            assert!(!ObserverBlock::is_observed_direction(facing, opposite));
+        }
+
+        // Placement facing respects 6-way entity facing order (including Up and Down)
+        let order_up = [Facing::Up, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Down];
+        assert_eq!(ObserverBlock::calculate_facing_from_player(&order_up), Facing::Up);
+
+        let order_down = [Facing::Down, Facing::North, Facing::South, Facing::East, Facing::West, Facing::Up];
+        assert_eq!(ObserverBlock::calculate_facing_from_player(&order_down), Facing::Down);
+
+        let order_north = [Facing::North, Facing::Up, Facing::Down, Facing::South, Facing::East, Facing::West];
+        assert_eq!(ObserverBlock::calculate_facing_from_player(&order_north), Facing::North);
+    }
 }
