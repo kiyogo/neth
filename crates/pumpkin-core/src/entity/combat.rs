@@ -16571,4 +16571,54 @@ mod tests {
         assert!(BellBlockEntity::is_raider_in_glow_range(45.0 * 45.0));
         assert!(!BellBlockEntity::is_raider_in_glow_range(50.0 * 50.0));
     }
+#[test]
+    fn test_target_block_hit_power_and_timing_parity() {
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use pumpkin_data::block_properties::Axis;
+        use pumpkin_data::entity::EntityType;
+
+        // Constants verification
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::DEFAULT_POWER, 0);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert!(!TargetBlock::emits_strong_power());
+
+        // Projectile activation tick durations
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::TRIDENT));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::SNOWBALL));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::EGG));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::WIND_CHARGE));
+
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SPECTRAL_ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::TRIDENT), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SNOWBALL), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::EGG), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::WIND_CHARGE), 8);
+
+        // Power calculation from distance to center
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.03), 15);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.04), 14);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.49), 1);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.50), 1);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.60), 1);
+
+        // Axis-based directional calculations
+        // Top/Bottom (Axis Y): uses max(distX, distZ)
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.0, 0.5, 0.0, Axis::Y), 15);
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.25, 0.5, 0.1, Axis::Y), 8);
+
+        // North/South (Axis Z): uses max(distX, distY)
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.04, 0.02, 0.5, Axis::Z), 14);
+
+        // East/West (Axis X): uses max(distY, distZ)
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.5, 0.49, 0.1, Axis::X), 1);
+    }
 }

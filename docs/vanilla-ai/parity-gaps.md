@@ -7443,3 +7443,35 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_particle_count`, `is_entity_hearing_bell`, and `is_raider_in_glow_range`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_bell_resonating_proper_hit_and_raiders_parity`.
+
+### Gap 303: Target Block Hit Offset, Projectile Center Calculations & Signal Duration (8 vs 20 Ticks) Parity
+- **Vanilla Reference**:
+  - `TargetBlock.java:25-107`:
+    - Signal properties:
+      - Default state: `OUTPUT_POWER = 0`.
+      - Weak power output: `ownSignal(state, level, pos) = state.getValue(OUTPUT_POWER)` (1 to 15 when triggered, 0 default).
+      - Strong power output: 0 (not a direct signal source).
+    - Face-aligned radial distance calculation:
+      - Centered coordinate offsets: `distX = |frac(x) - 0.5|`, `distY = |frac(y) - 0.5|`, `distZ = |frac(z) - 0.5|`.
+      - Planar distance per hit face axis:
+        - `Axis.Y` (top / bottom face hit): `distance = max(distX, distZ)`.
+        - `Axis.Z` (north / south face hit): `distance = max(distX, distY)`.
+        - `Axis.X` (east / west face hit): `distance = max(distY, distZ)`.
+      - Output power formula:
+        `power = max(1, ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0)))`.
+        - Distance 0.0 (exact bullseye center) -> Power 15.
+        - Distance in `(0.0, ~0.0333]` -> Power 15.
+        - Distance 0.25 -> Power 8.
+        - Distance >= 0.467 -> Power 1.
+    - Signal pulse duration based on projectile classification:
+      - Arrow projectiles (`AbstractArrow`: Arrow, Spectral Arrow, Trident): `ACTIVATION_TICKS_ARROWS = 20` ticks (1.0 second).
+      - All other projectiles (Snowball, Egg, Ender Pearl, Wind Charge, Splash Potion): `ACTIVATION_TICKS_OTHER = 8` ticks (0.4 second).
+    - Bullseye criteria trigger:
+      - Minimum distance: `BULLSEYE_MIN_DISTANCE = 30.0` blocks horizontal distance between shooter and impact position.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`:
+    - Fixed face axis evaluation for directional distance calculation.
+    - Exported constants `ACTIVATION_TICKS_ARROWS = 20`, `ACTIVATION_TICKS_OTHER = 8`, `MIN_POWER = 1`, `MAX_POWER = 15`, `DEFAULT_POWER = 0`, and `BULLSEYE_MIN_DISTANCE = 30.0`.
+    - Exported helpers `calculate_power_from_distance`, `calculate_hit_power_on_axis`, `calculate_hit_power`, `is_arrow_projectile`, `get_activation_ticks`, and `emits_strong_power`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_target_block_hit_power_and_timing_parity`.

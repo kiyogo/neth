@@ -10,6 +10,8 @@ use crate::block::{
     OnScheduledTickArgs, OnStateReplacedArgs,
 };
 
+use pumpkin_data::block_properties::Axis;
+
 fn get_redstone_strength(
     hit_pos: &Vector3<f64>,
     block_pos: &pumpkin_util::math::position::BlockPos,
@@ -18,17 +20,15 @@ fn get_redstone_strength(
     let dy = (hit_pos.y - (f64::from(block_pos.0.y) + 0.5)).abs();
     let dz = (hit_pos.z - (f64::from(block_pos.0.z) + 0.5)).abs();
 
-    let distance = if dy >= dx && dy >= dz {
-        dx.max(dz)
+    let axis = if dy >= dx && dy >= dz {
+        Axis::Y
     } else if dz >= dx && dz >= dy {
-        dx.max(dy)
+        Axis::Z
     } else {
-        dy.max(dz)
+        Axis::X
     };
 
-    let norm = ((0.5 - distance) / 0.5).clamp(0.0, 1.0);
-    let power = (15.0 * norm).ceil() as u8;
-    power.clamp(1, 15)
+    TargetBlock::calculate_hit_power_on_axis(dx, dy, dz, axis)
 }
 
 #[pumpkin_block("minecraft:target")]
@@ -39,6 +39,7 @@ impl TargetBlock {
     pub const ACTIVATION_TICKS_OTHER: u32 = 8;
     pub const MIN_POWER: u8 = 1;
     pub const MAX_POWER: u8 = 15;
+    pub const DEFAULT_POWER: u8 = 0;
     pub const BULLSEYE_MIN_DISTANCE: f64 = 30.0;
 
     #[must_use]
@@ -55,6 +56,28 @@ impl TargetBlock {
         } else {
             Self::ACTIVATION_TICKS_OTHER
         }
+    }
+
+    #[must_use]
+    pub fn calculate_power_from_distance(distance: f64) -> u8 {
+        let norm = ((0.5 - distance) / 0.5).clamp(0.0, 1.0);
+        let power = (15.0 * norm).ceil() as u8;
+        power.clamp(1, 15)
+    }
+
+    #[must_use]
+    pub fn calculate_hit_power_on_axis(
+        dist_x: f64,
+        dist_y: f64,
+        dist_z: f64,
+        hit_axis: Axis,
+    ) -> u8 {
+        let distance = match hit_axis {
+            Axis::Y => dist_x.max(dist_z),
+            Axis::Z => dist_x.max(dist_y),
+            Axis::X => dist_y.max(dist_z),
+        };
+        Self::calculate_power_from_distance(distance)
     }
 
     #[must_use]
