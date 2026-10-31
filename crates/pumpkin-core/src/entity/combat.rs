@@ -18874,4 +18874,68 @@ mod tests {
         assert_eq!(BrushableBlock::decay_brush_count(1), 0);
         assert_eq!(BrushableBlock::decay_brush_count(0), 0);
     }
+    #[test]
+    fn test_copper_bulb_t_flip_flop_rising_edge_light_levels_and_comparator_parity() {
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+        use pumpkin_data::BlockId;
+
+        // Constants parity
+        assert_eq!(CopperBulbBlock::DEFAULT_POWERED, false);
+        assert_eq!(CopperBulbBlock::DEFAULT_LIT, false);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+
+        // Comparator output
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(true), 15);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(false), 0);
+
+        // T-Flip-Flop Redstone evaluation (CopperBulbBlock.java:42-53)
+        // 1. Initial state: unlit (false), unpowered (false). Rising edge (has_signal = true)
+        let (new_lit, new_powered, sound) = CopperBulbBlock::evaluate_t_flip_flop(false, false, true);
+        assert_eq!(new_lit, true);
+        assert_eq!(new_powered, true);
+        assert_eq!(sound, Some(true)); // plays TURN_ON sound
+
+        // 2. Continuous power: lit (true), powered (true). Signal continues (has_signal = true)
+        let (new_lit, new_powered, sound) = CopperBulbBlock::evaluate_t_flip_flop(true, true, true);
+        assert_eq!(new_lit, true);
+        assert_eq!(new_powered, true);
+        assert_eq!(sound, None); // no sound, no state change
+
+        // 3. Falling edge: lit (true), powered (true). Signal removed (has_signal = false)
+        let (new_lit, new_powered, sound) = CopperBulbBlock::evaluate_t_flip_flop(true, true, false);
+        assert_eq!(new_lit, true); // lit persists!
+        assert_eq!(new_powered, false); // power drops
+        assert_eq!(sound, None); // falling edge produces no sound
+
+        // 4. Second rising edge: lit (true), powered (false). Signal arrives (has_signal = true)
+        let (new_lit, new_powered, sound) = CopperBulbBlock::evaluate_t_flip_flop(true, false, true);
+        assert_eq!(new_lit, false); // toggles off!
+        assert_eq!(new_powered, true);
+        assert_eq!(sound, Some(false)); // plays TURN_OFF sound
+
+        // 5. Second falling edge: lit (false), powered (true). Signal removed (has_signal = false)
+        let (new_lit, new_powered, sound) = CopperBulbBlock::evaluate_t_flip_flop(false, true, false);
+        assert_eq!(new_lit, false); // stays off
+        assert_eq!(new_powered, false); // power drops
+        assert_eq!(sound, None);
+
+        // Weathering Light Level Parity (Blocks.java: COPPER_BULB lit light levels)
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, true), 15);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::EXPOSED_COPPER_BULB, true), 12);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WEATHERED_COPPER_BULB, true), 8);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, true), 4);
+
+        // Waxed variants maintain same light levels
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_COPPER_BULB, true), 15);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_EXPOSED_COPPER_BULB, true), 12);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_WEATHERED_COPPER_BULB, true), 8);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_OXIDIZED_COPPER_BULB, true), 4);
+
+        // All unlit bulbs emit 0 light
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, false), 0);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::EXPOSED_COPPER_BULB, false), 0);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WEATHERED_COPPER_BULB, false), 0);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, false), 0);
+    }
 }

@@ -8487,3 +8487,35 @@ emainingDuration == 1), a raid is initiated at the player's position.
   - Added helpers calculate_dusted_stage, is_brushing_complete, and decay_brush_count.
   - Updated BrushableBlock::brush to use the 10-hit break threshold and 4-tier dusted mapping instead of hardcoded 4 hits.
   - Added unit test 	est_brushable_block_dusting_stages_break_threshold_and_retraction_parity in combat.rs.
+
+### Gap 343: Copper Bulb Redstone T-Flip-Flop Toggle, Flip on Rising Edge, Lit State Persistence & Comparator Parity
+
+- **Vanilla Reference**: CopperBulbBlock.java:1-69, WeatheringCopperBulbBlock.java:1-45.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Copper Bulb behaves as a built-in T-flip-flop:
+    - Maintains two synchronized boolean blockstate properties: POWERED (whether currently receiving redstone power) and LIT (whether lamp light is on).
+    - Rising edge detection (checkAndFlip):
+      - When redstone power transitions from unpowered to powered (hasSignal != powered and !powered):
+        - Inverts LIT state (
+ewState = newState.cycle(LIT)).
+        - Plays SoundEvents.COPPER_BULB_TURN_ON if transitioning to lit, or SoundEvents.COPPER_BULB_TURN_OFF if transitioning to unlit.
+        - Sets POWERED = true.
+    - Falling edge detection:
+      - When redstone power is removed (!hasSignal && powered):
+        - Resets POWERED = false.
+        - The LIT state persists unchanged, and no sound is emitted.
+    - Comparator Output:
+      - Analog output signal is 15 if LIT is true, 0 if LIT is false.
+    - Weathering Light Emission Parity:
+      - Lit Unweathered: light level 15
+      - Lit Exposed: light level 12
+      - Lit Weathered: light level 8
+      - Lit Oxidized: light level 4
+      - Waxed variants retain identical light emission levels.
+      - All unlit variants emit 0 light.
+- **Neth Changes**:
+  - Verified and formalized CopperBulbBlock T-flip-flop logic in 
+edstone/copper_bulb.rs.
+  - Exported constants DEFAULT_POWERED = false, DEFAULT_LIT = false, COMPARATOR_SIGNAL_LIT = 15, and COMPARATOR_SIGNAL_UNLIT = 0.
+  - Added helpers get_comparator_output_value, evaluate_t_flip_flop, and get_light_level matching Vanilla weathering decay.
+  - Added unit test 	est_copper_bulb_t_flip_flop_rising_edge_light_levels_and_comparator_parity in combat.rs.
