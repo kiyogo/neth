@@ -8958,3 +8958,55 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Registered `BAD_OMEN` and `TRIAL_OMEN` in `get_mob_effect`.
     - Added unit test `test_omen_effects_and_transformation_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 363: Wolf Sound Variants (7 Sets: Classic, Puglin, Sad, Angry, Grumpy, Big, Cute), Biome Spawn Priorities, Crackiness Particles & Damage Absorption Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.wolf.WolfVariants.java:1-85`, `WolfSoundVariants.java:1-75`, `WolfSoundVariant.java:1-51`, `Wolf.java:234, 275-298, 410-429, 609`, `Crackiness.java:1-42`.
+- **Vanilla Mechanics**:
+  1. *Wolf Sound Variants (7 Sound Sets)*:
+     - 7 distinct sound sets registered in `WolfSoundVariants`: `CLASSIC`, `PUGLIN`, `SAD`, `ANGRY`, `GRUMPY`, `BIG`, `CUTE`.
+     - Each sound set encapsulates adult and baby sound events for: ambient, hurt, death, step, growl, pant, and whine.
+     - Natural spawning (`finalizeSpawn`) and baby breeding (`getBreedOffspring`) randomly assign one of the 7 sound variants via `pickRandomSoundVariant` (1/7 uniform distribution).
+  2. *Ambient Sound Sub-Type Dispatch (`getAmbientSound`)*:
+     - If angry: dispatches `growlSound()`.
+     - Else if `random.nextInt(3) == 0`:
+       - If tame and health < 20.0: dispatches `whineSound()`.
+       - Else: dispatches `pantSound()`.
+     - Else: dispatches `ambientSound()`.
+  3. *Step Sound & Volume (`playStepSound`)*:
+     - Uses `this.getSoundSet().stepSound().value()` at volume 0.15F and pitch 1.0F.
+  4. *Wolf Armor Damage Absorption, Crackiness Thresholds & Particles (`actuallyHurt`)*:
+     - Absorbs all damage except `#minecraft:bypasses_wolf_armor` (e.g. `out_of_world`, `generic_kill`, `cramming`, `drown`, `dry_out`, `freeze`, `in_wall`, `indirect_magic`, `magic`, `outside_border`, `starve`, `thorns`, `wither`).
+     - Directly damages body armor instead of wolf health/absorption (`super.actuallyHurt` bypassed when armor absorbs).
+     - Plays `ItemWolfArmorDamage` on hit (or `ItemWolfArmorBreak` if broken).
+     - When crackiness level changes across thresholds (Low 0.95, Medium 0.69, High 0.32):
+       - Plays `SoundEvents.WOLF_ARMOR_CRACK` (`ItemWolfArmorCrack`).
+       - Emits 20 armadillo scute item particles with delta `(0.2, 0.1, 0.2)` and speed `0.1` at `(x, y + 1.0, z)`.
+  5. *Biome Spawn Variant Priority Mapping (`WolfVariants`)*:
+     - `minecraft:grove` -> `Snowy` (priority 1)
+     - `minecraft:old_growth_pine_taiga` -> `Black` (priority 1)
+     - `minecraft:snowy_taiga` -> `Ashen` (priority 1)
+     - `minecraft:forest` -> `Woods` (priority 1)
+     - `minecraft:old_growth_spruce_taiga` -> `Chestnut` (priority 1)
+     - `#minecraft:is_savanna` (`savanna`, `savanna_plateau`, `windswept_savanna`) -> `Spotted` (priority 1)
+     - `#minecraft:is_jungle` (`jungle`, `sparse_jungle`, `bamboo_jungle`) -> `Rusty` (priority 1)
+     - `#minecraft:is_badlands` (`badlands`, `eroded_badlands`, `wooded_badlands`) -> `Striped` (priority 1)
+     - Fallback -> `Pale` (priority 0)
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/custom_sound.rs`:
+    - Added `step_sound(&self) -> Option<Sound>` default method to `CustomSound` trait.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `WOLF_STEP_SOUND_VOLUME = 0.15`, `WOLF_STEP_SOUND_PITCH = 1.0`, `WOLF_ARMOR_CRACK_PARTICLE_COUNT = 20`, `WOLF_ARMOR_CRACK_PARTICLE_OFFSET = (0.2, 0.1, 0.2)`, `WOLF_ARMOR_CRACK_PARTICLE_SPEED = 0.1`.
+    - Defined `WolfAmbientSoundType` enum (`Growl`, `Whine`, `Pant`, `Ambient`).
+    - Implemented `select_wolf_ambient_sound_type` matching `Wolf.java:280-288`.
+    - Implemented `determine_wolf_variant_from_biome` matching `WolfVariants.java:73-83`.
+  - Updated `crates/pumpkin-core/src/entity/passive/wolf.rs`:
+    - Implemented `WolfEntity::pick_random_sound_variant()` uniform random selector.
+    - Implemented `get_ambient_sound` on `impl Mob for WolfEntity` using sound variant and sub-type selector.
+    - Implemented `step_sound` on `impl CustomSound for WolfEntity`.
+    - Updated `handle_wolf_armor_damage` to spawn 20 armadillo scute item particles at `(x, y + 1.0, z)` on crack tier change.
+  - Updated `crates/pumpkin-core/src/entity/living.rs`:
+    - Connected `wolf.handle_wolf_armor_damage(damage_amount, damage_type.message_id)` in `actuallyHurt` pipeline, absorbing damage and suppressing redundant hurt sound.
+  - Updated `crates/pumpkin-core/src/entity/ai/goal/breed.rs`:
+    - Baby wolves now randomly inherit/pick a `WolfSoundVariant` on birth.
+  - Added unit test `test_wolf_sound_variants_and_biome_spawn_priorities_parity` in `wolf.rs`.
+- **Status**: Completed & Verified.

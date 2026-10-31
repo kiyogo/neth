@@ -6929,6 +6929,98 @@ pub const fn get_wolf_armor_rgb(color_code: u32) -> (u8, u8, u8) {
     )
 }
 
+/// Wolf step sound volume (0.15F).
+///
+/// Mirrors vanilla `Wolf.java:234`:
+/// `this.playSound(this.getSoundSet().stepSound().value(), 0.15F, 1.0F);`
+pub const WOLF_STEP_SOUND_VOLUME: f32 = 0.15;
+
+/// Wolf step sound pitch (1.0F).
+///
+/// Mirrors vanilla `Wolf.java:234`:
+/// `this.playSound(this.getSoundSet().stepSound().value(), 0.15F, 1.0F);`
+pub const WOLF_STEP_SOUND_PITCH: f32 = 1.0;
+
+/// Number of armadillo scute item particles emitted when wolf armor cracks (20).
+///
+/// Mirrors vanilla `Wolf.java:420-422`:
+/// `level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, Items.ARMADILLO_SCUTE), this.getX(), this.getY() + 1.0, this.getZ(), 20, 0.2, 0.1, 0.2, 0.1);`
+pub const WOLF_ARMOR_CRACK_PARTICLE_COUNT: u32 = 20;
+
+/// Particle offset when wolf armor cracks (dx=0.2, dy=0.1, dz=0.2).
+pub const WOLF_ARMOR_CRACK_PARTICLE_OFFSET: (f32, f32, f32) = (0.2, 0.1, 0.2);
+
+/// Particle speed when wolf armor cracks (0.1).
+pub const WOLF_ARMOR_CRACK_PARTICLE_SPEED: f32 = 0.1;
+
+/// Determines the Wolf variant from biome id or tag.
+///
+/// Mirrors vanilla `WolfVariants.java:73-83`:
+/// - `grove` -> `WolfVariant::Snowy`
+/// - `old_growth_pine_taiga` -> `WolfVariant::Black`
+/// - `snowy_taiga` -> `WolfVariant::Ashen`
+/// - `forest` -> `WolfVariant::Woods`
+/// - `old_growth_spruce_taiga` -> `WolfVariant::Chestnut`
+/// - `#minecraft:is_savanna` (`savanna`, `savanna_plateau`, `windswept_savanna`) -> `WolfVariant::Spotted`
+/// - `#minecraft:is_jungle` (`jungle`, `sparse_jungle`, `bamboo_jungle`) -> `WolfVariant::Rusty`
+/// - `#minecraft:is_badlands` (`badlands`, `eroded_badlands`, `wooded_badlands`) -> `WolfVariant::Striped`
+/// - Fallback -> `WolfVariant::Pale`
+#[must_use]
+pub fn determine_wolf_variant_from_biome(biome_id: &str) -> pumpkin_data::wolf_variant::WolfVariant {
+    use pumpkin_data::wolf_variant::WolfVariant;
+    let stripped = biome_id.strip_prefix("minecraft:").unwrap_or(biome_id);
+    match stripped {
+        "grove" => WolfVariant::Snowy,
+        "old_growth_pine_taiga" => WolfVariant::Black,
+        "snowy_taiga" => WolfVariant::Ashen,
+        "forest" => WolfVariant::Woods,
+        "old_growth_spruce_taiga" => WolfVariant::Chestnut,
+        "savanna" | "savanna_plateau" | "windswept_savanna" => WolfVariant::Spotted,
+        "jungle" | "sparse_jungle" | "bamboo_jungle" => WolfVariant::Rusty,
+        "badlands" | "eroded_badlands" | "wooded_badlands" => WolfVariant::Striped,
+        _ => WolfVariant::Pale,
+    }
+}
+
+/// Wolf ambient sound sub-types dispatched depending on anger, tamed state, and health.
+///
+/// Mirrors vanilla `Wolf.java:280-288`:
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WolfAmbientSoundType {
+    Growl,
+    Whine,
+    Pant,
+    Ambient,
+}
+
+/// Selects the Wolf ambient sound type based on entity state and random factor.
+///
+/// Mirrors vanilla `Wolf.java:280-288`:
+/// - If angry: `growlSound`
+/// - Else if `random.nextInt(3) == 0`:
+///   - If tame and health < 20.0: `whineSound`
+///   - Else: `pantSound`
+/// - Else: `ambientSound`
+#[must_use]
+pub const fn select_wolf_ambient_sound_type(
+    is_angry: bool,
+    is_tame: bool,
+    health: f32,
+    rand_three: u32,
+) -> WolfAmbientSoundType {
+    if is_angry {
+        WolfAmbientSoundType::Growl
+    } else if rand_three % 3 == 0 {
+        if is_tame && health < 20.0 {
+            WolfAmbientSoundType::Whine
+        } else {
+            WolfAmbientSoundType::Pant
+        }
+    } else {
+        WolfAmbientSoundType::Ambient
+    }
+}
+
 /// Returns minimum ticks a fox must hold food in mouth before consuming it (600 ticks = 30 seconds).
 ///
 /// Mirrors vanilla `Fox.java:132, 217`:

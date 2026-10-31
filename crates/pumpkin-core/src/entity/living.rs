@@ -4179,10 +4179,21 @@ impl LivingEntity {
             self.entity.hurt_marked.store(true, Ordering::SeqCst);
         }
 
-        let play_sound = took_full_damage;
+        let mut play_sound = took_full_damage;
+
+        // Vanilla parity: Wolf Armor damage absorption (Wolf.java:410-425)
+        let mut armor_absorbed = false;
+        if let Some(mob) = caller.get_mob()
+            && let Some(wolf) = mob.as_wolf()
+        {
+            if wolf.handle_wolf_armor_damage(damage_amount, damage_type.message_id) {
+                armor_absorbed = true;
+                play_sound = false;
+            }
+        }
 
         // Vanilla parity: actuallyHurt
-        let original_damage = damage_amount;
+        let original_damage = if armor_absorbed { 0.0 } else { damage_amount };
         let current_abs = self.absorption.load();
         let dmg_to_health = (original_damage - current_abs).max(0.0);
         let absorbed_damage = original_damage - dmg_to_health;

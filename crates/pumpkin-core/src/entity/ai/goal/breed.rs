@@ -260,6 +260,7 @@ impl BreedGoal {
             if let Some(variant) = pumpkin_data::wolf_variant::WolfVariant::all().get(variant_id as usize).copied() {
                 baby_wolf.set_variant(variant);
             }
+            baby_wolf.set_sound_variant(crate::entity::passive::wolf::WolfEntity::pick_random_sound_variant());
             if wolf_a.is_tame() {
                 if let Some(owner) = wolf_a.get_owner() {
                     TamableAnimal::tame(baby_wolf, owner);

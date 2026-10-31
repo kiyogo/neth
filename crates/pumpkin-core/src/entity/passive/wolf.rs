@@ -62,6 +62,12 @@ pub struct WolfEntity {
 
 impl WolfEntity {
     #[must_use]
+    pub fn pick_random_sound_variant() -> WolfSoundVariant {
+        let mut rng = rand::rng();
+        WolfSoundVariant::ALL[rng.random_range(0..WolfSoundVariant::ALL.len())]
+    }
+
+    #[must_use]
     pub const fn can_be_leashed(&self) -> bool {
         true
     }
@@ -72,7 +78,7 @@ impl WolfEntity {
         let wolf = Self {
             mob_entity,
             variant: AtomicU8::new(WolfVariant::Pale.id()),
-            sound_variant: AtomicU8::new(WolfSoundVariant::Classic as u8),
+            sound_variant: AtomicU8::new(Self::pick_random_sound_variant() as u8),
             collar_color: AtomicU8::new(combat::WOLF_DEFAULT_COLLAR_COLOR),
             tamable_data: TamableData::default(),
             ageable_data: crate::entity::ageable::AgeableData::default(),
@@ -303,6 +309,26 @@ impl Mob for WolfEntity {
 
     fn as_wolf(&self) -> Option<&WolfEntity> {
         Some(self)
+    }
+
+    fn get_ambient_sound(&self) -> Option<pumpkin_data::sound::Sound> {
+        let is_baby = self.is_baby();
+        let sound_variant = WolfSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
+            .unwrap_or_default();
+        let mut rng = rand::rng();
+        let rand_three = rng.random_range(0..3);
+        let sound_type = combat::select_wolf_ambient_sound_type(
+            self.is_angry(),
+            self.is_tame(),
+            self.mob_entity.living_entity.health.load(),
+            rand_three,
+        );
+        match sound_type {
+            combat::WolfAmbientSoundType::Growl => Some(sound_variant.growl_sound(is_baby)),
+            combat::WolfAmbientSoundType::Whine => Some(sound_variant.whine_sound(is_baby)),
+            combat::WolfAmbientSoundType::Pant => Some(sound_variant.pant_sound(is_baby)),
+            combat::WolfAmbientSoundType::Ambient => Some(sound_variant.ambient_sound(is_baby)),
+        }
     }
 
 
@@ -722,6 +748,13 @@ impl CustomSound for WolfEntity {
             .unwrap_or_default();
         Some(sound_variant.hurt_sound(is_baby))
     }
+
+    fn step_sound(&self) -> Option<pumpkin_data::sound::Sound> {
+        let is_baby = self.is_baby();
+        let sound_variant = WolfSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
+            .unwrap_or_default();
+        Some(sound_variant.step_sound(is_baby))
+    }
 }
 
 #[cfg(test)]
@@ -753,6 +786,111 @@ mod tests {
         assert_eq!(combat::WOLF_ANGRY_TAIL_ANGLE, 1.539_380_4);
         assert_eq!(combat::WOLF_PERSISTENT_ANGER_MIN_TICKS, 400);
         assert_eq!(combat::WOLF_PERSISTENT_ANGER_MAX_TICKS, 780);
+    }
+
+    #[test]
+    fn test_wolf_sound_variants_and_biome_spawn_priorities_parity() {
+        // 1. All 7 Wolf Sound Variants parity (WolfSoundVariants.java:13-19, 45-53)
+        assert_eq!(WolfSoundVariant::ALL.len(), 7);
+        let names = ["angry", "big", "classic", "cute", "grumpy", "puglin", "sad"];
+        for name in names {
+            let variant = WolfSoundVariant::from_name(name).expect("Variant must exist by name");
+            assert_eq!(variant.to_name(), name);
+            let namespaced = format!("minecraft:{}", name);
+            assert_eq!(WolfSoundVariant::from_name(&namespaced), Some(variant));
+            assert_eq!(WolfSoundVariant::from_id(variant.id()), Some(variant));
+
+            // Verify adult and baby sound sets are distinct and functional
+            let _adult_ambient = variant.ambient_sound(false);
+            let baby_ambient = variant.ambient_sound(true);
+            assert_eq!(baby_ambient, pumpkin_data::sound::Sound::EntityBabyWolfAmbient);
+            let _adult_hurt = variant.hurt_sound(false);
+            let baby_hurt = variant.hurt_sound(true);
+            assert_eq!(baby_hurt, pumpkin_data::sound::Sound::EntityBabyWolfHurt);
+            let _adult_death = variant.death_sound(false);
+            let baby_death = variant.death_sound(true);
+            assert_eq!(baby_death, pumpkin_data::sound::Sound::EntityBabyWolfDeath);
+            let _adult_step = variant.step_sound(false);
+            let baby_step = variant.step_sound(true);
+            assert_eq!(baby_step, pumpkin_data::sound::Sound::EntityBabyWolfStep);
+
+            // Growl, pant, whine
+            let _ = variant.growl_sound(false);
+            let _ = variant.pant_sound(false);
+            let _ = variant.whine_sound(false);
+        }
+
+        // 2. Ambient sound sub-type selection logic (Wolf.java:280-288)
+        // Angry -> Growl
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(true, false, 8.0, 0),
+            combat::WolfAmbientSoundType::Growl
+        );
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(true, true, 40.0, 1),
+            combat::WolfAmbientSoundType::Growl
+        );
+
+        // rand_three % 3 == 0:
+        // Tame and health < 20.0 -> Whine
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, true, 19.9, 0),
+            combat::WolfAmbientSoundType::Whine
+        );
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, true, 5.0, 3),
+            combat::WolfAmbientSoundType::Whine
+        );
+        // Tame and health >= 20.0 -> Pant
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, true, 20.0, 0),
+            combat::WolfAmbientSoundType::Pant
+        );
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, true, 40.0, 3),
+            combat::WolfAmbientSoundType::Pant
+        );
+        // Untamed and health < 20.0 -> Pant
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, false, 5.0, 0),
+            combat::WolfAmbientSoundType::Pant
+        );
+
+        // rand_three % 3 != 0 -> Ambient
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, true, 15.0, 1),
+            combat::WolfAmbientSoundType::Ambient
+        );
+        assert_eq!(
+            combat::select_wolf_ambient_sound_type(false, false, 8.0, 2),
+            combat::WolfAmbientSoundType::Ambient
+        );
+
+        // 3. Biome variant selector parity (WolfVariants.java:73-83)
+        assert_eq!(combat::determine_wolf_variant_from_biome("grove"), WolfVariant::Snowy);
+        assert_eq!(combat::determine_wolf_variant_from_biome("minecraft:grove"), WolfVariant::Snowy);
+        assert_eq!(combat::determine_wolf_variant_from_biome("old_growth_pine_taiga"), WolfVariant::Black);
+        assert_eq!(combat::determine_wolf_variant_from_biome("snowy_taiga"), WolfVariant::Ashen);
+        assert_eq!(combat::determine_wolf_variant_from_biome("forest"), WolfVariant::Woods);
+        assert_eq!(combat::determine_wolf_variant_from_biome("old_growth_spruce_taiga"), WolfVariant::Chestnut);
+        assert_eq!(combat::determine_wolf_variant_from_biome("savanna"), WolfVariant::Spotted);
+        assert_eq!(combat::determine_wolf_variant_from_biome("savanna_plateau"), WolfVariant::Spotted);
+        assert_eq!(combat::determine_wolf_variant_from_biome("windswept_savanna"), WolfVariant::Spotted);
+        assert_eq!(combat::determine_wolf_variant_from_biome("jungle"), WolfVariant::Rusty);
+        assert_eq!(combat::determine_wolf_variant_from_biome("sparse_jungle"), WolfVariant::Rusty);
+        assert_eq!(combat::determine_wolf_variant_from_biome("bamboo_jungle"), WolfVariant::Rusty);
+        assert_eq!(combat::determine_wolf_variant_from_biome("badlands"), WolfVariant::Striped);
+        assert_eq!(combat::determine_wolf_variant_from_biome("eroded_badlands"), WolfVariant::Striped);
+        assert_eq!(combat::determine_wolf_variant_from_biome("wooded_badlands"), WolfVariant::Striped);
+        assert_eq!(combat::determine_wolf_variant_from_biome("taiga"), WolfVariant::Pale);
+        assert_eq!(combat::determine_wolf_variant_from_biome("plains"), WolfVariant::Pale);
+
+        // 4. Constants parity
+        assert_eq!(combat::WOLF_STEP_SOUND_VOLUME, 0.15);
+        assert_eq!(combat::WOLF_STEP_SOUND_PITCH, 1.0);
+        assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_COUNT, 20);
+        assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_OFFSET, (0.2, 0.1, 0.2));
+        assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_SPEED, 0.1);
     }
 }
 
@@ -839,6 +977,17 @@ impl WolfEntity {
                     pumpkin_data::sound::Sound::ItemWolfArmorCrack,
                     pumpkin_data::sound::SoundCategory::Neutral,
                     &pos,
+                );
+                world.spawn_particles(
+                    pumpkin_data::particle::Particle::Item,
+                    pumpkin_util::math::vector3::Vector3::new(pos.x, pos.y + 1.0, pos.z),
+                    combat::WOLF_ARMOR_CRACK_PARTICLE_COUNT,
+                    pumpkin_util::math::vector3::Vector3::new(
+                        combat::WOLF_ARMOR_CRACK_PARTICLE_OFFSET.0,
+                        combat::WOLF_ARMOR_CRACK_PARTICLE_OFFSET.1,
+                        combat::WOLF_ARMOR_CRACK_PARTICLE_OFFSET.2,
+                    ),
+                    combat::WOLF_ARMOR_CRACK_PARTICLE_SPEED,
                 );
             }
         }
