@@ -4633,6 +4633,24 @@ impl EntityBase for LivingEntity {
                     );
                 }
 
+                // Handle ominous bottle consumption (Gap 341 parity: OminousBottleAmplifier.java)
+                if let Some(ominous_amp) = item
+                    .get_data_component::<pumpkin_data::data_component_impl::OminousBottleAmplifierImpl>()
+                {
+                    use crate::item::items::ominous_bottle::OminousBottleItem;
+                    use pumpkin_data::effect::StatusEffect;
+                    let amp = OminousBottleItem::calculate_bad_omen_amplifier(ominous_amp.amplifier);
+                    self.add_effect(Effect {
+                        effect_type: &StatusEffect::BAD_OMEN,
+                        duration: OminousBottleItem::EFFECT_DURATION,
+                        amplifier: amp,
+                        ambient: false,
+                        show_particles: false,
+                        show_icon: true,
+                        blend: false,
+                    });
+                }
+
                 if let Some(player) = caller.get_player() {
                     player.trigger_advancement(
                         crate::entity::player::advancement::trigger::AdvancementTrigger::ConsumeItem {

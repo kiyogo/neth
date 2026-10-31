@@ -8444,3 +8444,24 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Exported `TOTAL_SHERD_FACES = 4` and `INSERT_DUST_PLUME_PARTICLES = 7` on `DecoratedPotBlock`.
   - Added helpers `calculate_comparator_output`, `calculate_insert_pitch`, and `can_break_pot_shatter`.
   - Added unit test `test_decorated_pot_sherds_insert_pitch_shattering_and_comparator_parity` covering pitch interpolation, shattering conditions, and comparator output across 64-stack, 16-stack, and 1-stack items.
+
+### Gap 341: Ominous Bottle Consumption, Bad Omen Amplifier (0..4 / I..V), 100-Minute Duration (120,000 Ticks) & Trial/Raid Omen Conversion Parity
+
+- **Vanilla Reference**: OminousBottleAmplifier.java:1-40, Items.java:2917-2923, BadOmenMobEffect.java:1-35, RaidOmenMobEffect.java:1-32, TrialSpawnerStateData.java:46, 203-211.
+- **Description**:
+  - In Vanilla Minecraft 1.21, consuming an Ominous Bottle triggers OminousBottleAmplifier.onConsume:
+    - Applies MobEffects.BAD_OMEN for 120,000 ticks (100 minutes) with amplifier 0..4 (representing Bad Omen levels I through V).
+    - Plays SoundEvents.OMINOUS_BOTTLE_DISPOSE and emits 16 drink particles.
+  - Trial Omen Conversion:
+    - When a player with BAD_OMEN is detected near a Trial Spawner, the Bad Omen effect is cleared and transformed into MobEffects.TRIAL_OMEN with amplifier 0.
+    - Duration scales at 18,000 ticks (15 minutes) per Bad Omen level: duration = 18000 * (badOmen.getAmplifier() + 1) (from 18,000 ticks at Bad Omen I up to 90,000 ticks / 75 minutes at Bad Omen V).
+  - Raid Omen Conversion:
+    - When a non-spectator player with BAD_OMEN enters a village on non-peaceful difficulty, Bad Omen is transformed into MobEffects.RAID_OMEN with 600 ticks (30 seconds) duration, preserving the amplifier level.
+    - When Raid Omen ticks down to 1 (
+emainingDuration == 1), a raid is initiated at the player's position.
+- **Neth Changes**:
+  - Registered OminousBottleItem with item ID Item::OMINOUS_BOTTLE.id in pumpkin-core.
+  - Added constants EFFECT_DURATION = 120_000, MIN_AMPLIFIER = 0, MAX_AMPLIFIER = 4, TRIAL_OMEN_PER_BAD_OMEN_LEVEL = 18_000, and RAID_OMEN_DURATION = 600.
+  - Added helpers calculate_bad_omen_amplifier, calculate_trial_omen_duration, can_convert_bad_omen_to_raid_omen, and should_trigger_raid_from_raid_omen.
+  - Hooked up item consumption in LivingEntity::apply_consumable_effects to read OminousBottleAmplifierImpl and grant StatusEffect::BAD_OMEN.
+  - Added unit test 	est_ominous_bottle_amplifier_duration_and_omen_conversion_parity in combat.rs.

@@ -34,6 +34,7 @@ pub mod mace;
 pub mod map;
 pub mod minecart;
 pub mod name_tag;
+pub mod ominous_bottle;
 pub mod on_a_stick;
 pub mod place_on_water;
 pub mod potions;
@@ -160,6 +161,7 @@ pub fn default_registry() -> Arc<ItemRegistry> {
     manager.register(ArmorStandItem);
     manager.register(CushionItem);
     manager.register(WindChargeItem);
+    manager.register(ominous_bottle::OminousBottleItem);
     manager.register(BoatItem);
     manager.register(PotionItem);
     manager.register(SplashPotionItem);

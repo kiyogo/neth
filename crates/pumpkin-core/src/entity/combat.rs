@@ -18786,4 +18786,45 @@ mod tests {
         // 1 item -> 1 + floor(1.0 * 14) = 15
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 1), 15);
     }
+    #[test]
+    fn test_ominous_bottle_amplifier_duration_and_omen_conversion_parity() {
+        use crate::item::items::ominous_bottle::OminousBottleItem;
+        use pumpkin_util::Difficulty;
+
+        // Constants parity with Vanilla OminousBottleAmplifier.java and TrialSpawnerStateData.java
+        assert_eq!(OminousBottleItem::EFFECT_DURATION, 120_000); // 100 minutes = 120,000 ticks
+        assert_eq!(OminousBottleItem::MIN_AMPLIFIER, 0); // Bad Omen I
+        assert_eq!(OminousBottleItem::MAX_AMPLIFIER, 4); // Bad Omen V
+        assert_eq!(OminousBottleItem::TRIAL_OMEN_PER_BAD_OMEN_LEVEL, 18_000); // 15 mins per level
+        assert_eq!(OminousBottleItem::RAID_OMEN_DURATION, 600); // 30 seconds
+
+        // Amplifier clamping parity
+        assert_eq!(OminousBottleItem::calculate_bad_omen_amplifier(-1), 0);
+        assert_eq!(OminousBottleItem::calculate_bad_omen_amplifier(0), 0);
+        assert_eq!(OminousBottleItem::calculate_bad_omen_amplifier(2), 2);
+        assert_eq!(OminousBottleItem::calculate_bad_omen_amplifier(4), 4);
+        assert_eq!(OminousBottleItem::calculate_bad_omen_amplifier(99), 4);
+
+        // Bad Omen -> Trial Omen duration scaling (TrialSpawnerStateData.java:207: 18000 * (amplifier + 1))
+        assert_eq!(OminousBottleItem::calculate_trial_omen_duration(0), 18_000); // Level 1: 15 mins
+        assert_eq!(OminousBottleItem::calculate_trial_omen_duration(1), 36_000); // Level 2: 30 mins
+        assert_eq!(OminousBottleItem::calculate_trial_omen_duration(2), 54_000); // Level 3: 45 mins
+        assert_eq!(OminousBottleItem::calculate_trial_omen_duration(3), 72_000); // Level 4: 60 mins
+        assert_eq!(OminousBottleItem::calculate_trial_omen_duration(4), 90_000); // Level 5: 75 mins
+
+        // Village raid conversion condition (BadOmenMobEffect.java:21-24)
+        assert!(OminousBottleItem::can_convert_bad_omen_to_raid_omen(false, Difficulty::Normal, true));
+        assert!(OminousBottleItem::can_convert_bad_omen_to_raid_omen(false, Difficulty::Hard, true));
+        // Spectator bypasses raid
+        assert!(!OminousBottleItem::can_convert_bad_omen_to_raid_omen(true, Difficulty::Normal, true));
+        // Peaceful difficulty prevents raids
+        assert!(!OminousBottleItem::can_convert_bad_omen_to_raid_omen(false, Difficulty::Peaceful, true));
+        // Outside village does not convert
+        assert!(!OminousBottleItem::can_convert_bad_omen_to_raid_omen(false, Difficulty::Normal, false));
+
+        // Raid Omen execution tick parity (RaidOmenMobEffect.java:16: remainingDuration == 1)
+        assert!(OminousBottleItem::should_trigger_raid_from_raid_omen(1));
+        assert!(!OminousBottleItem::should_trigger_raid_from_raid_omen(2));
+        assert!(!OminousBottleItem::should_trigger_raid_from_raid_omen(600));
+    }
 }
