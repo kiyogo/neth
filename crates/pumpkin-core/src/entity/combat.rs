@@ -16753,4 +16753,40 @@ mod tests {
             (SculkSensorPhase::Inactive, 0, None)
         );
     }
+#[test]
+    fn test_daylight_detector_inversion_and_sky_light_curve_parity() {
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+
+        // Constants verification
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_POWER, 0);
+        assert!(!DaylightDetectorBlock::DEFAULT_INVERTED);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert_eq!(DaylightDetectorBlock::SHAPE_HEIGHT, 6.0);
+        assert!(!DaylightDetectorBlock::emits_strong_power());
+
+        // Inverted calculation: 15 - brightness
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(15), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(0), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(5), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(10), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(-5), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(20), 0);
+
+        // Effective sky brightness with weather darkening (rain: -5, thunder: -5)
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, false), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, true), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, true), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(4, true, false), 0);
+
+        // Signal strength curve (normal vs inverted)
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(0, 0.0, false), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(0, 0.0, true), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, 0.0, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, 0.0, true), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, std::f32::consts::PI, false), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, std::f32::consts::PI, true), 0);
+    }
 }

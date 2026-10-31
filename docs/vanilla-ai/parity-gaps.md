@@ -7529,3 +7529,30 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `get_resonance_pitch_for_frequency`, `get_phase_transition_on_tick`, `get_active_ticks`, `get_listener_range`, `get_redstone_strength_for_distance`, `can_output_weak_power`, and `emits_strong_power`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sculk_sensor_frequencies_timings_and_calibrated_parity`.
+
+### Gap 306: Daylight Detector Inversion Mechanics, Sky Light Calculation & Output Curve Parity
+- **Vanilla Reference**:
+  - `DaylightDetectorBlock.java:27-115`, `DaylightDetectorBlockEntity.java:1-35`:
+    - Default state properties:
+      - `DEFAULT_POWER = 0`, `DEFAULT_INVERTED = false`.
+      - Bounding box: `Block.column(16.0, 0.0, 6.0)` (`SHAPE_HEIGHT = 6.0` pixels = 0.375 blocks).
+    - Update frequency & conditions:
+      - Updates every `UPDATE_INTERVAL_TICKS = 20` ticks (1.0 second) via block entity ticker.
+      - Ticking active strictly in dimensions where `dimensionType().hasSkyLight()` is `true`.
+    - Redstone signal emission:
+      - Weak redstone power: outputs `POWER` (0 to 15) in all directions.
+      - Strong redstone power: 0 (does not emit strong redstone power).
+    - Signal calculation curves (`updateSignalStrength`):
+      - Inverted mode (`INVERTED = true`):
+        `power = clamp(15 - effectiveSkyBrightness, 0, 15)`.
+      - Normal mode (`INVERTED = false`):
+        - If `effectiveSkyBrightness <= 0`: 0.
+        - If `effectiveSkyBrightness > 0`: adjusts `sunAngle` with lerp factor 0.2 (`sunAngle += (offset - sunAngle) * 0.2`), then `power = clamp(round(effectiveSkyBrightness * cos(sunAngle)), 0, 15)`.
+      - Weather attenuation: Raining darkens sky by 5 levels; Thundering darkens sky by an additional 5 levels.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Verified exact cosine rounding boundaries, inverted formulas, and weather darkening.
+    - Exported constants `MIN_POWER = 0`, `MAX_POWER = 15`, `DEFAULT_POWER = 0`, `DEFAULT_INVERTED = false`, `UPDATE_INTERVAL_TICKS = 20`, and `SHAPE_HEIGHT = 6.0`.
+    - Exported helpers `calculate_inverted_signal`, `calculate_normal_signal`, `calculate_effective_sky_brightness`, `calculate_signal_strength`, and `emits_strong_power`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_daylight_detector_inversion_and_sky_light_curve_parity`.
