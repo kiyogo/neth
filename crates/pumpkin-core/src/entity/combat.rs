@@ -16880,4 +16880,64 @@ mod tests {
         assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, true), (true, false));
         assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, false), (false, false));
     }
+#[test]
+    fn test_copper_bulb_t_flip_flop_and_light_levels_parity() {
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+        use pumpkin_data::BlockId;
+
+        // Constants verification
+        assert!(!CopperBulbBlock::DEFAULT_POWERED);
+        assert!(!CopperBulbBlock::DEFAULT_LIT);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+
+        // Comparator analog output
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(true), 15);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(false), 0);
+
+        // T-flip-flop behavior: (current_lit, current_powered, has_signal) -> (new_lit, new_powered, sound)
+        // 1. Initial state (unlit, unpowered), power arrives -> toggles to lit, plays TurnOn sound
+        assert_eq!(
+            CopperBulbBlock::evaluate_t_flip_flop(false, false, true),
+            (true, true, Some(true))
+        );
+
+        // 2. Power removed (falling edge) -> remains lit, powered flag cleared, no sound
+        assert_eq!(
+            CopperBulbBlock::evaluate_t_flip_flop(true, true, false),
+            (true, false, None)
+        );
+
+        // 3. Second pulse arrives (rising edge) -> toggles to unlit, plays TurnOff sound
+        assert_eq!(
+            CopperBulbBlock::evaluate_t_flip_flop(true, false, true),
+            (false, true, Some(false))
+        );
+
+        // 4. Second pulse removed (falling edge) -> remains unlit, no sound
+        assert_eq!(
+            CopperBulbBlock::evaluate_t_flip_flop(false, true, false),
+            (false, false, None)
+        );
+
+        // 5. Steady state (no edge) -> no modification
+        assert_eq!(
+            CopperBulbBlock::evaluate_t_flip_flop(true, true, true),
+            (true, true, None)
+        );
+
+        // Light level per oxidation stage: 15 -> 12 -> 8 -> 4 (0 when unlit)
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, false), 0);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, true), 15);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_COPPER_BULB, true), 15);
+
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::EXPOSED_COPPER_BULB, true), 12);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_EXPOSED_COPPER_BULB, true), 12);
+
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WEATHERED_COPPER_BULB, true), 8);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_WEATHERED_COPPER_BULB, true), 8);
+
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, true), 4);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WAXED_OXIDIZED_COPPER_BULB, true), 4);
+    }
 }

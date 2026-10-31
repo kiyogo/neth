@@ -16,6 +16,52 @@ type CopperBulbLikeProperties = pumpkin_data::block_properties::CopperBulbLikePr
 
 pub struct CopperBulbBlock;
 
+impl CopperBulbBlock {
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_LIT: bool = false;
+    pub const COMPARATOR_SIGNAL_LIT: u8 = 15;
+    pub const COMPARATOR_SIGNAL_UNLIT: u8 = 0;
+
+    #[must_use]
+    pub const fn get_comparator_output_value(lit: bool) -> u8 {
+        if lit { Self::COMPARATOR_SIGNAL_LIT } else { Self::COMPARATOR_SIGNAL_UNLIT }
+    }
+
+    #[must_use]
+    pub const fn evaluate_t_flip_flop(
+        current_lit: bool,
+        current_powered: bool,
+        has_signal: bool,
+    ) -> (bool, bool, Option<bool>) {
+        if has_signal != current_powered {
+            if !current_powered {
+                // Rising edge: toggle lit state and schedule turn on/off sound
+                let new_lit = !current_lit;
+                (new_lit, has_signal, Some(new_lit))
+            } else {
+                // Falling edge: only reset powered flag, lit state and sound unaffected
+                (current_lit, has_signal, None)
+            }
+        } else {
+            (current_lit, current_powered, None)
+        }
+    }
+
+    #[must_use]
+    pub fn get_light_level(block_id: BlockId, lit: bool) -> u8 {
+        if !lit {
+            return 0;
+        }
+        match block_id {
+            BlockId::COPPER_BULB | BlockId::WAXED_COPPER_BULB => 15,
+            BlockId::EXPOSED_COPPER_BULB | BlockId::WAXED_EXPOSED_COPPER_BULB => 12,
+            BlockId::WEATHERED_COPPER_BULB | BlockId::WAXED_WEATHERED_COPPER_BULB => 8,
+            BlockId::OXIDIZED_COPPER_BULB | BlockId::WAXED_OXIDIZED_COPPER_BULB => 4,
+            _ => 15,
+        }
+    }
+}
+
 impl ChangeOverTimeBlock<WeatherState> for CopperBulbBlock {
     fn get_age(&self, block: &pumpkin_data::Block) -> Option<WeatherState> {
         get_weather_state(block)

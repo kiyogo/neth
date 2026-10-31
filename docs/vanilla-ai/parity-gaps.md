@@ -7607,3 +7607,25 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_comparator_signal`, `calculate_signal_from_states`, `disabled_slots_to_bitmask`, `bitmask_to_disabled_slots`, `is_slot_valid_for_craft`, and `evaluate_redstone_trigger`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_crafter_redstone_triggers_slots_and_comparator_parity`.
+
+### Gap 309: Copper Bulb Redstone Toggling, Powered vs Lit States & 1-Tick Redstone Pulse Response Parity
+- **Vanilla Reference**:
+  - `CopperBulbBlock.java:17-69`:
+    - Default state properties:
+      - `DEFAULT_POWERED = false`, `DEFAULT_LIT = false`.
+    - T-flip-flop toggling behavior (`checkAndFlip`):
+      - Rising edge trigger: When receiving power (`hasNeighborSignal == true`) while currently unpowered (`POWERED == false`), toggles `LIT = !LIT` and plays `COPPER_BULB_TURN_ON` (if lit becomes true) or `COPPER_BULB_TURN_OFF` (if lit becomes false).
+      - Falling edge behavior: When losing power (`hasNeighborSignal == false`), only clears `POWERED = false` without changing `LIT` or playing sound.
+    - Comparator analog output (`getAnalogOutputSignal`):
+      - Emits maximum signal 15 when `LIT == true`, and 0 when `LIT == false`.
+    - Light level per weathering stage:
+      - Regular / Waxed: 15 (lit) / 0 (unlit).
+      - Exposed / Waxed Exposed: 12 (lit) / 0 (unlit).
+      - Weathered / Waxed Weathered: 8 (lit) / 0 (unlit).
+      - Oxidized / Waxed Oxidized: 4 (lit) / 0 (unlit).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/copper_bulb.rs`:
+    - Exported constants `DEFAULT_POWERED = false`, `DEFAULT_LIT = false`, `COMPARATOR_SIGNAL_LIT = 15`, `COMPARATOR_SIGNAL_UNLIT = 0`.
+    - Exported helpers `get_comparator_output_value`, `evaluate_t_flip_flop`, and `get_light_level`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_copper_bulb_t_flip_flop_and_light_levels_parity`.
