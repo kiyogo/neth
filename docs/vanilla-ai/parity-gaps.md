@@ -7730,3 +7730,33 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `calculate_lectern_comparator_output` exactly matches Vanilla's `floor(progress * 14.0) + 1` output curve.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_lectern_book_insertion_page_pulse_and_comparator_parity`.
+
+### Gap 313: Composter Fill Levels (0..8), Level 7 -> 8 Fermentation Delay & Bone Meal Yield Parity
+- **Vanilla Reference**:
+  - `ComposterBlock.java:48-361`:
+    - Level states and capacities:
+      - Fill level range: `MIN_LEVEL = 0`, `MAX_LEVEL = 7`, `READY = 8`, `NUM_LEVELS = 9` (states 0 to 8).
+      - Default state: `LEVEL = 0`.
+      - Fermentation delay: `FULL_COMPOSTING_TICKS = 20` ticks (1.0 second delay after reaching level 7 before advancing to ready level 8).
+      - Sound and particle events:
+        - `COMPOSTER_FILL_EVENT = 1500` (LevelEvent 1500: data 1 for successful layer addition with green particles, 0 for failed attempt with puff sound).
+        - `SoundEvents.COMPOSTER_READY` upon completing fermentation to level 8.
+        - `SoundEvents.COMPOSTER_EMPTY` upon harvesting bone meal.
+    - Bone meal item ejection parameters (`extractProduce`):
+      - Ejection origin: `atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5)`.
+      - Horizontal jitter: `offsetRandomXZ(0.7F)` -> random in `[-0.35, 0.35]` on X and Z axes (Y is strictly `pos.y + 1.01`).
+      - Default pickup delay: 10 ticks (0.5 seconds).
+      - Output item: 1x `Items.BONE_MEAL`, resets state to `LEVEL = 0`.
+    - Comparator analog output (`getAnalogOutputSignal`):
+      - Emits signal strength matching `LEVEL` property directly: 0 when empty, 1 to 7 during filling, and 8 when full/ready.
+    - Hopper insertion & extraction boundaries:
+      - Top face (`Direction.UP`): accepts compostable items when `LEVEL < 7`. Cannot extract through top.
+      - Bottom face (`Direction.DOWN`): extracts 1x bone meal when `LEVEL == 8`, resetting level to 0. Cannot insert through bottom.
+      - Horizontal faces: no container access.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/composter.rs`:
+    - Exported constants `READY`, `MIN_LEVEL`, `MAX_LEVEL`, `NUM_LEVELS`, `FULL_COMPOSTING_TICKS`, `COMPOSTER_FILL_EVENT`, `MIN_COMPARATOR_OUTPUT`, `MAX_COMPARATOR_OUTPUT`, `BONE_MEAL_Y_OFFSET`, `BONE_MEAL_HORIZONTAL_OFFSET_MAX`, and `BONE_MEAL_PICKUP_DELAY_TICKS`.
+    - Corrected bone meal item ejection position in `clear_composter` to strictly fix Y coordinate at `pos.y + 1.01` and apply horizontal random offset in `[-0.35, 0.35]`, preventing height jitter.
+    - Exported helpers `calculate_comparator_output`, `is_ready`, `can_compost_more`, `can_hopper_insert`, `can_hopper_extract`, `should_level_increase`, and `calculate_bone_meal_spawn_pos`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_composter_fill_levels_fermentation_and_bone_meal_parity`.

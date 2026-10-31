@@ -135,6 +135,23 @@ impl ComposterBlock {
     pub const COMPOSTER_FILL_EVENT: i32 = 1500;
     pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
     pub const MAX_COMPARATOR_OUTPUT: u8 = 8;
+    /// Vanilla ComposterBlock.java:171: atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5)
+    pub const BONE_MEAL_Y_OFFSET: f64 = 1.01;
+    pub const BONE_MEAL_HORIZONTAL_OFFSET_MAX: f32 = 0.7;
+    pub const BONE_MEAL_PICKUP_DELAY_TICKS: u32 = 10;
+
+    #[must_use]
+    pub fn calculate_bone_meal_spawn_pos(
+        location: &BlockPos,
+        offset_x: f64,
+        offset_z: f64,
+    ) -> pumpkin_util::math::vector3::Vector3<f64> {
+        pumpkin_util::math::vector3::Vector3::new(
+            f64::from(location.0.x) + 0.5 + offset_x,
+            f64::from(location.0.y) + Self::BONE_MEAL_Y_OFFSET,
+            f64::from(location.0.z) + 0.5 + offset_z,
+        )
+    }
 
     pub fn calculate_comparator_output(level: u8) -> u8 {
         level.min(Self::READY)
@@ -197,9 +214,9 @@ impl ComposterBlock {
 
         let item_position = {
             let mut rng = rand::rng();
-            location.to_centered_f64().add_raw(
+            Self::calculate_bone_meal_spawn_pos(
+                location,
                 rng.random_range(-0.35..=0.35),
-                rng.random_range(-0.35..=0.35) + 0.51,
                 rng.random_range(-0.35..=0.35),
             )
         };

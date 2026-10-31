@@ -17146,4 +17146,67 @@ mod tests {
         assert_eq!(calculate_lectern_comparator_output(true, 1, 3), 8);
         assert_eq!(calculate_lectern_comparator_output(true, 2, 3), 15);
     }
+
+    #[test]
+    fn test_composter_fill_levels_fermentation_and_bone_meal_parity() {
+        use crate::block::blocks::composter::ComposterBlock;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants verification
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+        assert_eq!(ComposterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ComposterBlock::MAX_COMPARATOR_OUTPUT, 8);
+        assert_eq!(ComposterBlock::BONE_MEAL_Y_OFFSET, 1.01);
+        assert_eq!(ComposterBlock::BONE_MEAL_HORIZONTAL_OFFSET_MAX, 0.7);
+        assert_eq!(ComposterBlock::BONE_MEAL_PICKUP_DELAY_TICKS, 10);
+
+        // Comparator analog signal matches fill level exactly (0..=8)
+        for lvl in 0..=8 {
+            assert_eq!(ComposterBlock::calculate_comparator_output(lvl), lvl);
+        }
+        assert_eq!(ComposterBlock::calculate_comparator_output(9), 8); // clamped to READY
+
+        // Ready and can compost checks
+        assert!(ComposterBlock::is_ready(8));
+        assert!(!ComposterBlock::is_ready(7));
+        assert!(!ComposterBlock::is_ready(0));
+
+        assert!(ComposterBlock::can_compost_more(0));
+        assert!(ComposterBlock::can_compost_more(6));
+        assert!(!ComposterBlock::can_compost_more(7));
+        assert!(!ComposterBlock::can_compost_more(8));
+
+        // Hopper insertion & extraction permissions
+        assert!(ComposterBlock::can_hopper_insert(0, BlockDirection::Up));
+        assert!(ComposterBlock::can_hopper_insert(6, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(7, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(8, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(0, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_insert(0, BlockDirection::North));
+
+        assert!(ComposterBlock::can_hopper_extract(8, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(7, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(0, BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_extract(8, BlockDirection::North));
+
+        // Bone meal spawn coordinates
+        let base_pos = BlockPos::new(10, 64, 10);
+        let spawn = ComposterBlock::calculate_bone_meal_spawn_pos(&base_pos, 0.2, -0.1);
+        assert_eq!(spawn.x, 10.7);
+        assert_eq!(spawn.y, 65.01);
+        assert_eq!(spawn.z, 10.4);
+
+        // Composting chance rolls
+        assert!(ComposterBlock::should_level_increase(0, 0.3, 0.2));
+        assert!(!ComposterBlock::should_level_increase(0, 0.3, 0.35));
+        assert!(ComposterBlock::should_level_increase(6, 1.0, 0.99));
+        assert!(!ComposterBlock::should_level_increase(7, 1.0, 0.0)); // cannot increase beyond 7
+    }
 }
