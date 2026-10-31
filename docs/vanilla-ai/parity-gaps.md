@@ -8641,3 +8641,24 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `WOLF_ARMOR_MAX_DURABILITY = 64`, `WOLF_ARMOR_DEFENSE = 11`, `WOLF_ARMOR_REPAIR_UNIT = 0.125`, `WOLF_ARMOR_CRACK_FRACTION_LOW = 0.95`, `WOLF_ARMOR_CRACK_FRACTION_MEDIUM = 0.69`, and `WOLF_ARMOR_CRACK_FRACTION_HIGH = 0.32` in `combat.rs`.
   - Added helpers `calculate_wolf_armor_crackiness`, `can_wolf_armor_absorb_damage`, `calculate_wolf_armor_damage_absorption`, `make_wolf_armor_rgb`, `get_wolf_armor_rgb`, and method `handle_wolf_armor_damage` on `WolfEntity`.
   - Added unit test `test_wolf_armor_durability_crackiness_and_damage_absorption_parity` in `combat.rs`.
+
+### Gap 351: Mace Wind Burst, Density & Breach Enchantment Mechanics Parity
+
+- **Vanilla Reference**: `Enchantments.java:1165-1235`, `MaceItem.java:1-157`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Mace-exclusive enchantments implement specific formulas, thresholds, and physics:
+    - **Density (I..V)**: Max level 5. Increases smash attack damage by `0.5` per level for every fallen block:
+      $$	ext{Bonus} = 	ext{level} 	imes 0.5 	imes 	ext{fallDistance}$$
+      Stackable on top of the piecewise fall distance baseline ($4.0d 	o 12.0 + 2.0(d-3) 	o 22.0 + (d-8)$). Mutually exclusive with `EnchantmentTags.DAMAGE_EXCLUSIVE`.
+    - **Breach (I..IV)**: Max level 4. Reduces the target's effective armor defense by 15% per level (-15%, -30%, -45%, -60%):
+      $$	ext{Effective Defense} = 	ext{Defense} 	imes (1.0 - 0.15 	imes 	ext{level})$$
+      Mutually exclusive with `EnchantmentTags.DAMAGE_EXCLUSIVE`.
+    - **Wind Burst (I..III)**: Max level 3. On successful smash attack ($	ext{fallDistance} \ge 1.5$ and not fall flying), triggers a wind charge explosion centered on the attacker with power scaled by level:
+      - Level I: 1.2F
+      - Level II: 1.75F
+      - Level III: 2.2F
+      Launches the attacker upwards into the air to enable chained smash attacks. Plays `SoundEvents.WIND_CHARGE_BURST` with small/large gust emitter particles.
+- **Neth Changes**:
+  - Exported constants `DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK = 0.5`, `DENSITY_MAX_LEVEL = 5`, `BREACH_ARMOR_REDUCTION_PER_LEVEL = 0.15`, `BREACH_MAX_LEVEL = 4`, `WIND_BURST_MAX_LEVEL = 3`, `WIND_BURST_FALL_THRESHOLD = 1.5`, and `WIND_BURST_POWERS = [1.2, 1.75, 2.2]` in `MaceItem`.
+  - Added helper methods `calculate_density_damage_bonus`, `calculate_total_smash_damage`, `calculate_breach_effective_armor`, `get_wind_burst_power`, and `can_trigger_wind_burst`.
+  - Added unit test `test_mace_wind_burst_density_and_breach_enchantments_parity` in `combat.rs`.

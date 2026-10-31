@@ -19470,4 +19470,56 @@ mod tests {
         assert_eq!(color, (200 << 16) | (100 << 8) | 50);
         assert_eq!(get_wolf_armor_rgb(color), (200, 100, 50));
     }
+
+    #[test]
+    fn test_mace_wind_burst_density_and_breach_enchantments_parity() {
+        use crate::item::items::mace::MaceItem;
+
+        // 1. Density Enchantment Parity (Vanilla Enchantments.java:1165-1181)
+        assert_eq!(MaceItem::DENSITY_DAMAGE_PER_LEVEL_PER_BLOCK, 0.5);
+        assert_eq!(MaceItem::DENSITY_MAX_LEVEL, 5);
+
+        // Density I on 4-block fall: 1 * 0.5 * 4 = 2.0 extra damage
+        assert_eq!(MaceItem::calculate_density_damage_bonus(1, 4.0), 2.0);
+        // Base smash at 4.0 blocks = 12.0 + 2.0 * (4.0 - 3.0) = 14.0
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(4.0), 14.0);
+        // Total bonus smash = 14.0 + 2.0 = 16.0
+        assert_eq!(MaceItem::calculate_total_smash_damage(4.0, 1), 16.0);
+
+        // Density V on 10-block fall: 5 * 0.5 * 10 = 25.0 extra damage
+        assert_eq!(MaceItem::calculate_density_damage_bonus(5, 10.0), 25.0);
+        // Base smash at 10.0 blocks = 22.0 + (10.0 - 8.0) = 24.0
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(10.0), 24.0);
+        // Total bonus smash = 24.0 + 25.0 = 49.0
+        assert_eq!(MaceItem::calculate_total_smash_damage(10.0, 5), 49.0);
+
+        // 2. Breach Enchantment Parity (Vanilla Enchantments.java:1182-1198)
+        assert_eq!(MaceItem::BREACH_ARMOR_REDUCTION_PER_LEVEL, 0.15);
+        assert_eq!(MaceItem::BREACH_MAX_LEVEL, 4);
+
+        // Target with 20 defense points against Breach I..IV
+        let armor_20 = 20.0f32;
+        assert!((MaceItem::calculate_breach_effective_armor(armor_20, 0) - 20.0).abs() < 1e-5);
+        assert!((MaceItem::calculate_breach_effective_armor(armor_20, 1) - 17.0).abs() < 1e-5); // -15%
+        assert!((MaceItem::calculate_breach_effective_armor(armor_20, 2) - 14.0).abs() < 1e-5); // -30%
+        assert!((MaceItem::calculate_breach_effective_armor(armor_20, 3) - 11.0).abs() < 1e-5); // -45%
+        assert!((MaceItem::calculate_breach_effective_armor(armor_20, 4) - 8.0).abs() < 1e-5);  // -60%
+
+        // 3. Wind Burst Enchantment Parity (Vanilla Enchantments.java:1199-1235)
+        assert_eq!(MaceItem::WIND_BURST_MAX_LEVEL, 3);
+        assert_eq!(MaceItem::WIND_BURST_FALL_THRESHOLD, 1.5);
+        assert_eq!(MaceItem::WIND_BURST_POWERS, [1.2, 1.75, 2.2]);
+
+        assert_eq!(MaceItem::get_wind_burst_power(1), 1.2);
+        assert_eq!(MaceItem::get_wind_burst_power(2), 1.75);
+        assert_eq!(MaceItem::get_wind_burst_power(3), 2.2);
+        assert_eq!(MaceItem::get_wind_burst_power(0), 0.0);
+
+        // Trigger condition: fall distance >= 1.5, not fall flying, level > 0
+        assert!(MaceItem::can_trigger_wind_burst(1.5, false, 1));
+        assert!(MaceItem::can_trigger_wind_burst(5.0, false, 3));
+        assert!(!MaceItem::can_trigger_wind_burst(1.49, false, 1));
+        assert!(!MaceItem::can_trigger_wind_burst(5.0, true, 1)); // fall flying
+        assert!(!MaceItem::can_trigger_wind_burst(5.0, false, 0)); // no wind burst
+    }
 }
