@@ -8886,3 +8886,34 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Dispatched `on_mob_hurt` across all active status effects in `damage_with_context`.
   - Added unit test `test_combat_mob_effects_constants_formulas_and_triggers_parity` in `crates/pumpkin-core/src/entity/effect/mod.rs`.
 - **Status**: Completed & Verified.
+
+### Gap 361: Breeze Combat AI: Shoot Inhale Delay (15 Ticks), Recovery (4 Ticks), Cooldown (10 Ticks), Difficulty Shoot Inaccuracy (5 - 4*Diff), Jump Inhale (10 Ticks), Jump Velocity (0.058333334 * Follow Range) & Allowed Jump Angles ([40, 55, 60, 75, 80]) Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.breeze.Breeze.java:41-300`, `BreezeAi.java:30-105`, `Shoot.java:18-84`, `LongJump.java:33-242`, `Slide.java:18-50`.
+- **Vanilla Mechanics**:
+  1. *Shoot Behavior & Timing*:
+     - Max attack range: 16.0 blocks ($256.0$ squared distance) (`ATTACK_RANGE_MAX_SQRT = 256.0`).
+     - Inhale charging delay: 15 ticks (`SHOOT_INITIAL_DELAY_TICKS = 15`), plays `SoundEvents.BREEZE_INHALE` (vol 1.0, pitch 1.0).
+     - Shoot recovery delay: 4 ticks (`SHOOT_RECOVER_DELAY_TICKS = 4`).
+     - Shoot cooldown: 10 ticks (`SHOOT_COOLDOWN_TICKS = 10`). Total attack sequence duration: 20 ticks.
+     - Projectile speed: `PROJECTILE_MOVEMENT_SCALE = 0.7F`.
+     - Uncertainty / inaccuracy formula: `5 - level.getDifficulty().getId() * 4` (Peaceful: 5, Easy: 1, Normal: -3, Hard: -7).
+     - Target aim Y position: `(target.getY() + (isPassenger ? 0.8 : 0.3)) - breeze.getFiringYPosition()`.
+  2. *Long Jump Behavior & Timing*:
+     - Inhaling duration before leap: 10 ticks (`INHALING_DURATION_TICKS = 10`), plays `SoundEvents.BREEZE_CHARGE`.
+     - Leap execution: sets `Pose.LONG_JUMPING`, `discardFriction = true`, plays `SoundEvents.BREEZE_JUMP`.
+     - Landing: sets `Pose.STANDING`, `discardFriction = false`, plays `SoundEvents.BREEZE_LAND`.
+     - Post-jump cooldown: 10 ticks normally, reduced to 2 ticks if hurt (`JUMP_COOLDOWN_TICKS = 10`, `JUMP_COOLDOWN_WHEN_HURT_TICKS = 2`).
+     - Post-jump shoot trigger: prepares shooting memory for 100 ticks (`POST_LAND_SHOOT_MEMORY_TICKS = 100`).
+     - Maximum jump velocity: `0.058333334F * follow_range` (with default 24.0 follow range = 1.4F).
+     - Permitted jump angles: `[40, 55, 60, 75, 80]` degrees.
+     - Clearance check: requires at least 4 unobstructed air blocks above position (`REQUIRED_AIR_BLOCKS_ABOVE = 4`), cannot leap from Honey Block or deep fluids.
+     - Minimum jump distance check: if target distance $\le 4.0$ blocks (`TOO_CLOSE_FOR_JUMP_DISTANCE = 4.0`), jump is disallowed and Breeze slides or retreats.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/mob/breeze.rs`:
+    - Exported constants `ATTACK_RANGE_MAX_SQRT = 256.0`, `ATTACK_RANGE_MAX = 16.0`, `PROJECTILE_MOVEMENT_SCALE = 0.7`, `SHOOT_INITIAL_DELAY_TICKS = 15`, `SHOOT_RECOVER_DELAY_TICKS = 4`, `SHOOT_COOLDOWN_TICKS = 10`, `UNCERTAINTY_BASE = 5`, `UNCERTAINTY_MULTIPLIER = 4`.
+    - Exported constants `REQUIRED_AIR_BLOCKS_ABOVE = 4`, `JUMP_COOLDOWN_TICKS = 10`, `JUMP_COOLDOWN_WHEN_HURT_TICKS = 2`, `INHALING_DURATION_TICKS = 10`, `DEFAULT_FOLLOW_RANGE = 24.0`, `DEFAULT_MAX_JUMP_VELOCITY = 1.4`, `MAX_JUMP_VELOCITY_MULTIPLIER = 0.058_333_334`, `ALLOWED_JUMP_ANGLES = &[40, 55, 60, 75, 80]`, `TOO_CLOSE_FOR_JUMP_DISTANCE = 4.0`, `SPEED_MULTIPLIER_WHEN_SLIDING = 0.6`, `POST_LAND_SHOOT_MEMORY_TICKS = 100`.
+    - Implemented `calculate_shoot_uncertainty(difficulty_id)`, `calculate_max_jump_velocity(follow_range)`, `is_too_close_for_jump(distance)`, `is_target_within_shoot_range(dist_sq)`, `get_jump_cooldown(was_hurt)`, and `calculate_aim_target_y(target_base_y, is_passenger, firing_y)`.
+    - Added unit test `test_breeze_shoot_and_jump_constants_and_formulas_parity`.
+  - In `crates/pumpkin-core/src/entity/ai/goal/breeze_attack.rs`:
+    - Updated `BreezeAttackGoal` to integrate `is_too_close_for_jump`, `is_target_within_shoot_range`, `calculate_aim_target_y`, `PROJECTILE_MOVEMENT_SCALE`, `SHOOT_INITIAL_DELAY_TICKS`, and `SHOOT_COOLDOWN_TICKS`.
+- **Status**: Completed & Verified.

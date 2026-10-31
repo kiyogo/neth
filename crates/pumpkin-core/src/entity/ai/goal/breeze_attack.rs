@@ -93,9 +93,10 @@ impl Goal for BreezeAttackGoal {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .look_at_entity_with_range(&target, 10.0, 10.0);
 
-        // 1. If target is too close (< 4 blocks, dist_sq < 16.0), leap away!
-        if dist_sq < 16.0 && self.jump_cooldown <= 0 {
-            self.jump_cooldown = rand::random_range(40..=60);
+        // 1. If target is too close (<= 4.0 blocks), leap away or tactical retreat!
+        let dist = dist_sq.sqrt() as f32;
+        if BreezeEntity::is_too_close_for_jump(dist) && self.jump_cooldown <= 0 {
+            self.jump_cooldown = BreezeEntity::get_jump_cooldown(false) * 4;
             self.charging_shoot = 0;
 
             let mut diff = breeze_pos - target_pos;
@@ -119,30 +120,32 @@ impl Goal for BreezeAttackGoal {
             return;
         }
 
-        // 2. If within combat range (4 to 24 blocks, dist_sq <= 576.0)
-        if dist_sq <= 576.0 && mob.has_line_of_sight(target_entity) {
+        // 2. If within combat range (< 16 blocks / 256 sq blocks, Shoot.java:18)
+        if BreezeEntity::is_target_within_shoot_range(dist_sq) && mob.has_line_of_sight(target_entity) {
             if self.charging_shoot > 0 {
                 self.charging_shoot -= 1;
                 if self.charging_shoot == 0 {
                     // Spawn breeze wind charge projectile
-                    let firing_y = breeze_pos.y + f64::from(breeze_entity.height()) * 0.5 + 0.3;
+                    let firing_y = BreezeEntity::calculate_firing_y_position(breeze_pos.y, breeze_entity.height());
                     let spawn_pos = Vector3::new(breeze_pos.x, firing_y, breeze_pos.z);
 
-                    let target_y = target_pos.y + 0.3;
+                    let target_is_passenger = target_entity.has_vehicle();
+                    let target_aim_dy = BreezeEntity::calculate_aim_target_y(target_pos.y, target_is_passenger, firing_y);
                     let diff = Vector3::new(
                         target_pos.x - breeze_pos.x,
-                        target_y - firing_y,
+                        target_aim_dy,
                         target_pos.z - breeze_pos.z,
                     );
                     let len = (diff.x * diff.x + diff.y * diff.y + diff.z * diff.z).sqrt();
+                    let speed = f64::from(BreezeEntity::PROJECTILE_MOVEMENT_SCALE);
                     let vel = if len > 0.001 {
                         Vector3::new(
-                            diff.x / len * 0.7,
-                            diff.y / len * 0.7,
-                            diff.z / len * 0.7,
+                            diff.x / len * speed,
+                            diff.y / len * speed,
+                            diff.z / len * speed,
                         )
                     } else {
-                        Vector3::new(0.0, 0.0, 0.7)
+                        Vector3::new(0.0, 0.0, speed)
                     };
 
                     let proj_entity = Entity::from_uuid(
@@ -172,10 +175,10 @@ impl Goal for BreezeAttackGoal {
                         1.0,
                     );
 
-                    self.shoot_cooldown = rand::random_range(40..=70);
+                    self.shoot_cooldown = BreezeEntity::SHOOT_COOLDOWN_TICKS + BreezeEntity::SHOOT_RECOVER_DELAY_TICKS;
                 }
             } else if self.shoot_cooldown <= 0 {
-                self.charging_shoot = 15; // 15 ticks delay matching vanilla SHOOT_INITIAL_DELAY_TICKS
+                self.charging_shoot = BreezeEntity::SHOOT_INITIAL_DELAY_TICKS; // 15 ticks delay matching vanilla SHOOT_INITIAL_DELAY_TICKS
                 world.play_sound_fine(
                     Sound::EntityBreezeInhale,
                     SoundCategory::Hostile,

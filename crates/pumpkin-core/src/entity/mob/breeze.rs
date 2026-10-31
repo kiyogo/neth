@@ -33,6 +33,63 @@ impl BreezeEntity {
     pub const MAX_HEAD_Y_ROT: i32 = 30;
     pub const HEAD_ROT_SPEED: i32 = 25;
 
+    // Vanilla Shoot.java:18-24 & LongJump.java:34-41 parity constants
+    pub const ATTACK_RANGE_MAX_SQRT: f64 = 256.0;
+    pub const ATTACK_RANGE_MAX: f64 = 16.0;
+    pub const PROJECTILE_MOVEMENT_SCALE: f32 = 0.7;
+    pub const SHOOT_INITIAL_DELAY_TICKS: i32 = 15;
+    pub const SHOOT_RECOVER_DELAY_TICKS: i32 = 4;
+    pub const SHOOT_COOLDOWN_TICKS: i32 = 10;
+    pub const UNCERTAINTY_BASE: i32 = 5;
+    pub const UNCERTAINTY_MULTIPLIER: i32 = 4;
+
+    pub const REQUIRED_AIR_BLOCKS_ABOVE: i32 = 4;
+    pub const JUMP_COOLDOWN_TICKS: i32 = 10;
+    pub const JUMP_COOLDOWN_WHEN_HURT_TICKS: i32 = 2;
+    pub const INHALING_DURATION_TICKS: i32 = 10;
+    pub const DEFAULT_FOLLOW_RANGE: f32 = 24.0;
+    pub const DEFAULT_MAX_JUMP_VELOCITY: f32 = 1.4;
+    pub const MAX_JUMP_VELOCITY_MULTIPLIER: f32 = 0.058_333_334;
+    pub const ALLOWED_JUMP_ANGLES: &[i32] = &[40, 55, 60, 75, 80];
+    pub const TOO_CLOSE_FOR_JUMP_DISTANCE: f32 = 4.0;
+    pub const SPEED_MULTIPLIER_WHEN_SLIDING: f32 = 0.6;
+    pub const POST_LAND_SHOOT_MEMORY_TICKS: i32 = 100;
+
+    #[must_use]
+    pub const fn calculate_shoot_uncertainty(difficulty_id: u8) -> i32 {
+        Self::UNCERTAINTY_BASE - (difficulty_id as i32) * Self::UNCERTAINTY_MULTIPLIER
+    }
+
+    #[must_use]
+    pub fn calculate_max_jump_velocity(follow_range: f64) -> f32 {
+        Self::MAX_JUMP_VELOCITY_MULTIPLIER * (follow_range as f32)
+    }
+
+    #[must_use]
+    pub const fn is_too_close_for_jump(distance: f32) -> bool {
+        distance <= Self::TOO_CLOSE_FOR_JUMP_DISTANCE
+    }
+
+    #[must_use]
+    pub const fn is_target_within_shoot_range(dist_sq: f64) -> bool {
+        dist_sq < Self::ATTACK_RANGE_MAX_SQRT
+    }
+
+    #[must_use]
+    pub const fn get_jump_cooldown(was_hurt: bool) -> i32 {
+        if was_hurt {
+            Self::JUMP_COOLDOWN_WHEN_HURT_TICKS
+        } else {
+            Self::JUMP_COOLDOWN_TICKS
+        }
+    }
+
+    #[must_use]
+    pub fn calculate_aim_target_y(target_base_y: f64, is_passenger: bool, firing_y: f64) -> f64 {
+        let eye_offset = if is_passenger { 0.8 } else { 0.3 };
+        (target_base_y + eye_offset) - firing_y
+    }
+
     #[must_use]
     pub fn can_target_entity(entity_type: &EntityType) -> bool {
         entity_type == &EntityType::PLAYER || entity_type == &EntityType::IRON_GOLEM
@@ -257,5 +314,61 @@ mod tests {
         assert!((crate::entity::combat::calculate_breeze_whirl_pitch(1.0) - 1.1).abs() < 1e-6);
         assert!((crate::entity::combat::calculate_breeze_whirl_volume(0.0) - 0.8).abs() < 1e-6);
         assert!((crate::entity::combat::calculate_breeze_whirl_volume(1.0) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_breeze_shoot_and_jump_constants_and_formulas_parity() {
+        use super::BreezeEntity;
+
+        // 1. Shoot constants parity (Shoot.java:18-24)
+        assert_eq!(BreezeEntity::ATTACK_RANGE_MAX_SQRT, 256.0);
+        assert_eq!(BreezeEntity::ATTACK_RANGE_MAX, 16.0);
+        assert_eq!(BreezeEntity::PROJECTILE_MOVEMENT_SCALE, 0.7);
+        assert_eq!(BreezeEntity::SHOOT_INITIAL_DELAY_TICKS, 15);
+        assert_eq!(BreezeEntity::SHOOT_RECOVER_DELAY_TICKS, 4);
+        assert_eq!(BreezeEntity::SHOOT_COOLDOWN_TICKS, 10);
+        assert_eq!(BreezeEntity::UNCERTAINTY_BASE, 5);
+        assert_eq!(BreezeEntity::UNCERTAINTY_MULTIPLIER, 4);
+
+        // 2. Shoot uncertainty formula: 5 - difficulty_id * 4 (Shoot.java:82)
+        assert_eq!(BreezeEntity::calculate_shoot_uncertainty(0), 5);  // Peaceful (id 0)
+        assert_eq!(BreezeEntity::calculate_shoot_uncertainty(1), 1);  // Easy (id 1)
+        assert_eq!(BreezeEntity::calculate_shoot_uncertainty(2), -3); // Normal (id 2)
+        assert_eq!(BreezeEntity::calculate_shoot_uncertainty(3), -7); // Hard (id 3)
+
+        // 3. Aim target Y calculation (Shoot.java:80)
+        // Standing target (offset 0.3): (64.0 + 0.3) - 64.885 = -0.585
+        let target_standing_dy = BreezeEntity::calculate_aim_target_y(64.0, false, 64.885);
+        assert!((target_standing_dy - (-0.585)).abs() < 1e-6);
+        // Passenger target (offset 0.8): (64.0 + 0.8) - 64.885 = -0.085
+        let target_passenger_dy = BreezeEntity::calculate_aim_target_y(64.0, true, 64.885);
+        assert!((target_passenger_dy - (-0.085)).abs() < 1e-6);
+
+        // 4. LongJump constants parity (LongJump.java:34-41)
+        assert_eq!(BreezeEntity::REQUIRED_AIR_BLOCKS_ABOVE, 4);
+        assert_eq!(BreezeEntity::JUMP_COOLDOWN_TICKS, 10);
+        assert_eq!(BreezeEntity::JUMP_COOLDOWN_WHEN_HURT_TICKS, 2);
+        assert_eq!(BreezeEntity::INHALING_DURATION_TICKS, 10);
+        assert_eq!(BreezeEntity::DEFAULT_FOLLOW_RANGE, 24.0);
+        assert_eq!(BreezeEntity::DEFAULT_MAX_JUMP_VELOCITY, 1.4);
+        assert_eq!(BreezeEntity::ALLOWED_JUMP_ANGLES, &[40, 55, 60, 75, 80]);
+        assert_eq!(BreezeEntity::TOO_CLOSE_FOR_JUMP_DISTANCE, 4.0);
+        assert_eq!(BreezeEntity::SPEED_MULTIPLIER_WHEN_SLIDING, 0.6);
+        assert_eq!(BreezeEntity::POST_LAND_SHOOT_MEMORY_TICKS, 100);
+
+        // 5. Jump velocity calculation: 0.058333334 * follow_range (LongJump.java:229)
+        let max_jump_vel = BreezeEntity::calculate_max_jump_velocity(24.0);
+        assert!((max_jump_vel - 1.4).abs() < 1e-5);
+
+        // 6. Target distance checks
+        assert!(BreezeEntity::is_too_close_for_jump(4.0));
+        assert!(BreezeEntity::is_too_close_for_jump(2.5));
+        assert!(!BreezeEntity::is_too_close_for_jump(4.01));
+        assert!(BreezeEntity::is_target_within_shoot_range(255.9));
+        assert!(!BreezeEntity::is_target_within_shoot_range(256.0));
+
+        // 7. Jump cooldown calculation
+        assert_eq!(BreezeEntity::get_jump_cooldown(false), 10);
+        assert_eq!(BreezeEntity::get_jump_cooldown(true), 2);
     }
 }
