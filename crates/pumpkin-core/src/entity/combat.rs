@@ -17076,4 +17076,74 @@ mod tests {
         assert!(!JukeboxBlock::can_allay_hear_jukebox(100.01)); // just beyond
         assert!(!JukeboxBlock::can_allay_hear_jukebox(225.0)); // 15 blocks
     }
+
+    #[test]
+    fn test_lectern_book_insertion_page_pulse_and_comparator_parity() {
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::entities::lectern::calculate_lectern_comparator_output;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants verification
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_TURN_PULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LecternBlock::POWER_ON, 15);
+        assert_eq!(LecternBlock::POWER_OFF, 0);
+        assert_eq!(LecternBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert!(!LecternBlock::DEFAULT_POWERED);
+        assert!(!LecternBlock::DEFAULT_HAS_BOOK);
+        assert_eq!(LecternBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(LecternBlock::MAX_COMPARATOR_SIGNAL, 15);
+        assert_eq!(LecternBlock::BOOK_DROP_PICKUP_DELAY_TICKS, 10);
+
+        // Drop position calculation per facing
+        let base_pos = BlockPos::new(10, 64, 10);
+        let north_drop = LecternBlock::calculate_drop_position(&base_pos, HorizontalFacing::North);
+        assert_eq!(north_drop.x, 10.5);
+        assert_eq!(north_drop.y, 65.0);
+        assert_eq!(north_drop.z, 10.25);
+
+        let south_drop = LecternBlock::calculate_drop_position(&base_pos, HorizontalFacing::South);
+        assert_eq!(south_drop.x, 10.5);
+        assert_eq!(south_drop.y, 65.0);
+        assert_eq!(south_drop.z, 10.75);
+
+        let west_drop = LecternBlock::calculate_drop_position(&base_pos, HorizontalFacing::West);
+        assert_eq!(west_drop.x, 10.25);
+        assert_eq!(west_drop.y, 65.0);
+        assert_eq!(west_drop.z, 10.5);
+
+        let east_drop = LecternBlock::calculate_drop_position(&base_pos, HorizontalFacing::East);
+        assert_eq!(east_drop.x, 10.75);
+        assert_eq!(east_drop.y, 65.0);
+        assert_eq!(east_drop.z, 10.5);
+
+        // Power emissions (weak to all sides, strong strictly downwards)
+        assert_eq!(LecternBlock::get_weak_power(true), 15);
+        assert_eq!(LecternBlock::get_weak_power(false), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::Up), 15);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::Down), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::North), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::South), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::West), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::East), 0);
+        assert_eq!(LecternBlock::get_strong_power(false, BlockDirection::Up), 0);
+
+        // Comparator output formula: floor(progress * 14.0) + (hasBook ? 1 : 0)
+        assert_eq!(calculate_lectern_comparator_output(false, 0, 10), 0);
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 0), 0);
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 1), 15);
+
+        // 15-page book (pages 0..=14) gives 1..=15
+        for p in 0..15 {
+            assert_eq!(calculate_lectern_comparator_output(true, p, 15), (p + 1) as u8);
+        }
+
+        // 3-page book: 0 -> 1, 1 -> 8, 2 -> 15
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 3), 1);
+        assert_eq!(calculate_lectern_comparator_output(true, 1, 3), 8);
+        assert_eq!(calculate_lectern_comparator_output(true, 2, 3), 15);
+    }
 }

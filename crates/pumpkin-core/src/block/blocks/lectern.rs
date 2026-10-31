@@ -4,10 +4,15 @@ use std::sync::atomic::Ordering;
 use crate::block::entities::lectern::LecternBlockEntity;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, EmitsRedstonePowerArgs, GetComparatorOutputArgs, GetRedstonePowerArgs,
+    BlockBehaviour, BrokenArgs, EmitsRedstonePowerArgs, GetComparatorOutputArgs, GetRedstonePowerArgs,
     GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, OnScheduledTickArgs,
     OnStateReplacedArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
 };
+use crate::entity::Entity;
+use crate::entity::item::ItemEntity;
+use pumpkin_data::entity::EntityType;
+use pumpkin_data::block_properties::HorizontalFacing;
+use pumpkin_util::math::vector3::Vector3;
 use crate::world::World;
 use pumpkin_data::block_properties::LecternLikeProperties;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -104,6 +109,45 @@ impl LecternBlock {
     pub const PAGE_CHANGE_EVENT: u16 = 1043;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_FACING: HorizontalFacing = HorizontalFacing::North;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_HAS_BOOK: bool = false;
+    pub const MIN_COMPARATOR_SIGNAL: u8 = 0;
+    pub const MAX_COMPARATOR_SIGNAL: u8 = 15;
+    pub const BOOK_DROP_PICKUP_DELAY_TICKS: u32 = 10;
+
+    /// Calculates book item drop position from lectern position and facing direction
+    /// Vanilla LecternBlockEntity.java:220-224:
+    /// xo = 0.25F * direction.getStepX(), zo = 0.25F * direction.getStepZ()
+    /// (pos.x + 0.5 + xo, pos.y + 1.0, pos.z + 0.5 + zo)
+    #[must_use]
+    pub fn calculate_drop_position(position: &BlockPos, facing: HorizontalFacing) -> Vector3<f64> {
+        let (step_x, step_z) = match facing {
+            HorizontalFacing::North => (0.0, -1.0),
+            HorizontalFacing::South => (0.0, 1.0),
+            HorizontalFacing::West => (-1.0, 0.0),
+            HorizontalFacing::East => (1.0, 0.0),
+        };
+        Vector3::new(
+            f64::from(position.0.x) + 0.5 + 0.25 * step_x,
+            f64::from(position.0.y) + 1.0,
+            f64::from(position.0.z) + 0.5 + 0.25 * step_z,
+        )
+    }
+
+    #[must_use]
+    pub const fn get_weak_power(powered: bool) -> u8 {
+        if powered { Self::POWER_ON } else { Self::POWER_OFF }
+    }
+
+    #[must_use]
+    pub const fn get_strong_power(powered: bool, direction: BlockDirection) -> u8 {
+        if powered && Self::emits_strong_power(direction) {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
 
     #[must_use]
     pub const fn emits_strong_power(direction: BlockDirection) -> bool {
@@ -241,6 +285,23 @@ impl BlockBehaviour for LecternBlock {
             .play_block_sound(Sound::ItemBookPut, SoundCategory::Blocks, *args.position);
 
         BlockActionResult::Success
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let props = LecternLikeProperties::from_state_id(args.world.get_block_state(args.position).id);
+        if props.has_book {
+            if let Some(block_entity) = args.world.get_block_entity(args.position)
+                && let Some(lectern) = block_entity.as_any().downcast_ref::<LecternBlockEntity>()
+            {
+                let book = lectern.remove_stack(0);
+                if !book.is_empty() {
+                    let spawn_pos = Self::calculate_drop_position(args.position, props.facing);
+                    let entity = Entity::new(args.world.clone(), spawn_pos, &EntityType::ITEM);
+                    let item_entity = Arc::new(ItemEntity::new(entity, book));
+                    args.world.spawn_entity(item_entity);
+                }
+            }
+        }
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {

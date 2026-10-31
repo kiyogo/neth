@@ -7701,3 +7701,32 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Added `jukebox_pos` tracking, `set_jukebox_playing`, and `should_stop_dancing` periodic validation.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_jukebox_song_durations_comparator_and_allay_dance_parity`.
+
+### Gap 312: Lectern Book Insertion, Page Turn Redstone Pulse (2 Ticks), Comparator Output Calculation Parity
+- **Vanilla Reference**:
+  - `LecternBlock.java:43-253`, `LecternBlockEntity.java:33-249`, `LecternMenu.java`:
+    - Timing and redstone pulse parameters:
+      - Page change impulse duration: `PAGE_CHANGE_IMPULSE_TICKS = 2` game ticks (1 redstone tick).
+      - Redstone power levels: `POWER_ON = 15`, `POWER_OFF = 0`.
+      - Audio/visual event: `PAGE_CHANGE_EVENT = 1043` (`level.levelEvent(1043, pos, 0)`).
+      - Default state: `DEFAULT_FACING = HorizontalFacing::North`, `DEFAULT_POWERED = false`, `DEFAULT_HAS_BOOK = false`.
+    - Signal directionality and powering mechanics:
+      - Weak redstone power (`ownSignal`): Emits strength 15 to all adjacent directions while powered, 0 when unpowered.
+      - Strong redstone power (`getDirectSignal`): Strictly emits strength 15 downward into the block directly below (`direction == Direction.UP`), 0 to all other directions.
+      - Neighbor updating (`updateBelow`): Whenever power or book state changes, updates the block directly below (`pos.below()`).
+    - Book dropping on block destruction (`preRemoveSideEffects`):
+      - Dropping position offset: `(pos.x + 0.5 + 0.25 * facing.stepX, pos.y + 1.0, pos.z + 0.5 + 0.25 * facing.stepZ)`.
+      - Default pickup delay: 10 ticks (0.5 seconds).
+    - Comparator analog signal formula (`getRedstoneSignal`):
+      - `progress = pageCount > 1 ? (page / (pageCount - 1.0)) : 1.0`.
+      - `signal = floor(progress * 14.0) + (hasBook ? 1 : 0)`.
+      - Range: 0 without book; 15 for single-page book; 1 to 15 mapped proportionally across multi-page books.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Exported constants `PAGE_CHANGE_IMPULSE_TICKS`, `PAGE_TURN_PULSE_TICKS`, `PAGE_CHANGE_EVENT`, `POWER_ON`, `POWER_OFF`, `DEFAULT_FACING`, `DEFAULT_POWERED`, `DEFAULT_HAS_BOOK`, `MIN_COMPARATOR_SIGNAL`, `MAX_COMPARATOR_SIGNAL`, and `BOOK_DROP_PICKUP_DELAY_TICKS`.
+    - Exported helpers `calculate_drop_position`, `get_weak_power`, `get_strong_power`, and `emits_strong_power`.
+    - Implemented `broken` handler in `BlockBehaviour` to spawn book item with 0.25 horizontal facing offset and 10-tick pickup delay when destroyed.
+  - Verified `crates/pumpkin-core/src/block/entities/lectern.rs`:
+    - Verified `calculate_lectern_comparator_output` exactly matches Vanilla's `floor(progress * 14.0) + 1` output curve.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_lectern_book_insertion_page_pulse_and_comparator_parity`.
