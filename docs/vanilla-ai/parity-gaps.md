@@ -8592,3 +8592,17 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `INNER_CIRCLE_MIN_RANGE = 4.0`, `INNER_CIRCLE_MAX_Y = 10.0`, `FIRING_Y_OFFSET = 0.3`, `JUMP_TRAIL_DURATION_TICKS = 5`, and `FALL_DISTANCE_SOUND_TRIGGER_THRESHOLD = 3.0` on `BreezeEntity`.
   - Added helper methods `can_target_entity`, `calculate_firing_y_position`, and `is_within_inner_circle`.
   - Added unit test `test_breeze_target_whitelist_firing_y_inner_circle_and_deflection_parity` in `combat.rs`.
+
+### Gap 348: Heavy Core Hardness (10.0), Blast Resistance (1200.0), 8x8x8 Centered VoxelShape & Mace Crafting Parity
+
+- **Vanilla Reference**: `HeavyCoreBlock.java:1-55`, `Blocks.java:3100-3108`, `Block.java:column(8.0, 0.0, 8.0)`, `Recipes.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Heavy Core block (`Blocks.HEAVY_CORE`) has exact physical attributes, hitboxes, and crafting requirements:
+    - **Hardness & Blast Resistance**: Hardness is 10.0 (`destroyTime(10.0F)`) and Blast Resistance is 1200.0 (`explosionResistance(1200.0F)`), matching ancient debris and obsidian blast durability while allowing pickaxe mining.
+    - **Voxel Shape**: Defined as `Block.column(8.0, 0.0, 8.0)`, creating a centered 8x8x8 unit cube at the bottom of the block space: `[4.0/16.0..12.0/16.0, 0.0..8.0/16.0, 4.0/16.0..12.0/16.0]` (normalized: `[0.25..0.75, 0.0..0.5, 0.25..0.75]`).
+    - **Waterlogged State**: Implements `SimpleWaterloggedBlock`, maintaining fluid state `WATER` when placed in water.
+    - **Mace Crafting Recipe**: Specifically requires exactly 1 Heavy Core placed vertically directly above 1 Breeze Rod in a crafting grid (`HEAVY_CORE` over `BREEZE_ROD`).
+- **Neth Changes**:
+  - Exported constants `HARDNESS = 10.0`, `BLAST_RESISTANCE = 1200.0`, `MIN_BOUND = 0.25`, `MAX_BOUND = 0.75`, `MAX_Y_BOUND = 0.5` on `HeavyCoreBlock`.
+  - Added helpers `is_inside_bounding_box(x, y, z)` and `is_valid_mace_recipe(top, bottom)`.
+  - Added unit test `test_heavy_core_hardness_blast_resistance_voxel_shape_and_mace_recipe_parity` in `combat.rs`.

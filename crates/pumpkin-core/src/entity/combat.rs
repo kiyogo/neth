@@ -19189,4 +19189,34 @@ mod tests {
         assert!(!BreezeEntity::is_within_inner_circle(4.1, 0.0, 0.0)); // h=4.1 > 4.0
         assert!(!BreezeEntity::is_within_inner_circle(0.0, 10.1, 0.0)); // y=10.1 > 10.0
     }
+    #[test]
+    fn test_heavy_core_hardness_blast_resistance_voxel_shape_and_mace_recipe_parity() {
+        use crate::block::blocks::heavy_core::HeavyCoreBlock;
+
+        // Constants parity with Vanilla Blocks.java:5514-5516 & HeavyCoreBlock.java:23
+        assert_eq!(HeavyCoreBlock::HARDNESS, 10.0);
+        assert_eq!(HeavyCoreBlock::BLAST_RESISTANCE, 1200.0);
+        assert_eq!(HeavyCoreBlock::SHAPE_MIN_X, 0.25);
+        assert_eq!(HeavyCoreBlock::SHAPE_MAX_X, 0.75);
+        assert_eq!(HeavyCoreBlock::SHAPE_MIN_Y, 0.0);
+        assert_eq!(HeavyCoreBlock::SHAPE_MAX_Y, 0.5);
+        assert_eq!(HeavyCoreBlock::SHAPE_MIN_Z, 0.25);
+        assert_eq!(HeavyCoreBlock::SHAPE_MAX_Z, 0.75);
+
+        // Bounding box point containment (8x8x8 centered column on floor)
+        assert!(HeavyCoreBlock::is_inside_bounding_box(0.5, 0.25, 0.5)); // center point
+        assert!(HeavyCoreBlock::is_inside_bounding_box(0.25, 0.0, 0.25)); // min corner
+        assert!(HeavyCoreBlock::is_inside_bounding_box(0.75, 0.5, 0.75)); // max corner
+        assert!(!HeavyCoreBlock::is_inside_bounding_box(0.24, 0.25, 0.5)); // outside west
+        assert!(!HeavyCoreBlock::is_inside_bounding_box(0.76, 0.25, 0.5)); // outside east
+        assert!(!HeavyCoreBlock::is_inside_bounding_box(0.5, 0.51, 0.5)); // outside top
+        assert!(!HeavyCoreBlock::is_inside_bounding_box(0.5, 0.25, 0.76)); // outside south
+
+        // Mace crafting recipe validation: Heavy Core on top of Breeze Rod
+        assert!(HeavyCoreBlock::is_valid_mace_recipe("minecraft:heavy_core", "minecraft:breeze_rod"));
+        assert!(HeavyCoreBlock::is_valid_mace_recipe("heavy_core", "breeze_rod"));
+        assert!(!HeavyCoreBlock::is_valid_mace_recipe("minecraft:breeze_rod", "minecraft:heavy_core"));
+        assert!(!HeavyCoreBlock::is_valid_mace_recipe("minecraft:heavy_core", "minecraft:stick"));
+        assert!(!HeavyCoreBlock::is_valid_mace_recipe("minecraft:iron_block", "minecraft:breeze_rod"));
+    }
 }
