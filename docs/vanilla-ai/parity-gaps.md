@@ -7105,3 +7105,27 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Replaced hardcoded transfer cooldown ticks `8` with `Self::MOVE_ITEM_SPEED`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_hopper_redstone_locking_timing_and_comparator_parity`.
+
+
+### Gap 292: Redstone Repeater Delays (1..=4 Redstone Ticks), Locking Diode Filter & Strong Output Parity
+- **Vanilla Reference**:
+  - `RepeaterBlock.java:23-93`, `DiodeBlock.java:26-150`:
+    - Timing & delay:
+      - Delay setting ranges from 1 to 4 (`DELAY = 1..=4`).
+      - Tick delay formula: `getDelay = state.getValue(DELAY) * 2` game ticks (1 to 4 redstone ticks: 2, 4, 6, 8 ticks).
+      - Default state: `FACING = Direction.NORTH`, `DELAY = 1`, `LOCKED = false`, `POWERED = false`.
+      - Use interaction cycles delay: `1 -> 2 -> 3 -> 4 -> 1`.
+    - Output power:
+      - When powered, outputs power level 15 forward (`state.getValue(FACING)`).
+      - Emits as strong power forward (can power solid conductive block directly in front).
+    - Locking side rule:
+      - `sideInputDiodesOnly() = true`.
+      - Only diodes (`REPEATER` and `COMPARATOR`) facing into orthogonal horizontal sides (left / right) can lock a repeater.
+      - Redstone wires, torches, levers directly into the side do NOT lock repeaters.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/repeater.rs`:
+    - Exported constants `MIN_DELAY = 1`, `MAX_DELAY = 4`, `DELAY_MULTIPLIER = 2`, `POWER_ON = 15`, `POWER_OFF = 0`, `DEFAULT_DELAY = 1`, `DEFAULT_LOCKED = false`, and `DEFAULT_POWERED = false`.
+    - Exported helpers `calculate_delay_ticks`, `cycle_delay`, `get_output_power`, `emits_power_in_direction`, `is_locking_side`, and `can_be_locked_by_block`.
+    - Refactored `on_use` to use `cycle_delay`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_repeater_delays_locking_and_output_parity`.

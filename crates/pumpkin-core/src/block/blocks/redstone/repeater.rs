@@ -236,15 +236,67 @@ impl RepeaterBlock {
     pub const DELAY_MULTIPLIER: u32 = 2;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_DELAY: u8 = 1;
+    pub const DEFAULT_LOCKED: bool = false;
+    pub const DEFAULT_POWERED: bool = false;
 
     #[must_use]
     pub const fn calculate_delay_ticks(delay: u8) -> u32 {
-        delay as u32 * Self::DELAY_MULTIPLIER
+        let clamped = if delay < Self::MIN_DELAY {
+            Self::MIN_DELAY
+        } else if delay > Self::MAX_DELAY {
+            Self::MAX_DELAY
+        } else {
+            delay
+        };
+        clamped as u32 * Self::DELAY_MULTIPLIER
+    }
+
+    #[must_use]
+    pub const fn cycle_delay(current_delay: u8) -> u8 {
+        if current_delay >= Self::MAX_DELAY {
+            Self::MIN_DELAY
+        } else {
+            current_delay + 1
+        }
+    }
+
+    #[must_use]
+    pub const fn get_output_power(powered: bool) -> u8 {
+        if powered {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
+
+    #[must_use]
+    pub fn emits_power_in_direction(facing: HorizontalFacing, direction: BlockDirection) -> bool {
+        facing.to_block_direction() == direction
+    }
+
+    #[must_use]
+    pub fn is_locking_side(facing: HorizontalFacing, side_direction: BlockDirection) -> bool {
+        let facing_dir = facing.to_block_direction();
+        match facing_dir {
+            BlockDirection::North | BlockDirection::South => {
+                matches!(side_direction, BlockDirection::East | BlockDirection::West)
+            }
+            BlockDirection::East | BlockDirection::West => {
+                matches!(side_direction, BlockDirection::North | BlockDirection::South)
+            }
+            _ => false,
+        }
+    }
+
+    #[must_use]
+    pub fn can_be_locked_by_block(block_id: pumpkin_data::BlockId) -> bool {
+        matches!(block_id, pumpkin_data::BlockId::REPEATER | pumpkin_data::BlockId::COMPARATOR)
     }
 
     fn on_use(props: RepeaterProperties, world: &Arc<World>, block_pos: BlockPos, block: &Block) {
         let mut props = props;
-        props.delay = if props.delay == 4 { 1 } else { props.delay + 1 };
+        props.delay = Self::cycle_delay(props.delay);
         let state = props.to_state_id(block);
         world.set_block_state(&block_pos, state, BlockFlags::NOTIFY_ALL);
     }

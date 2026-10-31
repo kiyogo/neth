@@ -15879,4 +15879,71 @@ mod tests {
         let unstackable_max = [1, 64, 64, 64, 64];
         assert_eq!(HopperBlock::calculate_container_comparator_output(&unstackable_counts, &unstackable_max), 3);
     }
+#[test]
+    fn test_repeater_delays_locking_and_output_parity() {
+        use crate::block::blocks::redstone::repeater::RepeaterBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // Constants verification
+        assert_eq!(RepeaterBlock::MIN_DELAY, 1);
+        assert_eq!(RepeaterBlock::MAX_DELAY, 4);
+        assert_eq!(RepeaterBlock::DELAY_MULTIPLIER, 2);
+        assert_eq!(RepeaterBlock::POWER_ON, 15);
+        assert_eq!(RepeaterBlock::POWER_OFF, 0);
+        assert_eq!(RepeaterBlock::DEFAULT_DELAY, 1);
+        assert!(!RepeaterBlock::DEFAULT_LOCKED);
+        assert!(!RepeaterBlock::DEFAULT_POWERED);
+
+        // Delay ticks calculation (delay setting * 2 game ticks)
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(1), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(2), 4);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(3), 6);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
+
+        // Clamping checks
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(0), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(5), 8);
+
+        // Delay cycling (1 -> 2 -> 3 -> 4 -> 1)
+        assert_eq!(RepeaterBlock::cycle_delay(1), 2);
+        assert_eq!(RepeaterBlock::cycle_delay(2), 3);
+        assert_eq!(RepeaterBlock::cycle_delay(3), 4);
+        assert_eq!(RepeaterBlock::cycle_delay(4), 1);
+        assert_eq!(RepeaterBlock::cycle_delay(5), 1);
+
+        // Output power
+        assert_eq!(RepeaterBlock::get_output_power(true), 15);
+        assert_eq!(RepeaterBlock::get_output_power(false), 0);
+
+        // Output direction (only in facing direction)
+        assert!(RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::North));
+        assert!(!RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::South));
+        assert!(!RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::East));
+        assert!(!RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::West));
+        assert!(!RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::Up));
+        assert!(!RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::Down));
+
+        // Locking sides (must be orthogonal horizontal directions)
+        // Facing North: locked from East and West
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::East));
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::West));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::North));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::South));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::Up));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::Down));
+
+        // Facing East: locked from North and South
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::East, BlockDirection::North));
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::East, BlockDirection::South));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::East, BlockDirection::East));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::East, BlockDirection::West));
+
+        // Side locking block types (only diodes: repeater and comparator)
+        assert!(RepeaterBlock::can_be_locked_by_block(BlockId::REPEATER));
+        assert!(RepeaterBlock::can_be_locked_by_block(BlockId::COMPARATOR));
+        assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::REDSTONE_WIRE));
+        assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::REDSTONE_TORCH));
+        assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::STONE));
+    }
 }
