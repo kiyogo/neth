@@ -3,7 +3,7 @@ use super::{
     components::{BlockEntityComponents, ComponentFields, ComponentMap, set_component},
 };
 use pumpkin_data::data_component::DataComponent;
-use pumpkin_data::data_component_impl::{ContainerImpl, ContainerLootImpl};
+use pumpkin_data::data_component_impl::{ContainerImpl, ContainerLootImpl, PotDecorationsImpl};
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_inventory::{Clearable, Inventory};
 use pumpkin_nbt::compound::NbtCompound;
@@ -269,6 +269,19 @@ impl DecoratedPotBlockEntity {
                     1 + (filled * 14.0).floor() as u8
                 }
             })
+    }
+
+    #[must_use]
+    pub fn get_decorations(&self) -> Option<PotDecorationsImpl> {
+        let components = self.components.collect();
+        for (id, val) in components {
+            if id == DataComponent::PotDecorations {
+                if let Some(dec) = val.as_any().downcast_ref::<PotDecorationsImpl>() {
+                    return Some(dec.clone());
+                }
+            }
+        }
+        None
     }
 }
 

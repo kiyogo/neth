@@ -19219,4 +19219,76 @@ mod tests {
         assert!(!HeavyCoreBlock::is_valid_mace_recipe("minecraft:heavy_core", "minecraft:stick"));
         assert!(!HeavyCoreBlock::is_valid_mace_recipe("minecraft:iron_block", "minecraft:breeze_rod"));
     }
+
+    #[test]
+    fn test_decorated_pot_projectile_shattering_tools_and_drops_parity() {
+        use crate::block::blocks::decorated_pot::DecoratedPotBlock;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+
+        // 1. Constants parity with Vanilla DecoratedPotBlock.java
+        assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
+        assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
+        assert_eq!(DecoratedPotBlock::SHERD_DYNAMIC_DROP_ID, "sherds");
+        assert_eq!(DecoratedPotBlock::WOBBLE_POSITIVE_TICKS, 7);
+        assert_eq!(DecoratedPotBlock::WOBBLE_NEGATIVE_TICKS, 10);
+        assert_eq!(DecoratedPotBlock::EVENT_POT_WOBBLES, 1);
+        assert_eq!(DecoratedPotBlock::BASE_INSERT_PITCH, 0.7);
+        assert_eq!(DecoratedPotBlock::PITCH_BEND_SCALE, 0.5);
+
+        // 2. Impact Projectile parity (EntityTypeTags.IMPACT_PROJECTILES)
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::ARROW));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::TRIDENT));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SNOWBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::EGG));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SMALL_FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::DRAGON_FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::WITHER_SKULL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::WIND_CHARGE));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::BREEZE_WIND_CHARGE));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::FIREWORK_ROCKET));
+
+        // Non-impact projectiles / entities do not shatter decorated pots
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::PLAYER));
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::ZOMBIE));
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::ITEM));
+
+        // 3. Breaks Decorated Pots Tool parity (ItemTags.BREAKS_DECORATED_POTS)
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::DIAMOND_SWORD));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::IRON_SWORD));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::NETHERITE_AXE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::STONE_PICKAXE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::GOLDEN_SHOVEL));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::WOODEN_HOE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::TRIDENT));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::MACE));
+
+        // Non-tools do not shatter decorated pots
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::STICK));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::FEATHER));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::DIRT));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::APPLE));
+
+        // 4. Shattering condition parity (can_break_pot_shatter)
+        // Mined with tool and without Silk Touch -> Shatters into 4 sherds/bricks
+        assert!(DecoratedPotBlock::can_break_pot_shatter(true, false));
+        // Mined with Silk Touch tool -> Drops decorated pot intact
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(true, true));
+        // Broken with bare hands / non-tool -> Drops decorated pot intact
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(false, false));
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(false, true));
+
+        // 5. Pitch calculation & comparator output
+        let pitch_empty_item = DecoratedPotBlock::calculate_insert_pitch(1, 64);
+        assert!((pitch_empty_item - (0.7 + 0.5 / 64.0)).abs() < 1e-5);
+        let pitch_full_item = DecoratedPotBlock::calculate_insert_pitch(64, 64);
+        assert!((pitch_full_item - 1.2).abs() < 1e-5);
+
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 64), 0);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 64), 1);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(32, 64), 8);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(64, 64), 15);
+    }
 }

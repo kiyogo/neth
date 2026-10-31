@@ -1,18 +1,24 @@
 use std::sync::Arc;
 
 use pumpkin_data::block_properties::DecoratedPotLikeProperties;
+use pumpkin_data::enchantment::Enchantment;
+use pumpkin_data::entity::EntityType;
+use pumpkin_data::tag;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block;
+use pumpkin_util::math::position::BlockPos;
+use pumpkin_world::world::BlockFlags;
 
 use crate::block::entities::decorated_pot::DecoratedPotBlockEntity;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, NormalUseArgs, OnPlaceArgs,
-    PathComputationType, PlacedArgs, UseWithItemArgs,
+    OnProjectileHitArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
 };
+use crate::world::World;
 
 #[pumpkin_block("minecraft:decorated_pot")]
 pub struct DecoratedPotBlock;
@@ -20,6 +26,12 @@ pub struct DecoratedPotBlock;
 impl DecoratedPotBlock {
     pub const TOTAL_SHERD_FACES: usize = 4;
     pub const INSERT_DUST_PLUME_PARTICLES: i32 = 7;
+    pub const SHERD_DYNAMIC_DROP_ID: &'static str = "sherds";
+    pub const WOBBLE_POSITIVE_TICKS: u32 = 7;
+    pub const WOBBLE_NEGATIVE_TICKS: u32 = 10;
+    pub const EVENT_POT_WOBBLES: u32 = 1;
+    pub const BASE_INSERT_PITCH: f32 = 0.7;
+    pub const PITCH_BEND_SCALE: f32 = 0.5;
 
     /// Vanilla AbstractContainerMenu.getRedstoneSignalFromBlockEntity
     /// Returns 0 if empty; otherwise 1 + floor((count / maxStack) * 14.0)
@@ -39,7 +51,7 @@ impl DecoratedPotBlock {
     pub fn calculate_insert_pitch(count: u8, max_stack_size: u8) -> f32 {
         let max_count = f32::from(max_stack_size.max(1));
         let pitch_bend = f32::from(count) / max_count;
-        0.7 + 0.5 * pitch_bend
+        Self::BASE_INSERT_PITCH + Self::PITCH_BEND_SCALE * pitch_bend
     }
 
     /// Vanilla DecoratedPotBlock.java:191:
@@ -47,6 +59,44 @@ impl DecoratedPotBlock {
     #[must_use]
     pub const fn can_break_pot_shatter(is_tool: bool, has_silk_touch: bool) -> bool {
         is_tool && !has_silk_touch
+    }
+
+    /// Checks if the projectile is in Vanilla `EntityTypeTags.IMPACT_PROJECTILES`
+    #[must_use]
+    pub fn is_impact_projectile(entity_type: &EntityType) -> bool {
+        tag::EntityType::MINECRAFT_IMPACT_PROJECTILES
+            .1
+            .contains(&entity_type.id)
+    }
+
+    /// Checks if the item is in Vanilla `ItemTags.BREAKS_DECORATED_POTS`
+    #[must_use]
+    pub fn is_breaks_decorated_pot_tool(item: &Item) -> bool {
+        tag::Item::MINECRAFT_BREAKS_DECORATED_POTS.1.contains(&item.id)
+    }
+
+    /// Drops the 4 constituent sherds or bricks when the pot shatters.
+    pub fn drop_pot_sherds(world: &Arc<World>, position: &BlockPos) {
+        let sherds = if let Some(block_entity) = world.get_block_entity(position)
+            && let Some(pot) = block_entity.as_any().downcast_ref::<DecoratedPotBlockEntity>()
+            && let Some(decorations) = pot.get_decorations()
+        {
+            let mut items = Vec::new();
+            for opt_dec in decorations.decorations {
+                if let Some(dec) = opt_dec {
+                    items.push(ItemStack::new(1, dec.item));
+                } else {
+                    items.push(ItemStack::new(1, &Item::BRICK));
+                }
+            }
+            items
+        } else {
+            vec![ItemStack::new(4, &Item::BRICK)]
+        };
+
+        for item in sherds {
+            world.drop_stack(position, item);
+        }
     }
 }
 
@@ -88,8 +138,7 @@ impl BlockBehaviour for DecoratedPotBlock {
                 let (count, max_stack) = pot_entity
                     .get_item()
                     .map_or((1, 64), |it| (it.item_count, it.get_max_stack_size()));
-                let pitch_bend = f32::from(count) / f32::from(max_stack.max(1));
-                let pitch = 0.7 + 0.5 * pitch_bend;
+                let pitch = Self::calculate_insert_pitch(count, max_stack);
                 args.world.play_sound_fine(
                     Sound::BlockDecoratedPotInsert,
                     SoundCategory::Blocks,
@@ -122,14 +171,43 @@ impl BlockBehaviour for DecoratedPotBlock {
         BlockActionResult::Success
     }
 
-    fn broken(&self, args: BrokenArgs<'_>) {
+    fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
+        if !Self::is_impact_projectile(args.projectile.get_entity().entity_type) {
+            return;
+        }
+
+        // Vanilla DecoratedPotBlock.java:210-216: projectile shatters pot
         args.world.play_sound(
             Sound::BlockDecoratedPotShatter,
             SoundCategory::Blocks,
             &args.position.to_f64(),
         );
-        args.world
-            .drop_stack(args.position, ItemStack::new(4, &Item::BRICK));
+        Self::drop_pot_sherds(args.world, args.position);
+        args.world.set_block_state(
+            args.position,
+            BlockStateId::AIR,
+            BlockFlags::NOTIFY_ALL,
+        );
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let held_item = args.player.inventory().held_item();
+        let is_tool = Self::is_breaks_decorated_pot_tool(held_item.item);
+        let has_silk_touch = held_item
+            .get_enchantment_level(&Enchantment::SILK_TOUCH)
+            > 0;
+
+        if Self::can_break_pot_shatter(is_tool, has_silk_touch) {
+            args.world.play_sound(
+                Sound::BlockDecoratedPotShatter,
+                SoundCategory::Blocks,
+                &args.position.to_f64(),
+            );
+            Self::drop_pot_sherds(args.world, args.position);
+        } else {
+            args.world
+                .drop_stack(args.position, ItemStack::new(1, &Item::DECORATED_POT));
+        }
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {

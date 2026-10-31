@@ -8606,3 +8606,18 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `HARDNESS = 10.0`, `BLAST_RESISTANCE = 1200.0`, `MIN_BOUND = 0.25`, `MAX_BOUND = 0.75`, `MAX_Y_BOUND = 0.5` on `HeavyCoreBlock`.
   - Added helpers `is_inside_bounding_box(x, y, z)` and `is_valid_mace_recipe(top, bottom)`.
   - Added unit test `test_heavy_core_hardness_blast_resistance_voxel_shape_and_mace_recipe_parity` in `combat.rs`.
+
+### Gap 349: Decorated Pot Projectile Shattering, Arrows/Tridents/Wind Charges & Drop Inventory Parity
+
+- **Vanilla Reference**: `DecoratedPotBlock.java:1-247`, `DecoratedPotBlockEntity.java:1-187`, `EntityTypeTags.IMPACT_PROJECTILES`, `ItemTags.BREAKS_DECORATED_POTS`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Decorated Pots interact with projectile collisions, mining tools, and drops with exact mechanics:
+    - **Projectile Shattering**: When impacted by any projectile in `#minecraft:impact_projectiles` (Arrows, Spectral Arrows, Tridents, Wind Charges, Breeze Wind Charges, Snowballs, Eggs, Fireballs, Small Fireballs, Dragon Fireballs, Wither Skulls, and Firework Rockets), the decorated pot immediately shatters: sets `CRACKED = true`, plays `SoundEvents.DECORATED_POT_SHATTER` (`SoundType.DECORATED_POT_CRACKED`), drops its 4 constituent sherds or bricks (`SHERDS_DYNAMIC_DROP_ID`), and ejects stored items / loot tables.
+    - **Mining Tool Gating**: When broken by players using tools in `#minecraft:breaks_decorated_pots` (swords, axes, pickaxes, shovels, hoes, tridents, and maces) without Silk Touch, the pot shatters into 4 sherds/bricks and drops its contents. When mined with bare hands, non-tool items, or with Silk Touch, the pot drops intact as `Item::DECORATED_POT` with its decorations and container data preserved.
+    - **Dynamic Sherd Ejection**: Shattered pots extract their 4 decorated faces (`get_decorations()`), dropping the specific sherds or fallback bricks for each face.
+    - **Constants & Timing**: Wobble positive duration = 7 ticks, negative duration = 10 ticks, event ID = 1, insert pitch base = 0.7 + 0.5 * (count / maxStack), insert dust plume particles = 7.
+- **Neth Changes**:
+  - Implemented `on_projectile_hit` in `DecoratedPotBlock` checking `is_impact_projectile(entity_type)` against `tag::EntityType::MINECRAFT_IMPACT_PROJECTILES`.
+  - Added helpers `drop_pot_sherds`, `is_breaks_decorated_pot_tool`, `is_impact_projectile`, and `get_decorations` on `DecoratedPotBlockEntity`.
+  - Updated `broken` to drop intact pot on bare hands or silk touch mining, and shatter on tool breaking.
+  - Added unit test `test_decorated_pot_projectile_shattering_tools_and_drops_parity` in `combat.rs`.
