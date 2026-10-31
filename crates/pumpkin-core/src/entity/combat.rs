@@ -18701,4 +18701,41 @@ mod tests {
         assert!(!VaultBlock::can_insert_key(VaultState::Unlocking));
         assert!(!VaultBlock::can_insert_key(VaultState::Ejecting));
     }
+
+    #[test]
+    fn test_trial_spawner_player_scaling_scan_range_and_cooldown_parity() {
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+
+        // Constants parity with Vanilla TrialSpawner.java & TrialSpawnerConfig.java
+        assert_eq!(TrialSpawnerBlock::DEFAULT_PLAYER_SCAN_RANGE, 14);
+        assert_eq!(TrialSpawnerBlock::DEFAULT_COOLDOWN_TICKS, 36000); // 30 min (36000 ticks)
+        assert_eq!(TrialSpawnerBlock::DETECT_PLAYER_SPAWN_BUFFER_TICKS, 40); // 2s (40 ticks)
+        assert_eq!(TrialSpawnerBlock::MAX_MOB_TRACKING_DISTANCE, 47.0);
+
+        // Player scan range checks
+        let range = TrialSpawnerBlock::DEFAULT_PLAYER_SCAN_RANGE;
+        assert!(TrialSpawnerBlock::is_within_player_scan_range(0.0, range));
+        assert!(TrialSpawnerBlock::is_within_player_scan_range(196.0, range)); // 14^2 = 196
+        assert!(!TrialSpawnerBlock::is_within_player_scan_range(196.01, range));
+
+        // Mob tracking distance checks (47 blocks = 2209 sq)
+        assert!(TrialSpawnerBlock::is_within_mob_tracking_distance(2209.0));
+        assert!(!TrialSpawnerBlock::is_within_mob_tracking_distance(2209.01));
+
+        // Scaling formulas:
+        // total_mobs = floor(base + added_per_player * (player_count - 1))
+        // simultaneous_mobs = floor(base + added_per_player * (player_count - 1))
+        // Example: base total 6.0, added 2.0; base simul 2.0, added 1.0
+        // 1 player (0 additional): total = 6, simul = 2
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 1), 6);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 1), 2);
+
+        // 2 players (1 additional): total = 6 + 2 = 8, simul = 2 + 1 = 3
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 2), 8);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 2), 3);
+
+        // 4 players (3 additional): total = 6 + 6 = 12, simul = 2 + 3 = 5
+        assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(6.0, 2.0, 4), 12);
+        assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(2.0, 1.0, 4), 5);
+    }
 }

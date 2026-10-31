@@ -8411,3 +8411,18 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `ACTIVATION_RANGE = 4.0` and `DEACTIVATION_RANGE = 4.5` to `VaultBlock`.
   - Added helpers `is_valid_key`, `can_insert_key`, `is_within_activation_range`, and `is_within_deactivation_range`.
   - Added unit test `test_vault_key_validation_activation_range_and_states_parity` covering key validity matrices, activation distance thresholds, and allowed states.
+
+### Gap 339: Trial Spawner Ominous State, Mob Wave Calculations, Player Scan Range & Cooldown Parity
+
+- **Vanilla Reference**: `TrialSpawner.java:1-431`, `TrialSpawnerConfig.java:1-182`, `TrialSpawnerBlock.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, Trial Spawners scan for valid nearby survival/adventure players within 14 blocks (`DEFAULT_PLAYER_SCAN_RANGE = 14`).
+  - Upon detecting a player, a 40-tick (2.0s) delay (`DETECT_PLAYER_SPAWN_BUFFER = 40`) runs before initial mob wave spawning begins.
+  - Total mob count for the battle scales dynamically with player count: `floor(total_mobs + total_mobs_added_per_player * (players - 1))`.
+  - Simultaneous alive mob limit scales similarly: `floor(simultaneous_mobs + simultaneous_mobs_added_per_player * (players - 1))`.
+  - Upon defeating all mobs and ejecting rewards, the spawner enters a 36000-tick (30-minute) cooldown (`DEFAULT_TARGET_COOLDOWN_LENGTH = 36000`).
+  - Active mobs are tracked up to 47 blocks away (`MAX_MOB_TRACKING_DISTANCE = 47.0`).
+- **Neth Changes**:
+  - Exported `DEFAULT_PLAYER_SCAN_RANGE`, `DEFAULT_COOLDOWN_TICKS`, `DETECT_PLAYER_SPAWN_BUFFER_TICKS`, and `MAX_MOB_TRACKING_DISTANCE` on `TrialSpawnerBlock`.
+  - Added helpers `calculate_target_total_mobs`, `calculate_target_simultaneous_mobs`, `is_within_player_scan_range`, and `is_within_mob_tracking_distance`.
+  - Added unit test `test_trial_spawner_player_scaling_scan_range_and_cooldown_parity` verifying multi-player wave scaling, scan ranges, and cooldown timing.
