@@ -8363,3 +8363,20 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
   - Added constants `TOTAL_FRAME_POSITIONS = 42`, `ATTACK_DAMAGE = 4.0`, `EFFECT_DURATION_TICKS = 260`, `UPDATE_INTERVAL_TICKS = 40`, and `AMBIENT_SOUND_INTERVAL_TICKS = 80`.
   - Added `is_active_size`, `is_hunting_size`, and `is_valid_frame_block_offset`.
   - Added unit test `test_conduit_frame_activation_range_hunting_and_attack_parity` validating all 42 frame geometry coordinates, non-frame rejection, tiered effect ranges (32 to 96), and hunting mode transitions.
+
+### Gap 336: Mace Smash Attack Fall Distance Scaling, Knockback AoE & Particles Parity
+
+- **Vanilla Reference**: `MaceItem.java:1-157`, `LivingEntity.java:1200-1250`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Mace performs a smash attack when attacking while falling from a height greater than 1.5 blocks (`SMASH_ATTACK_FALL_THRESHOLD = 1.5F`) and not fall flying with an Elytra.
+  - Successfully landing a smash attack negates all accumulated fall damage (`attacker.resetFallDistance()`) and gives the attacker a slight upward impulse (`Axis.Y = 0.01F`).
+  - Damage bonus follows a 3-tier piecewise function based on fall distance:
+    - Tier 1 (`fallDistance <= 3.0`): `4.0 * fallDistance` (e.g. 1.5m -> 6.0, 3.0m -> 12.0)
+    - Tier 2 (`3.0 < fallDistance <= 8.0`): `12.0 + 2.0 * (fallDistance - 3.0)` (e.g. 5.0m -> 16.0, 8.0m -> 22.0)
+    - Tier 3 (`fallDistance > 8.0`): `22.0 + 1.0 * (fallDistance - 8.0)` (e.g. 10.0m -> 24.0, 20.0m -> 34.0)
+  - Knockback AoE: spawns particle event 2013 (`WorldEvent::ParticlesSmashAttack`) with data 750, pushes nearby entities in a 3.5 block radius (`SMASH_ATTACK_KNOCKBACK_RADIUS = 3.5F`) with vertical launch `0.7F`.
+  - Sound effects differ: plays `SoundEvents.MACE_SMASH_GROUND_HEAVY` when falling > 5.0 blocks (`SMASH_ATTACK_HEAVY_THRESHOLD = 5.0F`), `SoundEvents.MACE_SMASH_GROUND` when <= 5.0 blocks, or `SoundEvents.MACE_SMASH_AIR` when mob is in the air.
+- **Neth Changes**:
+  - Added constants `DEFAULT_ATTACK_DAMAGE`, `DEFAULT_ATTACK_SPEED`, `SMASH_ATTACK_FALL_THRESHOLD`, `SMASH_ATTACK_HEAVY_THRESHOLD`, `SMASH_ATTACK_KNOCKBACK_RADIUS`, `SMASH_ATTACK_KNOCKBACK_POWER`, `SMASH_PARTICLES_EVENT_ID`, and `SMASH_PARTICLES_DATA` to `MaceItem`.
+  - Added `can_smash_attack`, `calculate_smash_damage_bonus`, and `is_heavy_smash` to `MaceItem`.
+  - Added unit test `test_mace_smash_attack_fall_damage_scaling_and_knockback_parity` covering threshold validations, the 3-tier damage bonus curve, and heavy smash transitions.

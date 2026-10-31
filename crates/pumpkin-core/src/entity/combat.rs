@@ -18581,4 +18581,61 @@ mod tests {
         assert!(ConduitBlockEntity::is_hunting_size(42));
         assert_eq!(calculate_conduit_effect_range(42), 96);
     }
+
+    #[test]
+    fn test_mace_smash_attack_fall_damage_scaling_and_knockback_parity() {
+        use crate::item::items::mace::MaceItem;
+
+        // Constants parity with Vanilla MaceItem.java
+        assert_eq!(MaceItem::DEFAULT_ATTACK_DAMAGE, 5.0);
+        assert_eq!(MaceItem::DEFAULT_ATTACK_SPEED, -3.4);
+        assert_eq!(MaceItem::SMASH_ATTACK_FALL_THRESHOLD, 1.5);
+        assert_eq!(MaceItem::SMASH_ATTACK_HEAVY_THRESHOLD, 5.0);
+        assert_eq!(MaceItem::SMASH_ATTACK_KNOCKBACK_RADIUS, 3.5);
+        assert_eq!(MaceItem::SMASH_ATTACK_KNOCKBACK_POWER, 0.7);
+        assert_eq!(MaceItem::SMASH_PARTICLES_EVENT_ID, 2013);
+        assert_eq!(MaceItem::SMASH_PARTICLES_DATA, 750);
+
+        // Smash attack eligibility: fall_distance > 1.5 and not fall flying
+        assert!(!MaceItem::can_smash_attack(0.0, false));
+        assert!(!MaceItem::can_smash_attack(1.0, false));
+        assert!(!MaceItem::can_smash_attack(1.5, false));
+        assert!(MaceItem::can_smash_attack(1.51, false));
+        assert!(MaceItem::can_smash_attack(3.0, false));
+        assert!(MaceItem::can_smash_attack(10.0, false));
+
+        // Elytra fall flying prevents smash attack
+        assert!(!MaceItem::can_smash_attack(5.0, true));
+        assert!(!MaceItem::can_smash_attack(10.0, true));
+
+        // Heavy smash threshold (> 5.0 blocks fall)
+        assert!(!MaceItem::is_heavy_smash(1.5));
+        assert!(!MaceItem::is_heavy_smash(5.0));
+        assert!(MaceItem::is_heavy_smash(5.01));
+        assert!(MaceItem::is_heavy_smash(8.0));
+
+        // Piecewise smash damage bonus curve parity (Vanilla MaceItem.java:95-105):
+        // Tier 1: <= 3.0 blocks -> 4.0 * fall_distance
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(1.5), 6.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(2.0), 8.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(3.0), 12.0);
+
+        // Tier 2: 3.0 < fall_distance <= 8.0 blocks -> 12.0 + 2.0 * (fall_distance - 3.0)
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(4.0), 14.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(5.0), 16.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(8.0), 22.0);
+
+        // Tier 3: > 8.0 blocks -> 22.0 + 1.0 * (fall_distance - 8.0)
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(9.0), 23.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(10.0), 24.0);
+        assert_eq!(MaceItem::calculate_smash_damage_bonus(20.0), 34.0);
+
+        // Compare with combat helper mace_smash_damage_bonus
+        for dist in [1.5, 2.5, 3.0, 5.0, 8.0, 12.0, 25.0] {
+            assert_eq!(
+                MaceItem::calculate_smash_damage_bonus(dist),
+                crate::entity::combat::mace_smash_damage_bonus(dist)
+            );
+        }
+    }
 }
