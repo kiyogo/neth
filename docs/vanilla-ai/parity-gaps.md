@@ -8211,3 +8211,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported constants matching `SculkCatalystBlock`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sculk_catalyst_bloom_charge_and_spreader_parity`.
+
+### Gap 328: Lectern Book Insertion, Page Navigation (0..PageCount-1), Redstone Power Calculation & Comparator Parity
+- **Vanilla Reference**:
+  - `LecternBlock.java:1-180`, `LecternBlockEntity.java:1-240`, `LecternMenu.java:1-100`:
+    - Lectern properties & power states:
+      - Properties: `FACING` (Direction.NORTH default), `POWERED` (boolean default false), `HAS_BOOK` (boolean default false).
+      - Page change pulse delay: `PAGE_CHANGE_IMPULSE_TICKS = 2` game ticks (lectern powers neighbor blocks for 2 ticks on page turn).
+      - Page change level event: `WorldEvent.SoundPageTurn` (`PAGE_CHANGE_EVENT = 1043`).
+      - Redstone emission:
+        - Weak power: outputs 15 to all adjacent blocks when `POWERED == true`, 0 otherwise.
+        - Strong power: strictly outputs downwards into the block beneath the lectern (`direction == Direction.UP`).
+      - Book drop geometry: `0.25 * direction.stepX` and `0.25 * direction.stepZ` offset along facing with pickup delay `BOOK_DROP_PICKUP_DELAY_TICKS = 10`.
+    - Comparator analog output calculation:
+      - Formula: `floor(pageProgress * 14.0) + (hasBook ? 1 : 0)` where `pageProgress = page / (pageCount - 1.0)`.
+      - If no book is placed or `pageCount == 0`: outputs 0.
+      - If book has only 1 page (`pageCount == 1`): outputs 15 (fully read).
+      - If book has multiple pages:
+        - Page 0 (first page): outputs 1 (`floor(0.0 * 14.0) + 1 = 1`).
+        - Last page (`page == pageCount - 1`): outputs 15 (`floor(1.0 * 14.0) + 1 = 15`).
+        - Intermediate pages: scales linearly across values 1..15.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Added helper `calculate_comparator_output(has_book, page, page_count)`.
+    - Verified `PAGE_CHANGE_IMPULSE_TICKS = 2`, `PAGE_CHANGE_EVENT = 1043`, `POWER_ON = 15`, `POWER_OFF = 0`, `calculate_drop_position`, and `emits_strong_power`.
+  - Updated `crates/pumpkin-core/src/block/entities/lectern.rs`:
+    - Verified `calculate_lectern_comparator_output`, `DATA_PAGE = 0`, `NUM_DATA = 1`, `SLOT_BOOK = 0`, `NUM_SLOTS = 1`, `MIN_COMPARATOR_SIGNAL = 1`, `MAX_COMPARATOR_SIGNAL = 15`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Unit test `test_lectern_book_insertion_page_pulse_and_comparator_parity` verified and passed.

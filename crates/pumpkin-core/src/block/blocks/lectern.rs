@@ -154,6 +154,11 @@ impl LecternBlock {
         matches!(direction, BlockDirection::Up)
     }
 
+    #[must_use]
+    pub fn calculate_comparator_output(has_book: bool, page: usize, page_count: usize) -> u8 {
+        crate::block::entities::lectern::calculate_lectern_comparator_output(has_book, page, page_count)
+    }
+
     /// The lectern strongly powers the block below it, so its neighbors need
     /// updating whenever the power or book state changes.
     fn update_neighbors_below(world: &Arc<World>, position: &BlockPos) {
