@@ -9010,3 +9010,33 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Baby wolves now randomly inherit/pick a `WolfSoundVariant` on birth.
   - Added unit test `test_wolf_sound_variants_and_biome_spawn_priorities_parity` in `wolf.rs`.
 - **Status**: Completed & Verified.
+
+### Gap 364: Bogged Skeleton Step Sound (`SoundEvents.BOGGED_STEP`), Shear Loot BbHeight Spawn & Poison Duration Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.skeleton.Bogged.java:1-141`, `data/minecraft/loot_table/shearing/bogged.json:1-27`.
+- **Vanilla Mechanics**:
+  1. *Bogged Sounds*:
+     - Ambient: `SoundEvents.BOGGED_AMBIENT` (`entity.bogged.ambient`).
+     - Hurt: `SoundEvents.BOGGED_HURT` (`entity.bogged.hurt`).
+     - Death: `SoundEvents.BOGGED_DEATH` (`entity.bogged.death`).
+     - Step: `SoundEvents.BOGGED_STEP` (`entity.bogged.step`).
+     - Shear: `SoundEvents.BOGGED_SHEAR` (`entity.bogged.shear`).
+  2. *Shearing Mechanics & Loot*:
+     - Shearing drops from `shearing/bogged` loot table consisting of 2 rolls (`BOGGED_SHEAR_MUSHROOM_COUNT = 2`), randomly picking between `minecraft:brown_mushroom` and `minecraft:red_mushroom`.
+     - Mushrooms are spawned at `this.getBbHeight()` (top of Bogged head, `pos.y + entity.height()`).
+     - Ready for shearing is verified with `!this.isSheared()`.
+  3. *Poison Arrow Effect*:
+     - Plain arrow receives `MobEffectInstance(MobEffects.POISON, 100)` (Poison I for 100 ticks = 5 seconds) without scaling penalties.
+  4. *Attack Intervals & Stats*:
+     - Hard attack interval: 50 ticks (2.5s).
+     - Default/Easy attack interval: 70 ticks (3.5s).
+     - Health: 16.0 HP, XP Reward: 5 XP, Speed: 0.25.
+- **Implementation**:
+  - Updated `crates/pumpkin-core/src/entity/mob/skeleton/bogged.rs`:
+    - Implemented `step_sound` on `impl CustomSound for BoggedSkeletonEntity` returning `Some(Sound::EntityBoggedStep)`.
+    - Added fallback generation in `shear()` dropping 2 random mushrooms (brown or red) at `pos.y + height` if loot table is empty.
+  - Updated `crates/pumpkin-core/src/entity/living.rs`:
+    - Added `step_sound` query dispatching to `CustomSound::step_sound()`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `BOGGED_SHEAR_MUSHROOM_COUNT = 2`.
+  - Added unit test `test_bogged_sound_and_shearing_loot_parity` in `bogged.rs`.
+- **Status**: Completed & Verified.

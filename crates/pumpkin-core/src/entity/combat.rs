@@ -7679,6 +7679,12 @@ pub const BOGGED_MAX_HEALTH: f32 = 16.0;
 /// Mirrors vanilla `Bogged.java` / `Mob.java`:
 pub const BOGGED_XP_REWARD: u32 = 5;
 
+/// Bogged skeleton shear mushroom drop count (2 rolls in vanilla loot table `shearing/bogged`).
+///
+/// Mirrors vanilla `Bogged.java:134` and `data/minecraft/loot_table/shearing/bogged.json`:
+/// 2 rolls of brown_mushroom or red_mushroom.
+pub const BOGGED_SHEAR_MUSHROOM_COUNT: usize = 2;
+
 /// Duration in ticks of the Poison status effect applied by Bogged arrows (100 ticks = 5 seconds).
 ///
 /// Mirrors vanilla `Bogged.java:110`:

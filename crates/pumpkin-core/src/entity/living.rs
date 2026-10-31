@@ -3509,6 +3509,16 @@ impl LivingEntity {
 
         Self::hurt_sound_for_entity(self.entity.entity_type)
     }
+
+    pub fn step_sound(&self, entity: &dyn EntityBase) -> Option<Sound> {
+        if let Some(sound_source) = entity.get_mob().and_then(|x| x.as_custom_sound())
+            && let Some(audio) = sound_source.step_sound()
+        {
+            return Some(audio);
+        }
+
+        None
+    }
 }
 
 impl LivingEntity {

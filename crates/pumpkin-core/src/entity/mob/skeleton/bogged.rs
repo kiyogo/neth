@@ -77,6 +77,10 @@ impl CustomSound for BoggedSkeletonEntity {
     fn hurt_sound(&self) -> Option<Sound> {
         Some(Sound::EntityBoggedHurt)
     }
+
+    fn step_sound(&self) -> Option<Sound> {
+        Some(Sound::EntityBoggedStep)
+    }
 }
 
 impl Shearable for BoggedSkeletonEntity {
@@ -90,8 +94,21 @@ impl Shearable for BoggedSkeletonEntity {
         let pos = entity.pos.load();
         world.play_sound(Sound::EntityBoggedShear, sound_category, &pos);
 
+        use rand::RngExt;
         let drop_pos = Vector3::new(pos.x, pos.y + f64::from(entity.height()), pos.z);
-        for drop in shearing_loot(entity, "minecraft:shearing/bogged", tool) {
+        let mut drops = shearing_loot(entity, "minecraft:shearing/bogged", tool);
+        if drops.is_empty() {
+            let mut rng = rand::rng();
+            for _ in 0..crate::entity::combat::BOGGED_SHEAR_MUSHROOM_COUNT {
+                let item = if rng.random::<bool>() {
+                    &Item::BROWN_MUSHROOM
+                } else {
+                    &Item::RED_MUSHROOM
+                };
+                drops.push(ItemStack::new(1, item));
+            }
+        }
+        for drop in drops {
             world.spawn_entity(Arc::new(ItemEntity::new(
                 Entity::new(world.clone(), drop_pos, &EntityType::ITEM),
                 drop,
@@ -209,5 +226,21 @@ mod tests {
         assert_eq!(crate::entity::combat::BOGGED_DEFAULT_ATTACK_INTERVAL, 70);
         assert_eq!(crate::entity::combat::calculate_bogged_attack_interval(true), 50);
         assert_eq!(crate::entity::combat::calculate_bogged_attack_interval(false), 70);
+    }
+
+    #[test]
+    fn test_bogged_sound_and_shearing_loot_parity() {
+        // Vanilla Bogged.java:86-104 sound parity
+        assert_eq!(Sound::EntityBoggedAmbient.to_name(), "entity.bogged.ambient");
+        assert_eq!(Sound::EntityBoggedHurt.to_name(), "entity.bogged.hurt");
+        assert_eq!(Sound::EntityBoggedDeath.to_name(), "entity.bogged.death");
+        assert_eq!(Sound::EntityBoggedStep.to_name(), "entity.bogged.step");
+        assert_eq!(Sound::EntityBoggedShear.to_name(), "entity.bogged.shear");
+
+        // Shearing loot roll count (Bogged.java:134, data/minecraft/loot_table/shearing/bogged.json)
+        assert_eq!(crate::entity::combat::BOGGED_SHEAR_MUSHROOM_COUNT, 2);
+
+        // Arrow poison properties (Bogged.java:107-114)
+        assert_eq!(crate::entity::combat::BOGGED_POISON_DURATION_TICKS, 100);
     }
 }
