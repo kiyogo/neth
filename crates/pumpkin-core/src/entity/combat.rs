@@ -8420,6 +8420,46 @@ pub const TRIAL_SPAWNER_REWARD_EJECTION_Y_OFFSET: f64 = 1.2;
 #[allow(dead_code)]
 pub const TRIAL_SPAWNER_REWARD_EJECTION_VELOCITY: f64 = 2.0;
 
+/// Vanilla `VaultConfig.java`, `VaultServerData.java` & `VaultBlockEntity.java`:
+#[allow(dead_code)]
+pub const VAULT_ACTIVATION_RANGE: f64 = 4.0;
+#[allow(dead_code)]
+pub const VAULT_DEACTIVATION_RANGE: f64 = 4.5;
+#[allow(dead_code)]
+pub const VAULT_INSERT_FAIL_SOUND_COOLDOWN_TICKS: i64 = 15;
+#[allow(dead_code)]
+pub const VAULT_UNLOCKING_DELAY_TICKS: u32 = 14;
+#[allow(dead_code)]
+pub const VAULT_UPDATE_CONNECTED_PLAYERS_TICK_RATE: u32 = 20;
+#[allow(dead_code)]
+pub const VAULT_DISPLAY_ITEM_CYCLE_TICK_RATE: u32 = 20;
+#[allow(dead_code)]
+pub const VAULT_DELAY_BETWEEN_EJECTIONS_TICKS: u32 = 20;
+#[allow(dead_code)]
+pub const VAULT_AMBIENT_SOUND_CHANCE: f32 = 0.02;
+#[allow(dead_code)]
+pub const VAULT_KEYHOLE_Y_OFFSET: f64 = 1.75;
+#[allow(dead_code)]
+pub const VAULT_KEYHOLE_FACING_OFFSET: f64 = 0.5;
+#[allow(dead_code)]
+pub const VAULT_MIN_CONNECTION_PARTICLES: i32 = 2;
+#[allow(dead_code)]
+pub const VAULT_MAX_CONNECTION_PARTICLES: i32 = 5;
+#[allow(dead_code)]
+pub const VAULT_EVENT_ACTIVATE: i32 = 3015;
+#[allow(dead_code)]
+pub const VAULT_EVENT_DEACTIVATE: i32 = 3016;
+#[allow(dead_code)]
+pub const VAULT_EVENT_EJECT_ITEM: i32 = 3017;
+#[allow(dead_code)]
+pub const VAULT_LIGHT_LEVEL_HALF_LIT: u8 = 6;
+#[allow(dead_code)]
+pub const VAULT_LIGHT_LEVEL_LIT: u8 = 12;
+#[allow(dead_code)]
+pub const VAULT_EJECTION_Y_OFFSET: f64 = 1.2;
+#[allow(dead_code)]
+pub const VAULT_EJECTION_VELOCITY: f64 = 2.0;
+
 /// Vanilla `DecoratedPotBlock.java:117`:
 /// Computes insertion sound pitch: `0.7F + 0.5F * (count / max_stack_size)`.
 #[must_use]
@@ -20299,5 +20339,115 @@ mod tests {
         assert_eq!(TrialSpawnerBlock::count_additional_players(1), 0);
         assert_eq!(TrialSpawnerBlock::count_additional_players(2), 1);
         assert_eq!(TrialSpawnerBlock::count_additional_players(5), 4);
+    }
+    #[test]
+    fn test_vault_reward_ejection_connected_particles_and_sound_pitch_parity() {
+        use crate::block::blocks::vault::VaultBlock;
+        use pumpkin_data::block_properties::VaultState;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Constants parity with Vanilla VaultConfig.java, VaultState.java, and VaultBlockEntity.java
+        assert_eq!(VAULT_ACTIVATION_RANGE, 4.0);
+        assert_eq!(VAULT_DEACTIVATION_RANGE, 4.5);
+        assert_eq!(VAULT_INSERT_FAIL_SOUND_COOLDOWN_TICKS, 15);
+        assert_eq!(VAULT_UNLOCKING_DELAY_TICKS, 14);
+        assert_eq!(VAULT_UPDATE_CONNECTED_PLAYERS_TICK_RATE, 20);
+        assert_eq!(VAULT_DISPLAY_ITEM_CYCLE_TICK_RATE, 20);
+        assert_eq!(VAULT_DELAY_BETWEEN_EJECTIONS_TICKS, 20);
+        assert_eq!(VAULT_AMBIENT_SOUND_CHANCE, 0.02);
+        assert_eq!(VAULT_KEYHOLE_Y_OFFSET, 1.75);
+        assert_eq!(VAULT_KEYHOLE_FACING_OFFSET, 0.5);
+        assert_eq!(VAULT_MIN_CONNECTION_PARTICLES, 2);
+        assert_eq!(VAULT_MAX_CONNECTION_PARTICLES, 5);
+        assert_eq!(VAULT_EVENT_ACTIVATE, 3015);
+        assert_eq!(VAULT_EVENT_DEACTIVATE, 3016);
+        assert_eq!(VAULT_EVENT_EJECT_ITEM, 3017);
+        assert_eq!(VAULT_LIGHT_LEVEL_HALF_LIT, 6);
+        assert_eq!(VAULT_LIGHT_LEVEL_LIT, 12);
+        assert_eq!(VAULT_EJECTION_Y_OFFSET, 1.2);
+        assert_eq!(VAULT_EJECTION_VELOCITY, 2.0);
+
+        // VaultBlock constants parity
+        assert_eq!(VaultBlock::ACTIVATION_RANGE, 4.0);
+        assert_eq!(VaultBlock::DEACTIVATION_RANGE, 4.5);
+        assert_eq!(VaultBlock::INSERT_FAIL_SOUND_COOLDOWN_TICKS, 15);
+        assert_eq!(VaultBlock::UNLOCKING_DELAY_TICKS, 14);
+        assert_eq!(VaultBlock::UPDATE_CONNECTED_PLAYERS_TICK_RATE, 20);
+        assert_eq!(VaultBlock::DISPLAY_ITEM_CYCLE_TICK_RATE, 20);
+        assert_eq!(VaultBlock::DELAY_BETWEEN_EJECTIONS_TICKS, 20);
+        assert_eq!(VaultBlock::AMBIENT_SOUND_CHANCE, 0.02);
+        assert_eq!(VaultBlock::KEYHOLE_Y_OFFSET, 1.75);
+        assert_eq!(VaultBlock::KEYHOLE_FACING_OFFSET, 0.5);
+        assert_eq!(VaultBlock::MIN_CONNECTION_PARTICLES, 2);
+        assert_eq!(VaultBlock::MAX_CONNECTION_PARTICLES, 5);
+        assert_eq!(VaultBlock::EVENT_VAULT_ACTIVATE, 3015);
+        assert_eq!(VaultBlock::EVENT_VAULT_DEACTIVATE, 3016);
+        assert_eq!(VaultBlock::EVENT_VAULT_EJECT_ITEM, 3017);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_HALF_LIT, 6);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_LIT, 12);
+        assert_eq!(VaultBlock::EJECTION_Y_OFFSET, 1.2);
+        assert_eq!(VaultBlock::EJECTION_VELOCITY, 2.0);
+
+        // 2. Light level mapping parity
+        assert_eq!(VaultBlock::get_light_level(VaultState::Inactive), 6);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Active), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Unlocking), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Ejecting), 12);
+
+        // 3. Fail sound cooldown parity (15 ticks)
+        assert!(!VaultBlock::can_play_insert_fail_sound(100, 90)); // 10 ticks < 15
+        assert!(!VaultBlock::can_play_insert_fail_sound(100, 86)); // 14 ticks < 15
+        assert!(VaultBlock::can_play_insert_fail_sound(100, 85));  // 15 ticks == 15
+        assert!(VaultBlock::can_play_insert_fail_sound(100, 80));  // 20 ticks > 15
+
+        // 4. Display item cycle check (every 20 ticks only when Active)
+        assert!(VaultBlock::should_cycle_display_item(0, VaultState::Active));
+        assert!(VaultBlock::should_cycle_display_item(20, VaultState::Active));
+        assert!(VaultBlock::should_cycle_display_item(40, VaultState::Active));
+        assert!(!VaultBlock::should_cycle_display_item(21, VaultState::Active));
+        assert!(!VaultBlock::should_cycle_display_item(20, VaultState::Inactive));
+        assert!(!VaultBlock::should_cycle_display_item(20, VaultState::Ejecting));
+
+        // 5. Ejection progress and pitch scaling parity (0.8F + 0.4F * progress)
+        // 1 total item: progress = 1.0, pitch = 0.8 + 0.4 = 1.2
+        assert!((VaultBlock::calculate_ejection_progress(1, 1) - 1.0).abs() < 1e-6);
+        assert!((VaultBlock::calculate_ejection_pitch(1, 1) - 1.2).abs() < 1e-6);
+
+        // 4 total items:
+        // Item 1 (4 remaining): progress = 1.0 - 3/3 = 0.0 -> pitch = 0.8
+        assert!((VaultBlock::calculate_ejection_progress(4, 4) - 0.0).abs() < 1e-6);
+        assert!((VaultBlock::calculate_ejection_pitch(4, 4) - 0.8).abs() < 1e-6);
+        // Item 2 (3 remaining): progress = 1.0 - 2/3 = 0.33333334 -> pitch = 0.8 + 0.13333334 = 0.93333334
+        assert!((VaultBlock::calculate_ejection_progress(3, 4) - (1.0 / 3.0)).abs() < 1e-6);
+        // Item 3 (2 remaining): progress = 1.0 - 1/3 = 0.6666667 -> pitch = 0.8 + 0.2666667 = 1.0666667
+        assert!((VaultBlock::calculate_ejection_progress(2, 4) - (2.0 / 3.0)).abs() < 1e-6);
+        // Item 4 (1 remaining): progress = 1.0 - 0/3 = 1.0 -> pitch = 1.2
+        assert!((VaultBlock::calculate_ejection_progress(1, 4) - 1.0).abs() < 1e-6);
+        assert!((VaultBlock::calculate_ejection_pitch(1, 4) - 1.2).abs() < 1e-6);
+
+        // 6. Keyhole pos calculation parity
+        let pos = BlockPos::new(10, 60, 20);
+        // Facing South (+Z): facing_dx = 0.0, facing_dz = 1.0
+        let south_keyhole = VaultBlock::calculate_keyhole_position(pos, 0.0, 1.0);
+        assert!((south_keyhole.x - 10.5).abs() < 1e-6);
+        assert!((south_keyhole.y - 61.75).abs() < 1e-6);
+        assert!((south_keyhole.z - 21.0).abs() < 1e-6);
+
+        // Facing East (+X): facing_dx = 1.0, facing_dz = 0.0
+        let east_keyhole = VaultBlock::calculate_keyhole_position(pos, 1.0, 0.0);
+        assert!((east_keyhole.x - 11.0).abs() < 1e-6);
+        assert!((east_keyhole.y - 61.75).abs() < 1e-6);
+        assert!((east_keyhole.z - 20.5).abs() < 1e-6);
+
+        // 7. Key validation helper
+        assert!(VaultBlock::is_valid_to_insert(100, 1, 100, 1));
+        assert!(VaultBlock::is_valid_to_insert(100, 5, 100, 1));
+        assert!(!VaultBlock::is_valid_to_insert(100, 0, 100, 1));
+        assert!(!VaultBlock::is_valid_to_insert(101, 1, 100, 1));
+
+        // 8. Connected player in range helper
+        assert!(VaultBlock::is_connected_player_in_range(0.0, 4.5));
+        assert!(VaultBlock::is_connected_player_in_range(20.25, 4.5)); // 4.5^2 = 20.25
+        assert!(!VaultBlock::is_connected_player_in_range(20.26, 4.5));
     }
 }

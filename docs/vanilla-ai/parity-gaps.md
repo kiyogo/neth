@@ -9252,3 +9252,31 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported `TRIAL_SPAWNER_` parity constants.
     - Added unit test `test_trial_spawner_cooldown_shutter_ejection_and_throttled_detection_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 371: Vault Reward Ejection Offset (1.2m), Connected Particles Range (4.5m), Display Item Cycle Rate (20 Ticks) & Keyhole Positioning Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.entity.vault.VaultBlockEntity.java:1-385`, `VaultConfig.java:1-80`, `VaultServerData.java:1-140`, `VaultSharedData.java:1-90`, `VaultState.java:1-155`.
+- **Vanilla Mechanics**:
+  1. *Range & Connected Player Tracking*:
+     - Activation range: 4.0 blocks (`ACTIVATION_RANGE = 4.0`), deactivation range: 4.5 blocks (`DEACTIVATION_RANGE = 4.5`).
+     - Player connection: Vault uses `PlayerDetector.INCLUDING_CREATIVE_PLAYERS` (unlike Trial Spawner which uses `NO_CREATIVE_PLAYERS`).
+     - Connected players tracking interval: 20 ticks (`UPDATE_CONNECTED_PLAYERS_TICK_RATE = 20`). Filters out any players already stored in `rewardedPlayers` FIFO queue (max 128 players).
+     - Connected particles: emits `ParticleTypes.VAULT_CONNECTION` with 2 to 5 particles (`MIN_CONNECTION_PARTICLES = 2`, `MAX_CONNECTION_PARTICLES = 5`) shooting from the keyhole position towards player eye center within `connectedParticlesRange = 4.5` blocks.
+  2. *Keyhole Positioning & Ambient Audio*:
+     - Keyhole position formula: `Vec3.atBottomCenterOf(pos).add(facing.getStepX() * 0.5, 1.75, facing.getStepZ() * 0.5)` (`KEYHOLE_Y_OFFSET = 1.75`, `KEYHOLE_FACING_OFFSET = 0.5`).
+     - Ambient sounds: in `ACTIVE` state, plays `SoundEvents.VAULT_AMBIENT` at 2% chance per tick (`AMBIENT_SOUND_CHANCE = 0.02`), pitch `random + 0.5`, volume `random * 0.25 + 0.75`.
+     - Display item cycling: cycles display item from loot table every 20 ticks (`DISPLAY_ITEM_CYCLE_TICK_RATE = 20`) only when in `ACTIVE` state.
+  3. *Unlocking, Ejection & Delays*:
+     - Unlocking delay: 14 ticks (`UNLOCKING_DELAY_TICKS = 14`). Sets `VaultState.UNLOCKING` and pauses state update until `gameTime + 14L`.
+     - Unlocking transition: during `UNLOCKING`, pauses state update for 20 ticks and transitions to `EJECTING`.
+     - Ejection: items are dispensed upwards at offset `1.2` above bottom center (`Vec3.atBottomCenterOf(pos).relative(Direction.UP, 1.2)`) with velocity factor 2 (`EJECTION_VELOCITY = 2.0`), emits level event 3017 (`AnimationVaultEjectItem`), and plays `SoundEvents.VAULT_EJECT_ITEM` at pitch `0.8F + 0.4F * ejectionSoundProgress`.
+     - Shutter audio: plays `SoundEvents.VAULT_OPEN_SHUTTER` upon entering `EJECTING`, and `SoundEvents.VAULT_CLOSE_SHUTTER` upon exiting `EJECTING`.
+     - Insert fail sound cooldown: 15 ticks (`INSERT_FAIL_SOUND_COOLDOWN_TICKS = 15`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/vault.rs`:
+    - Exported constants `UNLOCKING_DELAY_TICKS = 14`, `UPDATE_CONNECTED_PLAYERS_TICK_RATE = 20`, `AMBIENT_SOUND_CHANCE = 0.02`, `KEYHOLE_Y_OFFSET = 1.75`, `KEYHOLE_FACING_OFFSET = 0.5`, `MIN_CONNECTION_PARTICLES = 2`, `MAX_CONNECTION_PARTICLES = 5`.
+    - Added helper methods `should_cycle_display_item`, `calculate_keyhole_position`, `is_valid_to_insert`, and `is_connected_player_in_range`.
+    - Updated item dispensing in `use_with_item` to use `drop_stack_at` with `EJECTION_Y_OFFSET = 1.2` upwards.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `VAULT_` parity constants.
+    - Added unit test `test_vault_reward_ejection_connected_particles_and_sound_pitch_parity`.
+- **Status**: Completed & Verified.

@@ -49,6 +49,13 @@ impl VaultBlock {
     pub const DELAY_BEFORE_FIRST_EJECTION_TICKS: u32 = 20;
     pub const DELAY_BETWEEN_EJECTIONS_TICKS: u32 = 20;
     pub const DELAY_AFTER_LAST_EJECTION_TICKS: u32 = 20;
+    pub const UNLOCKING_DELAY_TICKS: u32 = 14;
+    pub const UPDATE_CONNECTED_PLAYERS_TICK_RATE: u32 = 20;
+    pub const AMBIENT_SOUND_CHANCE: f32 = 0.02;
+    pub const KEYHOLE_Y_OFFSET: f64 = 1.75;
+    pub const KEYHOLE_FACING_OFFSET: f64 = 0.5;
+    pub const MIN_CONNECTION_PARTICLES: i32 = 2;
+    pub const MAX_CONNECTION_PARTICLES: i32 = 5;
     pub const EVENT_VAULT_ACTIVATE: i32 = 3015;
     pub const EVENT_VAULT_DEACTIVATE: i32 = 3016;
     pub const EVENT_VAULT_EJECT_ITEM: i32 = 3017;
@@ -86,6 +93,39 @@ impl VaultBlock {
     pub fn calculate_ejection_pitch(remaining_items: usize, total_ejections: usize) -> f32 {
         let progress = Self::calculate_ejection_progress(remaining_items, total_ejections);
         0.8 + 0.4 * progress
+    }
+
+    #[must_use]
+    pub fn should_cycle_display_item(game_time: i64, state: VaultState) -> bool {
+        game_time % (Self::DISPLAY_ITEM_CYCLE_TICK_RATE as i64) == 0 && state == VaultState::Active
+    }
+
+    #[must_use]
+    pub fn calculate_keyhole_position(
+        pos: pumpkin_util::math::position::BlockPos,
+        facing_dx: f64,
+        facing_dz: f64,
+    ) -> pumpkin_util::math::vector3::Vector3<f64> {
+        pumpkin_util::math::vector3::Vector3::new(
+            f64::from(pos.0.x) + 0.5 + facing_dx * Self::KEYHOLE_FACING_OFFSET,
+            f64::from(pos.0.y) + Self::KEYHOLE_Y_OFFSET,
+            f64::from(pos.0.z) + 0.5 + facing_dz * Self::KEYHOLE_FACING_OFFSET,
+        )
+    }
+
+    #[must_use]
+    pub fn is_valid_to_insert(
+        inserted_item_id: u16,
+        inserted_count: u32,
+        key_item_id: u16,
+        key_count: u32,
+    ) -> bool {
+        inserted_item_id == key_item_id && inserted_count >= key_count
+    }
+
+    #[must_use]
+    pub fn is_connected_player_in_range(distance_sq: f64, range: f64) -> bool {
+        distance_sq <= range * range
     }
 }
 
@@ -243,7 +283,12 @@ impl BlockBehaviour for VaultBlock {
                     *args.position,
                     0,
                 );
-                args.world.drop_stack(args.position, stack);
+                let drop_pos = pumpkin_util::math::vector3::Vector3::new(
+                    f64::from(args.position.0.x) + 0.5,
+                    f64::from(args.position.0.y) + VaultBlock::EJECTION_Y_OFFSET,
+                    f64::from(args.position.0.z) + 0.5,
+                );
+                args.world.drop_stack_at(drop_pos, stack);
             }
 
             args.world.play_sound(
