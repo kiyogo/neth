@@ -7475,3 +7475,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_power_from_distance`, `calculate_hit_power_on_axis`, `calculate_hit_power`, `is_arrow_projectile`, `get_activation_ticks`, and `emits_strong_power`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_target_block_hit_power_and_timing_parity`.
+
+### Gap 304: Lightning Rod Redstone Pulse (8 Game Ticks), Redstone Power 15 & Strike Event Mechanics Parity
+- **Vanilla Reference**:
+  - `LightningRodBlock.java:25-129`:
+    - Signal pulse parameters:
+      - Pulse duration: `ACTIVATION_TICKS = 8` game ticks (4 redstone ticks).
+      - Redstone power level: `POWER_ON = 15`, `POWER_OFF = 0`.
+      - Lightning diversion range: `RANGE = 128` blocks.
+      - Spark particle cycle: `SPARK_CYCLE = 200` ticks.
+      - Strike visual event: `EVENT_LIGHTNING_STRIKE = 3002` (`level.levelEvent(3002, pos, state.getValue(FACING).getAxis().ordinal())`).
+    - Default state properties:
+      - `DEFAULT_FACING = Facing::Up`, `DEFAULT_POWERED = false`, `DEFAULT_WATERLOGGED = false`.
+    - Placement and fluid state (`getStateForPlacement`):
+      - Waterlogged state dynamically initialized based on whether replaced block is a water source (`Fluids.WATER`).
+    - Signal emission mechanics:
+      - Weak redstone power (`ownSignal`): Emits full strength 15 to all adjacent blocks when powered, 0 when unpowered.
+      - Strong redstone power (`getDirectSignal`): Emits full strength 15 strictly along its facing direction (`FACING == queryDirection`), 0 in all other directions.
+    - Neighbor updates & attachment:
+      - Attached block located at `pos.relative(FACING.getOpposite())`.
+    - Axis ordinal mapping for spark particles:
+      - `Axis.X` -> 0, `Axis.Y` -> 1, `Axis.Z` -> 2.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/lightning_rod.rs`:
+    - Updated `on_place` to preserve `waterlogged` status when placed in water source blocks.
+    - Exported constants `ACTIVATION_TICKS`, `RANGE`, `SPARK_CYCLE`, `EVENT_LIGHTNING_STRIKE`, `POWER_ON`, `POWER_OFF`, `DEFAULT_FACING`, `DEFAULT_POWERED`, and `DEFAULT_WATERLOGGED`.
+    - Exported helpers `get_weak_power`, `get_strong_power`, `get_attached_position`, and `get_axis_ordinal`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_lightning_rod_pulse_power_and_orientations_parity`.

@@ -22,6 +22,44 @@ impl LightningRodBlock {
     pub const SPARK_CYCLE: u32 = 200;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const DEFAULT_FACING: pumpkin_data::block_properties::Facing = pumpkin_data::block_properties::Facing::Up;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_WATERLOGGED: bool = false;
+
+    #[must_use]
+    pub const fn get_weak_power(powered: bool) -> u8 {
+        if powered { Self::POWER_ON } else { Self::POWER_OFF }
+    }
+
+    #[must_use]
+    pub fn get_strong_power(
+        powered: bool,
+        rod_facing: pumpkin_data::block_properties::Facing,
+        query_direction: pumpkin_data::BlockDirection,
+    ) -> u8 {
+        if powered && rod_facing.to_block_direction() == query_direction {
+            Self::POWER_ON
+        } else {
+            Self::POWER_OFF
+        }
+    }
+
+    #[must_use]
+    pub fn get_attached_position(
+        pos: &BlockPos,
+        rod_facing: pumpkin_data::block_properties::Facing,
+    ) -> BlockPos {
+        pos.offset(rod_facing.opposite().to_block_direction().to_offset())
+    }
+
+    #[must_use]
+    pub fn get_axis_ordinal(rod_facing: pumpkin_data::block_properties::Facing) -> u32 {
+        match rod_facing.to_block_direction().to_axis() {
+            pumpkin_data::block_properties::Axis::X => 0,
+            pumpkin_data::block_properties::Axis::Y => 1,
+            pumpkin_data::block_properties::Axis::Z => 2,
+        }
+    }
 
     pub fn trigger(world: &Arc<World>, pos: &BlockPos) {
         let (block, state_id) = world.get_block_and_state_id(pos);
@@ -59,6 +97,7 @@ impl BlockBehaviour for LightningRodBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = LightningRodLikeProperties::default(args.block);
         props.facing = args.direction.to_facing().opposite();
+        props.waterlogged = args.replacing.water_source();
         props.to_state_id(args.block)
     }
 

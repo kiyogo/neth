@@ -16621,4 +16621,54 @@ mod tests {
         // East/West (Axis X): uses max(distY, distZ)
         assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.5, 0.49, 0.1, Axis::X), 1);
     }
+#[test]
+    fn test_lightning_rod_pulse_power_and_orientations_parity() {
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_data::block_properties::Facing;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Constants verification
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::SPARK_CYCLE, 200);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+        assert_eq!(LightningRodBlock::DEFAULT_FACING, Facing::Up);
+        assert!(!LightningRodBlock::DEFAULT_POWERED);
+        assert!(!LightningRodBlock::DEFAULT_WATERLOGGED);
+
+        // Power emissions (unpowered vs powered)
+        assert_eq!(LightningRodBlock::get_weak_power(false), 0);
+        assert_eq!(LightningRodBlock::get_weak_power(true), 15);
+
+        // Strong power directional emissions
+        // Rod facing UP: emits strong power 15 only upwards
+        assert_eq!(LightningRodBlock::get_strong_power(false, Facing::Up, BlockDirection::Up), 0);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Up), 15);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Down), 0);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::North), 0);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::East), 0);
+
+        // Rod facing EAST: emits strong power 15 only eastwards
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::East, BlockDirection::East), 15);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::East, BlockDirection::West), 0);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::East, BlockDirection::Up), 0);
+
+        // Attached block offset
+        let rod_pos = BlockPos::new(10, 64, 10);
+        // If rod faces UP, it is attached to the block below (Y - 1)
+        assert_eq!(LightningRodBlock::get_attached_position(&rod_pos, Facing::Up), BlockPos::new(10, 63, 10));
+        // If rod faces NORTH, it is attached to the block to the south (Z + 1)
+        assert_eq!(LightningRodBlock::get_attached_position(&rod_pos, Facing::North), BlockPos::new(10, 64, 11));
+
+        // Axis ordinals (for particle spark levelEvent 3002)
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::East), 0);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::West), 0);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::Up), 1);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::Down), 1);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::North), 2);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::South), 2);
+    }
 }
