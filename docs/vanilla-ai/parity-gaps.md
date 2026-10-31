@@ -8821,3 +8821,31 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Registered `pub mod tuff;` in `crates/pumpkin-core/src/block/blocks/mod.rs` and registered `TuffBlock` in `crates/pumpkin-core/src/block/registry.rs`.
   - Added unit test `test_tuff_family_properties_sounds_and_stonecutting_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 359: Ominous Item Spawner Ceiling Item Distribution & Drop Selection Parity
+- **Vanilla Reference**: `net.minecraft.world.entity.OminousItemSpawner:24-106`, `net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState:158-225`, `TrialSpawnerConfig:75-80`, `TrialSpawnerStateData:274-302`, `items_to_drop_when_ominous.json`.
+- **Vanilla Mechanics**:
+  1. *Spawning Cycle & Interval*: During ominous active trials, ominous item spawners are created every 160 ticks (8 seconds) (`ticksBetweenItemSpawners() = 160L`). Spawner lifetime delay is randomized between 60 and 120 ticks (`DEFAULT_MIN_SPAWN_TICKS = 60`, `DEFAULT_MAX_SPAWN_TICKS = 120`).
+  2. *Warning & Spawn Audio*:
+     - Warning sound: 36 ticks before spawn (`tick == delay - 36`), plays `SoundEvents.TRIAL_SPAWNER_ABOUT_TO_SPAWN_ITEM`.
+     - Creation sound: Plays `SoundEvents.TRIAL_SPAWNER_SPAWN_ITEM_BEGIN` with graduated random pitch `1.0F + (rand1 - rand2) * 0.2F` (ranging from 0.8 to 1.2).
+     - Ejection effect: Level event 3021 (`WorldEvent::ParticlesTrialSpawnerSpawnItem`).
+  3. *Ceiling Target & Position Selection*:
+     - Target Pool: 50% probability to choose from nearby active trial mobs and 50% probability from eligible players (survival/adventure, alive, within spawner range).
+     - Ceiling Offset: Items spawn above target at `entity_height + 2.0F + random.nextInt(4)` (2.0 to 5.0 blocks above head).
+     - Collision: Validated against ceiling blocks using raycasting, requiring empty collision box at the final drop point.
+  4. *Low-Resolution Positional Seed*:
+     - Dispensed items share consistent seed based on low-resolution position coordinates: `BlockPos(floor(x / 30.0), floor(y / 20.0), floor(z / 30.0)) + world.getSeed()`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/entity/ominous_item_spawner.rs`:
+    - Exported constants `TICKS_BETWEEN_ITEM_SPAWNERS = 160`, `CEILING_OFFSET_MIN = 2.0`, `CEILING_OFFSET_MAX_EXTRA = 4`, `DEFAULT_LOOT_TABLE = "minecraft:spawners/trial_chamber/items_to_drop_when_ominous"`, `SOUND_SPAWN_BEGIN`, `SOUND_ABOUT_TO_SPAWN`, `EVENT_SPAWN_ITEM = 3021`.
+    - Implemented `calculate_spawn_height(bb_height, random_offset)`.
+    - Implemented `calculate_spawn_pitch(rand1, rand2)`.
+    - Implemented `calculate_low_resolution_position_seed(x, y, z, world_seed)`.
+    - Defined `TargetPool` enum and `select_target_pool(has_mobs, has_players, coin_flip)`.
+    - Implemented `is_valid_ceiling_drop_position(has_block_collision)`.
+  - In `crates/pumpkin-core/src/block/entities/trial_spawner.rs`:
+    - Added `TICKS_BETWEEN_ITEM_SPAWNERS` (160) and `DEFAULT_ITEMS_TO_DROP_WHEN_OMINOUS` to `TrialSpawnerConfig`.
+    - Integrated item spawner cooldown reset in `reset_after_becoming_ominous` and `tick_server` during ominous active state.
+  - Added unit test `test_ominous_item_spawner_timing_ceiling_distribution_and_parity`.
+- **Status**: Completed & Verified.

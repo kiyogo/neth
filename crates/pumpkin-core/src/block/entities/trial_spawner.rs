@@ -188,6 +188,16 @@ pub struct TrialSpawnerConfig {
     pub items_to_drop_when_ominous: Option<String>,
 }
 
+impl TrialSpawnerConfig {
+    pub const TICKS_BETWEEN_ITEM_SPAWNERS: i64 = 160;
+    pub const DEFAULT_ITEMS_TO_DROP_WHEN_OMINOUS: &'static str = "minecraft:spawners/trial_chamber/items_to_drop_when_ominous";
+
+    #[must_use]
+    pub const fn ticks_between_item_spawners(&self) -> i64 {
+        Self::TICKS_BETWEEN_ITEM_SPAWNERS
+    }
+}
+
 impl Default for TrialSpawnerConfig {
     fn default() -> Self {
         Self {
@@ -609,6 +619,7 @@ impl TrialSpawnerStateData {
         self.next_mob_spawns_at = game_time + TrialSpawner::DETECT_PLAYER_SPAWN_BUFFER;
         self.total_mobs_spawned = 0;
         self.next_spawn_data = None;
+        self.cooldown_ends_at = game_time + TrialSpawnerConfig::TICKS_BETWEEN_ITEM_SPAWNERS;
     }
 
     #[must_use]
@@ -1250,6 +1261,10 @@ impl TrialSpawner {
                 }
 
                 self.try_detect_players(world, spawner_pos);
+
+                if self.is_ominous && game_time >= self.data.cooldown_ends_at {
+                    self.data.cooldown_ends_at = game_time + self.ominous_config().ticks_between_item_spawners();
+                }
 
                 let (total_mobs_needed, max_simultaneous, ticks_between_spawn) = {
                     let active_config = self.active_config();
