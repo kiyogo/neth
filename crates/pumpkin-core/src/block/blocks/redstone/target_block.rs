@@ -6,7 +6,7 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::BlockFlags;
 
 use crate::block::{
-    BlockBehaviour, EmitsRedstonePowerArgs, GetRedstonePowerArgs, OnPlaceArgs, OnProjectileHitArgs,
+    BlockBehaviour, EmitsRedstonePowerArgs, GetComparatorOutputArgs, GetRedstonePowerArgs, OnPlaceArgs, OnProjectileHitArgs,
     OnScheduledTickArgs, OnStateReplacedArgs,
 };
 
@@ -92,6 +92,15 @@ impl TargetBlock {
     pub const fn emits_strong_power() -> bool {
         false
     }
+
+    #[must_use]
+    pub const fn calculate_comparator_signal(power: u8) -> u8 {
+        if power > Self::MAX_POWER {
+            Self::MAX_POWER
+        } else {
+            power
+        }
+    }
 }
 
 impl BlockBehaviour for TargetBlock {
@@ -157,6 +166,11 @@ impl BlockBehaviour for TargetBlock {
                 BlockFlags::NOTIFY_ALL,
             );
         }
+    }
+
+    fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
+        let props = TargetProperties::from_state_id(args.state.id);
+        Some(props.r#power)
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {

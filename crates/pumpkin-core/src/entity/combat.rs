@@ -18086,4 +18086,54 @@ mod tests {
 
 
 
+
+    #[test]
+    fn test_target_block_bullseye_delay_and_comparator_parity() {
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use pumpkin_data::block_properties::Axis;
+        use pumpkin_data::entity::EntityType;
+
+        // Constants parity
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::DEFAULT_POWER, 0);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert!(!TargetBlock::emits_strong_power());
+
+        // Activation ticks based on projectile type
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SPECTRAL_ARROW), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::TRIDENT), 20);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::SNOWBALL), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::EGG), 8);
+        assert_eq!(TargetBlock::get_activation_ticks(&EntityType::ENDER_PEARL), 8);
+
+        // Power calculation from distance: max(1, ceil(15.0 * clamp((0.5 - distance)/0.5, 0.0, 1.0)))
+        // Bullseye (distance 0.0) -> 15
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+
+        // Intermediate rings
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.45), 2);
+
+        // Outer ring edge (distance 0.5) -> 1
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.50), 1);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.60), 1);
+
+        // Hit power per axis
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.0, 0.0, 0.0, Axis::Y), 15);
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.0, 0.0, 0.0, Axis::Z), 15);
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.0, 0.0, 0.0, Axis::X), 15);
+
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.25, 0.0, 0.25, Axis::Y), 8);
+
+        // Comparator output matches power level 0..15
+        for power in 0..=15 {
+            assert_eq!(TargetBlock::calculate_comparator_signal(power), power);
+        }
+        assert_eq!(TargetBlock::calculate_comparator_signal(20), 15); // clamped
+    }
+
 }

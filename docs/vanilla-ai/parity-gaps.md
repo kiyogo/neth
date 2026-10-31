@@ -8239,3 +8239,32 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `calculate_lectern_comparator_output`, `DATA_PAGE = 0`, `NUM_DATA = 1`, `SLOT_BOOK = 0`, `NUM_SLOTS = 1`, `MIN_COMPARATOR_SIGNAL = 1`, `MAX_COMPARATOR_SIGNAL = 15`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Unit test `test_lectern_book_insertion_page_pulse_and_comparator_parity` verified and passed.
+
+### Gap 329: Target Block Hit Distance Offset, Center Bullseye Calculation (1..15 Power) & Delay (8 Ticks) Parity
+- **Vanilla Reference**:
+  - `TargetBlock.java:1-120`:
+    - Timing & properties:
+      - Block property: `OUTPUT_POWER` (0..15).
+      - Arrows & Tridents activation duration: `ACTIVATION_TICKS_ARROWS = 20` game ticks (1.0s).
+      - Other projectiles (snowballs, eggs, ender pearls) activation duration: `ACTIVATION_TICKS_OTHER = 8` game ticks (0.4s).
+      - Power decay: on scheduled tick completion, resets `OUTPUT_POWER` to 0.
+    - Power calculation geometry:
+      - Coordinates offset from block center: `distX = abs(frac(hit_x) - 0.5)`, `distY = abs(frac(hit_y) - 0.5)`, `distZ = abs(frac(hit_z) - 0.5)`.
+      - Distance based on hit face:
+        - Y face: `distance = max(distX, distZ)`.
+        - Z face: `distance = max(distX, distY)`.
+        - X face: `distance = max(distY, distZ)`.
+      - Output power formula: `max(1, ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0)))`.
+      - Dead center (distance 0.0) outputs maximum 15 power (bullseye).
+      - Outer ring edge (distance 0.5) outputs 1 power.
+      - Bullseye advancement: triggered when hit gives 15 power and player distance is $\ge 30.0$ blocks (`BULLSEYE_MIN_DISTANCE = 30.0`).
+    - Redstone & comparator emission:
+      - Emits weak redstone power equal to `OUTPUT_POWER` (`ownSignal = state.getValue(OUTPUT_POWER)`).
+      - Does not emit strong power (`emits_strong_power = false`).
+      - Comparator reading matches emitted redstone power signal `0..15`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`:
+    - Added `get_comparator_output` returning `Some(props.r#power)` and helper `calculate_comparator_signal(power)`.
+    - Verified `ACTIVATION_TICKS_ARROWS = 20`, `ACTIVATION_TICKS_OTHER = 8`, `MIN_POWER = 1`, `MAX_POWER = 15`, `DEFAULT_POWER = 0`, `BULLSEYE_MIN_DISTANCE = 30.0`, `is_arrow_projectile`, and `calculate_power_from_distance`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_target_block_bullseye_delay_and_comparator_parity`.
