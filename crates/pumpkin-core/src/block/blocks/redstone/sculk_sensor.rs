@@ -100,6 +100,49 @@ impl SculkSensorBlock {
     }
 
     #[must_use]
+    pub const fn calculate_comparator_signal(phase: SculkSensorPhase, last_frequency: u8) -> u8 {
+        match phase {
+            SculkSensorPhase::Active => {
+                if last_frequency > 15 {
+                    15
+                } else {
+                    last_frequency
+                }
+            }
+            SculkSensorPhase::Inactive | SculkSensorPhase::Cooldown => 0,
+        }
+    }
+
+    #[must_use]
+    pub fn get_vibration_frequency_for_event(event_name: &str) -> u8 {
+        match event_name {
+            "step" | "swim" | "flap" => 1,
+            "projectile_land" | "hit_ground" | "splash" | "bounce" => 2,
+            "item_interact_finish" | "projectile_shoot" | "instrument_play" => 3,
+            "entity_action" | "elytra_glide" | "unequip" => 4,
+            "entity_dismount" | "equip" => 5,
+            "entity_interact" | "shear" | "entity_mount" => 6,
+            "entity_damage" => 7,
+            "drink" | "eat" => 8,
+            "container_close" | "block_close" | "block_deactivate" | "block_detach" => 9,
+            "container_open" | "block_open" | "block_activate" | "block_attach" | "prime_fuse" | "note_block_play" => 10,
+            "block_change" => 11,
+            "block_destroy" | "fluid_pickup" => 12,
+            "block_place" | "fluid_place" => 13,
+            "entity_place" | "lightning_strike" | "teleport" => 14,
+            "entity_die" | "explode" => 15,
+            name if name.starts_with("resonate_") => {
+                if let Ok(freq) = name.trim_start_matches("resonate_").parse::<u8>() {
+                    freq.clamp(1, 15)
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        }
+    }
+
+    #[must_use]
     pub fn can_output_weak_power(
         block_id: BlockId,
         facing: Option<HorizontalFacing>,

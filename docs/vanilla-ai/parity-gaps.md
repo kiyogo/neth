@@ -8112,3 +8112,44 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified `calculate_hit_slot`, `calculate_comparator_output`, `slot_bitmask_from_properties`, and `get_occupied_slot_count`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_chiseled_bookshelf_slots_raycast_and_comparator_parity`.
+
+### Gap 325: Sculk Sensor & Calibrated Sculk Sensor Vibration Frequencies (1..15), Cooldown (30/40 Ticks), Resonance & Comparator Parity
+- **Vanilla Reference**:
+  - `SculkSensorBlock.java:1-240`, `CalibratedSculkSensorBlock.java:1-80`, `VibrationSystem.java:1-120`, `SculkSensorBlockEntity.java:1-100`:
+    - Timing & ranges:
+      - Normal Sculk Sensor: active ticks `ACTIVE_TICKS_REGULAR = 30`, cooldown ticks `COOLDOWN_TICKS = 10` (total 40 ticks). Listener range `LISTENER_RANGE_REGULAR = 8` blocks.
+      - Calibrated Sculk Sensor: active ticks `ACTIVE_TICKS_CALIBRATED = 10`, cooldown ticks `COOLDOWN_TICKS = 10` (total 20 ticks). Listener range `LISTENER_RANGE_CALIBRATED = 16` blocks.
+    - Directional power & calibration:
+      - Calibrated sensor has `FACING` property; reads frequency calibration input from back side and does NOT output power to the front facing side (`can_output_weak_power`).
+      - Only triggers if vibration frequency equals the calibrated input signal (or if calibration signal is 0 / unpowered).
+    - Distance redstone signal falloff:
+      - Redstone power scales with distance: `power = max(1, 15 - floor((15.0 / listener_radius) * distance))`.
+    - Resonance:
+      - Pitch lookup table: `TONE_MAP = [0, 0, 2, 4, 6, 7, 9, 10, 12, 14, 15, 18, 19, 21, 22, 24]` for frequencies 1..15.
+      - Amethyst blocks adjacent to activating sensors re-emit resonance vibrations.
+    - Game event vibration frequencies (1..15):
+      - 1: `STEP`, `SWIM`, `FLAP`
+      - 2: `PROJECTILE_LAND`, `HIT_GROUND`, `SPLASH`, `BOUNCE`
+      - 3: `ITEM_INTERACT_FINISH`, `PROJECTILE_SHOOT`, `INSTRUMENT_PLAY`
+      - 4: `ENTITY_ACTION`, `ELYTRA_GLIDE`, `UNEQUIP`
+      - 5: `ENTITY_DISMOUNT`, `EQUIP`
+      - 6: `ENTITY_INTERACT`, `SHEAR`, `ENTITY_MOUNT`
+      - 7: `ENTITY_DAMAGE`
+      - 8: `DRINK`, `EAT`
+      - 9: `CONTAINER_CLOSE`, `BLOCK_CLOSE`, `BLOCK_DEACTIVATE`, `BLOCK_DETACH`
+      - 10: `CONTAINER_OPEN`, `BLOCK_OPEN`, `BLOCK_ACTIVATE`, `BLOCK_ATTACH`, `PRIME_FUSE`, `NOTE_BLOCK_PLAY`
+      - 11: `BLOCK_CHANGE`
+      - 12: `BLOCK_DESTROY`, `FLUID_PICKUP`
+      - 13: `BLOCK_PLACE`, `FLUID_PLACE`
+      - 14: `ENTITY_PLACE`, `LIGHTNING_STRIKE`, `TELEPORT`
+      - 15: `ENTITY_DIE`, `EXPLODE`
+      - 1..15 for `RESONATE_1` .. `RESONATE_15`
+    - Comparator analog output:
+      - Outputs `last_vibration_frequency` (1..15) ONLY when the sensor is in the `ACTIVE` phase.
+      - Outputs 0 when `INACTIVE` or `COOLDOWN`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs`:
+    - Added helper `calculate_comparator_signal(phase, last_frequency)` and `get_vibration_frequency_for_event(event_name)`.
+    - Verified `ACTIVE_TICKS_REGULAR = 30`, `ACTIVE_TICKS_CALIBRATED = 10`, `COOLDOWN_TICKS = 10`, `LISTENER_RANGE_REGULAR = 8`, `LISTENER_RANGE_CALIBRATED = 16`, `get_redstone_strength_for_distance`, and `can_output_weak_power`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sculk_sensor_frequencies_cooldown_and_comparator_parity`.

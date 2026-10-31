@@ -17851,4 +17851,110 @@ mod tests {
         assert!(ChiseledBookshelfBlock::is_slot_occupied(&props, 5));
     }
 
+
+    #[test]
+    fn test_sculk_sensor_frequencies_cooldown_and_comparator_parity() {
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use pumpkin_data::block_properties::{HorizontalFacing, SculkSensorPhase};
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // Timing, range and state constants parity
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+        assert_eq!(SculkSensorBlock::DEFAULT_PHASE, SculkSensorPhase::Inactive);
+        assert_eq!(SculkSensorBlock::DEFAULT_POWER, 0);
+        assert_eq!(SculkSensorBlock::DEFAULT_WATERLOGGED, false);
+        assert_eq!(SculkSensorBlock::DEFAULT_FACING, HorizontalFacing::North);
+
+        // Active ticks based on block variant
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::SCULK_SENSOR), 30);
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::CALIBRATED_SCULK_SENSOR), 10);
+
+        // Listener range based on block variant
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::SCULK_SENSOR), 8);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::CALIBRATED_SCULK_SENSOR), 16);
+
+        // Phase transitions
+        let (phase, power, tick) = SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Active);
+        assert_eq!(phase, SculkSensorPhase::Cooldown);
+        assert_eq!(power, 0);
+        assert_eq!(tick, Some(10));
+
+        let (phase, power, tick) = SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Cooldown);
+        assert_eq!(phase, SculkSensorPhase::Inactive);
+        assert_eq!(power, 0);
+        assert_eq!(tick, None);
+
+        // Distance redstone signal falloff: max(1, 15 - floor(scale * distance))
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 8), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(4.0, 8), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 8), 1);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(16.0, 16), 1);
+
+        // Game event vibration frequencies parity (1..15)
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("step"), 1);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("swim"), 1);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("flap"), 1);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("projectile_land"), 2);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("hit_ground"), 2);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("item_interact_finish"), 3);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("projectile_shoot"), 3);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_action"), 4);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("elytra_glide"), 4);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_dismount"), 5);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("equip"), 5);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_interact"), 6);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("shear"), 6);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_damage"), 7);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("drink"), 8);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("eat"), 8);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("container_close"), 9);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_close"), 9);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("container_open"), 10);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_open"), 10);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("prime_fuse"), 10);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_change"), 11);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_destroy"), 12);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("fluid_pickup"), 12);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_place"), 13);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("fluid_place"), 13);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_place"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("lightning_strike"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("teleport"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_die"), 15);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("explode"), 15);
+
+        for freq in 1..=15 {
+            assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event(&format!("resonate_{freq}")), freq);
+        }
+
+        // Comparator output parity: active outputs last_vibration_frequency (1..15), inactive/cooldown outputs 0
+        for freq in 1..=15 {
+            assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Active, freq), freq);
+            assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Cooldown, freq), 0);
+            assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Inactive, freq), 0);
+        }
+        assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Active, 20), 15); // clamped
+
+        // Calibrated sculk sensor power emission directionality: does not output power in the facing direction
+        assert!(!SculkSensorBlock::can_output_weak_power(
+            BlockId::CALIBRATED_SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::North,
+        ));
+        assert!(SculkSensorBlock::can_output_weak_power(
+            BlockId::CALIBRATED_SCULK_SENSOR,
+            Some(HorizontalFacing::North),
+            BlockDirection::South,
+        ));
+        assert!(SculkSensorBlock::can_output_weak_power(
+            BlockId::SCULK_SENSOR,
+            None,
+            BlockDirection::North,
+        ));
+    }
+
 }
