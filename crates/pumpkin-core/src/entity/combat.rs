@@ -17729,4 +17729,54 @@ mod tests {
         assert_eq!(crafter.get_redstone_signal(), 1);
     }
 
+
+    #[test]
+    fn test_daylight_detector_inverted_sky_light_and_comparator_parity() {
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+        use crate::block::entities::daylight_detector::DaylightDetectorBlockEntity;
+
+        // Constants parity
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_INVERTED, false);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert_eq!(DaylightDetectorBlock::SHAPE_HEIGHT, 6.0);
+        assert_eq!(DaylightDetectorBlock::SUN_ANGLE_LERP_FACTOR, 0.2);
+        assert_eq!(DaylightDetectorBlock::RAIN_SKY_DARKEN_REDUCTION, 5);
+        assert_eq!(DaylightDetectorBlock::THUNDER_SKY_DARKEN_REDUCTION, 5);
+        assert!(!DaylightDetectorBlock::emits_strong_power());
+
+        // Block entity constants
+        assert_eq!(DaylightDetectorBlockEntity::TICK_INTERVAL_TICKS, 20);
+        assert_eq!(DaylightDetectorBlockEntity::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlockEntity::SHAPE_HEIGHT_PIXELS, 6.0);
+
+        // Weather effective sky brightness parity
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, false), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, true), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(4, true, false), 0);
+
+        // Inverted signal: 15 - effective_sky_brightness
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(15), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(10), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(5), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(0), 15);
+
+        // Noon signal (sun_angle = 0 radians)
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, 0.0, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, 0.0, true), 0);
+
+        // Night / dark signal (effective_sky = 0)
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(0, std::f32::consts::PI, false), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_signal_strength(0, std::f32::consts::PI, true), 15);
+
+        // Comparator output corresponds directly to emitted redstone power (0..15)
+        for power in 0..=15 {
+            assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(power), power);
+        }
+        assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(20), 15); // clamped
+    }
+
 }

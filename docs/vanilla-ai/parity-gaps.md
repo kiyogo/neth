@@ -8055,3 +8055,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Verified SLOT_DISABLED = 1, SLOT_ENABLED = 0, get_redstone_signal (counting occupied + disabled slots), and is_valid_slot_for.
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_crafter_trigger_delay_slot_disabled_and_comparator_parity.
+
+### Gap 323: Daylight Detector Inverted Mode, Sky Light Calculation (15 - Subtracted) & Comparator Output (0..15) Parity
+- **Vanilla Reference**:
+  - `DaylightDetectorBlock.java:1-120`, `DaylightDetectorBlockEntity.java:1-50`, `Level.java`:
+    - Block properties & shape:
+      - Properties: `POWER` (0..15, default 0) and `INVERTED` (boolean, default false).
+      - Shape: `Block.column(16.0, 0.0, 6.0)` (thickness 6/16 block = 0.375 height).
+    - Mode switching interaction (`useWithoutItem`):
+      - Right-clicking toggles `INVERTED` property (false <-> true) when player has build permissions (`player.mayBuild()`).
+      - Emits `GameEvent.BLOCK_CHANGE` and updates power signal immediately.
+    - Redstone & comparator emission:
+      - Emits weak power (`isSignalSource = true`, `ownSignal = state.getValue(POWER)`).
+      - Does not emit strong power (`directSignal = 0`).
+      - Comparator reading matches emitted redstone power signal `0..15`.
+    - Signal calculation formula:
+      - Effective sky brightness calculation: `effective_sky = max(0, raw_sky_light - weather_darken)`.
+      - Inverted mode (night): `signal = clamp(15 - effective_sky, 0, 15)`.
+      - Normal mode (day): `signal = clamp(round(effective_sky * cos(adjusted_sun_angle)), 0, 15)` with `SUN_ANGLE_LERP_FACTOR = 0.2`.
+      - Signal updates every 20 ticks (`getGameTime() % 20L == 0L`) in dimensions with skylight.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Added `GetComparatorOutputArgs` and implemented `get_comparator_output` returning `Some(props.power)`.
+    - Exported constants `MIN_POWER = 0`, `MAX_POWER = 15`, `DEFAULT_POWER = 0`, `DEFAULT_INVERTED = false`, `UPDATE_INTERVAL_TICKS = 20`, `SHAPE_HEIGHT = 6.0`, `SUN_ANGLE_LERP_FACTOR = 0.2`, `RAIN_SKY_DARKEN_REDUCTION = 5`, and `THUNDER_SKY_DARKEN_REDUCTION = 5`.
+    - Exported helper `calculate_comparator_signal(power)`.
+  - Updated `crates/pumpkin-core/src/block/entities/daylight_detector.rs`:
+    - Verified `TICK_INTERVAL_TICKS = 20`, `MAX_POWER = 15`, and `SHAPE_HEIGHT_PIXELS = 6.0`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_daylight_detector_inverted_sky_light_and_comparator_parity`.

@@ -8,7 +8,7 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::block::{
     BlockActionResult, BlockBehaviour, BrokenArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
-    NormalUseArgs, PlacedArgs,
+    GetComparatorOutputArgs, NormalUseArgs, PlacedArgs,
 };
 use crate::world::World;
 
@@ -62,6 +62,11 @@ impl BlockBehaviour for DaylightDetectorBlock {
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {
         true
     }
+
+    fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
+        let props = DaylightDetectorProperties::from_state_id(args.state.id);
+        Some(props.power)
+    }
 }
 
 impl DaylightDetectorBlock {
@@ -74,6 +79,15 @@ impl DaylightDetectorBlock {
     pub const SUN_ANGLE_LERP_FACTOR: f32 = 0.2;
     pub const RAIN_SKY_DARKEN_REDUCTION: i32 = 5;
     pub const THUNDER_SKY_DARKEN_REDUCTION: i32 = 5;
+
+    #[must_use]
+    pub const fn calculate_comparator_signal(power: u8) -> u8 {
+        if power > Self::MAX_POWER {
+            Self::MAX_POWER
+        } else {
+            power
+        }
+    }
 
     #[must_use]
     pub const fn emits_strong_power() -> bool {
