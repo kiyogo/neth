@@ -16789,4 +16789,42 @@ mod tests {
         assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, std::f32::consts::PI, false), 0);
         assert_eq!(DaylightDetectorBlock::calculate_signal_strength(15, std::f32::consts::PI, true), 0);
     }
+#[test]
+    fn test_tnt_fuse_impulse_and_placement_parity() {
+        use crate::block::blocks::tnt::TNTBlock;
+        use pumpkin_data::Block;
+
+        // Constants verification
+        assert!(!TNTBlock::DEFAULT_UNSTABLE);
+        assert_eq!(TNTBlock::DEFAULT_FUSE, 80);
+        assert_eq!(TNTBlock::DEFAULT_POWER, 4.0);
+        assert_eq!(TNTBlock::EXPLOSION_Y_OFFSET_SCALE, 0.0625);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_Y, 0.2);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_HORIZONTAL_SCALE, 0.02);
+        assert_eq!(TNTBlock::GRAVITY, 0.04);
+        assert_eq!(TNTBlock::AIR_DRAG, 0.98);
+
+        // Chain reaction short fuse formula: (rand % max(1, fuse / 4)) + fuse / 8
+        // For default 80 fuse: range [10, 29]
+        assert_eq!(TNTBlock::calculate_short_fuse(80, 0), 10);
+        assert_eq!(TNTBlock::calculate_short_fuse(80, 19), 29);
+        assert_eq!(TNTBlock::calculate_short_fuse(80, 25), 15);
+        assert_eq!(TNTBlock::calculate_short_fuse(0, 5), 0);
+
+        // Initial launch impulse vector: (-sin(rot)*0.02, 0.2, -cos(rot)*0.02)
+        let (vx0, vy0, vz0) = TNTBlock::calculate_initial_velocity(0.0);
+        assert!((vx0 - 0.0).abs() < 1e-6);
+        assert!((vy0 - 0.2).abs() < 1e-6);
+        assert!((vz0 - (-0.02)).abs() < 1e-6);
+
+        let (vx_pi2, vy_pi2, vz_pi2) = TNTBlock::calculate_initial_velocity(std::f64::consts::FRAC_PI_2);
+        assert!((vx_pi2 - (-0.02)).abs() < 1e-6);
+        assert!((vy_pi2 - 0.2).abs() < 1e-6);
+        assert!((vz_pi2 - 0.0).abs() < 1e-6);
+
+        // Priming on placement check
+        assert!(TNTBlock::should_prime_on_placement(&Block::STONE, true));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::STONE, false));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::TNT, true));
+    }
 }

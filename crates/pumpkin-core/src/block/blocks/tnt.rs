@@ -26,6 +26,34 @@ use crate::world::World;
 pub struct TNTBlock;
 
 impl TNTBlock {
+    pub const DEFAULT_UNSTABLE: bool = false;
+    pub const DEFAULT_FUSE: u32 = 80;
+    pub const DEFAULT_POWER: f32 = 4.0;
+    pub const EXPLOSION_Y_OFFSET_SCALE: f64 = 0.0625;
+    pub const INITIAL_VELOCITY_Y: f64 = 0.2;
+    pub const INITIAL_VELOCITY_HORIZONTAL_SCALE: f64 = 0.02;
+    pub const GRAVITY: f64 = 0.04;
+    pub const AIR_DRAG: f32 = 0.98;
+
+    #[must_use]
+    pub fn calculate_initial_velocity(rotation_radians: f64) -> (f64, f64, f64) {
+        (
+            -rotation_radians.sin() * Self::INITIAL_VELOCITY_HORIZONTAL_SCALE,
+            Self::INITIAL_VELOCITY_Y,
+            -rotation_radians.cos() * Self::INITIAL_VELOCITY_HORIZONTAL_SCALE,
+        )
+    }
+
+    #[must_use]
+    pub fn calculate_short_fuse(fuse: u32, rand_val: u32) -> u32 {
+        crate::entity::combat::calculate_tnt_short_fuse(fuse, rand_val)
+    }
+
+    #[must_use]
+    pub fn should_prime_on_placement(old_block: &Block, has_neighbor_signal: bool) -> bool {
+        old_block != &Block::TNT && has_neighbor_signal
+    }
+
     /// Vanilla `TntBlock.prime` plus the block removal its callers do.
     pub fn prime(world: &Arc<World>, location: &BlockPos) -> bool {
         if !world.level_info.load().game_rules.tnt_explodes {

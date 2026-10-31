@@ -7556,3 +7556,29 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `calculate_inverted_signal`, `calculate_normal_signal`, `calculate_effective_sky_brightness`, `calculate_signal_strength`, and `emits_strong_power`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_daylight_detector_inversion_and_sky_light_curve_parity`.
+
+### Gap 307: TNT Redstone Activation, Explosion Fuse Timing (80 Ticks), Water Defusal & Chain Reactions Parity
+- **Vanilla Reference**:
+  - `TntBlock.java:35-158`, `PrimedTnt.java:34-218`:
+    - Default state properties:
+      - `DEFAULT_UNSTABLE = false`.
+    - Priming triggers:
+      - Redstone signal reception (`level.hasNeighborSignal(pos)`).
+      - Interaction with flint & steel or fire charge.
+      - Flaming projectile impact (`projectile.isOnFire()`).
+      - Explosion exposure (`wasExploded`).
+    - Primed entity mechanics:
+      - Default fuse duration: `DEFAULT_FUSE = 80` ticks (4.0 seconds).
+      - Default explosion power: `DEFAULT_POWER = 4.0F`.
+      - Explosion vertical center calculation: `pos.y + height * 0.0625` (`getY(0.0625)`).
+      - Launch impulse: upward jump of 0.2 (`INITIAL_VELOCITY_Y = 0.2`) and random horizontal drift of 0.02 (`INITIAL_VELOCITY_HORIZONTAL_SCALE = 0.02`).
+      - Physics coefficients: gravity `0.04`, air drag `0.98`, ground collision velocity multiplier `(0.7, -0.5, 0.7)`.
+    - Chain reaction randomized short fuse (`getRandomShortFuse`):
+      - Formula: `(rand % max(1, fuse / 4)) + fuse / 8`.
+      - For default fuse 80: yields a short delay strictly in the range `[10, 29]` ticks (0.5 to 1.45 seconds).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/tnt.rs`:
+    - Exported constants `DEFAULT_UNSTABLE`, `DEFAULT_FUSE`, `DEFAULT_POWER`, `EXPLOSION_Y_OFFSET_SCALE`, `INITIAL_VELOCITY_Y`, `INITIAL_VELOCITY_HORIZONTAL_SCALE`, `GRAVITY`, and `AIR_DRAG`.
+    - Exported helpers `calculate_initial_velocity`, `calculate_short_fuse`, and `should_prime_on_placement`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_tnt_fuse_impulse_and_placement_parity`.
