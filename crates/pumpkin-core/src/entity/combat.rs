@@ -10598,6 +10598,44 @@ pub fn should_eyeblossom_poison_bee(difficulty: pumpkin_util::Difficulty, is_ope
     difficulty != pumpkin_util::Difficulty::Peaceful && is_open && !has_poison
 }
 
+// =========================================================================
+// Gap 375: Pale Moss Carpet Height / Shape (1 Pixel Height), Propagation (Bonemeal) & Pale Hanging Moss (1/500 Idle Sound) Parity
+// Vanilla References:
+// - `net.minecraft.world.level.block.MossyCarpetBlock.java:33-79, 87-89, 97-100, 120-150, 182-201, 259-275`
+// - `net.minecraft.world.level.block.HangingMossBlock.java:22-45, 53-61, 74-86, 94-126`
+// - `net.minecraft.data.worldgen.features.VegetationFeatures.java:295-334`
+// - `net.minecraft.world.level.levelgen.feature.treedecorators.PaleMossDecorator.java:44-84`
+// =========================================================================
+
+#[allow(dead_code)]
+pub const PALE_MOSS_CARPET_BASE_HEIGHT: f64 = 1.0 / 16.0;
+#[allow(dead_code)]
+pub const PALE_MOSS_CARPET_LOW_SIDE_HEIGHT: f64 = 10.0 / 16.0;
+#[allow(dead_code)]
+pub const PALE_MOSS_CARPET_TALL_SIDE_HEIGHT: f64 = 1.0;
+#[allow(dead_code)]
+pub const PALE_MOSS_CARPET_SIDE_THICKNESS: f64 = 1.0 / 16.0;
+#[allow(dead_code)]
+pub const PALE_MOSS_CARPET_TOPPER_SIDE_CHANCE: f64 = 0.5;
+
+#[allow(dead_code)]
+pub const PALE_HANGING_MOSS_IDLE_SOUND_CHANCE: u32 = 500;
+#[allow(dead_code)]
+pub const PALE_HANGING_MOSS_WIDTH: f64 = 14.0 / 16.0;
+#[allow(dead_code)]
+pub const PALE_HANGING_MOSS_BASE_HEIGHT: f64 = 1.0;
+#[allow(dead_code)]
+pub const PALE_HANGING_MOSS_TIP_HEIGHT: f64 = 14.0 / 16.0;
+
+#[allow(dead_code)]
+pub const PALE_MOSS_PATCH_BONEMEAL_RADIUS_MIN: i32 = 1;
+#[allow(dead_code)]
+pub const PALE_MOSS_PATCH_BONEMEAL_RADIUS_MAX: i32 = 2;
+#[allow(dead_code)]
+pub const PALE_MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE: f32 = 0.6;
+#[allow(dead_code)]
+pub const PALE_MOSS_PATCH_BONEMEAL_EDGE_CHANCE: f32 = 0.75;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -20774,6 +20812,86 @@ mod tests {
         assert_eq!(BREEZE_STUCK_SHOOT_MEMORY_TICKS, 60);
         assert_eq!(BREEZE_POST_LAND_SHOOT_MEMORY_TICKS, 100);
         assert_eq!(BREEZE_TICKS_TO_REMEMBER_SEEN_TARGET, 100);
+    }
+
+    #[test]
+    fn test_pale_moss_carpet_and_hanging_moss_parity() {
+        use crate::block::blocks::carpet::PaleMossCarpetBlock;
+        use crate::block::blocks::hanging_moss::HangingMossBlock;
+        use pumpkin_data::Block;
+        use pumpkin_data::block_properties::{
+            EastWall, NorthWall, PaleMossCarpetLikeProperties, SouthWall, WestWall,
+        };
+
+        // 1. Pale moss carpet height and dimensions parity (MossyCarpetBlock.java:59-60)
+        assert_eq!(PALE_MOSS_CARPET_BASE_HEIGHT, 1.0 / 16.0);
+        assert_eq!(PALE_MOSS_CARPET_LOW_SIDE_HEIGHT, 10.0 / 16.0);
+        assert_eq!(PALE_MOSS_CARPET_TALL_SIDE_HEIGHT, 1.0);
+        assert_eq!(PALE_MOSS_CARPET_SIDE_THICKNESS, 1.0 / 16.0);
+        assert_eq!(PALE_MOSS_CARPET_TOPPER_SIDE_CHANCE, 0.5);
+
+        assert_eq!(PaleMossCarpetBlock::BASE_HEIGHT, 1.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::LOW_SIDE_HEIGHT, 10.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::TALL_SIDE_HEIGHT, 1.0);
+        assert_eq!(PaleMossCarpetBlock::SIDE_THICKNESS, 1.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::TOPPER_SIDE_CHANCE, 0.5);
+
+        // 2. Pale moss carpet faces validation (MossyCarpetBlock.java:102-114)
+        let base_carpet = PaleMossCarpetLikeProperties {
+            r#bottom: true,
+            r#north: NorthWall::None,
+            r#east: EastWall::None,
+            r#south: SouthWall::None,
+            r#west: WestWall::None,
+        };
+        assert!(PaleMossCarpetBlock::has_faces(&base_carpet));
+
+        let side_topper = PaleMossCarpetLikeProperties {
+            r#bottom: false,
+            r#north: NorthWall::Low,
+            r#east: EastWall::None,
+            r#south: SouthWall::None,
+            r#west: WestWall::None,
+        };
+        assert!(PaleMossCarpetBlock::has_faces(&side_topper));
+
+        let empty_carpet = PaleMossCarpetLikeProperties {
+            r#bottom: false,
+            r#north: NorthWall::None,
+            r#east: EastWall::None,
+            r#south: SouthWall::None,
+            r#west: WestWall::None,
+        };
+        assert!(!PaleMossCarpetBlock::has_faces(&empty_carpet));
+
+        // 3. Pale hanging moss dimensions & idle sound chance (HangingMossBlock.java:23-24, 39)
+        assert_eq!(PALE_HANGING_MOSS_IDLE_SOUND_CHANCE, 500);
+        assert_eq!(HangingMossBlock::IDLE_SOUND_CHANCE, 500);
+        assert_eq!(PALE_HANGING_MOSS_WIDTH, 14.0 / 16.0);
+        assert_eq!(PALE_HANGING_MOSS_BASE_HEIGHT, 1.0);
+        assert_eq!(PALE_HANGING_MOSS_TIP_HEIGHT, 14.0 / 16.0);
+        assert_eq!(HangingMossBlock::WIDTH, 14.0 / 16.0);
+        assert_eq!(HangingMossBlock::BASE_HEIGHT, 1.0);
+        assert_eq!(HangingMossBlock::TIP_HEIGHT, 14.0 / 16.0);
+
+        // Supporting blocks for idle sound (HangingMossBlock.java:41)
+        assert!(HangingMossBlock::is_pale_oak_support(&Block::PALE_OAK_LOG));
+        assert!(HangingMossBlock::is_pale_oak_support(&Block::STRIPPED_PALE_OAK_LOG));
+        assert!(HangingMossBlock::is_pale_oak_support(&Block::PALE_OAK_WOOD));
+        assert!(HangingMossBlock::is_pale_oak_support(&Block::STRIPPED_PALE_OAK_WOOD));
+        assert!(HangingMossBlock::is_pale_oak_support(&Block::PALE_OAK_LEAVES));
+        assert!(!HangingMossBlock::is_pale_oak_support(&Block::DARK_OAK_LOG));
+
+        // Idle sound roll check
+        assert!(HangingMossBlock::should_play_idle_sound(&Block::PALE_OAK_LOG, 0));
+        assert!(!HangingMossBlock::should_play_idle_sound(&Block::PALE_OAK_LOG, 1));
+        assert!(!HangingMossBlock::should_play_idle_sound(&Block::OAK_LEAVES, 0));
+
+        // 4. Bonemeal patch parameters (VegetationFeatures.java:322-334)
+        assert_eq!(PALE_MOSS_PATCH_BONEMEAL_RADIUS_MIN, 1);
+        assert_eq!(PALE_MOSS_PATCH_BONEMEAL_RADIUS_MAX, 2);
+        assert_eq!(PALE_MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE, 0.6);
+        assert_eq!(PALE_MOSS_PATCH_BONEMEAL_EDGE_CHANCE, 0.75);
     }
 
     #[test]

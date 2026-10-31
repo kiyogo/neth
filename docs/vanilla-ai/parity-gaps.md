@@ -9374,3 +9374,48 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
     - Exported `EYEBLOSSOM_` parity constants and calculation functions.
     - Added unit test `test_eyeblossom_state_cascade_idle_sound_and_bee_poison_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 375: Pale Moss Carpet Height / Shape (1 Pixel Height), Propagation (Bonemeal) & Pale Hanging Moss (1/500 Idle Sound) Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.MossyCarpetBlock.java:33-79, 87-89, 97-100, 120-150, 182-201, 259-275`, `net.minecraft.world.level.block.HangingMossBlock.java:22-45, 53-61, 74-86, 94-126`, `net.minecraft.data.worldgen.features.VegetationFeatures.java:295-334`, `net.minecraft.world.level.levelgen.feature.treedecorators.PaleMossDecorator.java:44-84`.
+- **Vanilla Mechanics**:
+  1. *Pale Moss Carpet Shape & Dimensions*:
+     - Base carpet thickness: 1 pixel ($1/16 = 0.0625$, $16 	imes 1 	imes 16$) (`PALE_MOSS_CARPET_BASE_HEIGHT = 1.0 / 16.0`).
+     - Low wall side: 10 pixels high ($10/16 = 0.625$, $16 	imes 10 	imes 1$) (`PALE_MOSS_CARPET_LOW_SIDE_HEIGHT = 10.0 / 16.0`).
+     - Tall wall side: 16 pixels high ($16/16 = 1.0$, $16 	imes 16 	imes 1$) (`PALE_MOSS_CARPET_TALL_SIDE_HEIGHT = 1.0`).
+     - Wall side thickness: 1 pixel ($1/16 = 0.0625$) (`PALE_MOSS_CARPET_SIDE_THICKNESS = 1.0 / 16.0`).
+  2. *Pale Moss Carpet Multi-face Attachment & Faces*:
+     - Properties: `bottom` (boolean), `north`, `east`, `south`, `west` (enum: `none`, `low`, `tall`).
+     - Faces check: `hasFaces` requires `bottom == true` or at least one wall side $
+eq 	ext{None}$.
+     - Survival:
+       - Base carpet (`bottom == true`) survives if block below is not air (`!below.isAir()`).
+       - Topper carpet (`bottom == false`) survives only if block below is a Pale Moss Carpet with `bottom == true`.
+     - Side attachment:
+       - Attaches to adjacent solid walls on North, East, South, West.
+       - If a Pale Moss Carpet exists directly above on the same side, elevates from `low` to `tall`.
+       - If a topper carpet has a below carpet with `none` on that side, resets to `none`.
+  3. *Pale Moss Carpet Propagation & Bonemeal*:
+     - Bonemeal is valid when `bottom == true` and the space directly above can host a topper carpet (`createTopperWithSideChance(..., () -> true)`).
+     - Performing bonemeal creates a topper carpet at `pos.above()` with `bottom = false` and wall sides matching all adjacent supporting walls.
+     - When placed by a player, each available supporting wall side has a 50% random chance to create a topper carpet above (`PALE_MOSS_CARPET_TOPPER_SIDE_CHANCE = 0.5`).
+  4. *Pale Hanging Moss Shape, Idle Sound & Bonemeal*:
+     - Shape: 14 pixels wide ($14/16 = 0.875$) centered horizontally (`PALE_HANGING_MOSS_WIDTH = 14.0 / 16.0`). Tip height: 14 pixels ($14/16 = 0.875$, $y \in [2/16, 1]$), body height: 16 pixels ($y \in [0, 1]$).
+     - Ambient idle sound: 1 in 500 chance (`PALE_HANGING_MOSS_IDLE_SOUND_CHANCE = 500`) when hanging from Pale Oak Logs (`#minecraft:pale_oak_logs`: log, stripped log, wood, stripped wood) or Pale Oak Leaves (`Blocks.PALE_OAK_LEAVES`), playing `SoundEvents.PALE_HANGING_MOSS_IDLE` at SoundSource `AMBIENT`.
+     - Unsupported shape update schedules a 1-tick delay before breaking instead of instantly disappearing.
+     - Bonemeal grows the hanging moss downwards from its tip into air, setting the new tip to `tip = true` and the previous tip to `tip = false`.
+  5. *Vegetation Features & Bonemeal Patch Parameters*:
+     - Bonemeal on Pale Moss Block places `PALE_MOSS_PATCH_BONEMEAL`: radius 1-2 (`PALE_MOSS_PATCH_BONEMEAL_RADIUS_MIN = 1`, `MAX = 2`), vegetation chance 0.6 (`PALE_MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE = 0.6`), edge chance 0.75 (`PALE_MOSS_PATCH_BONEMEAL_EDGE_CHANCE = 0.75`).
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/carpet.rs`:
+    - Exported constants `PALE_MOSS_CARPET_BASE_HEIGHT = 1.0 / 16.0`, `PALE_MOSS_CARPET_LOW_SIDE_HEIGHT = 10.0 / 16.0`, `PALE_MOSS_CARPET_TALL_SIDE_HEIGHT = 1.0`, `PALE_MOSS_CARPET_SIDE_THICKNESS = 1.0 / 16.0`, `PALE_MOSS_CARPET_TOPPER_SIDE_CHANCE = 0.5`.
+    - Implemented full `PaleMossCarpetBlock` with `has_faces`, `can_survive`, `update_pale_moss_carpet_state`, `create_topper_with_side_chance`, `on_place`, `placed`, `get_state_for_neighbor_update`, `on_scheduled_tick`, and bonemeal handlers.
+  - In `crates/pumpkin-core/src/block/blocks/hanging_moss.rs`:
+    - Exported constants `PALE_HANGING_MOSS_IDLE_SOUND_CHANCE = 500`, `PALE_HANGING_MOSS_WIDTH = 14.0 / 16.0`, `PALE_HANGING_MOSS_BASE_HEIGHT = 1.0`, `PALE_HANGING_MOSS_TIP_HEIGHT = 14.0 / 16.0`.
+    - Added helper methods `is_pale_oak_support`, `should_play_idle_sound`.
+    - Implemented `random_tick()` for ambient idle sound playback.
+    - Updated `get_state_for_neighbor_update()` to schedule a 1-tick delay on unsupported break and `on_scheduled_tick()` to perform the break.
+    - Updated `perform_bonemeal()` to update previous tip to `tip = false`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `PALE_MOSS_CARPET_` and `PALE_HANGING_MOSS_` parity constants.
+    - Added unit test `test_pale_moss_carpet_and_hanging_moss_parity`.
+- **Status**: Completed & Verified.
