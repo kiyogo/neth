@@ -23,6 +23,14 @@ use super::redstone::block_receives_redstone_power;
 pub struct NoteBlock;
 
 impl NoteBlock {
+    pub const NOTE_VOLUME: f32 = 3.0;
+    pub const MIN_NOTE: u8 = 0;
+    pub const MAX_NOTE: u8 = 24;
+    pub const NUM_NOTES: u8 = 25;
+    pub const DEFAULT_NOTE: u8 = 0;
+    pub const DEFAULT_POWERED: bool = false;
+    pub const DEFAULT_INSTRUMENT: NoteblockInstrument = NoteblockInstrument::Harp;
+
     pub fn play_note(props: &NoteBlockLikeProperties, world: &World, pos: &BlockPos) {
         if !is_base_block(props.instrument) || world.get_block_state(&pos.up()).is_air() {
             let mut event = crate::plugin::api::events::block::note_play::NotePlayEvent::new(
@@ -39,8 +47,25 @@ impl NoteBlock {
             world.add_synced_block_event(*pos, 0, 0);
         }
     }
-    fn get_note_pitch(note: u16) -> f32 {
+
+    #[must_use]
+    pub fn get_pitch_from_note(note: u8) -> f32 {
         ((f32::from(note) - 12.0) / 12.0).exp2()
+    }
+
+    #[must_use]
+    pub const fn cycle_note(note: u8) -> u8 {
+        (note + 1) % Self::NUM_NOTES
+    }
+
+    #[must_use]
+    pub fn get_particle_color_x(note: u8) -> f32 {
+        f32::from(note) / 24.0
+    }
+
+    #[must_use]
+    pub const fn is_tunable_instrument(instrument: NoteblockInstrument) -> bool {
+        is_base_block(instrument)
     }
 
     fn get_state_with_instrument(
@@ -89,7 +114,7 @@ impl BlockBehaviour for NoteBlock {
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         let block_state = args.world.get_block_state(args.position);
         let mut note_props = NoteBlockLikeProperties::from_state_id(block_state.id);
-        note_props.note = (note_props.note + 1) % 25;
+        note_props.note = Self::cycle_note(note_props.note);
         args.world.set_block_state(
             args.position,
             note_props.to_state_id(args.block),
@@ -135,7 +160,7 @@ impl BlockBehaviour for NoteBlock {
         let instrument = note_props.instrument;
         let pitch = if is_base_block(instrument) {
             // checks if can be pitched
-            Self::get_note_pitch(u16::from(note_props.note))
+            Self::get_pitch_from_note(note_props.note)
         } else {
             1.0 // default pitch
         };
@@ -154,7 +179,7 @@ impl BlockBehaviour for NoteBlock {
                 args.position.0.z as f64 + 0.5,
             );
             let color_offset = pumpkin_util::math::vector3::Vector3::new(
-                f32::from(note_props.note) / 24.0,
+                Self::get_particle_color_x(note_props.note),
                 0.0,
                 0.0,
             );

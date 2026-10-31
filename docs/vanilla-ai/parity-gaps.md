@@ -7316,3 +7316,37 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported helpers `is_entity_trigger_ignored`, `can_disarm_with_shears`, and `calculate_hook_power`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_tripwire_and_hook_tension_disarm_and_signal_parity`.
+
+
+### Gap 299: Note Block Instruments, Pitch Transposition (0..=24 Semitones), Block Underneath Material & Particle Parity
+- **Vanilla Reference**:
+  - `NoteBlock.java:36-178`, `NoteBlockInstrument.java:15-110`:
+    - Volume: `NOTE_VOLUME = 3` (3.0F volume with SoundSource.RECORDS).
+    - Note range: `MIN_NOTE = 0`, `MAX_NOTE = 24`, `NUM_NOTES = 25` (0..=24 semitones over 2 full octaves).
+    - Default state: `INSTRUMENT = NoteBlockInstrument.HARP`, `NOTE = 0`, `POWERED = false`.
+    - Pitch calculation formula (`getPitchFromNote`):
+      `pitch = 2.0 ^ ((note - 12) / 12.0)`.
+      - Note 0 (F#3): pitch 0.5.
+      - Note 12 (F#4): pitch 1.0.
+      - Note 24 (F#5): pitch 2.0.
+      - Adjacent semitone ratio: `2^(1/12) ≈ 1.059463`.
+    - Note tuning cycle (`useWithoutItem`):
+      - Right-clicking cycles note: `(note + 1) % 25`.
+      - Awards `Stats.TUNE_NOTEBLOCK`.
+    - Note playing on attack / left click (`attack`):
+      - Plays current note without incrementing note index.
+      - Awards `Stats.PLAY_NOTEBLOCK`.
+    - Note particle spawn:
+      - Particle `ParticleTypes.NOTE` spawned at `(pos.x + 0.5, pos.y + 1.2, pos.z + 0.5)`.
+      - Particle color X component encoded as: `note / 24.0` (0.0 to 1.0).
+    - Instrument tunability:
+      - Standard instruments (Harp, Bass, Snare, Hat, Basedrum, Bell, Flute, Chime, Guitar, Xylophone, IronXylophone, CowBell, Didgeridoo, Bit, Banjo, Pling) are tunable (pitch scaled 0.5 to 2.0).
+      - Mob head / custom skull instruments (Zombie, Skeleton, Creeper, Dragon, WitherSkeleton, Piglin, CustomHead) are fixed pitch (`1.0F`).
+    - Top instrument placement (`useItemOn`):
+      - Clicking top face with `#minecraft:noteblock_top_instruments` passes interaction to place the head instead of tuning the block.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/note.rs`:
+    - Exported constants `NOTE_VOLUME = 3.0`, `MIN_NOTE = 0`, `MAX_NOTE = 24`, `NUM_NOTES = 25`, `DEFAULT_NOTE = 0`, `DEFAULT_POWERED = false`, and `DEFAULT_INSTRUMENT = NoteblockInstrument::Harp`.
+    - Exported helpers `get_pitch_from_note`, `cycle_note`, `get_particle_color_x`, and `is_tunable_instrument`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_noteblock_pitch_particles_and_instruments_parity`.

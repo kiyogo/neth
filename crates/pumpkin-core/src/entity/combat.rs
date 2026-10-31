@@ -16338,4 +16338,69 @@ mod tests {
         assert!(!TripwireBlock::calculate_hook_power(true, false));
         assert!(!TripwireBlock::calculate_hook_power(false, false));
     }
+
+    #[test]
+    fn test_noteblock_pitch_particles_and_instruments_parity() {
+        use crate::block::blocks::note::NoteBlock;
+        use pumpkin_data::block_properties::NoteblockInstrument;
+
+        // Constants verification
+        assert!((NoteBlock::NOTE_VOLUME - 3.0).abs() < 1e-6);
+        assert_eq!(NoteBlock::MIN_NOTE, 0);
+        assert_eq!(NoteBlock::MAX_NOTE, 24);
+        assert_eq!(NoteBlock::NUM_NOTES, 25);
+        assert_eq!(NoteBlock::DEFAULT_NOTE, 0);
+        assert!(!NoteBlock::DEFAULT_POWERED);
+        assert_eq!(NoteBlock::DEFAULT_INSTRUMENT, NoteblockInstrument::Harp);
+
+        // Pitch calculations: 2 octaves range from 0.5 to 2.0
+        assert!((NoteBlock::get_pitch_from_note(0) - 0.5).abs() < 1e-6);
+        assert!((NoteBlock::get_pitch_from_note(12) - 1.0).abs() < 1e-6);
+        assert!((NoteBlock::get_pitch_from_note(24) - 2.0).abs() < 1e-6);
+
+        // Semitone ratio test (each semitone is 2^(1/12))
+        let semitone_ratio = 2.0f32.powf(1.0 / 12.0);
+        for note in 0..24 {
+            let p1 = NoteBlock::get_pitch_from_note(note);
+            let p2 = NoteBlock::get_pitch_from_note(note + 1);
+            assert!((p2 / p1 - semitone_ratio).abs() < 1e-5);
+        }
+
+        // Note cycling modulo 25
+        assert_eq!(NoteBlock::cycle_note(0), 1);
+        assert_eq!(NoteBlock::cycle_note(12), 13);
+        assert_eq!(NoteBlock::cycle_note(23), 24);
+        assert_eq!(NoteBlock::cycle_note(24), 0);
+
+        // Particle color X offset (0.0 to 1.0 over 24 notes)
+        assert!((NoteBlock::get_particle_color_x(0) - 0.0).abs() < 1e-6);
+        assert!((NoteBlock::get_particle_color_x(12) - 0.5).abs() < 1e-6);
+        assert!((NoteBlock::get_particle_color_x(24) - 1.0).abs() < 1e-6);
+
+        // Tunable vs Mob Head instruments
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Harp));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Bass));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Snare));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Hat));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Basedrum));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Bell));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Flute));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Chime));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Guitar));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Xylophone));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::IronXylophone));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::CowBell));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Didgeridoo));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Bit));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Banjo));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Pling));
+
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Zombie));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Skeleton));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Creeper));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Dragon));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::WitherSkeleton));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Piglin));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::CustomHead));
+    }
 }
