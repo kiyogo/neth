@@ -17636,4 +17636,97 @@ mod tests {
         assert!(!NetherPortalBlock::is_valid_portal_dimension(21, 22));
         assert!(!NetherPortalBlock::is_valid_portal_dimension(100, 100));
     }
+
+    #[test]
+    fn test_crafter_trigger_delay_slot_disabled_and_comparator_parity() {
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::entities::crafter::CrafterBlockEntity;
+        use pumpkin_data::block_properties::Orientation;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Crafter timing and container dimensions parity
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::DEFAULT_ORIENTATION, Orientation::NorthUp);
+        assert_eq!(CrafterBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(CrafterBlock::DEFAULT_CRAFTING, false);
+
+        // Sound and particle world events parity
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+
+        // Entity constants parity
+        assert_eq!(CrafterBlockEntity::INVENTORY_SIZE, 9);
+        assert_eq!(CrafterBlockEntity::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlockEntity::SLOT_DISABLED, 1);
+        assert_eq!(CrafterBlockEntity::SLOT_ENABLED, 0);
+        assert_eq!(CrafterBlockEntity::DATA_TRIGGERED, 9);
+        assert_eq!(CrafterBlockEntity::NUM_DATA, 10);
+        assert_eq!(CrafterBlockEntity::DEFAULT_CRAFTING_TICKS_REMAINING, 0);
+        assert_eq!(CrafterBlockEntity::DEFAULT_TRIGGERED, false);
+
+        // Redstone rising-edge trigger evaluation
+        let (new_trig, schedule) = CrafterBlock::evaluate_redstone_trigger(true, false);
+        assert!(new_trig && schedule);
+        let (new_trig, schedule) = CrafterBlock::evaluate_redstone_trigger(true, true);
+        assert!(new_trig && !schedule);
+        let (new_trig, schedule) = CrafterBlock::evaluate_redstone_trigger(false, true);
+        assert!(!new_trig && !schedule);
+        let (new_trig, schedule) = CrafterBlock::evaluate_redstone_trigger(false, false);
+        assert!(!new_trig && !schedule);
+
+        // Slot bitmask parity
+        let mut disabled = [false; 9];
+        disabled[0] = true;
+        disabled[4] = true;
+        disabled[8] = true;
+        let mask = CrafterBlock::disabled_slots_to_bitmask(&disabled);
+        assert_eq!(mask, (1 << 0) | (1 << 4) | (1 << 8));
+        let recovered = CrafterBlock::bitmask_to_disabled_slots(mask);
+        assert_eq!(recovered, disabled);
+
+        // Comparator analog output calculation: count = occupied slots + disabled slots (0..9)
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(3, 0), 3);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 4), 4);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(2, 3), 5);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 4), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(7, 4), 9); // clamped to 9
+
+        let occupied_states = [true, false, true, false, false, false, false, false, false];
+        let disabled_states = [false, true, false, false, true, false, false, false, false];
+        assert_eq!(
+            CrafterBlock::calculate_signal_from_states(&occupied_states, &disabled_states),
+            4 // slots 0, 1, 2, 4
+        );
+
+        // Block entity slot state manipulation
+        let crafter = CrafterBlockEntity::new(BlockPos::new(0, 64, 0));
+        assert_eq!(crafter.get_redstone_signal(), 0);
+        assert_eq!(crafter.get_disabled_slot_count(), 0);
+        assert_eq!(crafter.get_occupied_slot_count(), 0);
+
+        // Can disable empty slot
+        assert!(crafter.slot_can_be_disabled(0));
+        crafter.set_slot_state(0, false); // disable slot 0
+        assert!(crafter.is_slot_disabled(0));
+        assert_eq!(crafter.get_redstone_signal(), 1);
+        assert_eq!(crafter.get_disabled_slots_bitmask(), 1);
+
+        crafter.set_slot_state(2, false); // disable slot 2
+        assert_eq!(crafter.get_redstone_signal(), 2);
+        assert_eq!(crafter.get_disabled_slots_bitmask(), (1 << 0) | (1 << 2));
+
+        crafter.set_slot_state(0, true); // re-enable slot 0
+        assert!(!crafter.is_slot_disabled(0));
+        assert_eq!(crafter.get_redstone_signal(), 1);
+    }
+
 }

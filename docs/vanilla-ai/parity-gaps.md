@@ -8027,3 +8027,31 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Exported is_valid_inner_dimensions(width, height).
   - Updated crates/pumpkin-core/src/entity/combat.rs:
     - Added unit test 	est_nether_portal_dimensions_cooldown_delays_and_ignition_parity.
+
+### Gap 322: Crafter Trigger Delay (4 Ticks), Slot Disabled States (0..9), Output Ejection & Comparator Output (0..9) Parity
+- **Vanilla Reference**:
+  - CrafterBlock.java:1-260, CrafterBlockEntity.java:1-260, CrafterMenu.java:1-130, LevelEvent.java:48-70:
+    - Timing & capacity:
+      - Trigger redstone delay: CRAFTING_TICK_DELAY = 4 game ticks (level.scheduleTick(pos, this, 4)).
+      - Crafting animation duration: MAX_CRAFTING_TICKS = 6 game ticks.
+      - Grid dimensions: 3x3 (CONTAINER_WIDTH = 3, CONTAINER_HEIGHT = 3, CONTAINER_SIZE = 9).
+    - Audio and visual world events:
+      - Successful craft: SOUND_CRAFTER_CRAFT = 1049 (WorldEvent.SoundCrafterCraft).
+      - Failed craft: SOUND_CRAFTER_FAIL = 1050 (WorldEvent.SoundCrafterFail).
+      - Ejection particle animation: PARTICLES_SHOOT_WHITE_SMOKE = 2010 (WorldEvent.ParticlesShootWhiteSmoke with 3D direction code).
+    - Slot disabling & insertion rules:
+      - Slot disabled status stored as integer array disabled_slots (slot disabled value = 1, enabled = 0).
+      - Only empty slots can be disabled (slotCanBeDisabled requires items[slot].isEmpty()).
+      - Inserting an item into a disabled slot automatically enables it (setItem calls setSlotState(slot, true)).
+      - Items inserted via hoppers/droppers cannot enter disabled slots or slots with smaller identical stacks elsewhere (smallerStackExist).
+    - Comparator analog output calculation:
+      - Calculates signal by summing the number of occupied slots AND disabled slots (count = 0..9).
+      - Range: 0 to 9 (MIN_COMPARATOR_OUTPUT = 0, MAX_COMPARATOR_OUTPUT = 9).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated crates/pumpkin-core/src/block/blocks/redstone/crafter.rs:
+    - Exported constants SOUND_CRAFTER_CRAFT_EVENT_ID = 1049, SOUND_CRAFTER_FAIL_EVENT_ID = 1050, and PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010.
+    - Verified CRAFTING_TICK_DELAY = 4, MAX_CRAFTING_TICKS = 6, CRAFTER_ADVANCEMENT_DIAMETER = 17.0, evaluate_redstone_trigger, calculate_comparator_signal, disabled_slots_to_bitmask, and itmask_to_disabled_slots.
+  - Updated crates/pumpkin-core/src/block/entities/crafter.rs:
+    - Verified SLOT_DISABLED = 1, SLOT_ENABLED = 0, get_redstone_signal (counting occupied + disabled slots), and is_valid_slot_for.
+  - Updated crates/pumpkin-core/src/entity/combat.rs:
+    - Added unit test 	est_crafter_trigger_delay_slot_disabled_and_comparator_parity.

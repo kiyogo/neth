@@ -115,6 +115,9 @@ impl CrafterBlock {
     pub const DEFAULT_ORIENTATION: Orientation = Orientation::NorthUp;
     pub const DEFAULT_TRIGGERED: bool = false;
     pub const DEFAULT_CRAFTING: bool = false;
+    pub const SOUND_CRAFTER_CRAFT_EVENT_ID: i32 = 1049;
+    pub const SOUND_CRAFTER_FAIL_EVENT_ID: i32 = 1050;
+    pub const PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID: i32 = 2010;
 
     #[must_use]
     pub const fn evaluate_redstone_trigger(
