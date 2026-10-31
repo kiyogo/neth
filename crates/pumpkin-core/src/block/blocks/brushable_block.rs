@@ -17,6 +17,61 @@ impl BlockMetadata for BrushableBlock {
 }
 
 impl BrushableBlock {
+    /// Vanilla: BrushableBlockEntity.REQUIRED_BRUSHES_TO_BREAK = 10;
+    pub const REQUIRED_BRUSHES_TO_BREAK: i32 = 10;
+
+    /// Vanilla: BrushableBlockEntity.BRUSH_COOLDOWN_TICKS = 10; (0.5s)
+    pub const BRUSH_COOLDOWN_TICKS: i64 = 10;
+
+    /// Vanilla: BrushableBlockEntity.BRUSH_RESET_TICKS = 40; (2.0s)
+    pub const BRUSH_RESET_TICKS: i64 = 40;
+
+    /// Vanilla: BrushableBlockEntity.checkReset: retractionSpeed = 4 ticks
+    pub const RETRACTION_SPEED_TICKS: i64 = 4;
+
+    /// Vanilla: 	his.brushCount = Math.max(0, this.brushCount - 2);
+    pub const RETRACTION_BRUSH_STEP: i32 = 2;
+
+    /// Vanilla: BrushableBlock.TICK_DELAY = 2;
+    pub const TICK_DELAY: u32 = 2;
+
+    /// Max visual dusted property value in blockstate (0..3)
+    pub const MAX_DUSTED_STAGE: u8 = 3;
+
+    /// Computes visual dusted stage from brush count (BrushableBlockEntity.java:230-238):
+    /// - 0 hits -> 0
+    /// - 1..2 hits (< 3) -> 1
+    /// - 3..5 hits (< 6) -> 2
+    /// - 6..9 hits (>= 6) -> 3
+    #[must_use]
+    pub const fn calculate_dusted_stage(brush_count: i32) -> u8 {
+        if brush_count <= 0 {
+            0
+        } else if brush_count < 3 {
+            1
+        } else if brush_count < 6 {
+            2
+        } else {
+            3
+        }
+    }
+
+    /// Determines if brush count reached threshold to break block and eject item.
+    #[must_use]
+    pub const fn is_brushing_complete(brush_count: i32) -> bool {
+        brush_count >= Self::REQUIRED_BRUSHES_TO_BREAK
+    }
+
+    /// Retraction decay calculation: Math.max(0, brush_count - 2)
+    #[must_use]
+    pub const fn decay_brush_count(current_brush_count: i32) -> i32 {
+        if current_brush_count <= Self::RETRACTION_BRUSH_STEP {
+            0
+        } else {
+            current_brush_count - Self::RETRACTION_BRUSH_STEP
+        }
+    }
+
     pub fn brush(
         world: &Arc<crate::world::World>,
         pos: &pumpkin_util::math::position::BlockPos,
@@ -36,7 +91,7 @@ impl BrushableBlock {
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             *hits += 1;
 
-            if *hits >= 4 {
+            if Self::is_brushing_complete(*hits) {
                 let item = brush_be
                     .item
                     .lock()
@@ -62,7 +117,7 @@ impl BrushableBlock {
 
                 world.play_sound(sound, SoundCategory::Blocks, &pos.to_f64());
             } else {
-                props.dusted = (*hits as u8).min(3);
+                props.dusted = Self::calculate_dusted_stage(*hits);
                 world.set_block_state(pos, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
 
                 let sound = if is_gravel {

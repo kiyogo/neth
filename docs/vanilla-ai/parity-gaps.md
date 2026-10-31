@@ -8465,3 +8465,25 @@ emainingDuration == 1), a raid is initiated at the player's position.
   - Added helpers calculate_bad_omen_amplifier, calculate_trial_omen_duration, can_convert_bad_omen_to_raid_omen, and should_trigger_raid_from_raid_omen.
   - Hooked up item consumption in LivingEntity::apply_consumable_effects to read OminousBottleAmplifierImpl and grant StatusEffect::BAD_OMEN.
   - Added unit test 	est_ominous_bottle_amplifier_duration_and_omen_conversion_parity in combat.rs.
+
+### Gap 342: Suspicious Sand & Gravel (BrushableBlock) Dusting Stages (0..3), Loot Extraction & Retraction Decay Parity
+
+- **Vanilla Reference**: BrushableBlock.java:1-113, BrushableBlockEntity.java:1-247.
+- **Description**:
+  - In Vanilla Minecraft 1.20+, Suspicious Sand and Suspicious Gravel (BrushableBlock) track brushing progress via BrushableBlockEntity:
+    - Brushing requires 10 successful brush events (REQUIRED_BRUSHES_TO_BREAK = 10) to break the block and reveal its contained item / loot.
+    - Each brush event has a 10-tick (0.5s) cooldown (BRUSH_COOLDOWN_TICKS = 10).
+    - The blockstate dusted property (0..3) updates based on getCompletionState():
+      - 0 hits: dusted = 0
+      - 1..2 hits (< 3): dusted = 1
+      - 3..5 hits (< 6): dusted = 2
+      - 6..9 hits (>= 6): dusted = 3
+      - 10+ hits: brushing completed, block converts into normal Sand/Gravel, item is ejected, and SoundEvents.BRUSH_BRUSHING_SAND_COMPLETE / BRUSH_BRUSHING_GRAVEL_COMPLETE plays.
+    - Retraction Decay (checkReset):
+      - If brushing pauses for 40 ticks (2.0s, BRUSH_RESET_TICKS = 40), the block decays by 2 brush counts every 4 ticks (RETRACTION_SPEED = 4, rushCount = Math.max(0, brushCount - 2)).
+      - dusted blockstate regresses backwards until hitting 0, resetting hit direction and timers.
+- **Neth Changes**:
+  - Exported constants REQUIRED_BRUSHES_TO_BREAK = 10, BRUSH_COOLDOWN_TICKS = 10, BRUSH_RESET_TICKS = 40, RETRACTION_SPEED_TICKS = 4, RETRACTION_BRUSH_STEP = 2, TICK_DELAY = 2, and MAX_DUSTED_STAGE = 3 on BrushableBlock.
+  - Added helpers calculate_dusted_stage, is_brushing_complete, and decay_brush_count.
+  - Updated BrushableBlock::brush to use the 10-hit break threshold and 4-tier dusted mapping instead of hardcoded 4 hits.
+  - Added unit test 	est_brushable_block_dusting_stages_break_threshold_and_retraction_parity in combat.rs.

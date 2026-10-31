@@ -18827,4 +18827,51 @@ mod tests {
         assert!(!OminousBottleItem::should_trigger_raid_from_raid_omen(2));
         assert!(!OminousBottleItem::should_trigger_raid_from_raid_omen(600));
     }
+    #[test]
+    fn test_brushable_block_dusting_stages_break_threshold_and_retraction_parity() {
+        use crate::block::blocks::brushable_block::BrushableBlock;
+
+        // Constants parity with Vanilla BrushableBlock.java & BrushableBlockEntity.java
+        assert_eq!(BrushableBlock::REQUIRED_BRUSHES_TO_BREAK, 10);
+        assert_eq!(BrushableBlock::BRUSH_COOLDOWN_TICKS, 10); // 0.5s cooldown between brushes
+        assert_eq!(BrushableBlock::BRUSH_RESET_TICKS, 40); // 2.0s before retraction starts
+        assert_eq!(BrushableBlock::RETRACTION_SPEED_TICKS, 4); // decays every 4 ticks
+        assert_eq!(BrushableBlock::RETRACTION_BRUSH_STEP, 2); // decays 2 brush counts per step
+        assert_eq!(BrushableBlock::TICK_DELAY, 2);
+        assert_eq!(BrushableBlock::MAX_DUSTED_STAGE, 3);
+
+        // Completion state / dusted mapping parity (BrushableBlockEntity.java:230-238)
+        // 0 hits -> dusted 0
+        assert_eq!(BrushableBlock::calculate_dusted_stage(0), 0);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(-5), 0);
+
+        // 1..2 hits (< 3) -> dusted 1
+        assert_eq!(BrushableBlock::calculate_dusted_stage(1), 1);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(2), 1);
+
+        // 3..5 hits (< 6) -> dusted 2
+        assert_eq!(BrushableBlock::calculate_dusted_stage(3), 2);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(4), 2);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(5), 2);
+
+        // 6..9 hits (>= 6) -> dusted 3
+        assert_eq!(BrushableBlock::calculate_dusted_stage(6), 3);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(7), 3);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(8), 3);
+        assert_eq!(BrushableBlock::calculate_dusted_stage(9), 3);
+
+        // 10+ hits -> complete
+        assert!(!BrushableBlock::is_brushing_complete(9));
+        assert!(BrushableBlock::is_brushing_complete(10));
+        assert!(BrushableBlock::is_brushing_complete(12));
+
+        // Retraction decay step parity (BrushableBlockEntity.java:151: Math.max(0, brushCount - 2))
+        assert_eq!(BrushableBlock::decay_brush_count(9), 7);
+        assert_eq!(BrushableBlock::decay_brush_count(7), 5);
+        assert_eq!(BrushableBlock::decay_brush_count(5), 3);
+        assert_eq!(BrushableBlock::decay_brush_count(3), 1);
+        assert_eq!(BrushableBlock::decay_brush_count(2), 0);
+        assert_eq!(BrushableBlock::decay_brush_count(1), 0);
+        assert_eq!(BrushableBlock::decay_brush_count(0), 0);
+    }
 }
