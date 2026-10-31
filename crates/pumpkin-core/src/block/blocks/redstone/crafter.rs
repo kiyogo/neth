@@ -168,6 +168,12 @@ impl CrafterBlock {
         disabled
     }
 
+    #[must_use]
+    pub const fn is_player_within_advancement_range(dx: f64, dy: f64, dz: f64) -> bool {
+        let half = Self::CRAFTER_ADVANCEMENT_DIAMETER / 2.0;
+        dx.abs() <= half && dy.abs() <= half && dz.abs() <= half
+    }
+
     pub fn is_slot_valid_for_craft(occupied: bool, disabled: bool) -> bool {
         occupied && !disabled
     }
@@ -215,7 +221,7 @@ impl CrafterBlock {
 
             if item.id == Item::CRAFTER.id {
                 let center = pos.to_centered_f64();
-                for player in world.get_nearby_players(center, 10.0) {
+                for player in world.get_nearby_players(center, Self::CRAFTER_ADVANCEMENT_DIAMETER / 2.0) {
                     player.trigger_advancement(
                         crate::entity::player::advancement::trigger::AdvancementTrigger::CrafterCraftedCrafter,
                     );

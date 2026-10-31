@@ -8556,3 +8556,24 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Defined `TrialOmenEffects` in `crates/pumpkin-core/src/entity/combat.rs`.
   - Added constants and helpers `calculate_wind_charged_gust_strength`, `can_weaving_spawn_cobwebs`, `calculate_oozing_slimes_to_spawn`, and `should_infested_spawn_silverfish`.
   - Added unit test `test_trial_omen_mob_effects_wind_charged_weaving_oozing_infested_parity` in `combat.rs`.
+
+### Gap 346: Crafter Failed Crafting Sound Event (1050), Crafting Success (1049), Smoke Particles (2010) & 17-Block Advancement Parity
+
+- **Vanilla Reference**: `CrafterBlock.java:1-240`, `CrafterBlockEntity.java:1-200`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Crafter manages crafting pulses, orientation, containers, and visual/audio feedback:
+    - **Trigger pulse & delay**: On rising edge (`shouldTrigger && !isTriggered`), schedules block tick in 4 ticks (`CRAFTING_TICK_DELAY = 4`) and sets `TRIGGERED = true`. On falling edge, clears `TRIGGERED = false` and `CRAFTING = false`.
+    - **Crafting success feedback**:
+      - Plays world event 1049 (`WorldEvent::SoundCrafterCraft`).
+      - Emits world event 2010 (`WorldEvent::ParticlesShootWhiteSmoke`) pointing towards facing direction (`direction.get3DDataValue()`).
+      - Sets `CRAFTING = true` for 6 ticks (`MAX_CRAFTING_TICKS = 6`).
+    - **Crafting failure feedback**:
+      - If no valid recipe matches or output is empty, plays world event 1050 (`WorldEvent::SoundCrafterFail`) with data 0.
+    - **Advancement proximity trigger**:
+      - When crafting items (such as crafting another Crafter), evaluates all players in an AABB of size 17x17x17 around block center (`CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, bounding box offset $\le 8.5$ blocks).
+    - **Bitmask slot disabled state**:
+      - Slots 0..8 disabled states encoded as bitmask flags `1 << slot` (values 0..511).
+- **Neth Changes**:
+  - Exported constants `CRAFTING_TICK_DELAY = 4`, `MAX_CRAFTING_TICKS = 6`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, and `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010` in `CrafterBlock`.
+  - Added helper `is_player_within_advancement_range` and adjusted advancement trigger search distance to match vanilla 17-block AABB.
+  - Added unit test `test_crafter_trigger_events_comparator_and_advancement_parity` in `combat.rs`.

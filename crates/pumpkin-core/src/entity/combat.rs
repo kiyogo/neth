@@ -19090,4 +19090,65 @@ mod tests {
         assert!(!TrialOmenEffects::should_infested_spawn_silverfish(0.1001));
         assert!(!TrialOmenEffects::should_infested_spawn_silverfish(0.50));
     }
+    #[test]
+    fn test_crafter_trigger_events_comparator_and_advancement_parity() {
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+
+        // Constants parity with Vanilla CrafterBlock.java
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+
+        // Redstone pulse evaluation (CrafterBlock.java:67-81)
+        // Rising edge: powered = true, triggered = false -> sets triggered and schedules craft
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, false), (true, true));
+        // Held powered: powered = true, triggered = true -> no new schedule
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, true), (true, false));
+        // Falling edge: powered = false, triggered = true -> resets triggered
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, true), (false, false));
+        // Held off: powered = false, triggered = false -> no change
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, false), (false, false));
+
+        // Comparator signal calculation: (occupied + disabled).min(9)
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(3, 2), 5);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 4), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(9, 9), 9);
+
+        // Bitmask slot disabled round-trip (CrafterBlockEntity.java: disabled_slots)
+        let mut disabled = [false; 9];
+        disabled[0] = true;
+        disabled[2] = true;
+        disabled[4] = true;
+        let mask = CrafterBlock::disabled_slots_to_bitmask(&disabled);
+        assert_eq!(mask, 1 | 4 | 16);
+        assert_eq!(CrafterBlock::bitmask_to_disabled_slots(mask), disabled);
+
+        let all_disabled = [true; 9];
+        let full_mask = CrafterBlock::disabled_slots_to_bitmask(&all_disabled);
+        assert_eq!(full_mask, 0x1FF); // 511
+        assert_eq!(CrafterBlock::bitmask_to_disabled_slots(full_mask), all_disabled);
+
+        // Slot craft validity: occupied && !disabled
+        assert!(CrafterBlock::is_slot_valid_for_craft(true, false));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(false, false));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(true, true));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(false, true));
+
+        // Advancement proximity (CrafterBlock.java:217: AABB 17x17x17 around center)
+        assert!(CrafterBlock::is_player_within_advancement_range(0.0, 0.0, 0.0));
+        assert!(CrafterBlock::is_player_within_advancement_range(8.5, 8.5, 8.5));
+        assert!(CrafterBlock::is_player_within_advancement_range(-8.5, 8.5, -8.5));
+        assert!(!CrafterBlock::is_player_within_advancement_range(8.51, 0.0, 0.0));
+        assert!(!CrafterBlock::is_player_within_advancement_range(0.0, 8.51, 0.0));
+        assert!(!CrafterBlock::is_player_within_advancement_range(0.0, 0.0, 8.51));
+    }
 }
