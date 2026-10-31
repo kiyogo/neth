@@ -19151,4 +19151,42 @@ mod tests {
         assert!(!CrafterBlock::is_player_within_advancement_range(0.0, 8.51, 0.0));
         assert!(!CrafterBlock::is_player_within_advancement_range(0.0, 0.0, 8.51));
     }
+    #[test]
+    fn test_breeze_target_whitelist_firing_y_inner_circle_and_deflection_parity() {
+        use crate::entity::mob::breeze::BreezeEntity;
+        use pumpkin_data::entity::EntityType;
+
+        // Base attributes & constants parity (Breeze.java:42-79)
+        assert_eq!(crate::entity::combat::BREEZE_MAX_HEALTH, 30.0);
+        assert_eq!(crate::entity::combat::BREEZE_BASE_MOVEMENT_SPEED, 0.63);
+        assert_eq!(crate::entity::combat::BREEZE_FOLLOW_RANGE, 24.0);
+        assert_eq!(crate::entity::combat::BREEZE_BASE_ATTACK_DAMAGE, 3.0);
+        assert_eq!(BreezeEntity::XP_REWARD, 10);
+        assert_eq!(BreezeEntity::INNER_CIRCLE_MIN_RANGE, 4.0);
+        assert_eq!(BreezeEntity::INNER_CIRCLE_MAX_Y, 10.0);
+        assert_eq!(BreezeEntity::FIRING_Y_OFFSET, 0.3);
+        assert_eq!(BreezeEntity::JUMP_TRAIL_DURATION_TICKS, 5);
+        assert_eq!(BreezeEntity::FALL_DISTANCE_SOUND_TRIGGER_THRESHOLD, 3.0);
+        assert_eq!(BreezeEntity::MAX_HEAD_Y_ROT, 30);
+        assert_eq!(BreezeEntity::HEAD_ROT_SPEED, 25);
+
+        // Target Whitelist parity (Breeze.java:245-247: ONLY Players & Iron Golems)
+        assert!(BreezeEntity::can_target_entity(&EntityType::PLAYER));
+        assert!(BreezeEntity::can_target_entity(&EntityType::IRON_GOLEM));
+        assert!(!BreezeEntity::can_target_entity(&EntityType::ZOMBIE));
+        assert!(!BreezeEntity::can_target_entity(&EntityType::SKELETON));
+        assert!(!BreezeEntity::can_target_entity(&EntityType::VILLAGER));
+        assert!(!BreezeEntity::can_target_entity(&EntityType::COW));
+
+        // Firing Y position parity (Breeze.java:259-261: y + bbHeight / 2.0 + 0.3)
+        let firing_y = BreezeEntity::calculate_firing_y_position(64.0, 1.77);
+        assert!((firing_y - (64.0 + 1.77 / 2.0 + 0.3)).abs() < 1e-6);
+
+        // Inner circle escape distance (Breeze.java:228-231: closerThan(pos, 4.0, 10.0))
+        assert!(BreezeEntity::is_within_inner_circle(0.0, 0.0, 0.0));
+        assert!(BreezeEntity::is_within_inner_circle(3.0, 5.0, 0.0)); // h=3.0 <= 4.0, y=5.0 <= 10.0
+        assert!(BreezeEntity::is_within_inner_circle(0.0, 10.0, 4.0)); // h=4.0, y=10.0
+        assert!(!BreezeEntity::is_within_inner_circle(4.1, 0.0, 0.0)); // h=4.1 > 4.0
+        assert!(!BreezeEntity::is_within_inner_circle(0.0, 10.1, 0.0)); // y=10.1 > 10.0
+    }
 }

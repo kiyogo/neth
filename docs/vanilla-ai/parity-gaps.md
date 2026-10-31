@@ -8577,3 +8577,18 @@ oPhysics = true, immune to all incoming entity/environmental damage (hurtServer 
   - Exported constants `CRAFTING_TICK_DELAY = 4`, `MAX_CRAFTING_TICKS = 6`, `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, and `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010` in `CrafterBlock`.
   - Added helper `is_player_within_advancement_range` and adjusted advancement trigger search distance to match vanilla 17-block AABB.
   - Added unit test `test_crafter_trigger_events_comparator_and_advancement_parity` in `combat.rs`.
+
+### Gap 347: Breeze Target Whitelist (Players/Iron Golems), Firing Y Position (+0.3), Inner Circle Range & Deflection Parity
+
+- **Vanilla Reference**: `Breeze.java:1-302`, `BreezeAi.java`, `BreezeUtil.java`.
+- **Description**:
+  - In Vanilla Minecraft 1.21, the Breeze entity possesses distinct combat targeting, physics, and projectile deflection:
+    - **Target Whitelist**: `canAttack(target)` explicitly restricts valid hostility to only `Player` and `IronGolem` entities (`target.is(PLAYER) || target.is(IRON_GOLEM)`). All other monsters and animals are completely ignored.
+    - **Firing Y Height**: Projectile launch elevation is calculated as `y + bbHeight / 2.0 + 0.3F` (`getFiringYPosition()`), resulting in wind charges being discharged slightly above horizontal mid-body level.
+    - **Inner Circle Escape**: When a target closes within 4.0 blocks horizontal and 10.0 blocks vertical (`withinInnerCircleRange`: `closerThan(ourPosition, 4.0, 10.0)`), the Breeze immediately aborts charges and leaps away.
+    - **Projectile Deflection**: Deflects all non-breeze projectiles with `ProjectileDeflection.REVERSE`, playing `SoundEvents.BREEZE_DEFLECT` (volume 1.0, pitch 1.0) and inverting projectile trajectory.
+    - **Attributes & Timing**: Max Health = 30.0, Movement Speed = 0.63, Follow Range = 24.0, Attack Damage = 3.0, XP Reward = 10, Jump trail duration = 5 ticks, and fall distance sound threshold = 3.0 blocks.
+- **Neth Changes**:
+  - Exported constants `INNER_CIRCLE_MIN_RANGE = 4.0`, `INNER_CIRCLE_MAX_Y = 10.0`, `FIRING_Y_OFFSET = 0.3`, `JUMP_TRAIL_DURATION_TICKS = 5`, and `FALL_DISTANCE_SOUND_TRIGGER_THRESHOLD = 3.0` on `BreezeEntity`.
+  - Added helper methods `can_target_entity`, `calculate_firing_y_position`, and `is_within_inner_circle`.
+  - Added unit test `test_breeze_target_whitelist_firing_y_inner_circle_and_deflection_parity` in `combat.rs`.

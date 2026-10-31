@@ -25,6 +25,29 @@ pub struct BreezeEntity {
 
 impl BreezeEntity {
     pub const XP_REWARD: u32 = crate::entity::combat::BREEZE_XP_REWARD;
+    pub const INNER_CIRCLE_MIN_RANGE: f64 = 4.0;
+    pub const INNER_CIRCLE_MAX_Y: f64 = 10.0;
+    pub const FIRING_Y_OFFSET: f64 = 0.3;
+    pub const JUMP_TRAIL_DURATION_TICKS: i32 = 5;
+    pub const FALL_DISTANCE_SOUND_TRIGGER_THRESHOLD: f32 = 3.0;
+    pub const MAX_HEAD_Y_ROT: i32 = 30;
+    pub const HEAD_ROT_SPEED: i32 = 25;
+
+    #[must_use]
+    pub fn can_target_entity(entity_type: &EntityType) -> bool {
+        entity_type == &EntityType::PLAYER || entity_type == &EntityType::IRON_GOLEM
+    }
+
+    #[must_use]
+    pub fn calculate_firing_y_position(base_y: f64, bb_height: f32) -> f64 {
+        base_y + f64::from(bb_height) / 2.0 + Self::FIRING_Y_OFFSET
+    }
+
+    #[must_use]
+    pub fn is_within_inner_circle(dx: f64, dy: f64, dz: f64) -> bool {
+        (dx * dx + dz * dz) <= (Self::INNER_CIRCLE_MIN_RANGE * Self::INNER_CIRCLE_MIN_RANGE)
+            && dy.abs() <= Self::INNER_CIRCLE_MAX_Y
+    }
 
     #[must_use]
     pub const fn can_be_leashed(&self) -> bool {
