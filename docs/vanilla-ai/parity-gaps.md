@@ -7044,3 +7044,36 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Refactored `get_comparator_output` on `CauldronBlock` to use `calculate_comparator_output`.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_cauldron_fluid_types_levels_and_comparator_parity`.
+
+
+### Gap 290: Crafter Redstone Triggering, Disabled Slots Bitmask & Comparator Parity
+- **Vanilla Reference**:
+  - `CrafterBlock.java:42-100`, `CrafterBlockEntity.java:25-90, 251-267`:
+    - Layout & dimensions:
+      - `CONTAINER_SIZE = 9` (3x3 grid)
+      - `CONTAINER_WIDTH = 3`
+      - `CONTAINER_HEIGHT = 3`
+      - `CRAFTING_TICK_DELAY = 4` (delay after triggering before dispensing crafted item)
+      - `MAX_CRAFTING_TICKS = 6`
+      - `SLOT_DISABLED = 1`, `SLOT_ENABLED = 0`
+      - `DATA_TRIGGERED = 9`, `NUM_DATA = 10`
+      - `DEFAULT_CRAFTING_TICKS_REMAINING = 0`, `DEFAULT_TRIGGERED = false`
+    - Comparator Redstone output:
+      - Formula: every slot that is occupied OR disabled adds 1 to the signal:
+        `count = sum(1 for slot in 0..9 if occupied(slot) || disabled(slot))`
+      - Output ranges from `MIN_COMPARATOR_OUTPUT = 0` to `MAX_COMPARATOR_OUTPUT = 9`.
+    - Triggering logic:
+      - Redstone rising edge (`powered && !triggered`): sets `triggered = true`, sets block entity triggered, and schedules block tick with delay 4.
+      - Redstone falling edge (`!powered && triggered`): sets `triggered = false`, `crafting = false`, and resets block entity triggered.
+    - Slot disabling rules:
+      - Only empty slots can be disabled.
+      - Inserting / setting an item into a disabled slot automatically re-enables it.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Exported constants `CONTAINER_WIDTH = 3`, `CONTAINER_HEIGHT = 3`, `MIN_COMPARATOR_OUTPUT = 0`, and `MAX_COMPARATOR_OUTPUT = 9`.
+    - Exported helpers `calculate_comparator_signal`, `calculate_signal_from_states`, `disabled_slots_to_bitmask`, `bitmask_to_disabled_slots`, and `is_slot_valid_for_craft`.
+  - Updated `crates/pumpkin-core/src/block/entities/crafter.rs`:
+    - Exported constants `SLOT_DISABLED = 1`, `SLOT_ENABLED = 0`, `DATA_TRIGGERED = 9`, `NUM_DATA = 10`, `DEFAULT_CRAFTING_TICKS_REMAINING = 0`, `DEFAULT_TRIGGERED = false`, `MIN_COMPARATOR_OUTPUT = 0`, and `MAX_COMPARATOR_OUTPUT = 9`.
+    - Exported helpers `get_disabled_slots_bitmask`, `get_disabled_slot_count`, and `get_occupied_slot_count`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_crafter_redstone_triggering_disabled_slots_and_comparator_parity`.

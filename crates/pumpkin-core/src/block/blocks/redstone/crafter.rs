@@ -108,6 +108,48 @@ impl CrafterBlock {
     pub const MAX_CRAFTING_TICKS: i32 = 6;
     pub const CRAFTER_ADVANCEMENT_DIAMETER: f64 = 17.0;
     pub const CONTAINER_SIZE: usize = 9;
+    pub const CONTAINER_WIDTH: usize = 3;
+    pub const CONTAINER_HEIGHT: usize = 3;
+    pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
+    pub const MAX_COMPARATOR_OUTPUT: u8 = 9;
+
+    pub fn calculate_comparator_signal(occupied_count: usize, disabled_count: usize) -> u8 {
+        ((occupied_count + disabled_count) as u8).min(Self::MAX_COMPARATOR_OUTPUT)
+    }
+
+    pub fn calculate_signal_from_states(occupied: &[bool; 9], disabled: &[bool; 9]) -> u8 {
+        let mut count = 0u8;
+        for i in 0..9 {
+            if occupied[i] || disabled[i] {
+                count += 1;
+            }
+        }
+        count
+    }
+
+    pub fn disabled_slots_to_bitmask(disabled: &[bool; 9]) -> u16 {
+        let mut mask = 0u16;
+        for i in 0..9 {
+            if disabled[i] {
+                mask |= 1 << i;
+            }
+        }
+        mask
+    }
+
+    pub fn bitmask_to_disabled_slots(mask: u16) -> [bool; 9] {
+        let mut disabled = [false; 9];
+        for i in 0..9 {
+            if (mask & (1 << i)) != 0 {
+                disabled[i] = true;
+            }
+        }
+        disabled
+    }
+
+    pub fn is_slot_valid_for_craft(occupied: bool, disabled: bool) -> bool {
+        occupied && !disabled
+    }
 
     fn dispense_from(world: &Arc<World>, pos: &BlockPos, block: &Block) {
         let Some(block_entity) = world.get_block_entity(pos) else {

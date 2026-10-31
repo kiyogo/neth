@@ -15761,4 +15761,66 @@ mod tests {
         assert!(CauldronBlock::should_snow_fill(0.05));
         assert!(!CauldronBlock::should_snow_fill(0.15));
     }
+#[test]
+    fn test_crafter_redstone_triggering_disabled_slots_and_comparator_parity() {
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::entities::crafter::CrafterBlockEntity;
+
+        // Constants verification
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+
+        assert_eq!(CrafterBlockEntity::SLOT_DISABLED, 1);
+        assert_eq!(CrafterBlockEntity::SLOT_ENABLED, 0);
+        assert_eq!(CrafterBlockEntity::DATA_TRIGGERED, 9);
+        assert_eq!(CrafterBlockEntity::NUM_DATA, 10);
+        assert_eq!(CrafterBlockEntity::DEFAULT_CRAFTING_TICKS_REMAINING, 0);
+        assert!(!CrafterBlockEntity::DEFAULT_TRIGGERED);
+
+        // Comparator signal calculations
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(3, 2), 5);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(9, 0), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 9), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 4), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(6, 6), 9);
+
+        // State array comparator calculation
+        let mut occupied = [false; 9];
+        let mut disabled = [false; 9];
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 0);
+
+        occupied[0] = true;
+        occupied[1] = true;
+        disabled[2] = true;
+        disabled[4] = true;
+        // Slots 0, 1 occupied, slots 2, 4 disabled -> 4
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 4);
+
+        // Overlapping slot (occupied + disabled) counts as 1 slot active
+        disabled[0] = true;
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 4);
+
+        // Bitmask conversions
+        let mut test_disabled = [false; 9];
+        test_disabled[0] = true;
+        test_disabled[2] = true;
+        test_disabled[8] = true;
+        let expected_mask = (1 << 0) | (1 << 2) | (1 << 8);
+        assert_eq!(CrafterBlock::disabled_slots_to_bitmask(&test_disabled), expected_mask);
+
+        let roundtrip = CrafterBlock::bitmask_to_disabled_slots(expected_mask);
+        assert_eq!(roundtrip, test_disabled);
+
+        // Crafting slot validity
+        assert!(CrafterBlock::is_slot_valid_for_craft(true, false));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(true, true));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(false, false));
+        assert!(!CrafterBlock::is_slot_valid_for_craft(false, true));
+    }
 }

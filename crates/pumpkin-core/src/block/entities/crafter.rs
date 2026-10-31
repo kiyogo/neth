@@ -176,7 +176,48 @@ impl CrafterBlockEntity {
     pub const CONTAINER_SIZE: usize = 9;
     pub const CONTAINER_WIDTH: usize = 3;
     pub const CONTAINER_HEIGHT: usize = 3;
+    pub const SLOT_DISABLED: i32 = 1;
+    pub const SLOT_ENABLED: i32 = 0;
+    pub const DATA_TRIGGERED: usize = 9;
+    pub const NUM_DATA: usize = 10;
+    pub const DEFAULT_CRAFTING_TICKS_REMAINING: i32 = 0;
+    pub const DEFAULT_TRIGGERED: bool = false;
+    pub const MIN_COMPARATOR_OUTPUT: u8 = 0;
+    pub const MAX_COMPARATOR_OUTPUT: u8 = 9;
     pub const ID: &'static str = "minecraft:crafter";
+
+    #[must_use]
+    pub fn get_disabled_slots_bitmask(&self) -> u16 {
+        let disabled = self
+            .disabled_slots
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut mask = 0u16;
+        for i in 0..Self::INVENTORY_SIZE {
+            if disabled[i] {
+                mask |= 1 << i;
+            }
+        }
+        mask
+    }
+
+    #[must_use]
+    pub fn get_disabled_slot_count(&self) -> usize {
+        let disabled = self
+            .disabled_slots
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        disabled.iter().filter(|&&d| d).count()
+    }
+
+    #[must_use]
+    pub fn get_occupied_slot_count(&self) -> usize {
+        let items = self
+            .items
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        items.iter().filter(|i| !i.is_empty()).count()
+    }
 
     #[must_use]
     pub fn new(position: BlockPos) -> Self {
