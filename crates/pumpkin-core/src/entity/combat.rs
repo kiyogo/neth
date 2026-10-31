@@ -18036,4 +18036,52 @@ mod tests {
         assert_eq!(*entity.warning_level.lock().unwrap(), 0);
     }
 
+
+    #[test]
+    fn test_sculk_catalyst_bloom_charge_and_spreader_parity() {
+        use crate::block::blocks::sculk::sculk_catalyst::SculkCatalystBlock;
+        use crate::block::entities::sculk_catalyst::SculkCatalystBlockEntity;
+        use pumpkin_util::math::position::BlockPos;
+
+        // Block and entity constants parity
+        assert_eq!(SculkCatalystBlock::PULSE_TICKS, 8);
+        assert_eq!(SculkCatalystBlock::LISTENER_RADIUS, 8);
+        assert_eq!(SculkCatalystBlock::XP_REWARD, 5);
+        assert_eq!(SculkCatalystBlock::MAX_GROWTH_RATE_RADIUS, 24);
+        assert_eq!(SculkCatalystBlock::MAX_CHARGE, 1000);
+        assert_eq!(SculkCatalystBlock::MAX_DECAY_FACTOR, 0.5);
+        assert_eq!(SculkCatalystBlock::MAX_CURSORS, 32);
+        assert_eq!(SculkCatalystBlock::SHRIEKER_PLACEMENT_RATE, 11);
+        assert_eq!(SculkCatalystBlock::MAX_CURSOR_DISTANCE, 1024);
+        assert_eq!(SculkCatalystBlock::DEFAULT_BLOOM, false);
+
+        assert_eq!(SculkCatalystBlockEntity::PULSE_TICKS, 8);
+        assert_eq!(SculkCatalystBlockEntity::LISTENER_RADIUS, 8);
+        assert_eq!(SculkCatalystBlockEntity::XP_REWARD, 5);
+        assert_eq!(SculkCatalystBlockEntity::MAX_CHARGE, 1000);
+
+        // Level spreader constants
+        assert_eq!(SculkCatalystBlock::LEVEL_GROWTH_SPAWN_COST, 10);
+        assert_eq!(SculkCatalystBlock::LEVEL_NO_GROWTH_RADIUS, 4);
+        assert_eq!(SculkCatalystBlock::LEVEL_CHARGE_DECAY_RATE, 10);
+        assert_eq!(SculkCatalystBlock::LEVEL_ADDITIONAL_DECAY_RATE, 5);
+
+        // Worldgen spreader constants
+        assert_eq!(SculkCatalystBlock::WORLDGEN_GROWTH_SPAWN_COST, 50);
+        assert_eq!(SculkCatalystBlock::WORLDGEN_NO_GROWTH_RADIUS, 1);
+        assert_eq!(SculkCatalystBlock::WORLDGEN_CHARGE_DECAY_RATE, 5);
+        assert_eq!(SculkCatalystBlock::WORLDGEN_ADDITIONAL_DECAY_RATE, 10);
+
+        // Charge clamping parity (0..1000)
+        assert_eq!(SculkCatalystBlock::clamp_charge(-50), 0);
+        assert_eq!(SculkCatalystBlock::clamp_charge(0), 0);
+        assert_eq!(SculkCatalystBlock::clamp_charge(350), 350);
+        assert_eq!(SculkCatalystBlock::clamp_charge(1000), 1000);
+        assert_eq!(SculkCatalystBlock::clamp_charge(2500), 1000);
+
+        // Entity initialization
+        let entity = SculkCatalystBlockEntity::new(BlockPos::new(0, 64, 0));
+        assert_eq!(*entity.decay_delay.lock().unwrap(), 0);
+    }
+
 }

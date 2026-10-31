@@ -8182,3 +8182,32 @@ andom_tick (crack & hatch), and roken to use centered block position with olum
     - Made `increase_warning_level`, `get_warning_level`, and `clear_cooldown` public methods.
   - Updated `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_sculk_shrieker_warning_levels_cooldown_and_warden_spawning_parity`.
+
+### Gap 327: Sculk Catalyst Bloom, Charge Spread (1..1000), Decay Rate & Particle Parity
+- **Vanilla Reference**:
+  - `SculkCatalystBlock.java:1-50`, `SculkCatalystBlockEntity.java:1-120`, `SculkSpreader.java:1-100`:
+    - Catalyst timing & properties:
+      - Block property: `BLOOM` (boolean, default false).
+      - Scheduled tick delay: `PULSE_TICKS = 8` game ticks.
+      - Detection radius: `LISTENER_RADIUS = 8` blocks around catalyst for mob death experience events.
+      - Experience reward: `XP_REWARD = 5` (drops 5 experience when mined without Silk Touch).
+      - Visuals & sound: `ParticleTypes.SCULK_SOUL` emitted at top of block `(pos.x + 0.5, pos.y + 1.15, pos.z + 0.5)` with sound `SoundEvents.SCULK_CATALYST_BLOOM`.
+    - Charge spread & cursor behavior (`SculkSpreader`):
+      - Max charge: `MAX_CHARGE = 1000`.
+      - Max decay factor: `MAX_DECAY_FACTOR = 0.5`.
+      - Max active cursors: `MAX_CURSORS = 32`.
+      - Shrieker placement rate: `SHRIEKER_PLACEMENT_RATE = 11`.
+      - Max cursor distance: `MAX_CURSOR_DISTANCE = 1024`.
+      - Max growth rate radius: `MAX_GROWTH_RATE_RADIUS = 24`.
+    - Spreader configurations:
+      - Level spreader: `growth_cost = 10`, `no_growth_radius = 4`, `charge_decay = 10`, `additional_decay = 5`.
+      - Worldgen spreader: `growth_cost = 50`, `no_growth_radius = 1`, `charge_decay = 5`, `additional_decay = 10`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Updated `crates/pumpkin-core/src/block/blocks/sculk/sculk_catalyst.rs`:
+    - Exported constants `PULSE_TICKS = 8`, `LISTENER_RADIUS = 8`, `XP_REWARD = 5`, `MAX_GROWTH_RATE_RADIUS = 24`, `MAX_CHARGE = 1000`, `MAX_DECAY_FACTOR = 0.5`, `MAX_CURSORS = 32`, `SHRIEKER_PLACEMENT_RATE = 11`, `MAX_CURSOR_DISTANCE = 1024`, and `DEFAULT_BLOOM = false`.
+    - Exported level and worldgen spreader constants: `LEVEL_GROWTH_SPAWN_COST`, `LEVEL_NO_GROWTH_RADIUS`, `LEVEL_CHARGE_DECAY_RATE`, `LEVEL_ADDITIONAL_DECAY_RATE`, `WORLDGEN_GROWTH_SPAWN_COST`, `WORLDGEN_NO_GROWTH_RADIUS`, `WORLDGEN_CHARGE_DECAY_RATE`, `WORLDGEN_ADDITIONAL_DECAY_RATE`.
+    - Exported helper `clamp_charge(charge)`.
+  - Updated `crates/pumpkin-core/src/block/entities/sculk_catalyst.rs`:
+    - Exported constants matching `SculkCatalystBlock`.
+  - Updated `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_sculk_catalyst_bloom_charge_and_spreader_parity`.

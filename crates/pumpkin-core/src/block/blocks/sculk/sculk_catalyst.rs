@@ -20,6 +20,37 @@ impl BlockMetadata for SculkCatalystBlock {
 impl SculkCatalystBlock {
     pub const PULSE_TICKS: u32 = 8;
     pub const LISTENER_RADIUS: i32 = 8;
+    pub const XP_REWARD: i32 = 5;
+    pub const MAX_GROWTH_RATE_RADIUS: i32 = 24;
+    pub const MAX_CHARGE: i32 = 1000;
+    pub const MAX_DECAY_FACTOR: f32 = 0.5;
+    pub const MAX_CURSORS: usize = 32;
+    pub const SHRIEKER_PLACEMENT_RATE: i32 = 11;
+    pub const MAX_CURSOR_DISTANCE: i32 = 1024;
+    pub const DEFAULT_BLOOM: bool = false;
+
+    // Level spreader defaults
+    pub const LEVEL_GROWTH_SPAWN_COST: i32 = 10;
+    pub const LEVEL_NO_GROWTH_RADIUS: i32 = 4;
+    pub const LEVEL_CHARGE_DECAY_RATE: i32 = 10;
+    pub const LEVEL_ADDITIONAL_DECAY_RATE: i32 = 5;
+
+    // Worldgen spreader defaults
+    pub const WORLDGEN_GROWTH_SPAWN_COST: i32 = 50;
+    pub const WORLDGEN_NO_GROWTH_RADIUS: i32 = 1;
+    pub const WORLDGEN_CHARGE_DECAY_RATE: i32 = 5;
+    pub const WORLDGEN_ADDITIONAL_DECAY_RATE: i32 = 10;
+
+    #[must_use]
+    pub const fn clamp_charge(charge: i32) -> i32 {
+        if charge < 0 {
+            0
+        } else if charge > Self::MAX_CHARGE {
+            Self::MAX_CHARGE
+        } else {
+            charge
+        }
+    }
     pub fn bloom(world: &Arc<crate::world::World>, pos: &BlockPos) {
         let block = world.get_block(pos);
         if block.id != BlockId::SCULK_CATALYST {

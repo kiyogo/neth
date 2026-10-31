@@ -47,6 +47,11 @@ impl BlockEntity for SculkCatalystBlockEntity {
 
 impl SculkCatalystBlockEntity {
     pub const ID: &'static str = "minecraft:sculk_catalyst";
+    pub const PULSE_TICKS: u32 = 8;
+    pub const LISTENER_RADIUS: i32 = 8;
+    pub const XP_REWARD: i32 = 5;
+    pub const MAX_CHARGE: i32 = 1000;
+
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {
