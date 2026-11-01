@@ -9685,3 +9685,44 @@ eq 	ext{None}$.
     - Added helper functions `calculate_vault_ejection_pitch`, `is_vault_valid_key`, `can_player_connect_to_vault`.
     - Added comprehensive unit test `test_vault_key_interaction_loot_ejection_and_player_lockout_parity`.
 - **Status**: Completed & Verified.
+
+
+### Gap 384: Bundle Capacity, Nested Bundle Weight (1/16 = 4/64), Bar Fullness & Container Shulker Rejection Parity
+- **Vanilla Reference**: `net.minecraft.world.item.BundleItem.java:36-40, 154-169, 221-234`, `net.minecraft.world.item.component.BundleContents.java:36, 73-93, 107-124`, `net.minecraft.world.item.BlockItem.java:195-197`.
+- **Vanilla Mechanics**:
+  1. *Bundle Capacity & Weight System (`BundleContents.java:36, 73-85`)*:
+     - Total capacity is 64 weight units (`Fraction.ONE`).
+     - Normal items consume weight inversely proportional to their max stack size: `(64 / max_stack_size) * count`.
+       - Stack size 64: 1 unit per item (e.g. 64 dirt blocks = 64/64 = 1.0).
+       - Stack size 16: 4 units per item (e.g. 16 ender pearls = 64/64 = 1.0).
+       - Stack size 1: 64 units per item (e.g. 1 sword = 64/64 = 1.0).
+  2. *Nested Bundle Weight (`BundleContents.java:36, 80-82`)*:
+     - Vanilla explicitly allows nested bundles (bundles inside other bundles).
+     - Nested bundle weight is `BUNDLE_IN_BUNDLE_WEIGHT = Fraction.getFraction(1, 16)` = 4/64 units base + recursive inner items' weight.
+     - An outer bundle can hold up to 16 empty nested bundles (16 * 4 = 64), or bundles containing partial contents up to 64 total units.
+  3. *Container Item Rejection (`BlockItem.java:195-197`, `BundleContents.java:107-111`)*:
+     - `canItemBeInBundle(ItemStack)` calls `item.canFitInsideContainerItems()`.
+     - In Vanilla, only Shulker Boxes return `false` for `canFitInsideContainerItems()`. All other items (including Bundles!) can fit inside bundles.
+  4. *Durability Bar Visibility, Width & Color (`BundleItem.java:36-37, 154-169`)*:
+     - Bar is visible when weight > 0 (`isBarVisible(stack)`).
+     - Bar width scales from 1 to 13 pixels: `Math.min(1 + 12 * weight / 64, 13)`.
+     - Bar color is red `FULL_BAR_COLOR = 0xFFFF5454` when weight >= 64, and blue `BAR_COLOR = 0xFF7087FF` when weight < 64.
+  5. *Grid Item Count Calculation (`BundleContents.java:87-93`)*:
+     - If size <= 12, all items are displayed (up to 3 rows of 4 columns).
+     - If size > 12, available item slots = 11 (reserving 1 slot for "+X more"), reduced by incomplete row padding `(4 - (size % 4))`.
+  6. *Use & Drop Timings (`BundleItem.java:38-40, 221-234`)*:
+     - `TICKS_MAX_THROW_DURATION = 200`.
+     - First item drops immediately on tick 200.
+     - Ticks 199..=190 pause for initial throw delay (`TICKS_AFTER_FIRST_THROW = 10`).
+     - Subsequent items drop every 2 ticks (`TICKS_BETWEEN_THROWS = 2`, `remaining_ticks % 2 == 0`).
+- **Implementation**:
+  - In `crates/pumpkin-data/src/data_component_impl/utility.rs`:
+    - Updated `BundleContentsImpl` to support nested bundles with `BUNDLE_IN_BUNDLE_WEIGHT = 4`, `FULL_BUNDLE_WEIGHT = 64`, `is_bundle_item`, recursive `weight_of`, and `can_item_be_in_bundle` rejecting only Shulker Boxes (`tag::Item::MINECRAFT_SHULKER_BOXES`).
+  - In `crates/pumpkin-core/src/item/items/bundle.rs`:
+    - Added constants `FULL_BAR_COLOR`, `BAR_COLOR`, `MAX_SHOWN_GRID_ITEMS`, `TICKS_MAX_THROW_DURATION`, `TICKS_AFTER_FIRST_THROW`, `TICKS_BETWEEN_THROWS`.
+    - Added helper methods `is_bar_visible`, `get_bar_width`, `get_bar_color`, `get_fullness_display`, `get_number_of_items_to_show`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `BUNDLE_FULL_WEIGHT = 64`, `BUNDLE_IN_BUNDLE_WEIGHT = 4`, `BUNDLE_FULL_BAR_COLOR = 0xFFFF_5454`, `BUNDLE_BAR_COLOR = 0xFF70_87FF`, `BUNDLE_MAX_SHOWN_GRID_ITEMS_X = 4`, `BUNDLE_MAX_SHOWN_GRID_ITEMS_Y = 3`, `BUNDLE_MAX_SHOWN_GRID_ITEMS = 12`, `BUNDLE_OVERFLOWING_MAX_SHOWN_GRID_ITEMS = 11`, `BUNDLE_TICKS_MAX_THROW_DURATION = 200`, `BUNDLE_TICKS_AFTER_FIRST_THROW = 10`, `BUNDLE_TICKS_BETWEEN_THROWS = 2`.
+    - Added helper functions `is_bundle_bar_visible`, `calculate_bundle_bar_width`, `get_bundle_bar_color`, `calculate_bundle_fullness`, `get_bundle_number_of_items_to_show`, `calculate_bundle_item_weight`, `calculate_nested_bundle_weight`, `can_item_be_in_bundle`, `should_bundle_drop_item_on_tick`.
+    - Added comprehensive unit test `test_bundle_capacity_nested_weight_bar_display_and_item_rejection_parity`.
+- **Status**: Completed & Verified.

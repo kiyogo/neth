@@ -443,8 +443,23 @@ impl BundleContentsImpl {
         }
         Some(Self { items })
     }
-    // Vanilla `BundleContents.getWeight`, in 64ths of a full bundle.
+    // Vanilla BundleContents.BUNDLE_IN_BUNDLE_WEIGHT is 1/16 (4 units out of 64).
+    pub const BUNDLE_IN_BUNDLE_WEIGHT: u32 = 4;
+    pub const FULL_BUNDLE_WEIGHT: u32 = 64;
+
+    // Checks if the item is a bundle
+    pub fn is_bundle_item(stack: &crate::item_stack::ItemStack) -> bool {
+        crate::tag::Item::MINECRAFT_BUNDLES.1.contains(&stack.item.id)
+    }
+
+    // Vanilla BundleContents.getWeight, in 64ths of a full bundle.
     pub fn weight_of(stack: &crate::item_stack::ItemStack) -> u32 {
+        if let Some(nested_bundle) = stack.get_data_component::<Self>() {
+            return Self::BUNDLE_IN_BUNDLE_WEIGHT.saturating_add(nested_bundle.get_weight());
+        }
+        if Self::is_bundle_item(stack) {
+            return Self::BUNDLE_IN_BUNDLE_WEIGHT;
+        }
         let max_stack_size = stack.get_max_stack_size().max(1);
         (64.0 / f64::from(max_stack_size)).round().max(1.0) as u32
     }
@@ -454,15 +469,17 @@ impl BundleContentsImpl {
             .map(|item| item.item_count as u32 * Self::weight_of(item))
             .sum()
     }
-    // Vanilla `BundleContents.Mutable.getMaxAmountToAdd`.
+    // Vanilla BundleContents.Mutable.getMaxAmountToAdd.
     pub fn get_max_amount_to_add(&self, item_weight: u32) -> u8 {
-        let remaining = 64u32.saturating_sub(self.get_weight());
+        let remaining = Self::FULL_BUNDLE_WEIGHT.saturating_sub(self.get_weight());
         (remaining / item_weight.max(1)).min(u32::from(u8::MAX)) as u8
     }
-    // Vanilla `BundleContents.canItemBeInBundle`. Pumpkin's weight model has no 1/16 weight for a
-    // nested bundle, so unlike vanilla it keeps rejecting them.
+    // Vanilla BundleContents.canItemBeInBundle. Rejects empty items and shulker boxes (BlockItem.java:196).
     pub fn can_item_be_in_bundle(stack: &crate::item_stack::ItemStack) -> bool {
-        !stack.is_empty() && stack.get_data_component::<Self>().is_none()
+        if stack.is_empty() {
+            return false;
+        }
+        !crate::tag::Item::MINECRAFT_SHULKER_BOXES.1.contains(&stack.item.id)
     }
     // Vanilla `BundleContents.Mutable.tryInsert`. Inserts what fits and returns the amount taken.
     pub fn try_insert(&mut self, stack: &mut crate::item_stack::ItemStack) -> u8 {

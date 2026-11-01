@@ -8735,6 +8735,130 @@ pub fn can_player_connect_to_vault(distance_sq: f64, range: f64, already_rewarde
 }
 
 // =========================================================================
+// Gap 384: Bundle Capacity, Nested Bundle Weight (1/16 = 4/64), Bar Fullness & Container Shulker Rejection Parity
+// Vanilla References:
+// - `BundleItem.java:36-40, 154-169, 221-234`
+// - `BundleContents.java:36, 73-93, 107-124`
+// - `BlockItem.java:195-197`
+// =========================================================================
+
+pub const BUNDLE_FULL_WEIGHT: u32 = 64;
+pub const BUNDLE_IN_BUNDLE_WEIGHT: u32 = 4; // 1/16 of full bundle = 4/64
+pub const BUNDLE_FULL_BAR_COLOR: u32 = 0xFFFF_5454;
+pub const BUNDLE_BAR_COLOR: u32 = 0xFF70_87FF;
+pub const BUNDLE_MAX_SHOWN_GRID_ITEMS_X: usize = 4;
+#[allow(dead_code)]
+pub const BUNDLE_MAX_SHOWN_GRID_ITEMS_Y: usize = 3;
+pub const BUNDLE_MAX_SHOWN_GRID_ITEMS: usize = 12;
+pub const BUNDLE_OVERFLOWING_MAX_SHOWN_GRID_ITEMS: usize = 11;
+pub const BUNDLE_TICKS_MAX_THROW_DURATION: i32 = 200;
+pub const BUNDLE_TICKS_AFTER_FIRST_THROW: i32 = 10;
+pub const BUNDLE_TICKS_BETWEEN_THROWS: i32 = 2;
+
+/// Checks if bundle durability bar is visible (weight > 0).
+#[must_use]
+pub const fn is_bundle_bar_visible(weight: u32) -> bool {
+    weight > 0
+}
+
+/// Calculates bundle bar width (1 to 13 pixels).
+/// Matches vanilla `BundleItem.getBarWidth`: `Math.min(1 + 12 * weight / 64, 13)`.
+#[must_use]
+pub const fn calculate_bundle_bar_width(weight: u32) -> u32 {
+    let width = 1 + (weight * 12) / BUNDLE_FULL_WEIGHT;
+    if width > 13 {
+        13
+    } else {
+        width
+    }
+}
+
+/// Returns the color of the bundle bar.
+/// Red (`0xFFFF5454`) when full (>= 64), blue (`0xFF7087FF`) otherwise.
+#[must_use]
+pub const fn get_bundle_bar_color(weight: u32) -> u32 {
+    if weight >= BUNDLE_FULL_WEIGHT {
+        BUNDLE_FULL_BAR_COLOR
+    } else {
+        BUNDLE_BAR_COLOR
+    }
+}
+
+/// Calculates the display fullness fraction (0.0 to 1.0+).
+#[must_use]
+pub fn calculate_bundle_fullness(weight: u32) -> f32 {
+    (weight as f32) / (BUNDLE_FULL_WEIGHT as f32)
+}
+
+/// Determines how many items are visible in the bundle grid display (BundleContents.getNumberOfItemsToShow).
+#[must_use]
+pub const fn get_bundle_number_of_items_to_show(size: usize) -> usize {
+    let available = if size > BUNDLE_MAX_SHOWN_GRID_ITEMS {
+        BUNDLE_OVERFLOWING_MAX_SHOWN_GRID_ITEMS
+    } else {
+        BUNDLE_MAX_SHOWN_GRID_ITEMS
+    };
+    let remainder = size % BUNDLE_MAX_SHOWN_GRID_ITEMS_X;
+    let empty_space = if remainder == 0 {
+        0
+    } else {
+        BUNDLE_MAX_SHOWN_GRID_ITEMS_X - remainder
+    };
+    let max_allowed = if available >= empty_space {
+        available - empty_space
+    } else {
+        0
+    };
+    if size < max_allowed {
+        size
+    } else {
+        max_allowed
+    }
+}
+
+/// Calculates item weight contribution to a bundle.
+/// Stack size 64 -> 1 unit per item.
+/// Stack size 16 -> 4 units per item.
+/// Stack size 1 -> 64 units per item.
+#[must_use]
+pub const fn calculate_bundle_item_weight(max_stack_size: u32, count: u32) -> u32 {
+    if max_stack_size == 0 {
+        return 0;
+    }
+    (BUNDLE_FULL_WEIGHT / max_stack_size) * count
+}
+
+/// Calculates nested bundle weight contribution:
+/// Vanilla `BundleContents.BUNDLE_IN_BUNDLE_WEIGHT` = 4 (1/16) + inner content weight.
+#[must_use]
+pub const fn calculate_nested_bundle_weight(inner_weight: u32) -> u32 {
+    BUNDLE_IN_BUNDLE_WEIGHT + inner_weight
+}
+
+/// Checks whether an item can fit inside a bundle.
+/// Shulker boxes cannot fit inside containers / bundles (BlockItem.java:196).
+/// Bundles themselves CAN fit inside bundles (up to capacity).
+#[must_use]
+pub fn can_item_be_in_bundle(is_shulker_box: bool) -> bool {
+    !is_shulker_box
+}
+
+/// Checks if bundle drop tick condition is satisfied during use:
+/// - First drop on tick 200
+/// - Subsequent drops after tick 190, every 2 ticks (200 - 10 = 190)
+#[must_use]
+pub const fn should_bundle_drop_item_on_tick(remaining_ticks: i32) -> bool {
+    if remaining_ticks == BUNDLE_TICKS_MAX_THROW_DURATION {
+        true
+    } else if remaining_ticks < BUNDLE_TICKS_MAX_THROW_DURATION - BUNDLE_TICKS_AFTER_FIRST_THROW {
+        remaining_ticks % BUNDLE_TICKS_BETWEEN_THROWS == 0
+    } else {
+        false
+    }
+}
+
+
+// =========================================================================
 // Gap 372: Breeze Wind Charge Deflection Immunity, Idle Jump Particles & Shoot Inhale Angles/Timings Parity
 // Vanilla References:
 // - `Breeze.java:42-50, 62-65, 129, 158-168, 185-188, 197-203, 245-247, 264-266`
@@ -21879,6 +22003,96 @@ mod tests {
             vault.mark_rewarded(Uuid::new_v4());
         }
         assert!(vault.rewarded_players.lock().unwrap().len() <= VAULT_MAX_REWARDED_PLAYERS);
+    }
+
+    #[test]
+    fn test_bundle_capacity_nested_weight_bar_display_and_item_rejection_parity() {
+        // 1. Capacity & Nested Bundle Weight Parity (BundleContents.java:36, 73-85)
+        assert_eq!(BUNDLE_FULL_WEIGHT, 64);
+        assert_eq!(BUNDLE_IN_BUNDLE_WEIGHT, 4); // 1/16 of 64
+
+        // 64-stackable items: 1 unit per item (e.g. 64 dirt = 64 units)
+        assert_eq!(calculate_bundle_item_weight(64, 1), 1);
+        assert_eq!(calculate_bundle_item_weight(64, 64), 64);
+
+        // 16-stackable items: 4 units per item (e.g. 16 ender pearls = 64 units)
+        assert_eq!(calculate_bundle_item_weight(16, 1), 4);
+        assert_eq!(calculate_bundle_item_weight(16, 16), 64);
+
+        // 1-stackable items: 64 units per item (e.g. 1 sword = 64 units)
+        assert_eq!(calculate_bundle_item_weight(1, 1), 64);
+
+        // Nested bundle: 4 units base + inner weight
+        // Empty nested bundle = 4 units
+        assert_eq!(calculate_nested_bundle_weight(0), 4);
+        // Nested bundle with 10 units = 14 units
+        assert_eq!(calculate_nested_bundle_weight(10), 14);
+        // Up to 16 empty bundles can fit inside an outer bundle (16 * 4 = 64)
+        assert_eq!(calculate_nested_bundle_weight(0) * 16, 64);
+
+        // 2. Bar Visibility, Color & Width Parity (BundleItem.java:36-37, 154-169)
+        assert!(!is_bundle_bar_visible(0));
+        assert!(is_bundle_bar_visible(1));
+        assert!(is_bundle_bar_visible(64));
+
+        // Full bar color is red (0xFFFF5454), regular is blue (0xFF7087FF)
+        assert_eq!(get_bundle_bar_color(0), 0xFF70_87FF);
+        assert_eq!(get_bundle_bar_color(63), 0xFF70_87FF);
+        assert_eq!(get_bundle_bar_color(64), 0xFFFF_5454);
+        assert_eq!(get_bundle_bar_color(100), 0xFFFF_5454);
+
+        // Bar width: min(1 + (weight * 12) / 64, 13)
+        assert_eq!(calculate_bundle_bar_width(0), 1);
+        assert_eq!(calculate_bundle_bar_width(32), 7);
+        assert_eq!(calculate_bundle_bar_width(64), 13);
+        assert_eq!(calculate_bundle_bar_width(100), 13);
+
+        // Fullness fraction
+        assert!((calculate_bundle_fullness(0) - 0.0).abs() < 1e-6);
+        assert!((calculate_bundle_fullness(32) - 0.5).abs() < 1e-6);
+        assert!((calculate_bundle_fullness(64) - 1.0).abs() < 1e-6);
+
+        // 3. Container Rejection Parity (BlockItem.java:196)
+        // Shulker boxes cannot be placed inside bundles
+        assert!(!can_item_be_in_bundle(true));
+        // Normal items & bundles CAN be placed inside bundles
+        assert!(can_item_be_in_bundle(false));
+
+        // 4. Grid Display Item Count Parity (BundleContents.java:87-93)
+        assert_eq!(BUNDLE_MAX_SHOWN_GRID_ITEMS_X, 4);
+        assert_eq!(BUNDLE_MAX_SHOWN_GRID_ITEMS_Y, 3);
+        // Size <= 12: fits in 3 rows of 4
+        assert_eq!(get_bundle_number_of_items_to_show(1), 1);
+        assert_eq!(get_bundle_number_of_items_to_show(4), 4);
+        assert_eq!(get_bundle_number_of_items_to_show(5), 5);
+        assert_eq!(get_bundle_number_of_items_to_show(12), 12);
+
+        // Size > 12: available = 11 (one slot for '+X more')
+        // Size 13: remainder 1, emptySpace 3, maxAllowed = 11 - 3 = 8
+        assert_eq!(get_bundle_number_of_items_to_show(13), 8);
+        // Size 14: remainder 2, emptySpace 2, maxAllowed = 11 - 2 = 9
+        assert_eq!(get_bundle_number_of_items_to_show(14), 9);
+        // Size 15: remainder 3, emptySpace 1, maxAllowed = 11 - 1 = 10
+        assert_eq!(get_bundle_number_of_items_to_show(15), 10);
+        // Size 16: remainder 0, emptySpace 0, maxAllowed = 11 - 0 = 11
+        assert_eq!(get_bundle_number_of_items_to_show(16), 11);
+
+        // 5. Throw / Drop Timings (BundleItem.java:38-40, 221-234)
+        assert_eq!(BUNDLE_TICKS_MAX_THROW_DURATION, 200);
+        assert_eq!(BUNDLE_TICKS_AFTER_FIRST_THROW, 10);
+        assert_eq!(BUNDLE_TICKS_BETWEEN_THROWS, 2);
+
+        // First item drops immediately on tick 200
+        assert!(should_bundle_drop_item_on_tick(200));
+        // Ticks 199..=190: pause (first throw delay of 10 ticks)
+        assert!(!should_bundle_drop_item_on_tick(199));
+        assert!(!should_bundle_drop_item_on_tick(195));
+        assert!(!should_bundle_drop_item_on_tick(190));
+        // After tick 190: drops every 2 ticks (even ticks)
+        assert!(!should_bundle_drop_item_on_tick(189));
+        assert!(should_bundle_drop_item_on_tick(188));
+        assert!(!should_bundle_drop_item_on_tick(187));
+        assert!(should_bundle_drop_item_on_tick(186));
     }
 
 

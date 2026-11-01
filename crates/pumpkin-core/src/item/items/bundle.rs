@@ -12,12 +12,76 @@ use pumpkin_util::Hand;
 
 pub struct BundleItem;
 
-// Vanilla `BundleItem.TICKS_MAX_THROW_DURATION`.
-const TICKS_MAX_THROW_DURATION: i32 = 200;
-// Vanilla `BundleItem.TICKS_AFTER_FIRST_THROW`.
-const TICKS_AFTER_FIRST_THROW: i32 = 10;
-// Vanilla `BundleItem.TICKS_BETWEEN_THROWS`.
-const TICKS_BETWEEN_THROWS: i32 = 2;
+impl BundleItem {
+    // Vanilla `BundleItem.FULL_BAR_COLOR`.
+    pub const FULL_BAR_COLOR: u32 = 0xFFFF_5454;
+    // Vanilla `BundleItem.BAR_COLOR`.
+    pub const BAR_COLOR: u32 = 0xFF70_87FF;
+    // Vanilla `BundleItem.MAX_SHOWN_GRID_ITEMS_X`.
+    pub const MAX_SHOWN_GRID_ITEMS_X: usize = 4;
+    // Vanilla `BundleItem.MAX_SHOWN_GRID_ITEMS_Y`.
+    pub const MAX_SHOWN_GRID_ITEMS_Y: usize = 3;
+    // Vanilla `BundleItem.MAX_SHOWN_GRID_ITEMS`.
+    pub const MAX_SHOWN_GRID_ITEMS: usize = 12;
+    // Vanilla `BundleItem.OVERFLOWING_MAX_SHOWN_GRID_ITEMS`.
+    pub const OVERFLOWING_MAX_SHOWN_GRID_ITEMS: usize = 11;
+    // Vanilla `BundleItem.Self::TICKS_MAX_THROW_DURATION`.
+    pub const TICKS_MAX_THROW_DURATION: i32 = 200;
+    // Vanilla `BundleItem.Self::TICKS_AFTER_FIRST_THROW`.
+    pub const TICKS_AFTER_FIRST_THROW: i32 = 10;
+    // Vanilla `BundleItem.Self::TICKS_BETWEEN_THROWS`.
+    pub const TICKS_BETWEEN_THROWS: i32 = 2;
+
+    #[must_use]
+    pub const fn is_bar_visible(weight: u32) -> bool {
+        weight > 0
+    }
+
+    #[must_use]
+    pub const fn get_bar_width(weight: u32) -> u32 {
+        let width = 1 + (weight * 12) / 64;
+        if width > 13 {
+            13
+        } else {
+            width
+        }
+    }
+
+    #[must_use]
+    pub const fn get_bar_color(weight: u32) -> u32 {
+        if weight >= 64 {
+            Self::FULL_BAR_COLOR
+        } else {
+            Self::BAR_COLOR
+        }
+    }
+
+    #[must_use]
+    pub fn get_fullness_display(weight: u32) -> f32 {
+        (weight as f32) / 64.0
+    }
+
+    #[must_use]
+    pub const fn get_number_of_items_to_show(size: usize) -> usize {
+        let available_items_to_show = if size > 12 { 11 } else { 12 };
+        let items_on_non_full_row = size % 4;
+        let empty_space = if items_on_non_full_row == 0 {
+            0
+        } else {
+            4 - items_on_non_full_row
+        };
+        let max_allowed = if available_items_to_show >= empty_space {
+            available_items_to_show - empty_space
+        } else {
+            0
+        };
+        if size < max_allowed {
+            size
+        } else {
+            max_allowed
+        }
+    }
+}
 
 impl ItemMetadata for BundleItem {
     fn ids() -> Box<[u16]> {
@@ -39,22 +103,22 @@ impl ItemBehaviour for BundleItem {
         let stack = player.inventory.get_stack_in_hand(hand);
         player
             .living_entity
-            .set_active_hand(hand, stack, TICKS_MAX_THROW_DURATION);
+            .set_active_hand(hand, stack, Self::TICKS_MAX_THROW_DURATION);
     }
 
     // Vanilla `BundleItem.onUseTick`.
     fn on_use_tick(&self, _stack: &ItemStack, player: &Player, remaining_use_ticks: i32) {
-        let is_first_tick = remaining_use_ticks == TICKS_MAX_THROW_DURATION;
+        let is_first_tick = remaining_use_ticks == Self::TICKS_MAX_THROW_DURATION;
         if is_first_tick
-            || (remaining_use_ticks < TICKS_MAX_THROW_DURATION - TICKS_AFTER_FIRST_THROW
-                && remaining_use_ticks % TICKS_BETWEEN_THROWS == 0)
+            || (remaining_use_ticks < Self::TICKS_MAX_THROW_DURATION - Self::TICKS_AFTER_FIRST_THROW
+                && remaining_use_ticks % Self::TICKS_BETWEEN_THROWS == 0)
         {
             Self::drop_content(player);
         }
     }
 
     fn get_use_duration(&self) -> i32 {
-        TICKS_MAX_THROW_DURATION
+        Self::TICKS_MAX_THROW_DURATION
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
