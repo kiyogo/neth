@@ -4976,6 +4976,117 @@ pub const fn should_phantom_abort_swoop_on_collision_or_damage(
     horizontal_collision || was_hurt_recently
 }
 
+/// Phantom base width dimension in blocks (0.9).
+///
+/// Mirrors vanilla `Phantom.java:194-198` / `EntityType.java`.
+pub const PHANTOM_BASE_WIDTH: f32 = 0.9;
+
+/// Phantom base height dimension in blocks (0.5).
+///
+/// Mirrors vanilla `Phantom.java:194-198` / `EntityType.java`.
+pub const PHANTOM_BASE_HEIGHT: f32 = 0.5;
+
+/// Phantom insomnia rest time threshold in ticks (72000 ticks = 3 in-game days).
+///
+/// Mirrors vanilla `PhantomSpawner.java:42`: `random.nextInt(value) >= 72000`.
+pub const PHANTOM_INSOMNIA_THRESHOLD_TICKS: i32 = 72000;
+
+/// Minimum tick interval between phantom spawn attempts (1200 ticks = 60s).
+///
+/// Mirrors vanilla `PhantomSpawner.java:31`: `(60 + random.nextInt(60)) * 20`.
+pub const PHANTOM_SPAWN_MIN_INTERVAL_TICKS: i32 = 1200;
+
+/// Maximum additional random tick interval between phantom spawn attempts (1200 ticks = 60s).
+///
+/// Mirrors vanilla `PhantomSpawner.java:31`: `(60 + random.nextInt(60)) * 20`.
+pub const PHANTOM_SPAWN_MAX_RANDOM_INTERVAL_TICKS: i32 = 1200;
+
+/// Minimum height above player for phantom spawning (20 blocks).
+///
+/// Mirrors vanilla `PhantomSpawner.java:43`: `playerPos.above(20 + random.nextInt(15))`.
+pub const PHANTOM_SPAWN_MIN_HEIGHT_ABOVE_PLAYER: i32 = 20;
+
+/// Maximum additional random height offset for phantom spawning (15 blocks, range 20..=34).
+///
+/// Mirrors vanilla `PhantomSpawner.java:43`: `playerPos.above(20 + random.nextInt(15))`.
+pub const PHANTOM_SPAWN_HEIGHT_VARIATION: i32 = 15;
+
+/// Horizontal spread offset bounds for phantom spawning (-10 to +10, range 21).
+///
+/// Mirrors vanilla `PhantomSpawner.java:43`: `.east(-10 + random.nextInt(21)).south(-10 + random.nextInt(21))`.
+pub const PHANTOM_SPAWN_XZ_VARIATION: i32 = 21;
+
+/// Minimum sky darkness required for phantom spawning if world has skylight (5).
+///
+/// Mirrors vanilla `PhantomSpawner.java:32`: `level.getSkyDarken() >= 5`.
+pub const PHANTOM_SKY_DARKEN_MIN: i32 = 5;
+
+/// Calculates scaled Phantom dimensions (width, height) based on size (0..=64).
+///
+/// Mirrors vanilla `Phantom.java:194-198`:
+/// `originalDimensions.scale(1.0F + 0.15F * size)`
+#[must_use]
+pub fn calculate_phantom_dimensions(phantom_size: i32) -> (f32, f32) {
+    let scale = calculate_phantom_dimension_scale(phantom_size);
+    (PHANTOM_BASE_WIDTH * scale, PHANTOM_BASE_HEIGHT * scale)
+}
+
+/// Calculates Phantom spawn group size based on game difficulty and a random offset.
+///
+/// Mirrors vanilla `PhantomSpawner.java:48`: `1 + random.nextInt(difficulty.getDifficulty().getId() + 1)`
+/// Returns:
+/// - Peaceful (0): 1
+/// - Easy (1): 1..=2
+/// - Normal (2): 1..=3
+/// - Hard (3): 1..=4
+#[must_use]
+pub const fn calculate_phantom_group_size(difficulty_id: u8, rand_offset: u32) -> u32 {
+    let max_add = difficulty_id as u32 + 1;
+    1 + (rand_offset % max_add)
+}
+
+/// Determines whether a phantom insomnia spawn check succeeds for a given rest time.
+///
+/// Mirrors vanilla `PhantomSpawner.java:40-42`:
+/// ```text
+/// int value = Mth.clamp(stats.getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), 1, Integer.MAX_VALUE);
+/// if (random.nextInt(value) >= 72000)
+/// ```
+#[must_use]
+pub fn check_phantom_insomnia_spawn_roll(time_since_rest: i32, rand_int: i32) -> bool {
+    let value = time_since_rest.clamp(1, i32::MAX);
+    if value <= PHANTOM_INSOMNIA_THRESHOLD_TICKS {
+        return false;
+    }
+    rand_int >= PHANTOM_INSOMNIA_THRESHOLD_TICKS
+}
+
+/// Checks whether a player is eligible for phantom spawning.
+///
+/// Mirrors vanilla `PhantomSpawner.java:27, 34-36`:
+/// - `spawn_phantoms` gamerule enabled
+/// - Player is not a spectator
+/// - If dimension has skylight: player Y >= sea_level and can see open sky
+/// - Player has been awake longer than 72000 ticks (3 in-game days)
+#[must_use]
+pub const fn can_player_spawn_phantoms(
+    time_since_rest: i32,
+    spawn_phantoms_gamerule: bool,
+    is_spectator: bool,
+    can_see_sky: bool,
+    player_y: i32,
+    sea_level: i32,
+    has_skylight: bool,
+) -> bool {
+    if !spawn_phantoms_gamerule || is_spectator {
+        return false;
+    }
+    if has_skylight && (player_y < sea_level || !can_see_sky) {
+        return false;
+    }
+    time_since_rest > PHANTOM_INSOMNIA_THRESHOLD_TICKS
+}
+
 /// Ghast base max health (10.0 HP / 5 hearts).
 /// Mirrors vanilla `Ghast.java:118` (`Attributes.MAX_HEALTH, 10.0`).
 pub const GHAST_MAX_HEALTH: f32 = 10.0;
@@ -23164,6 +23275,79 @@ mod tests {
         assert_eq!(get_hoglin_xp_reward_for_age(false), HOGLIN_ADULT_XP_REWARD);
         assert_eq!(HOGLIN_BABY_XP_REWARD, 3);
         assert_eq!(HOGLIN_ADULT_XP_REWARD, 5);
+    }
+
+    #[test]
+    fn test_phantom_spawner_dimensions_and_insomnia_parity() {
+        // 1. Phantom dimension constants and scaling parity (Phantom.java:194-198)
+        assert_eq!(PHANTOM_BASE_WIDTH, 0.9);
+        assert_eq!(PHANTOM_BASE_HEIGHT, 0.5);
+        let (w0, h0) = calculate_phantom_dimensions(0);
+        assert!((w0 - 0.9).abs() < 1e-6);
+        assert!((h0 - 0.5).abs() < 1e-6);
+
+        // Size 5: scale = 1.0 + 0.15 * 5 = 1.75
+        let (w5, h5) = calculate_phantom_dimensions(5);
+        assert!((w5 - (0.9 * 1.75)).abs() < 1e-6);
+        assert!((h5 - (0.5 * 1.75)).abs() < 1e-6);
+
+        // Size 64 (max): scale = 1.0 + 0.15 * 64 = 10.6
+        let (w64, h64) = calculate_phantom_dimensions(64);
+        assert!((w64 - (0.9 * 10.6)).abs() < 1e-6);
+        assert!((h64 - (0.5 * 10.6)).abs() < 1e-6);
+
+        // Clamped at 64
+        let (w100, h100) = calculate_phantom_dimensions(100);
+        assert_eq!(w100, w64);
+        assert_eq!(h100, h64);
+
+        // 2. Insomnia spawner constants parity (PhantomSpawner.java:31-48)
+        assert_eq!(PHANTOM_INSOMNIA_THRESHOLD_TICKS, 72000);
+        assert_eq!(PHANTOM_SPAWN_MIN_INTERVAL_TICKS, 1200);
+        assert_eq!(PHANTOM_SPAWN_MAX_RANDOM_INTERVAL_TICKS, 1200);
+        assert_eq!(PHANTOM_SPAWN_MIN_HEIGHT_ABOVE_PLAYER, 20);
+        assert_eq!(PHANTOM_SPAWN_HEIGHT_VARIATION, 15);
+        assert_eq!(PHANTOM_SPAWN_XZ_VARIATION, 21);
+        assert_eq!(PHANTOM_SKY_DARKEN_MIN, 5);
+
+        // 3. Phantom group size scaling by difficulty (PhantomSpawner.java:48)
+        // Peaceful (id 0): 1 + (rand % 1) = 1
+        assert_eq!(calculate_phantom_group_size(0, 0), 1);
+        assert_eq!(calculate_phantom_group_size(0, 5), 1);
+        // Easy (id 1): 1 + (rand % 2) = 1..=2
+        assert_eq!(calculate_phantom_group_size(1, 0), 1);
+        assert_eq!(calculate_phantom_group_size(1, 1), 2);
+        // Normal (id 2): 1 + (rand % 3) = 1..=3
+        assert_eq!(calculate_phantom_group_size(2, 0), 1);
+        assert_eq!(calculate_phantom_group_size(2, 2), 3);
+        // Hard (id 3): 1 + (rand % 4) = 1..=4
+        assert_eq!(calculate_phantom_group_size(3, 0), 1);
+        assert_eq!(calculate_phantom_group_size(3, 3), 4);
+
+        // 4. Insomnia spawn roll parity (PhantomSpawner.java:42)
+        // time <= 72000: impossible to spawn phantoms
+        assert!(!check_phantom_insomnia_spawn_roll(72000, 72000));
+        assert!(!check_phantom_insomnia_spawn_roll(50000, 72000));
+        // time > 72000: succeeds if rand >= 72000
+        assert!(check_phantom_insomnia_spawn_roll(100000, 72000));
+        assert!(check_phantom_insomnia_spawn_roll(100000, 80000));
+        assert!(!check_phantom_insomnia_spawn_roll(100000, 71999));
+
+        // 5. Player spawn eligibility parity (PhantomSpawner.java:27, 34-36)
+        // Valid conditions: awake > 72000, gamerule true, not spectator, open sky, above sea level
+        assert!(can_player_spawn_phantoms(72001, true, false, true, 64, 63, true));
+        // Gamerule false -> no spawn
+        assert!(!can_player_spawn_phantoms(72001, false, false, true, 64, 63, true));
+        // Spectator -> no spawn
+        assert!(!can_player_spawn_phantoms(72001, true, true, true, 64, 63, true));
+        // Under roof (cannot see sky) -> no spawn
+        assert!(!can_player_spawn_phantoms(72001, true, false, false, 64, 63, true));
+        // Below sea level in overworld -> no spawn
+        assert!(!can_player_spawn_phantoms(72001, true, false, true, 60, 63, true));
+        // Slept recently (< 72000) -> no spawn
+        assert!(!can_player_spawn_phantoms(50000, true, false, true, 64, 63, true));
+        // Dimension without skylight (e.g. End) bypasses sea level & can_see_sky
+        assert!(can_player_spawn_phantoms(72001, true, false, false, 30, 63, false));
     }
 
     #[test]

@@ -10043,3 +10043,34 @@ eq 	ext{None}$.
 - **Tests Added**:
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_ender_pearl_cooldown_and_vanish_on_death_parity`
+
+
+### Gap 397: Phantom Spawning Conditions, Size Scaling Hitbox, NBT Anchor/Size & Fall Damage Immunity Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.Phantom.java:40-95, 140-165, 194-198` (`setPhantomSize`, `updatePhantomSizeInfo`, `getDefaultDimensions`, `readAdditionalSaveData`, `addAdditionalSaveData`), `net.minecraft.world.level.levelgen.PhantomSpawner.java:21-68` (`tick`, `SPAWN_PHANTOMS`, `TIME_SINCE_REST`), `net.minecraft.data.tags.EntityTypeTags.java` (`#fall_damage_immune`).
+- **Description**:
+  1. **Phantom Size Hitbox & Dimension Scaling (`Phantom.java:88, 194-198`)**:
+     - In Vanilla Java 1.21.4, Phantoms scale their bounding box dynamically according to their size attribute: `scale = 1.0F + 0.15F * size`, where `size` is clamped in `0..=64`.
+     - Base dimensions are `width = 0.9` and `height = 0.5`. Attack damage scales as `6 + size`.
+     - Previously in Neth, `set_phantom_size()` only updated the `ID_SIZE` synced entity data and the `ATTACK_DAMAGE` attribute, but never refreshed the entity's `entity_dimension` or `bounding_box`. As a result, phantoms of size 1 to 64 always retained the minimal 0.9x0.5 hitbox of size 0.
+     - Updated `PhantomEntity::set_phantom_size()` to calculate scaled `EntityDimensions` and update `entity.entity_dimension` and `entity.bounding_box` synchronously.
+  2. **Phantom Insomnia & Spawner Condition Parity (`PhantomSpawner.java:21-68`)**:
+     - In Vanilla Java 1.21.4, phantoms spawn via `PhantomSpawner`:
+       - Requires `spawn_phantoms` gamerule enabled.
+       - Ticks countdown at `(60 + random.nextInt(60)) * 20` (1200..=2400 ticks / 60..=120 seconds).
+       - Requires `sky_darken >= 5` or dimension without skylight.
+       - Players must not be in spectator mode, must be above sea level if dimension has skylight (`player_y >= sea_level`), and must have open sky access (`can_see_sky`).
+       - Insomnia threshold: `TIME_SINCE_REST > 72000` ticks (3 full in-game days). Spawning roll: `random.nextInt(value) >= 72000`.
+       - Group size scaling by difficulty: `1 + random.nextInt(difficulty.getId() + 1)` (1 on Peaceful, 1..=2 on Easy, 1..=3 on Normal, 1..=4 on Hard).
+     - Formalized constants and helper functions in `crates/pumpkin-core/src/entity/combat.rs`: `PHANTOM_BASE_WIDTH`, `PHANTOM_BASE_HEIGHT`, `PHANTOM_INSOMNIA_THRESHOLD_TICKS`, `PHANTOM_SPAWN_MIN_INTERVAL_TICKS`, `PHANTOM_SPAWN_MAX_RANDOM_INTERVAL_TICKS`, `PHANTOM_SPAWN_MIN_HEIGHT_ABOVE_PLAYER`, `PHANTOM_SPAWN_HEIGHT_VARIATION`, `PHANTOM_SPAWN_XZ_VARIATION`, `PHANTOM_SKY_DARKEN_MIN`, `calculate_phantom_dimensions`, `calculate_phantom_group_size`, `check_phantom_insomnia_spawn_roll`, and `can_player_spawn_phantoms`.
+  3. **NBT `anchor_pos` & `size` Serialization Parity (`Phantom.java:155-167`)**:
+     - Modern Vanilla Java 1.20+ saves the anchor point as an int array `anchor_pos` (`[x, y, z]`) and the size as `size`.
+     - Added `put_int_array` and `put_byte_array` methods to `NbtCompound` in `pumpkin-nbt`.
+     - Updated `PhantomEntity::mob_write_nbt` to serialize `anchor_pos` (int array) alongside legacy `AX`, `AY`, `AZ` for backwards compatibility, and `PhantomEntity::mob_read_nbt` to parse `anchor_pos` as well as legacy fields.
+  4. **Fall Damage Immunity (`fall_damage_immune` tag)**:
+     - Verified that Phantoms are immune to fall damage via `#minecraft:fall_damage_immune` tag and `LivingEntity::is_immune_to_fall_damage`.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_phantom_spawner_dimensions_and_insomnia_parity`
+  - `crates/pumpkin-core/src/entity/mob/phantom.rs`:
+    - `test_phantom_attributes_and_mechanics_parity`

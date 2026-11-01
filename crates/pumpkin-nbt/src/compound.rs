@@ -205,6 +205,16 @@ impl NbtCompound {
         );
     }
 
+    /// Inserts an int array tag when `name` is not already present.
+    pub fn put_int_array(&mut self, name: &str, value: Vec<i32>) {
+        self.put(name, NbtTag::IntArray(value));
+    }
+
+    /// Inserts a byte array tag when `name` is not already present.
+    pub fn put_byte_array(&mut self, name: &str, value: Vec<i8>) {
+        self.put(name, NbtTag::ByteArray(value.into()));
+    }
+
     /// Copies `other`'s tags into this compound, merging nested compounds (vanilla `CompoundTag.merge`).
     pub fn merge(&mut self, other: &Self) {
         for (name, tag) in &other.child_tags {

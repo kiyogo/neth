@@ -8,6 +8,7 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_util::math::wrap_degrees;
 use rand::RngExt;
@@ -115,6 +116,22 @@ impl PhantomEntity {
         self.mob_entity
             .living_entity
             .set_attribute_base(&Attributes::ATTACK_DAMAGE, attack_damage as f64);
+
+        // Vanilla parity (Phantom.java:88, 197): refresh dimensions based on 1.0 + 0.15 * size
+        let scale = crate::entity::combat::calculate_phantom_dimension_scale(clamped);
+        let scaled_dimensions = EntityDimensions {
+            width: entity.entity_type.dimension[0] * scale,
+            height: entity.entity_type.dimension[1] * scale,
+            eye_height: entity.entity_type.eye_height * scale,
+        };
+        entity.entity_dimension.store(scaled_dimensions);
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &scaled_dimensions,
+        ));
     }
 
     fn tick_flight(&self) {
@@ -552,15 +569,30 @@ impl Mob for PhantomEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         let anchor = self.anchor_point.load();
-        nbt.put_int("AX", anchor.x as i32);
-        nbt.put_int("AY", anchor.y as i32);
-        nbt.put_int("AZ", anchor.z as i32);
-        // Vanilla uses lowercase "size"
+        let ax = anchor.x as i32;
+        let ay = anchor.y as i32;
+        let az = anchor.z as i32;
+        // Vanilla 1.20+ uses "anchor_pos" [x, y, z] (Phantom.java:164)
+        nbt.put_int_array("anchor_pos", vec![ax, ay, az]);
+        // Legacy 1.13-1.19 fallback
+        nbt.put_int("AX", ax);
+        nbt.put_int("AY", ay);
+        nbt.put_int("AZ", az);
+        // Vanilla uses lowercase "size" (Phantom.java:165)
         nbt.put_int("size", self.phantom_size.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
-        if let (Some(x), Some(y), Some(z)) = (nbt.get_int("AX"), nbt.get_int("AY"), nbt.get_int("AZ")) {
+        // Vanilla 1.20+ uses "anchor_pos" [x, y, z] (Phantom.java:157)
+        if let Some(pos_arr) = nbt.get_int_array("anchor_pos") {
+            if pos_arr.len() >= 3 {
+                self.anchor_point.store(Vector3::new(
+                    f64::from(pos_arr[0]),
+                    f64::from(pos_arr[1]),
+                    f64::from(pos_arr[2]),
+                ));
+            }
+        } else if let (Some(x), Some(y), Some(z)) = (nbt.get_int("AX"), nbt.get_int("AY"), nbt.get_int("AZ")) {
             self.anchor_point.store(Vector3::new(f64::from(x), f64::from(y), f64::from(z)));
         }
         // Vanilla saves as "size", support legacy uppercase "Size" as fallback
@@ -603,5 +635,18 @@ mod tests {
         assert!(should_phantom_abort_swoop_on_collision_or_damage(true, false));
         assert!(should_phantom_abort_swoop_on_collision_or_damage(false, true));
         assert!(!should_phantom_abort_swoop_on_collision_or_damage(false, false));
+
+        // Dimension scale: 1.0 + 0.15 * size
+        assert_eq!(calculate_phantom_dimension_scale(0), 1.0);
+        assert!((calculate_phantom_dimension_scale(5) - 1.75).abs() < 1e-6);
+        assert!((calculate_phantom_dimension_scale(64) - 10.6).abs() < 1e-6);
+
+        // NBT serialization parity
+        let mut compound = NbtCompound::new();
+        compound.put_int_array("anchor_pos", vec![100, 75, -200]);
+        compound.put_int("size", 3);
+        let pos = compound.get_int_array("anchor_pos").unwrap();
+        assert_eq!(pos, &[100, 75, -200]);
+        assert_eq!(compound.get_int("size"), Some(3));
     }
 }
