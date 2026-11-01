@@ -10136,3 +10136,42 @@ eq 	ext{None}$.
     - `test_frog_tongue_eat_and_froglight_parity` (updated with strict size 1 verification and constants validation)
   - `crates/pumpkin-core/src/entity/passive/frog.rs`:
     - `test_frog_mechanics_parity`
+
+
+### Gap 400: Goat Ram Impact Sound, Instrument Horn Drops, Milking Duplication Bug Fix, Max Head Y Rotation & Constants Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.goat.Goat.java:59, 79-107, 148-150, 187-189, 218-225, 312-341` (`createHorn`, `dropHorn`, `mobInteract`, `getMaxHeadYRot`, `getMilkingSound`), `net.minecraft.world.entity.ai.behavior.RamTarget.java:30, 95-103` (`hasRammedHornBreakingBlock`, `RAM_SPEED_FORCE_FACTOR`), `net.minecraft.world.entity.animal.goat.GoatAi.java:36-59` (`TIME_BETWEEN_RAMS`, `TIME_BETWEEN_RAMS_SCREAMER`, `RAM_MIN_DISTANCE`, `RAM_MAX_DISTANCE`, `RAM_PREPARE_TIME`, `ADULT_RAM_KNOCKBACK_FORCE`, `BABY_RAM_KNOCKBACK_FORCE`), `net.minecraft.tags.InstrumentTags.java` (`#regular_goat_horns`, `#screaming_goat_horns`).
+- **Description**:
+  1. **Milking Duplication Fix (`Goat.java:220-225`, `Cow.java`, `MushroomCow.java`)**:
+     - In Vanilla Java 1.21.4, interacting with an adult Goat, Cow, or Mooshroom using an empty bucket converts the held bucket into a single milk bucket via `ItemUtils.createFilledResult()`.
+     - In Neth, `create_filled_result()` already deducted the empty bucket and added the milk bucket to the hand/inventory. However, `goat.rs`, `cow.rs`, and `mooshroom.rs` subsequently executed an additional `player.inventory.insert_stack_anywhere(&mut milk)`, duplicating the milk bucket and giving the player two buckets of milk per milking action.
+     - Removed the redundant insertion in `goat.rs`, `cow.rs`, and `mooshroom.rs`.
+  2. **Goat Horn Instrument Data Component Parity (`Goat.java:98-107`, `InstrumentTags.java`)**:
+     - In Vanilla Java 1.21.4, when a goat breaks a horn against a block with tag `#minecraft:snaps_goat_horn`:
+       - Screaming goats drop a horn containing one of the 4 screaming instruments (`minecraft:admire_goat_horn`, `minecraft:call_goat_horn`, `minecraft:yearn_goat_horn`, `minecraft:dream_goat_horn`).
+       - Regular goats drop a horn containing one of the 4 regular instruments (`minecraft:ponder_goat_horn`, `minecraft:sing_goat_horn`, `minecraft:seek_goat_horn`, `minecraft:feel_goat_horn`).
+     - Previously in Neth, `drop_horn()` dropped a plain generic `Item::GOAT_HORN` without any `DataComponent::Instrument`.
+     - Updated `GoatEntity::drop_horn()` to construct an `ItemStack::new_with_component()` bearing `DataComponent::Instrument` (`InstrumentImpl::Reference`) with a randomly chosen valid instrument ID.
+  3. **Ram Impact Sound Parity (`RamTarget.java:95-101`)**:
+     - When a goat rams into a horn-breaking block, it now broadcasts `Sound::EntityGoatRamImpact` (or `Sound::EntityGoatScreamingRamImpact`) before playing the horn break sound `Sound::EntityGoatHornBreak`.
+  4. **Head Y Rotation Limitation (`Goat.java:187-189`)**:
+     - Vanilla goats have rigid necks with `getMaxHeadYRot() -> 15` degrees.
+     - Implemented `fn get_max_head_rotation(&self) -> f32` on `GoatEntity` returning `combat::GOAT_MAX_HEAD_Y_ROT` (15.0).
+  5. **Vanilla Constants & Helpers in `combat.rs`**:
+     - Formalized constants in `combat.rs`:
+       - `GOAT_MAX_HEAD_Y_ROT = 15.0`
+       - `GOAT_UNIHORN_CHANCE = 0.1`
+       - `GOAT_LONG_JUMPING_SCALE = 0.7`
+       - `GOAT_RAM_MIN_DISTANCE = 4`
+       - `GOAT_RAM_MAX_DISTANCE = 7`
+       - `GOAT_RAM_PREPARE_TICKS = 20`
+       - `GOAT_ADULT_RAM_KNOCKBACK = 2.5`
+       - `GOAT_BABY_RAM_KNOCKBACK = 1.0`
+       - `GOAT_RAM_SPEED_FACTOR = 1.65`
+       - `REGULAR_GOAT_HORNS` and `SCREAMING_GOAT_HORNS` instrument arrays
+       - `get_random_goat_horn_instrument(is_screaming, roll)`
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_tadpole_and_goat_parity` (updated with instrument registry tags validation and goat constants parity)
+  - `crates/pumpkin-core/src/entity/passive/goat.rs`:
+    - `test_goat_horns_and_head_rotation_parity`

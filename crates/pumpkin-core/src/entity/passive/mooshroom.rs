@@ -500,11 +500,6 @@ impl Mob for MooshroomEntity {
                 SoundCategory::Neutral,
                 &entity.pos.load(),
             );
-            let mut milk = ItemStack::new(1, &Item::MILK_BUCKET);
-            let was_added = player.inventory.insert_stack_anywhere(&mut milk);
-            if !was_added && !milk.is_empty() {
-                world.drop_stack(&entity.block_pos.load(), milk);
-            }
             return true;
         }
 

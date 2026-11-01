@@ -6087,6 +6087,34 @@ pub fn determine_frog_variant_from_biome_tags(
 }
 
 /// Calculates fall damage points for a Goat with the 10-point vanilla reduction.
+pub const REGULAR_GOAT_HORNS: [&str; 4] = [
+    "minecraft:ponder_goat_horn",
+    "minecraft:sing_goat_horn",
+    "minecraft:seek_goat_horn",
+    "minecraft:feel_goat_horn",
+];
+
+pub const SCREAMING_GOAT_HORNS: [&str; 4] = [
+    "minecraft:admire_goat_horn",
+    "minecraft:call_goat_horn",
+    "minecraft:yearn_goat_horn",
+    "minecraft:dream_goat_horn",
+];
+
+/// Returns a random goat horn instrument registry id according to screaming state.
+///
+/// Mirrors vanilla `Goat.java:98-107`:
+/// `TagKey<Instrument> key = this.isScreamingGoat() ? InstrumentTags.SCREAMING_GOAT_HORNS : InstrumentTags.REGULAR_GOAT_HORNS;`
+#[must_use]
+pub fn get_random_goat_horn_instrument(is_screaming: bool, roll: usize) -> &'static str {
+    if is_screaming {
+        SCREAMING_GOAT_HORNS[roll % SCREAMING_GOAT_HORNS.len()]
+    } else {
+        REGULAR_GOAT_HORNS[roll % REGULAR_GOAT_HORNS.len()]
+    }
+}
+
+/// Calculates fall damage points for a Goat with the 10-point vanilla reduction.
 ///
 /// Mirrors vanilla `Goat.java:79, 124-126`:
 /// ```java
@@ -10691,6 +10719,16 @@ pub const GOAT_BABY_ATTACK_DAMAGE: f64 = 1.0;
 pub const GOAT_FALL_DAMAGE_REDUCTION: i32 = 10;
 pub const GOAT_SCREAMING_CHANCE: f64 = 0.02;
 pub const GOAT_XP_REWARD: u32 = 2;
+pub const GOAT_UNIHORN_CHANCE: f64 = 0.1;
+pub const GOAT_MAX_HEAD_Y_ROT: f32 = 15.0;
+pub const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
+pub const GOAT_RAM_MIN_DISTANCE: i32 = 4;
+pub const GOAT_RAM_MAX_DISTANCE: i32 = 7;
+pub const GOAT_RAM_PREPARE_TICKS: i32 = 20;
+pub const GOAT_ADULT_RAM_KNOCKBACK: f32 = 2.5;
+pub const GOAT_BABY_RAM_KNOCKBACK: f32 = 1.0;
+pub const GOAT_RAM_SPEED_FACTOR: f32 = 1.65;
+
 
 /// Rabbit attribute and The Killer Bunny constants, mirroring vanilla `Rabbit.java:42-45, 120-135`.
 pub const RABBIT_MAX_HEALTH: f64 = 3.0;
@@ -14517,6 +14555,25 @@ mod tests {
         // Both horns remaining: randomly selects left or right
         assert_eq!(select_goat_horn_to_drop(true, true, true), Some(true));
         assert_eq!(select_goat_horn_to_drop(true, true, false), Some(false));
+
+        // 5. Goat horn instrument registry tags parity (InstrumentTags.java, Goat.java:98-107)
+        for (i, expected) in REGULAR_GOAT_HORNS.iter().enumerate() {
+            assert_eq!(get_random_goat_horn_instrument(false, i), *expected);
+        }
+        for (i, expected) in SCREAMING_GOAT_HORNS.iter().enumerate() {
+            assert_eq!(get_random_goat_horn_instrument(true, i), *expected);
+        }
+
+        // 6. Goat constants parity (Goat.java:59, 80-81, 187-189, GoatAi.java:36-59)
+        assert_eq!(GOAT_MAX_HEAD_Y_ROT, 15.0);
+        assert_eq!(GOAT_UNIHORN_CHANCE, 0.1);
+        assert_eq!(GOAT_LONG_JUMPING_SCALE, 0.7);
+        assert_eq!(GOAT_RAM_MIN_DISTANCE, 4);
+        assert_eq!(GOAT_RAM_MAX_DISTANCE, 7);
+        assert_eq!(GOAT_RAM_PREPARE_TICKS, 20);
+        assert_eq!(GOAT_ADULT_RAM_KNOCKBACK, 2.5);
+        assert_eq!(GOAT_BABY_RAM_KNOCKBACK, 1.0);
+        assert_eq!(GOAT_RAM_SPEED_FACTOR, 1.65);
     }
 
     #[test]

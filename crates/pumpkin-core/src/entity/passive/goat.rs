@@ -4,7 +4,10 @@ use std::sync::{
 };
 
 use pumpkin_data::Block;
+use std::borrow::Cow;
 use pumpkin_data::attributes::Attributes;
+use pumpkin_data::data_component::DataComponent;
+use pumpkin_data::data_component_impl::basic::InstrumentImpl;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
@@ -183,9 +186,23 @@ impl GoatEntity {
         drop_entity
             .velocity
             .store(Vector3::new(delta_x, delta_y, delta_z));
+
+        // Vanilla Goat.java:98-107: attach instrument data component
+        let instrument_id = combat::get_random_goat_horn_instrument(
+            self.is_screaming(),
+            rand::random_range(0..4),
+        );
+        let horn_stack = ItemStack::new_with_component(
+            1,
+            &Item::GOAT_HORN,
+            vec![(
+                DataComponent::Instrument,
+                Some(Box::new(InstrumentImpl::Reference(Cow::Borrowed(instrument_id)))),
+            )],
+        );
         world.spawn_entity(Arc::new(ItemEntity::new(
             drop_entity,
-            ItemStack::new(1, &Item::GOAT_HORN),
+            horn_stack,
         )));
         true
     }
@@ -238,6 +255,11 @@ impl Mob for GoatEntity {
 
     fn as_goat(&self) -> Option<&GoatEntity> {
         Some(self)
+    }
+
+    /// Vanilla `Goat.java:187-189`: `getMaxHeadYRot() -> 15`.
+    fn get_max_head_rotation(&self) -> f32 {
+        combat::GOAT_MAX_HEAD_Y_ROT
     }
 
     /// Vanilla `Goat.calculateFallDamage`: fall damage is reduced by 10.
@@ -307,6 +329,12 @@ impl Mob for GoatEntity {
                 || block_above.has_tag(&tag::Block::MINECRAFT_SNAPS_GOAT_HORN);
 
             if snaps_horn {
+                let impact_sound = if self.is_screaming() {
+                    Sound::EntityGoatScreamingRamImpact
+                } else {
+                    Sound::EntityGoatRamImpact
+                };
+                world.play_sound(impact_sound, SoundCategory::Neutral, &entity.pos.load());
                 self.drop_horn();
             }
         }
@@ -363,11 +391,6 @@ impl Mob for GoatEntity {
                 Sound::EntityGoatMilk
             };
             world.play_sound(sound, SoundCategory::Neutral, &entity.pos.load());
-            let mut milk = ItemStack::new(1, &Item::MILK_BUCKET);
-            let was_added = player.inventory.insert_stack_anywhere(&mut milk);
-            if !was_added && !milk.is_empty() {
-                world.drop_stack(&entity.block_pos.load(), milk);
-            }
             return true;
         }
 
@@ -412,5 +435,36 @@ mod tests {
         assert_eq!(combat::GOAT_BABY_ATTACK_DAMAGE, 1.0);
         assert_eq!(combat::GOAT_FALL_DAMAGE_REDUCTION, 10);
         assert_eq!(combat::GOAT_SCREAMING_CHANCE, 0.02);
+        assert_eq!(combat::GOAT_UNIHORN_CHANCE, 0.1);
+        assert_eq!(combat::GOAT_MAX_HEAD_Y_ROT, 15.0);
+        assert_eq!(combat::GOAT_LONG_JUMPING_SCALE, 0.7);
+        assert_eq!(combat::GOAT_RAM_MIN_DISTANCE, 4);
+        assert_eq!(combat::GOAT_RAM_MAX_DISTANCE, 7);
+        assert_eq!(combat::GOAT_RAM_PREPARE_TICKS, 20);
+        assert_eq!(combat::GOAT_ADULT_RAM_KNOCKBACK, 2.5);
+        assert_eq!(combat::GOAT_BABY_RAM_KNOCKBACK, 1.0);
+        assert_eq!(combat::GOAT_RAM_SPEED_FACTOR, 1.65);
+    }
+
+    #[test]
+    fn test_goat_horns_and_head_rotation_parity() {
+        // Screaming vs regular goat horn instruments
+        let regular0 = combat::get_random_goat_horn_instrument(false, 0);
+        assert_eq!(regular0, "minecraft:ponder_goat_horn");
+        let regular1 = combat::get_random_goat_horn_instrument(false, 1);
+        assert_eq!(regular1, "minecraft:sing_goat_horn");
+        let regular2 = combat::get_random_goat_horn_instrument(false, 2);
+        assert_eq!(regular2, "minecraft:seek_goat_horn");
+        let regular3 = combat::get_random_goat_horn_instrument(false, 3);
+        assert_eq!(regular3, "minecraft:feel_goat_horn");
+
+        let scream0 = combat::get_random_goat_horn_instrument(true, 0);
+        assert_eq!(scream0, "minecraft:admire_goat_horn");
+        let scream1 = combat::get_random_goat_horn_instrument(true, 1);
+        assert_eq!(scream1, "minecraft:call_goat_horn");
+        let scream2 = combat::get_random_goat_horn_instrument(true, 2);
+        assert_eq!(scream2, "minecraft:yearn_goat_horn");
+        let scream3 = combat::get_random_goat_horn_instrument(true, 3);
+        assert_eq!(scream3, "minecraft:dream_goat_horn");
     }
 }
