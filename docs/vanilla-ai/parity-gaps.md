@@ -9825,3 +9825,44 @@ eq 	ext{None}$.
   - In `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_creaking_heart_loot_drops_natural_xp_comparator_and_log_checks_parity`.
 - **Status**: Completed & Verified.
+
+
+### Gap 388: Moss Block & Pale Moss Block Bonemeal Spreading and Vegetation Patch Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.BonemealableFeaturePlacerBlock.java:1-44`, `net.minecraft.world.level.block.MossyCarpetBlock.java:159-201`, `net.minecraft.world.level.levelgen.feature.VegetationPatchFeature.java:1-179`, `net.minecraft.data.worldgen.features.CaveFeatures.java:383-425` (`MOSS_PATCH_BONEMEAL`, `MOSS_VEGETATION`), `net.minecraft.data.worldgen.features.VegetationFeatures.java:295-335` (`PALE_MOSS_PATCH_BONEMEAL`, `PALE_MOSS_VEGETATION`), `net.minecraft.tags.BlockTags.java:MOSS_REPLACEABLE`, `net.minecraft.world.level.block.Blocks.java:5323-5327`, `5518-5522`.
+- **Vanilla Mechanics**:
+  1. *Bonemealable Feature Placer Parity (`BonemealableFeaturePlacerBlock.java:23-29`, `Blocks.java`)*:
+     - Both `minecraft:moss_block` and `minecraft:pale_moss_block` in vanilla are instances of `BonemealableFeaturePlacerBlock`.
+     - `isValidBonemealTarget`: Returns `true` if and only if the block directly above the moss block is air (`level.getBlockState(pos.above()).isAir()`).
+     - `isBonemealSuccess`: Returns `true`.
+     - Previously in Neth, neither `MOSS_BLOCK` nor `PALE_MOSS_BLOCK` had any block behaviour registered in `BlockRegistry`, causing bone meal on both blocks to fail and do nothing.
+  2. *Vegetation Patch Generation (`VegetationPatchFeature.java:91-178`)*:
+     - Origin is `pos.above()`.
+     - Horizontal search radius `xzRadius` samples `UniformInt.of(1, 2) + 1` giving an independent radius of 2 or 3 in the X and Z axes.
+     - Patch column filtering (`VegetationPatchFeature.java:121`):
+       - Corner columns (`dx == +/-xRadius && dz == +/-zRadius`) are always excluded.
+       - Edge columns that are not corners are included with probability `0.75` (`extraEdgeColumnChance = 0.75F`).
+       - Non-edge interior columns are always included.
+     - For each column, searches up to `verticalRange = 5` downwards and upwards to locate the floor ground level where the top face of the ground block is sturdy.
+     - Replaces valid ground blocks matching `#minecraft:moss_replaceable` with the respective moss block:
+       - Overworld base stones: `stone`, `granite`, `diorite`, `andesite`, `tuff`, `deepslate`.
+       - Dirt & mud: `dirt`, `coarse_dirt`, `rooted_dirt`, `mud`, `muddy_mangrove_roots`.
+       - Grasses: `grass_block`, `podzol`, `mycelium`.
+       - Mosses & cave vines: `moss_block`, `pale_moss_block`, `cave_vines`, `cave_vines_plant`.
+  3. *Vegetation Placement Distribution (`CaveFeatures.java`, `VegetationFeatures.java`)*:
+     - Ground blocks in the patch have a `0.60` (`vegetationChance = 0.60F`) probability to generate vegetation on their upper surface if the space above is air.
+     - *Normal Moss Vegetation (`MOSS_VEGETATION`, total weight 96)*:
+       - `minecraft:flowering_azalea`: weight 4 (~4.2%)
+       - `minecraft:azalea`: weight 7 (~7.3%)
+       - `minecraft:moss_carpet`: weight 25 (~26.0%)
+       - `minecraft:short_grass`: weight 50 (~52.1%)
+       - `minecraft:tall_grass`: weight 10 (~10.4%, placed as a 2-block tall double plant)
+     - *Pale Moss Vegetation (`PALE_MOSS_VEGETATION`, total weight 60)*:
+       - `minecraft:pale_moss_carpet`: weight 25 (~41.7%, placed with side wall toppers if adjacent to solid walls)
+       - `minecraft:short_grass`: weight 25 (~41.7%)
+       - `minecraft:tall_grass`: weight 10 (~16.7%, placed as a 2-block tall double plant)
+- **Implementation**:
+  - Created `crates/pumpkin-core/src/block/blocks/moss.rs` implementing `MossBlock` handling both `BlockId::MOSS_BLOCK` and `BlockId::PALE_MOSS_BLOCK`.
+  - Implemented `is_valid_bonemeal_target`, `is_bonemeal_success`, and `perform_bonemeal` with full `perform_moss_patch_bonemeal` implementation matching vanilla `VegetationPatchFeature`.
+  - Registered `MossBlock` in `crates/pumpkin-core/src/block/blocks/mod.rs` and `crates/pumpkin-core/src/block/registry.rs`.
+  - Added unit tests in `crates/pumpkin-core/src/block/blocks/moss.rs` and `crates/pumpkin-core/src/entity/combat.rs`.
+- **Status**: Completed & Verified.

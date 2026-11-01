@@ -153,6 +153,7 @@ use crate::block::blocks::sculk::sculk_vein::MultifaceBlock;
 use crate::block::blocks::dried_ghast::DriedGhastBlock;
 use crate::block::blocks::frogspawn::FrogspawnBlock;
 use crate::block::blocks::hanging_moss::HangingMossBlock;
+use crate::block::blocks::moss::MossBlock;
 use crate::block::blocks::heavy_core::HeavyCoreBlock;
 use crate::block::blocks::tuff::TuffBlock;
 use crate::block::blocks::shelf::ShelfBlock;
@@ -456,6 +457,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(DriedGhastBlock);
     manager.register(FrogspawnBlock);
     manager.register(HangingMossBlock);
+    manager.register(MossBlock);
     manager.register(ObserverBlock);
     manager.register(TripwireBlock);
     manager.register(TripwireHookBlock);

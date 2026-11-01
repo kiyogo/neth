@@ -21771,6 +21771,101 @@ mod tests {
     }
 
     #[test]
+    fn test_moss_and_pale_moss_bonemeal_vegetation_patch_parity() {
+        use pumpkin_data::Block;
+        use pumpkin_data::BlockId;
+        use crate::block::blocks::moss::{
+            is_moss_replaceable, pick_moss_vegetation, pick_pale_moss_vegetation,
+            should_include_patch_column, MOSS_PATCH_BONEMEAL_DEPTH,
+            MOSS_PATCH_BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE, MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE,
+            MOSS_PATCH_BONEMEAL_VERTICAL_RANGE, MOSS_PATCH_BONEMEAL_XZ_RADIUS_MAX,
+            MOSS_PATCH_BONEMEAL_XZ_RADIUS_MIN, MOSS_VEG_TOTAL_WEIGHT, MOSS_VEG_WEIGHT_AZALEA,
+            MOSS_VEG_WEIGHT_FLOWERING_AZALEA, MOSS_VEG_WEIGHT_MOSS_CARPET,
+            MOSS_VEG_WEIGHT_SHORT_GRASS, MOSS_VEG_WEIGHT_TALL_GRASS, PALE_MOSS_VEG_TOTAL_WEIGHT,
+            PALE_MOSS_VEG_WEIGHT_PALE_MOSS_CARPET, PALE_MOSS_VEG_WEIGHT_SHORT_GRASS,
+            PALE_MOSS_VEG_WEIGHT_TALL_GRASS,
+        };
+
+        // 1. Moss replaceable blocks parity (#minecraft:moss_replaceable)
+        // Overworld base stones
+        assert!(is_moss_replaceable(BlockId::STONE));
+        assert!(is_moss_replaceable(BlockId::GRANITE));
+        assert!(is_moss_replaceable(BlockId::DIORITE));
+        assert!(is_moss_replaceable(BlockId::ANDESITE));
+        assert!(is_moss_replaceable(BlockId::TUFF));
+        assert!(is_moss_replaceable(BlockId::DEEPSLATE));
+
+        // Dirt and mud
+        assert!(is_moss_replaceable(BlockId::DIRT));
+        assert!(is_moss_replaceable(BlockId::COARSE_DIRT));
+        assert!(is_moss_replaceable(BlockId::ROOTED_DIRT));
+        assert!(is_moss_replaceable(BlockId::MUD));
+        assert!(is_moss_replaceable(BlockId::MUDDY_MANGROVE_ROOTS));
+
+        // Grasses and mosses
+        assert!(is_moss_replaceable(BlockId::GRASS_BLOCK));
+        assert!(is_moss_replaceable(BlockId::PODZOL));
+        assert!(is_moss_replaceable(BlockId::MYCELIUM));
+        assert!(is_moss_replaceable(BlockId::MOSS_BLOCK));
+        assert!(is_moss_replaceable(BlockId::PALE_MOSS_BLOCK));
+        assert!(is_moss_replaceable(BlockId::CAVE_VINES));
+        assert!(is_moss_replaceable(BlockId::CAVE_VINES_PLANT));
+
+        // Blocks that must NOT be replaceable by moss
+        assert!(!is_moss_replaceable(BlockId::BEDROCK));
+        assert!(!is_moss_replaceable(BlockId::OBSIDIAN));
+        assert!(!is_moss_replaceable(BlockId::OAK_LOG));
+        assert!(!is_moss_replaceable(BlockId::GLASS));
+        assert!(!is_moss_replaceable(BlockId::DIAMOND_BLOCK));
+        assert!(!is_moss_replaceable(BlockId::SAND));
+
+        // 2. Patch dimension and probability constants (CaveFeatures.java:418-424, VegetationFeatures.java:328-334)
+        assert_eq!(MOSS_PATCH_BONEMEAL_DEPTH, 1);
+        assert_eq!(MOSS_PATCH_BONEMEAL_VERTICAL_RANGE, 5);
+        assert!((MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE - 0.60).abs() < 1e-6);
+        assert!((MOSS_PATCH_BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE - 0.75).abs() < 1e-6);
+        assert_eq!(MOSS_PATCH_BONEMEAL_XZ_RADIUS_MIN, 1);
+        assert_eq!(MOSS_PATCH_BONEMEAL_XZ_RADIUS_MAX, 2);
+
+        // 3. Patch edge column filtering logic (VegetationPatchFeature.java:121)
+        assert!(!should_include_patch_column(true, false, 0.0));
+        assert!(should_include_patch_column(false, false, 1.0));
+        assert!(should_include_patch_column(false, true, 0.74));
+        assert!(should_include_patch_column(false, true, 0.75));
+        assert!(!should_include_patch_column(false, true, 0.76));
+
+        // 4. Normal Moss Vegetation weights (CaveFeatures.java:387-393: 4 + 7 + 25 + 50 + 10 = 96)
+        assert_eq!(MOSS_VEG_WEIGHT_FLOWERING_AZALEA, 4);
+        assert_eq!(MOSS_VEG_WEIGHT_AZALEA, 7);
+        assert_eq!(MOSS_VEG_WEIGHT_MOSS_CARPET, 25);
+        assert_eq!(MOSS_VEG_WEIGHT_SHORT_GRASS, 50);
+        assert_eq!(MOSS_VEG_WEIGHT_TALL_GRASS, 10);
+        assert_eq!(MOSS_VEG_TOTAL_WEIGHT, 96);
+        assert_eq!(pick_moss_vegetation(0), &Block::FLOWERING_AZALEA);
+        assert_eq!(pick_moss_vegetation(3), &Block::FLOWERING_AZALEA);
+        assert_eq!(pick_moss_vegetation(4), &Block::AZALEA);
+        assert_eq!(pick_moss_vegetation(10), &Block::AZALEA);
+        assert_eq!(pick_moss_vegetation(11), &Block::MOSS_CARPET);
+        assert_eq!(pick_moss_vegetation(35), &Block::MOSS_CARPET);
+        assert_eq!(pick_moss_vegetation(36), &Block::SHORT_GRASS);
+        assert_eq!(pick_moss_vegetation(85), &Block::SHORT_GRASS);
+        assert_eq!(pick_moss_vegetation(86), &Block::TALL_GRASS);
+        assert_eq!(pick_moss_vegetation(95), &Block::TALL_GRASS);
+
+        // 5. Pale Moss Vegetation weights (VegetationFeatures.java:299-303: 25 + 25 + 10 = 60)
+        assert_eq!(PALE_MOSS_VEG_WEIGHT_PALE_MOSS_CARPET, 25);
+        assert_eq!(PALE_MOSS_VEG_WEIGHT_SHORT_GRASS, 25);
+        assert_eq!(PALE_MOSS_VEG_WEIGHT_TALL_GRASS, 10);
+        assert_eq!(PALE_MOSS_VEG_TOTAL_WEIGHT, 60);
+        assert_eq!(pick_pale_moss_vegetation(0), &Block::PALE_MOSS_CARPET);
+        assert_eq!(pick_pale_moss_vegetation(24), &Block::PALE_MOSS_CARPET);
+        assert_eq!(pick_pale_moss_vegetation(25), &Block::SHORT_GRASS);
+        assert_eq!(pick_pale_moss_vegetation(49), &Block::SHORT_GRASS);
+        assert_eq!(pick_pale_moss_vegetation(50), &Block::TALL_GRASS);
+        assert_eq!(pick_pale_moss_vegetation(59), &Block::TALL_GRASS);
+    }
+
+    #[test]
     fn test_creaking_gaze_freeze_carved_pumpkin_and_sway_status_parity() {
         // 1. Look cone and dot threshold constants (Creaking.java:471, LivingEntity.java:1772)
         assert_eq!(CREAKING_LOOK_CONE_SIZE, 0.5);
