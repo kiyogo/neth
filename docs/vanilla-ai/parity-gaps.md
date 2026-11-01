@@ -10386,3 +10386,23 @@ eq 	ext{None}$.
   - Ghi đè `can_dispenser_equip_into_slot(&self, _slot) -> bool { false }` trên `GoatEntity`.
 - **Hằng số Parity**: `GOAT_BABY_WIDTH` (0.45), `GOAT_BABY_HEIGHT` (0.65), `GOAT_BABY_EYE_HEIGHT` (0.59375), `GOAT_BABY_SCALE` (0.55), `GOAT_LONG_JUMPING_SCALE` (0.7), `GOAT_BABY_DEFAULT_X_HEAD_ROT` (22.5), `GOAT_BABY_MAX_RAMMING_X_HEAD_ROT` (52.5), `GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT` (30.0), `calculate_goat_dimensions`.
 - **Unit Tests**: `test_goat_baby_dimensions_and_long_jumping_parity` và toàn bộ 7 tests goat pass 100%.
+
+### Gap 409: Frog & Tadpole Dispenser Equip Immunity, Maturation & Feeding Speedup Parity
+
+**Vanilla Reference**: 
+et.minecraft.world.entity.animal.frog.Frog.java:240-275, 299-301 & 
+et.minecraft.world.entity.animal.frog.Tadpole.java:45-53, 104-122, 157-171, 213-250 & 
+et.minecraft.world.entity.AgeableMob.java:273-275
+
+- **Dispenser Equip Immunity Parity**:
+  - Trong Minecraft Vanilla, cáº£ áº¾ch (Frog) vÃ  NÃ²ng ná»c (Tadpole) Ä‘á»u khÃ´ng thá»ƒ nháº­n hoáº·c trang bá»‹ báº¥t ká»³ váº­t pháº©m/giÃ¡p nÃ o thÃ´ng qua Dispenser.
+  - Ghi Ä‘Ã¨ can_dispenser_equip_into_slot(&self, _slot: &EquipmentSlot) -> bool { false } trÃªn cáº£ FrogEntity vÃ  TadpoleEntity.
+- **Thá»i gian TrÆ°á»Ÿng thÃ nh & TÄƒng tá»‘c khi Ä‚n (Tadpole Maturation & Speedup Parity)**:
+  - Vanilla Ä‘á»‹nh nghÄ©a 	icksToBeFrog = Math.abs(-24000) = 24000 (20 phÃºt) vÃ  DEFAULT_AGE = 0.
+  - Khi cho NÃ²ng ná»c Äƒn Slime Ball (isFood check), NÃ²ng ná»c Ä‘Æ°á»£c tÄƒng tá»‘c theo cÃ´ng thá»©c AgeableMob.getSpeedUpSecondsWhenFeeding(ticksUntilAdult) * 20:
+    - getSpeedUpSecondsWhenFeeding(ticksUntilAdult) = (int)(ticksUntilAdult / 20 * 0.1F).
+    - Triá»ƒn khai calculate_tadpole_speed_up_ticks(ticks_left: i32) -> i32 trong combat.rs, Ä‘áº£m báº£o thá»i gian tÄƒng tá»‘c khá»›p 100% logic Vanilla (10% thá»i gian cÃ²n láº¡i).
+- **áº¾ch khÃ´ng cÃ³ Tráº¡ng thÃ¡i Con (Frog canBeABaby Parity)**:
+  - áº¾ch ná»Ÿ ra tá»« NÃ²ng ná»c vÃ  khÃ´ng sinh con trá»±c tiáº¿p dáº¡ng áº¿ch con (Frog.java:251-253: canBeABaby() -> false).
+- **Háº±ng sá»‘ Parity**: TADPOLE_TICKS_TO_BE_FROG (24000), TADPOLE_DEFAULT_AGE (0), calculate_tadpole_speed_up_ticks.
+- **Unit Tests**: 	est_tadpole_and_frog_parity_gap409, 	est_tadpole_parity_constants, vÃ  toÃ n bá»™ cÃ¡c tests frog & tadpole pass 100%.

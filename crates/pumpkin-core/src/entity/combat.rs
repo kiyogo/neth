@@ -11011,6 +11011,28 @@ pub const FROG_MAX_HEAD_Y_ROT: f32 = 5.0;
 pub const TADPOLE_MAX_HEALTH: f64 = 6.0;
 pub const TADPOLE_BASE_MOVEMENT_SPEED: f64 = 1.0;
 pub const TADPOLE_XP_REWARD: u32 = 0;
+/// Total ticks required for a Tadpole to mature into a Frog (24000 ticks = 20 minutes).
+///
+/// Mirrors vanilla `Tadpole.java:45`:
+/// `public static int ticksToBeFrog = 24000;`
+pub const TADPOLE_TICKS_TO_BE_FROG: i32 = 24000;
+
+/// Default Tadpole start age (0).
+///
+/// Mirrors vanilla `Tadpole.java:46`:
+/// `private static final int DEFAULT_AGE = 0;`
+pub const TADPOLE_DEFAULT_AGE: i32 = 0;
+
+/// Calculates the speed up in ticks when feeding a Tadpole slime balls.
+///
+/// Mirrors vanilla `Tadpole.java:215`:
+/// `this.ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(this.getTicksLeftUntilAdult()));`
+/// where `getSpeedUpSecondsWhenFeeding` adds 10% of remaining time in seconds (multiplied by 20 ticks).
+#[must_use]
+pub fn calculate_tadpole_speed_up_ticks(ticks_left: i32) -> i32 {
+    let speedup_sec = (ticks_left / 20 / 10).max(1);
+    speedup_sec * 20
+}
 
 /// Goat attribute, ram damage and long jump constants, mirroring vanilla `Goat.java:60-65, 120-130`.
 pub const GOAT_MAX_HEALTH: f64 = 10.0;
@@ -24272,6 +24294,24 @@ mod tests {
         assert_eq!(GOAT_BABY_DEFAULT_X_HEAD_ROT, 22.5);
         assert_eq!(GOAT_BABY_MAX_RAMMING_X_HEAD_ROT, 52.5);
         assert_eq!(GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT, 30.0);
+    }
+
+    #[test]
+    fn test_tadpole_and_frog_parity_gap409() {
+        use super::*;
+
+        assert_eq!(TADPOLE_TICKS_TO_BE_FROG, 24000);
+        assert_eq!(TADPOLE_DEFAULT_AGE, 0);
+
+        // Feeding speedup: 10% of remaining time in seconds, in ticks
+        // 24000 ticks = 1200s -> 120s speedup = 2400 ticks
+        assert_eq!(calculate_tadpole_speed_up_ticks(24000), 2400);
+        // 12000 ticks = 600s -> 60s speedup = 1200 ticks
+        assert_eq!(calculate_tadpole_speed_up_ticks(12000), 1200);
+        // Small ticks left clamps to minimum 20 ticks (1s)
+        assert_eq!(calculate_tadpole_speed_up_ticks(200), 20);
+        assert_eq!(calculate_tadpole_speed_up_ticks(50), 20);
+        assert_eq!(calculate_tadpole_speed_up_ticks(0), 20);
     }
 
 }

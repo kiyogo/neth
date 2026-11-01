@@ -335,6 +335,14 @@ impl Mob for FrogEntity {
             amount
         }
     }
+
+    /// Vanilla Frog.java: Frogs cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
 }
 
 impl CustomSound for FrogEntity {

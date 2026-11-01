@@ -201,6 +201,14 @@ impl Mob for TadpoleEntity {
         false
     }
 
+    /// Vanilla Tadpole.java: Tadpoles cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
     /// Vanilla `Tadpole.java:254-256`: `shouldDropExperience() -> false`.
     fn get_base_experience_reward(&self) -> u32 {
         Self::XP_REWARD
@@ -255,7 +263,8 @@ impl Mob for TadpoleEntity {
                 .entity
                 .age
                 .load(Ordering::Relaxed);
-            let speedup = (-age / 10).max(1);
+            let ticks_left = (-age).max(0);
+            let speedup = combat::calculate_tadpole_speed_up_ticks(ticks_left);
             let new_age = self
                 .get_mob_entity()
                 .living_entity
@@ -333,5 +342,9 @@ mod tests {
         assert_eq!(TadpoleEntity::XP_REWARD, 0);
         assert_eq!(combat::TADPOLE_MAX_HEALTH, 6.0);
         assert_eq!(combat::TADPOLE_BASE_MOVEMENT_SPEED, 1.0);
+        assert_eq!(combat::TADPOLE_TICKS_TO_BE_FROG, 24000);
+        assert_eq!(combat::TADPOLE_DEFAULT_AGE, 0);
+        assert_eq!(combat::calculate_tadpole_speed_up_ticks(24000), 2400);
+        assert_eq!(combat::calculate_tadpole_speed_up_ticks(12000), 1200);
     }
 }
