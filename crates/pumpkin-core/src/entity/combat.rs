@@ -4383,6 +4383,58 @@ pub const SHULKER_ATTACK_RANGE_SQ: f64 = 400.0;
 /// `SPEED = 0.15;`
 pub const SHULKER_BULLET_SPEED: f64 = 0.15;
 
+/// Shulker maximum scale factor (3.0).
+///
+/// Mirrors vanilla `Shulker.java:83`:
+/// `private static final float MAX_SCALE = 3.0F;`
+pub const SHULKER_MAX_SCALE: f32 = 3.0;
+
+/// Shulker maximum lid open amount (1.0).
+///
+/// Mirrors vanilla `Shulker.java:88`:
+/// `private static final float MAX_LID_OPEN = 1.0F;`
+pub const SHULKER_MAX_LID_OPEN: f32 = 1.0;
+
+/// Other nearby shulker scan radius (8 blocks).
+///
+/// Mirrors vanilla `Shulker.java:77`:
+/// `private static final int OTHER_SHULKER_SCAN_RADIUS = 8;`
+pub const SHULKER_OTHER_SCAN_RADIUS: i32 = 8;
+
+/// Other nearby shulker limit for reproduction check (5 shulkers).
+///
+/// Mirrors vanilla `Shulker.java:78`:
+/// `private static final int OTHER_SHULKER_LIMIT = 5;`
+pub const SHULKER_OTHER_LIMIT: usize = 5;
+
+/// Shulker bullet maximum lifespan before despawn (150 ticks).
+///
+/// Mirrors vanilla `ShulkerBullet.java`: bullet despawns after 150 ticks if no target hit.
+pub const SHULKER_BULLET_MAX_AGE: i32 = 150;
+
+/// Calculates Shulker height scale factor based on attach face and peek amount.
+///
+/// Mirrors vanilla `Shulker.java:213-221`:
+/// ```java
+/// if (this.getAttachFace() == Direction.DOWN && this.currentPeekAmount > 0.0F) {
+///    float heightScaleFactor = 1.0F + this.currentPeekAmount;
+///    return dimension.scale(1.0F, heightScaleFactor);
+/// } else {
+///    return dimension;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_shulker_peek_height_scale(
+    attach_face: pumpkin_data::BlockDirection,
+    current_peek_amount: f32,
+) -> f32 {
+    if attach_face == pumpkin_data::BlockDirection::Down && current_peek_amount > 0.0 {
+        1.0 + current_peek_amount
+    } else {
+        1.0
+    }
+}
+
 /// Checks whether a Shulker is closed based on raw peek value.
 ///
 /// Mirrors vanilla `Shulker.java:453-455`:
@@ -13852,6 +13904,23 @@ mod tests {
         assert!(!can_shulker_duplicate(true, true, 0.2, 0.5));  // closed cannot duplicate
         assert!(!can_shulker_duplicate(false, false, 0.2, 0.5)); // failed teleport cannot duplicate
         assert!(!can_shulker_duplicate(false, true, 0.2, 0.1));  // rand < failure_chance fails
+
+        // 7. Shulker Dimensions height scaling and constants parity (Shulker.java:76-88, 213-221)
+        assert_eq!(SHULKER_MAX_SCALE, 3.0);
+        assert_eq!(SHULKER_MAX_LID_OPEN, 1.0);
+        assert_eq!(SHULKER_OTHER_SCAN_RADIUS, 8);
+        assert_eq!(SHULKER_OTHER_LIMIT, 5);
+        assert_eq!(SHULKER_BULLET_MAX_AGE, 150);
+
+        // When attached to floor (Down) and peeking, height scales by 1.0 + peek
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::Down, 0.0), 1.0);
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::Down, 0.5), 1.5);
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::Down, 1.0), 2.0);
+
+        // When attached to wall or ceiling, height scale is unchanged (1.0)
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::Up, 0.5), 1.0);
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::North, 1.0), 1.0);
+        assert_eq!(calculate_shulker_peek_height_scale(pumpkin_data::BlockDirection::East, 0.8), 1.0);
     }
 
     #[test]

@@ -10202,3 +10202,39 @@ eq 	ext{None}$.
   - `crates/pumpkin-core/src/entity/passive/turtle.rs`:
     - `test_turtle_parity_constants` (updated with egg laying and lightning drop constants)
     - `test_turtle_nbt_home_pos_and_egg_roundtrip` (modern and legacy backward compatibility verification)
+
+### Gap 402: Shulker Bullet NBT Persistence, Trident Projectile Deflection & Shulker Dimensions Height Scaling Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.projectile.ShulkerBullet.java:67-89, 179-181`, `net.minecraft.world.entity.monster.Shulker.java:76-88, 179-181, 213-221, 239-244, 430-435`, `net.minecraft.world.entity.projectile.arrow.ThrownTrident.java:31` (`ThrownTrident extends AbstractArrow`).
+- **Description**:
+  1. **Shulker Bullet NBT Persistence (`ShulkerBullet.java:67-89`)**:
+     - In Vanilla Java 1.21.4, Shulker bullets serialize and deserialize all flight state into NBT:
+       - `Steps` (`int`): remaining steps along the active steering axis.
+       - `TXD`, `TYD`, `TZD` (`double`): normalized velocity delta steering components.
+       - `Dir` (`byte`/`int`): current movement direction legacy ordinal (0=Down, 1=Up, 2=North, 3=South, 4=West, 5=East).
+       - `Target` (`UUID`): UUID of the targeted entity.
+       - `Owner` (`UUID`): UUID of the shooting Shulker.
+     - Previously in Neth, `ShulkerBulletEntity` had no `write_custom_nbt` or `read_custom_nbt` implementations at all, causing bullet state, direction, and target tracking to be completely lost across chunk unloads or server restarts.
+     - Added `owner_uuid: Mutex<Option<Uuid>>` and `target_uuid: Mutex<Option<Uuid>>` along with complete `write_custom_nbt` and `read_custom_nbt` implementations, and target entity resolution by UUID upon ticking.
+  2. **Trident Projectile Deflection Parity (`Shulker.java:430-435`, `ThrownTrident.java:31`)**:
+     - In Vanilla Java 1.21.4, when a Shulker is closed (`isClosed()`), incoming projectiles belonging to `AbstractArrow` are deflected with 0 damage.
+     - In vanilla class hierarchy, `ThrownTrident extends AbstractArrow`.
+     - Previously in Neth `shulker.rs:pre_damage`, only `EntityType::ARROW` and `EntityType::SPECTRAL_ARROW` were checked, allowing thrown tridents to damage a fully closed Shulker.
+     - Added `damage_type == DamageType::TRIDENT` and `EntityType::TRIDENT` checks so that thrown tridents are properly deflected by closed Shulkers.
+  3. **Shulker Dimensions & Hitbox Height Scaling Parity (`Shulker.java:179-181, 213-221, 239-244`)**:
+     - In Vanilla Java 1.21.4, when a Shulker is attached to the floor (`Direction.DOWN`) and opens its lid (`currentPeekAmount > 0`), its collision/hitbox dimensions dynamically scale in height by factor `1.0 + currentPeekAmount` (from 1.0 block tall up to 2.0 blocks tall when fully open).
+     - Whenever peek amount changes (`updatePeekAmount()`), vanilla calls `refreshDimensions()`.
+     - Previously in Neth, Shulker's bounding box and dimensions remained static (1.0 x 1.0) regardless of lid peek state.
+     - Added `calculate_shulker_peek_height_scale(attach_face, current_peek_amount)` helper in `combat.rs` and implemented `refresh_dimensions()` on `ShulkerEntity`, called dynamically upon peek animation updates, attachment face changes, and NBT loading.
+  4. **Vanilla Constants Formalization in `combat.rs`**:
+     - Formalized constants in `combat.rs`:
+       - `SHULKER_MAX_SCALE = 3.0` (`Shulker.java:83`)
+       - `SHULKER_MAX_LID_OPEN = 1.0` (`Shulker.java:88`)
+       - `SHULKER_OTHER_SCAN_RADIUS = 8` (`Shulker.java:77`)
+       - `SHULKER_OTHER_LIMIT = 5` (`Shulker.java:78`)
+       - `SHULKER_BULLET_MAX_AGE = 150` (`ShulkerBullet.java`)
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/projectile/shulker_bullet.rs`:
+    - `test_shulker_bullet_nbt_persistence_parity` (Target, Owner, Dir, Steps, TXD, TYD, TZD roundtrip verification)
+  - `crates/pumpkin-core/src/entity/mob/shulker.rs`:
+    - `test_shulker_covered_armor_and_mechanics_parity` (updated with height scaling factors, floor vs wall attachment checks, and constants verification)

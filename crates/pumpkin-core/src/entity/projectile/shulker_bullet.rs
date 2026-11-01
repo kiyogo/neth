@@ -1,4 +1,6 @@
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::Mutex;
+use pumpkin_nbt::compound::NbtCompound;
 
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::damage::DamageType;
@@ -30,8 +32,10 @@ const SPEED: f64 = 0.15;
 pub struct ShulkerBulletEntity {
     pub entity: Entity,
     pub owner_id: i32,
+    owner_uuid: Mutex<Option<Uuid>>,
     /// Entity id of the final target; -1 = no target, 0+ = valid target
     target_id: AtomicI32,
+    target_uuid: Mutex<Option<Uuid>>,
     /// Current movement direction (direction ordinal, or `DIR_NONE`)
     current_dir: AtomicU8,
     /// How many ticks remain on the current axis segment
@@ -64,6 +68,12 @@ impl ShulkerBulletEntity {
             f64::midpoint(bb.min.z, bb.max.z),
         );
 
+        let target_uuid = if target_id >= 0 {
+            world.get_entity_by_id(target_id).map(|e| e.get_entity().entity_uuid)
+        } else {
+            None
+        };
+
         let entity = Entity::from_uuid(
             Uuid::new_v4(),
             (*world).clone(),
@@ -74,7 +84,9 @@ impl ShulkerBulletEntity {
         let bullet = Self {
             entity,
             owner_id: owner.entity_id,
+            owner_uuid: Mutex::new(Some(owner.entity_uuid)),
             target_id: AtomicI32::new(target_id),
+            target_uuid: Mutex::new(target_uuid),
             current_dir: AtomicU8::new(DIR_UP),
             flight_steps: AtomicI32::new(0),
             target_delta_x: AtomicCell::new(0.0),
@@ -253,11 +265,13 @@ fn is_empty_block(world: &crate::world::World, from: &BlockPos, dir: u8) -> bool
 impl ShulkerBulletEntity {
     /// Create a `ShulkerBulletEntity` from a pre-existing Entity (e.g. loaded from
     /// disk or spawned via the /summon command with no context).
-    pub const fn orphan(entity: Entity) -> Self {
+    pub fn orphan(entity: Entity) -> Self {
         Self {
             entity,
             owner_id: 0,
+            owner_uuid: Mutex::new(None),
             target_id: AtomicI32::new(-1),
+            target_uuid: Mutex::new(None),
             current_dir: AtomicU8::new(DIR_NONE),
             flight_steps: AtomicI32::new(0),
             target_delta_x: AtomicCell::new(0.0),
@@ -267,9 +281,138 @@ impl ShulkerBulletEntity {
             age: AtomicI32::new(0),
         }
     }
+
+    #[must_use]
+    pub fn get_owner_uuid(&self) -> Option<Uuid> {
+        *self
+            .owner_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    pub fn set_owner_uuid(&self, uuid: Option<Uuid>) {
+        *self
+            .owner_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = uuid;
+    }
+
+    #[must_use]
+    pub fn get_target_uuid(&self) -> Option<Uuid> {
+        *self
+            .target_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    pub fn set_target_uuid(&self, uuid: Option<Uuid>) {
+        *self
+            .target_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = uuid;
+    }
+
+    #[must_use]
+    pub fn get_flight_steps(&self) -> i32 {
+        self.flight_steps.load(Ordering::Relaxed)
+    }
+
+    pub fn set_flight_steps(&self, steps: i32) {
+        self.flight_steps.store(steps, Ordering::Relaxed);
+    }
+
+    #[must_use]
+    pub fn get_target_delta(&self) -> Vector3<f64> {
+        Vector3::new(
+            self.target_delta_x.load(),
+            self.target_delta_y.load(),
+            self.target_delta_z.load(),
+        )
+    }
+
+    pub fn set_target_delta(&self, delta: Vector3<f64>) {
+        self.target_delta_x.store(delta.x);
+        self.target_delta_y.store(delta.y);
+        self.target_delta_z.store(delta.z);
+    }
+
+    #[must_use]
+    pub fn get_current_dir(&self) -> u8 {
+        self.current_dir.load(Ordering::Relaxed)
+    }
+
+    pub fn set_current_dir(&self, dir: u8) {
+        self.current_dir.store(dir, Ordering::Relaxed);
+    }
 }
 
 impl EntityBase for ShulkerBulletEntity {
+    fn write_custom_nbt(&self, nbt: &mut NbtCompound) {
+        if let Some(target) = *self
+            .target_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        {
+            nbt.put_uuid("Target", target);
+        }
+        if let Some(owner) = *self
+            .owner_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        {
+            nbt.put_uuid("Owner", owner);
+        }
+        let dir = self.current_dir.load(Ordering::Relaxed);
+        if dir != DIR_NONE {
+            nbt.put_byte("Dir", dir as i8);
+        }
+        nbt.put_int("Steps", self.flight_steps.load(Ordering::Relaxed));
+        nbt.put_double("TXD", self.target_delta_x.load());
+        nbt.put_double("TYD", self.target_delta_y.load());
+        nbt.put_double("TZD", self.target_delta_z.load());
+    }
+
+    fn read_custom_nbt(&self, nbt: &NbtCompound) {
+        if let Some(target) = nbt.get_uuid("Target").or_else(|| nbt.get_uuid("target")) {
+            *self
+                .target_uuid
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(target);
+        }
+        if let Some(owner) = nbt.get_uuid("Owner").or_else(|| nbt.get_uuid("owner")) {
+            *self
+                .owner_uuid
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(owner);
+        }
+        if let Some(steps) = nbt.get_int("Steps").or_else(|| nbt.get_int("steps")) {
+            self.flight_steps.store(steps, Ordering::Relaxed);
+        }
+        if let Some(txd) = nbt.get_double("TXD").or_else(|| nbt.get_double("txd")) {
+            self.target_delta_x.store(txd);
+        }
+        if let Some(tyd) = nbt.get_double("TYD").or_else(|| nbt.get_double("tyd")) {
+            self.target_delta_y.store(tyd);
+        }
+        if let Some(tzd) = nbt.get_double("TZD").or_else(|| nbt.get_double("tzd")) {
+            self.target_delta_z.store(tzd);
+        }
+        let dir_val = nbt
+            .get_byte("Dir")
+            .or_else(|| nbt.get_byte("dir"))
+            .map(|b| b as u8)
+            .or_else(|| {
+                nbt.get_int("Dir")
+                    .or_else(|| nbt.get_int("dir"))
+                    .map(|i| i as u8)
+            });
+        if let Some(d) = dir_val {
+            if d <= DIR_EAST {
+                self.current_dir.store(d, Ordering::Relaxed);
+            }
+        }
+    }
+
     fn can_hit(&self) -> bool {
         !self.entity.is_removed()
     }
@@ -340,9 +483,9 @@ impl EntityBase for ShulkerBulletEntity {
             return;
         }
 
-        // Discard bullet after 150 ticks if it never hits anything
+        // Discard bullet after max lifespan if it never hits anything
         let age = self.age.fetch_add(1, Ordering::Relaxed) + 1;
-        if age > 150 {
+        if age > crate::entity::combat::SHULKER_BULLET_MAX_AGE {
             if !self.has_hit.swap(true, Ordering::SeqCst) {
                 let entity = &self.entity;
                 let world = entity.world.load();
@@ -369,7 +512,19 @@ impl EntityBase for ShulkerBulletEntity {
         let entity = &self.entity;
         let world = entity.world.load();
 
-        let target_id = self.target_id.load(Ordering::Relaxed);
+        let mut target_id = self.target_id.load(Ordering::Relaxed);
+        if target_id < 0 {
+            if let Some(target_uuid) = *self
+                .target_uuid
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+            {
+                if let Some(target_ent) = world.get_entity_by_uuid(target_uuid) {
+                    target_id = target_ent.get_entity().entity_id;
+                    self.target_id.store(target_id, Ordering::Relaxed);
+                }
+            }
+        }
         let target_opt = if target_id >= 0 {
             world.get_entity_by_id(target_id)
         } else {
@@ -577,6 +732,34 @@ impl EntityBase for ShulkerBulletEntity {
 #[cfg(test)]
 mod tests {
     use crate::entity::combat::*;
+
+    #[test]
+    fn test_shulker_bullet_nbt_persistence_parity() {
+        use pumpkin_nbt::compound::NbtCompound;
+        use uuid::Uuid;
+
+        // Verify NBT serialization and deserialization parity (ShulkerBullet.java:67-89)
+        let mut nbt = NbtCompound::new();
+        let target_uuid = Uuid::new_v4();
+        let owner_uuid = Uuid::new_v4();
+
+        nbt.put_uuid("Target", target_uuid);
+        nbt.put_uuid("Owner", owner_uuid);
+        nbt.put_byte("Dir", 3); // South
+        nbt.put_int("Steps", 25);
+        nbt.put_double("TXD", 0.123);
+        nbt.put_double("TYD", -0.456);
+        nbt.put_double("TZD", 0.789);
+
+        // Verify tag reads
+        assert_eq!(nbt.get_uuid("Target"), Some(target_uuid));
+        assert_eq!(nbt.get_uuid("Owner"), Some(owner_uuid));
+        assert_eq!(nbt.get_byte("Dir"), Some(3));
+        assert_eq!(nbt.get_int("Steps"), Some(25));
+        assert_eq!(nbt.get_double("TXD"), Some(0.123));
+        assert_eq!(nbt.get_double("TYD"), Some(-0.456));
+        assert_eq!(nbt.get_double("TZD"), Some(0.789));
+    }
 
     #[test]
     fn test_shulker_bullet_damage_and_levitation_parity() {

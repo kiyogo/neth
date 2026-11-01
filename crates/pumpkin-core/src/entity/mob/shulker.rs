@@ -6,6 +6,7 @@ use pumpkin_data::attributes::Attributes;
 use pumpkin_data::BlockDirection;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
@@ -84,6 +85,7 @@ impl ShulkerEntity {
             prev_peek_amount: AtomicCell::new(0.0),
         };
         let mob_arc = Arc::new(shulker);
+        mob_arc.refresh_dimensions();
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -149,6 +151,7 @@ impl ShulkerEntity {
             pumpkin_data::tracked_data::shulker::ATTACH_FACE_ID,
             VarInt(face as i32),
         );
+        self.refresh_dimensions();
     }
 
     pub fn get_color(&self) -> Option<u8> {
@@ -207,6 +210,27 @@ impl ShulkerEntity {
         is_shulker_closed(self.peek_amount.load(Ordering::Relaxed))
     }
 
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let attach_face = self.get_attach_face();
+        let peek = self.current_peek_amount.load();
+        let height_scale =
+            crate::entity::combat::calculate_shulker_peek_height_scale(attach_face, peek);
+        let dimensions = EntityDimensions {
+            width: entity.entity_type.dimension[0],
+            height: entity.entity_type.dimension[1] * height_scale,
+            eye_height: entity.entity_type.eye_height * height_scale,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
+    }
+
     fn update_peek_amount(&self) -> bool {
         let current = self.current_peek_amount.load();
         self.prev_peek_amount.store(current);
@@ -223,6 +247,7 @@ impl ShulkerEntity {
         };
 
         self.current_peek_amount.store(new);
+        self.refresh_dimensions();
         true
     }
 
@@ -420,6 +445,7 @@ impl Mob for ShulkerEntity {
         if let Some(color) = nbt.get_byte("Color") {
             self.color.store(color as u8, Ordering::Relaxed);
         }
+        self.refresh_dimensions();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -477,9 +503,12 @@ impl Mob for ShulkerEntity {
 
     fn pre_damage(&self, damage_type: DamageType, source: Option<&dyn EntityBase>) -> bool {
         let is_arrow = damage_type == DamageType::ARROW
+            || damage_type == DamageType::TRIDENT
             || source.is_some_and(|s| {
                 let et = s.get_entity().entity_type;
-                et == &EntityType::ARROW || et == &EntityType::SPECTRAL_ARROW
+                et == &EntityType::ARROW
+                    || et == &EntityType::SPECTRAL_ARROW
+                    || et == &EntityType::TRIDENT
             });
         if crate::entity::combat::should_shulker_deflect_arrow(self.is_closed(), is_arrow) {
             return false;
