@@ -21771,6 +21771,58 @@ mod tests {
     }
 
     #[test]
+    fn test_creaking_heart_resin_bfs_multiface_orientation_and_hurt_trail_parity() {
+        use crate::block::entities::creaking_heart::CreakingHeartBlockEntity;
+        use pumpkin_data::block_properties::ResinClumpProperties;
+        use pumpkin_data::{Block, BlockDirection};
+        use pumpkin_util::math::vector3::Vector3;
+
+        // 1. Multiface resin clump orientation attached to pale oak log surface
+        let mut props = ResinClumpProperties {
+            down: false,
+            east: false,
+            north: false,
+            south: false,
+            up: false,
+            waterlogged: false,
+            west: false,
+        };
+        // Facing north log means the resin clump face pointing south (opposite) is enabled
+        CreakingHeartBlockEntity::set_face_property(&mut props, BlockDirection::South, true);
+        assert!(CreakingHeartBlockEntity::get_face_property(&props, BlockDirection::South));
+        assert!(!CreakingHeartBlockEntity::get_face_property(&props, BlockDirection::North));
+
+        // State ID roundtrip
+        let state_id = props.to_state_id(&Block::RESIN_CLUMP);
+        let parsed = ResinClumpProperties::from_state_id(state_id);
+        assert!(parsed.south);
+        assert!(!parsed.north);
+
+        // Waterlogged resin clump
+        props.waterlogged = true;
+        let wl_id = props.to_state_id(&Block::RESIN_CLUMP);
+        let wl_parsed = ResinClumpProperties::from_state_id(wl_id);
+        assert!(wl_parsed.waterlogged);
+        assert!(wl_parsed.south);
+
+        // 2. BFS and hurt trail constants (CreakingHeartBlockEntity.java:233-306)
+        assert_eq!(CreakingHeartBlockEntity::RESIN_SPREAD_MAX_DEPTH, 2);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_SPREAD_MAX_COUNT, 64);
+        assert_eq!(CreakingHeartBlockEntity::TRAIL_COLOR_TOWARDS_CREAKING, 16545810);
+        assert_eq!(CreakingHeartBlockEntity::TRAIL_COLOR_TOWARDS_HEART, 6250335);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_CLUMPS_MIN, 2);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_CLUMPS_MAX, 3);
+
+        // 3. Hurt sound location interpolation
+        let heart_pos = Vector3::new(10.0, 64.0, 10.0);
+        let creaking_target = Vector3::new(0.0, 64.0, 0.0);
+        let loc_100 = CreakingHeartBlockEntity::compute_hurt_sound_location(heart_pos, creaking_target, 100);
+        assert!((loc_100.x - 2.0).abs() < 1e-5);
+        let loc_0 = CreakingHeartBlockEntity::compute_hurt_sound_location(heart_pos, creaking_target, 0);
+        assert!((loc_0.x - 10.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn test_moss_and_pale_moss_bonemeal_vegetation_patch_parity() {
         use pumpkin_data::Block;
         use pumpkin_data::BlockId;

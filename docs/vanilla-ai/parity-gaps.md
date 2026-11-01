@@ -9901,3 +9901,15 @@ eq 	ext{None}$.
   - In `crates/pumpkin-core/src/entity/combat.rs`:
     - Added unit test `test_firefly_bush_bonemeal_spread_and_ambient_particle_dynamics_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 390: Creaking Heart Breadth-First Resin Clump Spreading, Multiface Orientation & Hurt Trail Particles Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.level.block.entity.CreakingHeartBlockEntity.java:233-306`, `net.minecraft.core.BlockPos.java:311-352` (`breadthFirstTraversal`), `net.minecraft.core.particles.TrailParticleOption.java`, `net.minecraft.world.level.block.MultifaceBlock.java`.
+- **Description**:
+  1. **Multiface Resin Clump Orientation**: Resin Clump (`RESIN_CLUMP`) uses multiface orientation properties (`ResinClumpProperties` / `GlowLichenLikeProperties`). Previously, Neth placed `Block::RESIN_CLUMP.default_state.id` which has all 6 directional faces set to `false`. Multiface blocks without any attached active face are invalid and break. In vanilla, the face facing the pale oak log (`dir.opposite()`) is set to `true`. Furthermore, if the target block already has a `RESIN_CLUMP`, vanilla preserves existing active faces and adds the new face. If the block is a water source (`WATER` with `level == 0`), vanilla preserves waterlogged status (`waterlogged = true`).
+  2. **Breadth-First Traversal (BFS) Spreading**: Previously, Neth only searched immediate adjacent coordinates (depth 1). Vanilla executes `BlockPos.breadthFirstTraversal(this.worldPosition, 2, 64, neighbourProvider, nodeProcessor)` along pale oak logs up to depth 2 and up to 64 visited log blocks, with randomized direction ordering at each step.
+  3. **Hurt Sequence & Emitter Cooldown**: In vanilla, when the Creaking protector takes damage, `creakingHurt()` only proceeds if `emitter <= 0` (cooldown protection). If ready, it emits 20 trail particles towards the heart, spawns 2 to 3 resin clumps via BFS when the heart is in `AWAKE` state, and sets `emitter = 100`.
+  4. **Hurt Trail Particles & Sound Interpolation**: Each tick in `serverTick`, while `emitter > 50`, vanilla emits dual trail particles between the heart and the creaking entity (`TRAIL_COLOR_TOWARDS_CREAKING = 16545810`, `TRAIL_COLOR_TOWARDS_HEART = 6250335`). Every 10 ticks while emitter is active, the hurt sound `BlockCreakingHeartHurt` is played at an interpolated position traveling from the creaking towards the creaking heart: `(heart_pos - emitter_target) * progress + emitter_target`, where `progress = 0.2 + 0.8 * (100 - emitter) / 100.0`.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/block/entities/creaking_heart.rs`: `test_resin_clump_multiface_orientation_and_waterlogged`, `test_creaking_heart_resin_bfs_and_trail_constants`, `test_hurt_sound_location_interpolation`.
+  - `crates/pumpkin-core/src/entity/combat.rs`: `test_creaking_heart_resin_bfs_multiface_orientation_and_hurt_trail_parity`.

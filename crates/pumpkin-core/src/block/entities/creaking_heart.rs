@@ -4,13 +4,19 @@ use std::sync::{
 };
 
 use crossbeam::atomic::AtomicCell;
-use pumpkin_data::block_properties::{Axis, CreakingHeartLikeProperties, CreakingHeartState};
+use pumpkin_data::block_properties::{
+    Axis, CreakingHeartLikeProperties, CreakingHeartState,
+    ResinClumpProperties, WaterProperties,
+};
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, BlockDirection, BlockId};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_protocol::java::client::play::CParticle;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_world::world::BlockFlags;
+use rand::RngExt;
 use uuid::Uuid;
 
 use crate::world::World;
@@ -24,6 +30,7 @@ pub struct CreakingHeartBlockEntity {
     pub ticks_existed: AtomicI64,
     pub ticker: AtomicI32,
     pub emitter: AtomicI32,
+    pub emitter_target: AtomicCell<Option<Vector3<f64>>>,
     pub output_signal: AtomicI32,
 }
 
@@ -56,6 +63,7 @@ impl BlockEntity for CreakingHeartBlockEntity {
             ticks_existed: AtomicI64::new(0),
             ticker: AtomicI32::new(20),
             emitter: AtomicI32::new(0),
+            emitter_target: AtomicCell::new(None),
             output_signal: AtomicI32::new(0),
         }
     }
@@ -99,14 +107,38 @@ impl BlockEntity for CreakingHeartBlockEntity {
             world.update_neighbors_at(&self.position, &Block::CREAKING_HEART, None);
         }
 
-        // Hurt emitter countdown (plays hurt sound every 10 ticks down from 100)
+        // Hurt emitter countdown (plays hurt sound every 10 ticks down from 100, moving from creaking to heart)
         let emitter = self.emitter.load(Ordering::Relaxed);
         if emitter > 0 {
+            if emitter > 50 {
+                self.emit_particles(world, 1, true);
+                self.emit_particles(world, 1, false);
+            }
+
             if emitter % 10 == 0 {
+                if let Some(uuid) = self.creaking_uuid.load() {
+                    if let Some(entity) = world.get_entity_by_uuid(uuid) {
+                        let bbox = entity.get_entity().bounding_box.load();
+                        let center = bbox.min + (bbox.max - bbox.min) * 0.5;
+                        self.emitter_target.store(Some(center));
+                    }
+                }
+
+                let sound_location = if let Some(emitter_target) = self.emitter_target.load() {
+                    let heart_position = Vector3::new(
+                        self.position.0.x as f64 + 0.5,
+                        self.position.0.y as f64 + 0.5,
+                        self.position.0.z as f64 + 0.5,
+                    );
+                    Self::compute_hurt_sound_location(heart_position, emitter_target, emitter)
+                } else {
+                    self.position.to_f64()
+                };
+
                 world.play_sound(
                     Sound::BlockCreakingHeartHurt,
                     SoundCategory::Blocks,
-                    &self.position.to_f64(),
+                    &sound_location,
                 );
             }
             self.emitter.fetch_sub(1, Ordering::Relaxed);
@@ -140,13 +172,10 @@ impl BlockEntity for CreakingHeartBlockEntity {
                 props.creaking_heart_state
             };
 
-            if props.creaking_heart_state != new_state {
+            if new_state != props.creaking_heart_state {
                 props.creaking_heart_state = new_state;
-                world.set_block_state(
-                    &self.position,
-                    props.to_state_id(&Block::CREAKING_HEART),
-                    BlockFlags::NOTIFY_ALL,
-                );
+                let new_state_id = props.to_state_id(&Block::CREAKING_HEART);
+                world.set_block_state(&self.position, new_state_id, BlockFlags::NOTIFY_ALL);
             }
 
             // Spawn protector when Awake and no protector is assigned
@@ -164,24 +193,14 @@ impl BlockEntity for CreakingHeartBlockEntity {
             } else if new_state == CreakingHeartState::Dormant && self.creaking_uuid.load().is_some() {
                 // Clear creaking protector during daytime
                 self.creaking_uuid.store(None);
+            } else if new_state == CreakingHeartState::Uprooted {
+                self.remove_creaking(world);
             }
         }
     }
 
     fn on_block_replaced(self: Arc<Self>, world: &Arc<World>, _position: &BlockPos) {
-        if let Some(uuid) = self.creaking_uuid.load() {
-            if let Some(entity) = world.get_entity_by_uuid(uuid) {
-                if let Some(creaking) = entity
-                    .cast_any()
-                    .downcast_ref::<crate::entity::mob::creaking::CreakingEntity>()
-                {
-                    creaking.tear_down();
-                } else {
-                    entity.get_entity().remove();
-                }
-            }
-        }
-        self.clear_creaking();
+        self.remove_creaking(world);
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -192,6 +211,13 @@ impl BlockEntity for CreakingHeartBlockEntity {
 impl CreakingHeartBlockEntity {
     pub const ID: &'static str = "minecraft:creaking_heart";
 
+    pub const RESIN_SPREAD_MAX_DEPTH: usize = 2;
+    pub const RESIN_SPREAD_MAX_COUNT: usize = 64;
+    pub const TRAIL_COLOR_TOWARDS_CREAKING: i32 = 16545810;
+    pub const TRAIL_COLOR_TOWARDS_HEART: i32 = 6250335;
+    pub const RESIN_CLUMPS_MIN: i32 = 2;
+    pub const RESIN_CLUMPS_MAX: i32 = 3;
+
     #[must_use]
     pub const fn new(position: BlockPos) -> Self {
         Self {
@@ -200,6 +226,7 @@ impl CreakingHeartBlockEntity {
             ticks_existed: AtomicI64::new(0),
             ticker: AtomicI32::new(20),
             emitter: AtomicI32::new(0),
+            emitter_target: AtomicCell::new(None),
             output_signal: AtomicI32::new(0),
         }
     }
@@ -218,25 +245,69 @@ impl CreakingHeartBlockEntity {
         self.creaking_uuid.store(None);
     }
 
-    pub fn creaking_hurt(&self, world: &Arc<World>) {
-        world.play_sound(
-            Sound::BlockCreakingHeartHurt,
-            SoundCategory::Blocks,
-            &self.position.to_f64(),
-        );
-        self.emitter.store(100, Ordering::Relaxed);
+    pub fn remove_creaking(&self, world: &Arc<World>) {
+        if let Some(uuid) = self.creaking_uuid.load() {
+            if let Some(entity) = world.get_entity_by_uuid(uuid) {
+                if let Some(creaking) = entity
+                    .cast_any()
+                    .downcast_ref::<crate::entity::mob::creaking::CreakingEntity>()
+                {
+                    creaking.tear_down();
+                } else {
+                    entity.get_entity().remove();
+                }
+            }
+        }
+        self.clear_creaking();
+    }
 
-        let state_id = world.get_block_state_id(&self.position);
-        if state_id.to_block_id() == Block::CREAKING_HEART.id {
-            let props = CreakingHeartLikeProperties::from_state_id(state_id);
-            if props.creaking_heart_state == CreakingHeartState::Awake {
-                self.spread_resin(world);
+    pub fn creaking_hurt(&self, world: &Arc<World>) {
+        // Vanilla CreakingHeartBlockEntity.java:237-250: only proceed if emitter <= 0
+        if self.emitter.load(Ordering::Relaxed) <= 0 {
+            self.emit_particles(world, 20, false);
+
+            let state_id = world.get_block_state_id(&self.position);
+            if state_id.to_block_id() == Block::CREAKING_HEART.id {
+                let props = CreakingHeartLikeProperties::from_state_id(state_id);
+                if props.creaking_heart_state == CreakingHeartState::Awake {
+                    let num_clumps = rand::random_range(Self::RESIN_CLUMPS_MIN..=Self::RESIN_CLUMPS_MAX);
+                    for _ in 0..num_clumps {
+                        if self.spread_resin(world).is_none() {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            self.emitter.store(100, Ordering::Relaxed);
+            if let Some(uuid) = self.creaking_uuid.load() {
+                if let Some(entity) = world.get_entity_by_uuid(uuid) {
+                    let bbox = entity.get_entity().bounding_box.load();
+                    let center = bbox.min + (bbox.max - bbox.min) * 0.5;
+                    self.emitter_target.store(Some(center));
+                }
             }
         }
     }
 
-    fn spread_resin(&self, world: &Arc<World>) {
-        let directions = [
+    pub fn spread_resin(&self, world: &Arc<World>) -> Option<BlockPos> {
+        Self::spread_resin_at(world, &self.position)
+    }
+
+    /// BFS resin clump spreading algorithm mirroring vanilla CreakingHeartBlockEntity.java:252-282
+    /// and BlockPos.java:breadthFirstTraversal(startPos, 2, 64, ...)
+    pub fn spread_resin_at(world: &Arc<World>, start_pos: &BlockPos) -> Option<BlockPos> {
+        use rand::seq::SliceRandom;
+        use std::collections::{HashSet, VecDeque};
+
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        let mut rng = rand::rng();
+
+        queue.push_back((*start_pos, 0));
+        let mut count = 0;
+
+        let all_dirs = [
             BlockDirection::North,
             BlockDirection::South,
             BlockDirection::East,
@@ -244,36 +315,188 @@ impl CreakingHeartBlockEntity {
             BlockDirection::Up,
             BlockDirection::Down,
         ];
-        let mut placed = 0;
-        for &dir in &directions {
-            let log_pos = Self::get_relative(&self.position, dir);
-            let log_id = world.get_block_state_id(&log_pos).to_block_id();
-            if Self::is_pale_oak_log(log_id) {
-                for &resin_dir in &directions {
-                    let resin_pos = Self::get_relative(&log_pos, resin_dir);
-                    let block_id = world.get_block_state_id(&resin_pos).to_block_id();
-                    if block_id == Block::AIR.id {
-                        world.set_block_state(
-                            &resin_pos,
-                            Block::RESIN_CLUMP.default_state.id,
-                            BlockFlags::NOTIFY_ALL,
-                        );
+
+        while let Some((current_pos, depth)) = queue.pop_front() {
+            if !visited.insert(current_pos) {
+                continue;
+            }
+
+            let current_state_id = world.get_block_state_id(&current_pos);
+            let current_block_id = current_state_id.to_block_id();
+
+            // Node processor: if current position is pale oak log, try to place resin clump on neighbors
+            if Self::is_pale_oak_log(current_block_id) {
+                let mut shuffled_dirs = all_dirs;
+                shuffled_dirs.shuffle(&mut rng);
+
+                for dir in shuffled_dirs {
+                    let neighbour_pos = Self::get_relative(&current_pos, dir);
+                    let neighbour_state_id = world.get_block_state_id(&neighbour_pos);
+                    let neighbour_block_id = neighbour_state_id.to_block_id();
+                    let opposite = dir.opposite();
+
+                    let mut clump_props = None;
+                    if neighbour_block_id == Block::AIR.id {
+                        let mut props = ResinClumpProperties {
+                            down: false,
+                            east: false,
+                            north: false,
+                            south: false,
+                            up: false,
+                            waterlogged: false,
+                            west: false,
+                        };
+                        Self::set_face_property(&mut props, opposite, true);
+                        clump_props = Some(props);
+                    } else if neighbour_block_id == Block::WATER.id {
+                        let water_props = WaterProperties::from_state_id(neighbour_state_id);
+                        if water_props.level == 0 {
+                            let mut props = ResinClumpProperties {
+                                down: false,
+                                east: false,
+                                north: false,
+                                south: false,
+                                up: false,
+                                waterlogged: true,
+                                west: false,
+                            };
+                            Self::set_face_property(&mut props, opposite, true);
+                            clump_props = Some(props);
+                        }
+                    } else if neighbour_block_id == Block::RESIN_CLUMP.id {
+                        let mut props = ResinClumpProperties::from_state_id(neighbour_state_id);
+                        if !Self::get_face_property(&props, opposite) {
+                            Self::set_face_property(&mut props, opposite, true);
+                            clump_props = Some(props);
+                        }
+                    }
+
+                    if let Some(props) = clump_props {
+                        let new_state_id = props.to_state_id(&Block::RESIN_CLUMP);
+                        world.set_block_state(&neighbour_pos, new_state_id, BlockFlags::NOTIFY_ALL);
                         world.play_sound(
                             Sound::BlockResinPlace,
                             SoundCategory::Blocks,
-                            &resin_pos.to_f64(),
+                            &neighbour_pos.to_f64(),
                         );
-                        placed += 1;
-                        let max_clumps = rand::random_range(
-                            CreakingHeartBlock::RESIN_CLUMPS_MIN..=CreakingHeartBlock::RESIN_CLUMPS_MAX,
-                        );
-                        if placed >= max_clumps {
-                            return;
-                        }
+                        return Some(neighbour_pos);
+                    }
+                }
+            }
+
+            count += 1;
+            if count >= Self::RESIN_SPREAD_MAX_COUNT {
+                break;
+            }
+
+            if depth < Self::RESIN_SPREAD_MAX_DEPTH {
+                let mut neighbour_dirs = all_dirs;
+                neighbour_dirs.shuffle(&mut rng);
+                for dir in neighbour_dirs {
+                    let neighbour_pos = Self::get_relative(&current_pos, dir);
+                    let neighbour_state_id = world.get_block_state_id(&neighbour_pos);
+                    if Self::is_pale_oak_log(neighbour_state_id.to_block_id()) {
+                        queue.push_back((neighbour_pos, depth + 1));
                     }
                 }
             }
         }
+
+        None
+    }
+
+    /// Emits trail particles between Creaking entity and Creaking Heart (CreakingHeartBlockEntity.java:284-306)
+    pub fn emit_particles(&self, world: &Arc<World>, count: u32, towards_creaking: bool) {
+        let Some(uuid) = self.creaking_uuid.load() else {
+            return;
+        };
+        let Some(entity) = world.get_entity_by_uuid(uuid) else {
+            return;
+        };
+
+        let color = if towards_creaking {
+            Self::TRAIL_COLOR_TOWARDS_CREAKING
+        } else {
+            Self::TRAIL_COLOR_TOWARDS_HEART
+        };
+        let mut rng = rand::rng();
+        let bbox = entity.get_entity().bounding_box.load();
+        let x_size = (bbox.max.x - bbox.min.x).max(0.1);
+        let y_size = (bbox.max.y - bbox.min.y).max(0.1);
+        let z_size = (bbox.max.z - bbox.min.z).max(0.1);
+
+        for _ in 0..count {
+            let mut source = bbox.min
+                + Vector3::new(
+                    rng.random::<f64>() * x_size,
+                    rng.random::<f64>() * y_size,
+                    rng.random::<f64>() * z_size,
+                );
+            let mut destination = Vector3::new(
+                self.position.0.x as f64 + rng.random::<f64>(),
+                self.position.0.y as f64 + rng.random::<f64>(),
+                self.position.0.z as f64 + rng.random::<f64>(),
+            );
+            if towards_creaking {
+                std::mem::swap(&mut source, &mut destination);
+            }
+
+            let duration = rng.random_range(10..50);
+            let mut data = Vec::with_capacity(32);
+            data.extend_from_slice(&destination.x.to_be_bytes());
+            data.extend_from_slice(&destination.y.to_be_bytes());
+            data.extend_from_slice(&destination.z.to_be_bytes());
+            data.extend_from_slice(&color.to_be_bytes());
+            let mut varint_val = duration as u32;
+            while (varint_val & !0x7F) != 0 {
+                data.push(((varint_val & 0x7F) | 0x80) as u8);
+                varint_val >>= 7;
+            }
+            data.push(varint_val as u8);
+
+            let packet = CParticle {
+                force_spawn: true,
+                important: true,
+                position: source,
+                offset: Vector3::new(0.0, 0.0, 0.0),
+                max_speed: 0.0,
+                particle_count: 1,
+                particle_id: VarInt(59), // Particle::Trail
+                data: &data,
+            };
+            world.broadcast_packet_all(&packet);
+        }
+    }
+
+    pub fn get_face_property(props: &ResinClumpProperties, dir: BlockDirection) -> bool {
+        match dir {
+            BlockDirection::Down => props.down,
+            BlockDirection::Up => props.up,
+            BlockDirection::North => props.north,
+            BlockDirection::South => props.south,
+            BlockDirection::West => props.west,
+            BlockDirection::East => props.east,
+        }
+    }
+
+    pub fn set_face_property(props: &mut ResinClumpProperties, dir: BlockDirection, val: bool) {
+        match dir {
+            BlockDirection::Down => props.down = val,
+            BlockDirection::Up => props.up = val,
+            BlockDirection::North => props.north = val,
+            BlockDirection::South => props.south = val,
+            BlockDirection::West => props.west = val,
+            BlockDirection::East => props.east = val,
+        }
+    }
+
+    pub fn compute_hurt_sound_location(
+        heart_position: Vector3<f64>,
+        emitter_target: Vector3<f64>,
+        emitter: i32,
+    ) -> Vector3<f64> {
+        let progress = 0.2 + 0.8 * (100 - emitter) as f64 / 100.0;
+        (heart_position - emitter_target) * progress + emitter_target
     }
 
     pub const fn is_pale_oak_log(id: BlockId) -> bool {
@@ -316,5 +539,89 @@ impl CreakingHeartBlockEntity {
             BlockDirection::Up => pos.up(),
             BlockDirection::Down => pos.down(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resin_clump_multiface_orientation_and_waterlogged() {
+        // 1. Multiface initialization attached to pale oak log surface
+        let mut props = ResinClumpProperties {
+            down: false,
+            east: false,
+            north: false,
+            south: false,
+            up: false,
+            waterlogged: false,
+            west: false,
+        };
+
+        // When neighbor log is North, opposite face South attaches to log
+        CreakingHeartBlockEntity::set_face_property(&mut props, BlockDirection::South, true);
+        assert!(CreakingHeartBlockEntity::get_face_property(&props, BlockDirection::South));
+        assert!(!CreakingHeartBlockEntity::get_face_property(&props, BlockDirection::North));
+        assert!(!CreakingHeartBlockEntity::get_face_property(&props, BlockDirection::Up));
+
+        // State ID roundtrip
+        let state_id = props.to_state_id(&Block::RESIN_CLUMP);
+        let parsed = ResinClumpProperties::from_state_id(state_id);
+        assert!(parsed.south);
+        assert!(!parsed.north);
+        assert!(!parsed.waterlogged);
+
+        // 2. Preserves existing faces when another side connects
+        let mut multi_face = parsed;
+        CreakingHeartBlockEntity::set_face_property(&mut multi_face, BlockDirection::Up, true);
+        assert!(multi_face.south);
+        assert!(multi_face.up);
+        assert!(!multi_face.down);
+
+        // 3. Water source converts to waterlogged clump
+        let mut waterlogged_props = ResinClumpProperties {
+            down: false,
+            east: false,
+            north: false,
+            south: false,
+            up: false,
+            waterlogged: true,
+            west: false,
+        };
+        CreakingHeartBlockEntity::set_face_property(&mut waterlogged_props, BlockDirection::Down, true);
+        let wl_state_id = waterlogged_props.to_state_id(&Block::RESIN_CLUMP);
+        let wl_parsed = ResinClumpProperties::from_state_id(wl_state_id);
+        assert!(wl_parsed.waterlogged);
+        assert!(wl_parsed.down);
+    }
+
+    #[test]
+    fn test_creaking_heart_resin_bfs_and_trail_constants() {
+        // Parity constants from CreakingHeartBlockEntity.java:233-306
+        assert_eq!(CreakingHeartBlockEntity::RESIN_SPREAD_MAX_DEPTH, 2);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_SPREAD_MAX_COUNT, 64);
+        assert_eq!(CreakingHeartBlockEntity::TRAIL_COLOR_TOWARDS_CREAKING, 16545810);
+        assert_eq!(CreakingHeartBlockEntity::TRAIL_COLOR_TOWARDS_HEART, 6250335);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_CLUMPS_MIN, 2);
+        assert_eq!(CreakingHeartBlockEntity::RESIN_CLUMPS_MAX, 3);
+    }
+
+    #[test]
+    fn test_hurt_sound_location_interpolation() {
+        let heart_pos = Vector3::new(10.0, 64.0, 10.0);
+        let creaking_target = Vector3::new(0.0, 64.0, 0.0);
+
+        // At emitter = 100 (beginning of hurt), progress = 0.2 (near creaking)
+        let loc_100 = CreakingHeartBlockEntity::compute_hurt_sound_location(heart_pos, creaking_target, 100);
+        assert!((loc_100.x - 2.0).abs() < 1e-5);
+        assert!((loc_100.y - 64.0).abs() < 1e-5);
+        assert!((loc_100.z - 2.0).abs() < 1e-5);
+
+        // At emitter = 0 (end of hurt trail), progress = 1.0 (at heart)
+        let loc_0 = CreakingHeartBlockEntity::compute_hurt_sound_location(heart_pos, creaking_target, 0);
+        assert!((loc_0.x - 10.0).abs() < 1e-5);
+        assert!((loc_0.y - 64.0).abs() < 1e-5);
+        assert!((loc_0.z - 10.0).abs() < 1e-5);
     }
 }
