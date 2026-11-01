@@ -10102,3 +10102,37 @@ eq 	ext{None}$.
     - `test_vex_bound_origin_and_evoker_fangs_ally_immunity_parity`
   - `crates/pumpkin-core/src/entity/mob/vex.rs`:
     - `test_vex_nbt_bound_origin_and_life_ticks_roundtrip`
+
+
+### Gap 399: Frog Fall Damage Reduction (-5 blocks), Tongue Attack Range & Food Eating, Fluid Push Immunity & Froglight/Slimeball Drop Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.frog.Frog.java:80, 127-133, 251-253, 299-306, 315-317` (`isPushedByFluid`, `calculateFallDamage`, `canEat`, `canBeABaby`), `net.minecraft.world.entity.animal.frog.ShootTongue.java:22-28, 85-97, 103-131` (`tick`, `eatEntity`, `CATCH_ANIMATION_DURATION`, `TONGUE_ANIMATION_DURATION`, `EATING_DISTANCE`, `EATING_MOVEMENT_FACTOR`), `net.minecraft.world.entity.ai.sensing.FrogAttackablesSensor.java:14-19` (`TARGET_DETECTION_DISTANCE`), `net.minecraft.data.loot.packs.VanillaEntityLoot.java:518-550, 818-836`.
+- **Description**:
+  1. **Fluid Push Current Immunity (`Frog.java:299-301`)**:
+     - In Vanilla Java 1.21.4, frogs override `isPushedByFluid()` to return `false`, meaning they are not pushed around by flowing water or fluid currents.
+     - Previously in Neth, `FrogEntity` did not implement `is_pushed_by_fluids(&self)`, causing it to fallback to `Mob::is_pushed_by_fluids` returning `true`.
+     - Added `fn is_pushed_by_fluids(&self) -> bool { false }` to `FrogEntity`.
+  2. **Baby Restrictions (`Frog.java:251-253`)**:
+     - In Vanilla Java 1.21.4, `Frog.canBeABaby()` returns `false` (tadpole is its juvenile form). Frogs never have baby state or pitch modification on ambient croaks.
+     - Removed `BABY_ID` tracked data assignment in `mob_init_data_tracker` and standardized ambient sound pitch to 1.0.
+  3. **Frog Food Consumption Parity (`Frog.java:315-317`)**:
+     - In Vanilla Java 1.21.4, a Frog only consumes cube mobs when `cubeMob.getSize() == 1` (`cubeMob.getSize() != 1 ? false : entity.is(EntityTypeTags.FROG_FOOD)`).
+     - Fixed `can_frog_eat_entity` in `combat.rs` to strictly check `cube_size == 1` rather than `<= 1`.
+  4. **Tongue Eating Drops & Velocity Parity (`ShootTongue.java:85-97`, `VanillaEntityLoot.java`)**:
+     - When a frog eats a small magma cube or slime, the drop item is spawned at the victim's updated position (`target.pos.load()`) with realistic upward delta movement (`y = 0.2`, `xz = -0.1..0.1`), ensuring parity with vanilla `spawnAtLocation`.
+     - Magma cubes eaten by temperate, warm, or cold frogs drop ochre, pearlescent, or verdant froglights respectively; slimes drop slimeballs.
+  5. **Fall Damage Reduction (-5 blocks) & Constants Parity (`Frog.java:80, 304-306`)**:
+     - Formalized vanilla constants and helpers in `combat.rs`:
+       - `FROG_FALL_DAMAGE_REDUCTION = 5`
+       - `FROG_EATING_DISTANCE = 1.75`
+       - `FROG_EATING_PULL_SPEED = 0.75`
+       - `FROG_CATCH_ANIMATION_TICKS = 6`
+       - `FROG_TONGUE_ANIMATION_TICKS = 10`
+       - `FROG_TARGET_DETECTION_DISTANCE = 10.0`
+       - `FROG_HEAD_ROTATION_SPEED = 35`
+       - `FROG_MAX_HEAD_Y_ROT = 5.0`
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_frog_tongue_eat_and_froglight_parity` (updated with strict size 1 verification and constants validation)
+  - `crates/pumpkin-core/src/entity/passive/frog.rs`:
+    - `test_frog_mechanics_parity`

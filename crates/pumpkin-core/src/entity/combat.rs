@@ -5985,7 +5985,7 @@ pub fn can_frog_eat_entity(entity_type: &pumpkin_data::entity::EntityType, cube_
     use pumpkin_data::entity::EntityType;
 
     if entity_type == &EntityType::SLIME || entity_type == &EntityType::MAGMA_CUBE {
-        cube_size <= 1
+        cube_size == 1
     } else {
         false
     }
@@ -10669,6 +10669,14 @@ pub const FROG_BASE_MOVEMENT_SPEED: f64 = 1.0;
 pub const FROG_BASE_ATTACK_DAMAGE: f64 = 10.0;
 pub const FROG_STEP_HEIGHT: f64 = 1.0;
 pub const FROG_XP_REWARD: u32 = 2;
+pub const FROG_FALL_DAMAGE_REDUCTION: i32 = 5;
+pub const FROG_EATING_DISTANCE: f64 = 1.75;
+pub const FROG_EATING_PULL_SPEED: f64 = 0.75;
+pub const FROG_CATCH_ANIMATION_TICKS: i32 = 6;
+pub const FROG_TONGUE_ANIMATION_TICKS: i32 = 10;
+pub const FROG_TARGET_DETECTION_DISTANCE: f32 = 10.0;
+pub const FROG_HEAD_ROTATION_SPEED: i32 = 35;
+pub const FROG_MAX_HEAD_Y_ROT: f32 = 5.0;
 
 /// Tadpole attribute constants, mirroring vanilla `Tadpole.java:50-52`.
 pub const TADPOLE_MAX_HEALTH: f64 = 6.0;
@@ -14391,15 +14399,15 @@ mod tests {
         use pumpkin_data::item::Item;
 
         // 1. Frog food consumption eligibility (Frog.java:315-317)
-        // Small Slime (size 1) can be eaten
+        // Small Slime (size 1) can be eaten; size 0, 2, 4 cannot be eaten (Frog.java:315)
         assert!(can_frog_eat_entity(&EntityType::SLIME, 1));
-        // Medium / Large Slime (size 2, 4) cannot be eaten
+        assert!(!can_frog_eat_entity(&EntityType::SLIME, 0));
         assert!(!can_frog_eat_entity(&EntityType::SLIME, 2));
         assert!(!can_frog_eat_entity(&EntityType::SLIME, 4));
 
-        // Small Magma Cube (size 1) can be eaten
+        // Small Magma Cube (size 1) can be eaten; size 0, 2, 4 cannot be eaten
         assert!(can_frog_eat_entity(&EntityType::MAGMA_CUBE, 1));
-        // Medium / Large Magma Cube (size 2, 4) cannot be eaten
+        assert!(!can_frog_eat_entity(&EntityType::MAGMA_CUBE, 0));
         assert!(!can_frog_eat_entity(&EntityType::MAGMA_CUBE, 2));
         assert!(!can_frog_eat_entity(&EntityType::MAGMA_CUBE, 4));
 
@@ -14447,6 +14455,16 @@ mod tests {
         assert_eq!(calculate_frog_fall_damage_points(10.0, 1.0), 2);
         // Fall distance 13.0: base damage 10, reduced by 5 -> 5
         assert_eq!(calculate_frog_fall_damage_points(13.0, 1.0), 5);
+
+        // 6. Frog constants parity (Frog.java:80, 127-133, ShootTongue.java:23-28, FrogAttackablesSensor.java:14)
+        assert_eq!(FROG_FALL_DAMAGE_REDUCTION, 5);
+        assert_eq!(FROG_EATING_DISTANCE, 1.75);
+        assert_eq!(FROG_EATING_PULL_SPEED, 0.75);
+        assert_eq!(FROG_CATCH_ANIMATION_TICKS, 6);
+        assert_eq!(FROG_TONGUE_ANIMATION_TICKS, 10);
+        assert_eq!(FROG_TARGET_DETECTION_DISTANCE, 10.0);
+        assert_eq!(FROG_HEAD_ROTATION_SPEED, 35);
+        assert_eq!(FROG_MAX_HEAD_Y_ROT, 5.0);
     }
 
     #[test]

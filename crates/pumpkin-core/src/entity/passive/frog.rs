@@ -13,6 +13,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::optional_int::OptionalInt;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::{
     Entity, EntityBase,
@@ -259,11 +260,7 @@ impl Mob for FrogEntity {
                 SoundCategory::Neutral,
                 &entity.pos.load(),
                 1.0,
-                if entity.age.load(Ordering::Relaxed) < 0 {
-                    1.25
-                } else {
-                    1.0
-                },
+                1.0,
             );
         }
     }
@@ -271,10 +268,7 @@ impl Mob for FrogEntity {
 
     fn mob_init_data_tracker(&self) {
         let entity = self.get_entity();
-        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
-        if is_baby {
-            entity.set_synced_data(pumpkin_data::tracked_data::frog::BABY_ID, true);
-        }
+        // Vanilla Frog.java:251-253: canBeABaby() -> false. Frogs cannot be babies.
         entity.set_synced_data(
             pumpkin_data::tracked_data::frog::VARIANT,
             VarInt(self.get_variant().id() as i32),
@@ -322,6 +316,11 @@ impl Mob for FrogEntity {
 
     fn can_breathe_under_water(&self) -> bool {
         true
+    }
+
+    /// Vanilla `Frog.java:299-301`: `isPushedByFluid() -> false`. Frogs are immune to fluid push currents.
+    fn is_pushed_by_fluids(&self) -> bool {
+        false
     }
 
     /// Vanilla `Frog.calculateFallDamage`: fall damage is reduced by 5.
@@ -515,8 +514,14 @@ impl Goal for FrogEatGoal {
 
                     let victim_type = target.get_entity().entity_type;
                     let variant = mob.as_frog().map(|f| f.get_variant()).unwrap_or_default();
+                    let drop_pos = target.get_entity().pos.load();
                     if let Some(drop_item) = combat::get_frog_drop_item(victim_type, variant) {
-                        let drop_entity = Entity::new(world.clone(), target_pos, &EntityType::ITEM);
+                        let drop_entity = Entity::new(world.clone(), drop_pos, &EntityType::ITEM);
+                        drop_entity.velocity.store(Vector3::new(
+                            rand::random_range(-0.1..0.1),
+                            0.2,
+                            rand::random_range(-0.1..0.1),
+                        ));
                         world.spawn_entity(Arc::new(ItemEntity::new(
                             drop_entity,
                             ItemStack::new(1, drop_item),
@@ -560,6 +565,25 @@ mod tests {
         assert_eq!(FrogVariant::from_id(0), FrogVariant::Cold);
         assert_eq!(FrogVariant::from_id(1), FrogVariant::Temperate);
         assert_eq!(FrogVariant::from_id(2), FrogVariant::Warm);
+    }
+
+    #[test]
+    fn test_frog_mechanics_parity() {
+        assert_eq!(combat::FROG_FALL_DAMAGE_REDUCTION, 5);
+        assert_eq!(combat::FROG_EATING_DISTANCE, 1.75);
+        assert_eq!(combat::FROG_EATING_PULL_SPEED, 0.75);
+        assert_eq!(combat::FROG_CATCH_ANIMATION_TICKS, 6);
+        assert_eq!(combat::FROG_TONGUE_ANIMATION_TICKS, 10);
+        assert_eq!(combat::FROG_TARGET_DETECTION_DISTANCE, 10.0);
+        assert_eq!(combat::FROG_HEAD_ROTATION_SPEED, 35);
+        assert_eq!(combat::FROG_MAX_HEAD_Y_ROT, 5.0);
+
+        // Fall damage points calculation
+        assert_eq!(combat::calculate_frog_fall_damage_points(3.0, 1.0), 0);
+        assert_eq!(combat::calculate_frog_fall_damage_points(8.0, 1.0), 0);
+        assert_eq!(combat::calculate_frog_fall_damage_points(9.0, 1.0), 1);
+        assert_eq!(combat::calculate_frog_fall_damage_points(10.0, 1.0), 2);
+        assert_eq!(combat::calculate_frog_fall_damage_points(13.0, 1.0), 5);
     }
 }
 
