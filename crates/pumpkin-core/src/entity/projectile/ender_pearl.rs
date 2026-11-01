@@ -51,6 +51,20 @@ impl EntityBase for EnderPearlEntity {
     }
 
     fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
+        // Vanilla ThrownEnderpearl.java:160-170:
+        // if (owner instanceof ServerPlayer serverPlayer && !owner.isAlive() && !serverPlayer.wonGame && serverPlayer.level().getGameRules().get(GameRules.ENDER_PEARLS_VANISH_ON_DEATH)) { this.discard(); }
+        if let Some(owner_id) = self.thrown.owner_id {
+            let world = self.get_entity().world.load();
+            if let Some(owner) = world.get_player_by_id(owner_id) {
+                if crate::entity::combat::should_ender_pearl_vanish_on_death(
+                    owner.get_entity().is_alive(),
+                    world.level_info.load().game_rules.ender_pearls_vanish_on_death,
+                ) {
+                    self.get_entity().remove();
+                    return;
+                }
+            }
+        }
         self.thrown.process_tick(caller);
     }
 

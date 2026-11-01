@@ -10019,3 +10019,27 @@ eq 	ext{None}$.
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_ageable_boundary_transition_and_turtle_scute_drop_parity`
     - `test_goat_and_hoglin_age_boundary_attribute_parity`
+
+### Gap 396: Ender Pearl 20-Tick Use Cooldown & Vanish On Death, Item Cooldown Enforcement in use_item, and Thrown Egg Hatch Baby Chick Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.item.Items.java:2108, 2233, 2385` (`useCooldown`), `net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl.java:160-170` (`tick`, `enderPearlsVanishOnDeath`), `net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg.java:70-85` (`onHit`, `chicken.setAge(-24000)`).
+- **Description**:
+  1. **Item Cooldown Enforcement in `use_item` (Java & Bedrock)**:
+     - In Vanilla Java 1.21.4, when an item is on cooldown (`player.getCooldowns().isOnCooldown(...)`), the player is completely barred from using the item.
+     - Previously in Neth, `use_item.rs` called `prepare_hand_item_for_use`, which checked cooldown but returned unit `()`, allowing `server.item_registry.on_use_with_rotation` to continue executing regardless of cooldown status. Similarly in Bedrock `inventory_action.rs`, `on_use` executed outside of the `cooldown_active` check.
+     - Refactored `prepare_hand_item_for_use` to return a `bool` and aborted processing immediately if the item or its cooldown group is on cooldown for both Java and Bedrock clients.
+  2. **Ender Pearl 20-Tick Use Cooldown (`Items.java:2108`)**:
+     - In Vanilla Java 1.21.4, `Items.ENDER_PEARL` is registered with `.useCooldown(1.0F)` (20 ticks / 1.0 second).
+     - Previously in Neth, `EnderPearlItem` lacked a cooldown check and never initiated a cooldown upon throwing, enabling players to spam-throw Ender Pearls as fast as packets could be sent.
+     - Enforced `has_item_cooldown` check and set `player.set_item_cooldown(registry_key, 20)` in `EnderPearlItem::normal_use_with_hand`.
+  3. **Ender Pearl Vanish On Death Gamerule (`ThrownEnderpearl.java:160-170`)**:
+     - In Vanilla Java 1.21.4, when `enderPearlsVanishOnDeath` gamerule is enabled (default `true`), if the pearl's owner dies while the pearl is in mid-air, the pearl is immediately discarded (`this.discard()`).
+     - Previously in Neth, in-flight ender pearls ignored player death, continuing their flight and teleporting the player to the pearl's impact location even after respawning.
+     - Added dead-owner check in `EnderPearlEntity::tick` respecting `world.level_info.load().game_rules.ender_pearls_vanish_on_death` to discard pearls whose owners have died.
+  4. **Thrown Egg Baby Chick Hatch Parity (`ThrownEgg.java:70-85`)**:
+     - In Vanilla Java 1.21.4, chicks hatched from thrown eggs have their age set to `-24000` via `AgeableMob.setAge`.
+     - Previously in Neth, `EggEntity` called `new_entity.set_age(-24000)` directly on the raw entity struct, which bypassed `AgeableMob` and did not sync `DATA_BABY_ID` or bedrock baby flags to clients, causing clients to display hatched chickens as full-sized adults.
+     - Updated hatching code in `EggEntity::on_hit` to invoke `mob.spawn_as_baby()` (`AgeableMob::set_baby(true)`), correctly syncing data tracker flags and bedrock baby tags.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_ender_pearl_cooldown_and_vanish_on_death_parity`

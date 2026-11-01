@@ -42,6 +42,11 @@ impl ItemBehaviour for EnderPearlItem {
         pitch: f32,
         hand: pumpkin_util::Hand,
     ) {
+        let registry_key = Item::ENDER_PEARL.registry_key;
+        if player.has_item_cooldown(registry_key) {
+            return;
+        }
+
         let position = player.position();
         let world = player.world();
         world.play_sound_fine(
@@ -70,6 +75,9 @@ impl ItemBehaviour for EnderPearlItem {
             Item::ENDER_PEARL.id as i32,
             1,
         );
+
+        // Vanilla Items.java:2108: new Item.Properties().stacksTo(16).useCooldown(1.0F) -> 20 ticks
+        player.set_item_cooldown(registry_key, crate::entity::combat::ENDER_PEARL_COOLDOWN_TICKS);
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

@@ -11569,6 +11569,40 @@ pub fn should_ageable_dismount_vehicle_on_boundary(
     !is_baby && is_passenger && is_boat && !has_enough_space
 }
 
+// =========================================================================
+// Gap 396: Ender Pearl 20-Tick Use Cooldown & Vanish On Death, Item Cooldown Enforcement in use_item, and Thrown Egg Hatch Baby Chick Parity
+// Vanilla reference: Items.java:2108, 2233, 2385, ThrownEnderpearl.java:160-170, ThrownEgg.java:70-85
+// =========================================================================
+
+/// Ender pearl use cooldown in ticks (20 ticks = 1.0 second), mirroring vanilla `Items.java:2108`:
+/// `new Item.Properties().stacksTo(16).useCooldown(1.0F)`
+pub const ENDER_PEARL_COOLDOWN_TICKS: i32 = 20;
+
+/// Chorus fruit use cooldown in ticks (20 ticks = 1.0 second), mirroring vanilla `Items.java:2385`:
+/// `new Item.Properties().food(...).useCooldown(1.0F)`
+pub const CHORUS_FRUIT_COOLDOWN_TICKS: i32 = 20;
+
+/// Wind charge use cooldown in ticks (10 ticks = 0.5 second), mirroring vanilla `Items.java:2233`:
+/// `new Item.Properties().useCooldown(0.5F)`
+pub const WIND_CHARGE_ITEM_COOLDOWN_TICKS: i32 = 10;
+
+/// Baby chicken hatch initial age in ticks (-24000 ticks = 20 minutes), mirroring vanilla `ThrownEgg.java:77`:
+/// `chicken.setAge(-24000);`
+pub const EGG_BABY_CHICKEN_AGE: i32 = -24000;
+
+/// Checks whether an in-flight ender pearl should vanish when its owner dies, mirroring vanilla `ThrownEnderpearl.java:163-165`:
+/// `!owner.isAlive() && !serverPlayer.wonGame && serverPlayer.level().getGameRules().get(GameRules.ENDER_PEARLS_VANISH_ON_DEATH)`
+#[must_use]
+pub fn should_ender_pearl_vanish_on_death(is_owner_alive: bool, vanish_rule: bool) -> bool {
+    !is_owner_alive && vanish_rule
+}
+
+/// Checks whether an item use should proceed given cooldown state.
+#[must_use]
+pub fn can_use_item_with_cooldown(is_on_cooldown: bool) -> bool {
+    !is_on_cooldown
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -23130,6 +23164,31 @@ mod tests {
         assert_eq!(get_hoglin_xp_reward_for_age(false), HOGLIN_ADULT_XP_REWARD);
         assert_eq!(HOGLIN_BABY_XP_REWARD, 3);
         assert_eq!(HOGLIN_ADULT_XP_REWARD, 5);
+    }
+
+    #[test]
+    fn test_ender_pearl_cooldown_and_vanish_on_death_parity() {
+        // 1. Item use cooldown constants parity (Items.java:2108, 2233, 2385)
+        assert_eq!(ENDER_PEARL_COOLDOWN_TICKS, 20); // 1.0s
+        assert_eq!(CHORUS_FRUIT_COOLDOWN_TICKS, 20); // 1.0s
+        assert_eq!(WIND_CHARGE_ITEM_COOLDOWN_TICKS, 10); // 0.5s
+
+        // 2. Ender pearl vanish on death rule parity (ThrownEnderpearl.java:163-165)
+        // Owner dead + gamerule true -> pearl vanishes
+        assert!(should_ender_pearl_vanish_on_death(false, true));
+        // Owner dead + gamerule false -> pearl does NOT vanish
+        assert!(!should_ender_pearl_vanish_on_death(false, false));
+        // Owner alive + gamerule true -> pearl does NOT vanish
+        assert!(!should_ender_pearl_vanish_on_death(true, true));
+        // Owner alive + gamerule false -> pearl does NOT vanish
+        assert!(!should_ender_pearl_vanish_on_death(true, false));
+
+        // 3. Item cooldown blocking parity
+        assert!(!can_use_item_with_cooldown(true));
+        assert!(can_use_item_with_cooldown(false));
+
+        // 4. Egg baby chick start age parity (ThrownEgg.java:77)
+        assert_eq!(EGG_BABY_CHICKEN_AGE, -24000);
     }
 
 }

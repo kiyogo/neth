@@ -66,7 +66,9 @@ impl JavaClient {
         } else {
             player.rotation()
         };
-        Self::prepare_hand_item_for_use(player, hand, &mut item_in_hand);
+        if !Self::prepare_hand_item_for_use(player, hand, &mut item_in_hand) {
+            return;
+        }
 
         if !Self::should_continue_use_after_fish_event(server, player, hand, item_for_use) {
             return;
@@ -83,11 +85,11 @@ impl JavaClient {
         }}
     }
 
-    fn prepare_hand_item_for_use(player: &Arc<Player>, hand: Hand, held: &mut ItemStack) {
+    fn prepare_hand_item_for_use(player: &Arc<Player>, hand: Hand, held: &mut ItemStack) -> bool {
         let inventory = player.inventory();
 
         if player.has_item_cooldown(held.item.registry_key) {
-            return;
+            return false;
         }
 
         if let Some(cooldown) = held.get_use_cooldown() {
@@ -96,7 +98,7 @@ impl JavaClient {
                 .clone()
                 .unwrap_or_else(|| held.item.registry_key.to_string());
             if player.is_on_cooldown(&group) {
-                return;
+                return false;
             }
         }
 
@@ -131,7 +133,7 @@ impl JavaClient {
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .get(&slot);
             if current_equipped.are_items_and_components_equal(held) {
-                return;
+                return true;
             }
 
             player.enqueue_equipment_change(&slot, held);
@@ -150,6 +152,7 @@ impl JavaClient {
                 .put(&slot, equipped);
             inventory.set_stack_in_hand(hand, held.clone());
         }
+        true
     }
 
     fn should_continue_use_after_fish_event(
