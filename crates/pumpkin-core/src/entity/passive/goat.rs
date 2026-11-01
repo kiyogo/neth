@@ -93,11 +93,7 @@ impl GoatEntity {
 
         // Vanilla Goat: MAX_HEALTH = 10.0, MOVEMENT_SPEED = 0.2, ATTACK_DAMAGE = 2.0 (baby: 1.0)
         let is_baby = mob_arc.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0;
-        let attack_dmg = if is_baby {
-            combat::GOAT_BABY_ATTACK_DAMAGE
-        } else {
-            combat::GOAT_BASE_ATTACK_DAMAGE
-        };
+        let attack_dmg = combat::get_goat_attack_damage_for_age(is_baby);
         mob_arc.mob_entity.living_entity.set_attribute_base(
             &Attributes::MAX_HEALTH,
             combat::GOAT_MAX_HEALTH,
@@ -198,6 +194,17 @@ impl GoatEntity {
 impl AgeableMob for GoatEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    /// Vanilla `Goat.java:119-121`:
+    /// `super.ageBoundaryReached(); this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(this.isBaby() ? 1.0 : 2.0);`
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+        let dmg = crate::entity::combat::get_goat_attack_damage_for_age(self.is_baby());
+        self.mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, dmg);
     }
 }
 

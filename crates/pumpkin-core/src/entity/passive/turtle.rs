@@ -12,7 +12,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, item::ItemEntity,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         breed::BreedGoal, escape_danger::EscapeDangerGoal,
@@ -137,6 +137,24 @@ impl TurtleEntity {
 impl AgeableMob for TurtleEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    /// Vanilla `Turtle.java:260-265`:
+    /// `super.ageBoundaryReached(); if (!this.isBaby() && level.getGameRules().get(GameRules.MOB_DROPS)) { this.dropFromGiftLootTable(level, BuiltInLootTables.TURTLE_GROW, this::spawnAtLocation); }`
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+        if !self.is_baby() {
+            let world = entity.world.load();
+            if world.level_info.load().game_rules.mob_drops {
+                let pos = entity.pos.load();
+                let item_entity = Arc::new(ItemEntity::new(
+                    Entity::new(world.clone(), pos, &EntityType::ITEM),
+                    ItemStack::new(1, crate::entity::combat::TURTLE_GROWTH_SCUTE_ITEM),
+                ));
+                world.spawn_entity(item_entity);
+            }
+        }
     }
 }
 

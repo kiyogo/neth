@@ -297,6 +297,15 @@ impl BoatEntity {
             .contains(&self.vehicle.entity.entity_type.resource_name)
     }
 
+    /// Vanilla `AbstractBoat.java:640-642`:
+    /// `return entity.getBbWidth() < this.getBbWidth();`
+    #[must_use]
+    pub fn has_enough_space_for(&self, passenger: &Entity) -> bool {
+        let passenger_width = passenger.entity_dimension.load().width;
+        let boat_width = self.vehicle.entity.entity_dimension.load().width;
+        crate::entity::combat::boat_has_enough_space_for(boat_width, passenger_width)
+    }
+
     fn tick_passengers(&self) {
         let entity = &self.vehicle.entity;
         let passengers = entity

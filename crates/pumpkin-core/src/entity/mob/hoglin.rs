@@ -200,7 +200,16 @@ impl Mob for HoglinEntity {
     fn spawn_as_baby(&self) -> bool {
         self.is_baby.store(true, Ordering::Relaxed);
         self.mob_entity.set_baby_by_age();
+        self.mob_entity.living_entity.set_attribute_base(
+            &Attributes::ATTACK_DAMAGE,
+            crate::entity::combat::get_hoglin_attack_damage_for_age(true),
+        );
         true
+    }
+
+    /// Vanilla `Hoglin.java:178, 181`: adult drops 5 xp, baby drops 3 xp.
+    fn get_base_experience_reward(&self) -> u32 {
+        crate::entity::combat::get_hoglin_xp_reward_for_age(self.is_baby.load(Ordering::Relaxed))
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {

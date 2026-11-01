@@ -9995,3 +9995,27 @@ eq 	ext{None}$.
 - **Tests Added**:
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_fox_mouth_item_spawn_and_chewing_sound_parity`
+
+### Gap 395: AgeableMob Age Boundary Transition Callback, Turtle Growth Scute Gift Drop, Goat & Hoglin Attribute Scaling, and Boat Passenger Dismount Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.AgeableMob.java:149-156, 251-255` (`setAge`, `ageBoundaryReached`), `net.minecraft.world.entity.animal.turtle.Turtle.java:260-265` (`ageBoundaryReached`), `net.minecraft.world.entity.animal.goat.Goat.java:119-121` (`ageBoundaryReached`), `net.minecraft.world.entity.monster.hoglin.Hoglin.java:176-184` (`ageBoundaryReached`), `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:640-642` (`hasEnoughSpaceFor`).
+- **Description**:
+  1. **AgeableMob Age Boundary Callback (`AgeableMob.java:149-156, 251-255`)**:
+     - In Vanilla Java 1.21.4, when an `AgeableMob` changes state between baby and adult (`(oldAge < 0 && newAge >= 0) || (oldAge >= 0 && newAge < 0)`), it triggers the `ageBoundaryReached()` lifecycle callback.
+     - Previously in Neth, `set_age()` only updated tracked data and bedrock baby flags, completely lacking the `age_boundary_reached()` lifecycle callback hook.
+     - Added `age_boundary_reached(&self)` to the `AgeableMob` trait and called it whenever the sign of age transitions between baby and adult.
+  2. **Boat Passenger Ejection on Maturity (`AgeableMob.java:251-255`, `AbstractBoat.java:640-642`)**:
+     - In Vanilla Java 1.21.4, when a baby mob riding an `AbstractBoat` matures into an adult, `ageBoundaryReached()` checks `boat.hasEnoughSpaceFor(this)` (`entity.getBbWidth() < boat.getBbWidth()`). If the boat does not have enough space for the adult bounding box, the mob automatically dismounts (`this.stopRiding()`).
+     - Implemented `BoatEntity::has_enough_space_for(&self, passenger: &Entity)` and `handle_age_boundary_vehicle_dismount(is_baby, entity)` in `AgeableMob` so all 32 ageable mobs automatically dismount from boats when outgrowing them upon maturity.
+  3. **Turtle Growth Scute Gift Drop (`Turtle.java:260-265`)**:
+     - In Vanilla Java 1.21.4, when a baby turtle grows into an adult turtle (`!this.isBaby()`), it drops a Turtle Scute item (`Items.TURTLE_SCUTE`) via gift loot table (`BuiltInLootTables.TURTLE_GROW`) if the `mobDrops` gamerule is enabled. This is the sole vanilla mechanism for players to obtain turtle scutes to craft Turtle Shell helmets.
+     - Previously, turtles in Neth never dropped scutes upon maturing, completely blocking turtle farming mechanics.
+     - Implemented `age_boundary_reached` in `TurtleEntity` to spawn a `TURTLE_SCUTE` item stack at the turtle's location when reaching adulthood with `mob_drops` gamerule active.
+  4. **Goat & Hoglin Attack Damage Scaling and Hoglin XP Reward (`Goat.java:119-121`, `Hoglin.java:176-184`)**:
+     - In Vanilla Java 1.21.4, goats scale attack damage between baby (1.0 damage / 0.5 hearts) and adult (2.0 damage / 1.0 hearts).
+     - Hoglins scale attack damage between baby (0.5 damage) and adult (6.0 damage), and experience reward between baby (3 XP) and adult (5 XP).
+     - Implemented `get_goat_attack_damage_for_age`, `get_hoglin_attack_damage_for_age`, and `get_hoglin_xp_reward_for_age` in `combat.rs`, overriding `age_boundary_reached` in `GoatEntity` and attribute/xp updates in `HoglinEntity`.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_ageable_boundary_transition_and_turtle_scute_drop_parity`
+    - `test_goat_and_hoglin_age_boundary_attribute_parity`

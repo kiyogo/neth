@@ -11500,6 +11500,75 @@ pub fn should_play_fox_chewing_sound(ticks: i32, roll: f32) -> bool {
     ticks > FOX_CHEWING_START_TICKS && roll < FOX_CHEWING_SOUND_CHANCE
 }
 
+// =========================================================================
+// Gap 395: AgeableMob age boundary transition callback (age_boundary_reached),
+// Turtle growth scute gift drop, Goat & Hoglin attribute scaling, and Boat passenger dismount parity
+// Vanilla reference: AgeableMob.java:149-156, 251-255, Turtle.java:260-265, Goat.java:119-121, Hoglin.java:176-184, AbstractBoat.java:640-642
+// =========================================================================
+
+/// Turtle growth scute item constant, mirroring vanilla `Turtle.java:263` and `BuiltInLootTables.TURTLE_GROW`.
+pub const TURTLE_GROWTH_SCUTE_ITEM: &pumpkin_data::item::Item = &pumpkin_data::item::Item::TURTLE_SCUTE;
+
+/// Checks if turtle should drop turtle scute upon maturing, mirroring vanilla `Turtle.java:262`:
+/// `!this.isBaby() && level.getGameRules().getBoolean(GameRules.RULE_DOMOBLOOT)`
+#[must_use]
+pub fn should_turtle_drop_scute_on_growth(is_baby: bool, mob_drops_gamerule: bool) -> bool {
+    !is_baby && mob_drops_gamerule
+}
+
+/// Returns goat attack damage based on age (adult: 2.0, baby: 1.0), mirroring vanilla `Goat.java:120`.
+#[must_use]
+pub fn get_goat_attack_damage_for_age(is_baby: bool) -> f64 {
+    if is_baby {
+        GOAT_BABY_ATTACK_DAMAGE
+    } else {
+        GOAT_BASE_ATTACK_DAMAGE
+    }
+}
+
+/// Hoglin adult and baby XP reward constants, mirroring vanilla `Hoglin.java:178, 181`.
+pub const HOGLIN_BABY_XP_REWARD: u32 = 3;
+pub const HOGLIN_ADULT_XP_REWARD: u32 = 5;
+
+/// Returns hoglin attack damage based on age (adult: 6.0, baby: 0.5), mirroring vanilla `Hoglin.java:179`.
+#[must_use]
+pub fn get_hoglin_attack_damage_for_age(is_baby: bool) -> f64 {
+    if is_baby {
+        HOGLIN_BABY_ATTACK_DAMAGE
+    } else {
+        HOGLIN_ATTACK_DAMAGE
+    }
+}
+
+/// Returns hoglin experience reward based on age (adult: 5, baby: 3), mirroring vanilla `Hoglin.java:178, 181`.
+#[must_use]
+pub fn get_hoglin_xp_reward_for_age(is_baby: bool) -> u32 {
+    if is_baby {
+        HOGLIN_BABY_XP_REWARD
+    } else {
+        HOGLIN_ADULT_XP_REWARD
+    }
+}
+
+/// Checks if vehicle boat has enough space for passenger, mirroring vanilla `AbstractBoat.java:641`:
+/// `entity.getBbWidth() < this.getBbWidth()`
+#[must_use]
+pub fn boat_has_enough_space_for(boat_width: f32, passenger_width: f32) -> bool {
+    passenger_width < boat_width
+}
+
+/// Checks if an ageable mob should dismount vehicle on reaching age boundary, mirroring vanilla `AgeableMob.java:252-254`:
+/// `!this.isBaby() && this.isPassenger() && this.getVehicle() instanceof AbstractBoat boat && !boat.hasEnoughSpaceFor(this)`
+#[must_use]
+pub fn should_ageable_dismount_vehicle_on_boundary(
+    is_baby: bool,
+    is_passenger: bool,
+    is_boat: bool,
+    has_enough_space: bool,
+) -> bool {
+    !is_baby && is_passenger && is_boat && !has_enough_space
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -23013,6 +23082,54 @@ mod tests {
         // 5. Sound event names parity
         assert_eq!(pumpkin_data::sound::Sound::EntityFoxEat.to_name(), "entity.fox.eat");
         assert_eq!(pumpkin_data::sound::Sound::EntityFoxSpit.to_name(), "entity.fox.spit");
+    }
+
+    #[test]
+    fn test_ageable_boundary_transition_and_turtle_scute_drop_parity() {
+        // 1. Turtle scute item constant parity (BuiltInLootTables.TURTLE_GROW)
+        assert_eq!(TURTLE_GROWTH_SCUTE_ITEM, &pumpkin_data::item::Item::TURTLE_SCUTE);
+
+        // 2. Turtle scute gift drop on growth parity (Turtle.java:262)
+        assert!(should_turtle_drop_scute_on_growth(false, true));
+        assert!(!should_turtle_drop_scute_on_growth(false, false));
+        assert!(!should_turtle_drop_scute_on_growth(true, true));
+        assert!(!should_turtle_drop_scute_on_growth(true, false));
+
+        // 3. Boat space check parity (AbstractBoat.java:641)
+        assert!(boat_has_enough_space_for(1.375, 0.6));
+        assert!(!boat_has_enough_space_for(1.375, 1.375));
+        assert!(!boat_has_enough_space_for(1.375, 1.4));
+
+        // 4. Ageable vehicle dismount on maturity parity (AgeableMob.java:252-254)
+        // Adult in boat that is too small -> dismount!
+        assert!(should_ageable_dismount_vehicle_on_boundary(false, true, true, false));
+        // Adult in boat with enough space -> keep riding
+        assert!(!should_ageable_dismount_vehicle_on_boundary(false, true, true, true));
+        // Adult not in boat -> keep riding
+        assert!(!should_ageable_dismount_vehicle_on_boundary(false, true, false, false));
+        // Baby -> keep riding
+        assert!(!should_ageable_dismount_vehicle_on_boundary(true, true, true, false));
+    }
+
+    #[test]
+    fn test_goat_and_hoglin_age_boundary_attribute_parity() {
+        // 1. Goat attack damage scaling parity (Goat.java:120)
+        assert_eq!(get_goat_attack_damage_for_age(true), GOAT_BABY_ATTACK_DAMAGE);
+        assert_eq!(get_goat_attack_damage_for_age(false), GOAT_BASE_ATTACK_DAMAGE);
+        assert_eq!(GOAT_BABY_ATTACK_DAMAGE, 1.0);
+        assert_eq!(GOAT_BASE_ATTACK_DAMAGE, 2.0);
+
+        // 2. Hoglin attack damage scaling parity (Hoglin.java:179)
+        assert_eq!(get_hoglin_attack_damage_for_age(true), HOGLIN_BABY_ATTACK_DAMAGE);
+        assert_eq!(get_hoglin_attack_damage_for_age(false), HOGLIN_ATTACK_DAMAGE);
+        assert_eq!(HOGLIN_BABY_ATTACK_DAMAGE, 0.5);
+        assert_eq!(HOGLIN_ATTACK_DAMAGE, 6.0);
+
+        // 3. Hoglin experience reward parity (Hoglin.java:178, 181)
+        assert_eq!(get_hoglin_xp_reward_for_age(true), HOGLIN_BABY_XP_REWARD);
+        assert_eq!(get_hoglin_xp_reward_for_age(false), HOGLIN_ADULT_XP_REWARD);
+        assert_eq!(HOGLIN_BABY_XP_REWARD, 3);
+        assert_eq!(HOGLIN_ADULT_XP_REWARD, 5);
     }
 
 }

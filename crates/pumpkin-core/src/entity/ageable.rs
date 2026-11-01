@@ -1,7 +1,7 @@
 use pumpkin_data::tracked_data;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering::Relaxed};
 
-use crate::entity::mob::Mob;
+use crate::entity::{Entity, mob::Mob};
 
 pub const BABY_START_AGE: i32 = -24000;
 pub const FORCED_AGE_PARTICLE_TICKS: i32 = 40;
@@ -52,7 +52,14 @@ pub trait AgeableMob: Mob {
             let is_baby = new_age < 0;
             entity.set_synced_data(tracked_data::ageable_mob::DATA_BABY_ID, is_baby);
             entity.set_bedrock_baby(is_baby);
+            self.age_boundary_reached();
         }
+    }
+
+    /// Callback triggered when transitioning between baby and adult, mirroring vanilla `AgeableMob.java:251-255`.
+    fn age_boundary_reached(&self) {
+        let entity = &self.get_mob_entity().living_entity.entity;
+        handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 
     fn is_age_locked(&self) -> bool {
@@ -131,6 +138,20 @@ pub trait AgeableMob: Mob {
         } else if self.get_age() > 0 {
             let age = self.get_age() - 1;
             self.set_age(age);
+        }
+    }
+}
+
+/// Vanilla `AgeableMob.java:251-255`:
+/// `if (!this.isBaby() && this.isPassenger() && this.getVehicle() instanceof AbstractBoat boat && !boat.hasEnoughSpaceFor(this)) { this.stopRiding(); }`
+pub fn handle_age_boundary_vehicle_dismount(is_baby: bool, entity: &Entity) {
+    if !is_baby {
+        if let Some(vehicle) = entity.get_vehicle() {
+            if let Some(boat) = vehicle.cast_any().downcast_ref::<crate::entity::vehicle::boat::BoatEntity>() {
+                if !boat.has_enough_space_for(entity) {
+                    vehicle.get_entity().remove_passenger(entity.entity_id);
+                }
+            }
         }
     }
 }
