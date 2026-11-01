@@ -1,6 +1,8 @@
 use super::BlockEntity;
+use crate::entity::EntityBase;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
+use rand::RngExt;
 use rustc_hash::FxHashSet;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Mutex;
@@ -22,6 +24,92 @@ impl BlockEntity for VaultBlockEntity {
 
     fn get_position(&self) -> BlockPos {
         self.position
+    }
+
+    fn tick(&self, world: &std::sync::Arc<crate::world::World>) {
+        let block_id = world.get_block_state_id(&self.position);
+        let block = world.get_block(&self.position);
+        if block.id != pumpkin_data::BlockId::VAULT {
+            return;
+        }
+
+        let mut props = pumpkin_data::block_properties::VaultLikeProperties::from_state_id(block_id);
+        if props.vault_state == pumpkin_data::block_properties::VaultState::Unlocking
+            || props.vault_state == pumpkin_data::block_properties::VaultState::Ejecting
+        {
+            return;
+        }
+
+        let game_time = world.get_world_age();
+        if game_time % 20 != 0 {
+            return;
+        }
+
+        let check_range = if props.vault_state == pumpkin_data::block_properties::VaultState::Active {
+            crate::block::blocks::vault::VaultBlock::DEACTIVATION_RANGE
+        } else {
+            crate::block::blocks::vault::VaultBlock::ACTIVATION_RANGE
+        };
+        let range_sq = check_range * check_range;
+        let center = self.position.to_centered_f64();
+
+        let rewarded = self
+            .rewarded_players
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        let players = world.players.load();
+        let has_unrewarded_nearby_player = players.iter().any(|player| {
+            let mode = player.gamemode.load();
+            if mode == pumpkin_util::GameMode::Creative || mode == pumpkin_util::GameMode::Spectator {
+                return false;
+            }
+            let ent = player.get_entity();
+            if !ent.is_alive() {
+                return false;
+            }
+            if ent.pos.load().squared_distance_to_vec(&center) > range_sq {
+                return false;
+            }
+            !rewarded.contains(&player.gameprofile.id)
+        });
+        drop(rewarded);
+
+        let new_state = if has_unrewarded_nearby_player {
+            pumpkin_data::block_properties::VaultState::Active
+        } else {
+            pumpkin_data::block_properties::VaultState::Inactive
+        };
+
+        if new_state != props.vault_state {
+            if new_state == pumpkin_data::block_properties::VaultState::Active {
+                world.sync_world_event(
+                    pumpkin_data::world::WorldEvent::AnimationVaultActivate,
+                    self.position,
+                    i32::from(props.ominous),
+                );
+            } else {
+                world.sync_world_event(
+                    pumpkin_data::world::WorldEvent::AnimationVaultDeactivate,
+                    self.position,
+                    i32::from(props.ominous),
+                );
+            }
+            props.vault_state = new_state;
+            world.set_block_state(
+                &self.position,
+                props.to_state_id(block),
+                pumpkin_world::world::BlockFlags::NOTIFY_ALL,
+            );
+        } else if props.vault_state == pumpkin_data::block_properties::VaultState::Active {
+            if rand::rng().random::<f32>() <= crate::block::blocks::vault::VaultBlock::AMBIENT_SOUND_CHANCE {
+                world.play_sound(
+                    pumpkin_data::sound::Sound::BlockVaultAmbient,
+                    pumpkin_data::sound::SoundCategory::Blocks,
+                    &self.position.to_f64(),
+                );
+            }
+        }
     }
 
     fn from_nbt(nbt: &pumpkin_nbt::compound::NbtCompound, position: BlockPos) -> Self

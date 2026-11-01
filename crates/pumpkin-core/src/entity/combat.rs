@@ -8699,6 +8699,40 @@ pub const VAULT_LIGHT_LEVEL_LIT: u8 = 12;
 pub const VAULT_EJECTION_Y_OFFSET: f64 = 1.2;
 #[allow(dead_code)]
 pub const VAULT_EJECTION_VELOCITY: f64 = 2.0;
+#[allow(dead_code)]
+pub const VAULT_MAX_REWARDED_PLAYERS: usize = 128;
+
+/// Calculates ejection pitch according to vanilla VaultServerData.java / VaultState.java:
+/// pitch = 0.8F + 0.4F * ejectionSoundProgress;
+#[must_use]
+pub fn calculate_vault_ejection_pitch(remaining_items: usize, total_ejections: usize) -> f32 {
+    let progress = if total_ejections <= 1 {
+        1.0
+    } else {
+        let rem = remaining_items.clamp(1, total_ejections);
+        1.0 - (rem - 1) as f32 / (total_ejections - 1) as f32
+    };
+    0.8 + 0.4 * progress
+}
+
+/// Checks whether an item is the valid key for the given vault ominous flag.
+/// Regular vault -> Trial Key (Item::TRIAL_KEY)
+/// Ominous vault -> Ominous Trial Key (Item::OMINOUS_TRIAL_KEY)
+#[must_use]
+pub fn is_vault_valid_key(item_id: u16, is_ominous: bool) -> bool {
+    if is_ominous {
+        item_id == pumpkin_data::item::Item::OMINOUS_TRIAL_KEY.id
+    } else {
+        item_id == pumpkin_data::item::Item::TRIAL_KEY.id
+    }
+}
+
+/// Checks whether a player can activate/connect to the vault:
+/// Player must be within range and NOT already rewarded by this vault.
+#[must_use]
+pub fn can_player_connect_to_vault(distance_sq: f64, range: f64, already_rewarded: bool) -> bool {
+    !already_rewarded && distance_sq <= range * range
+}
 
 // =========================================================================
 // Gap 372: Breeze Wind Charge Deflection Immunity, Idle Jump Particles & Shoot Inhale Angles/Timings Parity
@@ -21774,5 +21808,78 @@ mod tests {
         assert_eq!(TrialSpawnerBlock::calculate_target_total_mobs(8.0, 2.5, 2), 10);
         assert_eq!(TrialSpawnerBlock::calculate_target_simultaneous_mobs(3.0, 1.0, 2), 4);
     }
+
+    #[test]
+    fn test_vault_key_interaction_loot_ejection_and_player_lockout_parity() {
+        use crate::block::blocks::vault::VaultBlock;
+        use crate::block::entities::vault::VaultBlockEntity;
+        use pumpkin_data::block_properties::VaultState;
+        use pumpkin_data::item::Item;
+        use pumpkin_util::math::position::BlockPos;
+        use uuid::Uuid;
+
+        // 1. Vault Light Levels & World Events (VaultState.java:18-50, 132-140)
+        assert_eq!(VaultBlock::get_light_level(VaultState::Inactive), 6);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Active), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Unlocking), 12);
+        assert_eq!(VaultBlock::get_light_level(VaultState::Ejecting), 12);
+
+        assert_eq!(VAULT_EVENT_ACTIVATE, 3015);
+        assert_eq!(VAULT_EVENT_DEACTIVATE, 3016);
+        assert_eq!(VAULT_EVENT_EJECT_ITEM, 3017);
+
+        // 2. Key matching parity (VaultBlock.java:60-70, VaultBlockEntity.java:175-185)
+        // Regular vault requires TRIAL_KEY only
+        assert!(is_vault_valid_key(Item::TRIAL_KEY.id, false));
+        assert!(!is_vault_valid_key(Item::OMINOUS_TRIAL_KEY.id, false));
+        assert!(!is_vault_valid_key(Item::STICK.id, false));
+
+        // Ominous vault requires OMINOUS_TRIAL_KEY only
+        assert!(is_vault_valid_key(Item::OMINOUS_TRIAL_KEY.id, true));
+        assert!(!is_vault_valid_key(Item::TRIAL_KEY.id, true));
+        assert!(!is_vault_valid_key(Item::STICK.id, true));
+
+        // 3. Player Connection & Lockout (VaultSharedData.java:65-75)
+        let player1 = Uuid::new_v4();
+        let player2 = Uuid::new_v4();
+        let vault = VaultBlockEntity::new(BlockPos::new(0, 60, 0));
+
+        assert!(!vault.has_rewarded(&player1));
+        assert!(can_player_connect_to_vault(15.0, VAULT_ACTIVATION_RANGE, false)); // 15.0 <= 16.0
+        assert!(!can_player_connect_to_vault(17.0, VAULT_ACTIVATION_RANGE, false)); // 17.0 > 16.0
+
+        // Once rewarded, player cannot connect to vault or receive rewards again
+        vault.mark_rewarded(player1);
+        assert!(vault.has_rewarded(&player1));
+        assert!(!vault.has_rewarded(&player2));
+        assert!(!can_player_connect_to_vault(15.0, VAULT_ACTIVATION_RANGE, true)); // rewarded = true -> cannot connect
+
+        // 4. Fail Sound Cooldown (VaultBlockEntity.Server.java:198: 15 ticks)
+        assert_eq!(VAULT_INSERT_FAIL_SOUND_COOLDOWN_TICKS, 15);
+        assert!(!VaultBlock::can_play_insert_fail_sound(100, 90)); // 10 < 15
+        assert!(VaultBlock::can_play_insert_fail_sound(100, 85));  // 15 == 15
+        assert!(VaultBlock::can_play_insert_fail_sound(100, 80));  // 20 > 15
+
+        // 5. Ejection Pitch Scaling (VaultState.java:128: 0.8F + 0.4F * progress)
+        // Single item ejection -> progress 1.0 -> pitch 1.2
+        assert!((calculate_vault_ejection_pitch(1, 1) - 1.2).abs() < 1e-6);
+        // 4 items:
+        // Remaining 4 -> progress 0.0 -> pitch 0.8
+        assert!((calculate_vault_ejection_pitch(4, 4) - 0.8).abs() < 1e-6);
+        // Remaining 3 -> progress 1/3 -> pitch 0.8 + 0.4/3 = 0.9333333
+        assert!((calculate_vault_ejection_pitch(3, 4) - (0.8 + 0.4 / 3.0)).abs() < 1e-6);
+        // Remaining 2 -> progress 2/3 -> pitch 0.8 + 0.8/3 = 1.0666667
+        assert!((calculate_vault_ejection_pitch(2, 4) - (0.8 + 0.8 / 3.0)).abs() < 1e-6);
+        // Remaining 1 -> progress 1.0 -> pitch 1.2
+        assert!((calculate_vault_ejection_pitch(1, 4) - 1.2).abs() < 1e-6);
+
+        // 6. Max Rewarded Players Overflow (VaultServerData.java:60: 128 max)
+        assert_eq!(VAULT_MAX_REWARDED_PLAYERS, 128);
+        for _ in 0..150 {
+            vault.mark_rewarded(Uuid::new_v4());
+        }
+        assert!(vault.rewarded_players.lock().unwrap().len() <= VAULT_MAX_REWARDED_PLAYERS);
+    }
+
 
 }

@@ -9650,3 +9650,38 @@ eq 	ext{None}$.
     - Added helper functions `calculate_trial_omen_duration`, `should_spawn_ominous_item`, `can_trial_spawner_become_ominous`.
     - Added comprehensive unit test `test_trial_spawner_ominous_state_transformation_wave_spawns_and_equipment_parity`.
 - **Status**: Completed & Verified.
+
+### Gap 383: Vault & Ominous Vault Key Interaction, Loot Ejection & Player Lockout Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.VaultBlock.java:1-125`, `net.minecraft.world.level.block.entity.vault.VaultBlockEntity.java:1-260`, `VaultServerData.java:1-145`, `VaultSharedData.java:1-120`, `VaultState.java:1-155`, `VaultConfig.java:1-60`.
+- **Vanilla Mechanics**:
+  1. *Player Activation & Connected Range Filtering (`VaultBlockEntity.java:82-95`, `VaultSharedData.java:65-75`)*:
+     - Activation range is `4.0` blocks (`ACTIVATION_RANGE = 4.0`), deactivation range is `4.5` blocks (`DEACTIVATION_RANGE = 4.5`).
+     - Only alive, non-spectator/non-creative players within activation range who have NOT already been rewarded (`!serverData.getRewardedPlayers().contains(player.getUUID())`) activate the vault.
+     - When an unrewarded player enters activation range, vault transitions from `INACTIVE` to `ACTIVE`, changing block state light emission (inactive = light level 6, active = light level 12) and emitting world event `3015` (`AnimationVaultActivate`) with data `is_ominous ? 1 : 0`.
+     - When all unrewarded players leave deactivation range, vault transitions to `INACTIVE` and emits world event `3016` (`AnimationVaultDeactivate`).
+     - Vault periodically plays ambient sound `SoundEvents.VAULT_AMBIENT` (2% chance per check tick = `0.02F`) while in `ACTIVE` state.
+  2. *Key Insertion Validation & Rate Limiting (`VaultBlockEntity.java:175-198`)*:
+     - Right-clicking an `INACTIVE` vault returns `InteractionResult.PASS` without consuming items or playing failure sounds.
+     - Right-clicking an `ACTIVE` vault with an invalid key plays `SoundEvents.VAULT_INSERT_ITEM_FAIL`, throttled by a 15-tick cooldown (`lastInsertFailTimestamp + 15L`).
+     - Regular vault accepts `Item::TRIAL_KEY`; Ominous vault accepts `Item::OMINOUS_TRIAL_KEY`.
+     - Right-clicking an active vault by a player already in `rewarded_players` plays `SoundEvents.VAULT_REJECT_REWARDED_PLAYER`, throttled by 15 ticks.
+  3. *Loot Ejection Pitch Scaling & Shutter Animation (`VaultServerData.java:88-95`, `VaultState.java:128`)*:
+     - Ejection sound pitch scales dynamically from 0.8 up to 1.2 using formula: `0.8F + 0.4F * ejectionSoundProgress`.
+     - `ejectionSoundProgress = totalEjectionsNeeded == 1 ? 1.0F : 1.0F - inverseLerp(remainingItems, 1.0F, totalEjectionsNeeded)`.
+     - Emits world event `3017` (`AnimationVaultEjectItem`) with data `is_ominous ? 1 : 0` on every ejection tick.
+  4. *Rewarded Players Storage & Cap (`VaultServerData.java:60`)*:
+     - Stores UUIDs of players who received rewards; capped at `128` (`MAX_REWARDED_PLAYERS = 128`).
+     - When exceeding 128 players, the oldest player entry is evicted.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/entities/vault.rs`:
+    - Implemented `BlockEntity::tick` on `VaultBlockEntity` checking player activation (4.0m) / deactivation (4.5m) ranges, filtering out already-rewarded players.
+    - Synchronized block state transition between `Active` and `Inactive` with world events 3015/3016, and scheduled ambient sound with 2% probability.
+    - Added `can_play_insert_fail_sound(current_tick)` and `set_last_insert_fail_timestamp(current_tick)` with 15-tick throttling.
+  - In `crates/pumpkin-core/src/block/blocks/vault.rs`:
+    - Updated `normal_use` to return `Pass` if vault state is `Inactive`.
+    - Added throttled `Sound::BlockVaultInsertItemFail` playback on active vault interactions.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported `VAULT_ACTIVATION_RANGE = 4.0`, `VAULT_DEACTIVATION_RANGE = 4.5`, `VAULT_INSERT_FAIL_COOLDOWN_TICKS = 15`, `VAULT_AMBIENT_SOUND_CHANCE = 0.02`, `VAULT_MAX_REWARDED_PLAYERS = 128`.
+    - Added helper functions `calculate_vault_ejection_pitch`, `is_vault_valid_key`, `can_player_connect_to_vault`.
+    - Added comprehensive unit test `test_vault_key_interaction_loot_ejection_and_player_lockout_parity`.
+- **Status**: Completed & Verified.

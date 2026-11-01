@@ -311,11 +311,25 @@ impl BlockBehaviour for VaultBlock {
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
-        args.world.play_sound(
-            Sound::BlockVaultInsertItemFail,
-            SoundCategory::Blocks,
-            &args.position.to_f64(),
-        );
+        let state_id = args.world.get_block_state_id(args.position);
+        let props = VaultLikeProperties::from_state_id(state_id);
+        if props.vault_state == VaultState::Inactive {
+            return BlockActionResult::Pass;
+        }
+
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(vault_entity) = block_entity.as_any().downcast_ref::<VaultBlockEntity>()
+        {
+            let current_tick = args.world.get_world_age();
+            if vault_entity.can_play_insert_fail_sound(current_tick) {
+                args.world.play_sound(
+                    Sound::BlockVaultInsertItemFail,
+                    SoundCategory::Blocks,
+                    &args.position.to_f64(),
+                );
+                vault_entity.set_last_insert_fail_timestamp(current_tick);
+            }
+        }
         BlockActionResult::Success
     }
 }
