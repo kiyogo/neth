@@ -1,11 +1,13 @@
 use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
-    atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicI64, AtomicU8, Ordering},
 };
 
 use pumpkin_data::attributes::Attributes;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::damage::DamageType;
+use pumpkin_data::entity::{EntityPose, EntityType};
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -40,6 +42,7 @@ pub struct CamelEntity {
     pub flags: AtomicU8,
     pub dashing: AtomicBool,
     pub dash_cooldown: AtomicI32,
+    pub last_pose_tick: AtomicI64,
 }
 
 impl CamelEntity {
@@ -53,6 +56,7 @@ impl CamelEntity {
             flags: AtomicU8::new(0),
             dashing: AtomicBool::new(false),
             dash_cooldown: AtomicI32::new(0),
+            last_pose_tick: AtomicI64::new(0),
         };
 
         // Initialize attributes: Max Health = 32.0, Movement Speed = 0.09, Step Height = 1.5, Jump Strength = 0.42
@@ -78,6 +82,7 @@ impl CamelEntity {
             .set_health(crate::entity::combat::CAMEL_MAX_HEALTH as f32);
 
         let mob_arc = Arc::new(camel);
+        mob_arc.refresh_dimensions();
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -178,11 +183,56 @@ impl CamelEntity {
         self.dash_cooldown.store(55, Ordering::Relaxed);
         self.set_dashing(true);
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_sitting = entity.pose.load() == EntityPose::Sitting;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_camel_dimensions(
+            is_sitting,
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+
+    /// Stands up immediately, clearing sitting pose and refreshing dimensions.
+    /// Mirrors vanilla `Camel.java:standUpInstantly()`.
+    pub fn stand_up_instantly(&self) {
+        let entity = self.get_entity();
+        entity.set_pose(EntityPose::Standing);
+        self.last_pose_tick.store(0, Ordering::Relaxed);
+        self.refresh_dimensions();
+    }
+
+    /// Sits down immediately, setting sitting pose and refreshing dimensions.
+    pub fn sit_down(&self) {
+        let entity = self.get_entity();
+        entity.set_pose(EntityPose::Sitting);
+        self.last_pose_tick.store(-1, Ordering::Relaxed);
+        self.refresh_dimensions();
+    }
 }
 
 impl AgeableMob for CamelEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -221,6 +271,7 @@ impl Mob for CamelEntity {
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
         nbt.put_bool("Saddle", self.is_saddled());
+        nbt.put_long("LastPoseTick", self.last_pose_tick.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
@@ -228,6 +279,13 @@ impl Mob for CamelEntity {
         if let Some(saddle) = nbt.get_bool("Saddle") {
             self.set_saddled(saddle);
         }
+        if let Some(pose_tick) = nbt.get_long("LastPoseTick") {
+            self.last_pose_tick.store(pose_tick, Ordering::Relaxed);
+            if pose_tick < 0 {
+                self.mob_entity.living_entity.entity.set_pose(EntityPose::Sitting);
+            }
+        }
+        self.refresh_dimensions();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -240,6 +298,13 @@ impl Mob for CamelEntity {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
+        }
+
+        // Vanilla Camel.java:209-211: stand up instantly if sitting in water
+        if entity.pose.load() == EntityPose::Sitting
+            && (entity.is_in_water())
+        {
+            self.stand_up_instantly();
         }
 
         // Vanilla Camel.tick:
@@ -343,8 +408,15 @@ impl Mob for CamelEntity {
         self.animal_interact(player, item_stack, Sound::EntityCamelAmbient)
     }
 
+    fn on_damage(&self, _damage_type: DamageType, _source: Option<&dyn EntityBase>) {
+        // Vanilla Camel.java:493-496 actuallyHurt: stand up instantly upon taking damage
+        if self.get_entity().pose.load() == EntityPose::Sitting {
+            self.stand_up_instantly();
+        }
+    }
+
     fn get_max_head_rotation(&self) -> f32 {
-        30.0
+        crate::entity::combat::CAMEL_MAX_HEAD_Y_ROT
     }
 
     fn remove_when_far_away(&self, _distance_sq: f64) -> bool {
@@ -374,5 +446,31 @@ mod tests {
         assert_eq!(combat::CAMEL_STEP_HEIGHT, 1.5);
         assert_eq!(combat::CAMEL_JUMP_STRENGTH, 0.42);
         assert_eq!(combat::CAMEL_DASH_COOLDOWN_TICKS, 55);
+        assert_eq!(combat::CAMEL_BABY_SCALE, 0.6);
+        assert_eq!(combat::CAMEL_MAX_HEAD_Y_ROT, 30.0);
+        assert_eq!(combat::CAMEL_RUNNING_SPEED_BONUS, 0.1);
+        assert_eq!(combat::CAMEL_SITTING_HEIGHT_DIFFERENCE, 1.43);
+    }
+
+    #[test]
+    fn test_camel_nbt_last_pose_tick_and_dimensions() {
+        use pumpkin_nbt::compound::NbtCompound;
+
+        // Verify LastPoseTick serialization (Camel.java:108-120)
+        let mut nbt = NbtCompound::new();
+        nbt.put_long("LastPoseTick", -40);
+        assert_eq!(nbt.get_long("LastPoseTick"), Some(-40));
+
+        // Sitting adult dimensions
+        let (aw, ah, ae) = combat::calculate_camel_dimensions(true, false, 1.7, 2.375, 2.275);
+        assert_eq!(aw, 1.7);
+        assert_eq!(ah, 0.945);
+        assert_eq!(ae, 0.845);
+
+        // Sitting baby dimensions
+        let (bw, bh, be) = combat::calculate_camel_dimensions(true, true, 1.7, 2.375, 2.275);
+        assert_eq!(bw, 0.95);
+        assert_eq!(bh, 0.425);
+        assert_eq!(be, 0.41);
     }
 }

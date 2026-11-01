@@ -10305,3 +10305,25 @@ eq 	ext{None}$.
     - `test_dolphin_baby_dimensions_and_rotation_limits` (verifying baby dimensions scale and rotation limits)
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_spider_cave_spider_and_dolphin_parity` (updated with baby scale, eye height, rotation and range assertions)
+
+### Gap 405: Camel Sitting/Standing Dimensions, Water/Hurt Standup & LastPoseTick NBT Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.camel.Camel.java:60-84, 108-120, 161-166, 209-211, 268-271, 493-496`
+
+- **Tư thế và Kích thước (Sitting vs Standing Dimensions & Eye Heights)**:
+  - Khi Camel ngồi (`Pose.SITTING`), chiều cao giảm một lượng cố định `SITTING_HEIGHT_DIFFERENCE = 1.43F`.
+  - Adult standing: `(1.7, 2.375)`, eye height `2.275`.
+  - Adult sitting: `(1.7, 0.945)`, eye height `0.845` (`ADULT_SITTING_DIMENSIONS`).
+  - Baby standing: `(0.95, 1.4)`, eye height `1.38` (`BABY_STANDING_DIMENSIONS`).
+  - Baby sitting: `(0.95, 0.425)`, eye height `0.41` (`BABY_SITTING_DIMENSIONS`).
+  - Triển khai phương thức `calculate_camel_dimensions` và `refresh_dimensions()` trên `CamelEntity` đồng bộ bounding box và eye height theo trạng thái ngồi/đứng và baby.
+- **Cơ chế Đứng dậy Tức thì (`standUpInstantly()`)**:
+  - Khi lạc đà đang ngồi mà rơi vào nước (`is_sitting && is_in_water()`), nó lập tức đứng dậy (`stand_up_instantly()`), đặt `pose` về `STANDING` và cập nhật `last_pose_change_tick`.
+  - Khi lạc đà đang ngồi mà nhận sát thương (`actuallyHurt`), nó lập tức đứng dậy ngay trong `damage_with()`.
+- **Lưu trữ NBT `LastPoseTick`**:
+  - Serializer ghi `LastPoseTick` vào tag NBT compound (`write_custom_nbt`).
+  - Deserializer đọc `LastPoseTick`: nếu giá trị `< 0L`, lạc đà được khởi tạo ngay ở tư thế `Pose.SITTING`.
+- **Tốc độ cưỡi khi Sprinting**:
+  - Khi người cưỡi kích hoạt sprint (`is_sprinting`) và `dash_cooldown == 0`, lạc đà nhận thêm bonus tốc độ chạy `CAMEL_RUNNING_SPEED_BONUS = 0.1F` (`getRiddenSpeed`).
+- **Hằng số Parity**: `CAMEL_SITTING_HEIGHT_DIFFERENCE` (1.43), `CAMEL_RUNNING_SPEED_BONUS` (0.1), `CAMEL_SIT_OR_STAND_SOUND_DURATION` (52), `CAMEL_DASH_MIN_DURATION` (55), `CAMEL_DASH_COOLDOWN_TICKS` (55), `CAMEL_BABY_STANDING_*`, `CAMEL_BABY_SITTING_*`, `CAMEL_ADULT_SITTING_*`.
+- **Unit Tests**: `test_camel_dimensions_standup_and_nbt_parity` và `test_bee_and_camel_parity` pass 100%.

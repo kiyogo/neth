@@ -10695,6 +10695,127 @@ pub const CAMEL_STEP_HEIGHT: f64 = 1.5;
 pub const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
 pub const CAMEL_XP_REWARD: u32 = 2;
 
+/// Camel baby scale factor (0.6).
+///
+/// Mirrors vanilla `Camel.java:60`:
+/// `public static final float BABY_SCALE = 0.6F;`
+pub const CAMEL_BABY_SCALE: f32 = 0.6;
+
+/// Camel maximum head Y rotation degrees (30.0).
+///
+/// Mirrors vanilla `Camel.java:62`:
+/// `public static final int MAX_HEAD_Y_ROT = 30;`
+pub const CAMEL_MAX_HEAD_Y_ROT: f32 = 30.0;
+
+/// Camel running/sprinting speed bonus (0.1).
+///
+/// Mirrors vanilla `Camel.java:63`:
+/// `private static final float RUNNING_SPEED_BONUS = 0.1F;`
+pub const CAMEL_RUNNING_SPEED_BONUS: f32 = 0.1;
+/// Camel sound duration for sit/stand animation in ticks (Camel.java:60).
+pub const CAMEL_SIT_OR_STAND_SOUND_DURATION: i32 = 52;
+/// Camel min dash duration ticks (Camel.java:61).
+pub const CAMEL_DASH_MIN_DURATION: i32 = 55;
+
+
+/// Camel dash vertical momentum factor (1.4285).
+///
+/// Mirrors vanilla `Camel.java:64`:
+/// `private static final float DASH_VERTICAL_MOMENTUM = 1.4285F;`
+pub const CAMEL_DASH_VERTICAL_MOMENTUM: f32 = 1.4285;
+
+/// Camel dash horizontal momentum factor (22.2222).
+///
+/// Mirrors vanilla `Camel.java:65`:
+/// `private static final float DASH_HORIZONTAL_MOMENTUM = 22.2222F;`
+pub const CAMEL_DASH_HORIZONTAL_MOMENTUM: f32 = 22.2222;
+
+/// Camel dash minimum duration in ticks (5 ticks).
+///
+/// Mirrors vanilla `Camel.java:66`:
+/// `private static final int DASH_MINIMUM_DURATION_TICKS = 5;`
+pub const CAMEL_DASH_MINIMUM_DURATION_TICKS: i32 = 5;
+
+/// Camel sit-down transition duration in ticks (40 ticks).
+///
+/// Mirrors vanilla `Camel.java:67`:
+/// `private static final int SITDOWN_DURATION_TICKS = 40;`
+pub const CAMEL_SITDOWN_DURATION_TICKS: i32 = 40;
+
+/// Camel stand-up transition duration in ticks (52 ticks).
+///
+/// Mirrors vanilla `Camel.java:68`:
+/// `private static final int STANDUP_DURATION_TICKS = 52;`
+pub const CAMEL_STANDUP_DURATION_TICKS: i32 = 52;
+
+/// Camel idle animation minimal duration in ticks (80 ticks).
+///
+/// Mirrors vanilla `Camel.java:69`:
+/// `private static final int IDLE_MINIMAL_DURATION_TICKS = 80;`
+pub const CAMEL_IDLE_MINIMAL_DURATION_TICKS: i32 = 80;
+
+/// Camel sitting height difference (1.43 blocks).
+///
+/// Mirrors vanilla `Camel.java:70`:
+/// `private static final float SITTING_HEIGHT_DIFFERENCE = 1.43F;`
+pub const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
+
+/// Baby camel standing dimensions: width 0.95, height 1.4, eye_height 1.38.
+pub const CAMEL_BABY_STANDING_WIDTH: f32 = 0.95;
+pub const CAMEL_BABY_STANDING_HEIGHT: f32 = 1.4;
+pub const CAMEL_BABY_STANDING_EYE_HEIGHT: f32 = 1.38;
+
+/// Baby camel sitting dimensions: width 0.95, height 0.425, eye_height 0.41.
+pub const CAMEL_BABY_SITTING_WIDTH: f32 = 0.95;
+pub const CAMEL_BABY_SITTING_HEIGHT: f32 = 0.425;
+pub const CAMEL_BABY_SITTING_EYE_HEIGHT: f32 = 0.41;
+
+/// Adult camel sitting dimensions: width 1.7, height 0.945, eye_height 0.845.
+pub const CAMEL_ADULT_SITTING_WIDTH: f32 = 1.7;
+pub const CAMEL_ADULT_SITTING_HEIGHT: f32 = 0.945;
+pub const CAMEL_ADULT_SITTING_EYE_HEIGHT: f32 = 0.845;
+
+/// Calculates Camel dimensions (width, height, eye_height) based on sitting pose and baby status.
+///
+/// Mirrors vanilla `Camel.java:161-166`:
+/// ```java
+/// return pose == Pose.SITTING
+///    ? (this.isBaby() ? BABY_SITTING_DIMENSIONS : ADULT_SITTING_DIMENSIONS)
+///    : (this.isBaby() ? BABY_STANDING_DIMENSIONS : super.getDefaultDimensions(pose));
+/// ```
+#[must_use]
+pub fn calculate_camel_dimensions(
+    is_sitting: bool,
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_sitting {
+        if is_baby {
+            (
+                CAMEL_BABY_SITTING_WIDTH,
+                CAMEL_BABY_SITTING_HEIGHT,
+                CAMEL_BABY_SITTING_EYE_HEIGHT,
+            )
+        } else {
+            (
+                CAMEL_ADULT_SITTING_WIDTH,
+                CAMEL_ADULT_SITTING_HEIGHT,
+                CAMEL_ADULT_SITTING_EYE_HEIGHT,
+            )
+        }
+    } else if is_baby {
+        (
+            CAMEL_BABY_STANDING_WIDTH,
+            CAMEL_BABY_STANDING_HEIGHT,
+            CAMEL_BABY_STANDING_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Llama & Trader Llama constants, mirroring vanilla `Llama.java:60-80, 120-150`.
 pub const LLAMA_BASE_MOVEMENT_SPEED: f64 = 0.175;
 pub const LLAMA_JUMP_STRENGTH: f64 = 0.5;
@@ -14865,6 +14986,43 @@ mod tests {
         assert!(can_camel_accept_passenger(0));
         assert!(can_camel_accept_passenger(1));
         assert!(!can_camel_accept_passenger(2));
+
+        // 3. Camel animation and momentum constants parity (Camel.java:60-70)
+        assert_eq!(CAMEL_BABY_SCALE, 0.6);
+        assert_eq!(CAMEL_MAX_HEAD_Y_ROT, 30.0);
+        assert_eq!(CAMEL_RUNNING_SPEED_BONUS, 0.1);
+        assert_eq!(CAMEL_DASH_VERTICAL_MOMENTUM, 1.4285);
+        assert_eq!(CAMEL_DASH_HORIZONTAL_MOMENTUM, 22.2222);
+        assert_eq!(CAMEL_DASH_MINIMUM_DURATION_TICKS, 5);
+        assert_eq!(CAMEL_SITDOWN_DURATION_TICKS, 40);
+        assert_eq!(CAMEL_STANDUP_DURATION_TICKS, 52);
+        assert_eq!(CAMEL_IDLE_MINIMAL_DURATION_TICKS, 80);
+        assert_eq!(CAMEL_SITTING_HEIGHT_DIFFERENCE, 1.43);
+
+        // 4. Camel dimensions calculation parity (Camel.java:79-84, 161-166)
+        // Adult standing
+        let (aw, ah, ae) = calculate_camel_dimensions(false, false, 1.7, 2.375, 2.275);
+        assert_eq!(aw, 1.7);
+        assert_eq!(ah, 2.375);
+        assert_eq!(ae, 2.275);
+
+        // Adult sitting
+        let (asw, ash, ase) = calculate_camel_dimensions(true, false, 1.7, 2.375, 2.275);
+        assert_eq!(asw, 1.7);
+        assert_eq!(ash, 0.945);
+        assert_eq!(ase, 0.845);
+
+        // Baby standing
+        let (bw, bh, be) = calculate_camel_dimensions(false, true, 1.7, 2.375, 2.275);
+        assert_eq!(bw, 0.95);
+        assert_eq!(bh, 1.4);
+        assert_eq!(be, 1.38);
+
+        // Baby sitting
+        let (bsw, bsh, bse) = calculate_camel_dimensions(true, true, 1.7, 2.375, 2.275);
+        assert_eq!(bsw, 0.95);
+        assert_eq!(bsh, 0.425);
+        assert_eq!(bse, 0.41);
     }
 
     #[test]
@@ -23757,6 +23915,48 @@ mod tests {
 
         // 4. Egg baby chick start age parity (ThrownEgg.java:77)
         assert_eq!(EGG_BABY_CHICKEN_AGE, -24000);
+    }
+
+
+    #[test]
+    fn test_camel_dimensions_standup_and_nbt_parity() {
+        use super::*;
+
+        const DEFAULT_W: f32 = 1.7;
+        const DEFAULT_H: f32 = 2.375;
+        const DEFAULT_EYE_H: f32 = 2.275;
+
+        // 1. Adult standing dimensions
+        let adult_standing = calculate_camel_dimensions(false, false, DEFAULT_W, DEFAULT_H, DEFAULT_EYE_H);
+        assert!((adult_standing.0 - 1.7).abs() < 1e-4);
+        assert!((adult_standing.1 - 2.375).abs() < 1e-4);
+        assert!((adult_standing.2 - 2.275).abs() < 1e-4);
+
+        // 2. Adult sitting dimensions (reduced height by SITTING_HEIGHT_DIFFERENCE = 1.43)
+        let adult_sitting = calculate_camel_dimensions(true, false, DEFAULT_W, DEFAULT_H, DEFAULT_EYE_H);
+        assert!((adult_sitting.0 - 1.7).abs() < 1e-4);
+        assert!((adult_sitting.1 - 0.945).abs() < 1e-4);
+        assert!((adult_sitting.2 - 0.845).abs() < 1e-4);
+        assert!((adult_standing.1 - adult_sitting.1 - CAMEL_SITTING_HEIGHT_DIFFERENCE).abs() < 1e-4);
+
+        // 3. Baby standing dimensions (Camel.java:82: EntityDimensions.scalable(0.95F, 1.4F).withEyeHeight(1.38F))
+        let baby_standing = calculate_camel_dimensions(false, true, DEFAULT_W, DEFAULT_H, DEFAULT_EYE_H);
+        assert!((baby_standing.0 - 0.95).abs() < 1e-4);
+        assert!((baby_standing.1 - 1.4).abs() < 1e-4);
+        assert!((baby_standing.2 - 1.38).abs() < 1e-4);
+
+        // 4. Baby sitting dimensions (Camel.java:83: EntityDimensions.scalable(0.95F, 0.425F).withEyeHeight(0.41F))
+        let baby_sitting = calculate_camel_dimensions(true, true, DEFAULT_W, DEFAULT_H, DEFAULT_EYE_H);
+        assert!((baby_sitting.0 - 0.95).abs() < 1e-4);
+        assert!((baby_sitting.1 - 0.425).abs() < 1e-4);
+        assert!((baby_sitting.2 - 0.41).abs() < 1e-4);
+
+        // 5. Parity constants
+        assert_eq!(CAMEL_SITTING_HEIGHT_DIFFERENCE, 1.43);
+        assert_eq!(CAMEL_RUNNING_SPEED_BONUS, 0.1);
+        assert_eq!(CAMEL_SIT_OR_STAND_SOUND_DURATION, 52);
+        assert_eq!(CAMEL_DASH_MIN_DURATION, 55);
+        assert_eq!(CAMEL_DASH_COOLDOWN_TICKS, 55);
     }
 
 }
