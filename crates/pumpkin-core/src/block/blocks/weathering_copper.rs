@@ -134,7 +134,7 @@ pub trait WeatheringCopper: ChangeOverTimeBlock<WeatherState> {
     }
 }
 
-/// All 14 copper families with their 4 weathering stages (Unaffected, Exposed, Weathered, Oxidized).
+/// All 15 copper families with their 4 weathering stages (Unaffected, Exposed, Weathered, Oxidized).
 const COPPER_PROGRESSIONS: &[(&Block, &Block, &Block, &Block)] = &[
     (
         &Block::COPPER_BLOCK,
@@ -219,6 +219,12 @@ const COPPER_PROGRESSIONS: &[(&Block, &Block, &Block, &Block)] = &[
         &Block::EXPOSED_COPPER_CHAIN,
         &Block::WEATHERED_COPPER_CHAIN,
         &Block::OXIDIZED_COPPER_CHAIN,
+    ),
+    (
+        &Block::LIGHTNING_ROD,
+        &Block::EXPOSED_LIGHTNING_ROD,
+        &Block::WEATHERED_LIGHTNING_ROD,
+        &Block::OXIDIZED_LIGHTNING_ROD,
     ),
 ];
 

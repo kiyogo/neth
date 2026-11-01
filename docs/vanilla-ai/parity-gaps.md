@@ -9726,3 +9726,37 @@ eq 	ext{None}$.
     - Added helper functions `is_bundle_bar_visible`, `calculate_bundle_bar_width`, `get_bundle_bar_color`, `calculate_bundle_fullness`, `get_bundle_number_of_items_to_show`, `calculate_bundle_item_weight`, `calculate_nested_bundle_weight`, `can_item_be_in_bundle`, `should_bundle_drop_item_on_tick`.
     - Added comprehensive unit test `test_bundle_capacity_nested_weight_bar_display_and_item_rejection_parity`.
 - **Status**: Completed & Verified.
+
+
+### Gap 385: Copper Family Waxing, Scraping, Double Door & Double Chest Multi-Block Synchronization, Sound & Particle Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.WeatheringCopper.java:1-120`, `net.minecraft.world.level.block.WeatheringCopperCollection.java:1-80`, `net.minecraft.world.item.HoneycombItem.java:35-125`, `net.minecraft.world.item.component.BlockTransformers.java:45-125`, `net.minecraft.world.level.block.DoorBlock.java:40-100`, `net.minecraft.world.level.block.ChestBlock.java:60-90`.
+- **Vanilla Mechanics**:
+  1. *Complete 15 Copper Collections Waxing Mapping (`HoneycombItem.WAXABLES`, `WeatheringCopper.java:32-47`)*:
+     - All 15 families (Copper Block, Cut Copper, Cut Copper Slab, Cut Copper Stairs, Chiseled Copper, Copper Door, Copper Trapdoor, Copper Bars, Copper Grate, Copper Bulb, Copper Chest, Copper Golem Statue, Lightning Rod, Copper Lantern, Copper Chain) across all 4 weathering stages (Unaffected, Exposed, Weathered, Oxidized) have waxed counterparts (`Waxed...`, `WaxedExposed...`, `WaxedWeathered...`, `WaxedOxidized...`), totalling 60 bidirectional pairs.
+  2. *Double Door Synchronization on Waxing & Scraping (`DoorBlock.java:88-96`, `BlockTransformers.java:117`)*:
+     - When waxing (Honeycomb) or scraping/de-waxing (Axe) a copper door, both halves (Lower and Upper) must transform to the target block state, preserving all door properties (facing, half, open, hinge, powered) and emitting particles.
+  3. *Double Chest Synchronization on Waxing & Scraping (`HoneycombItem.java:76-81`, `BlockTransformers.java:110-116`)*:
+     - When waxing or scraping a double copper chest (`ChestLikeProperties.type != ChestType::Single`), the connected companion chest (`ChestBlock.getConnectedBlockPos`) transforms to the corresponding block state with matched properties, and emits world event and sound.
+  4. *Degradation Chance & Copper Bulb Light Levels (`WeatheringCopper.java:49`, `Blocks.java:5166-5171`)*:
+     - Degradation base chance = `0.05688889` (~5.69%).
+     - Scan distance = `4` (Manhattan metric).
+     - Chance modifier = `0.75` for Unaffected, `1.0` for Exposed/Weathered.
+     - Bulb light emission when lit: Unaffected = 15, Exposed = 12, Weathered = 8, Oxidized = 4 (0 when unlit).
+  5. *World Events & Sound Parity*:
+     - `WorldEvent::ParticlesWaxOn` (`3003`) + `Sound::ItemHoneycombWaxOn` on waxing.
+     - `WorldEvent::ParticlesWaxOff` (`3004`) + `Sound::ItemAxeWaxOff` on axe de-waxing.
+     - `WorldEvent::ParticlesScrape` (`3005`) + `Sound::ItemAxeScrape` on axe de-oxidation.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/weathering_copper.rs`:
+    - Added the 15th copper family (`LIGHTNING_ROD`, `EXPOSED_LIGHTNING_ROD`, `WEATHERED_LIGHTNING_ROD`, `OXIDIZED_LIGHTNING_ROD`) to `COPPER_PROGRESSIONS`.
+  - In `crates/pumpkin-core/src/item/items/honeycomb.rs`:
+    - Added all 60 waxed block mappings in `get_waxed_equivalent`.
+    - Updated `waxed_state_id` to delegate to `weathering_copper::with_properties_of` for accurate property preservation.
+    - Updated `try_wax_block` to synchronize double doors (both lower and upper halves) and double chests (both left and right chests), and play `Sound::ItemHoneycombWaxOn`.
+  - In `crates/pumpkin-core/src/item/items/axe.rs`:
+    - Added double chest companion transformation when an axe scrapes or de-waxes a double copper chest, matching door multi-block synchronization.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Exported constants `COPPER_BASE_DEGRADATION_CHANCE`, `COPPER_SCAN_DISTANCE`, `COPPER_CHANCE_MODIFIER_UNAFFECTED`, `COPPER_CHANCE_MODIFIER_OTHER`, `COPPER_BULB_LIGHT_LEVEL_UNAFFECTED`, `COPPER_BULB_LIGHT_LEVEL_EXPOSED`, `COPPER_BULB_LIGHT_LEVEL_WEATHERED`, `COPPER_BULB_LIGHT_LEVEL_OXIDIZED`, `EVENT_PARTICLES_WAX_ON`, `EVENT_PARTICLES_WAX_OFF`, `EVENT_PARTICLES_SCRAPE`.
+    - Added helper functions `calculate_copper_degradation_chance`, `get_copper_bulb_light_emission`, `should_copper_degrade`.
+    - Added comprehensive unit test `test_copper_family_weathering_waxing_scraping_and_multi_block_sync_parity`.
+- **Status**: Completed & Verified.

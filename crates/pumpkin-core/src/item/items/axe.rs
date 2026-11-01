@@ -2,7 +2,9 @@ use crate::block::registry::BlockActionResult;
 use crate::entity::player::Player;
 use crate::item::{ItemBehaviour, ItemMetadata};
 use crate::server::Server;
-use pumpkin_data::block_properties::{DoubleBlockHalf, OakDoorLikeProperties};
+use pumpkin_data::block_properties::{
+    ChestLikeProperties, ChestType, DoubleBlockHalf, OakDoorLikeProperties,
+};
 use pumpkin_data::block_transformer::AXE;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::SoundCategory;
@@ -90,6 +92,40 @@ impl ItemBehaviour for AxeItem {
                         other_new_state_id,
                         BlockFlags::NOTIFY_ALL,
                     );
+                }
+            } else {
+                let chest_blocks = [
+                    &Block::COPPER_CHEST,
+                    &Block::EXPOSED_COPPER_CHEST,
+                    &Block::WEATHERED_COPPER_CHEST,
+                    &Block::OXIDIZED_COPPER_CHEST,
+                    &Block::WAXED_COPPER_CHEST,
+                    &Block::WAXED_EXPOSED_COPPER_CHEST,
+                    &Block::WAXED_WEATHERED_COPPER_CHEST,
+                    &Block::WAXED_OXIDIZED_COPPER_CHEST,
+                ];
+                if chest_blocks.contains(&block) {
+                    let chest_props = ChestLikeProperties::from_state_id(current_state_id);
+                    if chest_props.r#type != ChestType::Single {
+                        let neighbor_dir = match chest_props.r#type {
+                            ChestType::Left => chest_props.facing.rotate_clockwise(),
+                            ChestType::Right => chest_props.facing.rotate_counter_clockwise(),
+                            ChestType::Single => unreachable!(),
+                        };
+                        let neighbor_pos = location.offset(neighbor_dir.to_offset());
+                        let (neighbor_block, neighbor_state_id) = world.get_block_and_state_id(&neighbor_pos);
+                        if neighbor_block == block {
+                            let neighbor_new_state_id = crate::block::blocks::weathering_copper::with_properties_of(
+                                neighbor_block,
+                                neighbor_state_id,
+                                result.target_block,
+                            );
+                            world.set_block_state(&neighbor_pos, neighbor_new_state_id, BlockFlags::NOTIFY_ALL);
+                            if let Some(particle) = result.entry.particle {
+                                world.sync_world_event(particle, neighbor_pos, 0);
+                            }
+                        }
+                    }
                 }
             }
 

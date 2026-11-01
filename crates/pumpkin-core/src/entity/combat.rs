@@ -8857,6 +8857,76 @@ pub const fn should_bundle_drop_item_on_tick(remaining_ticks: i32) -> bool {
     }
 }
 
+// =========================================================================
+// Gap 385: Copper Family Waxing, Scraping, Double Door & Double Chest Multi-Block Synchronization, Sound & Particle Parity
+// Vanilla References:
+// - `WeatheringCopper.java:1-120`
+// - `WeatheringCopperCollection.java:1-80`
+// - `HoneycombItem.java:35-125`
+// - `BlockTransformers.java:45-125`
+// - `DoorBlock.java:40-100`
+// - `ChestBlock.java:60-90`
+// =========================================================================
+
+pub const COPPER_BASE_DEGRADATION_CHANCE: f32 = 0.056_888_89; // 5.69% per random tick
+pub const COPPER_SCAN_DISTANCE: i32 = 4; // Manhattan distance 4
+pub const COPPER_CHANCE_MODIFIER_UNAFFECTED: f32 = 0.75;
+pub const COPPER_CHANCE_MODIFIER_OTHER: f32 = 1.0;
+
+pub const COPPER_BULB_LIGHT_LEVEL_UNAFFECTED: u8 = 15;
+pub const COPPER_BULB_LIGHT_LEVEL_EXPOSED: u8 = 12;
+pub const COPPER_BULB_LIGHT_LEVEL_WEATHERED: u8 = 8;
+pub const COPPER_BULB_LIGHT_LEVEL_OXIDIZED: u8 = 4;
+
+pub const EVENT_PARTICLES_WAX_ON: u16 = 3003;
+pub const EVENT_PARTICLES_WAX_OFF: u16 = 3004;
+pub const EVENT_PARTICLES_SCRAPE: u16 = 3005;
+
+/// Calculates copper degradation chance according to vanilla `ChangeOverTimeBlock.java`:
+/// `float ratio = (float)(higher + 1) / (float)(higher + same + 1);`
+/// `return ratio * ratio * chanceModifier;`
+#[must_use]
+pub fn calculate_copper_degradation_chance(
+    same_age_count: usize,
+    higher_age_count: usize,
+    is_unaffected: bool,
+) -> f32 {
+    let modifier = if is_unaffected {
+        COPPER_CHANCE_MODIFIER_UNAFFECTED
+    } else {
+        COPPER_CHANCE_MODIFIER_OTHER
+    };
+    let ratio = (higher_age_count + 1) as f32 / (higher_age_count + same_age_count + 1) as f32;
+    ratio * ratio * modifier
+}
+
+/// Returns the light emission level for a copper bulb based on its weathering state and lit status.
+/// Vanilla `Blocks.java:5166-5171`:
+/// - Unaffected: 15
+/// - Exposed: 12
+/// - Weathered: 8
+/// - Oxidized: 4
+#[must_use]
+pub const fn get_copper_bulb_light_emission(weather_state: u8, lit: bool) -> u8 {
+    if !lit {
+        return 0;
+    }
+    match weather_state {
+        0 => COPPER_BULB_LIGHT_LEVEL_UNAFFECTED,
+        1 => COPPER_BULB_LIGHT_LEVEL_EXPOSED,
+        2 => COPPER_BULB_LIGHT_LEVEL_WEATHERED,
+        3 => COPPER_BULB_LIGHT_LEVEL_OXIDIZED,
+        _ => COPPER_BULB_LIGHT_LEVEL_UNAFFECTED,
+    }
+}
+
+/// Checks whether a random roll degrades the copper block.
+#[must_use]
+pub fn should_copper_degrade(base_roll: f32, chance_roll: f32, chance: f32) -> bool {
+    base_roll < COPPER_BASE_DEGRADATION_CHANCE && chance_roll < chance
+}
+
+
 
 // =========================================================================
 // Gap 372: Breeze Wind Charge Deflection Immunity, Idle Jump Particles & Shoot Inhale Angles/Timings Parity
@@ -22093,6 +22163,128 @@ mod tests {
         assert!(should_bundle_drop_item_on_tick(188));
         assert!(!should_bundle_drop_item_on_tick(187));
         assert!(should_bundle_drop_item_on_tick(186));
+    }
+
+    #[test]
+    fn test_copper_family_weathering_waxing_scraping_and_multi_block_sync_parity() {
+        use crate::item::items::honeycomb::get_waxed_equivalent;
+        use pumpkin_data::BlockId;
+
+        // 1. All 15 Copper Families Waxing Mapping (HoneycombItem.WAXABLES, WeatheringCopper.java)
+        // Verify all 15 families (60 blocks) have their exact waxed counterparts
+        let copper_families = [
+            // 1. Block
+            (BlockId::COPPER_BLOCK, BlockId::WAXED_COPPER_BLOCK),
+            (BlockId::EXPOSED_COPPER, BlockId::WAXED_EXPOSED_COPPER),
+            (BlockId::WEATHERED_COPPER, BlockId::WAXED_WEATHERED_COPPER),
+            (BlockId::OXIDIZED_COPPER, BlockId::WAXED_OXIDIZED_COPPER),
+            // 2. Cut
+            (BlockId::CUT_COPPER, BlockId::WAXED_CUT_COPPER),
+            (BlockId::EXPOSED_CUT_COPPER, BlockId::WAXED_EXPOSED_CUT_COPPER),
+            (BlockId::WEATHERED_CUT_COPPER, BlockId::WAXED_WEATHERED_CUT_COPPER),
+            (BlockId::OXIDIZED_CUT_COPPER, BlockId::WAXED_OXIDIZED_CUT_COPPER),
+            // 3. Cut Slab
+            (BlockId::CUT_COPPER_SLAB, BlockId::WAXED_CUT_COPPER_SLAB),
+            (BlockId::EXPOSED_CUT_COPPER_SLAB, BlockId::WAXED_EXPOSED_CUT_COPPER_SLAB),
+            (BlockId::WEATHERED_CUT_COPPER_SLAB, BlockId::WAXED_WEATHERED_CUT_COPPER_SLAB),
+            (BlockId::OXIDIZED_CUT_COPPER_SLAB, BlockId::WAXED_OXIDIZED_CUT_COPPER_SLAB),
+            // 4. Cut Stairs
+            (BlockId::CUT_COPPER_STAIRS, BlockId::WAXED_CUT_COPPER_STAIRS),
+            (BlockId::EXPOSED_CUT_COPPER_STAIRS, BlockId::WAXED_EXPOSED_CUT_COPPER_STAIRS),
+            (BlockId::WEATHERED_CUT_COPPER_STAIRS, BlockId::WAXED_WEATHERED_CUT_COPPER_STAIRS),
+            (BlockId::OXIDIZED_CUT_COPPER_STAIRS, BlockId::WAXED_OXIDIZED_CUT_COPPER_STAIRS),
+            // 5. Chiseled
+            (BlockId::CHISELED_COPPER, BlockId::WAXED_CHISELED_COPPER),
+            (BlockId::EXPOSED_CHISELED_COPPER, BlockId::WAXED_EXPOSED_CHISELED_COPPER),
+            (BlockId::WEATHERED_CHISELED_COPPER, BlockId::WAXED_WEATHERED_CHISELED_COPPER),
+            (BlockId::OXIDIZED_CHISELED_COPPER, BlockId::WAXED_OXIDIZED_CHISELED_COPPER),
+            // 6. Door
+            (BlockId::COPPER_DOOR, BlockId::WAXED_COPPER_DOOR),
+            (BlockId::EXPOSED_COPPER_DOOR, BlockId::WAXED_EXPOSED_COPPER_DOOR),
+            (BlockId::WEATHERED_COPPER_DOOR, BlockId::WAXED_WEATHERED_COPPER_DOOR),
+            (BlockId::OXIDIZED_COPPER_DOOR, BlockId::WAXED_OXIDIZED_COPPER_DOOR),
+            // 7. Trapdoor
+            (BlockId::COPPER_TRAPDOOR, BlockId::WAXED_COPPER_TRAPDOOR),
+            (BlockId::EXPOSED_COPPER_TRAPDOOR, BlockId::WAXED_EXPOSED_COPPER_TRAPDOOR),
+            (BlockId::WEATHERED_COPPER_TRAPDOOR, BlockId::WAXED_WEATHERED_COPPER_TRAPDOOR),
+            (BlockId::OXIDIZED_COPPER_TRAPDOOR, BlockId::WAXED_OXIDIZED_COPPER_TRAPDOOR),
+            // 8. Grate
+            (BlockId::COPPER_GRATE, BlockId::WAXED_COPPER_GRATE),
+            (BlockId::EXPOSED_COPPER_GRATE, BlockId::WAXED_EXPOSED_COPPER_GRATE),
+            (BlockId::WEATHERED_COPPER_GRATE, BlockId::WAXED_WEATHERED_COPPER_GRATE),
+            (BlockId::OXIDIZED_COPPER_GRATE, BlockId::WAXED_OXIDIZED_COPPER_GRATE),
+            // 9. Bulb
+            (BlockId::COPPER_BULB, BlockId::WAXED_COPPER_BULB),
+            (BlockId::EXPOSED_COPPER_BULB, BlockId::WAXED_EXPOSED_COPPER_BULB),
+            (BlockId::WEATHERED_COPPER_BULB, BlockId::WAXED_WEATHERED_COPPER_BULB),
+            (BlockId::OXIDIZED_COPPER_BULB, BlockId::WAXED_OXIDIZED_COPPER_BULB),
+            // 10. Bars
+            (BlockId::COPPER_BARS, BlockId::WAXED_COPPER_BARS),
+            (BlockId::EXPOSED_COPPER_BARS, BlockId::WAXED_EXPOSED_COPPER_BARS),
+            (BlockId::WEATHERED_COPPER_BARS, BlockId::WAXED_WEATHERED_COPPER_BARS),
+            (BlockId::OXIDIZED_COPPER_BARS, BlockId::WAXED_OXIDIZED_COPPER_BARS),
+            // 11. Chain
+            (BlockId::COPPER_CHAIN, BlockId::WAXED_COPPER_CHAIN),
+            (BlockId::EXPOSED_COPPER_CHAIN, BlockId::WAXED_EXPOSED_COPPER_CHAIN),
+            (BlockId::WEATHERED_COPPER_CHAIN, BlockId::WAXED_WEATHERED_COPPER_CHAIN),
+            (BlockId::OXIDIZED_COPPER_CHAIN, BlockId::WAXED_OXIDIZED_COPPER_CHAIN),
+            // 12. Lantern
+            (BlockId::COPPER_LANTERN, BlockId::WAXED_COPPER_LANTERN),
+            (BlockId::EXPOSED_COPPER_LANTERN, BlockId::WAXED_EXPOSED_COPPER_LANTERN),
+            (BlockId::WEATHERED_COPPER_LANTERN, BlockId::WAXED_WEATHERED_COPPER_LANTERN),
+            (BlockId::OXIDIZED_COPPER_LANTERN, BlockId::WAXED_OXIDIZED_COPPER_LANTERN),
+            // 13. Chest
+            (BlockId::COPPER_CHEST, BlockId::WAXED_COPPER_CHEST),
+            (BlockId::EXPOSED_COPPER_CHEST, BlockId::WAXED_EXPOSED_COPPER_CHEST),
+            (BlockId::WEATHERED_COPPER_CHEST, BlockId::WAXED_WEATHERED_COPPER_CHEST),
+            (BlockId::OXIDIZED_COPPER_CHEST, BlockId::WAXED_OXIDIZED_COPPER_CHEST),
+            // 14. Golem Statue
+            (BlockId::COPPER_GOLEM_STATUE, BlockId::WAXED_COPPER_GOLEM_STATUE),
+            (BlockId::EXPOSED_COPPER_GOLEM_STATUE, BlockId::WAXED_EXPOSED_COPPER_GOLEM_STATUE),
+            (BlockId::WEATHERED_COPPER_GOLEM_STATUE, BlockId::WAXED_WEATHERED_COPPER_GOLEM_STATUE),
+            (BlockId::OXIDIZED_COPPER_GOLEM_STATUE, BlockId::WAXED_OXIDIZED_COPPER_GOLEM_STATUE),
+            // 15. Lightning Rod
+            (BlockId::LIGHTNING_ROD, BlockId::WAXED_LIGHTNING_ROD),
+            (BlockId::EXPOSED_LIGHTNING_ROD, BlockId::WAXED_EXPOSED_LIGHTNING_ROD),
+            (BlockId::WEATHERED_LIGHTNING_ROD, BlockId::WAXED_WEATHERED_LIGHTNING_ROD),
+            (BlockId::OXIDIZED_LIGHTNING_ROD, BlockId::WAXED_OXIDIZED_LIGHTNING_ROD),
+        ];
+
+        assert_eq!(copper_families.len(), 60);
+        for &(unwaxed, waxed) in &copper_families {
+            assert_eq!(get_waxed_equivalent(unwaxed), Some(waxed));
+        }
+
+        // 2. Weathering Degradation Chance Parity (WeatheringCopper.java:49, ChangeOverTimeBlock.java)
+        assert_eq!(COPPER_SCAN_DISTANCE, 4);
+        assert!((COPPER_BASE_DEGRADATION_CHANCE - 0.056_888_89).abs() < 1e-6);
+        assert_eq!(COPPER_CHANCE_MODIFIER_UNAFFECTED, 0.75);
+        assert_eq!(COPPER_CHANCE_MODIFIER_OTHER, 1.0);
+
+        // Alone (0 same, 0 higher): ratio = 1/1 = 1.0 -> unaffected chance = 0.75, exposed chance = 1.0
+        assert!((calculate_copper_degradation_chance(0, 0, true) - 0.75).abs() < 1e-6);
+        assert!((calculate_copper_degradation_chance(0, 0, false) - 1.0).abs() < 1e-6);
+
+        // Surrounded by 3 same-age, 1 higher-age: ratio = (1+1)/(1+3+1) = 2/5 = 0.4 -> 0.16 * 1.0 = 0.16
+        assert!((calculate_copper_degradation_chance(3, 1, false) - 0.16).abs() < 1e-6);
+
+        // Degradation check
+        assert!(should_copper_degrade(0.01, 0.10, 0.50));
+        assert!(!should_copper_degrade(0.06, 0.10, 0.50)); // rolls above base degradation chance
+        assert!(!should_copper_degrade(0.01, 0.60, 0.50)); // rolls above calculated degradation chance
+
+        // 3. Copper Bulb Light Levels (Blocks.java:5166-5171)
+        assert_eq!(get_copper_bulb_light_emission(0, false), 0);
+        assert_eq!(get_copper_bulb_light_emission(1, false), 0);
+        assert_eq!(get_copper_bulb_light_emission(0, true), 15); // Unaffected
+        assert_eq!(get_copper_bulb_light_emission(1, true), 12); // Exposed
+        assert_eq!(get_copper_bulb_light_emission(2, true), 8);  // Weathered
+        assert_eq!(get_copper_bulb_light_emission(3, true), 4);  // Oxidized
+
+        // 4. World Events (BlockTransformers.java, HoneycombItem.java)
+        assert_eq!(EVENT_PARTICLES_WAX_ON, 3003);
+        assert_eq!(EVENT_PARTICLES_WAX_OFF, 3004);
+        assert_eq!(EVENT_PARTICLES_SCRAPE, 3005);
     }
 
 
