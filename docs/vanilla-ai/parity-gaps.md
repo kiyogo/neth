@@ -10270,3 +10270,38 @@ eq 	ext{None}$.
     - `test_allay_dispenser_attack_and_throw_pitch_parity` (pitch array indexing and modulo validation)
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_allay_and_axolotl_parity` (updated with pitch table and timing assertions)
+
+### Gap 404: Dolphin Ageable Baby Scaling, Look Pitch Limit, Dispenser Equip Main Hand & Feeding Age-Up Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.dolphin.Dolphin.java:75-80, 184-195, 197-200, 323-333, 362-364`, `net.minecraft.world.entity.animal.AgeableWaterCreature.java`.
+- **Description**:
+  1. **AgeableMob & Baby Dimensions Scaling (`Dolphin.java:75-80, 362-364`)**:
+     - In Vanilla Java 1.21.4, `Dolphin` extends `AgeableWaterCreature` and can exist in baby form with `BABY_SCALE = 0.65F` and `BABY_DIMENSIONS` with eye height `0.09375F`.
+     - Previously in Neth, `DolphinEntity` did not implement `AgeableMob` or `as_ageable()`, and its dimensions/hitbox never scaled for baby dolphins.
+     - Implemented `AgeableMob for DolphinEntity` with `AgeableData`, dynamic dimension updates via `refresh_dimensions()`, and `calculate_dolphin_dimensions(base_w, base_h, base_eye, is_baby)`.
+  2. **Feeding Baby Age-Up vs Adult Fish Eating (`Dolphin.java:323-333`)**:
+     - In Vanilla Java 1.21.4, when fed fish, if the dolphin is a baby (`canAgeUp()`), it consumes the fish to accelerate aging (`ageUp(getSpeedUpSecondsWhenFeeding(-this.age), true)`) and does NOT set `got_fish = true`. Only adult dolphins set `got_fish = true` (which triggers treasure hunting).
+     - Previously in Neth, all dolphins unconditionally set `got_fish = true` and healed 2.0 HP, failing to age up babies.
+     - Updated `mob_interact` to properly check `self.can_age_up()` and age up baby dolphins.
+  3. **Head Rotation & Look Pitch Constraints (`Dolphin.java:189-195`)**:
+     - Vanilla dolphins have rigid necks with `getMaxHeadXRot() -> 1` and `getMaxHeadYRot() -> 1` degree.
+     - Previously in Neth, `get_max_look_pitch_change()` was not overridden on `DolphinEntity`, remaining at the default 40.0 degrees instead of 1.0 degree.
+     - Overrode `get_max_look_pitch_change(&self) -> f32` returning `DOLPHIN_MAX_LOOK_PITCH_CHANGE` (1.0).
+  4. **Dispenser Equip Slot Restriction (`Dolphin.java:197-200`)**:
+     - In Vanilla Java, dispensers can only equip into `EquipmentSlot.MAINHAND` of a dolphin (if it can pick up loot), and cannot equip helmets/armor onto dolphins.
+     - Implemented `can_dispenser_equip_into_slot` on `DolphinEntity` verifying `slot == MAIN_HAND && can_pick_up_loot()`.
+  5. **Constants Formalization in `combat.rs`**:
+     - Formalized constants in `combat.rs`:
+       - `DOLPHIN_BABY_SCALE = 0.65`
+       - `DOLPHIN_BABY_EYE_HEIGHT = 0.09375`
+       - `DOLPHIN_MAX_HEAD_ROTATION = 1.0`
+       - `DOLPHIN_MAX_LOOK_PITCH_CHANGE = 1.0`
+       - `DOLPHIN_SWIM_WITH_PLAYER_RANGE = 10.0`
+       - `DOLPHIN_SWIM_WITH_PLAYER_MAX_DIST_SQ = 256.0`
+       - `DOLPHIN_SWIM_WITH_PLAYER_CLOSE_DIST_SQ = 6.25`
+       - `DOLPHIN_PLAY_WITH_ITEMS_PICKUP_DELAY = 40`
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/passive/dolphin.rs`:
+    - `test_dolphin_baby_dimensions_and_rotation_limits` (verifying baby dimensions scale and rotation limits)
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_spider_cave_spider_and_dolphin_parity` (updated with baby scale, eye height, rotation and range assertions)

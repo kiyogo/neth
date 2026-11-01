@@ -18,6 +18,8 @@ use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
+use crate::entity::ageable::{AgeableData, AgeableMob};
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use crate::entity::{
     Entity, EntityBase,
     ai::control::smooth_swimming_move_control::SmoothSwimmingMoveControl,
@@ -41,6 +43,7 @@ pub struct DolphinEntity {
     pub mob_entity: MobEntity,
     pub got_fish: AtomicBool,
     pub moistness_level: AtomicI32,
+    pub ageable_data: AgeableData,
 }
 
 impl DolphinEntity {
@@ -62,8 +65,10 @@ impl DolphinEntity {
             mob_entity,
             got_fish: AtomicBool::new(false),
             moistness_level: AtomicI32::new(2400),
+            ageable_data: AgeableData::default(),
         };
         let mob_arc = Arc::new(dolphin);
+        mob_arc.refresh_dimensions();
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -164,6 +169,38 @@ impl DolphinEntity {
             VarInt(val),
         );
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_dolphin_dimensions(
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+            is_baby,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+}
+
+impl AgeableMob for DolphinEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Mob for DolphinEntity {
@@ -201,6 +238,7 @@ impl Mob for DolphinEntity {
         if let Some(moistness) = nbt.get_int("Moistness") {
             self.set_moistness_level(moistness);
         }
+        self.refresh_dimensions();
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
@@ -211,12 +249,25 @@ impl Mob for DolphinEntity {
         Some(self)
     }
 
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
     fn get_max_head_rotation(&self) -> f32 {
-        1.0
+        crate::entity::combat::DOLPHIN_MAX_HEAD_ROTATION
+    }
+
+    fn get_max_look_pitch_change(&self) -> f32 {
+        crate::entity::combat::DOLPHIN_MAX_LOOK_PITCH_CHANGE
+    }
+
+    /// Vanilla Dolphin.java:197-200: Dispensers can only equip MAIN_HAND if dolphin can pick up loot.
+    fn can_dispenser_equip_into_slot(&self, slot: &pumpkin_data::data_component_impl::EquipmentSlot) -> bool {
+        slot == &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND && self.mob_entity.can_pick_up_loot()
     }
 
     fn can_attack(&self, target: &dyn EntityBase) -> bool {
-        if self.get_entity().age.load(Ordering::Relaxed) < 0 {
+        if self.is_baby() {
             return false;
         }
         let target_entity = target.get_entity();
@@ -299,9 +350,15 @@ impl Mob for DolphinEntity {
             || TEMPT_ITEMS.iter().any(|i| i.id == item.id)
             || item == &Item::PUFFERFISH
         {
-            item_stack.decrement_unless_creative(player.gamemode.load(), 1);
-            self.set_got_fish(true);
-            self.mob_entity.living_entity.heal(2.0);
+            if self.can_age_up() {
+                item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                let speed_up = Self::get_speed_up_seconds_when_feeding(-self.get_age());
+                self.age_up(speed_up, true);
+            } else {
+                item_stack.decrement_unless_creative(player.gamemode.load(), 1);
+                self.set_got_fish(true);
+                self.mob_entity.living_entity.heal(2.0);
+            }
 
             let entity = self.get_entity();
             let world = entity.world.load();
@@ -497,5 +554,24 @@ mod tests {
 
         assert_eq!(crate::entity::combat::get_dolphin_total_air_supply(), 4800);
         assert_eq!(crate::entity::combat::get_dolphin_total_moistness(), 2400);
+    }
+
+    #[test]
+    fn test_dolphin_baby_dimensions_and_rotation_limits() {
+
+        assert_eq!(crate::entity::combat::DOLPHIN_BABY_SCALE, 0.65);
+        assert_eq!(crate::entity::combat::DOLPHIN_BABY_EYE_HEIGHT, 0.09375);
+        assert_eq!(crate::entity::combat::DOLPHIN_MAX_HEAD_ROTATION, 1.0);
+        assert_eq!(crate::entity::combat::DOLPHIN_MAX_LOOK_PITCH_CHANGE, 1.0);
+
+        let (bw, bh, be) = crate::entity::combat::calculate_dolphin_dimensions(0.9, 0.6, 0.3, true);
+        assert!((bw - 0.585).abs() < 1e-4);
+        assert!((bh - 0.39).abs() < 1e-4);
+        assert_eq!(be, 0.09375);
+
+        let (aw, ah, ae) = crate::entity::combat::calculate_dolphin_dimensions(0.9, 0.6, 0.3, false);
+        assert_eq!(aw, 0.9);
+        assert_eq!(ah, 0.6);
+        assert_eq!(ae, 0.3);
     }
 }

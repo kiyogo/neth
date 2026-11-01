@@ -10913,6 +10913,76 @@ pub const DOLPHIN_TOTAL_MOISTNESS_LEVEL: i32 = 2400;
 /// Mirrors vanilla WaterAnimal.java:36.
 pub const DOLPHIN_XP_REWARD: u32 = 2;
 
+/// Dolphin baby scale factor (0.65).
+///
+/// Mirrors vanilla `Dolphin.java:75`:
+/// `public static final float BABY_SCALE = 0.65F;`
+pub const DOLPHIN_BABY_SCALE: f32 = 0.65;
+
+/// Dolphin baby eye height (0.09375).
+///
+/// Mirrors vanilla `Dolphin.java:78`:
+/// `.withEyeHeight(0.09375F)`
+pub const DOLPHIN_BABY_EYE_HEIGHT: f32 = 0.09375;
+
+/// Dolphin maximum head rotation degrees (1.0).
+///
+/// Mirrors vanilla `Dolphin.java:194`:
+/// `public int getMaxHeadYRot() { return 1; }`
+pub const DOLPHIN_MAX_HEAD_ROTATION: f32 = 1.0;
+
+/// Dolphin maximum look pitch change degrees (1.0).
+///
+/// Mirrors vanilla `Dolphin.java:189`:
+/// `public int getMaxHeadXRot() { return 1; }`
+pub const DOLPHIN_MAX_LOOK_PITCH_CHANGE: f32 = 1.0;
+
+/// Dolphin swim with player initiation search range (10.0 blocks).
+///
+/// Mirrors vanilla `Dolphin.java:69`:
+/// `SWIM_WITH_PLAYER_TARGETING = TargetingConditions.forNonCombat().range(10.0).ignoreLineOfSight();`
+pub const DOLPHIN_SWIM_WITH_PLAYER_RANGE: f64 = 10.0;
+
+/// Dolphin swim with player maximum tracking distance squared (256.0 = 16 blocks).
+///
+/// Mirrors vanilla `Dolphin.java:490`:
+/// `distanceToSqr(this.player) < 256.0`
+pub const DOLPHIN_SWIM_WITH_PLAYER_MAX_DIST_SQ: f64 = 256.0;
+
+/// Dolphin swim with player arrival stop distance squared (6.25 = 2.5 blocks).
+///
+/// Mirrors vanilla `Dolphin.java:505`:
+/// `distanceToSqr(this.player) < 6.25`
+pub const DOLPHIN_SWIM_WITH_PLAYER_CLOSE_DIST_SQ: f64 = 6.25;
+
+/// Dolphin item pickup delay ticks when playing with items (40 ticks = 2 seconds).
+///
+/// Mirrors vanilla `Dolphin.java:522`:
+/// `thrownItem.setPickUpDelay(40);`
+pub const DOLPHIN_PLAY_WITH_ITEMS_PICKUP_DELAY: i32 = 40;
+
+/// Calculates Dolphin dimensions based on baby status.
+///
+/// Mirrors vanilla `Dolphin.java:75-80, 362-364`:
+/// `.scale(0.65F).withEyeHeight(0.09375F)`
+#[must_use]
+pub fn calculate_dolphin_dimensions(
+    base_width: f32,
+    base_height: f32,
+    base_eye_height: f32,
+    is_baby: bool,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            base_width * DOLPHIN_BABY_SCALE,
+            base_height * DOLPHIN_BABY_SCALE,
+            DOLPHIN_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (base_width, base_height, base_eye_height)
+    }
+}
+
 /// Squid base max health (10.0 HP / 5 hearts).
 /// Mirrors vanilla Squid.java:65 (Attributes.MAX_HEALTH, 10.0).
 pub const SQUID_MAX_HEALTH: f32 = 10.0;
@@ -14475,6 +14545,26 @@ mod tests {
 
         // 5. Dolphin grace duration
         assert_eq!(calculate_dolphin_grace_duration(), 100);
+
+        // 6. Dolphin baby scale, eye height, head rotation and look pitch parity (Dolphin.java:75-78, 189-195)
+        assert_eq!(DOLPHIN_BABY_SCALE, 0.65);
+        assert_eq!(DOLPHIN_BABY_EYE_HEIGHT, 0.09375);
+        assert_eq!(DOLPHIN_MAX_HEAD_ROTATION, 1.0);
+        assert_eq!(DOLPHIN_MAX_LOOK_PITCH_CHANGE, 1.0);
+        assert_eq!(DOLPHIN_SWIM_WITH_PLAYER_RANGE, 10.0);
+        assert_eq!(DOLPHIN_SWIM_WITH_PLAYER_MAX_DIST_SQ, 256.0);
+        assert_eq!(DOLPHIN_SWIM_WITH_PLAYER_CLOSE_DIST_SQ, 6.25);
+        assert_eq!(DOLPHIN_PLAY_WITH_ITEMS_PICKUP_DELAY, 40);
+
+        let (bw, bh, be) = calculate_dolphin_dimensions(0.9, 0.6, 0.3, true);
+        assert!((bw - 0.9 * 0.65).abs() < 1e-5);
+        assert!((bh - 0.6 * 0.65).abs() < 1e-5);
+        assert_eq!(be, 0.09375);
+
+        let (aw, ah, ae) = calculate_dolphin_dimensions(0.9, 0.6, 0.3, false);
+        assert_eq!(aw, 0.9);
+        assert_eq!(ah, 0.6);
+        assert_eq!(ae, 0.3);
     }
 
     #[test]
