@@ -6,17 +6,19 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::tag;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
+use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_util::math::vector3::Vector3;
 use pumpkin_data::{BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
-use crate::block::entities::decorated_pot::DecoratedPotBlockEntity;
+use crate::block::entities::decorated_pot::{DecoratedPotBlockEntity, PotWobbleStyle};
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, NormalUseArgs, OnPlaceArgs,
-    OnProjectileHitArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
+    OnProjectileHitArgs, OnSyncedBlockEventArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
 };
 use crate::world::World;
 
@@ -146,6 +148,25 @@ impl BlockBehaviour for DecoratedPotBlock {
                     1.0,
                     pitch,
                 );
+                // Positive wobble
+                args.world.add_synced_block_event(
+                    *args.position,
+                    Self::EVENT_POT_WOBBLES as u8,
+                    PotWobbleStyle::Positive as u8,
+                );
+                // Dust plume particles
+                let particle_pos = Vector3::new(
+                    args.position.0.x as f64 + 0.5,
+                    args.position.0.y as f64 + 1.2,
+                    args.position.0.z as f64 + 0.5,
+                );
+                args.world.spawn_particle(
+                    particle_pos,
+                    Vector3::new(0.0, 0.0, 0.0),
+                    0.0,
+                    Self::INSERT_DUST_PLUME_PARTICLES,
+                    Particle::DustPlume,
+                );
                 // Vanilla `BlockEntity.setChanged` notifies comparators.
                 args.world
                     .update_neighbour_for_output_signal(args.position, args.block);
@@ -154,6 +175,12 @@ impl BlockBehaviour for DecoratedPotBlock {
                     Sound::BlockDecoratedPotInsertFail,
                     SoundCategory::Blocks,
                     &args.position.to_f64(),
+                );
+                // Negative wobble on insert fail
+                args.world.add_synced_block_event(
+                    *args.position,
+                    Self::EVENT_POT_WOBBLES as u8,
+                    PotWobbleStyle::Negative as u8,
                 );
             }
             return BlockActionResult::Success;
@@ -168,7 +195,17 @@ impl BlockBehaviour for DecoratedPotBlock {
             SoundCategory::Blocks,
             &args.position.to_f64(),
         );
+        // Negative wobble on empty-hand interact
+        args.world.add_synced_block_event(
+            *args.position,
+            Self::EVENT_POT_WOBBLES as u8,
+            PotWobbleStyle::Negative as u8,
+        );
         BlockActionResult::Success
+    }
+
+    fn on_synced_block_event(&self, args: OnSyncedBlockEventArgs<'_>) -> bool {
+        args.r#type == Self::EVENT_POT_WOBBLES as u8
     }
 
     fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
@@ -204,9 +241,6 @@ impl BlockBehaviour for DecoratedPotBlock {
                 &args.position.to_f64(),
             );
             Self::drop_pot_sherds(args.world, args.position);
-        } else {
-            args.world
-                .drop_stack(args.position, ItemStack::new(1, &Item::DECORATED_POT));
         }
     }
 

@@ -6094,6 +6094,22 @@ impl World {
             return None;
         }
 
+        let mut broken_block_state = broken_block_state;
+        if broken_block == &Block::DECORATED_POT
+            && let Some(player) = cause
+        {
+            let held_item = player.inventory().held_item();
+            let is_tool = crate::block::blocks::decorated_pot::DecoratedPotBlock::is_breaks_decorated_pot_tool(held_item.item);
+            let has_silk_touch = held_item
+                .get_enchantment_level(&pumpkin_data::enchantment::Enchantment::SILK_TOUCH)
+                > 0;
+            if crate::block::blocks::decorated_pot::DecoratedPotBlock::can_break_pot_shatter(is_tool, has_silk_touch) {
+                let mut props = pumpkin_data::block_properties::DecoratedPotLikeProperties::from_state_id(broken_block_state.id);
+                props.r#cracked = true;
+                broken_block_state = BlockState::from_id(props.to_state_id(broken_block));
+            }
+        }
+
         let block_entity = (broken_block_state.block_entity_type != u16::MAX)
             .then(|| self.get_block_entity(position))
             .flatten();

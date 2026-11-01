@@ -22288,4 +22288,103 @@ mod tests {
     }
 
 
+    #[test]
+    fn test_decorated_pot_shattering_silk_touch_insertion_pitch_and_comparator_parity() {
+        use crate::block::blocks::decorated_pot::DecoratedPotBlock;
+        use crate::block::entities::decorated_pot::PotWobbleStyle;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+
+        // 1. Constants parity with Vanilla DecoratedPotBlock.java & DecoratedPotBlockEntity.java
+        assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
+        assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
+        assert_eq!(DecoratedPotBlock::SHERD_DYNAMIC_DROP_ID, "sherds");
+        assert_eq!(DecoratedPotBlock::WOBBLE_POSITIVE_TICKS, 7);
+        assert_eq!(DecoratedPotBlock::WOBBLE_NEGATIVE_TICKS, 10);
+        assert_eq!(DecoratedPotBlock::EVENT_POT_WOBBLES, 1);
+        assert_eq!(DecoratedPotBlock::BASE_INSERT_PITCH, 0.7);
+        assert_eq!(DecoratedPotBlock::PITCH_BEND_SCALE, 0.5);
+
+        // Wobble durations
+        assert_eq!(PotWobbleStyle::Positive.duration_ticks(), 7);
+        assert_eq!(PotWobbleStyle::Negative.duration_ticks(), 10);
+
+        // 2. Breaks Decorated Pots Tool parity (ItemTags.BREAKS_DECORATED_POTS)
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::DIAMOND_SWORD));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::NETHERITE_SWORD));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::IRON_AXE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::DIAMOND_PICKAXE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::GOLDEN_SHOVEL));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::STONE_HOE));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::TRIDENT));
+        assert!(DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::MACE));
+
+        // Non-tools do not break/shatter pots into sherds
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::STICK));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::FEATHER));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::DIRT));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::APPLE));
+        assert!(!DecoratedPotBlock::is_breaks_decorated_pot_tool(&Item::BRICK));
+
+        // 3. Tool breakdown vs Silk Touch preservation parity
+        // Tool + no silk touch -> shatters into 4 sherds/bricks
+        assert!(DecoratedPotBlock::can_break_pot_shatter(true, false));
+        // Tool + silk touch -> preserves intact pot
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(true, true));
+        // Bare hands / non-tool + no silk touch -> preserves intact pot
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(false, false));
+        // Bare hands / non-tool + silk touch -> preserves intact pot
+        assert!(!DecoratedPotBlock::can_break_pot_shatter(false, true));
+
+        // 4. Impact Projectiles parity (EntityTypeTags.IMPACT_PROJECTILES)
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::ARROW));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::TRIDENT));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SNOWBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::EGG));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::SMALL_FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::DRAGON_FIREBALL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::WITHER_SKULL));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::WIND_CHARGE));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::BREEZE_WIND_CHARGE));
+        assert!(DecoratedPotBlock::is_impact_projectile(&EntityType::FIREWORK_ROCKET));
+
+        // Non-impact projectiles do not shatter
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::PLAYER));
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::ZOMBIE));
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::ITEM));
+        assert!(!DecoratedPotBlock::is_impact_projectile(&EntityType::EXPERIENCE_ORB));
+
+        // 5. Insert Sound Pitch Scaling: 0.7 + 0.5 * (count / maxStack)
+        // 64-stack item
+        assert!((DecoratedPotBlock::calculate_insert_pitch(1, 64) - (0.7 + 0.5 * (1.0 / 64.0))).abs() < 1e-6);
+        assert!((DecoratedPotBlock::calculate_insert_pitch(16, 64) - (0.7 + 0.5 * 0.25)).abs() < 1e-6);
+        assert!((DecoratedPotBlock::calculate_insert_pitch(32, 64) - (0.7 + 0.5 * 0.5)).abs() < 1e-6);
+        assert!((DecoratedPotBlock::calculate_insert_pitch(64, 64) - 1.2).abs() < 1e-6);
+
+        // 16-stack item (e.g. Ender Pearls)
+        assert!((DecoratedPotBlock::calculate_insert_pitch(1, 16) - (0.7 + 0.5 * (1.0 / 16.0))).abs() < 1e-6);
+        assert!((DecoratedPotBlock::calculate_insert_pitch(8, 16) - (0.7 + 0.5 * 0.5)).abs() < 1e-6);
+        assert!((DecoratedPotBlock::calculate_insert_pitch(16, 16) - 1.2).abs() < 1e-6);
+
+        // 1-stack item
+        assert!((DecoratedPotBlock::calculate_insert_pitch(1, 1) - 1.2).abs() < 1e-6);
+
+        // 6. Comparator Analog Output Signal (Mth.lerpDiscrete(totalPercent, 0, 15))
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 64), 0);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 16), 0);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(0, 1), 0);
+
+        // Non-empty yields at least 1:
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 64), 1);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(32, 64), 8);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(64, 64), 15);
+
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 16), 1);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(8, 16), 8);
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(16, 16), 15);
+
+        assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 1), 15);
+    }
 }

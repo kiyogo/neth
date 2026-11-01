@@ -9760,3 +9760,35 @@ eq 	ext{None}$.
     - Added helper functions `calculate_copper_degradation_chance`, `get_copper_bulb_light_emission`, `should_copper_degrade`.
     - Added comprehensive unit test `test_copper_family_weathering_waxing_scraping_and_multi_block_sync_parity`.
 - **Status**: Completed & Verified.
+
+
+### Gap 386: Decorated Pot Projectile Shattering, Tool Breakdown vs Silk Touch Preservation, Insertion Pitch Scaling & Comparator Signal Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.DecoratedPotBlock.java:1-247`, `net.minecraft.world.level.block.entity.DecoratedPotBlockEntity.java:1-187`, `net.minecraft.world.level.block.entity.PotDecorations.java:1-66`, `net.minecraft.world.inventory.AbstractContainerMenu.java:762-782`, `net.minecraft.data.loot.packs.VanillaBlockLoot.java`, `net.minecraft.tags.ItemTags.java:BREAKS_DECORATED_POTS`, `net.minecraft.tags.EnchantmentTags.java:PREVENTS_DECORATED_POT_SHATTERING`.
+- **Vanilla Mechanics**:
+  1. *Tool Breakdown vs Silk Touch Preservation (`DecoratedPotBlock.java:188-197`, `VanillaBlockLoot`)*:
+     - When mined with a tool tagged `#minecraft:breaks_decorated_pots` (swords, axes, pickaxes, shovels, hoes, trident, mace) that does NOT have `#minecraft:prevents_decorated_pot_shattering` (Silk Touch), `playerWillDestroy` sets block property `CRACKED = true`.
+     - When `CRACKED` is true: The pot loot table evaluates `Inverted(cracked == true)` as false (dropping 0 decorated pots), dynamic drop `minecraft:sherds` drops the 4 constituent sherds or bricks, sound `SoundType.DECORATED_POT_CRACKED` / `BlockDecoratedPotShatter` plays, and the single contained item drops via container removal side effects.
+     - When broken with bare hands, non-tool items, or a Silk Touch enchanted tool: `CRACKED` remains `false`. The pot loot table drops 1 intact `minecraft:decorated_pot` retaining its `minecraft:pot_decorations` component, and no sherds/shatter sound are produced.
+  2. *Duplicate Drop Bug Fix*:
+     - Previously in Neth, `DecoratedPotBlock::broken` unconditionally dropped a duplicate decorated pot when not shattered (`else { drop_stack(Item::DECORATED_POT) }`), while `break_block` also dropped a pot via loot table evaluation, duplicating pots and stripping their decorations. Removing the manual non-shatter drop ensures 100% parity with vanilla loot tables.
+     - Setting `broken_block_state` to cracked state in `break_block` when broken with a shattering tool prevents the intact loot table from rolling a duplicate decorated pot alongside sherds.
+  3. *Impact Projectile Shattering (`DecoratedPotBlock.java:210-216`)*:
+     - Any projectile in `#minecraft:impact_projectiles` (arrow, spectral arrow, trident, snowball, egg, fireball, small fireball, dragon fireball, wither skull, wind charge, breeze wind charge, firework rocket) with interaction rights shatters the pot, dropping the 4 sherds/bricks and releasing its contained item.
+  4. *Insert Pitch Scaling & Wobble Synced Block Events (`DecoratedPotBlock.java:108-145`, `DecoratedPotBlockEntity.java:160-186`)*:
+     - Insert sound pitch formula: `0.7F + 0.5F * (count / maxStackSize)`. Scales smoothly from `0.7` up to `1.2`.
+     - Successful insertion triggers positive wobble: synced block event `1`, data `0` (`EVENT_POT_WOBBLES`, positive duration 7 ticks), and spawns 7 `Particle::DustPlume` particles at `(x + 0.5, y + 1.2, z + 0.5)`.
+     - Failed insertion (pot full, item mismatch) or empty-hand interaction plays `DECORATED_POT_INSERT_FAIL` and triggers negative wobble: synced block event `1`, data `1` (negative duration 10 ticks).
+  5. *Comparator Analog Redstone Output (`AbstractContainerMenu.java:762-782`, `Mth.lerpDiscrete`)*:
+     - Formula: `0` if empty; otherwise `1 + floor((count / maxStackSize) * 14.0)` (range 1 to 15).
+     - Single items of non-stackable gear (saddles, tools) output full power 15 immediately.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/decorated_pot.rs`:
+    - Added positive wobble event (`EVENT_POT_WOBBLES`, `PotWobbleStyle::Positive`) and 7 `Particle::DustPlume` particles on successful item insertion in `use_with_item`.
+    - Added negative wobble event on failed item insertion and on empty-hand `normal_use`.
+    - Implemented `on_synced_block_event` to handle wobble events.
+    - Removed duplicate manual drop in `broken` so intact pot drop is handled by the vanilla loot table with full `pot_decorations` preservation.
+  - In `crates/pumpkin-core/src/world/mod.rs`:
+    - Updated `break_block` to set `broken_block_state` to `r#cracked = true` when broken by a player holding a tool in `#breaks_decorated_pots` without Silk Touch, matching `DecoratedPotBlock.playerWillDestroy`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added comprehensive unit test `test_decorated_pot_shattering_silk_touch_insertion_pitch_and_comparator_parity` covering constants, tool break tests, silk touch preservation, impact projectiles, pitch scaling, and comparator formulas.
+- **Status**: Completed & Verified.
