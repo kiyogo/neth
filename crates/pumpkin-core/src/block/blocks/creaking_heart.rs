@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
 use pumpkin_data::block_properties::{Axis, CreakingHeartLikeProperties, CreakingHeartState};
-use pumpkin_data::item::Item;
-use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{BlockId, BlockStateId};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_world::world::BlockFlags;
 
 use crate::block::entities::creaking_heart::CreakingHeartBlockEntity;
-use crate::block::{BlockBehaviour, BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{
+    BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, OnNeighborUpdateArgs, OnPlaceArgs,
+    PathComputationType, PlacedArgs,
+};
 
 #[pumpkin_block("minecraft:creaking_heart")]
 pub struct CreakingHeartBlock;
@@ -32,7 +33,13 @@ impl CreakingHeartBlock {
     pub const TRAIL_COLOR_TOWARDS_HEART: i32 = crate::entity::combat::CREAKING_HEART_TRAIL_COLOR_TOWARDS_HEART;
 
     pub const fn is_pale_oak_log(id: BlockId) -> bool {
-        matches!(id, BlockId::PALE_OAK_LOG | BlockId::STRIPPED_PALE_OAK_LOG)
+        matches!(
+            id,
+            BlockId::PALE_OAK_LOG
+                | BlockId::PALE_OAK_WOOD
+                | BlockId::STRIPPED_PALE_OAK_LOG
+                | BlockId::STRIPPED_PALE_OAK_WOOD
+        )
     }
 
     pub fn check_active_logs(
@@ -152,25 +159,45 @@ impl BlockBehaviour for CreakingHeartBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        {
-            args.world.play_sound(
-                Sound::BlockCreakingHeartBreak,
-                SoundCategory::Blocks,
-                &args.position.to_f64(),
-            );
-            args.world
-                .drop_stack(args.position, ItemStack::new(1, &Item::CREAKING_HEART));
+        args.world.play_sound(
+            Sound::BlockCreakingHeartBreak,
+            SoundCategory::Blocks,
+            &args.position.to_f64(),
+        );
 
-            let state_id = args.world.get_block_state_id(args.position);
-            let props = CreakingHeartLikeProperties::from_state_id(state_id);
-            if props.natural {
-                let xp = rand::random_range(Self::NATURAL_BREAK_MIN_XP..=Self::NATURAL_BREAK_MAX_XP);
-                crate::entity::experience_orb::ExperienceOrbEntity::spawn(
-                    args.world,
-                    args.position.to_centered_f64(),
-                    xp,
-                );
-            }
+        // Vanilla CreakingHeartBlock.java:178-180: natural heart drops 20..=24 XP
+        let props = CreakingHeartLikeProperties::from_state_id(args.state.id);
+        if props.natural {
+            let xp = rand::random_range(Self::NATURAL_BREAK_MIN_XP..=Self::NATURAL_BREAK_MAX_XP);
+            crate::entity::experience_orb::ExperienceOrbEntity::spawn(
+                args.world,
+                args.position.to_centered_f64(),
+                xp,
+            );
         }
+    }
+
+    fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
+        let props = CreakingHeartLikeProperties::from_state_id(args.state.id);
+        if props.creaking_heart_state == CreakingHeartState::Uprooted {
+            return Some(0);
+        }
+
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(heart_entity) = block_entity
+                .as_any()
+                .downcast_ref::<CreakingHeartBlockEntity>()
+        {
+            let signal = heart_entity
+                .output_signal
+                .load(std::sync::atomic::Ordering::Relaxed);
+            Some(signal.clamp(0, 15) as u8)
+        } else {
+            Some(0)
+        }
+    }
+
+    fn is_pathfindable(&self, _state: &pumpkin_data::BlockState, _computation_type: PathComputationType) -> bool {
+        false
     }
 }

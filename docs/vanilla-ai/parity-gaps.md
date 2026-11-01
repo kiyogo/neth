@@ -9792,3 +9792,36 @@ eq 	ext{None}$.
   - In `crates/pumpkin-core/src/entity/combat.rs`:
     - Added comprehensive unit test `test_decorated_pot_shattering_silk_touch_insertion_pitch_and_comparator_parity` covering constants, tool break tests, silk touch preservation, impact projectiles, pitch scaling, and comparator formulas.
 - **Status**: Completed & Verified.
+
+
+### Gap 387: Creaking Heart Silk Touch vs Resin Clump Loot Drop, Natural Heart XP, Comparator Distance Signal & Log Check Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.CreakingHeartBlock.java:1-196`, `net.minecraft.world.level.block.entity.CreakingHeartBlockEntity.java:1-355`, `net.minecraft.world.entity.monster.creaking.Creaking.java:294-328`, `net.minecraft.data.loot.packs.VanillaBlockLoot.java` (`BLOCKS_CREAKING_HEART`), `net.minecraft.tags.BlockTags.java:PALE_OAK_LOGS`.
+- **Vanilla Mechanics**:
+  1. *Silk Touch vs Resin Clump Loot Drop (`VanillaBlockLoot`, `BLOCKS_CREAKING_HEART`)*:
+     - When broken with Silk Touch: Drops 1 intact `minecraft:creaking_heart`.
+     - When broken without Silk Touch: Evaluates alternative drop of 1..=3 `minecraft:resin_clump` with `UniformBonusCount(1)`.
+     - Previously, `CreakingHeartBlock::broken` unconditionally called `world.drop_stack(position, ItemStack::new(1, &Item::CREAKING_HEART))`. This bypassed the loot table, duplicating hearts when mined with Silk Touch and dropping hearts even when mined without Silk Touch! Removed manual item drop from `broken` so `BLOCKS_CREAKING_HEART` table governs drops correctly.
+  2. *Natural Creaking Heart XP Drop (`CreakingHeartBlock.java:178-180`)*:
+     - When mined by a player, natural hearts (`props.natural == true`) drop 20..=24 experience points (`nextIntBetweenInclusive(20, 24)`). Crafted/player-placed hearts (`props.natural == false`) drop 0 XP.
+     - Previously, `broken` checked `world.get_block_state_id(args.position)`, which had already been replaced with Air during block break, causing natural hearts to never drop XP. Now properly reads `CreakingHeartLikeProperties::from_state_id(args.state.id)`.
+  3. *Comparator Distance Signal Scaling (`CreakingHeartBlock.java:189-195`, `CreakingHeartBlockEntity.java:338-346`)*:
+     - If the Creaking Heart is `Uprooted` or has no active protector creaking mob: comparator output is `0`.
+     - When active with a linked Creaking protector: output scales from 15 down to 0 over 32 blocks according to `15 - floor((clamp(distance, 0, 32) / 32) * 15)`.
+     - `CreakingHeartBlockEntity::tick` updates `output_signal` each tick and triggers `world.update_neighbors_at` upon changes.
+  4. *Pale Oak Log Supporting Checks (`CreakingHeartBlock.java:106-129`, `BlockTags.PALE_OAK_LOGS`)*:
+     - Expanded `is_pale_oak_log` in both `CreakingHeartBlock` and `CreakingHeartBlockEntity` to check all 4 blocks in `#minecraft:pale_oak_logs`: `PALE_OAK_LOG`, `PALE_OAK_WOOD`, `STRIPPED_PALE_OAK_LOG`, and `STRIPPED_PALE_OAK_WOOD`.
+  5. *Block Replacement Teardown (`CreakingHeartBlockEntity.java:310-328`)*:
+     - On block replaced, if a protector is linked, it downcasts to `CreakingEntity` and invokes `creaking.tear_down()` to trigger death sounds, pale oak crumble particles, and remove the entity cleanly.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/creaking_heart.rs`:
+    - Removed manual `CREAKING_HEART` drop from `broken`.
+    - Fixed natural XP drop check to use `args.state.id`.
+    - Implemented `get_comparator_output` and `is_pathfindable` (returns `false`).
+    - Expanded `is_pale_oak_log` to all 4 pale oak log variants.
+  - In `crates/pumpkin-core/src/block/entities/creaking_heart.rs`:
+    - Expanded `is_pale_oak_log` to all 4 pale oak log variants.
+    - Updated `tick` to dynamically calculate `output_signal` from protector distance and notify neighbors when signal changes.
+    - Updated `on_block_replaced` to invoke `tear_down()` on linked `CreakingEntity`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_creaking_heart_loot_drops_natural_xp_comparator_and_log_checks_parity`.
+- **Status**: Completed & Verified.

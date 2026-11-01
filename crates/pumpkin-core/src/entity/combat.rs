@@ -21733,6 +21733,44 @@ mod tests {
     }
 
     #[test]
+    fn test_creaking_heart_loot_drops_natural_xp_comparator_and_log_checks_parity() {
+        use pumpkin_data::BlockId;
+        use crate::block::blocks::creaking_heart::CreakingHeartBlock;
+        use crate::block::entities::creaking_heart::CreakingHeartBlockEntity;
+
+        // 1. Pale oak logs matching tag #minecraft:pale_oak_logs (CreakingHeartBlock.java:111, 123)
+        // All 4 pale oak variants must be recognized as valid logs supporting the heart
+        assert!(CreakingHeartBlock::is_pale_oak_log(BlockId::PALE_OAK_LOG));
+        assert!(CreakingHeartBlock::is_pale_oak_log(BlockId::PALE_OAK_WOOD));
+        assert!(CreakingHeartBlock::is_pale_oak_log(BlockId::STRIPPED_PALE_OAK_LOG));
+        assert!(CreakingHeartBlock::is_pale_oak_log(BlockId::STRIPPED_PALE_OAK_WOOD));
+
+        assert!(CreakingHeartBlockEntity::is_pale_oak_log(BlockId::PALE_OAK_LOG));
+        assert!(CreakingHeartBlockEntity::is_pale_oak_log(BlockId::PALE_OAK_WOOD));
+        assert!(CreakingHeartBlockEntity::is_pale_oak_log(BlockId::STRIPPED_PALE_OAK_LOG));
+        assert!(CreakingHeartBlockEntity::is_pale_oak_log(BlockId::STRIPPED_PALE_OAK_WOOD));
+
+        // Other wood logs or unrelated blocks must NOT be recognized
+        assert!(!CreakingHeartBlock::is_pale_oak_log(BlockId::OAK_LOG));
+        assert!(!CreakingHeartBlock::is_pale_oak_log(BlockId::DARK_OAK_LOG));
+        assert!(!CreakingHeartBlock::is_pale_oak_log(BlockId::BIRCH_LOG));
+        assert!(!CreakingHeartBlock::is_pale_oak_log(BlockId::STONE));
+        assert!(!CreakingHeartBlockEntity::is_pale_oak_log(BlockId::OAK_LOG));
+        assert!(!CreakingHeartBlockEntity::is_pale_oak_log(BlockId::DARK_OAK_LOG));
+
+        // 2. Natural heart break XP drop range (CreakingHeartBlock.java:178-180: 20-24 XP)
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MIN_XP, 20);
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MAX_XP, 24);
+
+        // 3. Comparator output: uprooted = 0; active scales 15 down to 0 over 32 blocks (CreakingHeartBlock.java:189-195)
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(0.0)), 15);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(16.0)), 8);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(32.0)), 0);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(50.0)), 0);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(None), 0);
+    }
+
+    #[test]
     fn test_creaking_gaze_freeze_carved_pumpkin_and_sway_status_parity() {
         // 1. Look cone and dot threshold constants (Creaking.java:471, LivingEntity.java:1772)
         assert_eq!(CREAKING_LOOK_CONE_SIZE, 0.5);

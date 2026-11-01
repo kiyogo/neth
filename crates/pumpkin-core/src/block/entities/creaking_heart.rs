@@ -9,6 +9,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, BlockDirection, BlockId};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
+use pumpkin_util::math::vector3::Vector3;
 use pumpkin_world::world::BlockFlags;
 use uuid::Uuid;
 
@@ -75,6 +76,28 @@ impl BlockEntity for CreakingHeartBlockEntity {
 
     fn tick(&self, world: &Arc<World>) {
         self.ticks_existed.fetch_add(1, Ordering::Relaxed);
+
+        // Update output signal based on creaking protector distance (CreakingHeartBlockEntity.java:74-78, 338-346)
+        let computed_signal = if let Some(uuid) = self.creaking_uuid.load() {
+            if let Some(entity) = world.get_entity_by_uuid(uuid) {
+                let entity_pos = entity.get_entity().pos.load();
+                let heart_bottom = Vector3::new(
+                    self.position.0.x as f64 + 0.5,
+                    self.position.0.y as f64,
+                    self.position.0.z as f64 + 0.5,
+                );
+                let dist = (entity_pos - heart_bottom).length();
+                self.compute_analog_output_signal(Some(dist))
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        if self.output_signal.swap(computed_signal, Ordering::Relaxed) != computed_signal {
+            world.update_neighbors_at(&self.position, &Block::CREAKING_HEART, None);
+        }
 
         // Hurt emitter countdown (plays hurt sound every 10 ticks down from 100)
         let emitter = self.emitter.load(Ordering::Relaxed);
@@ -145,7 +168,19 @@ impl BlockEntity for CreakingHeartBlockEntity {
         }
     }
 
-    fn on_block_replaced(self: Arc<Self>, _world: &Arc<World>, _position: &BlockPos) {
+    fn on_block_replaced(self: Arc<Self>, world: &Arc<World>, _position: &BlockPos) {
+        if let Some(uuid) = self.creaking_uuid.load() {
+            if let Some(entity) = world.get_entity_by_uuid(uuid) {
+                if let Some(creaking) = entity
+                    .cast_any()
+                    .downcast_ref::<crate::entity::mob::creaking::CreakingEntity>()
+                {
+                    creaking.tear_down();
+                } else {
+                    entity.get_entity().remove();
+                }
+            }
+        }
         self.clear_creaking();
     }
 
@@ -242,7 +277,13 @@ impl CreakingHeartBlockEntity {
     }
 
     pub const fn is_pale_oak_log(id: BlockId) -> bool {
-        matches!(id, BlockId::PALE_OAK_LOG | BlockId::STRIPPED_PALE_OAK_LOG)
+        matches!(
+            id,
+            BlockId::PALE_OAK_LOG
+                | BlockId::PALE_OAK_WOOD
+                | BlockId::STRIPPED_PALE_OAK_LOG
+                | BlockId::STRIPPED_PALE_OAK_WOOD
+        )
     }
 
     pub fn check_active_logs(
