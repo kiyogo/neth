@@ -9913,3 +9913,15 @@ eq 	ext{None}$.
 - **Tests Added**:
   - `crates/pumpkin-core/src/block/entities/creaking_heart.rs`: `test_resin_clump_multiface_orientation_and_waterlogged`, `test_creaking_heart_resin_bfs_and_trail_constants`, `test_hurt_sound_location_interpolation`.
   - `crates/pumpkin-core/src/entity/combat.rs`: `test_creaking_heart_resin_bfs_multiface_orientation_and_hurt_trail_parity`.
+
+### Gap 391: Shelf Mushroom Tree Decorator & Fallen Log Generation Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.level.levelgen.feature.treedecorators.ShelfMushroomDecorator.java:1-125`, `TreeDecoratorType.java:1-35` (`SHELF_MUSHROOM`), `TreeFeatures.java:184, 670-692`, `ShelfMushroomBlock.java:1-60`.
+- **Description**:
+  1. **Missing Tree Decorator Type**: In Vanilla Minecraft 1.21.4, `TreeDecoratorType` defines 11 distinct decorators. While 10 decorators were present in Neth, `ShelfMushroomDecorator` (`TreeDecoratorType.SHELF_MUSHROOM`) was completely missing from `TreeDecorator` in `pumpkin-world`. It is used by Vanilla to decorate fallen trees (with probability `0.8F = 80%`) and poplar trees (`RED_POPLAR`, `ORANGE_POPLAR`, `YELLOW_POPLAR` with probability `0.4F = 40%`).
+  2. **Standing Tree Placement**: For standing trees, mushrooms only generate within decoratable height bounds (`MIN_HEIGHT_OFFSET = 1`, `MAX_HEIGHT_OFFSET = 4` blocks above tree base). Two perpendicular horizontal directions (`first` and `first.clockwise()`) are selected. Each direction has a `0.25` (25%) placement chance. Mushroom cannot generate if another shelf mushroom is directly below.
+  3. **Fallen Log Placement**: For fallen trees (identified by `first.y == last.y`), perpendicular horizontal directions are computed based on tree axis (North/South for X-axis logs; East/West for Z-axis logs). Mushrooms generate with `0.25` chance per side only if no horizontally adjacent shelf mushrooms exist around the log or the target position.
+  4. **Property & Age Assignment**: Generated shelf mushrooms set `age` to random integer in `0..=1` (`MAX_AGE_EXCLUSIVE = 2`) and `facing` to the chosen `HorizontalFacing`, generating properly sturdy attached mushroom shelves.
+- **Tests Added**:
+  - `crates/pumpkin-world/src/generation/feature/features/tree/decorator/shelf_mushroom.rs`: `test_shelf_mushroom_decorator_constants_parity`, `test_shelf_mushroom_fallen_log_detection`, `test_shelf_mushroom_decoratable_height`, `test_shelf_mushroom_perpendicular_directions`, `test_shelf_mushroom_properties_roundtrip`.
+  - `crates/pumpkin-core/src/entity/combat.rs`: `test_shelf_mushroom_tree_decorator_and_generation_parity`.

@@ -10,6 +10,7 @@ use creaking_heart::CreakingHeartTreeDecorator;
 use leave_vine::LeavesVineTreeDecorator;
 use pale_moss::PaleMossTreeDecorator;
 use place_on_ground::PlaceOnGroundTreeDecorator;
+use shelf_mushroom::ShelfMushroomTreeDecorator;
 use pumpkin_util::{math::position::BlockPos, random::RandomGenerator};
 
 use trunk_vine::TrunkVineTreeDecorator;
@@ -23,6 +24,7 @@ pub mod creaking_heart;
 pub mod leave_vine;
 pub mod pale_moss;
 pub mod place_on_ground;
+pub mod shelf_mushroom;
 pub mod trunk_vine;
 
 pub enum TreeDecorator {
@@ -36,6 +38,7 @@ pub enum TreeDecorator {
     AttachedToLeaves(AttachedToLeavesTreeDecorator),
     PlaceOnGround(PlaceOnGroundTreeDecorator),
     AttachedToLogs(AttachedToLogsTreeDecorator),
+    ShelfMushroom(ShelfMushroomTreeDecorator),
 }
 
 impl TreeDecorator {
@@ -100,6 +103,9 @@ impl TreeDecorator {
             }
             Self::AttachedToLogs(decorator) => {
                 decorator.generate(chunk, block_registry, random, log_positions, decorations);
+            }
+            Self::ShelfMushroom(decorator) => {
+                decorator.generate(chunk, random, log_positions, decorations);
             }
         }
     }

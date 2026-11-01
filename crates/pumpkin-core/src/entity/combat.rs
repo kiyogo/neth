@@ -22055,6 +22055,44 @@ mod tests {
     }
 
     #[test]
+    fn test_shelf_mushroom_tree_decorator_and_generation_parity() {
+        use pumpkin_world::generation::feature::features::tree::decorator::shelf_mushroom::{
+            FALLEN_TREE_SHELF_MUSHROOM_PROBABILITY, MAX_AGE_EXCLUSIVE, MAX_HEIGHT_OFFSET,
+            MIN_HEIGHT_OFFSET, PER_SIDE_PLACEMENT_CHANCE, POPLAR_SHELF_MUSHROOM_PROBABILITY,
+            ShelfMushroomTreeDecorator,
+        };
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Shelf mushroom decorator constants parity (ShelfMushroomDecorator.java:18-21, TreeFeatures.java:184, 670)
+        assert_eq!(MIN_HEIGHT_OFFSET, 1);
+        assert_eq!(MAX_HEIGHT_OFFSET, 4);
+        assert_eq!(PER_SIDE_PLACEMENT_CHANCE, 0.25);
+        assert_eq!(MAX_AGE_EXCLUSIVE, 2);
+        assert_eq!(POPLAR_SHELF_MUSHROOM_PROBABILITY, 0.4);
+        assert_eq!(FALLEN_TREE_SHELF_MUSHROOM_PROBABILITY, 0.8);
+
+        // 2. Decoratable height check (ShelfMushroomDecorator.java:94-97: dy in 1..=4)
+        let base_y = 64;
+        assert!(!ShelfMushroomTreeDecorator::is_within_decoratable_height(&BlockPos::new(0, 64, 0), base_y));
+        assert!(ShelfMushroomTreeDecorator::is_within_decoratable_height(&BlockPos::new(0, 65, 0), base_y));
+        assert!(ShelfMushroomTreeDecorator::is_within_decoratable_height(&BlockPos::new(0, 68, 0), base_y));
+        assert!(!ShelfMushroomTreeDecorator::is_within_decoratable_height(&BlockPos::new(0, 69, 0), base_y));
+
+        // 3. Fallen log orientation (ShelfMushroomDecorator.java:87-92)
+        let fallen_x = vec![BlockPos::new(0, 64, 0), BlockPos::new(4, 64, 0)];
+        assert_eq!(
+            ShelfMushroomTreeDecorator::perpendicular_to_fallen_log(&fallen_x),
+            [BlockDirection::North, BlockDirection::South]
+        );
+        let fallen_z = vec![BlockPos::new(0, 64, 0), BlockPos::new(0, 64, 4)];
+        assert_eq!(
+            ShelfMushroomTreeDecorator::perpendicular_to_fallen_log(&fallen_z),
+            [BlockDirection::East, BlockDirection::West]
+        );
+    }
+
+    #[test]
     fn test_wind_charge_explosion_knockback_fall_damage_and_deflection_parity() {
         use pumpkin_data::entity::EntityType;
 
