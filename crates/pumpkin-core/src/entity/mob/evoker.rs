@@ -429,7 +429,7 @@ impl Goal for EvokerAttackSpellGoal {
                         pos,
                         &EntityType::EVOKER_FANGS,
                     );
-                    let fangs = Arc::new(EvokerFangsEntity::new(entity, 0, angle, Some(evoker_id)));
+                    let fangs = Arc::new(EvokerFangsEntity::new(entity, 0, angle, Some(evoker_id), Some(evoker_ent.entity_uuid)));
                     world.spawn_entity(fangs);
                 }
 
@@ -447,7 +447,7 @@ impl Goal for EvokerAttackSpellGoal {
                         pos,
                         &EntityType::EVOKER_FANGS,
                     );
-                    let fangs = Arc::new(EvokerFangsEntity::new(entity, 3, angle, Some(evoker_id)));
+                    let fangs = Arc::new(EvokerFangsEntity::new(entity, 3, angle, Some(evoker_id), Some(evoker_ent.entity_uuid)));
                     world.spawn_entity(fangs);
                 }
             } else {
@@ -469,6 +469,7 @@ impl Goal for EvokerAttackSpellGoal {
                         i as u32,
                         angle_towards_target,
                         Some(evoker_id),
+                        Some(evoker_ent.entity_uuid),
                     ));
                     world.spawn_entity(fangs);
                 }
@@ -574,6 +575,13 @@ impl Goal for EvokerSummonSpellGoal {
                     vex.cast_any().downcast_ref::<crate::entity::mob::vex::VexEntity>()
                 {
                     vex_ent.set_owner(Some(evoker_ent.entity_uuid));
+                    // Vanilla Parity (Evoker.java:265): vex.setBoundOrigin(pos)
+                    let block_pos = pumpkin_util::math::position::BlockPos::new(
+                        spawn_pos.x as i32,
+                        spawn_pos.y as i32,
+                        spawn_pos.z as i32,
+                    );
+                    vex_ent.set_bound_origin(Some(block_pos));
                     let life_ticks = rand::random_range(600..=2400);
                     vex_ent.set_limited_life(life_ticks);
                 }

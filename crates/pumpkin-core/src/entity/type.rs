@@ -262,7 +262,7 @@ pub fn from_type(
             Arc::new(OminousItemSpawnerEntity::new(entity))
         }
         id if id == EntityType::EVOKER_FANGS.id => Arc::new(
-            crate::entity::projectile::evoker_fangs::EvokerFangsEntity::new(entity, 0, 0.0, None),
+            crate::entity::projectile::evoker_fangs::EvokerFangsEntity::new(entity, 0, 0.0, None, None),
         ),
         id if id == EntityType::END_CRYSTAL.id => Arc::new(EndCrystalEntity::new(entity)),
         id if id == EntityType::ENDER_PEARL.id => Arc::new(EnderPearlEntity::new(entity)),

@@ -1,8 +1,11 @@
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use uuid::Uuid;
 
 use pumpkin_data::damage::DamageType;
-use pumpkin_data::entity::EntityStatus;
+use pumpkin_data::entity::{EntityStatus, EntityType};
 use pumpkin_data::sound::Sound;
+use pumpkin_data::tag::Taggable;
 
 use crate::{
     entity::{Entity, EntityBase},
@@ -14,18 +17,26 @@ pub struct EvokerFangsEntity {
     pub warmup_delay_ticks: AtomicI32,
     pub life_ticks: AtomicI32,
     pub owner_id: Option<i32>,
+    pub owner_uuid: Mutex<Option<Uuid>>,
     pub sent_spike_event: AtomicBool,
 }
 
 impl EvokerFangsEntity {
     #[must_use]
-    pub fn new(entity: Entity, warmup_ticks: u32, yaw: f32, owner_id: Option<i32>) -> Self {
+    pub fn new(
+        entity: Entity,
+        warmup_ticks: u32,
+        yaw: f32,
+        owner_id: Option<i32>,
+        owner_uuid: Option<Uuid>,
+    ) -> Self {
         entity.set_rotation(yaw, 0.0);
         Self {
             entity,
             warmup_delay_ticks: AtomicI32::new(warmup_ticks as i32),
             life_ticks: AtomicI32::new(22),
             owner_id,
+            owner_uuid: Mutex::new(owner_uuid),
             sent_spike_event: AtomicBool::new(false),
         }
     }
@@ -34,11 +45,24 @@ impl EvokerFangsEntity {
 impl EntityBase for EvokerFangsEntity {
     fn write_custom_nbt(&self, nbt: &mut pumpkin_nbt::compound::NbtCompound) {
         nbt.put_int("Warmup", self.warmup_delay_ticks.load(Ordering::Relaxed));
+        if let Some(owner) = *self
+            .owner_uuid
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        {
+            nbt.put_uuid("Owner", owner);
+        }
     }
 
     fn read_custom_nbt(&self, nbt: &pumpkin_nbt::compound::NbtCompound) {
         if let Some(warmup) = nbt.get_int("Warmup") {
             self.warmup_delay_ticks.store(warmup, Ordering::Relaxed);
+        }
+        if let Some(owner) = nbt.get_uuid("Owner").or_else(|| nbt.get_uuid("owner")) {
+            *self
+                .owner_uuid
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(owner);
         }
     }
 
@@ -60,7 +84,31 @@ impl EntityBase for EvokerFangsEntity {
                         continue;
                     }
 
-                    if cand_ent.entity_id != entity.entity_id && cand.get_living_entity().is_some()
+                    // Vanilla Parity (EvokerFangs.java:112-114): Evoker Fangs never damage allies
+                    let is_allied_raider = cand_ent
+                        .entity_type
+                        .has_tag(&pumpkin_data::tag::EntityType::MINECRAFT_RAIDERS);
+                    let is_owned_vex = if cand_ent.entity_type == &EntityType::VEX {
+                        cand.cast_any()
+                            .downcast_ref::<crate::entity::mob::vex::VexEntity>()
+                            .and_then(|v| v.get_owner())
+                            .is_some_and(|owner_uuid| {
+                                self.owner_uuid
+                                    .lock()
+                                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                                    .is_some_and(|o| o == owner_uuid)
+                            })
+                    } else {
+                        false
+                    };
+
+                    if crate::entity::combat::should_evoker_fangs_damage_entity(
+                        Some(cand_ent.entity_id) == self.owner_id,
+                        cand.is_spectator(),
+                        is_allied_raider,
+                        is_owned_vex,
+                    ) && cand_ent.entity_id != entity.entity_id
+                        && cand.get_living_entity().is_some()
                     {
                         let damage_type = if owner.is_some() {
                             DamageType::INDIRECT_MAGIC

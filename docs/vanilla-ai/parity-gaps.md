@@ -10074,3 +10074,31 @@ eq 	ext{None}$.
     - `test_phantom_spawner_dimensions_and_insomnia_parity`
   - `crates/pumpkin-core/src/entity/mob/phantom.rs`:
     - `test_phantom_attributes_and_mechanics_parity`
+
+
+### Gap 398: Vex 3D Aerial Flight & Bound Origin Wandering, NBT Persistence (bound_pos, life_ticks, owner), and Evoker Fangs Ally Safety Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.monster.Vex.java:45-85, 108-133, 299-362` (`tick`, `readAdditionalSaveData`, `addAdditionalSaveData`, `VexMoveControl`, `VexRandomMoveGoal`), `net.minecraft.world.entity.monster.illager.Evoker.java:82-99, 258-275` (`considersEntityAsAlly`, `performSpellCasting`), `net.minecraft.world.entity.projectile.EvokerFangs.java:60-68, 106-120` (`dealDamageTo`, `isAlliedTo`, `readAdditionalSaveData`, `addAdditionalSaveData`).
+- **Description**:
+  1. **Vex Bound Origin & 3D Flight Control (`Vex.java:53, 299-362`)**:
+     - In Vanilla Java 1.21.4, when a Vex is summoned by an Evoker, it is assigned a `boundOrigin` BlockPos. When wandering, `VexRandomMoveGoal` picks random destination points within $\pm 7$ blocks horizontally and $\pm 5$ blocks vertically from its `boundOrigin` (`offset(random.nextInt(15) - 7, random.nextInt(11) - 5, random.nextInt(15) - 7)`).
+     - Previously in Neth, `VexEntity` used generic ground-based `WanderAroundGoal`, which failed or restricted the no-gravity flying Vex to floor pathfinding. It also lacked `bound_origin` and `wanted_pos` tracking.
+     - Implemented `VexRandomMoveGoal` and 3D velocity acceleration towards destination (`bb.get_average_side_length()` threshold, 0.25 speed scale) matching vanilla `VexMoveControl`.
+  2. **Vex NBT Persistence (`Vex.java:108-133`)**:
+     - In Vanilla Java 1.21.4, a Vex serializes:
+       - `bound_pos` (int array `[x, y, z]`) and legacy `BoundX`, `BoundY`, `BoundZ`.
+       - `life_ticks` (and legacy `LifeTicks`).
+       - `owner` (UUID int array or string).
+     - Previously in Neth, `VexEntity` implemented no `mob_write_nbt` or `mob_read_nbt` at all. As a result, whenever a chunk was saved or reloaded, summoned Vexes completely lost their `limited_life_ticks`, `bound_origin`, and `owner_uuid`, becoming permanent, immortal wild vexes.
+     - Implemented full `mob_write_nbt` and `mob_read_nbt` on `VexEntity` for `bound_pos`, `life_ticks`, and `owner` UUID.
+  3. **Evoker Summon Vex Bound Origin (`Evoker.java:265`)**:
+     - When an Evoker casts `SummonVex`, it now sets the summoned Vex's `bound_origin` to the spawn block position alongside its owner UUID and limited life ticks.
+  4. **Evoker Fangs Ally Safety & Owner Persistence (`EvokerFangs.java:60-68, 106-120`)**:
+     - In Vanilla Java 1.21.4, Evoker Fangs never inflict damage upon the Evoker itself, allied Raiders (Pillagers, Vindicators, Ravagers, Witches, Evokers), or Vexes owned by the Evoker (`currentOwner.isAlliedTo(entity)`).
+     - Previously in Neth, `EvokerFangsEntity` dealt magic damage to every living entity in its bounding box except for the raw `owner_id`, causing Evokers to damage their fellow raiders and their own summoned vexes.
+     - Added `owner_uuid` to `EvokerFangsEntity` with NBT serialization of `Owner`, and checked ally relationships via `should_evoker_fangs_damage_entity()` to guarantee immunity for raiders and owner-bound vexes.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_vex_bound_origin_and_evoker_fangs_ally_immunity_parity`
+  - `crates/pumpkin-core/src/entity/mob/vex.rs`:
+    - `test_vex_nbt_bound_origin_and_life_ticks_roundtrip`

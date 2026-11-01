@@ -5087,6 +5087,47 @@ pub const fn can_player_spawn_phantoms(
     time_since_rest > PHANTOM_INSOMNIA_THRESHOLD_TICKS
 }
 
+/// Vex bounding horizontal offset when wandering near bound origin (-7..=7, 15 blocks total).
+///
+/// Mirrors vanilla `Vex.java:352`: `boundOrigin.offset(random.nextInt(15) - 7, ...)`.
+pub const VEX_BOUND_HORIZONTAL_OFFSET: i32 = 7;
+
+/// Vex bounding vertical offset when wandering near bound origin (-5..=5, 11 blocks total).
+///
+/// Mirrors vanilla `Vex.java:352`: `boundOrigin.offset(..., random.nextInt(11) - 5, ...)`.
+pub const VEX_BOUND_VERTICAL_OFFSET: i32 = 5;
+
+/// Calculates Vex wander relative offsets (dx, dy, dz) from random indices.
+///
+/// Mirrors vanilla `Vex.java:352`:
+/// `(random.nextInt(15) - 7, random.nextInt(11) - 5, random.nextInt(15) - 7)`
+#[must_use]
+pub const fn calculate_vex_wander_offset(rand_15_x: u32, rand_11_y: u32, rand_15_z: u32) -> (i32, i32, i32) {
+    let dx = (rand_15_x % 15) as i32 - VEX_BOUND_HORIZONTAL_OFFSET;
+    let dy = (rand_11_y % 11) as i32 - VEX_BOUND_VERTICAL_OFFSET;
+    let dz = (rand_15_z % 15) as i32 - VEX_BOUND_HORIZONTAL_OFFSET;
+    (dx, dy, dz)
+}
+
+/// Determines whether an Evoker Fangs strike should damage a target entity.
+///
+/// Mirrors vanilla `EvokerFangs.java:108-114`:
+/// - Entity must not be the owner
+/// - Entity must not be a spectator
+/// - Entity must not be allied to the owner (e.g. Raiders/Illagers or Vexes owned by the Evoker)
+#[must_use]
+pub const fn should_evoker_fangs_damage_entity(
+    is_owner: bool,
+    is_spectator: bool,
+    is_allied_raider: bool,
+    is_owned_vex: bool,
+) -> bool {
+    if is_owner || is_spectator {
+        return false;
+    }
+    !is_allied_raider && !is_owned_vex
+}
+
 /// Ghast base max health (10.0 HP / 5 hearts).
 /// Mirrors vanilla `Ghast.java:118` (`Attributes.MAX_HEALTH, 10.0`).
 pub const GHAST_MAX_HEALTH: f32 = 10.0;
@@ -23275,6 +23316,51 @@ mod tests {
         assert_eq!(get_hoglin_xp_reward_for_age(false), HOGLIN_ADULT_XP_REWARD);
         assert_eq!(HOGLIN_BABY_XP_REWARD, 3);
         assert_eq!(HOGLIN_ADULT_XP_REWARD, 5);
+    }
+
+    #[test]
+    fn test_vex_bound_origin_and_evoker_fangs_ally_immunity_parity() {
+        // 1. Vex bound wander offset range parity (Vex.java:352)
+        assert_eq!(VEX_BOUND_HORIZONTAL_OFFSET, 7);
+        assert_eq!(VEX_BOUND_VERTICAL_OFFSET, 5);
+
+        // Minimal offsets (0 % 15 - 7 = -7, 0 % 11 - 5 = -5)
+        let (min_x, min_y, min_z) = calculate_vex_wander_offset(0, 0, 0);
+        assert_eq!(min_x, -7);
+        assert_eq!(min_y, -5);
+        assert_eq!(min_z, -7);
+
+        // Center offsets (7 % 15 - 7 = 0, 5 % 11 - 5 = 0)
+        let (mid_x, mid_y, mid_z) = calculate_vex_wander_offset(7, 5, 7);
+        assert_eq!(mid_x, 0);
+        assert_eq!(mid_y, 0);
+        assert_eq!(mid_z, 0);
+
+        // Maximum offsets (14 % 15 - 7 = 7, 10 % 11 - 5 = 5)
+        let (max_x, max_y, max_z) = calculate_vex_wander_offset(14, 10, 14);
+        assert_eq!(max_x, 7);
+        assert_eq!(max_y, 5);
+        assert_eq!(max_z, 7);
+
+        // Wrap around test
+        let (wrap_x, wrap_y, wrap_z) = calculate_vex_wander_offset(15, 11, 15);
+        assert_eq!(wrap_x, -7);
+        assert_eq!(wrap_y, -5);
+        assert_eq!(wrap_z, -7);
+
+        // 2. Evoker Fangs damage eligibility and ally protection parity (EvokerFangs.java:108-114)
+        // Standard hostile target (player, villager, iron golem) -> takes damage
+        assert!(should_evoker_fangs_damage_entity(false, false, false, false));
+        // Owner itself -> immune
+        assert!(!should_evoker_fangs_damage_entity(true, false, false, false));
+        // Spectator player -> immune
+        assert!(!should_evoker_fangs_damage_entity(false, true, false, false));
+        // Allied raider (Pillager, Vindicator, Ravager, Witch, Evoker) -> immune
+        assert!(!should_evoker_fangs_damage_entity(false, false, true, false));
+        // Vex owned by this Evoker -> immune
+        assert!(!should_evoker_fangs_damage_entity(false, false, false, true));
+        // Both allied raider and owned vex -> immune
+        assert!(!should_evoker_fangs_damage_entity(false, false, true, true));
     }
 
     #[test]

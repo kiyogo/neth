@@ -6,13 +6,17 @@ use uuid::Uuid;
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::{damage::DamageType, entity::EntityType, sound::Sound};
+use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::position::BlockPos;
+use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::{
     Entity, EntityBase,
     ai::goal::{
+        Controls, Goal,
         active_target::ActiveTargetGoal, look_around::RandomLookAroundGoal,
         look_at_entity::LookAtEntityGoal, melee_attack::MeleeAttackGoal, revenge::RevengeGoal,
-        swim::SwimGoal, wander_around::WanderAroundGoal,
+        swim::SwimGoal,
     },
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
@@ -24,6 +28,8 @@ pub struct VexEntity {
     pub limited_life_ticks: AtomicI32,
     pub is_charging: AtomicBool,
     pub owner_uuid: Mutex<Option<Uuid>>,
+    pub bound_origin: Mutex<Option<BlockPos>>,
+    pub wanted_pos: Mutex<Option<Vector3<f64>>>,
 }
 
 impl VexEntity {
@@ -37,8 +43,11 @@ impl VexEntity {
             limited_life_ticks: AtomicI32::new(0),
             is_charging: AtomicBool::new(false),
             owner_uuid: Mutex::new(None),
+            bound_origin: Mutex::new(None),
+            wanted_pos: Mutex::new(None),
         };
         let mob_arc = Arc::new(vex);
+        let vex_weak = Arc::downgrade(&mob_arc);
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -86,7 +95,7 @@ impl VexEntity {
 
             goal_selector.add_goal(0, Box::new(SwimGoal::default()));
             goal_selector.add_goal(4, Box::new(MeleeAttackGoal::new(1.0, true)));
-            goal_selector.add_goal(5, Box::new(WanderAroundGoal::new(1.0)));
+            goal_selector.add_goal(5, Box::new(VexRandomMoveGoal::new(vex_weak)));
             goal_selector.add_goal(
                 6,
                 LookAtEntityGoal::with_default(mob_weak, &EntityType::PLAYER, 8.0),
@@ -140,6 +149,98 @@ impl VexEntity {
     pub fn is_charging(&self) -> bool {
         self.is_charging.load(Ordering::Relaxed)
     }
+
+    pub fn set_bound_origin(&self, origin: Option<BlockPos>) {
+        *self
+            .bound_origin
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = origin;
+    }
+
+    #[must_use]
+    pub fn get_bound_origin(&self) -> Option<BlockPos> {
+        *self
+            .bound_origin
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    pub fn set_wanted_pos(&self, target: Option<Vector3<f64>>) {
+        *self
+            .wanted_pos
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = target;
+    }
+
+    #[must_use]
+    pub fn get_wanted_pos(&self) -> Option<Vector3<f64>> {
+        *self
+            .wanted_pos
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+pub struct VexRandomMoveGoal {
+    vex: Weak<VexEntity>,
+}
+
+impl VexRandomMoveGoal {
+    #[must_use]
+    pub const fn new(vex: Weak<VexEntity>) -> Self {
+        Self { vex }
+    }
+}
+
+impl Goal for VexRandomMoveGoal {
+    fn controls(&self) -> Controls {
+        Controls::MOVE
+    }
+
+    fn can_start(&mut self, _mob: &dyn Mob) -> bool {
+        let Some(vex) = self.vex.upgrade() else {
+            return false;
+        };
+        vex.get_wanted_pos().is_none() && rand::random_range(0..7) == 0
+    }
+
+    fn should_continue(&mut self, _mob: &dyn Mob) -> bool {
+        false
+    }
+
+    fn tick(&mut self, _mob: &dyn Mob) {
+        let Some(vex) = self.vex.upgrade() else {
+            return;
+        };
+        let entity = vex.get_entity();
+        let bound_origin = vex
+            .get_bound_origin()
+            .unwrap_or_else(|| BlockPos::containing_vec(entity.pos.load()));
+        use rand::RngExt;
+        let mut rng = rand::rng();
+        for _ in 0..3 {
+            let (dx, dy, dz) = crate::entity::combat::calculate_vex_wander_offset(
+                rng.random(),
+                rng.random(),
+                rng.random(),
+            );
+            let test_pos = BlockPos::new(
+                bound_origin.0.x + dx,
+                bound_origin.0.y + dy,
+                bound_origin.0.z + dz,
+            );
+            let world = entity.world.load();
+            if world.get_block_state(&test_pos).is_air() {
+                let target = Vector3::new(
+                    test_pos.0.x as f64 + 0.5,
+                    test_pos.0.y as f64 + 0.5,
+                    test_pos.0.z as f64 + 0.5,
+                );
+                vex.set_wanted_pos(Some(target));
+                break;
+            }
+        }
+    }
 }
 
 impl Mob for VexEntity {
@@ -175,6 +276,25 @@ impl Mob for VexEntity {
         }
 
         let entity = self.get_entity();
+        // Vanilla Vex 3D flight control (VexMoveControl)
+        if let Some(target) = self.get_wanted_pos() {
+            let pos = entity.pos.load();
+            let delta = target - pos;
+            let dist = delta.length();
+            let bb_size = entity.bounding_box.load().get_average_side_length();
+            if dist < bb_size {
+                self.set_wanted_pos(None);
+                entity.set_velocity(entity.velocity.load() * 0.5);
+            } else {
+                let speed_step = delta * (0.25 * 0.05 / dist.max(1e-5));
+                let new_vel = entity.velocity.load() + speed_step;
+                entity.set_velocity(new_vel);
+                let target_yaw = (-(new_vel.x.atan2(new_vel.z)) * 180.0 / std::f64::consts::PI) as f32;
+                entity.yaw.store(target_yaw);
+                entity.body_yaw.store(target_yaw);
+            }
+        }
+
         if !entity.silent.load(Ordering::Relaxed) && rand::random_range(0..80) == 0 {
             let world = entity.world.load();
             world.play_sound(
@@ -182,6 +302,43 @@ impl Mob for VexEntity {
                 pumpkin_data::sound::SoundCategory::Hostile,
                 &entity.pos.load(),
             );
+        }
+    }
+
+    fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        if let Some(pos) = self.get_bound_origin() {
+            nbt.put_int_array("bound_pos", vec![pos.0.x, pos.0.y, pos.0.z]);
+            nbt.put_int("BoundX", pos.0.x);
+            nbt.put_int("BoundY", pos.0.y);
+            nbt.put_int("BoundZ", pos.0.z);
+        }
+        if self.has_limited_life.load(Ordering::Relaxed) {
+            nbt.put_int("life_ticks", self.limited_life_ticks.load(Ordering::Relaxed));
+        }
+        if let Some(owner) = self.get_owner() {
+            nbt.put_uuid("owner", owner);
+        }
+    }
+
+    fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        if let Some(arr) = nbt.get_int_array("bound_pos") {
+            if arr.len() >= 3 {
+                self.set_bound_origin(Some(BlockPos::new(arr[0], arr[1], arr[2])));
+            }
+        } else if let (Some(x), Some(y), Some(z)) =
+            (nbt.get_int("BoundX"), nbt.get_int("BoundY"), nbt.get_int("BoundZ"))
+        {
+            self.set_bound_origin(Some(BlockPos::new(x, y, z)));
+        }
+
+        if let Some(life) = nbt.get_int("life_ticks").or_else(|| nbt.get_int("LifeTicks")) {
+            self.set_limited_life(life);
+        } else {
+            self.has_limited_life.store(false, Ordering::Relaxed);
+        }
+
+        if let Some(owner) = nbt.get_uuid("owner").or_else(|| nbt.get_uuid("Owner")) {
+            self.set_owner(Some(owner));
         }
     }
 
@@ -230,5 +387,21 @@ mod tests {
         assert!(is_vex_flapping(12));
         assert!(!is_vex_flapping(13));
         assert_eq!(calculate_vex_summon_lifetime(30), 1200);
+    }
+
+    #[test]
+    fn test_vex_nbt_bound_origin_and_life_ticks_roundtrip() {
+        let mut nbt = NbtCompound::new();
+        let origin = BlockPos::new(12, 64, -99);
+        let owner_id = Uuid::new_v4();
+
+        nbt.put_int_array("bound_pos", vec![origin.0.x, origin.0.y, origin.0.z]);
+        nbt.put_int("life_ticks", 1200);
+        nbt.put_uuid("owner", owner_id);
+
+        let bound_arr = nbt.get_int_array("bound_pos").unwrap();
+        assert_eq!(bound_arr, &[12, 64, -99]);
+        assert_eq!(nbt.get_int("life_ticks"), Some(1200));
+        assert_eq!(nbt.get_uuid("owner"), Some(owner_id));
     }
 }
