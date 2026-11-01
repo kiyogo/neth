@@ -1259,7 +1259,7 @@ impl TrialSpawner {
         ejecting_loot_table: Option<&str>,
     ) {
         let mut dropped_any = false;
-        let drop_pos = Vector3::new(
+        let base_pos = Vector3::new(
             f64::from(spawner_pos.0.x) + 0.5,
             f64::from(spawner_pos.0.y) + crate::block::blocks::trial_spawner::TrialSpawnerBlock::REWARD_EJECTION_Y_OFFSET,
             f64::from(spawner_pos.0.z) + 0.5,
@@ -1271,7 +1271,12 @@ impl TrialSpawner {
             let seed = rand::random::<i64>();
             let items = loot_table.generate_loot(seed);
             for stack in items {
-                world.drop_stack_at(drop_pos, stack);
+                world.drop_stack_dispensed(
+                    base_pos,
+                    pumpkin_data::BlockDirection::Up,
+                    crate::entity::combat::DISPENSE_ITEM_ACCURACY,
+                    stack,
+                );
                 dropped_any = true;
             }
         }
@@ -1282,7 +1287,12 @@ impl TrialSpawner {
             } else {
                 &Item::TRIAL_KEY
             };
-            world.drop_stack_at(drop_pos, ItemStack::new(1, key_item));
+            world.drop_stack_dispensed(
+                base_pos,
+                pumpkin_data::BlockDirection::Up,
+                crate::entity::combat::DISPENSE_ITEM_ACCURACY,
+                ItemStack::new(1, key_item),
+            );
         }
 
         world.sync_world_event(WorldEvent::AnimationTrialSpawnerEjectItem, spawner_pos, 0);

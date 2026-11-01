@@ -9925,3 +9925,26 @@ eq 	ext{None}$.
 - **Tests Added**:
   - `crates/pumpkin-world/src/generation/feature/features/tree/decorator/shelf_mushroom.rs`: `test_shelf_mushroom_decorator_constants_parity`, `test_shelf_mushroom_fallen_log_detection`, `test_shelf_mushroom_decoratable_height`, `test_shelf_mushroom_perpendicular_directions`, `test_shelf_mushroom_properties_roundtrip`.
   - `crates/pumpkin-core/src/entity/combat.rs`: `test_shelf_mushroom_tree_decorator_and_generation_parity`.
+
+### Gap 392: Trial Spawner & Vault Upward Ejection Physics Arc, Ominous Item Spawner Dispense Config & Projectile Velocity Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.java:238-252` (`ejectReward`), `net.minecraft.world.level.block.entity.vault.VaultState.java:138-142` (`ejectResultItem`), `net.minecraft.core.dispenser.DefaultDispenseItemBehavior.java:30-49` (`spawnItem`), `net.minecraft.world.entity.OminousItemSpawner.java:71-106` (`spawnItem`, `spawnProjectile`), `net.minecraft.world.item.ProjectileItem.java:24-65` (`DispenseConfig`), `ThrowablePotionItem.java:44-49`, `WindChargeItem.java:57-80`, `FireChargeItem.java:64-87`, `ArrowItem.java:22-26`.
+- **Description**:
+  1. **Dispense Item Ejection Mechanics**: Both `TrialSpawner` and `Vault` in Vanilla Java 1.21.4 use `DefaultDispenseItemBehavior.spawnItem(level, item, 2, Direction.UP, Vec3.atBottomCenterOf(pos).relative(Direction.UP, 1.2))` to eject reward and loot items.
+     - Previously, Neth simply called `world.drop_stack_at(..., 0.0, 0.0, 0.0)`, causing items to drop dead with zero velocity instead of performing their signature upward fountain arc.
+     - In Vanilla: spawn position along the Y-axis has a negative offset `-0.125` (`pos.y + 1.2 - 0.125 = pos.y + 1.075`), while horizontal directions offset by `0.15625`.
+     - Velocity calculation: vertical velocity is `0.2 + 0.0172275 * accuracy * (rand - rand)` (yielding base upward velocity `0.2`), and horizontal components are `0.0172275 * accuracy * (rand - rand)`.
+     - Implemented `world.drop_stack_dispensed` in `pumpkin-core::world` and updated both `TrialSpawnerBlockEntity` and `VaultBlock` to use this exact behavior.
+  2. **Ominous Item Spawner Projectile Dispense & Velocity**:
+     - Previously, `OminousItemSpawner` spawned all projectiles and items with a static velocity `Vector3::new(0.0, 0.2, 0.0)` or arbitrary hardcoded speeds.
+     - In Vanilla Java 1.21.4:
+       - **Splash/Lingering Potion**: `ProjectileItem.DispenseConfig` specifies `power = 1.375`, `uncertainty = 3.0`.
+       - **Tipped/Regular Arrow**: `power = 1.1`, `uncertainty = 6.0`, and arrow pickup rule is explicitly set to `ArrowPickup::Allowed` (allowing players to collect ominous arrows if they survive).
+       - **Wind Charge**: `power = 1.375`, `uncertainty = 6.0`, and plays World Event `1051` (`SoundWindChargeShoot`).
+       - **Fire Charge**: `power = 1.375`, `uncertainty = 6.0`, and plays World Event `1018` (`SoundBlazeFireball`).
+       - Base direction calculation: shoots downwards (`direction = (0.0, -1.0, 0.0)`) with randomized deviation `random.triangle(0.0, 0.11485000000000001)`.
+       - After dispensing, spawner items are properly cleared (`set_item(ItemStack::EMPTY)`), and World Event `3021` (`ParticlesTrialSpawnerSpawnItem`) is broadcast.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_trial_spawner_and_vault_dispense_item_ejection_arc_parity`
+    - `test_ominous_item_spawner_dispense_config_and_velocity_parity`

@@ -6516,6 +6516,65 @@ impl World {
         self.spawn_entity(item_entity);
     }
 
+    /// Spawns an item entity matching vanilla DefaultDispenseItemBehavior.spawnItem.
+    pub fn drop_stack_dispensed(
+        self: &Arc<Self>,
+        pos: Vector3<f64>,
+        direction: BlockDirection,
+        accuracy: i32,
+        stack: ItemStack,
+    ) {
+        if stack.is_empty() {
+            return;
+        }
+
+        let is_y_axis = direction == BlockDirection::Up || direction == BlockDirection::Down;
+        let spawn_pos = crate::entity::combat::calculate_dispense_item_spawn_position(pos, is_y_axis);
+
+        let entity = Entity::new(self.clone(), spawn_pos, &EntityType::ITEM);
+        let mut item_event = crate::plugin::api::events::entity::item_spawn::ItemSpawnEvent::new(
+            entity.entity_id,
+            spawn_pos,
+            stack.item.registry_key.to_string(),
+        );
+        if let Some(server) = self.server.upgrade() {
+            server
+                .plugin_manager
+                .fire_blocking(&server, &mut item_event);
+        }
+        if item_event.cancelled {
+            return;
+        }
+
+        let offset = direction.to_offset();
+        let step_x = f64::from(offset.x);
+        let step_z = f64::from(offset.z);
+
+        let mut rng = rand::rng();
+        let rand_diff_x = rng.random::<f64>() - rng.random::<f64>();
+        let rand_diff_y = rng.random::<f64>() - rng.random::<f64>();
+        let rand_diff_z = rng.random::<f64>() - rng.random::<f64>();
+        let pow = rng.random::<f64>() * 0.1 + 0.2;
+
+        let velocity = crate::entity::combat::calculate_dispense_item_velocity(
+            step_x,
+            step_z,
+            pow,
+            accuracy,
+            rand_diff_x,
+            rand_diff_y,
+            rand_diff_z,
+        );
+
+        let item_entity = Arc::new(ItemEntity::new_with_velocity(
+            entity,
+            stack,
+            velocity,
+            ItemEntity::DEFAULT_PICKUP_DELAY,
+        ));
+        self.spawn_entity(item_entity);
+    }
+
     pub fn drop_stack_from_face(
         self: &Arc<Self>,
         pos: &BlockPos,

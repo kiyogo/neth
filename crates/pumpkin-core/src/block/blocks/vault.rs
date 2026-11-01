@@ -283,12 +283,17 @@ impl BlockBehaviour for VaultBlock {
                     *args.position,
                     0,
                 );
-                let drop_pos = pumpkin_util::math::vector3::Vector3::new(
+                let base_pos = pumpkin_util::math::vector3::Vector3::new(
                     f64::from(args.position.0.x) + 0.5,
                     f64::from(args.position.0.y) + VaultBlock::EJECTION_Y_OFFSET,
                     f64::from(args.position.0.z) + 0.5,
                 );
-                args.world.drop_stack_at(drop_pos, stack);
+                args.world.drop_stack_dispensed(
+                    base_pos,
+                    pumpkin_data::BlockDirection::Up,
+                    crate::entity::combat::DISPENSE_ITEM_ACCURACY,
+                    stack,
+                );
             }
 
             args.world.play_sound(

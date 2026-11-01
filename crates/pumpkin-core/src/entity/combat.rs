@@ -11300,6 +11300,132 @@ pub const RESIN_BLOCK_CRAFT_COUNT: u32 = 9;
 #[allow(dead_code)]
 pub const RESIN_BRICKS_CRAFT_COUNT: u32 = 4;
 
+
+// =========================================================================
+// Gap 392: Trial Spawner & Vault Upward Ejection Physics Arc, Ominous Item Spawner Dispense Config & Projectile Velocity Parity
+// - `net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.java:238-252`
+// - `net.minecraft.world.level.block.entity.vault.VaultState.java:138-142`
+// - `net.minecraft.core.dispenser.DefaultDispenseItemBehavior.java:30-49`
+// - `net.minecraft.world.entity.OminousItemSpawner.java:71-106`
+// - `net.minecraft.world.item.ProjectileItem.java:24-65`
+// - `net.minecraft.world.item.ThrowablePotionItem.java:44-49`
+// - `net.minecraft.world.item.WindChargeItem.java:57-80`
+// - `net.minecraft.world.item.FireChargeItem.java:64-87`
+// - `net.minecraft.world.item.ArrowItem.java:22-26`
+// =========================================================================
+
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_ACCURACY: i32 = 2;
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_BASE_UP_Y: f64 = 1.2;
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_Y_AXIS_OFFSET: f64 = 0.125;
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_HORIZONTAL_AXIS_OFFSET: f64 = 0.15625;
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_SPREAD_FACTOR: f64 = 0.0172275;
+#[allow(dead_code)]
+pub const DISPENSE_ITEM_BASE_UP_VELOCITY: f64 = 0.2;
+
+#[allow(dead_code)]
+pub const OMINOUS_POTION_POWER: f64 = 1.375; // 1.1 * 1.25
+#[allow(dead_code)]
+pub const OMINOUS_POTION_UNCERTAINTY: f64 = 3.0; // 6.0 * 0.5
+#[allow(dead_code)]
+pub const OMINOUS_ARROW_POWER: f64 = 1.1;
+#[allow(dead_code)]
+pub const OMINOUS_ARROW_UNCERTAINTY: f64 = 6.0;
+#[allow(dead_code)]
+pub const OMINOUS_PROJECTILE_DIRECTION_DEVIATION: f64 = 0.11485000000000001;
+#[allow(dead_code)]
+pub const EVENT_WIND_CHARGE_SHOOT: i32 = 1051;
+#[allow(dead_code)]
+pub const EVENT_SHOOT_FIREBALL: i32 = 1018;
+
+#[must_use]
+pub fn calculate_dispense_item_spawn_position(base_pos: Vector3<f64>, is_y_axis: bool) -> Vector3<f64> {
+    let offset = if is_y_axis {
+        DISPENSE_ITEM_Y_AXIS_OFFSET
+    } else {
+        DISPENSE_ITEM_HORIZONTAL_AXIS_OFFSET
+    };
+    Vector3::new(base_pos.x, base_pos.y - offset, base_pos.z)
+}
+
+#[must_use]
+pub fn calculate_dispense_item_velocity(
+    step_x: f64,
+    step_z: f64,
+    pow: f64,
+    accuracy: i32,
+    rand_diff_x: f64,
+    rand_diff_y: f64,
+    rand_diff_z: f64,
+) -> Vector3<f64> {
+    let spread = DISPENSE_ITEM_SPREAD_FACTOR * f64::from(accuracy);
+    let vx = rand_diff_x.mul_add(spread, step_x * pow);
+    let vy = rand_diff_y.mul_add(spread, DISPENSE_ITEM_BASE_UP_VELOCITY);
+    let vz = rand_diff_z.mul_add(spread, step_z * pow);
+    Vector3::new(vx, vy, vz)
+}
+
+#[must_use]
+pub fn calculate_ominous_potion_velocity(
+    rand_diff_x: f64,
+    rand_diff_y: f64,
+    rand_diff_z: f64,
+) -> Vector3<f64> {
+    // Direction.DOWN = (0, -1, 0)
+    // shoot(0, -1, 0, power, uncertainty)
+    let spread = DISPENSE_ITEM_SPREAD_FACTOR * OMINOUS_POTION_UNCERTAINTY;
+    let vx = rand_diff_x * spread * OMINOUS_POTION_POWER;
+    let vy = (-1.0 + rand_diff_y * spread) * OMINOUS_POTION_POWER;
+    let vz = rand_diff_z * spread * OMINOUS_POTION_POWER;
+    Vector3::new(vx, vy, vz)
+}
+
+#[must_use]
+pub fn calculate_ominous_arrow_velocity(
+    rand_diff_x: f64,
+    rand_diff_y: f64,
+    rand_diff_z: f64,
+) -> Vector3<f64> {
+    let spread = DISPENSE_ITEM_SPREAD_FACTOR * OMINOUS_ARROW_UNCERTAINTY;
+    let vx = rand_diff_x * spread * OMINOUS_ARROW_POWER;
+    let vy = (-1.0 + rand_diff_y * spread) * OMINOUS_ARROW_POWER;
+    let vz = rand_diff_z * spread * OMINOUS_ARROW_POWER;
+    Vector3::new(vx, vy, vz)
+}
+
+#[must_use]
+pub fn calculate_ominous_wind_charge_velocity(
+    rand_diff_x: f64,
+    rand_diff_y: f64,
+    rand_diff_z: f64,
+) -> Vector3<f64> {
+    let dir_x = rand_diff_x * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    let dir_y = -1.0 + rand_diff_y * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    let dir_z = rand_diff_z * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    Vector3::new(dir_x, dir_y, dir_z)
+}
+
+#[must_use]
+pub fn calculate_ominous_fire_charge_velocity(
+    rand_diff_x: f64,
+    rand_diff_y: f64,
+    rand_diff_z: f64,
+) -> Vector3<f64> {
+    let dir_x = rand_diff_x * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    let dir_y = -1.0 + rand_diff_y * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    let dir_z = rand_diff_z * OMINOUS_PROJECTILE_DIRECTION_DEVIATION;
+    let len = (dir_x * dir_x + dir_y * dir_y + dir_z * dir_z).sqrt();
+    if len > 0.0 {
+        Vector3::new(dir_x / len * 0.1, dir_y / len * 0.1, dir_z / len * 0.1)
+    } else {
+        Vector3::new(0.0, -0.1, 0.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -22654,5 +22780,100 @@ mod tests {
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(16, 16), 15);
 
         assert_eq!(DecoratedPotBlock::calculate_comparator_output(1, 1), 15);
+    }
+
+    #[test]
+    fn test_trial_spawner_and_vault_dispense_item_ejection_arc_parity() {
+        // 1. Constants parity (DefaultDispenseItemBehavior.java:30-49)
+        assert_eq!(DISPENSE_ITEM_ACCURACY, 2);
+        assert_eq!(DISPENSE_ITEM_BASE_UP_Y, 1.2);
+        assert_eq!(DISPENSE_ITEM_Y_AXIS_OFFSET, 0.125);
+        assert_eq!(DISPENSE_ITEM_HORIZONTAL_AXIS_OFFSET, 0.15625);
+        assert_eq!(DISPENSE_ITEM_SPREAD_FACTOR, 0.0172275);
+        assert_eq!(DISPENSE_ITEM_BASE_UP_VELOCITY, 0.2);
+
+        // 2. Y-axis position adjustment (spawnY -= 0.125 for UP/DOWN)
+        let base_up = Vector3::new(10.5, 65.2, 20.5);
+        let pos_y_axis = calculate_dispense_item_spawn_position(base_up, true);
+        assert!((pos_y_axis.x - 10.5).abs() < 1e-6);
+        assert!((pos_y_axis.y - (65.2 - 0.125)).abs() < 1e-6);
+        assert!((pos_y_axis.z - 20.5).abs() < 1e-6);
+
+        // Horizontal position adjustment (spawnY -= 0.15625 for NORTH/EAST/SOUTH/WEST)
+        let pos_horiz = calculate_dispense_item_spawn_position(base_up, false);
+        assert!((pos_horiz.y - (65.2 - 0.15625)).abs() < 1e-6);
+
+        // 3. Ejection Velocity (Direction.UP: stepX=0, stepZ=0, accuracy=2)
+        // Zero random difference -> purely vertical 0.2
+        let zero_vel = calculate_dispense_item_velocity(0.0, 0.0, 0.25, 2, 0.0, 0.0, 0.0);
+        assert!((zero_vel.x - 0.0).abs() < 1e-6);
+        assert!((zero_vel.y - 0.2).abs() < 1e-6);
+        assert!((zero_vel.z - 0.0).abs() < 1e-6);
+
+        // Max positive difference (rand1 - rand2 = 1.0)
+        let expected_spread = 0.0172275 * 2.0; // 0.034455
+        let max_vel = calculate_dispense_item_velocity(0.0, 0.0, 0.25, 2, 1.0, 1.0, 1.0);
+        assert!((max_vel.x - expected_spread).abs() < 1e-6);
+        assert!((max_vel.y - (0.2 + expected_spread)).abs() < 1e-6);
+        assert!((max_vel.z - expected_spread).abs() < 1e-6);
+
+        // Max negative difference (rand1 - rand2 = -1.0)
+        let min_vel = calculate_dispense_item_velocity(0.0, 0.0, 0.25, 2, -1.0, -1.0, -1.0);
+        assert!((min_vel.x - -expected_spread).abs() < 1e-6);
+        assert!((min_vel.y - (0.2 - expected_spread)).abs() < 1e-6);
+        assert!((min_vel.z - -expected_spread).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_ominous_item_spawner_dispense_config_and_velocity_parity() {
+        // 1. Constants parity (ProjectileItem.java, ThrowablePotionItem.java, WindChargeItem.java, FireChargeItem.java)
+        assert_eq!(OMINOUS_POTION_POWER, 1.375);
+        assert_eq!(OMINOUS_POTION_UNCERTAINTY, 3.0);
+        assert_eq!(OMINOUS_ARROW_POWER, 1.1);
+        assert_eq!(OMINOUS_ARROW_UNCERTAINTY, 6.0);
+        assert_eq!(OMINOUS_PROJECTILE_DIRECTION_DEVIATION, 0.11485000000000001);
+        assert_eq!(EVENT_WIND_CHARGE_SHOOT, 1051);
+        assert_eq!(EVENT_SHOOT_FIREBALL, 1018);
+
+        // 2. Potion velocity (downward shoot, uncertainty 3.0, power 1.375)
+        let zero_potion = calculate_ominous_potion_velocity(0.0, 0.0, 0.0);
+        assert!((zero_potion.x - 0.0).abs() < 1e-6);
+        assert!((zero_potion.y - -1.375).abs() < 1e-6);
+        assert!((zero_potion.z - 0.0).abs() < 1e-6);
+
+        let spread_potion = 0.0172275 * 3.0 * 1.375;
+        let pos_potion = calculate_ominous_potion_velocity(1.0, 1.0, 1.0);
+        assert!((pos_potion.x - spread_potion).abs() < 1e-6);
+        assert!((pos_potion.y - (-1.375 + spread_potion)).abs() < 1e-6);
+        assert!((pos_potion.z - spread_potion).abs() < 1e-6);
+
+        // 3. Arrow velocity (downward shoot, uncertainty 6.0, power 1.1)
+        let zero_arrow = calculate_ominous_arrow_velocity(0.0, 0.0, 0.0);
+        assert!((zero_arrow.x - 0.0).abs() < 1e-6);
+        assert!((zero_arrow.y - -1.1).abs() < 1e-6);
+        assert!((zero_arrow.z - 0.0).abs() < 1e-6);
+
+        let spread_arrow = 0.0172275 * 6.0 * 1.1;
+        let pos_arrow = calculate_ominous_arrow_velocity(1.0, 1.0, 1.0);
+        assert!((pos_arrow.x - spread_arrow).abs() < 1e-6);
+        assert!((pos_arrow.y - (-1.1 + spread_arrow)).abs() < 1e-6);
+        assert!((pos_arrow.z - spread_arrow).abs() < 1e-6);
+
+        // 4. Wind Charge velocity (downward triangle deviation 0.11485)
+        let zero_wc = calculate_ominous_wind_charge_velocity(0.0, 0.0, 0.0);
+        assert!((zero_wc.x - 0.0).abs() < 1e-6);
+        assert!((zero_wc.y - -1.0).abs() < 1e-6);
+        assert!((zero_wc.z - 0.0).abs() < 1e-6);
+
+        let pos_wc = calculate_ominous_wind_charge_velocity(1.0, 1.0, 1.0);
+        assert!((pos_wc.x - 0.11485).abs() < 1e-6);
+        assert!((pos_wc.y - (-1.0 + 0.11485)).abs() < 1e-6);
+        assert!((pos_wc.z - 0.11485).abs() < 1e-6);
+
+        // 5. Fire Charge velocity (normalized direction)
+        let zero_fc = calculate_ominous_fire_charge_velocity(0.0, 0.0, 0.0);
+        assert!((zero_fc.x - 0.0).abs() < 1e-6);
+        assert!((zero_fc.y - -0.1).abs() < 1e-6);
+        assert!((zero_fc.z - 0.0).abs() < 1e-6);
     }
 }

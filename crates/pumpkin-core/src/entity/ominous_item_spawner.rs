@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use rand::RngExt;
 use std::sync::{Arc, Mutex};
 
 use pumpkin_data::damage::DamageType;
@@ -182,18 +183,32 @@ impl EntityBase for OminousItemSpawnerEntity {
             if !item.is_empty() {
                 let pos = self.entity.pos.load();
                 let item_id = item.get_item().id;
+                let mut rng = rand::rng();
+                let rand_diff_x = rng.random::<f64>() - rng.random::<f64>();
+                let rand_diff_y = rng.random::<f64>() - rng.random::<f64>();
+                let rand_diff_z = rng.random::<f64>() - rng.random::<f64>();
 
                 if item_id == Item::LINGERING_POTION.id {
                     let ent = Entity::new(world.clone(), pos, &EntityType::LINGERING_POTION);
                     let potion = LingeringPotionEntity::new(ent);
                     potion.set_item_stack(item);
-                    potion.thrown.entity.set_velocity(Vector3::new(0.0, -0.2, 0.0));
+                    let vel = crate::entity::combat::calculate_ominous_potion_velocity(
+                        rand_diff_x,
+                        rand_diff_y,
+                        rand_diff_z,
+                    );
+                    potion.thrown.entity.set_velocity(vel);
                     world.spawn_entity(Arc::new(potion));
                 } else if item_id == Item::SPLASH_POTION.id {
                     let ent = Entity::new(world.clone(), pos, &EntityType::SPLASH_POTION);
                     let potion = SplashPotionEntity::new(ent);
                     potion.set_item_stack(item);
-                    potion.thrown.entity.set_velocity(Vector3::new(0.0, -0.2, 0.0));
+                    let vel = crate::entity::combat::calculate_ominous_potion_velocity(
+                        rand_diff_x,
+                        rand_diff_y,
+                        rand_diff_z,
+                    );
+                    potion.thrown.entity.set_velocity(vel);
                     world.spawn_entity(Arc::new(potion));
                 } else if item_id == Item::WIND_CHARGE.id {
                     let ent = Entity::new(world.clone(), pos, &EntityType::WIND_CHARGE);
@@ -206,30 +221,55 @@ impl EntityBase for OminousItemSpawnerEntity {
                         gravity: WIND_CHARGE_GRAVITY,
                     };
                     let wc = WindChargeEntity::new_normal(thrown);
-                    wc.get_entity().set_velocity(Vector3::new(0.0, -0.4, 0.0));
+                    let vel = crate::entity::combat::calculate_ominous_wind_charge_velocity(
+                        rand_diff_x,
+                        rand_diff_y,
+                        rand_diff_z,
+                    );
+                    wc.get_entity().set_velocity(vel);
                     world.spawn_entity(Arc::new(wc));
+                    world.sync_world_event(
+                        WorldEvent::SoundWindChargeShoot,
+                        self.entity.block_pos.load(),
+                        0,
+                    );
                 } else if item_id == Item::ARROW.id || item_id == Item::TIPPED_ARROW.id {
                     let ent = Entity::new(world.clone(), pos, &EntityType::ARROW);
                     let arrow = ArrowEntity::new_with_item(
                         ent,
                         None,
                         &item,
-                        ArrowPickup::Disallowed,
+                        ArrowPickup::Allowed,
                     );
-                    arrow.entity.set_velocity(Vector3::new(0.0, -0.5, 0.0));
+                    let vel = crate::entity::combat::calculate_ominous_arrow_velocity(
+                        rand_diff_x,
+                        rand_diff_y,
+                        rand_diff_z,
+                    );
+                    arrow.entity.set_velocity(vel);
                     world.spawn_entity(Arc::new(arrow));
                 } else if item_id == Item::FIRE_CHARGE.id {
                     let ent = Entity::new(world.clone(), pos, &EntityType::SMALL_FIREBALL);
                     let fireball = SmallFireballEntity::new(ent);
-                    fireball.thrown.entity.set_velocity(Vector3::new(0.0, -0.3, 0.0));
+                    let vel = crate::entity::combat::calculate_ominous_fire_charge_velocity(
+                        rand_diff_x,
+                        rand_diff_y,
+                        rand_diff_z,
+                    );
+                    fireball.thrown.entity.set_velocity(vel);
                     world.spawn_entity(Arc::new(fireball));
+                    world.sync_world_event(
+                        WorldEvent::SoundBlazeFireball,
+                        self.entity.block_pos.load(),
+                        0,
+                    );
                 } else {
                     let item_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
                     let spawned = Arc::new(ItemEntity::new_with_velocity(
                         item_entity,
                         item,
                         Vector3::new(0.0, 0.0, 0.0),
-                        10,
+                        ItemEntity::DEFAULT_PICKUP_DELAY,
                     ));
                     world.spawn_entity(spawned);
                 }
@@ -239,6 +279,7 @@ impl EntityBase for OminousItemSpawnerEntity {
                     self.entity.block_pos.load(),
                     1,
                 );
+                self.set_item(ItemStack::EMPTY.clone());
             }
 
             self.entity.remove();
