@@ -104,6 +104,30 @@ impl JavaClient {
                             };
                             let mut stack = player.inventory().get_stack_in_hand(hand);
 
+                            // Vanilla Entity.interact: shears on leashable
+                            if stack.item.id == Item::SHEARS.id
+                                && event.target.get_entity().shear_off_all_leash_connections(Some(player))
+                            {
+                                if player.gamemode.load() != GameMode::Creative {
+                                    let _ = stack.damage_item(1);
+                                }
+                                if event.target.get_entity().entity_type == &pumpkin_data::entity::EntityType::LEASH_KNOT {
+                                    event.target.get_entity().remove();
+                                }
+                                player.inventory().set_stack_in_hand(hand, stack);
+                                return;
+                            }
+
+                            // Vanilla Entity.interact: shears on Mob equipment
+                            if stack.item.id == Item::SHEARS.id
+                                && !sneaking
+                                && let Some(mob) = event.target.get_mob()
+                                && mob.attempt_to_shear_equipment(player, hand, &mut stack)
+                            {
+                                player.inventory().set_stack_in_hand(hand, stack);
+                                return;
+                            }
+
                             let item_id = stack.item.id;
                             let before = stack.clone();
                             let interacted = if event.action == ActionType::InteractAt {

@@ -3855,6 +3855,22 @@ impl Entity {
         dropped
     }
 
+    /// Vanilla `Entity.shearOffAllLeashConnections`: drops all leashes and plays the shears snip sound.
+    pub fn shear_off_all_leash_connections(&self, player: Option<&Arc<Player>>) -> bool {
+        let dropped = self.drop_all_leash_connections();
+        if dropped {
+            let world = self.world.load();
+            let pos = self.pos.load();
+            let category = if player.is_some() {
+                SoundCategory::Players
+            } else {
+                SoundCategory::Neutral
+            };
+            world.play_sound(Sound::ItemShearsSnip, category, &pos);
+        }
+        dropped
+    }
+
     pub fn tick_leash(&self) {
         let holder = {
             let Ok(guard) = self.leashed_to.try_lock() else {

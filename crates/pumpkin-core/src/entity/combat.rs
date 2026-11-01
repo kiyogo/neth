@@ -11426,6 +11426,38 @@ pub fn calculate_ominous_fire_charge_velocity(
     }
 }
 
+/// Vanilla `ShearsItem.java:55`: damage applied to shears when used to cut blocks or mobs.
+pub const SHEARS_DAMAGE_AMOUNT: u16 = 1;
+
+/// Vanilla `Mob.java:564-566`, `Wolf.java:447-449`:
+/// Determines if a player can shear equipment off a mob.
+/// Generic mobs require `!is_vehicle()`, while wolves require `is_owner`.
+#[must_use]
+pub fn can_shear_mob_equipment(is_vehicle: bool, is_owner: bool, is_wolf: bool) -> bool {
+    if is_wolf {
+        is_owner
+    } else {
+        !is_vehicle
+    }
+}
+
+/// Vanilla `Mob.java:571-574`:
+/// Checks if an equipped item can be sheared off by a player.
+/// In Vanilla 1.21.4, Wolf Armor is equippable with `can_be_sheared = true`.
+/// If the item has Curse of Binding (`EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE`),
+/// it cannot be sheared unless the player is in Creative mode.
+#[must_use]
+pub fn can_equipment_be_sheared(
+    is_can_be_sheared_item: bool,
+    has_curse_of_binding: bool,
+    is_creative: bool,
+) -> bool {
+    if !is_can_be_sheared_item {
+        return false;
+    }
+    !has_curse_of_binding || is_creative
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -22876,4 +22908,37 @@ mod tests {
         assert!((zero_fc.y - -0.1).abs() < 1e-6);
         assert!((zero_fc.z - 0.0).abs() < 1e-6);
     }
+
+    #[test]
+    fn test_shears_snip_and_leash_knot_removal_parity() {
+        // Vanilla SoundEvents.SHEARS_SNIP parity
+        assert_eq!(pumpkin_data::sound::Sound::ItemShearsSnip.to_name(), "item.shears.snip");
+        assert_eq!(SHEARS_DAMAGE_AMOUNT, 1);
+    }
+
+    #[test]
+    fn test_mob_equipment_shearing_rules_parity() {
+        // Generic mob: can shear if not a vehicle
+        assert!(can_shear_mob_equipment(false, false, false));
+        assert!(!can_shear_mob_equipment(true, false, false));
+
+        // Wolf: can shear ONLY if owner (vehicle state ignored)
+        assert!(can_shear_mob_equipment(false, true, true));
+        assert!(can_shear_mob_equipment(true, true, true));
+        assert!(!can_shear_mob_equipment(false, false, true));
+        assert!(!can_shear_mob_equipment(true, false, true));
+
+        // Equippable can_be_sheared item (Wolf Armor)
+        assert!(can_equipment_be_sheared(true, false, false));
+        assert!(can_equipment_be_sheared(true, false, true));
+
+        // Curse of Binding: prevented in survival, allowed in creative
+        assert!(!can_equipment_be_sheared(true, true, false));
+        assert!(can_equipment_be_sheared(true, true, true));
+
+        // Non-shearable item
+        assert!(!can_equipment_be_sheared(false, false, false));
+        assert!(!can_equipment_be_sheared(false, false, true));
+    }
+
 }

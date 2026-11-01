@@ -9948,3 +9948,24 @@ eq 	ext{None}$.
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_trial_spawner_and_vault_dispense_item_ejection_arc_parity`
     - `test_ominous_item_spawner_dispense_config_and_velocity_parity`
+
+### Gap 393: Shears Snip on Leash Connections, Leash Knot Removal & Generic Mob Equipment Shearing Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.Entity.java:2360-2369, 2410-2437` (`interact`, `shearOffAllLeashConnections`, `dropAllLeashConnections`), `net.minecraft.world.entity.decoration.LeashFenceKnotEntity.java:70-82, 108-112` (`interact`, `notifyLeasheeRemoved`), `net.minecraft.world.entity.Mob.java:564-595` (`canShearEquipment`, `attemptToShearEquipment`, `shearItem`), `net.minecraft.world.entity.animal.wolf.Wolf.java:446-449` (`canShearEquipment`), `net.minecraft.world.item.equipment.Equippable.java:58-61, 190-191, 241-247`, `net.minecraft.world.item.Items.java:1620`, `net.minecraft.world.item.Item.java:584-598` (`wolfArmor`).
+- **Description**:
+  1. **Shears on Leash Connections & Sound Parity**:
+     - In Vanilla Java 1.21.4, when a player uses shears (`Items.SHEARS`) on any entity that is either leashed or has other entities leashed to it (such as a `LeashFenceKnotEntity` or animal), `Entity.shearOffAllLeashConnections` is triggered.
+     - Previously, Neth had no `shear_off_all_leash_connections` method. Interacting with shears on a `LeashKnotEntity` mistakenly executed regular tie/untie logic instead of snipping leashes, did not play `SoundEvents.SHEARS_SNIP`, did not damage the shears, and did not discard empty knots.
+     - Implemented `Entity::shear_off_all_leash_connections` which drops all leashes, spawns lead items, emits `GameEvent::Shear`, and plays `Sound::ItemShearsSnip` (`SoundEvents.SHEARS_SNIP` - `item.shears.snip`).
+     - In `LeashKnotEntity::interact`, if shears are used, leashes are snipped, the shears take 1 durability damage (unless in Creative), and empty knots automatically discard (`entity.remove()`) mirroring vanilla `LeashFenceKnotEntity.notifyLeasheeRemoved`.
+  2. **Generic Mob Equipment Shearing (`canShearEquipment` & `attemptToShearEquipment`)**:
+     - Previously, wolf armor removal was hardcoded inside `WolfEntity::mob_interact`, where it directly transferred armor to the player's inventory without respecting vanilla's `attemptToShearEquipment` workflow or ground drop physics.
+     - In Vanilla Java 1.21.4, equipment shearing is a standardized capability on `Mob`:
+       - `canShearEquipment(player)`: generic mobs allow shearing when `!is_vehicle()`; `Wolf` overrides this to require `this.isOwnedBy(player)` (only wolf owners may shear wolf armor).
+       - `attemptToShearEquipment`: checks equipped items for `can_be_sheared` equippable components (such as `WolfArmor`). If the item has Curse of Binding (`EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE`), shearing is blocked unless the player is in Creative mode.
+       - Upon shearing: clears the equipment slot, broadcasts equipment update packet to clients, plays the equippable item's unequip sound (`Sound::ItemArmorUnequipWolf`), emits `GameEvent::Shear`, damages shears by 1 durability, drops the armor at the mob's position (`drop_stack`), and triggers the advancement `RemoveWolfArmor`.
+     - Integrated `can_shear_equipment` and `attempt_to_shear_equipment` into the `Mob` trait and player interaction pipeline in `crates/pumpkin-core/src/net/java/play/interact.rs`.
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_shears_snip_and_leash_knot_removal_parity`
+    - `test_mob_equipment_shearing_rules_parity`

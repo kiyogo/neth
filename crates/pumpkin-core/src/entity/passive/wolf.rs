@@ -299,6 +299,10 @@ impl Mob for WolfEntity {
         Some(self)
     }
 
+    fn can_shear_equipment(&self, player: &Arc<Player>) -> bool {
+        self.is_owned_by(&player.gameprofile.id)
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -623,40 +627,7 @@ impl Mob for WolfEntity {
 
                 // Shear wolf armor
                 if item.id == Item::SHEARS.id && !current_armor.is_empty() {
-                    {
-                        let mut equip = self
-                            .mob_entity
-                            .living_entity
-                            .entity_equipment
-                            .lock()
-                            .unwrap_or_else(std::sync::PoisonError::into_inner);
-                        equip
-                            .equipment
-                            .remove(&pumpkin_data::data_component_impl::EquipmentSlot::BODY);
-                    }
-                    self.mob_entity.living_entity.send_equipment_changes(&[(
-                        pumpkin_data::data_component_impl::EquipmentSlot::BODY,
-                        ItemStack::EMPTY.clone(),
-                    )]);
-                    let entity = self.get_entity();
-                    let world = entity.world.load();
-                    let pos = entity.pos.load();
-                    world.play_sound(
-                        pumpkin_data::sound::Sound::ItemArmorUnequipWolf,
-                        pumpkin_data::sound::SoundCategory::Neutral,
-                        &pos,
-                    );
-                    let mut dropped_armor = current_armor;
-                    if !player.inventory().insert_stack_anywhere(&mut dropped_armor) {
-                        world.drop_stack(&pos.to_block_pos(), dropped_armor);
-                    }
-                    if player.gamemode.load() != pumpkin_util::GameMode::Creative {
-                        let _ = item_stack.damage_item(1);
-                    }
-                    player.trigger_advancement(
-                        crate::entity::player::advancement::trigger::AdvancementTrigger::RemoveWolfArmor,
-                    );
-                    return true;
+                    return self.attempt_to_shear_equipment(player, pumpkin_util::Hand::Right, item_stack);
                 }
 
                 // Repair wolf armor with armadillo scute

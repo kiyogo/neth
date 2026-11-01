@@ -138,7 +138,17 @@ impl EntityBase for LeashKnotEntity {
         }
     }
 
-    fn interact(&self, player: &Arc<Player>, _item_stack: &mut ItemStack) -> bool {
+    fn interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
+        if item_stack.get_item() == &pumpkin_data::item::Item::SHEARS {
+            let dropped = self.entity.shear_off_all_leash_connections(Some(player));
+            if dropped {
+                if player.gamemode.load() != pumpkin_util::GameMode::Creative {
+                    let _ = item_stack.damage_item(1);
+                }
+                self.entity.remove();
+                return true;
+            }
+        }
         let world = player.world();
         let knot_id = self.entity.entity_id;
         let player_id = player.entity_id();

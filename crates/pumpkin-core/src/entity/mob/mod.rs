@@ -1425,6 +1425,81 @@ pub trait Mob: EntityBase + Send + Sync {
         None
     }
 
+    /// Vanilla `Mob.canShearEquipment`: generic mobs cannot have equipment sheared while being a vehicle.
+    fn can_shear_equipment(&self, _player: &Arc<Player>) -> bool {
+        !self.get_mob_entity().living_entity.entity.is_vehicle()
+    }
+
+    /// Vanilla `Mob.attemptToShearEquipment`: shears off equippable items (e.g. Wolf Armor) with shears.
+    fn attempt_to_shear_equipment(
+        &self,
+        player: &Arc<Player>,
+        _hand: pumpkin_util::Hand,
+        held_item: &mut ItemStack,
+    ) -> bool {
+        if !self.can_shear_equipment(player) {
+            return false;
+        }
+
+        let living = &self.get_mob_entity().living_entity;
+        let mut target_slot = None;
+        let mut sheared_stack = None;
+
+        {
+            let equipment_lock = living
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+            for (slot, stack) in &equipment_lock.equipment {
+                if stack.item.id == pumpkin_data::item::Item::WOLF_ARMOR.id {
+                    let has_binding = stack.get_enchantment_level(&pumpkin_data::Enchantment::BINDING_CURSE) > 0;
+                    if has_binding && player.gamemode.load() != pumpkin_util::GameMode::Creative {
+                        continue;
+                    }
+                    target_slot = Some(slot.clone());
+                    sheared_stack = Some(stack.clone());
+                    break;
+                }
+            }
+        }
+
+        if let (Some(slot), Some(stack)) = (target_slot, sheared_stack) {
+            {
+                let mut equipment_lock = living
+                    .entity_equipment
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                equipment_lock.equipment.remove(&slot);
+            }
+            living.send_equipment_changes(&[(slot, ItemStack::EMPTY.clone())]);
+
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            let pos = entity.pos.load();
+            world.play_sound(
+                Sound::ItemArmorUnequipWolf,
+                pumpkin_data::sound::SoundCategory::Neutral,
+                &pos,
+            );
+            world.emit_game_event(pumpkin_data::game_event::GameEvent::Shear.name(), pos);
+
+            let drop_pos = BlockPos::new(pos.x.floor() as i32, pos.y.floor() as i32, pos.z.floor() as i32);
+            world.drop_stack(&drop_pos, stack);
+
+            if player.gamemode.load() != pumpkin_util::GameMode::Creative {
+                let _ = held_item.damage_item(1);
+            }
+
+            player.trigger_advancement(
+                crate::entity::player::advancement::trigger::AdvancementTrigger::RemoveWolfArmor,
+            );
+            true
+        } else {
+            false
+        }
+    }
+
     /// How much this mob likes standing on `pos`, used to rank stroll candidates.
     fn get_walk_target_value(&self, pos: &BlockPos) -> f32 {
         self.as_animal()
