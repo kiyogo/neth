@@ -10366,3 +10366,23 @@ eq 	ext{None}$.
   - Ghi đè `can_dispenser_equip_into_slot(&self, _slot) -> bool { false }` trên `PolarBearEntity` vì gấu bắc cực không nhận bất kỳ trang bị nào từ Dispenser.
 - **Hằng số Parity**: `POLAR_BEAR_BABY_WIDTH` (0.7), `POLAR_BEAR_BABY_HEIGHT` (0.7), `POLAR_BEAR_BABY_EYE_HEIGHT` (0.34375), `POLAR_BEAR_MAX_STAND_HEIGHT_SCALE` (2.0), `POLAR_BEAR_STAND_ANIMATION_TICKS` (6.0), `calculate_polar_bear_dimensions`.
 - **Unit Tests**: `test_polar_bear_baby_dimensions_and_standing_height_scaling_parity` và toàn bộ 5 tests polar bear pass 100%.
+
+### Gap 408: Goat Baby Scalable Dimensions, Long Jumping Scale & Screaming Inheritance Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.goat.Goat.java:59-67, 120, 156-158, 252-255, 352`
+
+- **Kích thước Dê Con & Nhảy Xa (Baby Dimensions & Long Jumping Scale)**:
+  - Vanilla khai báo `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F).withEyeHeight(0.59375F)`.
+  - Adult goat: width `0.9`, height `1.3`, eye height `1.105` (1.3 * 0.85).
+  - Baby goat: width `0.45`, height `0.65`, eye height `0.59375` (`GOAT_BABY_EYE_HEIGHT`).
+  - Khi Dê ở tư thế nhảy xa (`Pose.LONG_JUMPING`), toàn bộ kích thước nhân thêm hệ số `LONG_JUMPING_DIMENSION_SCALE_FACTOR = 0.7F` (`Goat.java:254`):
+    - Adult long jumping: `(0.63, 0.91, 0.7735)`.
+    - Baby long jumping: `(0.315, 0.455, 0.415625)`.
+  - Triển khai `calculate_goat_dimensions`, `refresh_dimensions()` và `age_boundary_reached()` trên `GoatEntity`. Khi Dê lớn lên hoặc thay đổi trạng thái baby, tự động cập nhật bounding box, entity dimensions và sát thương húc (`Attributes.ATTACK_DAMAGE: baby = 1.0, adult = 2.0`).
+- **Góc Quay Đầu Cúi Xuống khi Húc (Ramming Head Rotation)**:
+  - `GOAT_BABY_DEFAULT_X_HEAD_ROT = 22.5F`.
+  - Góc quay đầu tối đa khi húc: `GOAT_BABY_MAX_RAMMING_X_HEAD_ROT = 52.5F` (dê con cúi đầu sâu hơn), `GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT = 30.0F` (`Goat.java:352`).
+- **Dispenser Equip Parity**:
+  - Ghi đè `can_dispenser_equip_into_slot(&self, _slot) -> bool { false }` trên `GoatEntity`.
+- **Hằng số Parity**: `GOAT_BABY_WIDTH` (0.45), `GOAT_BABY_HEIGHT` (0.65), `GOAT_BABY_EYE_HEIGHT` (0.59375), `GOAT_BABY_SCALE` (0.55), `GOAT_LONG_JUMPING_SCALE` (0.7), `GOAT_BABY_DEFAULT_X_HEAD_ROT` (22.5), `GOAT_BABY_MAX_RAMMING_X_HEAD_ROT` (52.5), `GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT` (30.0), `calculate_goat_dimensions`.
+- **Unit Tests**: `test_goat_baby_dimensions_and_long_jumping_parity` và toàn bộ 7 tests goat pass 100%.

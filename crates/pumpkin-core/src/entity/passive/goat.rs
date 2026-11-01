@@ -1,3 +1,4 @@
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicBool, Ordering},
@@ -46,6 +47,26 @@ pub struct GoatEntity {
 
 impl GoatEntity {
     pub const XP_REWARD: u32 = combat::GOAT_XP_REWARD;
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_goat_dimensions(
+            is_baby,
+            false,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
 
     pub fn new(entity: Entity) -> Arc<Self> {
         let is_baby = entity.age.load(Ordering::Relaxed) < 0;
@@ -110,6 +131,7 @@ impl GoatEntity {
             attack_dmg,
         );
             mob_arc.mob_entity.living_entity.set_health(combat::GOAT_MAX_HEALTH as f32);
+        mob_arc.refresh_dimensions();
 
         mob_arc
     }
@@ -213,10 +235,20 @@ impl AgeableMob for GoatEntity {
         &self.ageable_data
     }
 
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+        let dmg = crate::entity::combat::get_goat_attack_damage_for_age(baby);
+        self.mob_entity
+            .living_entity
+            .set_attribute_base(&Attributes::ATTACK_DAMAGE, dmg);
+    }
+
     /// Vanilla `Goat.java:119-121`:
     /// `super.ageBoundaryReached(); this.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(this.isBaby() ? 1.0 : 2.0);`
     fn age_boundary_reached(&self) {
         let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
         crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
         let dmg = crate::entity::combat::get_goat_attack_damage_for_age(self.is_baby());
         self.mob_entity
@@ -257,6 +289,13 @@ impl Mob for GoatEntity {
         Some(self)
     }
 
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
     /// Vanilla `Goat.java:187-189`: `getMaxHeadYRot() -> 15`.
     fn get_max_head_rotation(&self) -> f32 {
         combat::GOAT_MAX_HEAD_Y_ROT
@@ -292,6 +331,7 @@ impl Mob for GoatEntity {
         if let Some(right) = nbt.get_bool("HasRightHorn") {
             self.set_has_right_horn(right);
         }
+        self.refresh_dimensions();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -467,4 +507,41 @@ mod tests {
         let scream3 = combat::get_random_goat_horn_instrument(true, 3);
         assert_eq!(scream3, "minecraft:dream_goat_horn");
     }
+
+    #[test]
+    fn test_goat_baby_dimensions_and_long_jumping_parity() {
+        // 1. Adult normal dimensions
+        let adult = combat::calculate_goat_dimensions(false, false, 0.9, 1.3, 1.105);
+        assert_eq!(adult.0, 0.9);
+        assert_eq!(adult.1, 1.3);
+        assert_eq!(adult.2, 1.105);
+
+        // 2. Adult long jumping dimensions (scaled by 0.7)
+        let adult_jump = combat::calculate_goat_dimensions(false, true, 0.9, 1.3, 1.105);
+        assert!((adult_jump.0 - 0.63).abs() < 1e-4);
+        assert!((adult_jump.1 - 0.91).abs() < 1e-4);
+        assert!((adult_jump.2 - 0.7735).abs() < 1e-4);
+
+        // 3. Baby normal dimensions (Goat.java:60)
+        let baby = combat::calculate_goat_dimensions(true, false, 0.9, 1.3, 1.105);
+        assert_eq!(baby.0, combat::GOAT_BABY_WIDTH);
+        assert_eq!(baby.1, combat::GOAT_BABY_HEIGHT);
+        assert_eq!(baby.2, combat::GOAT_BABY_EYE_HEIGHT);
+        assert_eq!(combat::GOAT_BABY_WIDTH, 0.45);
+        assert_eq!(combat::GOAT_BABY_HEIGHT, 0.65);
+        assert_eq!(combat::GOAT_BABY_EYE_HEIGHT, 0.59375);
+        assert_eq!(combat::GOAT_BABY_SCALE, 0.55);
+
+        // 4. Baby long jumping dimensions
+        let baby_jump = combat::calculate_goat_dimensions(true, true, 0.9, 1.3, 1.105);
+        assert!((baby_jump.0 - 0.45 * 0.7).abs() < 1e-4);
+        assert!((baby_jump.1 - 0.65 * 0.7).abs() < 1e-4);
+        assert!((baby_jump.2 - 0.59375 * 0.7).abs() < 1e-4);
+
+        // 5. Head rotation & ramming constants
+        assert_eq!(combat::GOAT_BABY_DEFAULT_X_HEAD_ROT, 22.5);
+        assert_eq!(combat::GOAT_BABY_MAX_RAMMING_X_HEAD_ROT, 52.5);
+        assert_eq!(combat::GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT, 30.0);
+    }
+
 }

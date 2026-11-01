@@ -11030,6 +11030,84 @@ pub const GOAT_ADULT_RAM_KNOCKBACK: f32 = 2.5;
 pub const GOAT_BABY_RAM_KNOCKBACK: f32 = 1.0;
 pub const GOAT_RAM_SPEED_FACTOR: f32 = 1.65;
 
+/// Goat baby width (0.45).
+///
+/// Mirrors vanilla `Goat.java:60`:
+/// `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F)...`
+pub const GOAT_BABY_WIDTH: f32 = 0.45;
+
+/// Goat baby height (0.65).
+///
+/// Mirrors vanilla `Goat.java:60`:
+/// `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F)...`
+pub const GOAT_BABY_HEIGHT: f32 = 0.65;
+
+/// Goat baby eye height (0.59375).
+///
+/// Mirrors vanilla `Goat.java:61`:
+/// `.withEyeHeight(0.59375F)`
+pub const GOAT_BABY_EYE_HEIGHT: f32 = 0.59375;
+
+/// Goat baby scale factor (0.55).
+///
+/// Mirrors vanilla `Goat.java:65`:
+/// `private static final float BABY_SCALE = 0.55F;`
+pub const GOAT_BABY_SCALE: f32 = 0.55;
+
+/// Goat baby default X head rotation degrees (22.5).
+///
+/// Mirrors vanilla `Goat.java:63`:
+/// `public static final float BABY_DEFAULT_X_HEAD_ROT = 22.5F;`
+pub const GOAT_BABY_DEFAULT_X_HEAD_ROT: f32 = 22.5;
+
+/// Goat baby max ramming X head rotation degrees (52.5 = 22.5 + 30.0).
+///
+/// Mirrors vanilla `Goat.java:352`:
+/// `float maxRammingXHeadRot = this.isBaby() ? 52.5F : 30.0F;`
+pub const GOAT_BABY_MAX_RAMMING_X_HEAD_ROT: f32 = 52.5;
+
+/// Goat adult max ramming X head rotation degrees (30.0).
+///
+/// Mirrors vanilla `Goat.java:352`:
+/// `float maxRammingXHeadRot = this.isBaby() ? 52.5F : 30.0F;`
+pub const GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT: f32 = 30.0;
+
+/// Calculates Goat dimensions (width, height, eye_height) based on baby status and long jumping pose.
+///
+/// Mirrors vanilla `Goat.java:252-255`:
+/// ```java
+/// EntityDimensions entityDimensions = this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);
+/// return pose == Pose.LONG_JUMPING ? entityDimensions.scale(0.7F) : entityDimensions;
+/// ```
+#[must_use]
+pub fn calculate_goat_dimensions(
+    is_baby: bool,
+    is_long_jumping: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let (base_w, base_h, base_eye) = if is_baby {
+        (
+            GOAT_BABY_WIDTH,
+            GOAT_BABY_HEIGHT,
+            GOAT_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    };
+
+    if is_long_jumping {
+        (
+            base_w * GOAT_LONG_JUMPING_SCALE,
+            base_h * GOAT_LONG_JUMPING_SCALE,
+            base_eye * GOAT_LONG_JUMPING_SCALE,
+        )
+    } else {
+        (base_w, base_h, base_eye)
+    }
+}
+
 
 /// Rabbit attribute and The Killer Bunny constants, mirroring vanilla `Rabbit.java:42-45, 120-135`.
 pub const RABBIT_MAX_HEALTH: f64 = 3.0;
@@ -24155,6 +24233,45 @@ mod tests {
         // 5. Standing scale constants
         assert_eq!(POLAR_BEAR_MAX_STAND_HEIGHT_SCALE, 2.0);
         assert_eq!(POLAR_BEAR_STAND_ANIMATION_TICKS, 6.0);
+    }
+
+
+    #[test]
+    fn test_goat_baby_dimensions_and_long_jumping_parity() {
+        use super::*;
+
+        // 1. Adult normal dimensions
+        let adult = calculate_goat_dimensions(false, false, 0.9, 1.3, 1.105);
+        assert_eq!(adult.0, 0.9);
+        assert_eq!(adult.1, 1.3);
+        assert_eq!(adult.2, 1.105);
+
+        // 2. Adult long jumping dimensions (scaled by 0.7)
+        let adult_jump = calculate_goat_dimensions(false, true, 0.9, 1.3, 1.105);
+        assert!((adult_jump.0 - 0.63).abs() < 1e-4);
+        assert!((adult_jump.1 - 0.91).abs() < 1e-4);
+        assert!((adult_jump.2 - 0.7735).abs() < 1e-4);
+
+        // 3. Baby normal dimensions (Goat.java:60)
+        let baby = calculate_goat_dimensions(true, false, 0.9, 1.3, 1.105);
+        assert_eq!(baby.0, GOAT_BABY_WIDTH);
+        assert_eq!(baby.1, GOAT_BABY_HEIGHT);
+        assert_eq!(baby.2, GOAT_BABY_EYE_HEIGHT);
+        assert_eq!(GOAT_BABY_WIDTH, 0.45);
+        assert_eq!(GOAT_BABY_HEIGHT, 0.65);
+        assert_eq!(GOAT_BABY_EYE_HEIGHT, 0.59375);
+        assert_eq!(GOAT_BABY_SCALE, 0.55);
+
+        // 4. Baby long jumping dimensions
+        let baby_jump = calculate_goat_dimensions(true, true, 0.9, 1.3, 1.105);
+        assert!((baby_jump.0 - 0.45 * 0.7).abs() < 1e-4);
+        assert!((baby_jump.1 - 0.65 * 0.7).abs() < 1e-4);
+        assert!((baby_jump.2 - 0.59375 * 0.7).abs() < 1e-4);
+
+        // 5. Head rotation & ramming constants
+        assert_eq!(GOAT_BABY_DEFAULT_X_HEAD_ROT, 22.5);
+        assert_eq!(GOAT_BABY_MAX_RAMMING_X_HEAD_ROT, 52.5);
+        assert_eq!(GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT, 30.0);
     }
 
 }
