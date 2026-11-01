@@ -10175,3 +10175,30 @@ eq 	ext{None}$.
     - `test_tadpole_and_goat_parity` (updated with instrument registry tags validation and goat constants parity)
   - `crates/pumpkin-core/src/entity/passive/goat.rs`:
     - `test_goat_horns_and_head_rotation_parity`
+
+
+### Gap 401: Turtle Home Pos NBT Persistence, Lightning Strike Bowl Drop & Lay Egg Constants Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.turtle.Turtle.java:77, 90-96, 123-134, 283-285, 451-475` (`homePos`, `setHomePos`, `getHomePos`, `addAdditionalSaveData`, `readAdditionalSaveData`, `thunderHit`, `TurtleLayEggGoal`), `net.minecraft.data.loot.packs.VanillaEntityLoot.java:1004-1013` (`Items.BOWL` drop on lightning damage).
+- **Description**:
+  1. **Turtle Home Position & NBT Persistence (`Turtle.java:77, 90-96, 123-134`)**:
+     - In Vanilla Java 1.21.4, every turtle remembers its home beach position `homePos` (initialized on spawn to its spawn position). Pregnant turtles travel back across the world to their `homePos` to lay eggs.
+     - Modern vanilla serializes `home_pos` as an int array `[x, y, z]` and `has_egg` (alongside legacy `HomePosX, HomePosY, HomePosZ` and `HasEgg`).
+     - Previously in Neth, `TurtleEntity` had no `home_pos` field or persistence whatsoever, causing turtles to lose their home orientation and failing to remember where they were born.
+     - Added `home_pos: Mutex<BlockPos>` with `get_home_pos()` / `set_home_pos()`, and full modern int array + legacy NBT serialization in `mob_write_nbt` and `mob_read_nbt`.
+  2. **Lightning Strike Bowl Drop Parity (`Turtle.java:283-285`, `VanillaEntityLoot.java:1004-1013`)**:
+     - In Vanilla Java 1.21.4, when a turtle is struck by lightning (`thunderHit`), it takes `Float.MAX_VALUE` damage and drops exactly 1 Bowl (`Items.BOWL`) upon death.
+     - Updated `TurtleEntity::mob_on_lightning_strike` to spawn `Item::BOWL` item entity upon lightning strike death.
+  3. **Egg Laying & Navigation Constants Parity (`Turtle.java:334, 348, 372, 458, 462`)**:
+     - Formalized constants in `combat.rs`:
+       - `TURTLE_LAY_EGG_TICKS = 200` (time spent digging before laying eggs)
+       - `TURTLE_MAX_EGGS_LAID = 4` (1..=4 eggs placed per clutch)
+       - `TURTLE_EGG_DIG_INTERVAL_TICKS = 5` (block crack particles every 5 ticks while digging)
+       - `TURTLE_HOME_RADIUS = 64.0` (wander radius when deciding to go home)
+       - `TURTLE_CLOSE_HOME_RADIUS = 16.0` (close to home proximity check)
+       - `TURTLE_GIVE_UP_HOME_TICKS = 600` (give-up timeout when stuck)
+       - `TURTLE_LIGHTNING_DROP_ITEM = &Item::BOWL`
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/passive/turtle.rs`:
+    - `test_turtle_parity_constants` (updated with egg laying and lightning drop constants)
+    - `test_turtle_nbt_home_pos_and_egg_roundtrip` (modern and legacy backward compatibility verification)

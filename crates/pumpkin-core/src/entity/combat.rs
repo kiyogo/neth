@@ -10793,6 +10793,13 @@ pub const TURTLE_AMBIENT_SOUND_INTERVAL: i32 = 200;
 /// Turtle baby dimension scale (0.3).
 /// Mirrors vanilla Turtle.java:69.
 pub const TURTLE_BABY_SCALE: f32 = 0.3;
+pub const TURTLE_LAY_EGG_TICKS: i32 = 200;
+pub const TURTLE_MAX_EGGS_LAID: i32 = 4;
+pub const TURTLE_EGG_DIG_INTERVAL_TICKS: i32 = 5;
+pub const TURTLE_HOME_RADIUS: f64 = 64.0;
+pub const TURTLE_CLOSE_HOME_RADIUS: f64 = 16.0;
+pub const TURTLE_GIVE_UP_HOME_TICKS: i32 = 600;
+pub const TURTLE_LIGHTNING_DROP_ITEM: &pumpkin_data::item::Item = &pumpkin_data::item::Item::BOWL;
 
 /// Axolotl base max health (14.0 HP / 7 hearts).
 /// Mirrors vanilla Axolotl.java:390 (Attributes.MAX_HEALTH, 14.0).

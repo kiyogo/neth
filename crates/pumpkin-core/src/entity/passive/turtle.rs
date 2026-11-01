@@ -10,8 +10,10 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::position::BlockPos;
 
 use crate::entity::{
+    combat,
     Entity, EntityBase, item::ItemEntity,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
@@ -42,11 +44,13 @@ pub struct TurtleEntity {
     pub ageable_data: AgeableData,
     pub has_egg: AtomicBool,
     pub laying_egg: AtomicBool,
+    pub home_pos: std::sync::Mutex<BlockPos>,
 }
 
 impl TurtleEntity {
     pub const XP_REWARD: u32 = crate::entity::combat::TURTLE_XP_REWARD;
     pub fn new(entity: Entity) -> Arc<Self> {
+        let spawn_block_pos = entity.block_pos.load();
         let mob_entity = MobEntity::new(entity);
         *mob_entity
             .navigator
@@ -58,6 +62,7 @@ impl TurtleEntity {
             ageable_data: AgeableData::default(),
             has_egg: AtomicBool::new(false),
             laying_egg: AtomicBool::new(false),
+            home_pos: std::sync::Mutex::new(spawn_block_pos),
         };
         let mob_arc = Arc::new(turtle);
         let mob_weak: Weak<dyn Mob> = {
@@ -103,6 +108,15 @@ impl TurtleEntity {
         };
 
         mob_arc
+    }
+
+    #[must_use]
+    pub fn get_home_pos(&self) -> BlockPos {
+        *self.home_pos.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    pub fn set_home_pos(&self, pos: BlockPos) {
+        *self.home_pos.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = pos;
     }
 
     #[must_use]
@@ -207,12 +221,27 @@ impl Mob for TurtleEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         self.write_ageable_nbt(nbt);
+        let home = self.get_home_pos();
+        nbt.put_int_array("home_pos", vec![home.0.x, home.0.y, home.0.z]);
+        nbt.put_bool("has_egg", self.has_egg());
         nbt.put_bool("HasEgg", self.has_egg());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         self.read_ageable_nbt(nbt);
-        if let Some(has_egg) = nbt.get_bool("HasEgg") {
+        if let Some(pos) = nbt.get_int_array("home_pos") {
+            if pos.len() >= 3 {
+                self.set_home_pos(BlockPos::new(pos[0], pos[1], pos[2]));
+            }
+        } else if let (Some(x), Some(y), Some(z)) = (
+            nbt.get_int("HomePosX"),
+            nbt.get_int("HomePosY"),
+            nbt.get_int("HomePosZ"),
+        ) {
+            self.set_home_pos(BlockPos::new(x, y, z));
+        }
+
+        if let Some(has_egg) = nbt.get_bool("has_egg").or_else(|| nbt.get_bool("HasEgg")) {
             self.set_has_egg(has_egg);
         }
     }
@@ -258,8 +287,17 @@ impl Mob for TurtleEntity {
         caller: &dyn EntityBase,
         lightning: &crate::entity::lightning::LightningBoltEntity,
     ) {
-        // Vanilla Turtle.java:283-285:
-        // this.hurtServer(level, this.damageSources().lightningBolt(), Float.MAX_VALUE);
+        let entity = self.get_entity();
+        let world = entity.world.load();
+        let pos = entity.pos.load();
+        // Vanilla Turtle.java:283-285 & VanillaEntityLoot.java:1007:
+        // Spawn a bowl when killed by lightning
+        let drop_entity = Entity::new(world.clone(), pos, &EntityType::ITEM);
+        world.spawn_entity(Arc::new(ItemEntity::new(
+            drop_entity,
+            ItemStack::new(1, combat::TURTLE_LIGHTNING_DROP_ITEM),
+        )));
+
         let cause = lightning.get_cause();
         self.mob_entity.living_entity.damage_with_context(
             caller,
@@ -320,5 +358,37 @@ mod tests {
         assert_eq!(combat::TURTLE_STEP_HEIGHT, 1.0);
         assert_eq!(combat::TURTLE_AMBIENT_SOUND_INTERVAL, 200);
         assert_eq!(combat::TURTLE_BABY_SCALE, 0.3);
+        assert_eq!(combat::TURTLE_LAY_EGG_TICKS, 200);
+        assert_eq!(combat::TURTLE_MAX_EGGS_LAID, 4);
+        assert_eq!(combat::TURTLE_EGG_DIG_INTERVAL_TICKS, 5);
+        assert_eq!(combat::TURTLE_HOME_RADIUS, 64.0);
+        assert_eq!(combat::TURTLE_CLOSE_HOME_RADIUS, 16.0);
+        assert_eq!(combat::TURTLE_GIVE_UP_HOME_TICKS, 600);
+        assert_eq!(combat::TURTLE_LIGHTNING_DROP_ITEM, &Item::BOWL);
+    }
+
+    #[test]
+    fn test_turtle_nbt_home_pos_and_egg_roundtrip() {
+        let mut nbt = NbtCompound::new();
+        nbt.put_int_array("home_pos", vec![120, 63, -450]);
+        nbt.put_bool("has_egg", true);
+
+        // Verify modern NBT keys
+        let home_arr = nbt.get_int_array("home_pos").unwrap();
+        assert_eq!(home_arr, &[120, 63, -450]);
+        assert_eq!(nbt.get_bool("has_egg"), Some(true));
+
+        // Verify legacy NBT backward compatibility
+        let mut legacy_nbt = NbtCompound::new();
+        legacy_nbt.put_int("HomePosX", -15);
+        legacy_nbt.put_int("HomePosY", 65);
+        legacy_nbt.put_int("HomePosZ", 300);
+        legacy_nbt.put_bool("HasEgg", true);
+
+        let x = legacy_nbt.get_int("HomePosX").unwrap();
+        let y = legacy_nbt.get_int("HomePosY").unwrap();
+        let z = legacy_nbt.get_int("HomePosZ").unwrap();
+        assert_eq!(BlockPos::new(x, y, z), BlockPos::new(-15, 65, 300));
+        assert_eq!(legacy_nbt.get_bool("has_egg").or_else(|| legacy_nbt.get_bool("HasEgg")), Some(true));
     }
 }
