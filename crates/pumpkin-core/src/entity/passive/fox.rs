@@ -1,3 +1,4 @@
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicI32, AtomicU8, Ordering},
@@ -215,6 +216,7 @@ impl FoxEntity {
         }
         mob_arc.mob_entity.living_entity.set_health(10.0);
         mob_arc.mob_entity.set_can_pick_up_loot(true);
+        mob_arc.refresh_dimensions();
 
         mob_arc
     }
@@ -381,6 +383,68 @@ impl FoxEntity {
     }
 
     /// Vanilla `Fox.spitOutItem`: drops held mouth item with sound and forward position offset.
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_fox_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+
+    pub fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
+
+    #[must_use]
+    pub fn can_move(&self) -> bool {
+        combat::can_fox_move(
+            self.is_sleeping(),
+            self.is_sitting(),
+            self.is_faceplanted(),
+        )
+    }
+
+    pub fn wake_up(&self) {
+        self.set_sleeping(false);
+    }
+
+    #[must_use]
+    pub fn can_hold_item(&self, item_stack: &ItemStack) -> bool {
+        let held = {
+            let equip = self
+                .mob_entity
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equip
+                .equipment
+                .get(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND)
+                .cloned()
+                .unwrap_or_else(|| ItemStack::EMPTY.clone())
+        };
+        combat::can_fox_hold_item(
+            held.is_empty(),
+            self.ticks_since_eaten.load(Ordering::Relaxed),
+            self.is_food(item_stack),
+            self.is_food(&held),
+        )
+    }
+
     pub fn spit_out_item(&self) {
         let mouth_item = {
             let mut equip = self
@@ -413,6 +477,7 @@ impl FoxEntity {
                 Entity::new(world.clone(), drop_pos, &EntityType::ITEM),
                 item_stack,
             ));
+            item_entity.set_pickup_delay(combat::FOX_PICKUP_DELAY as u8);
             world.spawn_entity(item_entity);
 
             if !entity.is_silent() {
@@ -431,6 +496,11 @@ impl FoxEntity {
 impl AgeableMob for FoxEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
     }
 }
 
@@ -464,6 +534,14 @@ impl Mob for FoxEntity {
 
     fn as_fox(&self) -> Option<&FoxEntity> {
         Some(self)
+    }
+
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        slot == &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND
+            && self.mob_entity.can_pick_up_loot()
     }
 
     /// Vanilla `SweetBerryBushBlock`: foxes are immune to sweet berry bush damage.
@@ -527,6 +605,7 @@ impl Mob for FoxEntity {
         if let Some(crouching) = nbt.get_bool("Crouching") {
             self.set_crouching(crouching);
         }
+        self.refresh_dimensions();
 
         self.clear_trusted();
         if let Some(t0) = nbt.get_uuid("Trusted0") {
@@ -564,6 +643,16 @@ impl Mob for FoxEntity {
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
+        }
+
+        // Vanilla Fox.java:558-566: wakeUp and sit state update
+        let in_water = entity.is_in_water();
+        let target = self.mob_entity.get_target();
+        if in_water || target.is_some() {
+            self.wake_up();
+        }
+        if in_water || self.is_sleeping() {
+            self.set_sitting(false);
         }
 
         // Vanilla Fox.java:213-220: held food consumption after 600 ticks
@@ -701,6 +790,7 @@ impl Mob for FoxEntity {
                     &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
                     stack,
                 );
+                self.mob_entity.set_guaranteed_drop(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND);
             }
         }
     }
@@ -767,6 +857,40 @@ mod tests {
         assert_eq!(combat::FOX_FLAG_FACEPLANTED, 64);
         assert_eq!(combat::FOX_FLAG_DEFENDING, 128);
     }
+
+    #[test]
+    fn test_fox_baby_dimensions_dispenser_and_food_swap_parity() {
+        // 1. Dimensions parity
+        let adult = combat::calculate_fox_dimensions(false, 0.6, 0.7, 0.4);
+        assert_eq!(adult.0, 0.6);
+        assert_eq!(adult.1, 0.7);
+        assert_eq!(adult.2, 0.4);
+
+        let baby = combat::calculate_fox_dimensions(true, 0.6, 0.7, 0.4);
+        assert!((baby.0 - 0.36).abs() < 1e-4);
+        assert!((baby.1 - 0.42).abs() < 1e-4);
+        assert_eq!(baby.2, combat::FOX_BABY_EYE_HEIGHT);
+        assert_eq!(combat::FOX_BABY_SCALE, 0.6);
+        assert_eq!(combat::FOX_BABY_EYE_HEIGHT, 0.34375);
+        assert_eq!(combat::FOX_PICKUP_DELAY, 40);
+
+        // 2. Can move parity (Fox.java:660)
+        assert!(combat::can_fox_move(false, false, false));
+        assert!(!combat::can_fox_move(true, false, false)); // sleeping
+        assert!(!combat::can_fox_move(false, true, false)); // sitting
+        assert!(!combat::can_fox_move(false, false, true)); // faceplanted
+
+        // 3. Can hold item / food swap parity (Fox.java:514-517)
+        // Mouth empty -> can hold anything
+        assert!(combat::can_fox_hold_item(true, 0, false, false));
+        // Mouth has non-food, ticksSinceEaten == 0 -> cannot hold
+        assert!(!combat::can_fox_hold_item(false, 0, true, false));
+        // Mouth has non-food, ticksSinceEaten > 0, new item is food -> CAN SWAP!
+        assert!(combat::can_fox_hold_item(false, 10, true, false));
+        // Mouth already has food -> cannot swap
+        assert!(!combat::can_fox_hold_item(false, 10, true, true));
+        // New item is not food -> cannot swap
+        assert!(!combat::can_fox_hold_item(false, 10, false, false));
+    }
+
 }
-
-

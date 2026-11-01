@@ -10327,3 +10327,24 @@ eq 	ext{None}$.
   - Khi người cưỡi kích hoạt sprint (`is_sprinting`) và `dash_cooldown == 0`, lạc đà nhận thêm bonus tốc độ chạy `CAMEL_RUNNING_SPEED_BONUS = 0.1F` (`getRiddenSpeed`).
 - **Hằng số Parity**: `CAMEL_SITTING_HEIGHT_DIFFERENCE` (1.43), `CAMEL_RUNNING_SPEED_BONUS` (0.1), `CAMEL_SIT_OR_STAND_SOUND_DURATION` (52), `CAMEL_DASH_MIN_DURATION` (55), `CAMEL_DASH_COOLDOWN_TICKS` (55), `CAMEL_BABY_STANDING_*`, `CAMEL_BABY_SITTING_*`, `CAMEL_ADULT_SITTING_*`.
 - **Unit Tests**: `test_camel_dimensions_standup_and_nbt_parity` và `test_bee_and_camel_parity` pass 100%.
+
+### Gap 406: Fox Baby Scaling Dimensions, Dispenser Equip, Food Swap & State Management Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.fox.Fox.java:133-135, 384-385, 509-548, 558-566, 648-660`
+
+- **Tỷ lệ Kích thước Cáo Con (Baby Scaling Dimensions & Eye Height)**:
+  - Vanilla khai báo `BABY_DIMENSIONS = EntityTypes.FOX.getDimensions().scale(0.6F).withEyeHeight(0.34375F)`.
+  - Adult fox: width `0.6`, height `0.7`, eye height `0.4`.
+  - Baby fox: width `0.36`, height `0.42`, eye height `0.34375` (`FOX_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_fox_dimensions`, `refresh_dimensions()` và `age_boundary_reached()` trên `FoxEntity`, tự động tính toán lại bounding box và entity dimensions khi sinh ra hoặc lớn lên.
+- **Dispenser Equip Parity**:
+  - Ghi đè `can_dispenser_equip_into_slot(&self, slot: &EquipmentSlot) -> bool` trên `FoxEntity`: chỉ cho phép trang bị vào `EquipmentSlot::MAIN_HAND` khi và chỉ khi `can_pick_up_loot()` là `true` (`Fox.java:509-511`).
+- **Cơ chế Hoán đổi Thức ăn & Ngậm Vật phẩm (Food Swap & Item Holding Parity)**:
+  - Triển khai `can_hold_item(&self, item_stack: &ItemStack) -> bool`: Cáo có thể nhặt vật phẩm nếu miệng đang trống, hoặc nếu cáo đang đói/đang ăn (`ticks_since_eaten > 0`), vật phẩm mới là thức ăn hợp lệ và vật phẩm trong miệng hiện tại không phải là thức ăn. Điều này cho phép Cáo tự động nhả vật phẩm không phải thức ăn để ngậm lấy thức ăn (`Fox.java:513-517`).
+  - Khi nhả vật phẩm (`spit_out_item`), gán thời gian chờ nhặt lại `FOX_PICKUP_DELAY = 40` ticks (2.0s) (`Fox.java:524`).
+  - Khi ngậm vật phẩm, gán `set_guaranteed_drop(&EquipmentSlot::MAIN_HAND)` để vật phẩm luôn rơi 100% khi chết (`Fox.java:547`).
+- **Quản lý Trạng thái Di chuyển & Thức dậy (WakeUp & Sit State Management)**:
+  - `can_move(&self) -> bool`: Cáo chỉ có thể di chuyển khi không ngủ, không ngồi và không cắm mặt xuống đất (`!is_sleeping && !is_sitting && !is_faceplanted`) (`Fox.java:660`).
+  - Trong `mob_tick`: Nếu rơi vào nước (`is_in_water()`) hoặc có mục tiêu tấn công (`target.is_some()`), Cáo lập tức thức dậy (`wake_up()`). Nếu đang ở trong nước hoặc đang ngủ, tự động tắt tư thế ngồi (`set_sitting(false)`) (`Fox.java:558-566`).
+- **Hằng số Parity**: `FOX_BABY_SCALE` (0.6), `FOX_BABY_EYE_HEIGHT` (0.34375), `FOX_PICKUP_DELAY` (40), `calculate_fox_dimensions`, `can_fox_move`, `can_fox_hold_item`.
+- **Unit Tests**: `test_fox_baby_dimensions_and_food_swap_parity`, `test_fox_baby_dimensions_dispenser_and_food_swap_parity`, và toàn bộ 6 bài test fox trong `fox.rs` pass 100%.

@@ -10627,6 +10627,72 @@ pub const FOX_FLAG_SLEEPING: u8 = 32;
 pub const FOX_FLAG_FACEPLANTED: u8 = 64;
 pub const FOX_FLAG_DEFENDING: u8 = 128;
 
+/// Fox baby scale factor (0.6).
+///
+/// Mirrors vanilla `Fox.java:133-134`:
+/// `private static final EntityDimensions BABY_DIMENSIONS = EntityTypes.FOX.getDimensions().scale(0.6F)...`
+pub const FOX_BABY_SCALE: f32 = 0.6;
+
+/// Fox baby eye height (0.34375).
+///
+/// Mirrors vanilla `Fox.java:135`:
+/// `.withEyeHeight(0.34375F)`
+pub const FOX_BABY_EYE_HEIGHT: f32 = 0.34375;
+
+/// Fox item pickup delay ticks when spit out (40 ticks = 2s).
+///
+/// Mirrors vanilla `Fox.java:524`:
+/// `thrownItem.setPickUpDelay(40);`
+pub const FOX_PICKUP_DELAY: i32 = 40;
+
+/// Calculates Fox dimensions based on baby status.
+///
+/// Mirrors vanilla `Fox.java:384-385`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_fox_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * FOX_BABY_SCALE,
+            default_height * FOX_BABY_SCALE,
+            FOX_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Determines if a fox can move.
+///
+/// Mirrors vanilla `Fox.java:660`:
+/// `return !this.isSleeping() && !this.isSitting() && !this.isFaceplanted();`
+#[must_use]
+pub const fn can_fox_move(is_sleeping: bool, is_sitting: bool, is_faceplanted: bool) -> bool {
+    !is_sleeping && !is_sitting && !is_faceplanted
+}
+
+/// Determines if a fox can pick up/hold an item.
+///
+/// Mirrors vanilla `Fox.java:514-517`:
+/// ```java
+/// ItemStack heldItemStack = this.getItemBySlot(EquipmentSlot.MAINHAND);
+/// return heldItemStack.isEmpty() || this.ticksSinceEaten > 0 && this.isConsumableFood(itemStack) && !this.isConsumableFood(heldItemStack);
+/// ```
+#[must_use]
+pub const fn can_fox_hold_item(
+    held_is_empty: bool,
+    ticks_since_eaten: i32,
+    is_new_food: bool,
+    is_held_food: bool,
+) -> bool {
+    held_is_empty || (ticks_since_eaten > 0 && is_new_food && !is_held_food)
+}
+
 /// Panda combat and attribute constants, mirroring vanilla `Panda.java:80-95, 110-120, 480-490`.
 pub const PANDA_MAX_HEALTH: f64 = 20.0;
 pub const PANDA_WEAK_MAX_HEALTH: f64 = 10.0;
@@ -23957,6 +24023,39 @@ mod tests {
         assert_eq!(CAMEL_SIT_OR_STAND_SOUND_DURATION, 52);
         assert_eq!(CAMEL_DASH_MIN_DURATION, 55);
         assert_eq!(CAMEL_DASH_COOLDOWN_TICKS, 55);
+    }
+
+
+    #[test]
+    fn test_fox_baby_dimensions_and_food_swap_parity() {
+        use super::*;
+
+        // 1. Dimensions parity
+        let adult = calculate_fox_dimensions(false, 0.6, 0.7, 0.4);
+        assert_eq!(adult.0, 0.6);
+        assert_eq!(adult.1, 0.7);
+        assert_eq!(adult.2, 0.4);
+
+        let baby = calculate_fox_dimensions(true, 0.6, 0.7, 0.4);
+        assert!((baby.0 - 0.36).abs() < 1e-4);
+        assert!((baby.1 - 0.42).abs() < 1e-4);
+        assert_eq!(baby.2, FOX_BABY_EYE_HEIGHT);
+        assert_eq!(FOX_BABY_SCALE, 0.6);
+        assert_eq!(FOX_BABY_EYE_HEIGHT, 0.34375);
+        assert_eq!(FOX_PICKUP_DELAY, 40);
+
+        // 2. Can move parity (Fox.java:660)
+        assert!(can_fox_move(false, false, false));
+        assert!(!can_fox_move(true, false, false)); // sleeping
+        assert!(!can_fox_move(false, true, false)); // sitting
+        assert!(!can_fox_move(false, false, true)); // faceplanted
+
+        // 3. Can hold item / food swap parity (Fox.java:514-517)
+        assert!(can_fox_hold_item(true, 0, false, false));
+        assert!(!can_fox_hold_item(false, 0, true, false));
+        assert!(can_fox_hold_item(false, 10, true, false));
+        assert!(!can_fox_hold_item(false, 10, true, true));
+        assert!(!can_fox_hold_item(false, 10, false, false));
     }
 
 }
