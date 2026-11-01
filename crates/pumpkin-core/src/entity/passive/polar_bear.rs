@@ -1,3 +1,4 @@
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use crate::entity::combat;
 use std::sync::{
     Arc, Weak,
@@ -164,12 +165,41 @@ impl PolarBearEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
     #[must_use]
     pub fn is_standing(&self) -> bool {
         self.standing.load(Ordering::Relaxed)
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let is_standing = self.is_standing();
+        let (w, h, eye) = combat::calculate_polar_bear_dimensions(
+            is_baby,
+            is_standing,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+
+    pub fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 
     pub fn set_standing(&self, standing: bool) {
@@ -179,6 +209,7 @@ impl PolarBearEntity {
             pumpkin_data::tracked_data::polar_bear::DATA_STANDING_ID,
             standing,
         );
+        self.refresh_dimensions();
     }
 
     pub fn play_warning_sound(&self) {
@@ -200,6 +231,11 @@ impl PolarBearEntity {
 impl AgeableMob for PolarBearEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
     }
 }
 
@@ -244,9 +280,18 @@ impl Mob for PolarBearEntity {
         Some(self)
     }
 
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
     fn mob_write_nbt(&self, _nbt: &mut NbtCompound) {}
 
-    fn mob_read_nbt(&self, _nbt: &NbtCompound) {}
+    fn mob_read_nbt(&self, _nbt: &NbtCompound) {
+        self.refresh_dimensions();
+    }
 
     fn get_mob_entity(&self) -> &MobEntity {
         &self.mob_entity
@@ -366,5 +411,39 @@ mod tests {
         assert!(!crate::entity::combat::should_polar_bear_stand_and_warn(17.0, target_width, 10));
         assert!(!crate::entity::combat::should_polar_bear_stand_and_warn(15.0, target_width, 11));
     }
-}
 
+    #[test]
+    fn test_polar_bear_baby_dimensions_and_standing_height_scaling_parity() {
+        // 1. Adult quad dimensions
+        let adult_quad = combat::calculate_polar_bear_dimensions(false, false, 1.4, 1.4, 1.19);
+        assert_eq!(adult_quad.0, 1.4);
+        assert_eq!(adult_quad.1, 1.4);
+        assert_eq!(adult_quad.2, 1.19);
+
+        // 2. Adult standing dimensions (doubled height and eye_height)
+        let adult_standing = combat::calculate_polar_bear_dimensions(false, true, 1.4, 1.4, 1.19);
+        assert_eq!(adult_standing.0, 1.4);
+        assert_eq!(adult_standing.1, 2.8);
+        assert!((adult_standing.2 - 2.38).abs() < 1e-4);
+
+        // 3. Baby quad dimensions (PolarBear.java:67)
+        let baby_quad = combat::calculate_polar_bear_dimensions(true, false, 1.4, 1.4, 1.19);
+        assert_eq!(baby_quad.0, combat::POLAR_BEAR_BABY_WIDTH);
+        assert_eq!(baby_quad.1, combat::POLAR_BEAR_BABY_HEIGHT);
+        assert_eq!(baby_quad.2, combat::POLAR_BEAR_BABY_EYE_HEIGHT);
+        assert_eq!(combat::POLAR_BEAR_BABY_WIDTH, 0.7);
+        assert_eq!(combat::POLAR_BEAR_BABY_HEIGHT, 0.7);
+        assert_eq!(combat::POLAR_BEAR_BABY_EYE_HEIGHT, 0.34375);
+
+        // 4. Baby standing dimensions (doubled height)
+        let baby_standing = combat::calculate_polar_bear_dimensions(true, true, 1.4, 1.4, 1.19);
+        assert_eq!(baby_standing.0, 0.7);
+        assert_eq!(baby_standing.1, 1.4);
+        assert!((baby_standing.2 - 0.6875).abs() < 1e-4);
+
+        // 5. Standing scale constants
+        assert_eq!(combat::POLAR_BEAR_MAX_STAND_HEIGHT_SCALE, 2.0);
+        assert_eq!(combat::POLAR_BEAR_STAND_ANIMATION_TICKS, 6.0);
+    }
+
+}

@@ -10348,3 +10348,21 @@ eq 	ext{None}$.
   - Trong `mob_tick`: Nếu rơi vào nước (`is_in_water()`) hoặc có mục tiêu tấn công (`target.is_some()`), Cáo lập tức thức dậy (`wake_up()`). Nếu đang ở trong nước hoặc đang ngủ, tự động tắt tư thế ngồi (`set_sitting(false)`) (`Fox.java:558-566`).
 - **Hằng số Parity**: `FOX_BABY_SCALE` (0.6), `FOX_BABY_EYE_HEIGHT` (0.34375), `FOX_PICKUP_DELAY` (40), `calculate_fox_dimensions`, `can_fox_move`, `can_fox_hold_item`.
 - **Unit Tests**: `test_fox_baby_dimensions_and_food_swap_parity`, `test_fox_baby_dimensions_dispenser_and_food_swap_parity`, và toàn bộ 6 bài test fox trong `fox.rs` pass 100%.
+
+### Gap 407: Polar Bear Baby Fixed Dimensions, Standing Height Scaling & Warning Sound Ticks Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.polarbear.PolarBear.java:60-70, 186-198, 215-235`
+
+- **Kích thước Cố định Gấu Bắc cực Con (Baby Fixed Dimensions & Eye Height)**:
+  - Vanilla định nghĩa `BABY_DIMENSIONS = EntityDimensions.scalable(0.7F, 0.7F).withEyeHeight(0.34375F)`.
+  - Adult polar bear (quadruped): width `1.4`, height `1.4`, eye height `1.19` (1.4 * 0.85).
+  - Baby polar bear: width `0.7`, height `0.7`, eye height `0.34375` (`POLAR_BEAR_BABY_EYE_HEIGHT`).
+- **Cơ chế Nhân đôi Chiều cao khi Nhổm dậy (Standing Posture Height Scaling Parity)**:
+  - Khi gấu bắc cực đứng bằng 2 chân sau (`is_standing = true`), chiều cao nhân thêm hệ số `1.0 + (clientSideStandAnimation / 6.0F)`, khi đứng tối đa tăng gấp đôi chiều cao (`POLAR_BEAR_MAX_STAND_HEIGHT_SCALE = 2.0F`):
+    - Adult standing: width `1.4`, height `2.8`, eye height `2.38`.
+    - Baby standing: width `0.7`, height `1.4`, eye height `0.6875`.
+  - Triển khai `calculate_polar_bear_dimensions`, `refresh_dimensions()` và `age_boundary_reached()` trên `PolarBearEntity`. Khi thay đổi `set_standing` hoặc `set_baby`, tự động cập nhật bounding box và entity dimensions.
+- **Dispenser Equip Parity**:
+  - Ghi đè `can_dispenser_equip_into_slot(&self, _slot) -> bool { false }` trên `PolarBearEntity` vì gấu bắc cực không nhận bất kỳ trang bị nào từ Dispenser.
+- **Hằng số Parity**: `POLAR_BEAR_BABY_WIDTH` (0.7), `POLAR_BEAR_BABY_HEIGHT` (0.7), `POLAR_BEAR_BABY_EYE_HEIGHT` (0.34375), `POLAR_BEAR_MAX_STAND_HEIGHT_SCALE` (2.0), `POLAR_BEAR_STAND_ANIMATION_TICKS` (6.0), `calculate_polar_bear_dimensions`.
+- **Unit Tests**: `test_polar_bear_baby_dimensions_and_standing_height_scaling_parity` và toàn bộ 5 tests polar bear pass 100%.

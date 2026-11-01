@@ -10720,6 +10720,68 @@ pub const POLAR_BEAR_WARNING_SOUND_TICKS: i32 = 40;
 pub const POLAR_BEAR_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
 pub const POLAR_BEAR_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
+/// Polar Bear baby width (0.7).
+///
+/// Mirrors vanilla `PolarBear.java:67`:
+/// `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.7F, 0.7F)...`
+pub const POLAR_BEAR_BABY_WIDTH: f32 = 0.7;
+
+/// Polar Bear baby height (0.7).
+///
+/// Mirrors vanilla `PolarBear.java:67`:
+/// `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.7F, 0.7F)...`
+pub const POLAR_BEAR_BABY_HEIGHT: f32 = 0.7;
+
+/// Polar Bear baby eye height (0.34375).
+///
+/// Mirrors vanilla `PolarBear.java:68`:
+/// `.withEyeHeight(0.34375F)`
+pub const POLAR_BEAR_BABY_EYE_HEIGHT: f32 = 0.34375;
+
+/// Polar Bear max standing height scale factor (2.0 = 1.0 + 6.0/6.0).
+///
+/// Mirrors vanilla `PolarBear.java:219-220`:
+/// `float standFactor = this.clientSideStandAnimation / 6.0F; float heightScaleFactor = 1.0F + standFactor;`
+pub const POLAR_BEAR_MAX_STAND_HEIGHT_SCALE: f32 = 2.0;
+
+/// Calculates Polar Bear dimensions (width, height, eye_height) based on baby status and standing posture.
+///
+/// Mirrors vanilla `PolarBear.java:215-223`:
+/// ```java
+/// EntityDimensions dimension = this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);
+/// if (this.clientSideStandAnimation > 0.0F) {
+///     float standFactor = this.clientSideStandAnimation / 6.0F;
+///     float heightScaleFactor = 1.0F + standFactor;
+///     return dimension.scale(1.0F, heightScaleFactor);
+/// } else {
+///     return dimension;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_polar_bear_dimensions(
+    is_baby: bool,
+    is_standing: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let (base_w, base_h, base_eye) = if is_baby {
+        (
+            POLAR_BEAR_BABY_WIDTH,
+            POLAR_BEAR_BABY_HEIGHT,
+            POLAR_BEAR_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    };
+
+    if is_standing {
+        (base_w, base_h * POLAR_BEAR_MAX_STAND_HEIGHT_SCALE, base_eye * POLAR_BEAR_MAX_STAND_HEIGHT_SCALE)
+    } else {
+        (base_w, base_h, base_eye)
+    }
+}
+
 
 // =========================================================================
 // Gap 227: Horse, Donkey, Mule, Skeleton Horse, Zombie Horse, Camel, Llama & Trader Llama Combat Parity
@@ -24056,6 +24118,43 @@ mod tests {
         assert!(can_fox_hold_item(false, 10, true, false));
         assert!(!can_fox_hold_item(false, 10, true, true));
         assert!(!can_fox_hold_item(false, 10, false, false));
+    }
+
+
+    #[test]
+    fn test_polar_bear_baby_dimensions_and_standing_height_scaling_parity() {
+        use super::*;
+
+        // 1. Adult quad dimensions
+        let adult_quad = calculate_polar_bear_dimensions(false, false, 1.4, 1.4, 1.19);
+        assert_eq!(adult_quad.0, 1.4);
+        assert_eq!(adult_quad.1, 1.4);
+        assert_eq!(adult_quad.2, 1.19);
+
+        // 2. Adult standing dimensions (doubled height and eye_height)
+        let adult_standing = calculate_polar_bear_dimensions(false, true, 1.4, 1.4, 1.19);
+        assert_eq!(adult_standing.0, 1.4);
+        assert_eq!(adult_standing.1, 2.8);
+        assert!((adult_standing.2 - 2.38).abs() < 1e-4);
+
+        // 3. Baby quad dimensions (PolarBear.java:67)
+        let baby_quad = calculate_polar_bear_dimensions(true, false, 1.4, 1.4, 1.19);
+        assert_eq!(baby_quad.0, POLAR_BEAR_BABY_WIDTH);
+        assert_eq!(baby_quad.1, POLAR_BEAR_BABY_HEIGHT);
+        assert_eq!(baby_quad.2, POLAR_BEAR_BABY_EYE_HEIGHT);
+        assert_eq!(POLAR_BEAR_BABY_WIDTH, 0.7);
+        assert_eq!(POLAR_BEAR_BABY_HEIGHT, 0.7);
+        assert_eq!(POLAR_BEAR_BABY_EYE_HEIGHT, 0.34375);
+
+        // 4. Baby standing dimensions (doubled height)
+        let baby_standing = calculate_polar_bear_dimensions(true, true, 1.4, 1.4, 1.19);
+        assert_eq!(baby_standing.0, 0.7);
+        assert_eq!(baby_standing.1, 1.4);
+        assert!((baby_standing.2 - 0.6875).abs() < 1e-4);
+
+        // 5. Standing scale constants
+        assert_eq!(POLAR_BEAR_MAX_STAND_HEIGHT_SCALE, 2.0);
+        assert_eq!(POLAR_BEAR_STAND_ANIMATION_TICKS, 6.0);
     }
 
 }
