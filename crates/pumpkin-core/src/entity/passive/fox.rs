@@ -379,6 +379,53 @@ impl FoxEntity {
     pub fn trusts(&self, uuid: &Uuid) -> bool {
         self.trusted_0.load().as_ref() == Some(uuid) || self.trusted_1.load().as_ref() == Some(uuid)
     }
+
+    /// Vanilla `Fox.spitOutItem`: drops held mouth item with sound and forward position offset.
+    pub fn spit_out_item(&self) {
+        let mouth_item = {
+            let mut equip = self
+                .mob_entity
+                .living_entity
+                .entity_equipment
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            equip
+                .equipment
+                .remove(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND)
+        };
+
+        if let Some(item_stack) = mouth_item && !item_stack.is_empty() {
+            self.mob_entity.living_entity.send_equipment_changes(&[(
+                pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
+                ItemStack::EMPTY.clone(),
+            )]);
+
+            let entity = self.get_entity();
+            let world = entity.world.load();
+            let pos = entity.pos.load();
+            let yaw_rad = (entity.yaw.load() as f64).to_radians();
+            let pitch_rad = (entity.pitch.load() as f64).to_radians();
+            let look_x = -yaw_rad.sin() * pitch_rad.cos();
+            let look_z = yaw_rad.cos() * pitch_rad.cos();
+            let drop_pos = pumpkin_util::math::vector3::Vector3::new(pos.x + look_x, pos.y + 0.5, pos.z + look_z);
+
+            let item_entity = Arc::new(crate::entity::item::ItemEntity::new(
+                Entity::new(world.clone(), drop_pos, &EntityType::ITEM),
+                item_stack,
+            ));
+            world.spawn_entity(item_entity);
+
+            if !entity.is_silent() {
+                world.play_sound_fine(
+                    Sound::EntityFoxSpit,
+                    SoundCategory::Neutral,
+                    &pos,
+                    1.0,
+                    1.0,
+                );
+            }
+        }
+    }
 }
 
 impl AgeableMob for FoxEntity {
@@ -538,6 +585,19 @@ impl Mob for FoxEntity {
             && (self.is_food(&item_in_mouth) || item_in_mouth.item.has_tag(&tag::Item::MINECRAFT_FOX_FOOD))
         {
             let ticks = self.ticks_since_eaten.fetch_add(1, Ordering::Relaxed) + 1;
+            let entity = self.get_entity();
+
+            // Vanilla Fox.java:224: chewing sound during final 40 ticks before eating
+            if combat::should_play_fox_chewing_sound(ticks, rand::random::<f32>()) && !entity.is_silent() {
+                entity.world.load().play_sound_fine(
+                    Sound::EntityFoxEat,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                    1.0,
+                    1.0,
+                );
+            }
+
             if combat::can_fox_eat_item(true, ticks) {
                 self.ticks_since_eaten.store(0, Ordering::Relaxed);
                 self.mob_entity.living_entity.heal(2.0);
@@ -622,6 +682,27 @@ impl Mob for FoxEntity {
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
         self.animal_interact(player, item_stack, Sound::EntityFoxAmbient)
+    }
+
+    /// Vanilla `Fox.populateDefaultEquipmentSlots`: 20% natural spawn chance to hold an item in mouth.
+    fn populate_default_equipment_slots(
+        &self,
+        _world: &Arc<crate::world::World>,
+        _difficulty: &crate::entity::mob::equipment::RegionalDifficulty,
+    ) {
+        use rand::RngExt;
+        let mut rng = rand::rng();
+        if rng.random::<f32>() < combat::FOX_NATURAL_MOUTH_ITEM_CHANCE {
+            let roll = rng.random::<f32>();
+            let secondary_roll = rng.random::<bool>();
+            if let Some(item) = combat::get_fox_spawn_mouth_item(roll, secondary_roll) {
+                let stack = ItemStack::new(1, item);
+                self.mob_entity.set_item_slot(
+                    &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
+                    stack,
+                );
+            }
+        }
     }
 }
 

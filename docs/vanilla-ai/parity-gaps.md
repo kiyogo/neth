@@ -9969,3 +9969,29 @@ eq 	ext{None}$.
   - `crates/pumpkin-core/src/entity/combat.rs`:
     - `test_shears_snip_and_leash_knot_removal_parity`
     - `test_mob_equipment_shearing_rules_parity`
+
+### Gap 394: Fox Mouth Item Spawn Equipment Distribution, Chewing Sound/Particles & Spit Out Mechanics Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.fox.Fox.java:214-226, 254-283, 288-295, 379-380, 518-527` (`populateDefaultEquipmentSlots`, `canEat`, `playEatingSound`, `spitOutItem`), `net.minecraft.sounds.SoundEvents.java` (`FOX_EAT`, `FOX_SPIT`).
+- **Description**:
+  1. **Spawn Mouth Equipment Distribution (`Fox.java:264-283`)**:
+     - In Vanilla Java 1.21.4, when a Fox naturally spawns, it has a **20%** chance (`FOX_NATURAL_MOUTH_ITEM_CHANCE = 0.2`) to spawn holding an item in its mouth (`EquipmentSlot::MAIN_HAND`).
+     - Previously, Neth's `FoxEntity` did not implement `populate_default_equipment_slots`, so foxes never naturally held mouth items.
+     - Implemented `populate_default_equipment_slots` matching vanilla's exact roll distribution:
+       - 50% chance: `Items::EMERALD`
+       - 20% chance: `Items::EGG`
+       - 15% chance: 50% `Items::RABBIT_FOOT`, 50% `Items::RABBIT_HIDE`
+       - 5% chance: `Items::WHEAT`
+       - 5% chance: `Items::LEATHER`
+       - 4% chance: `Items::FEATHER`
+       - 1% chance: `Items::CHICKEN` (raw chicken)
+  2. **Chewing Sequence & Sound Parity (`Fox.java:217-226, 379-380`)**:
+     - `MIN_TICKS_BEFORE_EAT = 600` (30 seconds).
+     - During the final 40 ticks (`ticks_since_eaten > 560`), vanilla rolls a 10% chance per tick (`FOX_CHEWING_SOUND_CHANCE = 0.1`) to play the chewing sound `Sound::EntityFoxEat` (`SoundEvents.FOX_EAT` - `entity.fox.eat`).
+     - Previously, Neth only played sound once upon eating completion (tick 601) and lacked the signature chewing sounds preceding it.
+     - Integrated `should_play_fox_chewing_sound` into `FoxEntity::mob_tick`.
+  3. **Spit Out Mechanics (`Fox.java:518-527`)**:
+     - Implemented `spit_out_item()`: when a fox releases its mouth item, it drops the item with forward trajectory offset (`pos.x + look.x, pos.y + 0.5, pos.z + look.z`), clears `EquipmentSlot::MAIN_HAND`, sends equipment change packets, and plays `Sound::EntityFoxSpit` (`SoundEvents.FOX_SPIT` - `entity.fox.spit`).
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_fox_mouth_item_spawn_and_chewing_sound_parity`

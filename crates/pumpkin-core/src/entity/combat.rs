@@ -11458,6 +11458,48 @@ pub fn can_equipment_be_sheared(
     !has_curse_of_binding || is_creative
 }
 
+/// Vanilla `Fox.java:132`: minimum ticks before a fox finishes eating food held in mouth (30 seconds).
+pub const FOX_MIN_TICKS_BEFORE_EAT: i32 = 600;
+
+/// Vanilla `Fox.java:224`: ticks before eating when fox starts playing chewing sounds (28 seconds).
+pub const FOX_CHEWING_START_TICKS: i32 = 560;
+
+/// Vanilla `Fox.java:224`: chance per tick to play chewing sound while in chewing window.
+pub const FOX_CHEWING_SOUND_CHANCE: f32 = 0.1;
+
+/// Vanilla `Fox.java:265`: chance for naturally spawned fox to hold an item in its mouth (20%).
+pub const FOX_NATURAL_MOUTH_ITEM_CHANCE: f32 = 0.2;
+
+/// Vanilla `Fox.java:266-281`: resolves naturally spawned fox mouth item from roll.
+#[must_use]
+pub fn get_fox_spawn_mouth_item(roll: f32, secondary_roll: bool) -> Option<&'static pumpkin_data::item::Item> {
+    if roll < 0.50 {
+        Some(&pumpkin_data::item::Item::EMERALD)
+    } else if roll < 0.70 {
+        Some(&pumpkin_data::item::Item::EGG)
+    } else if roll < 0.85 {
+        if secondary_roll {
+            Some(&pumpkin_data::item::Item::RABBIT_FOOT)
+        } else {
+            Some(&pumpkin_data::item::Item::RABBIT_HIDE)
+        }
+    } else if roll < 0.90 {
+        Some(&pumpkin_data::item::Item::WHEAT)
+    } else if roll < 0.95 {
+        Some(&pumpkin_data::item::Item::LEATHER)
+    } else if roll < 0.99 {
+        Some(&pumpkin_data::item::Item::FEATHER)
+    } else {
+        Some(&pumpkin_data::item::Item::CHICKEN)
+    }
+}
+
+/// Vanilla `Fox.java:224`: returns true if a chewing sound should be played.
+#[must_use]
+pub fn should_play_fox_chewing_sound(ticks: i32, roll: f32) -> bool {
+    ticks > FOX_CHEWING_START_TICKS && roll < FOX_CHEWING_SOUND_CHANCE
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -22939,6 +22981,38 @@ mod tests {
         // Non-shearable item
         assert!(!can_equipment_be_sheared(false, false, false));
         assert!(!can_equipment_be_sheared(false, false, true));
+    }
+
+
+    #[test]
+    fn test_fox_mouth_item_spawn_and_chewing_sound_parity() {
+        // 1. Natural mouth item chance
+        assert_eq!(FOX_NATURAL_MOUTH_ITEM_CHANCE, 0.2);
+
+        // 2. Minimum ticks before eat and chewing start ticks
+        assert_eq!(FOX_MIN_TICKS_BEFORE_EAT, 600);
+        assert_eq!(FOX_CHEWING_START_TICKS, 560);
+        assert_eq!(FOX_CHEWING_SOUND_CHANCE, 0.1);
+
+        // 3. Chewing window check
+        assert!(!should_play_fox_chewing_sound(550, 0.05));
+        assert!(!should_play_fox_chewing_sound(560, 0.05));
+        assert!(should_play_fox_chewing_sound(561, 0.05));
+        assert!(!should_play_fox_chewing_sound(561, 0.15));
+
+        // 4. Equipment roll distribution parity
+        assert_eq!(get_fox_spawn_mouth_item(0.20, false), Some(&pumpkin_data::item::Item::EMERALD));
+        assert_eq!(get_fox_spawn_mouth_item(0.60, false), Some(&pumpkin_data::item::Item::EGG));
+        assert_eq!(get_fox_spawn_mouth_item(0.75, true), Some(&pumpkin_data::item::Item::RABBIT_FOOT));
+        assert_eq!(get_fox_spawn_mouth_item(0.75, false), Some(&pumpkin_data::item::Item::RABBIT_HIDE));
+        assert_eq!(get_fox_spawn_mouth_item(0.88, false), Some(&pumpkin_data::item::Item::WHEAT));
+        assert_eq!(get_fox_spawn_mouth_item(0.92, false), Some(&pumpkin_data::item::Item::LEATHER));
+        assert_eq!(get_fox_spawn_mouth_item(0.97, false), Some(&pumpkin_data::item::Item::FEATHER));
+        assert_eq!(get_fox_spawn_mouth_item(0.995, false), Some(&pumpkin_data::item::Item::CHICKEN));
+
+        // 5. Sound event names parity
+        assert_eq!(pumpkin_data::sound::Sound::EntityFoxEat.to_name(), "entity.fox.eat");
+        assert_eq!(pumpkin_data::sound::Sound::EntityFoxSpit.to_name(), "entity.fox.spit");
     }
 
 }
