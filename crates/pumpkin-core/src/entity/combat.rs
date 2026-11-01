@@ -21866,6 +21866,51 @@ mod tests {
     }
 
     #[test]
+    fn test_firefly_bush_bonemeal_spread_and_ambient_particle_dynamics_parity() {
+        use pumpkin_data::BlockId;
+        use crate::block::BlockMetadata;
+        use crate::block::blocks::plant::bush::BushBlock;
+        use crate::block::blocks::plant::firefly_bush::{
+            FireflyBushBlock, FIREFLY_AMBIENT_SOUND_CHANCE_ONE_IN, FIREFLY_CHANCE_PER_TICK,
+            FIREFLY_HORIZONTAL_RANGE, FIREFLY_SPAWN_MAX_BRIGHTNESS_LEVEL, FIREFLY_VERTICAL_RANGE,
+        };
+
+        // 1. Separation of FireflyBushBlock from generic BushBlock
+        let firefly_ids = FireflyBushBlock::ids();
+        assert_eq!(firefly_ids.as_ref(), &[BlockId::FIREFLY_BUSH]);
+        let bush_ids = BushBlock::ids();
+        assert!(bush_ids.contains(&BlockId::BUSH));
+        assert!(bush_ids.contains(&BlockId::RED_SHRUB));
+        assert!(!bush_ids.contains(&BlockId::FIREFLY_BUSH));
+
+        // 2. Firefly particle & sound constants (FireflyBushBlock.java:17-21)
+        assert_eq!(FIREFLY_CHANCE_PER_TICK, 0.7);
+        assert_eq!(FIREFLY_HORIZONTAL_RANGE, 10.0);
+        assert_eq!(FIREFLY_VERTICAL_RANGE, 5.0);
+        assert_eq!(FIREFLY_SPAWN_MAX_BRIGHTNESS_LEVEL, 13);
+        assert_eq!(FIREFLY_AMBIENT_SOUND_CHANCE_ONE_IN, 30);
+        assert_eq!(FireflyBushBlock::CHANCE_PER_TICK, 0.7);
+        assert_eq!(FireflyBushBlock::HORIZONTAL_RANGE, 10.0);
+        assert_eq!(FireflyBushBlock::VERTICAL_RANGE, 5.0);
+        assert_eq!(FireflyBushBlock::MAX_BRIGHTNESS, 13);
+        assert_eq!(FireflyBushBlock::AMBIENT_SOUND_CHANCE, 30);
+
+        // 3. Firefly particle spawning conditions (brightness <= 13, roll <= 0.7)
+        assert!(FireflyBushBlock::should_spawn_firefly_particle(0, 0.0));
+        assert!(FireflyBushBlock::should_spawn_firefly_particle(7, 0.35));
+        assert!(FireflyBushBlock::should_spawn_firefly_particle(13, 0.7));
+        assert!(!FireflyBushBlock::should_spawn_firefly_particle(14, 0.1));
+        assert!(!FireflyBushBlock::should_spawn_firefly_particle(15, 0.0));
+        assert!(!FireflyBushBlock::should_spawn_firefly_particle(10, 0.71));
+
+        // 4. Ambient idle sound conditions (1 in 30 chance)
+        assert!(FireflyBushBlock::should_play_ambient_sound(0));
+        assert!(!FireflyBushBlock::should_play_ambient_sound(1));
+        assert!(!FireflyBushBlock::should_play_ambient_sound(15));
+        assert!(!FireflyBushBlock::should_play_ambient_sound(29));
+    }
+
+    #[test]
     fn test_creaking_gaze_freeze_carved_pumpkin_and_sway_status_parity() {
         // 1. Look cone and dot threshold constants (Creaking.java:471, LivingEntity.java:1772)
         assert_eq!(CREAKING_LOOK_CONE_SIZE, 0.5);

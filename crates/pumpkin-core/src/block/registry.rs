@@ -75,6 +75,7 @@ use crate::block::blocks::plant::bamboo_sapling::BambooSaplingBlock;
 use crate::block::blocks::plant::big_dripleaf::BigDripleafBlock;
 use crate::block::blocks::plant::big_dripleaf_stem::BigDripleafStemBlock;
 use crate::block::blocks::plant::bush::BushBlock;
+use crate::block::blocks::plant::firefly_bush::FireflyBushBlock;
 use crate::block::blocks::plant::cactus::CactusBlock;
 use crate::block::blocks::plant::cactus_flower::CactusFlowerBlock;
 use crate::block::blocks::plant::cave_vines::CaveVinesBlock;
@@ -336,6 +337,7 @@ pub fn default_registry() -> Arc<BlockRegistry> {
     manager.register(TurtleEggBlock);
     manager.register(BrushableBlock);
     manager.register(BushBlock);
+    manager.register(FireflyBushBlock);
     manager.register(FlowerBlock);
     manager.register(EyeblossomBlock);
     manager.register(PotatoBlock);

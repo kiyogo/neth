@@ -17,6 +17,7 @@ pub mod cocoa;
 pub mod crop;
 pub mod dry_vegetation;
 pub mod eyeblossom;
+pub mod firefly_bush;
 pub mod flower;
 pub mod flowerbed;
 pub mod fungus;

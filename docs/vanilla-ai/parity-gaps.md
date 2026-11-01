@@ -9866,3 +9866,38 @@ eq 	ext{None}$.
   - Registered `MossBlock` in `crates/pumpkin-core/src/block/blocks/mod.rs` and `crates/pumpkin-core/src/block/registry.rs`.
   - Added unit tests in `crates/pumpkin-core/src/block/blocks/moss.rs` and `crates/pumpkin-core/src/entity/combat.rs`.
 - **Status**: Completed & Verified.
+
+
+### Gap 389: Firefly Bush Bonemeal Spread, Ambient Sound & Particle Dynamics Parity
+- **Vanilla Reference**: `net.minecraft.world.level.block.FireflyBushBlock.java:1-57`, `net.minecraft.world.level.block.BonemealableBlock.java:20-39`, `net.minecraft.world.level.block.VegetationBlock.java:1-54`, `net.minecraft.sounds.SoundEvents.java:FIREFLY_BUSH_IDLE`, `net.minecraft.core.particles.ParticleTypes.java:FIREFLY`.
+- **Vanilla Mechanics**:
+  1. *Horizontal Bonemeal Spreading (`FireflyBushBlock.java:44-56`, `BonemealableBlock.java:20-39`)*:
+     - `isValidBonemealTarget`: Checks horizontal neighboring blocks (North, South, East, West) via `BonemealableBlock.hasSpreadableNeighbourPos`.
+       Returns `true` if and only if at least one horizontal neighbor is air and can support vegetation (`can_plant_on_top` on the block below).
+       If all 4 horizontal neighbors are blocked or cannot support the bush, returns `false`.
+     - `isBonemealSuccess`: Returns `true`.
+     - `performBonemeal`: Randomly shuffles horizontal directions (`findSpreadableNeighbourPos`), selects the first valid position, and places `FIREFLY_BUSH` there!
+     - Previously in Neth, `FIREFLY_BUSH` was bundled into generic `BushBlock` (`[BUSH, FIREFLY_BUSH, RED_SHRUB]`), which had no bonemeal implementation, causing bone meal on Firefly Bush to fail and do nothing.
+  2. *Ambient Idle Sound (`FireflyBushBlock.java:28-33`)*:
+     - 1 in 30 chance per tick (`FIREFLY_AMBIENT_SOUND_CHANCE_ONE_IN = 30`).
+     - Plays sound `Sound::BlockFireflyBushIdle` at category `Ambient`, volume 1.0, pitch 1.0.
+  3. *Firefly Particle Spawning (`FireflyBushBlock.java:35-41`)*:
+     - Spawns when local brightness level <= 13 (`FIREFLY_SPAWN_MAX_BRIGHTNESS_LEVEL = 13`).
+     - Tick chance: 0.70 (`FIREFLY_CHANCE_PER_TICK = 0.7`).
+     - Particle spread: Horizontal range 10.0 (`X: pos.x + [-5.0, 5.0]`, `Z: pos.z + [-5.0, 5.0]`), Vertical range 5.0 (`Y: pos.y + [0.0, 5.0]`).
+  4. *Separation from Generic Bush*:
+     - Removed `BlockId::FIREFLY_BUSH` from `bush.rs` (`BushBlock`).
+     - Created dedicated `FireflyBushBlock` in `crates/pumpkin-core/src/block/blocks/plant/firefly_bush.rs` and registered in `BlockRegistry`.
+- **Implementation**:
+  - In `crates/pumpkin-core/src/block/blocks/plant/firefly_bush.rs`:
+    - Created `FireflyBushBlock` implementing `PlantBlockBase` and `BlockBehaviour`.
+    - Implemented `is_valid_bonemeal_target`, `is_bonemeal_success`, and `perform_bonemeal` using horizontal spread checks.
+    - Added `random_tick` ambient sound playback with 1-in-30 chance.
+    - Exported constants `FIREFLY_CHANCE_PER_TICK`, `FIREFLY_HORIZONTAL_RANGE`, `FIREFLY_VERTICAL_RANGE`, `FIREFLY_SPAWN_MAX_BRIGHTNESS_LEVEL`, `FIREFLY_AMBIENT_SOUND_CHANCE_ONE_IN` and helper verification methods.
+  - In `crates/pumpkin-core/src/block/blocks/plant/bush.rs`:
+    - Removed `BlockId::FIREFLY_BUSH` so generic bush only manages `BUSH` and `RED_SHRUB`.
+  - In `crates/pumpkin-core/src/block/blocks/plant/mod.rs` and `crates/pumpkin-core/src/block/registry.rs`:
+    - Registered `FireflyBushBlock`.
+  - In `crates/pumpkin-core/src/entity/combat.rs`:
+    - Added unit test `test_firefly_bush_bonemeal_spread_and_ambient_particle_dynamics_parity`.
+- **Status**: Completed & Verified.
