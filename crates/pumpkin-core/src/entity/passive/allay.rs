@@ -111,6 +111,11 @@ impl AllayEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        // Allay always guarantees 100% equipment drop chance for held item (Allay.java:362-375)
+        mob_arc
+            .mob_entity
+            .set_guaranteed_drop(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND);
+
         mob_arc
     }
 
@@ -223,6 +228,16 @@ impl Mob for AllayEntity {
 
     fn can_be_leashed(&self) -> bool {
         true
+    }
+
+    /// Vanilla Allay.java:271-274: Dispensers cannot equip any items into Allays.
+    fn can_dispenser_equip_into_slot(&self, _slot: &pumpkin_data::data_component_impl::EquipmentSlot) -> bool {
+        false
+    }
+
+    /// Vanilla Allay.java:231-236: Allays cannot attack any entity.
+    fn can_attack(&self, _target: &dyn EntityBase) -> bool {
+        false
     }
 
     fn get_base_experience_reward(&self) -> u32 {
@@ -393,6 +408,8 @@ impl Mob for AllayEntity {
                 pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
                 item_to_give.clone(),
             )]);
+            self.mob_entity
+                .set_guaranteed_drop(&pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND);
 
             self.owner.store(Some(player.gameprofile.id));
             world.play_sound_fine(Sound::EntityAllayItemGiven, SoundCategory::Neutral, &pos, 2.0, 1.0);
@@ -536,5 +553,36 @@ mod tests {
         assert_eq!(combat::ALLAY_BASE_MOVEMENT_SPEED, 0.1);
         assert_eq!(combat::ALLAY_BASE_ATTACK_DAMAGE, 2.0);
         assert_eq!(combat::ALLAY_DUPLICATION_COOLDOWN_TICKS, 6000);
+        assert_eq!(combat::ALLAY_DANCING_LOOP_DURATION, 55.0);
+        assert_eq!(combat::ALLAY_SPINNING_ANIMATION_DURATION, 15.0);
+        assert_eq!(combat::ALLAY_LIFTING_ITEM_ANIMATION_DURATION, 5);
+        assert_eq!(combat::ALLAY_NUM_OF_DUPLICATION_HEARTS, 3);
+        assert_eq!(combat::ALLAY_MAX_NOTEBLOCK_DISTANCE, 1024);
+        assert_eq!(combat::ALLAY_THROW_SOUND_PITCHES.len(), 16);
+    }
+
+    #[test]
+    fn test_allay_dispenser_attack_and_throw_pitch_parity() {
+        // Verify canonical 16-element pitch table indexing & wrap-around (Allay.java:82-84)
+        assert_eq!(combat::ALLAY_THROW_SOUND_PITCHES.len(), 16);
+        assert_eq!(combat::get_allay_throw_pitch(0), 0.5625);
+        assert_eq!(combat::get_allay_throw_pitch(1), 0.625);
+        assert_eq!(combat::get_allay_throw_pitch(2), 0.75);
+        assert_eq!(combat::get_allay_throw_pitch(3), 0.9375);
+        assert_eq!(combat::get_allay_throw_pitch(4), 1.0);
+        assert_eq!(combat::get_allay_throw_pitch(5), 1.0);
+        assert_eq!(combat::get_allay_throw_pitch(6), 1.125);
+        assert_eq!(combat::get_allay_throw_pitch(7), 1.25);
+        assert_eq!(combat::get_allay_throw_pitch(8), 1.5);
+        assert_eq!(combat::get_allay_throw_pitch(9), 1.875);
+        assert_eq!(combat::get_allay_throw_pitch(10), 2.0);
+        assert_eq!(combat::get_allay_throw_pitch(11), 2.25);
+        assert_eq!(combat::get_allay_throw_pitch(12), 2.5);
+        assert_eq!(combat::get_allay_throw_pitch(13), 3.0);
+        assert_eq!(combat::get_allay_throw_pitch(14), 3.75);
+        assert_eq!(combat::get_allay_throw_pitch(15), 4.0);
+        // Test wrap-around modulo
+        assert_eq!(combat::get_allay_throw_pitch(16), 0.5625);
+        assert_eq!(combat::get_allay_throw_pitch(20), 1.0);
     }
 }

@@ -1023,6 +1023,14 @@ pub trait Mob: EntityBase + Send + Sync {
         rand::rng()
     }
 
+    /// Checks whether a dispenser can equip an item into the specified slot.
+    ///
+    /// Mirrors vanilla `LivingEntity.java:3929-3931`:
+    /// `protected boolean canDispenserEquipIntoSlot(final EquipmentSlot slot) { return true; }`
+    fn can_dispenser_equip_into_slot(&self, _slot: &pumpkin_data::data_component_impl::EquipmentSlot) -> bool {
+        true
+    }
+
     fn can_attack(&self, target: &dyn EntityBase) -> bool {
         let target_entity = target.get_entity();
         if target_entity.entity_type == &EntityType::GHAST {

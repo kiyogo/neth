@@ -10238,3 +10238,35 @@ eq 	ext{None}$.
     - `test_shulker_bullet_nbt_persistence_parity` (Target, Owner, Dir, Steps, TXD, TYD, TZD roundtrip verification)
   - `crates/pumpkin-core/src/entity/mob/shulker.rs`:
     - `test_shulker_covered_armor_and_mechanics_parity` (updated with height scaling factors, floor vs wall attachment checks, and constants verification)
+
+### Gap 403: Allay Dispenser Equip Immunity, Attack Target Disable, Equipment Guaranteed Drop & Throw Pitch Table Parity
+- **Status**: Fixed
+- **Vanilla Reference**: `net.minecraft.world.entity.animal.allay.Allay.java:73-84, 231-236, 271-274, 362-375`, `net.minecraft.world.entity.animal.allay.AllayAi.java:168-176`, `net.minecraft.world.entity.LivingEntity.java:3918-3931`.
+- **Description**:
+  1. **Dispenser Equip Immunity (`Allay.java:271-274`, `LivingEntity.java:3918-3931`)**:
+     - In Vanilla Java 1.21.4, when a dispenser fires an equippable item (armor, head, elytra), `LivingEntity.canDispenserEquipIntoSlot(slot)` determines whether the target can be equipped by the dispenser.
+     - `Allay.java` explicitly overrides `canDispenserEquipIntoSlot` returning `false`, preventing dispensers from equipping items onto Allays.
+     - Added `can_dispenser_equip_into_slot(&self, slot: &EquipmentSlot) -> bool` to the `Mob` trait (defaulting to `true`), and overridden on `AllayEntity` returning `false`. Updated `dispenser.rs` to honor this check.
+  2. **Attack Type Disable (`Allay.java:231-236`)**:
+     - In Vanilla Java 1.21.4, `Allay.canAttackType(type)` returns `false`. Allays are completely peaceful helper spirits and can never target or attack any entity.
+     - Implemented `can_attack(&self, _target: &dyn EntityBase) -> bool { false }` on `AllayEntity`.
+  3. **Guaranteed Held Item Drop on Death (`Allay.java:362-375`)**:
+     - In Vanilla Java 1.21.4, when an Allay dies (`dropEquipment`), any item held in its main hand (`getItemBySlot(MAINHAND)`) is unconditionally spawned at its location (`this.spawnAtLocation(itemInHand)`). Players never lose valuable items (e.g. netherite, diamonds, totems) given to an Allay if it perishes.
+     - In Neth, items in main hand previously had the default mob equipment drop chance of 8.5%.
+     - Configured `set_guaranteed_drop(&EquipmentSlot::MAIN_HAND)` on `AllayEntity` upon initialization and upon receiving an item from a player.
+  4. **Throw Sound Pitch Table & Timing Constants Formalization (`Allay.java:73-84`, `AllayAi.java:168-176`)**:
+     - Vanilla Allays emit musical note pitches when throwing items chosen randomly from a 16-element pitch array (`THROW_SOUND_PITCHES`).
+     - Formalized constants in `combat.rs`:
+       - `ALLAY_THROW_SOUND_PITCHES: [f32; 16]` (`[0.5625, 0.625, 0.75, 0.9375, 1.0, 1.0, 1.125, 1.25, 1.5, 1.875, 2.0, 2.25, 2.5, 3.0, 3.75, 4.0]`)
+       - `get_allay_throw_pitch(index: usize) -> f32`
+       - `ALLAY_DANCING_LOOP_DURATION = 55.0`
+       - `ALLAY_SPINNING_ANIMATION_DURATION = 15.0`
+       - `ALLAY_LIFTING_ITEM_ANIMATION_DURATION = 5`
+       - `ALLAY_NUM_OF_DUPLICATION_HEARTS = 3`
+       - `ALLAY_MAX_NOTEBLOCK_DISTANCE = 1024`
+- **Tests Added**:
+  - `crates/pumpkin-core/src/entity/passive/allay.rs`:
+    - `test_allay_parity_constants` (updated with all new timing and animation constants)
+    - `test_allay_dispenser_attack_and_throw_pitch_parity` (pitch array indexing and modulo validation)
+  - `crates/pumpkin-core/src/entity/combat.rs`:
+    - `test_allay_and_axolotl_parity` (updated with pitch table and timing assertions)

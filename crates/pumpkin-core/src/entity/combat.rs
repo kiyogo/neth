@@ -11182,6 +11182,52 @@ pub const ALLAY_XP_REWARD: u32 = 2;
 /// Mirrors vanilla Allay.java:78 (DUPLICATION_COOLDOWN_TICKS = 6000).
 pub const ALLAY_DUPLICATION_COOLDOWN_TICKS: i32 = 6000;
 
+/// Allay throw sound pitches (16 pitch values corresponding to musical scale notes).
+///
+/// Mirrors vanilla `Allay.java:82-84`:
+/// `public static final ImmutableList<Float> THROW_SOUND_PITCHES = ImmutableList.of(`
+/// `   0.5625F, 0.625F, 0.75F, 0.9375F, 1.0F, 1.0F, 1.125F, 1.25F, 1.5F, 1.875F, 2.0F, 2.25F, 2.5F, 3.0F, 3.75F, 4.0F`
+/// `);`
+pub const ALLAY_THROW_SOUND_PITCHES: [f32; 16] = [
+    0.5625, 0.625, 0.75, 0.9375, 1.0, 1.0, 1.125, 1.25, 1.5, 1.875, 2.0, 2.25, 2.5, 3.0, 3.75, 4.0,
+];
+
+/// Returns a throw pitch from the canonical 16-element pitch table.
+#[must_use]
+pub fn get_allay_throw_pitch(index: usize) -> f32 {
+    ALLAY_THROW_SOUND_PITCHES[index % ALLAY_THROW_SOUND_PITCHES.len()]
+}
+
+/// Allay dancing loop duration in ticks (55.0 ticks).
+///
+/// Mirrors vanilla `Allay.java:75`:
+/// `private static final float DANCING_LOOP_DURATION = 55.0F;`
+pub const ALLAY_DANCING_LOOP_DURATION: f32 = 55.0;
+
+/// Allay spinning animation duration in ticks (15.0 ticks).
+///
+/// Mirrors vanilla `Allay.java:76`:
+/// `private static final float SPINNING_ANIMATION_DURATION = 15.0F;`
+pub const ALLAY_SPINNING_ANIMATION_DURATION: f32 = 15.0;
+
+/// Allay lifting item animation duration in ticks (5 ticks).
+///
+/// Mirrors vanilla `Allay.java:74`:
+/// `private static final int LIFTING_ITEM_ANIMATION_DURATION = 5;`
+pub const ALLAY_LIFTING_ITEM_ANIMATION_DURATION: i32 = 5;
+
+/// Number of hearts spawned upon Allay duplication (3 hearts).
+///
+/// Mirrors vanilla `Allay.java:79`:
+/// `private static final int NUM_OF_DUPLICATION_HEARTS = 3;`
+pub const ALLAY_NUM_OF_DUPLICATION_HEARTS: i32 = 3;
+
+/// Maximum distance an Allay can hear a noteblock (1024 blocks squared).
+///
+/// Mirrors vanilla `Allay.java:80`:
+/// `public static final int MAX_NOTEBLOCK_DISTANCE = 1024;`
+pub const ALLAY_MAX_NOTEBLOCK_DISTANCE: i32 = 1024;
+
 /// Vex base max health (14.0 HP / 7 hearts).
 /// Mirrors vanilla Vex.java:99 (Attributes.MAX_HEALTH, 14.0).
 pub const VEX_MAX_HEALTH: f32 = 14.0;
@@ -14663,6 +14709,17 @@ mod tests {
         // 2. Allay duplication item check (Allay.java:285)
         assert!(is_allay_duplication_item(&Item::AMETHYST_SHARD));
         assert!(!is_allay_duplication_item(&Item::DIAMOND));
+
+        // 2b. Allay throw pitches & timing constants parity (Allay.java:73-84)
+        assert_eq!(ALLAY_THROW_SOUND_PITCHES.len(), 16);
+        assert_eq!(get_allay_throw_pitch(0), 0.5625);
+        assert_eq!(get_allay_throw_pitch(4), 1.0);
+        assert_eq!(get_allay_throw_pitch(15), 4.0);
+        assert_eq!(ALLAY_DANCING_LOOP_DURATION, 55.0);
+        assert_eq!(ALLAY_SPINNING_ANIMATION_DURATION, 15.0);
+        assert_eq!(ALLAY_LIFTING_ITEM_ANIMATION_DURATION, 5);
+        assert_eq!(ALLAY_NUM_OF_DUPLICATION_HEARTS, 3);
+        assert_eq!(ALLAY_MAX_NOTEBLOCK_DISTANCE, 1024);
 
         // 3. Axolotl breeding variant inheritance (Axolotl.java:313-315, 346-361)
         // 1/1200 chance of rare Blue variant

@@ -1379,6 +1379,12 @@ impl DispenserBlock {
                 continue;
             }
 
+            if let Some(mob) = entity.get_mob() {
+                if !mob.can_dispenser_equip_into_slot(slot) {
+                    continue;
+                }
+            }
+
             let mut equipment = living
                 .entity_equipment
                 .lock()
