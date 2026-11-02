@@ -6,6 +6,7 @@ use std::sync::{
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -119,6 +120,7 @@ impl DonkeyEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -166,11 +168,42 @@ impl DonkeyEntity {
         let entity = self.get_entity();
         entity.set_synced_data(pumpkin_data::tracked_data::donkey::DATA_ID_CHEST, val);
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_donkey_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
 }
 
 impl AgeableMob for DonkeyEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -228,6 +261,22 @@ impl Mob for DonkeyEntity {
         if let Some(owner) = nbt.get_uuid("Owner") {
             self.owner.store(Some(owner));
         }
+        self.refresh_dimensions();
+    }
+
+    /// Mirrors vanilla `AbstractHorse.java:237-238`:
+    /// `(slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE) && this.isTamed() || super.canDispenserEquipIntoSlot(slot)`
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_body_or_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY
+            || slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        combat::can_equine_dispenser_equip(
+            is_body_or_saddle,
+            self.is_tame(),
+            self.mob_entity.can_pick_up_loot(),
+        )
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

@@ -6,6 +6,7 @@ use std::sync::{
 use crossbeam::atomic::AtomicCell;
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -126,6 +127,7 @@ impl HorseEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -176,11 +178,41 @@ impl HorseEntity {
     pub fn set_saddled(&self, val: bool) {
         self.set_flag(FLAG_SADDLE, val);
     }
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_horse_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
 }
 
 impl AgeableMob for HorseEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -415,5 +447,24 @@ mod tests {
         assert_eq!(combat::ABSTRACT_HORSE_FALL_DAMAGE_MULTIPLIER, 0.5);
         assert_eq!(combat::ABSTRACT_HORSE_MIN_NATURAL_HEALTH, 15.0);
         assert_eq!(combat::ABSTRACT_HORSE_MAX_NATURAL_HEALTH, 30.0);
+    }
+
+    #[test]
+    fn test_horse_baby_dimensions_and_dispenser_parity() {
+        use super::*;
+
+        // 1. Dimensions scaling (Horse.java:44: scale(0.7F))
+        let adult = combat::calculate_horse_dimensions(false, combat::MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert_eq!(adult, (combat::MAGIC_HORSE_WIDTH, 1.6, 1.52));
+        let baby = combat::calculate_horse_dimensions(true, combat::MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert!((baby.0 - combat::MAGIC_HORSE_WIDTH * 0.7).abs() < 1e-4);
+        assert!((baby.1 - 1.12).abs() < 1e-4);
+        assert!((baby.2 - 1.064).abs() < 1e-4);
+
+        // 2. Dispenser equip parity (AbstractHorse.java:237-238)
+        assert!(combat::can_equine_dispenser_equip(true, true, false));
+        assert!(!combat::can_equine_dispenser_equip(true, false, false));
+        assert!(!combat::can_equine_dispenser_equip(false, true, false));
+        assert!(combat::can_equine_dispenser_equip(false, false, true));
     }
 }

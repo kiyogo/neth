@@ -35,7 +35,17 @@ pub trait AgeableMob: Mob {
         self.get_mob_entity().living_entity.entity.age.load(Relaxed) < 0
     }
 
+    /// Mirrors vanilla `AgeableMob.java:237-239`: `public boolean canBeABaby() { return true; }`
+    fn can_be_baby(&self) -> bool {
+        true
+    }
+
+    /// Mirrors vanilla `AgeableMob.java:229-233`:
+    /// `if (this.canBeABaby() || !baby) { this.setAge(baby ? this.getBabyStartAge() : 0); }`
     fn set_baby(&self, baby: bool) {
+        if !self.can_be_baby() && baby {
+            return;
+        }
         self.set_age(if baby { self.get_baby_start_age() } else { 0 });
     }
 

@@ -12688,6 +12688,190 @@ pub fn can_use_item_with_cooldown(is_on_cooldown: bool) -> bool {
     !is_on_cooldown
 }
 
+/// Equine mob dimension and dispenser equip constants and functions.
+/// Mirrors vanilla `EntityTypes.java:31`: `MAGIC_HORSE_WIDTH = 1.3964844F;`
+pub const MAGIC_HORSE_WIDTH: f32 = 1.396_484_4;
+
+/// Horse baby scale and dimensions, mirroring vanilla `Horse.java:44`:
+/// `BABY_DIMENSIONS = EntityTypes.HORSE.getDimensions().scale(0.7F);`
+pub const HORSE_BABY_SCALE: f32 = 0.7;
+
+/// Skeleton horse baby scale, mirroring vanilla `SkeletonHorse.java:46`:
+/// `BABY_DIMENSIONS = EntityTypes.SKELETON_HORSE.getDimensions().scale(0.7F);`
+pub const SKELETON_HORSE_BABY_SCALE: f32 = 0.7;
+
+/// Zombie horse baby scale, mirroring vanilla `ZombieHorse.java:55`:
+/// `BABY_DIMENSIONS = EntityTypes.ZOMBIE_HORSE.getDimensions().scale(0.7F);`
+pub const ZOMBIE_HORSE_BABY_SCALE: f32 = 0.7;
+
+/// Donkey baby scale, mirroring vanilla `AbstractChestedHorse.java:37`:
+/// `this.babyDimensions = type.getDimensions().scale(0.5F);`
+pub const DONKEY_BABY_SCALE: f32 = 0.5;
+
+/// Mule baby scale, mirroring vanilla `AbstractChestedHorse.java:37`:
+/// `this.babyDimensions = type.getDimensions().scale(0.5F);`
+pub const MULE_BABY_SCALE: f32 = 0.5;
+
+/// Llama baby scale, mirroring vanilla `Llama.java:54`:
+/// `BABY_DIMENSIONS = EntityTypes.LLAMA.getDimensions().scale(0.5F);`
+pub const LLAMA_BABY_SCALE: f32 = 0.5;
+
+/// Trader llama baby scale, mirroring vanilla `TraderLlama.java` / `Llama.java:54`:
+pub const TRADER_LLAMA_BABY_SCALE: f32 = 0.5;
+
+/// Determines if an equine mob can equip an item via dispenser.
+/// Mirrors vanilla `AbstractHorse.java:237-238`:
+/// `(slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE) && this.isTamed() || super.canDispenserEquipIntoSlot(slot)`
+#[must_use]
+pub const fn can_equine_dispenser_equip(
+    slot_is_body_or_saddle: bool,
+    is_tamed: bool,
+    can_pick_up_loot: bool,
+) -> bool {
+    (slot_is_body_or_saddle && is_tamed) || can_pick_up_loot
+}
+
+/// Calculates horse dimensions based on baby status.
+/// Mirrors vanilla `Horse.java:255-257`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_horse_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * HORSE_BABY_SCALE,
+            default_height * HORSE_BABY_SCALE,
+            default_eye_height * HORSE_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates skeleton horse dimensions based on baby status.
+/// Mirrors vanilla `SkeletonHorse.java:122-124`.
+#[must_use]
+pub const fn calculate_skeleton_horse_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * SKELETON_HORSE_BABY_SCALE,
+            default_height * SKELETON_HORSE_BABY_SCALE,
+            default_eye_height * SKELETON_HORSE_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates zombie horse dimensions based on baby status.
+/// Mirrors vanilla `ZombieHorse.java:196-198`.
+#[must_use]
+pub const fn calculate_zombie_horse_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * ZOMBIE_HORSE_BABY_SCALE,
+            default_height * ZOMBIE_HORSE_BABY_SCALE,
+            default_eye_height * ZOMBIE_HORSE_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates donkey dimensions based on baby status.
+/// Mirrors vanilla `AbstractChestedHorse.java:68-70`.
+#[must_use]
+pub const fn calculate_donkey_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * DONKEY_BABY_SCALE,
+            default_height * DONKEY_BABY_SCALE,
+            default_eye_height * DONKEY_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates mule dimensions based on baby status.
+/// Mirrors vanilla `AbstractChestedHorse.java:68-70`.
+#[must_use]
+pub const fn calculate_mule_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * MULE_BABY_SCALE,
+            default_height * MULE_BABY_SCALE,
+            default_eye_height * MULE_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates llama dimensions based on baby status.
+/// Mirrors vanilla `Llama.java:450-452`.
+#[must_use]
+pub const fn calculate_llama_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * LLAMA_BABY_SCALE,
+            default_height * LLAMA_BABY_SCALE,
+            default_eye_height * LLAMA_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Calculates trader llama dimensions based on baby status.
+/// Mirrors vanilla `TraderLlama.java` / `Llama.java:450-452`.
+#[must_use]
+pub const fn calculate_trader_llama_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * TRADER_LLAMA_BABY_SCALE,
+            default_height * TRADER_LLAMA_BABY_SCALE,
+            default_eye_height * TRADER_LLAMA_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -24892,6 +25076,90 @@ mod tests {
         assert!(!can_fox_dispenser_equip(true, false));
         assert!(!can_fox_dispenser_equip(false, true));
         assert!(!can_fox_dispenser_equip(false, false));
+    }
+
+    #[test]
+    fn test_camel_and_equine_dimensions_and_parity_gap417() {
+        use super::*;
+
+        // 1. Camel dimensions (Camel.java:85-90, 165-169)
+        let camel_adult_stand = calculate_camel_dimensions(false, false, 1.7, 2.375, 2.275);
+        assert_eq!(camel_adult_stand, (1.7, 2.375, 2.275));
+        let camel_adult_sit = calculate_camel_dimensions(true, false, 1.7, 2.375, 2.275);
+        assert_eq!(camel_adult_sit, (1.7, 0.945, 0.845));
+        let camel_baby_stand = calculate_camel_dimensions(false, true, 1.7, 2.375, 2.275);
+        assert_eq!(camel_baby_stand, (0.95, 1.4, 1.38));
+        let camel_baby_sit = calculate_camel_dimensions(true, true, 1.7, 2.375, 2.275);
+        assert_eq!(camel_baby_sit, (0.95, 0.425, 0.41));
+        assert_eq!(CAMEL_BABY_SCALE, 0.6);
+
+        // 2. Horse dimensions (Horse.java:44: scale(0.7F), EntityTypes.java: sized(1.3964844, 1.6), eyeHeight(1.52))
+        let horse_adult = calculate_horse_dimensions(false, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert_eq!(horse_adult, (MAGIC_HORSE_WIDTH, 1.6, 1.52));
+        let horse_baby = calculate_horse_dimensions(true, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert!((horse_baby.0 - MAGIC_HORSE_WIDTH * 0.7).abs() < 1e-4);
+        assert!((horse_baby.1 - 1.12).abs() < 1e-4);
+        assert!((horse_baby.2 - 1.064).abs() < 1e-4);
+        assert_eq!(HORSE_BABY_SCALE, 0.7);
+
+        // 3. Skeleton horse dimensions (SkeletonHorse.java:46: scale(0.7F))
+        let skel_horse_adult = calculate_skeleton_horse_dimensions(false, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert_eq!(skel_horse_adult, (MAGIC_HORSE_WIDTH, 1.6, 1.52));
+        let skel_horse_baby = calculate_skeleton_horse_dimensions(true, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert!((skel_horse_baby.0 - MAGIC_HORSE_WIDTH * 0.7).abs() < 1e-4);
+        assert!((skel_horse_baby.1 - 1.12).abs() < 1e-4);
+        assert!((skel_horse_baby.2 - 1.064).abs() < 1e-4);
+        assert_eq!(SKELETON_HORSE_BABY_SCALE, 0.7);
+
+        // 4. Zombie horse dimensions (ZombieHorse.java:55: scale(0.7F))
+        let zomb_horse_adult = calculate_zombie_horse_dimensions(false, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert_eq!(zomb_horse_adult, (MAGIC_HORSE_WIDTH, 1.6, 1.52));
+        let zomb_horse_baby = calculate_zombie_horse_dimensions(true, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert!((zomb_horse_baby.0 - MAGIC_HORSE_WIDTH * 0.7).abs() < 1e-4);
+        assert!((zomb_horse_baby.1 - 1.12).abs() < 1e-4);
+        assert!((zomb_horse_baby.2 - 1.064).abs() < 1e-4);
+        assert_eq!(ZOMBIE_HORSE_BABY_SCALE, 0.7);
+
+        // 5. Donkey dimensions (AbstractChestedHorse.java:37: scale(0.5F), EntityTypes.java: sized(1.3964844, 1.5), eyeHeight(1.425))
+        let donkey_adult = calculate_donkey_dimensions(false, MAGIC_HORSE_WIDTH, 1.5, 1.425);
+        assert_eq!(donkey_adult, (MAGIC_HORSE_WIDTH, 1.5, 1.425));
+        let donkey_baby = calculate_donkey_dimensions(true, MAGIC_HORSE_WIDTH, 1.5, 1.425);
+        assert!((donkey_baby.0 - MAGIC_HORSE_WIDTH * 0.5).abs() < 1e-4);
+        assert!((donkey_baby.1 - 0.75).abs() < 1e-4);
+        assert!((donkey_baby.2 - 0.7125).abs() < 1e-4);
+        assert_eq!(DONKEY_BABY_SCALE, 0.5);
+
+        // 6. Mule dimensions (AbstractChestedHorse.java:37: scale(0.5F), EntityTypes.java: sized(1.3964844, 1.6), eyeHeight(1.52))
+        let mule_adult = calculate_mule_dimensions(false, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert_eq!(mule_adult, (MAGIC_HORSE_WIDTH, 1.6, 1.52));
+        let mule_baby = calculate_mule_dimensions(true, MAGIC_HORSE_WIDTH, 1.6, 1.52);
+        assert!((mule_baby.0 - MAGIC_HORSE_WIDTH * 0.5).abs() < 1e-4);
+        assert!((mule_baby.1 - 0.8).abs() < 1e-4);
+        assert!((mule_baby.2 - 0.76).abs() < 1e-4);
+        assert_eq!(MULE_BABY_SCALE, 0.5);
+
+        // 7. Llama & Trader Llama dimensions (Llama.java:54: scale(0.5F), EntityTypes.java: sized(0.9, 1.87), eyeHeight(1.7765))
+        let llama_adult = calculate_llama_dimensions(false, 0.9, 1.87, 1.7765);
+        assert_eq!(llama_adult, (0.9, 1.87, 1.7765));
+        let llama_baby = calculate_llama_dimensions(true, 0.9, 1.87, 1.7765);
+        assert!((llama_baby.0 - 0.45).abs() < 1e-4);
+        assert!((llama_baby.1 - 0.935).abs() < 1e-4);
+        assert!((llama_baby.2 - 0.88825).abs() < 1e-4);
+        assert_eq!(LLAMA_BABY_SCALE, 0.5);
+
+        let trader_llama_adult = calculate_trader_llama_dimensions(false, 0.9, 1.87, 1.7765);
+        assert_eq!(trader_llama_adult, (0.9, 1.87, 1.7765));
+        let trader_llama_baby = calculate_trader_llama_dimensions(true, 0.9, 1.87, 1.7765);
+        assert_eq!(trader_llama_baby, llama_baby);
+        assert_eq!(TRADER_LLAMA_BABY_SCALE, 0.5);
+
+        // 8. Equine dispenser equip parity (AbstractHorse.java:237-238)
+        assert!(can_equine_dispenser_equip(true, true, false));   // body/saddle & tamed -> true
+        assert!(!can_equine_dispenser_equip(true, false, false));  // body/saddle & untamed -> false
+        assert!(can_equine_dispenser_equip(true, false, true));   // body/saddle & untamed but canPickUpLoot -> true
+        assert!(!can_equine_dispenser_equip(false, true, false));  // not body/saddle & tamed -> false
+        assert!(can_equine_dispenser_equip(false, false, true));  // canPickUpLoot -> true
+        assert!(!can_equine_dispenser_equip(false, false, false)); // neither -> false
     }
 
 }

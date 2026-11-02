@@ -4,7 +4,8 @@ use std::sync::{
 };
 
 use pumpkin_data::attributes::Attributes;
-use pumpkin_data::entity::EntityType;
+use pumpkin_data::entity::{EntityPose, EntityType};
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -12,7 +13,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         escape_danger::EscapeDangerGoal, look_around::RandomLookAroundGoal,
@@ -79,6 +80,7 @@ impl CamelHuskEntity {
         camel.mob_entity.living_entity.health.store(32.0);
 
         let mob_arc = Arc::new(camel);
+        mob_arc.refresh_dimensions();
         let mob_weak: Weak<dyn Mob> = {
             let mob_arc: Arc<dyn Mob> = mob_arc.clone();
             Arc::downgrade(&mob_arc)
@@ -140,11 +142,37 @@ impl CamelHuskEntity {
         let entity = self.get_entity();
         entity.set_synced_data(pumpkin_data::tracked_data::camel::DASH, dashing);
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_sitting = entity.pose.load() == EntityPose::Sitting;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_camel_dimensions(
+            is_sitting,
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
 }
 
 impl AgeableMob for CamelHuskEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    /// Vanilla `CamelHusk.java:76-78`: `public boolean canBeABaby() { return false; }`
+    fn can_be_baby(&self) -> bool {
+        false
     }
 }
 
@@ -191,6 +219,22 @@ impl Mob for CamelHuskEntity {
         if let Some(saddle) = nbt.get_bool("Saddle") {
             self.set_saddled(saddle);
         }
+        self.refresh_dimensions();
+    }
+
+    /// Vanilla `AbstractHorse.java:237-238` & `CamelHusk.java`:
+    /// `canDispenserEquipIntoSlot(slot)` returns true for BODY or SADDLE when tamed (CamelHusk is always tamed).
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_body_or_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY
+            || slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        combat::can_equine_dispenser_equip(
+            is_body_or_saddle,
+            true,
+            self.mob_entity.can_pick_up_loot(),
+        )
     }
 
     fn get_mob_entity(&self) -> &MobEntity {

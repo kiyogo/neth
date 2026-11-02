@@ -10555,3 +10555,35 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Bổ sung `write_ageable_nbt(nbt)`, `read_ageable_nbt(nbt)` và `self.ageable_ai_step()` trong `mob_tick` cho Chó sói (`WolfEntity`).
 - **Hằng số Parity**: `TURTLE_BABY_WIDTH` (0.36), `TURTLE_BABY_HEIGHT` (0.12), `TURTLE_BABY_EYE_HEIGHT` (0.102), `calculate_turtle_dimensions`, `SNIFFER_ADULT_WIDTH` (1.9), `SNIFFER_ADULT_HEIGHT` (1.75), `SNIFFER_ADULT_EYE_HEIGHT` (1.05), `SNIFFER_DIGGING_HEIGHT` (1.35), `SNIFFER_DIGGING_EYE_HEIGHT` (0.81), `SNIFFER_BABY_SCALE` (0.5), `calculate_sniffer_dimensions`, `WOLF_BABY_WIDTH` (0.3), `WOLF_BABY_HEIGHT` (0.425), `WOLF_BABY_EYE_HEIGHT` (0.34375), `WOLF_BABY_SCALE` (0.5), `calculate_wolf_dimensions`, `can_fox_dispenser_equip`.
 - **Unit Tests**: `test_turtle_sniffer_wolf_dimensions_and_parity_gap416`, `test_turtle_baby_dimensions_and_parity`, `test_sniffer_baby_and_digging_dimensions_parity`, `test_wolf_baby_dimensions_and_parity`, `test_fox_baby_dimensions_dispenser_and_food_swap_parity` pass 100%.
+
+
+### Gap 417: Camel & CamelHusk Dimensions, Equine Baby Scalable Dimensions & Equine Dispenser Equip Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.camel.Camel.java:62-90, 164-169`, `net.minecraft.world.entity.animal.camel.CamelHusk.java:24-80`, `net.minecraft.world.entity.animal.equine.AbstractHorse.java:104, 237-238`, `net.minecraft.world.entity.animal.equine.Horse.java:44, 255-257`, `net.minecraft.world.entity.animal.equine.AbstractChestedHorse.java:37, 68-70`, `net.minecraft.world.entity.animal.equine.SkeletonHorse.java:46, 122-124`, `net.minecraft.world.entity.animal.equine.ZombieHorse.java:55, 196-198`, `net.minecraft.world.entity.animal.equine.Llama.java:54, 450-452` & `net.minecraft.world.entity.EntityTypes.java:31`
+
+- **Kích thước Lạc đà & CamelHusk Đứng/Ngồi (Camel & CamelHusk Standing/Sitting Dimensions)**:
+  - Lạc đà đứng trưởng thành (`Camel.java:85-90`): width `1.7`, height `2.375`, eye height `2.275`.
+  - Lạc đà ngồi trưởng thành (`ADULT_SITTING_DIMENSIONS`): width `1.7`, height `0.945` (`2.375 - 1.43`), eye height `0.845`.
+  - Lạc đà con đứng (`BABY_STANDING_DIMENSIONS`): width `0.95`, height `1.4`, eye height `1.38`.
+  - Lạc đà con ngồi (`BABY_SITTING_DIMENSIONS`): width `0.95`, height `0.425`, eye height `0.41`.
+  - Hệ số scale tuổi lạc đà: `CAMEL_BABY_SCALE = 0.6F`.
+  - `CamelHusk` chia sẻ cùng kích thước nhưng `can_be_baby()` luôn là `false` theo `CamelHusk.java:76-78`.
+- **Kích thước Động vật họ Ngựa Con (Equine Baby Scalable Dimensions & Eye Height)**:
+  - Chiều rộng họ ngựa gốc (`EntityTypes.java:31`): `MAGIC_HORSE_WIDTH = 1.3964844F`.
+  - Ngựa thường (`Horse.java:44`): `scale(0.7F)`. Adult: `1.3964844 x 1.6` (eye `1.52`). Baby: `0.97753906 x 1.12` (eye `1.064`).
+  - Ngựa xương (`SkeletonHorse.java:46`): `scale(0.7F)`. Adult: `1.3964844 x 1.6` (eye `1.52`). Baby: `0.97753906 x 1.12` (eye `1.064`).
+  - Ngựa zombie (`ZombieHorse.java:55`): `scale(0.7F)`. Adult: `1.3964844 x 1.6` (eye `1.52`). Baby: `0.97753906 x 1.12` (eye `1.064`).
+  - Lừa (`AbstractChestedHorse.java:37`): `scale(0.5F)`. Adult: `1.3964844 x 1.5` (eye `1.425`). Baby: `0.6982422 x 0.75` (eye `0.7125`).
+  - La (`AbstractChestedHorse.java:37`): `scale(0.5F)`. Adult: `1.3964844 x 1.6` (eye `1.52`). Baby: `0.6982422 x 0.8` (eye `0.76`).
+  - Llama & Trader Llama (`Llama.java:54`): `scale(0.5F)`. Adult: `0.9 x 1.87` (eye `1.7765`). Baby: `0.45 x 0.935` (eye `0.88825`).
+- **Trang bị Dispenser cho Động vật họ Ngựa & Lạc đà (Equine & Camel Dispenser Equip Parity)**:
+  - Vanilla `AbstractHorse.java:237-238`: `(slot == BODY || slot == SADDLE) && this.isTamed() || super.canDispenserEquipIntoSlot(slot)`.
+  - Triển khai `can_equine_dispenser_equip(slot_is_body_or_saddle, is_tamed, can_pick_up_loot)` trong `combat.rs`.
+  - Ghi đè `can_dispenser_equip_into_slot` trên tất cả mob họ ngựa (`HorseEntity`, `DonkeyEntity`, `MuleEntity`, `SkeletonHorseEntity`, `ZombieHorseEntity`, `LlamaEntity`, `TraderLlamaEntity`).
+  - Lạc đà (`CamelEntity` & `CamelHuskEntity`) kế thừa từ AbstractHorse và có `isTamed() == true` theo vanilla, do đó cho phép Dispenser trang bị Yên ngựa (`SADDLE`) hoặc Thân (`BODY`).
+- **Triển khai `refresh_dimensions()`, `set_baby`, `age_boundary_reached` & `can_be_baby`**:
+  - Bổ sung `can_be_baby(&self) -> bool` trên `AgeableMob` trait (mặc định `true`, `CamelHusk` trả về `false`).
+  - Tự động gọi `refresh_dimensions()` khi tạo mob, khi đổi tuổi (`set_baby`), khi đạt mốc trưởng thành (`age_boundary_reached`) và khi đọc dữ liệu NBT (`mob_read_nbt`).
+  - Gọi `handle_age_boundary_vehicle_dismount` khi đạt mốc tuổi để tháo gỡ vehicle/passenger theo chuẩn Java.
+- **Hằng số Parity**: `MAGIC_HORSE_WIDTH` (1.3964844), `HORSE_BABY_SCALE` (0.7), `SKELETON_HORSE_BABY_SCALE` (0.7), `ZOMBIE_HORSE_BABY_SCALE` (0.7), `DONKEY_BABY_SCALE` (0.5), `MULE_BABY_SCALE` (0.5), `LLAMA_BABY_SCALE` (0.5), `TRADER_LLAMA_BABY_SCALE` (0.5), `can_equine_dispenser_equip`, `calculate_horse_dimensions`, `calculate_skeleton_horse_dimensions`, `calculate_zombie_horse_dimensions`, `calculate_donkey_dimensions`, `calculate_mule_dimensions`, `calculate_llama_dimensions`, `calculate_trader_llama_dimensions`.
+- **Unit Tests**: `test_camel_and_equine_dimensions_and_parity_gap417`, `test_horse_baby_dimensions_and_dispenser_parity`, `test_camel_dimensions_standup_and_nbt_parity` pass 100%.

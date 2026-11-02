@@ -228,6 +228,11 @@ impl AgeableMob for CamelEntity {
         &self.ageable_data
     }
 
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
     fn age_boundary_reached(&self) {
         let mob = self.get_mob_entity();
         let entity = &mob.living_entity.entity;
@@ -266,6 +271,21 @@ impl Mob for CamelEntity {
 
     fn as_camel(&self) -> Option<&CamelEntity> {
         Some(self)
+    }
+
+    /// Vanilla `AbstractHorse.java:237-238` & `Camel.java`:
+    /// `canDispenserEquipIntoSlot(slot)` returns true for BODY or SADDLE when tamed (Camel is always tamed).
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_body_or_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY
+            || slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        combat::can_equine_dispenser_equip(
+            is_body_or_saddle,
+            true,
+            self.mob_entity.can_pick_up_loot(),
+        )
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
