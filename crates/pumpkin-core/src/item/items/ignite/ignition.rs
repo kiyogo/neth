@@ -73,6 +73,12 @@ fn can_be_lit(block: &Block, state_id: BlockStateId) -> Option<BlockStateId> {
 
     let mut props = block.properties(state_id)?.to_props();
 
+    // Vanilla CampfireBlock.java:326 & CandleBlock.java:125: cannot light if waterlogged
+    let is_waterlogged = props.iter().any(|(k, v)| *k == "waterlogged" && *v == "true");
+    if is_waterlogged {
+        return None;
+    }
+
     let (_, value) = props.iter_mut().find(|(k, _)| *k == "lit")?;
     if *value == "true" {
         return None;

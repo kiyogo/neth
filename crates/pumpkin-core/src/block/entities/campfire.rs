@@ -174,6 +174,14 @@ impl BlockEntity for CampfireBlockEntity {
         }
 
         if completed {
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::BlockChange.name(),
+                Vector3::new(
+                    f64::from(self.position.0.x) + 0.5,
+                    f64::from(self.position.0.y) + 0.5,
+                    f64::from(self.position.0.z) + 0.5,
+                ),
+            );
             if let Some(block_entity) = world.get_block_entity(&self.position) {
                 world.update_block_entity(&block_entity);
             }

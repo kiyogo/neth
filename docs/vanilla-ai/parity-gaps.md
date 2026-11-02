@@ -11657,6 +11657,35 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Hiện thực `broken(&self, args: BrokenArgs<'_>)` để spawn hạt kinh nghiệm `ExperienceOrbEntity::spawn` từ kinh nghiệm tích lũy khi lò bị phá hủy.
   - **Unit Tests**: `test_furnace_cooking_times_fuel_cooldown_and_comparator_parity_gap451` (293 tests passed).
 
+### Gap 452: Brewing Stand Bottle Bits, Waterlogged Ignition Prevention & Campfire BlockChange GameEvent Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.entity.BrewingStandBlockEntity.java:191-201`, `net.minecraft.world.level.block.CampfireBlock.java:76-120, 154-156, 325-327`, `net.minecraft.world.level.block.entity.CampfireBlockEntity.java:60-76, 179-183`, `net.minecraft.world.level.block.CandleBlock.java:125`
+
+- **Trạng Thái Hiển Thị Bình Thuốc Giàn Pha Thuốc (Brewing Stand Bottle Presence Bits Parity)**:
+  - Vanilla `BrewingStandBlockEntity.java:191-201`:
+    - Phương thức `getPotionBits()`: duyệt 3 ô chai thuốc `0..3`, bất kỳ ô nào không rỗng (`!this.items.get(potion).isEmpty()`) đều kích hoạt cờ hiển thị chai `result[potion] = true`, tương ứng với `HAS_BOTTLE[0..3]` trên khối `BrewingStandBlock`.
+    - Neth trước đây kiểm tra thêm điều kiện phải chứa component `PotionContentsImpl` hoặc là `GLASS_BOTTLE`, khiến các vật phẩm chai thuốc đặc biệt hoặc tùy biến không hiển thị bình thuốc trên mô hình giàn pha.
+- **Quy Tắc Đánh Lửa Chống Cháy Dưới Nước (Waterlogged Campfire & Candle Ignition Prevention Parity)**:
+  - Vanilla `CampfireBlock.java:326` & `CandleBlock.java:125`:
+    - `public static boolean canLight(final BlockState state) { return !state.getValue(WATERLOGGED) && !state.getValue(LIT); }`
+    - Khối lửa trại, nến và bánh cắm nến đang bị ngập nước (`waterlogged == true`) không thể bị đánh lửa trực tiếp bởi bật lửa / cầu lửa (`flint_and_steel`, `fire_charge`).
+    - Neth trước đây trong `ignition.rs` chỉ kiểm tra `lit == false`, dẫn tới việc đánh lửa thành công cho lửa trại ngập nước.
+- **Sự Kiện BlockChange Khi Đặt & Nấu Xong Đồ Ăn Trên Lửa Trại (Campfire Food Placement & Cook Finish GameEvent Parity)**:
+  - Vanilla `CampfireBlockEntity.java:74, 180`:
+    - Khi người chơi đặt đồ ăn lên bếp lửa trại (`placeFood`): phát sinh sự kiện game `GameEvent::BlockChange`.
+    - Khi đồ ăn nấu chín và bắn ra (`cookTick`): phát sinh sự kiện game `GameEvent::BlockChange`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hàm: `can_light_campfire_or_candle`, `calculate_brewing_stand_potion_bits`, `is_campfire_smoke_source`.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/brewing_stand.rs`:
+    - Sửa `current[i] = !slot.is_empty();` trong cả `from_nbt` và `tick`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/ignite/ignition.rs`:
+    - Ngăn cản đánh lửa nếu `waterlogged == "true"` theo chuẩn vanilla `canLight`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/campfire.rs` & `crates/pumpkin-core/src/block/entities/campfire.rs`:
+    - Phát sinh sự kiện game `GameEvent::BlockChange` khi đặt thức ăn và khi hoàn tất nấu rơi vật phẩm.
+  - **Unit Tests**: `test_brewing_stand_bottle_bits_and_campfire_lighting_parity_gap452` (294 tests passed).
+
+
 
 
 

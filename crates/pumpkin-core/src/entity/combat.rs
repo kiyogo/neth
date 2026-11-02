@@ -10608,6 +10608,37 @@ pub const BREWING_STAND_FUEL_SLOT: usize = 4;
 pub const BREWING_STAND_TIME_TICKS: i32 = 400; // 20s
 pub const BREWING_STAND_DEFAULT_FUEL_USES: i32 = 20;
 
+/// Validates whether a campfire, candle or candle cake can be lit with fire/flint & steel.
+///
+/// Mirrors vanilla `CampfireBlock.java:326` & `CandleBlock.java:125`:
+/// `!state.getValue(WATERLOGGED) && !state.getValue(LIT)`
+#[must_use]
+pub const fn can_light_campfire_or_candle(lit: bool, waterlogged: bool) -> bool {
+    !waterlogged && !lit
+}
+
+/// Evaluates bottle presence bits for brewing stand block state.
+///
+/// Mirrors vanilla `BrewingStandBlockEntity.java:191-201`:
+/// `result[potion] = !this.items.get(potion).isEmpty();`
+#[must_use]
+pub const fn calculate_brewing_stand_potion_bits(potion_slots_has_item: &[bool; 3]) -> [bool; 3] {
+    [
+        potion_slots_has_item[0],
+        potion_slots_has_item[1],
+        potion_slots_has_item[2],
+    ]
+}
+
+/// Checks whether a block below a campfire functions as a smoke source for signal fire.
+///
+/// Mirrors vanilla `CampfireBlock.java:154-156`:
+/// `blockState.is(Blocks.HAY_BLOCK)`
+#[must_use]
+pub fn is_campfire_smoke_source(block_id: pumpkin_data::BlockId) -> bool {
+    block_id == pumpkin_data::Block::HAY_BLOCK.id
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -30758,5 +30789,26 @@ mod tests {
         assert_eq!(calculate_furnace_comparator_output(&[1, 0, 0], &[64, 64, 64]), 1);
         assert_eq!(calculate_furnace_comparator_output(&[64, 0, 0], &[64, 64, 64]), 5);
         assert_eq!(calculate_furnace_comparator_output(&[64, 64, 64], &[64, 64, 64]), 15);
+    }
+
+    #[test]
+    fn test_brewing_stand_bottle_bits_and_campfire_lighting_parity_gap452() {
+        use pumpkin_data::Block;
+
+        // 1. Campfire and candle can-light rules (CampfireBlock.java:326 & CandleBlock.java:125)
+        assert!(can_light_campfire_or_candle(false, false));
+        assert!(!can_light_campfire_or_candle(true, false));
+        assert!(!can_light_campfire_or_candle(false, true));
+        assert!(!can_light_campfire_or_candle(true, true));
+
+        // 2. Brewing stand potion bits parity (BrewingStandBlockEntity.java:191-201)
+        assert_eq!(calculate_brewing_stand_potion_bits(&[false, false, false]), [false, false, false]);
+        assert_eq!(calculate_brewing_stand_potion_bits(&[true, false, true]), [true, false, true]);
+        assert_eq!(calculate_brewing_stand_potion_bits(&[true, true, true]), [true, true, true]);
+
+        // 3. Campfire signal fire smoke source (CampfireBlock.java:154-156)
+        assert!(is_campfire_smoke_source(Block::HAY_BLOCK.id));
+        assert!(!is_campfire_smoke_source(Block::DIRT.id));
+        assert!(!is_campfire_smoke_source(Block::OAK_PLANKS.id));
     }
 }

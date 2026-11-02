@@ -585,14 +585,10 @@ impl crate::block::entities::BlockEntity for BrewingStandBlockEntity {
         // If there's an ingredient in slot 3, remember its base item for matching
         let ingredient_item = (!items[3].is_empty()).then(|| items[3].get_item());
 
-        // Recompute last_potion_count so visuals are correct after load
+        // Recompute last_potion_count so visuals are correct after load (vanilla BrewingStandBlockEntity.java:191-201)
         let mut current: [bool; 3] = [false; 3];
         for (i, slot) in items.iter().take(3).enumerate() {
-            current[i] = !slot.is_empty()
-                && (slot
-                    .get_data_component::<pumpkin_data::data_component_impl::PotionContentsImpl>()
-                    .is_some()
-                    || slot.get_item().id == pumpkin_data::item::Item::GLASS_BOTTLE.id);
+            current[i] = !slot.is_empty();
         }
 
         if let Some(item) = ingredient_item {
@@ -724,12 +720,11 @@ impl crate::block::entities::BlockEntity for BrewingStandBlockEntity {
         }
 
         // Ensure clients are notified when potion slot contents (and their data) change.
-        // Compute current presence bits for the three bottle slots
+        // Compute current presence bits for the three bottle slots (vanilla BrewingStandBlockEntity.java:191-201)
         let mut current: [bool; 3] = [false; 3];
         if let Ok(items_guard) = self.items.try_read() {
             for (i, slot) in items_guard.iter().take(3).enumerate() {
-                // Consider a potion slot "present" when it has an item and a PotionContents component or is a glass bottle
-                current[i] = !slot.is_empty() && (slot.get_data_component::<pumpkin_data::data_component_impl::PotionContentsImpl>().is_some() || slot.get_item().id == Item::GLASS_BOTTLE.id);
+                current[i] = !slot.is_empty();
             }
         }
 

@@ -113,6 +113,14 @@ impl BlockBehaviour for CampfireBlock {
                             pumpkin_data::statistic::CustomStatistic::InteractWithCampfire as i32,
                             1,
                         );
+                        args.world.emit_game_event(
+                            GameEvent::BlockChange.name(),
+                            Vector3::new(
+                                f64::from(args.position.0.x) + 0.5,
+                                f64::from(args.position.0.y) + 0.5,
+                                f64::from(args.position.0.z) + 0.5,
+                            ),
+                        );
                         args.world.update_block_entity(&block_entity);
                         return BlockActionResult::Success;
                     }
