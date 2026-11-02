@@ -93,3 +93,13 @@ ether.rs, và end.rs. Toàn bộ 8 portal unit tests passed.
 - **Khắc phục:**
   Chuẩn hóa và đồng bộ hóa qua EntityBase::write_nbt, 
 ead_nbt_non_mut và Mob trait trong crates/pumpkin-core/src/entity/mod.rs và illager/mod.rs.
+#### 2.8. [GAP-AI-003] C?m Bi?n AI Vanilla Cho N?o B? Th?c Th? (VillagerHostiles, VillagerBabies, GolemSensor)
+- **M?c ??:** MEDIUM
+- **Ph?n h?:** Entities / AI / Brain Sensing
+- **H?nh vi Vanilla (VillagerHostilesSensor.java, VillagerBabiesSensor.java, GolemSensor.java):**
+  - `VillagerHostilesSensor`: Qu?t th?c th? s?ng kh? ki?n v? g?n b? nh? `NEAREST_HOSTILE` cho qu?i v?t g?n nh?t trong ng??ng kho?ng c?ch ch?p nh?n (`ACCEPTABLE_DISTANCE_FROM_HOSTILES`: Drowned 8m, Evoker 12m, Husk 8m, Illusioner 12m, Pillager 15m, Ravager 12m, Vex 8m, Vindicator 10m, Zoglin 10m, Zombie 8m, Zombie Villager 8m).
+  - `VillagerBabiesSensor`: L?c danh s?ch d?n l?ng con (`is_baby()`) v? g?n b? nh? `VISIBLE_VILLAGER_BABIES`.
+  - `GolemSensor`: Chu k? qu?t 200 ticks (`GOLEM_SCAN_RATE`), ki?m tra s? hi?n di?n c?a `IronGolem` v? ghi nh? `GOLEM_DETECTED_RECENTLY` v?i th?i gian t?n t?i 599 ticks (`GOLEM_MEMORY_TTL = 599`).
+- **Kh?c ph?c:**
+  - Tri?n khai ??y ?? trong `crates/pumpkin-core/src/entity/ai/brain/sensing/villager_hostiles.rs`, `villager_babies.rs`, `golem_detected.rs` v? ??ng k? trong `sensing/mod.rs`.
+  - To?n b? unit tests ki?m tra h?ng s? v? parity ?? passed 100%.

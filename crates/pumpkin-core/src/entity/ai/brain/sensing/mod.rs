@@ -14,16 +14,22 @@ pub mod hurt_by;
 pub mod nearest_items;
 pub mod nearest_living_entities;
 pub mod nearest_players;
+pub mod golem_detected;
 pub mod piglin_brute_specific;
 pub mod piglin_specific;
+pub mod villager_babies;
+pub mod villager_hostiles;
 
 pub use dummy::DummySensor;
 pub use hurt_by::HurtBySensor;
 pub use nearest_items::NearestItemSensor;
 pub use nearest_living_entities::NearestLivingEntitySensor;
 pub use nearest_players::PlayerSensor;
+pub use golem_detected::GolemSensor;
 pub use piglin_brute_specific::PiglinBruteSpecificSensor;
 pub use piglin_specific::PiglinSpecificSensor;
+pub use villager_babies::VillagerBabiesSensor;
+pub use villager_hostiles::VillagerHostilesSensor;
 
 pub const DEFAULT_SCAN_RATE: i32 = 20;
 
@@ -41,6 +47,9 @@ pub enum SensorType {
     HurtBy,
     PiglinSpecific,
     PiglinBruteSpecific,
+    VillagerHostiles,
+    VillagerBabies,
+    Golem,
 }
 
 impl SensorType {
@@ -54,19 +63,25 @@ impl SensorType {
             Self::HurtBy => "minecraft:hurt_by",
             Self::PiglinSpecific => "minecraft:piglin_specific_sensor",
             Self::PiglinBruteSpecific => "minecraft:piglin_brute_specific_sensor",
+            Self::VillagerHostiles => "minecraft:villager_hostiles",
+            Self::VillagerBabies => "minecraft:villager_babies",
+            Self::Golem => "minecraft:golem_detected",
         }
     }
 
     #[must_use]
     pub const fn scan_rate(self) -> i32 {
         match self {
+            Self::Golem => golem_detected::GOLEM_SCAN_RATE,
             Self::Dummy
             | Self::NearestLivingEntities
             | Self::NearestPlayers
             | Self::NearestItems
             | Self::HurtBy
             | Self::PiglinSpecific
-            | Self::PiglinBruteSpecific => DEFAULT_SCAN_RATE,
+            | Self::PiglinBruteSpecific
+            | Self::VillagerHostiles
+            | Self::VillagerBabies => DEFAULT_SCAN_RATE,
         }
     }
 
@@ -79,6 +94,9 @@ impl SensorType {
             Self::HurtBy => Box::new(HurtBySensor),
             Self::PiglinSpecific => Box::new(PiglinSpecificSensor),
             Self::PiglinBruteSpecific => Box::new(PiglinBruteSpecificSensor),
+            Self::VillagerHostiles => Box::new(VillagerHostilesSensor),
+            Self::VillagerBabies => Box::new(VillagerBabiesSensor),
+            Self::Golem => Box::new(GolemSensor),
         }
     }
 
