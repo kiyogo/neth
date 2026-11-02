@@ -10266,6 +10266,59 @@ pub const PIGLIN_ADMIRE_DURATION_TICKS: i32 = 119;
 pub const PIGLIN_BABY_SPEED_MODIFIER_ID: &str = "minecraft:baby";
 pub const PIGLIN_BABY_SPEED_MODIFIER_AMOUNT: f64 = 0.2;
 
+/// Adult Piglin default width (0.6 blocks).
+/// Mirrors vanilla `EntityTypes.java:sized(0.6F, 1.95F)`.
+pub const PIGLIN_ADULT_WIDTH: f32 = 0.6;
+
+/// Adult Piglin default height (1.95 blocks).
+/// Mirrors vanilla `EntityTypes.java:sized(0.6F, 1.95F)`.
+pub const PIGLIN_ADULT_HEIGHT: f32 = 1.95;
+
+/// Adult Piglin standing eye height (1.79 blocks).
+/// Mirrors vanilla `EntityTypes.java:eyeHeight(1.79F)`.
+pub const PIGLIN_ADULT_EYE_HEIGHT: f32 = 1.79;
+
+/// Baby Piglin width (0.49 blocks).
+/// Mirrors vanilla `Piglin.java:78-80`:
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.78F)`.
+pub const PIGLIN_BABY_WIDTH: f32 = 0.49;
+
+/// Baby Piglin height (0.98 blocks).
+/// Mirrors vanilla `Piglin.java:78-80`.
+pub const PIGLIN_BABY_HEIGHT: f32 = 0.98;
+
+/// Baby Piglin standing eye height (0.78 blocks).
+/// Mirrors vanilla `Piglin.java:78-80`.
+pub const PIGLIN_BABY_EYE_HEIGHT: f32 = 0.78;
+
+/// Baby Piglin scale factor relative to adult (0.5).
+pub const PIGLIN_BABY_SCALE: f32 = 0.5;
+
+/// Calculates piglin dimensions based on baby status.
+/// Mirrors vanilla `Piglin.java:233-235`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_piglin_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (PIGLIN_BABY_WIDTH, PIGLIN_BABY_HEIGHT, PIGLIN_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Checks whether a baby piglin can mount a hoglin passenger stack.
+/// Mirrors vanilla `Piglin.java:399-405`:
+/// `if (this.isBaby() && entityToRide.is(EntityTypes.HOGLIN)) { ... max 3 ... }`
+#[must_use]
+pub fn can_baby_piglin_ride_hoglin(is_baby: bool, current_passengers: usize) -> bool {
+    is_baby && current_passengers < PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN as usize
+}
+
 /// Piglin baby spawn probability (0.2 = 20%).
 /// Mirrors vanilla `Piglin.java:77`:
 /// `private static final float PROBABILITY_OF_SPAWNING_AS_BABY = 0.2F;`
@@ -25839,6 +25892,34 @@ mod tests {
         // 4. Marker takes precedence over Small in vanilla getDimensionsMarker
         let marker_small = calculate_armor_stand_dimensions(true, true, 0.5, 1.975, 1.7775);
         assert_eq!(marker_small, (0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_piglin_dimensions_gap423() {
+        use super::*;
+
+        // 1. Adult Piglin (sized(0.6, 1.95), eyeHeight(1.79))
+        let adult = calculate_piglin_dimensions(false, 0.6, 1.95, 1.79);
+        assert_eq!(adult, (0.6, 1.95, 1.79));
+        assert_eq!(PIGLIN_ADULT_WIDTH, 0.6);
+        assert_eq!(PIGLIN_ADULT_HEIGHT, 1.95);
+        assert_eq!(PIGLIN_ADULT_EYE_HEIGHT, 1.79);
+
+        // 2. Baby Piglin (Piglin.java:78-80: scalable(0.49, 0.98).withEyeHeight(0.78))
+        let baby = calculate_piglin_dimensions(true, 0.6, 1.95, 1.79);
+        assert_eq!(baby, (0.49, 0.98, 0.78));
+        assert_eq!(PIGLIN_BABY_WIDTH, 0.49);
+        assert_eq!(PIGLIN_BABY_HEIGHT, 0.98);
+        assert_eq!(PIGLIN_BABY_EYE_HEIGHT, 0.78);
+        assert_eq!(PIGLIN_BABY_SCALE, 0.5);
+
+        // 3. Baby piglin hoglin mount stacking limit (Piglin.java:76, 399-405)
+        assert_eq!(PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN, 3);
+        assert!(can_baby_piglin_ride_hoglin(true, 0));
+        assert!(can_baby_piglin_ride_hoglin(true, 1));
+        assert!(can_baby_piglin_ride_hoglin(true, 2));
+        assert!(!can_baby_piglin_ride_hoglin(true, 3));
+        assert!(!can_baby_piglin_ride_hoglin(false, 0));
     }
 
 }

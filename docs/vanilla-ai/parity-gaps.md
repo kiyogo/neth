@@ -10701,3 +10701,23 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Bổ sung helper `is_baby(&self) -> bool { self.is_small() }` chuẩn parity với `ArmorStand.java:458-460`.
 - **Hằng số Parity**: `ARMOR_STAND_ADULT_WIDTH` (0.5), `ARMOR_STAND_ADULT_HEIGHT` (1.975), `ARMOR_STAND_ADULT_EYE_HEIGHT` (1.7775), `ARMOR_STAND_SMALL_SCALE` (0.5), `ARMOR_STAND_SMALL_WIDTH` (0.25), `ARMOR_STAND_SMALL_HEIGHT` (0.9875), `ARMOR_STAND_SMALL_EYE_HEIGHT` (0.9875), `ARMOR_STAND_MARKER_WIDTH` (0.0), `ARMOR_STAND_MARKER_HEIGHT` (0.0), `ARMOR_STAND_MARKER_EYE_HEIGHT` (0.0), `calculate_armor_stand_dimensions`.
 - **Unit Tests**: `test_armor_stand_dimensions_and_small_marker_parity`, `test_armor_stand_dimensions_gap422`, cùng toàn bộ 9 tests trong `decoration::armor_stand` pass 100%.
+
+
+### Gap 423: Piglin Baby Scalable Dimensions, Bounding Box Refresh & Hoglin Riding Stack Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.monster.piglin.Piglin.java:68-80, 233-252, 399-405`, `net.minecraft.world.entity.monster.piglin.PiglinBrute.java` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Piglin Con (Piglin Baby Scalable Dimensions & Eye Height)**:
+  - Vanilla `Piglin.java:78-80, 233-235`:
+    - `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.78F);`
+    - Adult Piglin: width `0.6`, height `1.95`, eye height `1.79`.
+    - Baby Piglin: width `0.49`, height `0.98`, eye height `0.78`.
+  - Triển khai `calculate_piglin_dimensions(is_baby, default_w, default_h, default_eye)` trong `combat.rs`.
+- **Tự động Cập nhật Bounding Box & Bổ sung `refresh_dimensions()`**:
+  - Triển khai `refresh_dimensions()` trên `PiglinEntity`, tính toán và gán lại `BoundingBox` và `EntityDimensions` cho entity.
+  - Tự động gọi `refresh_dimensions()` khi khởi tạo `new()`, khi gọi `set_baby()`, và khi nạp NBT trong `mob_read_nbt()`.
+- **Cơ chế Cưỡi Hoglin Xếp Chồng (Hoglin Passenger Stack Parity)**:
+  - Vanilla `Piglin.java:76, 399-405`: Baby piglin có thể leo lên lưng Hoglin tạo thành chồng tối đa 3 baby piglins (`MAX_PASSENGERS_ON_ONE_HOGLIN = 3`).
+  - Triển khai helper `can_baby_piglin_ride_hoglin(is_baby, current_passengers)` trong `combat.rs`.
+- **Hằng số Parity**: `PIGLIN_ADULT_WIDTH` (0.6), `PIGLIN_ADULT_HEIGHT` (1.95), `PIGLIN_ADULT_EYE_HEIGHT` (1.79), `PIGLIN_BABY_WIDTH` (0.49), `PIGLIN_BABY_HEIGHT` (0.98), `PIGLIN_BABY_EYE_HEIGHT` (0.78), `PIGLIN_BABY_SCALE` (0.5), `calculate_piglin_dimensions`, `can_baby_piglin_ride_hoglin`.
+- **Unit Tests**: `test_piglin_dimensions_gap423`, `test_piglin_dimensions_and_hoglin_riding_parity`, `test_piglin_baby_speed_and_conversion_nausea_parity`, `test_piglin_family_parity` pass 100%.

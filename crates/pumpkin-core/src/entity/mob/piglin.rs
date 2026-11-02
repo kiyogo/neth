@@ -15,7 +15,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_nbt::tag::NbtTag;
-use pumpkin_util::math::boundingbox::EntityDimensions;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::position::BlockPos;
 
 use crate::entity::combat::{
@@ -101,7 +101,27 @@ impl PiglinEntity {
             let mut rng = tick.mob.get_random();
             piglin_ai::init_memories(tick.brain, &mut rng);
         });
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_piglin_dimensions(
+            is_baby,
+            Self::ADULT_DIMENSIONS.width,
+            Self::ADULT_DIMENSIONS.height,
+            Self::ADULT_DIMENSIONS.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -143,12 +163,7 @@ impl PiglinEntity {
     pub fn set_baby(&self, baby: bool) {
         self.mob_entity
             .set_baby_flag(&self.is_baby, tracked_data::piglin::DATA_BABY_ID, baby);
-        let entity = &self.mob_entity.living_entity.entity;
-        if baby {
-            entity.entity_dimension.store(Self::BABY_DIMENSIONS);
-        } else {
-            entity.entity_dimension.store(Self::ADULT_DIMENSIONS);
-        }
+        self.refresh_dimensions();
 
         let living = &self.mob_entity.living_entity;
         living.update_attribute(&Attributes::MOVEMENT_SPEED, |speed| {
@@ -703,6 +718,7 @@ impl Mob for PiglinEntity {
                 }
             }
         }
+        self.refresh_dimensions();
     }
 
     fn mob_interact(&self, player: &Arc<Player>, item_stack: &mut ItemStack) -> bool {
@@ -903,5 +919,29 @@ mod tests {
         assert_eq!(crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_AMOUNT, 0.2);
         assert_eq!(crate::entity::combat::PIGLIN_BABY_SPEED_MODIFIER_ID, "minecraft:baby");
         assert_eq!(crate::entity::combat::PIGLIN_MAX_PASSENGERS_ON_ONE_HOGLIN, 3);
+    }
+
+    #[test]
+    fn test_piglin_dimensions_and_hoglin_riding_parity() {
+        // Adult Piglin dimensions (0.6 x 1.95, eye 1.79)
+        let adult = crate::entity::combat::calculate_piglin_dimensions(false, 0.6, 1.95, 1.79);
+        assert_eq!(adult, (0.6, 1.95, 1.79));
+        assert_eq!(PiglinEntity::ADULT_DIMENSIONS.width, 0.6);
+        assert_eq!(PiglinEntity::ADULT_DIMENSIONS.height, 1.95);
+        assert_eq!(PiglinEntity::ADULT_DIMENSIONS.eye_height, 1.79);
+
+        // Baby Piglin dimensions (0.49 x 0.98, eye 0.78)
+        let baby = crate::entity::combat::calculate_piglin_dimensions(true, 0.6, 1.95, 1.79);
+        assert_eq!(baby, (0.49, 0.98, 0.78));
+        assert_eq!(PiglinEntity::BABY_DIMENSIONS.width, 0.49);
+        assert_eq!(PiglinEntity::BABY_DIMENSIONS.height, 0.98);
+        assert_eq!(PiglinEntity::BABY_DIMENSIONS.eye_height, 0.78);
+
+        // Baby piglin riding hoglin (up to 3)
+        assert!(crate::entity::combat::can_baby_piglin_ride_hoglin(true, 0));
+        assert!(crate::entity::combat::can_baby_piglin_ride_hoglin(true, 1));
+        assert!(crate::entity::combat::can_baby_piglin_ride_hoglin(true, 2));
+        assert!(!crate::entity::combat::can_baby_piglin_ride_hoglin(true, 3));
+        assert!(!crate::entity::combat::can_baby_piglin_ride_hoglin(false, 0));
     }
 }
