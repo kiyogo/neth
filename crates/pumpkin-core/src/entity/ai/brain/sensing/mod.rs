@@ -9,6 +9,7 @@ use crate::world::World;
 use super::memory::{MemoryModuleId, types};
 use super::{BrainTick, VisibilityContext};
 
+pub mod adult;
 pub mod dummy;
 pub mod hurt_by;
 pub mod nearest_items;
@@ -18,8 +19,10 @@ pub mod golem_detected;
 pub mod piglin_brute_specific;
 pub mod piglin_specific;
 pub mod villager_babies;
+pub mod tempting;
 pub mod villager_hostiles;
 
+pub use adult::AdultSensor;
 pub use dummy::DummySensor;
 pub use hurt_by::HurtBySensor;
 pub use nearest_items::NearestItemSensor;
@@ -29,6 +32,7 @@ pub use golem_detected::GolemSensor;
 pub use piglin_brute_specific::PiglinBruteSpecificSensor;
 pub use piglin_specific::PiglinSpecificSensor;
 pub use villager_babies::VillagerBabiesSensor;
+pub use tempting::TemptingSensor;
 pub use villager_hostiles::VillagerHostilesSensor;
 
 pub const DEFAULT_SCAN_RATE: i32 = 20;
@@ -50,6 +54,8 @@ pub enum SensorType {
     VillagerHostiles,
     VillagerBabies,
     Golem,
+    Adult,
+    Tempting,
 }
 
 impl SensorType {
@@ -66,6 +72,8 @@ impl SensorType {
             Self::VillagerHostiles => "minecraft:villager_hostiles",
             Self::VillagerBabies => "minecraft:villager_babies",
             Self::Golem => "minecraft:golem_detected",
+            Self::Adult => "minecraft:adult",
+            Self::Tempting => "minecraft:tempting",
         }
     }
 
@@ -81,7 +89,9 @@ impl SensorType {
             | Self::PiglinSpecific
             | Self::PiglinBruteSpecific
             | Self::VillagerHostiles
-            | Self::VillagerBabies => DEFAULT_SCAN_RATE,
+            | Self::VillagerBabies
+            | Self::Adult
+            | Self::Tempting => DEFAULT_SCAN_RATE,
         }
     }
 
@@ -97,6 +107,8 @@ impl SensorType {
             Self::VillagerHostiles => Box::new(VillagerHostilesSensor),
             Self::VillagerBabies => Box::new(VillagerBabiesSensor),
             Self::Golem => Box::new(GolemSensor),
+            Self::Adult => Box::new(AdultSensor),
+            Self::Tempting => Box::new(TemptingSensor::new()),
         }
     }
 

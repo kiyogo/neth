@@ -103,3 +103,13 @@ ead_nbt_non_mut và Mob trait trong crates/pumpkin-core/src/entity/mod.rs và i
 - **Kh?c ph?c:**
   - Tri?n khai ??y ?? trong `crates/pumpkin-core/src/entity/ai/brain/sensing/villager_hostiles.rs`, `villager_babies.rs`, `golem_detected.rs` v? ??ng k? trong `sensing/mod.rs`.
   - To?n b? unit tests ki?m tra h?ng s? v? parity ?? passed 100%.
+
+#### 2.9. [GAP-AI-004] Cảm Biến AI Vanilla (AdultSensor & TemptingSensor)
+- **Mức độ:** MEDIUM
+- **Phân hệ:** Entities / AI / Brain Sensing
+- **Hành vi Vanilla (AdultSensor.java, TemptingSensor.java):**
+  - `AdultSensor`: Dò tìm thực thể trưởng thành cùng loại nhìn thấy gần nhất (`entity.getType() == body.getType() && !entity.isBaby()`), ghi nhớ `NEAREST_VISIBLE_ADULT`.
+  - `TemptingSensor`: Quét người chơi xung quanh trong phạm vi thuộc tính `TEMPT_RANGE` (mặc định 10m), lọc bỏ spectator và hành khách cưỡi (`hasPassenger`), kiểm tra cả 2 tay (main hand & off hand) xem có đang cầm món đồ thức ăn hoặc vật phẩm quyến rũ không; ghi nhớ người chơi gần nhất vào `TEMPTING_PLAYER`.
+- **Khắc phục:**
+  - Triển khai `crates/pumpkin-core/src/entity/ai/brain/sensing/adult.rs` và `tempting.rs`, đăng ký trong `sensing/mod.rs`.
+  - Toàn bộ unit tests kiểm tra parity đã passed 100%.
