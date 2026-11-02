@@ -10406,3 +10406,21 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - áº¾ch ná»Ÿ ra tá»« NÃ²ng ná»c vÃ  khÃ´ng sinh con trá»±c tiáº¿p dáº¡ng áº¿ch con (Frog.java:251-253: canBeABaby() -> false).
 - **Háº±ng sá»‘ Parity**: TADPOLE_TICKS_TO_BE_FROG (24000), TADPOLE_DEFAULT_AGE (0), calculate_tadpole_speed_up_ticks.
 - **Unit Tests**: 	est_tadpole_and_frog_parity_gap409, 	est_tadpole_parity_constants, vÃ  toÃ n bá»™ cÃ¡c tests frog & tadpole pass 100%.
+
+
+### Gap 410: Cat & Ocelot Feline Baby Scaling Dimensions, Dispenser Equip Immunity, Beg Sound & Ageable Dismount Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.feline.Cat.java:86-88, 291-293, 303-305` & `net.minecraft.world.entity.animal.feline.Ocelot.java:65-67, 225-227`
+
+- **Kích thước Mèo và Báo Mèo Con (Feline Baby Dimensions & Eye Height)**:
+  - Vanilla định nghĩa `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.35F).withEyeHeight(0.34375F)`.
+  - Adult feline: width `0.6`, height `0.7`, eye height `0.595` (`0.7 * 0.85`).
+  - Baby feline: width `0.3`, height `0.35`, eye height `0.34375` (`FELINE_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_feline_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên cả `CatEntity` và `OcelotEntity`. Khi lớn lên hoặc đổi trạng thái baby, tự động cập nhật bounding box và eye height, đồng thời tháo gỡ khỏi phương tiện nếu không đủ điều kiện (`handle_age_boundary_vehicle_dismount`).
+- **Dispenser Equip Immunity Parity**:
+  - Cả Mèo (`CatEntity`) và Báo Mèo (`OcelotEntity`) đều không thể nhận hoặc trang bị bất kỳ vật phẩm/giáp nào từ Dispenser.
+  - Ghi đè `can_dispenser_equip_into_slot(&self, _slot: &EquipmentSlot) -> bool { false }` trên cả hai thực thể.
+- **Âm thanh Xin ăn khi Bị Dụ dỗ (Beg for Food Sound Parity)**:
+  - Khi chưa được thuần hóa (`!is_tame`) và đang chạy mục tiêu dụ dỗ (`is_tempted`), mèo kêu xin ăn (`beg_for_food_sound(is_baby)`) định kỳ mỗi 100 ticks (`age % 100 == 0`) khớp 100% với `Cat.java:303-305`.
+- **Hằng số Parity**: `FELINE_BABY_WIDTH` (0.3), `FELINE_BABY_HEIGHT` (0.35), `FELINE_BABY_EYE_HEIGHT` (0.34375), `FELINE_BABY_SCALE` (0.5), `calculate_feline_dimensions`.
+- **Unit Tests**: `test_feline_dimensions_and_parity_gap410`, `test_cat_baby_dimensions_and_dispenser_parity`, `test_ocelot_baby_dimensions_and_dispenser_parity`, `test_cat_parity_constants`, `test_ocelot_parity_constants` pass 100%.

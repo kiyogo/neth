@@ -10575,6 +10575,31 @@ pub const WOLF_ANGRY_TAIL_ANGLE: f32 = 1.539_380_4;
 pub const WOLF_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
 pub const WOLF_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
+/// Feline (Cat & Ocelot) baby dimension constants, mirroring vanilla `Cat.java:86-88` & `Ocelot.java:65-67`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.35F).withEyeHeight(0.34375F)`.
+pub const FELINE_BABY_WIDTH: f32 = 0.3;
+pub const FELINE_BABY_HEIGHT: f32 = 0.35;
+pub const FELINE_BABY_EYE_HEIGHT: f32 = 0.34375;
+pub const FELINE_BABY_SCALE: f32 = 0.5;
+
+/// Calculates feline (cat and ocelot) dimensions based on baby status.
+///
+/// Mirrors vanilla `Cat.java:291-293` and `Ocelot.java:225-227`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_feline_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (FELINE_BABY_WIDTH, FELINE_BABY_HEIGHT, FELINE_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Cat combat and attribute constants, mirroring vanilla `Cat.java:73-88, 105-110`.
 pub const CAT_MAX_HEALTH: f64 = 10.0;
 pub const CAT_BASE_MOVEMENT_SPEED: f64 = 0.3;
@@ -24312,6 +24337,27 @@ mod tests {
         assert_eq!(calculate_tadpole_speed_up_ticks(200), 20);
         assert_eq!(calculate_tadpole_speed_up_ticks(50), 20);
         assert_eq!(calculate_tadpole_speed_up_ticks(0), 20);
+    }
+
+    #[test]
+    fn test_feline_dimensions_and_parity_gap410() {
+        use super::*;
+
+        // 1. Adult feline dimensions
+        let adult = calculate_feline_dimensions(false, 0.6, 0.7, 0.595);
+        assert_eq!(adult.0, 0.6);
+        assert_eq!(adult.1, 0.7);
+        assert_eq!(adult.2, 0.595);
+
+        // 2. Baby feline dimensions (Cat.java:86-88, Ocelot.java:65-67)
+        let baby = calculate_feline_dimensions(true, 0.6, 0.7, 0.595);
+        assert_eq!(baby.0, FELINE_BABY_WIDTH);
+        assert_eq!(baby.1, FELINE_BABY_HEIGHT);
+        assert_eq!(baby.2, FELINE_BABY_EYE_HEIGHT);
+        assert_eq!(FELINE_BABY_WIDTH, 0.3);
+        assert_eq!(FELINE_BABY_HEIGHT, 0.35);
+        assert_eq!(FELINE_BABY_EYE_HEIGHT, 0.34375);
+        assert_eq!(FELINE_BABY_SCALE, 0.5);
     }
 
 }

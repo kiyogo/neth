@@ -11,6 +11,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::{
@@ -175,7 +176,27 @@ impl OcelotEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_feline_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     /// This entity's own weak handle, for use inside `'static` goal gates and predicates.
@@ -229,6 +250,17 @@ impl AgeableMob for OcelotEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for OcelotEntity {
@@ -263,6 +295,14 @@ impl Mob for OcelotEntity {
 
     fn as_ocelot(&self) -> Option<&OcelotEntity> {
         Some(self)
+    }
+
+    /// Vanilla Ocelot.java: Ocelots cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
     }
 
     fn calculate_fall_damage(&self, _fall_distance: f64, _damage_modifier: f32) -> i32 {
@@ -457,6 +497,14 @@ mod tests {
         assert_eq!(combat::OCELOT_AVOID_PLAYER_DISTANCE, 16.0);
         assert_eq!(combat::OCELOT_EVENT_TRUST_PARTICLES, 41);
         assert_eq!(combat::OCELOT_EVENT_SMOKE_PARTICLES, 40);
+    }
+
+    #[test]
+    fn test_ocelot_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_feline_dimensions(false, 0.6, 0.7, 0.595);
+        assert_eq!(adult, (0.6, 0.7, 0.595));
+        let baby = combat::calculate_feline_dimensions(true, 0.6, 0.7, 0.595);
+        assert_eq!(baby, (0.3, 0.35, 0.34375));
     }
 }
 

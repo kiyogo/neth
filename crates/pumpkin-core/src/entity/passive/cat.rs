@@ -13,6 +13,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::bedrock::server::actor_event::ActorEventID;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 use uuid::Uuid;
 
@@ -20,6 +21,7 @@ use crate::entity::combat;
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
     Entity, EntityBase,
+    ageable::{AgeableData, AgeableMob},
     ai::goal::{
         active_target::{ActiveTargetGoal, DEFAULT_RANDOM_INTERVAL},
         avoid_entity::AvoidEntityGoal,
@@ -117,6 +119,7 @@ fn get_dye_color_from_item(item: &Item) -> Option<u8> {
 
 pub struct CatEntity {
     pub mob_entity: MobEntity,
+    pub ageable_data: AgeableData,
     pub variant: AtomicU8,
     pub sound_variant: AtomicU8,
     pub collar_color: AtomicU8,
@@ -139,6 +142,7 @@ impl CatEntity {
         let mob_entity = MobEntity::new(entity);
         let cat = Self {
             mob_entity,
+            ageable_data: AgeableData::default(),
             variant: AtomicU8::new(CatVariant::Black.id()),
             sound_variant: AtomicU8::new(0), // Default to classic
             collar_color: AtomicU8::new(combat::CAT_DEFAULT_COLLAR_COLOR),
@@ -260,7 +264,27 @@ impl CatEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+        let (w, h, eye) = combat::calculate_feline_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     /// This entity's own weak handle, for use inside `'static` goal gates and predicates.
@@ -463,7 +487,67 @@ impl TamableAnimal for CatEntity {
     }
 }
 
+impl AgeableMob for CatEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
+}
+
 impl Mob for CatEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
+    /// Vanilla Cat.java: Cats cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
+
+        let entity = &self.mob_entity.living_entity.entity;
+        if !entity.is_alive() {
+            return;
+        }
+
+        // Vanilla Cat.java:303-305: beg for food sound when tempted and untamed every 100 ticks
+        let is_tame = self.is_tame();
+        let is_tempted = self
+            .mob_entity
+            .goals_selector
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_running::<TemptGoal>();
+
+        if is_tempted && !is_tame && entity.age.load(Ordering::Relaxed) % 100 == 0 {
+            let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+            let sound_variant = CatSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
+                .unwrap_or_default();
+            entity.world.load().play_sound_fine(
+                sound_variant.beg_for_food_sound(is_baby),
+                pumpkin_data::sound::SoundCategory::Neutral,
+                &entity.pos.load(),
+                1.0,
+                1.0,
+            );
+        }
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
         if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
             0
@@ -557,6 +641,7 @@ impl Mob for CatEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         let variant_id = self.variant.load(Ordering::Relaxed);
         let variant_str = CatVariant::all()
             .get(variant_id as usize)
@@ -575,6 +660,7 @@ impl Mob for CatEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(variant_str) = nbt.get_string("variant") {
             let variant =
                 CatVariant::from_name(variant_str).map_or(CatVariant::Tabby.id(), |v| v.id());
@@ -740,6 +826,14 @@ mod tests {
         assert_eq!(combat::CAT_DEFAULT_COLLAR_COLOR, 14);
         assert_eq!(combat::CAT_TAME_CHANCE_IN_THREE, 3);
         assert_eq!(combat::CAT_AVOID_PLAYER_DISTANCE_SPRINT, 16.0);
+    }
+
+    #[test]
+    fn test_cat_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_feline_dimensions(false, 0.6, 0.7, 0.595);
+        assert_eq!(adult, (0.6, 0.7, 0.595));
+        let baby = combat::calculate_feline_dimensions(true, 0.6, 0.7, 0.595);
+        assert_eq!(baby, (0.3, 0.35, 0.34375));
     }
 }
 
