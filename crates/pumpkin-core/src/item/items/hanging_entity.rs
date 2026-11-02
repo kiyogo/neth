@@ -88,6 +88,10 @@ impl ItemBehaviour for HangingEntityItem {
                 SoundCategory::Blocks,
                 &spawn_pos,
             );
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityPlace.name(),
+                spawn_pos,
+            );
             world.spawn_entity(painting);
         } else {
             if !world.is_in_build_limit(target_pos) {
@@ -101,6 +105,10 @@ impl ItemBehaviour for HangingEntityItem {
             };
 
             let entity = Entity::new(world.clone(), pos, entity_type);
+            if let Some(custom_name) = item.get_custom_name() {
+                entity.set_custom_name(custom_name.clone());
+            }
+
             let frame = ItemFrameEntity::new(entity);
             frame.set_facing(face);
             if !frame.survives() {
@@ -108,8 +116,13 @@ impl ItemBehaviour for HangingEntityItem {
             }
 
             let sound = frame.get_place_sound();
+            let spawn_pos = frame.get_entity().pos.load();
             let frame_arc = Arc::new(frame);
-            world.play_sound(sound, SoundCategory::Blocks, &pos);
+            world.play_sound(sound, SoundCategory::Blocks, &spawn_pos);
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityPlace.name(),
+                spawn_pos,
+            );
             world.spawn_entity(frame_arc);
         }
         item.decrement_unless_creative(player.gamemode.load(), 1);

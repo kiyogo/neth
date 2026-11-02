@@ -10016,6 +10016,195 @@ pub fn calculate_armor_stand_clicked_slot(
 }
 
 
+/// Vanilla `ItemFrame.java:49`: depth/thickness of item frame (0.0625 = 1/16 block).
+pub const ITEM_FRAME_DEPTH: f64 = 0.0625;
+
+/// Vanilla `ItemFrame.java:50`: width of standard item frame (0.75 block).
+pub const ITEM_FRAME_WIDTH: f64 = 0.75;
+
+/// Vanilla `ItemFrame.java:51`: height of standard item frame (0.75 block).
+pub const ITEM_FRAME_HEIGHT: f64 = 0.75;
+
+/// Vanilla `ItemFrame.java:117`: width of map-holding item frame (1.0 block).
+pub const ITEM_FRAME_MAP_WIDTH: f64 = 1.0;
+
+/// Vanilla `ItemFrame.java:118`: height of map-holding item frame (1.0 block).
+pub const ITEM_FRAME_MAP_HEIGHT: f64 = 1.0;
+
+/// Vanilla `ItemFrame.java:115`: shift from block center to wall plane (0.46875 = 15/32).
+pub const ITEM_FRAME_WALL_OFFSET: f64 = 0.46875;
+
+/// Vanilla `HangingEntity.java:123, 125`: drop offset along facing vector (0.15 block).
+pub const ITEM_FRAME_DROP_OFFSET: f64 = 0.15;
+
+/// Vanilla `ItemFrame.java:48`: number of discrete item rotations in a frame (8).
+pub const ITEM_FRAME_NUM_ROTATIONS: u8 = 8;
+
+/// Vanilla `ItemFrame.java:52`: default rotation index (0).
+pub const ITEM_FRAME_DEFAULT_ROTATION: u8 = 0;
+
+/// Vanilla `ItemFrame.java:53`: default drop chance (1.0).
+pub const ITEM_FRAME_DEFAULT_DROP_CHANCE: f32 = 1.0;
+
+/// Calculates center point of an item frame based on its hanging block position and facing direction.
+///
+/// Mirrors vanilla `ItemFrame.java:115-116` & `HangingEntity.java:73-74`:
+/// `Vec3 position = Vec3.atCenterOf(blockPos).relative(direction, -0.46875);`
+#[must_use]
+pub fn calculate_item_frame_center(
+    block_pos: pumpkin_util::math::position::BlockPos,
+    facing: pumpkin_data::BlockDirection,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    let step = facing.to_offset();
+    Vector3::new(
+        f64::from(block_pos.0.x) + 0.5 - f64::from(step.x) * ITEM_FRAME_WALL_OFFSET,
+        f64::from(block_pos.0.y) + 0.5 - f64::from(step.y) * ITEM_FRAME_WALL_OFFSET,
+        f64::from(block_pos.0.z) + 0.5 - f64::from(step.z) * ITEM_FRAME_WALL_OFFSET,
+    )
+}
+
+/// Calculates bounding box for an item frame.
+///
+/// Mirrors vanilla `ItemFrame.java:114-124`:
+/// ```java
+/// private AABB createBoundingBox(final BlockPos blockPos, final Direction direction, final boolean hasFramedMap) {
+///    float shiftToBlockWall = 0.46875F;
+///    Vec3 position = Vec3.atCenterOf(blockPos).relative(direction, -0.46875);
+///    float width = hasFramedMap ? 1.0F : 0.75F;
+///    float height = hasFramedMap ? 1.0F : 0.75F;
+///    Direction.Axis axis = direction.getAxis();
+///    double xSize = axis == Direction.Axis.X ? 0.0625 : width;
+///    double ySize = axis == Direction.Axis.Y ? 0.0625 : height;
+///    double zSize = axis == Direction.Axis.Z ? 0.0625 : width;
+///    return AABB.ofSize(position, xSize, ySize, zSize);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_item_frame_bounding_box(
+    block_pos: pumpkin_util::math::position::BlockPos,
+    facing: pumpkin_data::BlockDirection,
+    has_framed_map: bool,
+) -> pumpkin_util::math::boundingbox::BoundingBox {
+    use pumpkin_util::math::boundingbox::BoundingBox;
+    use pumpkin_util::math::vector3::Vector3;
+    let center = calculate_item_frame_center(block_pos, facing);
+    let step = facing.to_offset();
+    let (width, height) = if has_framed_map {
+        (ITEM_FRAME_MAP_WIDTH, ITEM_FRAME_MAP_HEIGHT)
+    } else {
+        (ITEM_FRAME_WIDTH, ITEM_FRAME_HEIGHT)
+    };
+    let x_size = if step.x != 0 { ITEM_FRAME_DEPTH } else { width };
+    let y_size = if step.y != 0 { ITEM_FRAME_DEPTH } else { height };
+    let z_size = if step.z != 0 { ITEM_FRAME_DEPTH } else { width };
+    let half = Vector3::new(x_size / 2.0, y_size / 2.0, z_size / 2.0);
+    BoundingBox::new(
+        Vector3::new(center.x - half.x, center.y - half.y, center.z - half.z),
+        Vector3::new(center.x + half.x, center.y + half.y, center.z + half.z),
+    )
+}
+
+/// Calculates internal entity rotation (pitch, yaw) based on hanging direction.
+///
+/// Mirrors vanilla `ItemFrame.java:85-91`:
+/// ```java
+/// if (direction.getAxis().isHorizontal()) {
+///    this.setXRot(0.0F);
+///    this.setYRot(direction.get2DDataValue() * 90);
+/// } else {
+///    this.setXRot(-90 * direction.getAxisDirection().getStep());
+///    this.setYRot(0.0F);
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_item_frame_rotation(facing: pumpkin_data::BlockDirection) -> (f32, f32) {
+    use pumpkin_data::BlockDirection;
+    match facing {
+        BlockDirection::South => (0.0, 0.0),
+        BlockDirection::West => (0.0, 90.0),
+        BlockDirection::North => (0.0, 180.0),
+        BlockDirection::East => (0.0, 270.0),
+        BlockDirection::Down => (90.0, 0.0),
+        BlockDirection::Up => (-90.0, 0.0),
+    }
+}
+
+/// Calculates visual rotation Y in degrees for client rendering and rotation querying.
+///
+/// Mirrors vanilla `ItemFrame.java:428-432`:
+/// ```java
+/// Direction frameDirection = this.getDirection();
+/// int rotationCorrection = frameDirection.getAxis().isVertical() ? 90 * frameDirection.getAxisDirection().getStep() : 0;
+/// return Mth.wrapDegrees(180 + frameDirection.get2DDataValue() * 90 + this.getRotation() * 45 + rotationCorrection);
+/// ```
+#[must_use]
+pub fn calculate_item_frame_visual_rotation_y(
+    facing: pumpkin_data::BlockDirection,
+    rotation: u8,
+) -> f32 {
+    use pumpkin_data::BlockDirection;
+    let (data2d, rot_corr) = match facing {
+        BlockDirection::South => (0, 0),
+        BlockDirection::West => (1, 0),
+        BlockDirection::North => (2, 0),
+        BlockDirection::East => (3, 0),
+        BlockDirection::Down => (-1, -90),
+        BlockDirection::Up => (-1, 90),
+    };
+    let raw_deg = 180.0 + (data2d * 90) as f32 + ((rotation % ITEM_FRAME_NUM_ROTATIONS) as f32 * 45.0) + rot_corr as f32;
+    pumpkin_util::math::wrap_degrees(raw_deg)
+}
+
+/// Calculates analog comparator signal output for an item frame.
+///
+/// Mirrors vanilla `ItemFrame.java:396-398`:
+/// `return this.getItem().isEmpty() ? 0 : this.getRotation() % 8 + 1;`
+#[must_use]
+pub const fn calculate_item_frame_analog_output(has_item: bool, rotation: u8) -> u8 {
+    if has_item {
+        (rotation % ITEM_FRAME_NUM_ROTATIONS) + 1
+    } else {
+        0
+    }
+}
+
+/// Calculates dropped item spawn position along the frame's outward facing vector.
+///
+/// Mirrors vanilla `HangingEntity.java:120-131`:
+/// `this.getX() + this.getDirection().getStepX() * 0.15F`
+#[must_use]
+pub fn calculate_item_frame_drop_position(
+    center_pos: pumpkin_util::math::vector3::Vector3<f64>,
+    facing: pumpkin_data::BlockDirection,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    let step = facing.to_offset();
+    Vector3::new(
+        center_pos.x + f64::from(step.x) * ITEM_FRAME_DROP_OFFSET,
+        center_pos.y,
+        center_pos.z + f64::from(step.z) * ITEM_FRAME_DROP_OFFSET,
+    )
+}
+
+/// Determines whether damaging an item frame should only drop the framed item rather than destroying the frame.
+///
+/// Mirrors vanilla `ItemFrame.java:159-161`:
+/// `return !source.is(DamageTypeTags.IS_EXPLOSION) && !this.getItem().isEmpty();`
+#[must_use]
+pub const fn should_item_frame_damage_drop_item_only(is_explosion: bool, has_item: bool) -> bool {
+    !is_explosion && has_item
+}
+
+/// Determines whether a fixed item frame can be hurt by a damage source.
+///
+/// Mirrors vanilla `ItemFrame.java:163-165`:
+/// `return source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.isCreativePlayer();`
+#[must_use]
+pub const fn can_damage_fixed_item_frame(bypasses_invulnerability: bool, is_creative_player: bool) -> bool {
+    bypasses_invulnerability || is_creative_player
+}
+
 /// Checks if an entity type is able to damage End Crystals.
 /// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
 #[must_use]
@@ -29964,5 +30153,87 @@ mod tests {
             calculate_armor_stand_clicked_slot(0.8, true, true, false, false, false, true, true)
                 == EquipmentSlot::FEET
         );
+    }
+
+    #[test]
+    fn test_item_frame_rotation_bounding_box_and_comparator_parity_gap447() {
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Constants parity (ItemFrame.java:48-53, 115, 117-118; HangingEntity.java:123, 125)
+        assert_eq!(ITEM_FRAME_DEPTH, 0.0625);
+        assert_eq!(ITEM_FRAME_WIDTH, 0.75);
+        assert_eq!(ITEM_FRAME_HEIGHT, 0.75);
+        assert_eq!(ITEM_FRAME_MAP_WIDTH, 1.0);
+        assert_eq!(ITEM_FRAME_MAP_HEIGHT, 1.0);
+        assert_eq!(ITEM_FRAME_WALL_OFFSET, 0.46875);
+        assert_eq!(ITEM_FRAME_DROP_OFFSET, 0.15);
+        assert_eq!(ITEM_FRAME_NUM_ROTATIONS, 8);
+        assert_eq!(ITEM_FRAME_DEFAULT_ROTATION, 0);
+        assert_eq!(ITEM_FRAME_DEFAULT_DROP_CHANCE, 1.0f32);
+
+        // 2. Center and Bounding Box calculation (ItemFrame.java:114-124)
+        let block_pos = BlockPos(pumpkin_util::math::vector3::Vector3::new(10, 64, 20));
+        // Facing South: step = (0, 0, 1), wall offset = 0.46875
+        let center_south = calculate_item_frame_center(block_pos, BlockDirection::South);
+        assert!((center_south.x - 10.5).abs() < 1e-6);
+        assert!((center_south.y - 64.5).abs() < 1e-6);
+        assert!((center_south.z - (20.5 - 0.46875)).abs() < 1e-6);
+
+        // Standard bounding box vs Map bounding box
+        let bbox_normal = calculate_item_frame_bounding_box(block_pos, BlockDirection::South, false);
+        // Thickness along Z is DEPTH = 0.0625
+        assert!(((bbox_normal.max.z - bbox_normal.min.z) - 0.0625).abs() < 1e-6);
+        assert!(((bbox_normal.max.x - bbox_normal.min.x) - 0.75).abs() < 1e-6);
+        assert!(((bbox_normal.max.y - bbox_normal.min.y) - 0.75).abs() < 1e-6);
+
+        let bbox_map = calculate_item_frame_bounding_box(block_pos, BlockDirection::South, true);
+        assert!(((bbox_map.max.z - bbox_map.min.z) - 0.0625).abs() < 1e-6);
+        assert!(((bbox_map.max.x - bbox_map.min.x) - 1.0).abs() < 1e-6);
+        assert!(((bbox_map.max.y - bbox_map.min.y) - 1.0).abs() < 1e-6);
+
+        // Facing Up: step = (0, 1, 0), thickness along Y is DEPTH = 0.0625
+        let bbox_up = calculate_item_frame_bounding_box(block_pos, BlockDirection::Up, false);
+        assert!(((bbox_up.max.y - bbox_up.min.y) - 0.0625).abs() < 1e-6);
+        assert!(((bbox_up.max.x - bbox_up.min.x) - 0.75).abs() < 1e-6);
+        assert!(((bbox_up.max.z - bbox_up.min.z) - 0.75).abs() < 1e-6);
+
+        // 3. Rotation pitch/yaw parity (ItemFrame.java:85-91)
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::South), (0.0, 0.0));
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::West), (0.0, 90.0));
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::North), (0.0, 180.0));
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::East), (0.0, 270.0));
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::Down), (90.0, 0.0));
+        assert_eq!(calculate_item_frame_rotation(BlockDirection::Up), (-90.0, 0.0));
+
+        // 4. Visual rotation Y in degrees (ItemFrame.java:428-432)
+        // South rot 0: 180 + 0 + 0 = 180 -> wrapped = -180 or 180
+        let south_rot0 = calculate_item_frame_visual_rotation_y(BlockDirection::South, 0);
+        assert!((south_rot0.abs() - 180.0).abs() < 1e-4);
+        let south_rot1 = calculate_item_frame_visual_rotation_y(BlockDirection::South, 1);
+        assert!((south_rot1 - (-135.0)).abs() < 1e-4);
+
+        // 5. Comparator analog output parity (ItemFrame.java:396-398)
+        assert_eq!(calculate_item_frame_analog_output(false, 0), 0);
+        assert_eq!(calculate_item_frame_analog_output(false, 5), 0);
+        assert_eq!(calculate_item_frame_analog_output(true, 0), 1);
+        assert_eq!(calculate_item_frame_analog_output(true, 1), 2);
+        assert_eq!(calculate_item_frame_analog_output(true, 7), 8);
+        assert_eq!(calculate_item_frame_analog_output(true, 8), 1); // 8 % 8 + 1 = 1
+
+        // 6. Dropped item position parity (HangingEntity.java:120-131)
+        let drop_pos = calculate_item_frame_drop_position(center_south, BlockDirection::South);
+        assert!((drop_pos.x - center_south.x).abs() < 1e-6);
+        assert!((drop_pos.y - center_south.y).abs() < 1e-6);
+        assert!((drop_pos.z - (center_south.z + 0.15)).abs() < 1e-6);
+
+        // 7. Damage drop vs destruction rules (ItemFrame.java:159-165)
+        assert!(should_item_frame_damage_drop_item_only(false, true)); // non-explosion with item -> drop item only
+        assert!(!should_item_frame_damage_drop_item_only(true, true)); // explosion with item -> break frame
+        assert!(!should_item_frame_damage_drop_item_only(false, false)); // non-explosion empty -> break frame
+
+        assert!(can_damage_fixed_item_frame(true, false)); // bypasses invulnerability can damage fixed
+        assert!(can_damage_fixed_item_frame(false, true)); // creative player can damage fixed
+        assert!(!can_damage_fixed_item_frame(false, false)); // regular damage cannot damage fixed
     }
 }

@@ -11490,6 +11490,50 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Xử lý khối thay thế (`replaceable()`), sao chép `custom_name`, và phát `GameEvent::EntityPlace`.
   - **Unit Tests**: `test_armor_stand_angle_snapping_drops_and_slot_click_parity_gap446`.
 
+### Gap 447: Item Frame Placement, Rotation Steps & Comparator Output Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.decoration.ItemFrame.java:75-140, 200-280, 310-323, 357-398`, `net.minecraft.world.entity.decoration.HangingEntity.java:120-131`, `net.minecraft.world.item.HangingEntityItem.java:30-80`, `net.minecraft.world.entity.decoration.GlowItemFrame.java`
+
+- **Tọa Độ Khung Tranh, Bounding Box & Phân Biệt Bản Đồ (Bounding Box & Map Sizing Parity)**:
+  - Vanilla `ItemFrame.java:114-124` & `HangingEntity.java:73-74`:
+    - Độ dày khung tranh: `DEPTH = 0.0625` ($1/16$ khối), độ lệch áp tường: `shiftToBlockWall = 0.46875` ($15/32$ khối).
+    - Khi chứa bản đồ (`hasFramedMap()`): kích thước hiển thị mở rộng lên `width = 1.0`, `height = 1.0` (thay vì kích thước tiêu chuẩn `width = 0.75`, `height = 0.75`).
+    - Tâm bounding box và tọa độ thực thể: `pos = Vec3.atCenterOf(blockPos).relative(direction, -0.46875)` được đồng bộ trực tiếp vào `entity.pos` và `entity.last_pos`.
+    - Khi thay đổi vật phẩm trong khung (`onItemChanged`): tự động tính toán lại bounding box (`recalculateBoundingBox`).
+- **Góc Quay Khung Tranh (Internal & Visual Rotation Angles)**:
+  - Vanilla `ItemFrame.java:85-91, 428-432`:
+    - Góc pitch/yaw thực thể: Hướng ngang (`South: 0°, West: 90°, North: 180°, East: 270°`, `pitch = 0°`). Hướng thẳng đứng (`Down: pitch = 90°, Up: pitch = -90°`, `yaw = 0°`).
+    - Góc hiển thị `getVisualRotationYInDegrees()`: `wrapDegrees(180 + data2d * 90 + rotation * 45 + rotationCorrection)`.
+- **Tín Hiệu Redstone So Sánh (Comparator Output Parity)**:
+  - Vanilla `ItemFrame.java:396-398`:
+    - `getAnalogOutput()`: trả về `0` nếu khung rỗng; trả về `(rotation % 8) + 1` (giá trị từ 1 đến 8) nếu khung đang chứa vật phẩm.
+    - Xoay vật phẩm tăng góc `(rotation + 1) % 8`.
+- **Quy Tắc Rơi Vật Phẩm & Tọa Độ Thả (Drop Location & Destruction Rules)**:
+  - Vanilla `HangingEntity.java:120-131` & `ItemFrame.java:159-165, 221-245`:
+    - Tọa độ sinh thực thể rơi: dịch chuyển ra ngoài mặt tường theo vector hướng treo một khoảng `ITEM_FRAME_DROP_OFFSET = 0.15` (`pos.x + stepX * 0.15`, `pos.y`, `pos.z + stepZ * 0.15`), tránh rơi kẹt bên trong khối tường.
+    - Khi bị người chơi sáng tạo phá hủy: không làm rơi khung tranh cũng như vật phẩm bên trong.
+    - Khi bị sát thương không phải nổ và có vật phẩm: chỉ làm rơi vật phẩm trong khung tranh (`drop_item(source, false)`), phát âm thanh gỡ vật phẩm và sự kiện `GameEvent::BlockChange`.
+    - Khi bị nổ hoặc khung rỗng: làm rơi khung tranh và tiêu hủy thực thể, phát âm thanh vỡ và sự kiện `GameEvent::BlockChange`.
+    - Khung tranh cố định (`fixed`): chỉ có thể bị tổn thương bởi người chơi sáng tạo hoặc sát thương xuyên bất tử (`can_damage_fixed_item_frame`).
+- **Sự Kiện GameEvent & Đặt Khung Tranh (Item Placement & Game Events)**:
+  - Vanilla `HangingEntityItem.java:64, 68` & `ItemFrame.java:179, 205, 375, 384`:
+    - Khi đặt khung tranh hoặc tranh vẽ: phát sinh sự kiện `GameEvent::EntityPlace` tại tọa độ tâm hiển thị.
+    - Sao chép tên tùy chỉnh `custom_name` từ ItemStack sang entity khung tranh khi người chơi đặt.
+    - Thao tác đặt/xoay/gỡ vật phẩm và phá khung: phát sinh sự kiện `GameEvent::BlockChange`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `ITEM_FRAME_DEPTH`, `ITEM_FRAME_WIDTH`, `ITEM_FRAME_HEIGHT`, `ITEM_FRAME_MAP_WIDTH`, `ITEM_FRAME_MAP_HEIGHT`, `ITEM_FRAME_WALL_OFFSET`, `ITEM_FRAME_DROP_OFFSET`, `ITEM_FRAME_NUM_ROTATIONS`, `ITEM_FRAME_DEFAULT_ROTATION`, `ITEM_FRAME_DEFAULT_DROP_CHANCE`.
+    - Bổ sung hàm thuần: `calculate_item_frame_center`, `calculate_item_frame_bounding_box`, `calculate_item_frame_rotation`, `calculate_item_frame_visual_rotation_y`, `calculate_item_frame_analog_output`, `calculate_item_frame_drop_position`, `should_item_frame_damage_drop_item_only`, `can_damage_fixed_item_frame`.
+  - Cập nhật `crates/pumpkin-core/src/entity/decoration/item_frame.rs`:
+    - Bổ sung `has_framed_map`, tính toán lại bounding box khi đổi vật phẩm `set_item`, cập nhật tọa độ thực thể `pos` và `pitch/yaw`.
+    - Sử dụng `calculate_item_frame_drop_position` thả vật phẩm ra ngoài mặt tường với `world.drop_stack_at`.
+    - Phát sinh sự kiện `GameEvent::BlockChange` khi thêm/xoay/gỡ vật phẩm hoặc phá khung tranh.
+  - Cập nhật `crates/pumpkin-core/src/item/items/hanging_entity.rs`:
+    - Sao chép `custom_name` sang entity khi đặt.
+    - Phát sinh sự kiện `GameEvent::EntityPlace` khi đặt tranh vẽ hoặc khung tranh.
+  - **Unit Tests**: `test_item_frame_rotation_bounding_box_and_comparator_parity_gap447`.
+
+
 
 
 
