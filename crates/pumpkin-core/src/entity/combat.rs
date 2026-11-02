@@ -11022,11 +11022,72 @@ pub const SHEEP_XP_REWARD: u32 = 2;
 pub const SHEEP_SHEAR_WOOL_MIN: usize = 1;
 pub const SHEEP_SHEAR_WOOL_MAX: usize = 3;
 
+/// Sheep baby dimension constants, mirroring vanilla `Sheep.java:61-63`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F).withEyeHeight(0.65625F)`.
+pub const SHEEP_BABY_WIDTH: f32 = 0.45;
+pub const SHEEP_BABY_HEIGHT: f32 = 0.65;
+pub const SHEEP_BABY_EYE_HEIGHT: f32 = 0.65625;
+pub const SHEEP_BABY_SCALE: f32 = 0.5;
+
+/// Calculates sheep dimensions based on baby status.
+///
+/// Mirrors vanilla `Sheep.java:277-279`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_sheep_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (SHEEP_BABY_WIDTH, SHEEP_BABY_HEIGHT, SHEEP_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Pig attribute and saddled speed constants, mirroring vanilla `Pig.java:42-45`.
 pub const PIG_MAX_HEALTH: f64 = 10.0;
 pub const PIG_BASE_MOVEMENT_SPEED: f64 = 0.25;
 pub const PIG_BOOST_SPEED: f64 = 0.35;
 pub const PIG_XP_REWARD: u32 = 2;
+
+/// Pig baby dimension constants, mirroring vanilla `Pig.java:70-72`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.45F).withEyeHeight(0.40625F)`.
+pub const PIG_BABY_WIDTH: f32 = 0.45;
+pub const PIG_BABY_HEIGHT: f32 = 0.45;
+pub const PIG_BABY_EYE_HEIGHT: f32 = 0.40625;
+pub const PIG_BABY_SCALE: f32 = 0.5;
+
+/// Calculates pig dimensions based on baby status.
+///
+/// Mirrors vanilla `Pig.java:238-240`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_pig_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (PIG_BABY_WIDTH, PIG_BABY_HEIGHT, PIG_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Determines if a pig can be equipped via dispenser.
+/// Mirrors vanilla `Pig.java:185-191`: `slot == EquipmentSlot.SADDLE && isAlive() && !isBaby()`.
+#[must_use]
+pub const fn can_pig_dispenser_equip_saddle(
+    is_alive: bool,
+    is_baby: bool,
+    slot_is_saddle: bool,
+) -> bool {
+    slot_is_saddle && is_alive && !is_baby
+}
 
 /// Chicken attribute and egg timing constants, mirroring vanilla `Chicken.java:45-50`.
 pub const CHICKEN_MAX_HEALTH: f64 = 4.0;
@@ -13169,7 +13230,7 @@ mod tests {
         assert!(vel_yaw_0.z.abs() < 1e-6);
 
         // When source is present and yaw = 90 deg:
-        // x = -cos(90) * 0.1 ≈ 0.0, z = -sin(90) * 0.1 = -0.1, y = 0.1
+        // x = -cos(90) * 0.1 â‰ˆ 0.0, z = -sin(90) * 0.1 = -0.1, y = 0.1
         let vel_yaw_90 = calculate_player_death_velocity(90.0, 0.0, true);
         assert!(vel_yaw_90.x.abs() < 1e-6);
         assert_eq!(vel_yaw_90.y, 0.1);
@@ -14150,12 +14211,12 @@ mod tests {
         // 3. Caught item loot velocity (FishingHook.java:464)
         let caught_vel = calculate_caught_item_velocity(owner, hook);
         assert!((caught_vel.x - 1.0).abs() < 1e-6);
-        // dist_sq = 100 + 0 + 100 = 200. sqrt(sqrt(200)) = (200)^0.25 ≈ 3.7606
-        // y = 0.0 * 0.1 + 3.7606 * 0.08 ≈ 0.3008
+        // dist_sq = 100 + 0 + 100 = 200. sqrt(sqrt(200)) = (200)^0.25 â‰ˆ 3.7606
+        // y = 0.0 * 0.1 + 3.7606 * 0.08 â‰ˆ 0.3008
         assert!(caught_vel.y > 0.25 && caught_vel.y < 0.35);
 
         // 4. Bobber throw & retrieve sound pitch (FishingRodItem.java:38, 50)
-        let min_pitch = calculate_bobber_sound_pitch(1.0); // 0.4 / 1.2 ≈ 0.333
+        let min_pitch = calculate_bobber_sound_pitch(1.0); // 0.4 / 1.2 â‰ˆ 0.333
         let max_pitch = calculate_bobber_sound_pitch(0.0); // 0.4 / 0.8 = 0.5
         assert!((min_pitch - (0.4 / 1.2)).abs() < 1e-5);
         assert!((max_pitch - 0.5).abs() < 1e-5);
@@ -14167,17 +14228,17 @@ mod tests {
         assert_eq!(calculate_crossbow_durability_use(true, 3), 9);  // Multishot fireworks = 9
 
         // 6. Multishot projectile angles (ProjectileWeaponItem.java:54-63)
-        // 3 projectiles with 10.0 spread: center (0°), left (-10°), right (+10°)
+        // 3 projectiles with 10.0 spread: center (0Â°), left (-10Â°), right (+10Â°)
         assert_eq!(calculate_multishot_spread_angle(0, 3, 10.0), 0.0);
         assert_eq!(calculate_multishot_spread_angle(1, 3, 10.0), -10.0);
         assert_eq!(calculate_multishot_spread_angle(2, 3, 10.0), 10.0);
-        // Single projectile: 0°
+        // Single projectile: 0Â°
         assert_eq!(calculate_multishot_spread_angle(0, 1, 10.0), 0.0);
 
         // 7. Crossbow shot pitch (CrossbowItem.java:193-200)
         assert_eq!(calculate_crossbow_shot_pitch(0, 0.5), 1.0);
-        let odd_pitch = calculate_crossbow_shot_pitch(1, 0.0); // 1.0/1.8 + 0.63 ≈ 1.185
-        let even_pitch = calculate_crossbow_shot_pitch(2, 0.0); // 1.0/1.8 + 0.43 ≈ 0.985
+        let odd_pitch = calculate_crossbow_shot_pitch(1, 0.0); // 1.0/1.8 + 0.63 â‰ˆ 1.185
+        let even_pitch = calculate_crossbow_shot_pitch(2, 0.0); // 1.0/1.8 + 0.43 â‰ˆ 0.985
         assert!(odd_pitch > even_pitch);
 
         // 8. Crossbow loading end pitch (CrossbowItem.java:234)
@@ -14189,7 +14250,7 @@ mod tests {
     fn test_bow_power_firework_mending_and_thorns_parity() {
         // 1. Bow power calculation (BowItem.java:74-82)
         assert_eq!(calculate_bow_power_for_time(0), 0.0);
-        let mid_power = calculate_bow_power_for_time(10); // pow = 0.5; (0.25 + 1.0)/3.0 = 1.25/3.0 ≈ 0.4166667
+        let mid_power = calculate_bow_power_for_time(10); // pow = 0.5; (0.25 + 1.0)/3.0 = 1.25/3.0 â‰ˆ 0.4166667
         assert!((mid_power - (1.25 / 3.0)).abs() < 1e-5);
         assert_eq!(calculate_bow_power_for_time(20), 1.0);
         assert_eq!(calculate_bow_power_for_time(40), 1.0); // clamped at 1.0
@@ -14200,7 +14261,7 @@ mod tests {
         assert!(can_bow_release(1.0));
 
         // 3. Bow shoot sound pitch (BowItem.java:52)
-        let bow_pitch = calculate_bow_sound_pitch(1.0, 0.0); // 1.0 / 1.2 + 0.5 ≈ 1.333
+        let bow_pitch = calculate_bow_sound_pitch(1.0, 0.0); // 1.0 / 1.2 + 0.5 â‰ˆ 1.333
         assert!((bow_pitch - (1.0 / 1.2 + 0.5)).abs() < 1e-5);
 
         // 4. Firework horizontal collision acceleration (FireworkRocketEntity.java:152)
@@ -22824,7 +22885,7 @@ mod tests {
             let delay = calculate_eyeblossom_cascade_delay(1.0, &mut rng);
             assert!((5..=10).contains(&delay), "delay {delay} not in [5, 10]");
         }
-        // Diagonal distance (d = sqrt(3^2 + 2^2 + 3^2) = sqrt(22) ≈ 4.6904): min = 23, max = 46
+        // Diagonal distance (d = sqrt(3^2 + 2^2 + 3^2) = sqrt(22) â‰ˆ 4.6904): min = 23, max = 46
         let max_distance = (9.0 + 4.0 + 9.0_f64).sqrt();
         assert_eq!((max_distance * 5.0) as u32, 23);
         assert_eq!((max_distance * 10.0) as u32, 46);
@@ -24404,6 +24465,41 @@ mod tests {
         assert_eq!(BOVINE_BABY_HEIGHT, 0.7);
         assert_eq!(BOVINE_BABY_EYE_HEIGHT, 0.665);
         assert_eq!(BOVINE_BABY_SCALE, 0.5);
+    }
+
+    #[test]
+    fn test_pig_and_sheep_dimensions_and_parity_gap412() {
+        use super::*;
+
+        // 1. Pig adult dimensions (Pig.java, EntityTypes.java: sized(0.9, 0.9), eyeHeight(0.765))
+        let pig_adult = calculate_pig_dimensions(false, 0.9, 0.9, 0.765);
+        assert_eq!(pig_adult, (0.9, 0.9, 0.765));
+
+        // 2. Pig baby dimensions (Pig.java:70-72: scalable(0.45, 0.45).withEyeHeight(0.40625))
+        let pig_baby = calculate_pig_dimensions(true, 0.9, 0.9, 0.765);
+        assert_eq!(pig_baby, (0.45, 0.45, 0.40625));
+        assert_eq!(PIG_BABY_WIDTH, 0.45);
+        assert_eq!(PIG_BABY_HEIGHT, 0.45);
+        assert_eq!(PIG_BABY_EYE_HEIGHT, 0.40625);
+        assert_eq!(PIG_BABY_SCALE, 0.5);
+
+        // 3. Pig dispenser equip saddle parity (Pig.java:185-191)
+        assert!(can_pig_dispenser_equip_saddle(true, false, true));
+        assert!(!can_pig_dispenser_equip_saddle(true, true, true)); // baby cannot equip
+        assert!(!can_pig_dispenser_equip_saddle(false, false, true)); // dead cannot equip
+        assert!(!can_pig_dispenser_equip_saddle(true, false, false)); // non-saddle cannot equip
+
+        // 4. Sheep adult dimensions (Sheep.java, EntityTypes.java: sized(0.9, 1.3), eyeHeight(1.105))
+        let sheep_adult = calculate_sheep_dimensions(false, 0.9, 1.3, 1.105);
+        assert_eq!(sheep_adult, (0.9, 1.3, 1.105));
+
+        // 5. Sheep baby dimensions (Sheep.java:61-63: scalable(0.45, 0.65).withEyeHeight(0.65625))
+        let sheep_baby = calculate_sheep_dimensions(true, 0.9, 1.3, 1.105);
+        assert_eq!(sheep_baby, (0.45, 0.65, 0.65625));
+        assert_eq!(SHEEP_BABY_WIDTH, 0.45);
+        assert_eq!(SHEEP_BABY_HEIGHT, 0.65);
+        assert_eq!(SHEEP_BABY_EYE_HEIGHT, 0.65625);
+        assert_eq!(SHEEP_BABY_SCALE, 0.5);
     }
 
 }

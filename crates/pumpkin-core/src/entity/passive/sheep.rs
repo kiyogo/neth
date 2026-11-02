@@ -9,6 +9,7 @@ use pumpkin_data::dye_color::DyeColor;
 use pumpkin_data::{entity::EntityType, item::Item};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::Hand;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
@@ -105,7 +106,27 @@ impl SheepEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_sheep_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     fn get_packed_byte(&self) -> u8 {
@@ -207,6 +228,17 @@ impl AgeableMob for SheepEntity {
     fn get_ageable_data(&self) -> &crate::entity::ageable::AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for SheepEntity {
@@ -220,6 +252,21 @@ impl Animal for SheepEntity {
 }
 
 impl Mob for SheepEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
+    /// Vanilla Sheep.java: Sheep cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
+    }
     fn get_base_experience_reward(&self) -> u32 {
         if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
             0
@@ -243,10 +290,6 @@ impl Mob for SheepEntity {
         );
     }
 
-    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
-        Some(self)
-    }
-
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }
@@ -264,11 +307,13 @@ impl Mob for SheepEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("Sheared", self.is_sheared());
         nbt.put_byte("Color", self.get_color() as i8);
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         let sheared = nbt
             .get_bool("Sheared")
             .or_else(|| nbt.get_byte("Sheared").map(|b| b == 1))
@@ -448,5 +493,13 @@ mod tests {
             assert!(!properties(COLORS[(index + 1) % COLORS.len()], false).matches(*predicate));
             assert!(!properties(COLORS[index], true).matches(*predicate));
         }
+    }
+
+    #[test]
+    fn test_sheep_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_sheep_dimensions(false, 0.9, 1.3, 1.105);
+        assert_eq!(adult, (0.9, 1.3, 1.105));
+        let baby = combat::calculate_sheep_dimensions(true, 0.9, 1.3, 1.105);
+        assert_eq!(baby, (0.45, 0.65, 0.65625));
     }
 }

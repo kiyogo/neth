@@ -13,6 +13,7 @@ use pumpkin_data::sound::Sound;
 use pumpkin_data::{entity::EntityType, item::Item};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 
 use crate::entity::EntityBase;
 use crate::entity::custom_sound::CustomSound;
@@ -107,7 +108,27 @@ impl PigEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_pig_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -160,6 +181,17 @@ impl AgeableMob for PigEntity {
     fn get_ageable_data(&self) -> &crate::entity::ageable::AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for PigEntity {
@@ -173,16 +205,30 @@ impl Animal for PigEntity {
 }
 
 impl Mob for PigEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_alive = self.mob_entity.living_entity.entity.is_alive();
+        let is_baby = self.is_baby();
+        let is_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        combat::can_pig_dispenser_equip_saddle(is_alive, is_baby, is_saddle)
+    }
+
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
         if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
             0
         } else {
             Self::XP_REWARD
         }
-    }
-
-    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
-        Some(self)
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
@@ -226,6 +272,7 @@ impl Mob for PigEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("Saddle", self.is_saddled());
         let variant = PigVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default();
         nbt.put_string("variant", format!("minecraft:{}", variant.to_name()));
@@ -238,6 +285,7 @@ impl Mob for PigEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(saddle) = nbt.get_byte("Saddle") {
             self.set_saddled(saddle == 1);
         }
@@ -367,5 +415,16 @@ mod tests {
         assert_eq!(combat::PIG_MAX_HEALTH, 10.0);
         assert_eq!(combat::PIG_BASE_MOVEMENT_SPEED, 0.25);
         assert_eq!(combat::PIG_BOOST_SPEED, 0.35);
+    }
+
+    #[test]
+    fn test_pig_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_pig_dimensions(false, 0.9, 0.9, 0.765);
+        assert_eq!(adult, (0.9, 0.9, 0.765));
+        let baby = combat::calculate_pig_dimensions(true, 0.9, 0.9, 0.765);
+        assert_eq!(baby, (0.45, 0.45, 0.40625));
+
+        assert!(combat::can_pig_dispenser_equip_saddle(true, false, true));
+        assert!(!combat::can_pig_dispenser_equip_saddle(true, true, true));
     }
 }

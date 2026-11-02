@@ -10441,3 +10441,25 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Cả hai thực thể đều tích hợp `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)` trong `mob_write_nbt` và `mob_read_nbt` để lưu trữ trạng thái tuổi và thời gian sinh sản đồng bộ với vanilla.
 - **Hằng số Parity**: `BOVINE_BABY_WIDTH` (0.45), `BOVINE_BABY_HEIGHT` (0.7), `BOVINE_BABY_EYE_HEIGHT` (0.665), `BOVINE_BABY_SCALE` (0.5), `calculate_bovine_dimensions`.
 - **Unit Tests**: `test_bovine_dimensions_and_parity_gap411`, `test_cow_baby_dimensions_and_dispenser_parity`, `test_mooshroom_baby_dimensions_and_dispenser_parity`, `test_cow_parity_constants`, `test_mooshroom_parity_constants` pass 100%.
+
+
+### Gap 412: Pig & Sheep Baby Scalable Dimensions, Pig Saddle Dispenser Equip Parity & Ageable Dismount Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.pig.Pig.java:70-72, 185-191, 238-240` & `net.minecraft.world.entity.animal.sheep.Sheep.java:61-63, 277-279`
+
+- **Kích thước Heo và Cừu Con (Pig & Sheep Baby Scalable Dimensions & Eye Height)**:
+  - Heo (`Pig.java:70-72`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.45F).withEyeHeight(0.40625F)`.
+    - Adult pig: width `0.9`, height `0.9`, eye height `0.765`.
+    - Baby pig: width `0.45`, height `0.45`, eye height `0.40625` (`PIG_BABY_EYE_HEIGHT`).
+  - Cừu (`Sheep.java:61-63`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F).withEyeHeight(0.65625F)`.
+    - Adult sheep: width `0.9`, height `1.3`, eye height `1.105`.
+    - Baby sheep: width `0.45`, height `0.65`, eye height `0.65625` (`SHEEP_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_pig_dimensions`, `calculate_sheep_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên cả `PigEntity` và `SheepEntity`. Tự động tính toán lại bounding box, eye height và tháo gỡ phương tiện nếu không đủ điều kiện khi trưởng thành (`handle_age_boundary_vehicle_dismount`).
+- **Trang bị Yên ngựa cho Heo qua Dispenser (Pig Saddle Dispenser Equip Parity)**:
+  - Khác với các động vật khác, Heo có thể được Dispenser gắn Yên ngựa (`EquipmentSlot::SADDLE`), nhưng CHỈ khi Heo còn sống và KHÔNG PHẢI heo con (`slot == SADDLE && isAlive() && !isBaby()`, theo `Pig.java:185-191`).
+  - Triển khai `can_pig_dispenser_equip_saddle` và ghi đè `can_dispenser_equip_into_slot` trên `PigEntity`.
+  - Cừu hoàn toàn không nhận trang bị từ Dispenser (`can_dispenser_equip_into_slot -> false`).
+- **Lưu trữ NBT Dữ liệu Tuổi (Ageable NBT Persistence)**:
+  - Cả Heo và Cừu đều lưu và nạp trạng thái tuổi qua `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)`.
+- **Hằng số Parity**: `PIG_BABY_WIDTH` (0.45), `PIG_BABY_HEIGHT` (0.45), `PIG_BABY_EYE_HEIGHT` (0.40625), `PIG_BABY_SCALE` (0.5), `SHEEP_BABY_WIDTH` (0.45), `SHEEP_BABY_HEIGHT` (0.65), `SHEEP_BABY_EYE_HEIGHT` (0.65625), `SHEEP_BABY_SCALE` (0.5), `calculate_pig_dimensions`, `calculate_sheep_dimensions`, `can_pig_dispenser_equip_saddle`.
+- **Unit Tests**: `test_pig_and_sheep_dimensions_and_parity_gap412`, `test_pig_baby_dimensions_and_dispenser_parity`, `test_sheep_baby_dimensions_and_dispenser_parity`, `test_pig_parity_constants` pass 100%.
