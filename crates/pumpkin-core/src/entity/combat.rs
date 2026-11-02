@@ -4573,6 +4573,97 @@ pub fn calculate_minecart_rotation_update(
     (yaw % 360.0, pitch, flipped)
 }
 
+/// Vanilla `MinecartItem.java:45`: base vertical offset for minecart on rails (0.0625 = 1/16).
+pub const MINECART_PLACEMENT_BASE_Y_OFFSET: f64 = 0.0625;
+
+/// Vanilla `MinecartItem.java:42`: additional vertical offset on sloped rails (0.5).
+pub const MINECART_PLACEMENT_SLOPE_Y_OFFSET: f64 = 0.5;
+
+/// Vanilla `MinecartItem.java:45`: horizontal centering offset inside rail block (0.5).
+pub const MINECART_PLACEMENT_HORIZONTAL_OFFSET: f64 = 0.5;
+
+/// Vanilla `MinecartDispenseItemBehavior.java:30, 32`: step scale along dispenser facing vector (1.125 = 9/8).
+pub const MINECART_DISPENSER_STEP_XZ_SCALE: f64 = 1.125;
+
+/// Vanilla `MinecartDispenseItemBehavior.java:38`: dispenser vertical offset when front block is sloped rail (0.6).
+pub const MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET: f64 = 0.6;
+
+/// Vanilla `MinecartDispenseItemBehavior.java:40`: dispenser vertical offset when front block is flat rail (0.1).
+pub const MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET: f64 = 0.1;
+
+/// Vanilla `MinecartDispenseItemBehavior.java:53`: dispenser vertical offset when front is air and below is sloped rail not facing down (-0.4).
+pub const MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET: f64 = -0.4;
+
+/// Vanilla `MinecartDispenseItemBehavior.java:55`: dispenser vertical offset when front is air and below is flat rail or facing down (-0.9).
+pub const MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET: f64 = -0.9;
+
+/// Calculates the exact spawn position of a minecart placed by player on a rail block.
+/// Mirrors vanilla `MinecartItem.java:40-45`:
+/// `new Vec3(pos.getX() + 0.5, pos.getY() + 0.0625 + offset, pos.getZ() + 0.5)`.
+#[must_use]
+pub fn calculate_minecart_placement_spawn_position(
+    block_pos: Vector3<i32>,
+    is_slope: bool,
+) -> Vector3<f64> {
+    let offset = if is_slope {
+        MINECART_PLACEMENT_SLOPE_Y_OFFSET
+    } else {
+        0.0
+    };
+    Vector3::new(
+        f64::from(block_pos.x) + MINECART_PLACEMENT_HORIZONTAL_OFFSET,
+        f64::from(block_pos.y) + MINECART_PLACEMENT_BASE_Y_OFFSET + offset,
+        f64::from(block_pos.z) + MINECART_PLACEMENT_HORIZONTAL_OFFSET,
+    )
+}
+
+/// Evaluates dispenser vertical offset for spawning a minecart on rails.
+/// Returns None if dispensing conditions are not met (falling back to item drop).
+/// Mirrors vanilla `MinecartDispenseItemBehavior.java:35-57`.
+#[must_use]
+pub const fn calculate_minecart_dispenser_y_offset(
+    front_is_rail: bool,
+    front_rail_is_slope: bool,
+    front_is_air: bool,
+    below_is_rail: bool,
+    below_rail_is_slope: bool,
+    facing_down: bool,
+) -> Option<f64> {
+    if front_is_rail {
+        if front_rail_is_slope {
+            Some(MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET)
+        } else {
+            Some(MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET)
+        }
+    } else if front_is_air && below_is_rail {
+        if !facing_down && below_rail_is_slope {
+            Some(MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET)
+        } else {
+            Some(MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET)
+        }
+    } else {
+        None
+    }
+}
+
+/// Computes the exact spawn coordinates of a minecart launched from a dispenser.
+/// Mirrors vanilla `MinecartDispenseItemBehavior.java:29-32, 59`.
+#[must_use]
+pub fn calculate_minecart_dispenser_spawn_position(
+    center: Vector3<f64>,
+    dispenser_y: i32,
+    step_x: i32,
+    step_y: i32,
+    step_z: i32,
+    y_offset: f64,
+) -> Vector3<f64> {
+    Vector3::new(
+        center.x + f64::from(step_x) * MINECART_DISPENSER_STEP_XZ_SCALE,
+        f64::from(dispenser_y) + f64::from(step_y) + y_offset,
+        center.z + f64::from(step_z) * MINECART_DISPENSER_STEP_XZ_SCALE,
+    )
+}
+
 /// Calculates vertical velocity change for entities on top of a bubble column.
 ///
 /// Mirrors vanilla `Entity.java:2945-2954` (`handleOnAboveBubbleColumn`):
@@ -29581,5 +29672,89 @@ mod tests {
         // z_diff = -1.0, x_diff = 0.0 -> atan2(-1, 0) = -90.0 -> rotDiff = -90 - 90 = -180 <= -170 -> yaw += 180 = 90
         assert!((yaw_rev - 90.0).abs() < 1e-4);
         assert!(flipped_rev);
+    }
+
+    #[test]
+    fn test_minecart_item_placement_and_dispenser_parity_gap445() {
+        // 1. Constants parity (MinecartItem.java:42, 45; MinecartDispenseItemBehavior.java:30, 38, 40, 53, 55)
+        assert_eq!(MINECART_PLACEMENT_BASE_Y_OFFSET, 0.0625);
+        assert_eq!(MINECART_PLACEMENT_SLOPE_Y_OFFSET, 0.5);
+        assert_eq!(MINECART_PLACEMENT_HORIZONTAL_OFFSET, 0.5);
+        assert_eq!(MINECART_DISPENSER_STEP_XZ_SCALE, 1.125);
+        assert_eq!(MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET, 0.6);
+        assert_eq!(MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET, 0.1);
+        assert_eq!(MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET, -0.4);
+        assert_eq!(MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET, -0.9);
+
+        // 2. Player placement spawn position (MinecartItem.java:40-45)
+        let rail_pos = Vector3::new(10, 64, 20);
+        let spawn_flat = calculate_minecart_placement_spawn_position(rail_pos, false);
+        assert_eq!(spawn_flat.x, 10.5);
+        assert_eq!(spawn_flat.y, 64.0625);
+        assert_eq!(spawn_flat.z, 20.5);
+
+        let spawn_slope = calculate_minecart_placement_spawn_position(rail_pos, true);
+        assert_eq!(spawn_slope.x, 10.5);
+        assert_eq!(spawn_slope.y, 64.5625);
+        assert_eq!(spawn_slope.z, 20.5);
+
+        // 3. Dispenser Y offset conditions (MinecartDispenseItemBehavior.java:35-57)
+        // Front block is sloped rail
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(true, true, false, false, false, false),
+            Some(0.6)
+        );
+        // Front block is flat rail
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(true, false, false, false, false, false),
+            Some(0.1)
+        );
+        // Front is air, below is sloped rail, facing horizontal
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(false, false, true, true, true, false),
+            Some(-0.4)
+        );
+        // Front is air, below is sloped rail, facing DOWN
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(false, false, true, true, true, true),
+            Some(-0.9)
+        );
+        // Front is air, below is flat rail
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(false, false, true, true, false, false),
+            Some(-0.9)
+        );
+        // Front is solid (non-rail) -> None
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(false, false, false, true, true, false),
+            None
+        );
+        // Front is air, below is NOT rail -> None
+        assert_eq!(
+            calculate_minecart_dispenser_y_offset(false, false, true, false, false, false),
+            None
+        );
+
+        // 4. Dispenser spawn position (MinecartDispenseItemBehavior.java:29-32, 59)
+        let center = Vector3::new(10.5, 64.5, 20.5);
+        let dispenser_y = 64;
+
+        // Facing South (+Z: step_x=0, step_y=0, step_z=1), flat rail (y_offset=0.1)
+        let pos_south = calculate_minecart_dispenser_spawn_position(center, dispenser_y, 0, 0, 1, 0.1);
+        assert_eq!(pos_south.x, 10.5);
+        assert!((pos_south.y - 64.1).abs() < 1e-6);
+        assert!((pos_south.z - 21.625).abs() < 1e-6); // 20.5 + 1.125
+
+        // Facing East (+X: step_x=1, step_y=0, step_z=0), sloped rail (y_offset=0.6)
+        let pos_east = calculate_minecart_dispenser_spawn_position(center, dispenser_y, 1, 0, 0, 0.6);
+        assert!((pos_east.x - 21.625 + (20.5 - 10.5)).abs() < 1e-6); // 10.5 + 1.125 = 11.625
+        assert!((pos_east.y - 64.6).abs() < 1e-6);
+        assert_eq!(pos_east.z, 20.5);
+
+        // Facing Down (-Y: step_x=0, step_y=-1, step_z=0), air front with flat rail below (y_offset=-0.9)
+        let pos_down = calculate_minecart_dispenser_spawn_position(center, dispenser_y, 0, -1, 0, -0.9);
+        assert_eq!(pos_down.x, 10.5);
+        assert!((pos_down.y - (64.0 - 1.0 - 0.9)).abs() < 1e-6); // 62.1
+        assert_eq!(pos_down.z, 20.5);
     }
 }

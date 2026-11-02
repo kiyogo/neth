@@ -77,17 +77,21 @@ impl ItemBehaviour for MinecartItem {
                 .shape
                 .is_ascending()
         };
-        let height = if is_ascending { 0.5 } else { 0.0 };
         let entity_type = Self::item_to_entity(item.item);
-        // Bottom center of the rail block.
-        let pos = location.to_f64();
-        let entity = Entity::new(
-            world.clone(),
-            Vector3::new(pos.x, pos.y + 0.0625 + height, pos.z),
-            entity_type,
+        let spawn_pos = crate::entity::combat::calculate_minecart_placement_spawn_position(
+            location.0,
+            is_ascending,
         );
+        let entity = Entity::new(world.clone(), spawn_pos, entity_type);
+        if let Some(custom_name) = item.get_custom_name() {
+            entity.set_custom_name(custom_name.clone());
+        }
         let minecart_entity = Arc::new(MinecartEntity::new(entity));
         world.spawn_entity(minecart_entity);
+        world.emit_game_event(
+            pumpkin_data::game_event::GameEvent::EntityPlace.name(),
+            spawn_pos,
+        );
         item.decrement_unless_creative(player.gamemode.load(), 1);
         BlockActionResult::Success
     }

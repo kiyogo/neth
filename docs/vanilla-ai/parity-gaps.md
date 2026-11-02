@@ -11452,6 +11452,45 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Sử dụng `calculate_minecart_container_drag` chuẩn hóa cản tự nhiên dựa trên tín hiệu redstone và độ rỗng container.
   - **Unit Tests**: `test_minecart_rail_movement_slope_and_activator_parity_gap444`.
 
+### Gap 445: Minecart Item Placement, Rail Center Offset, GameEvent::EntityPlace & Dispenser Parity
+
+**Vanilla Reference**: `net.minecraft.world.item.MinecartItem.java:28-68`, `net.minecraft.core.dispenser.MinecartDispenseItemBehavior.java:26-79`
+
+- **Tọa Độ Đặt Xe Của Người Chơi & Sự Kiện GameEvent (Player Placement Coordinates & Game Event)**:
+  - Vanilla `MinecartItem.java:40-45`:
+    - Nếu khối không phải là ray (`!blockState.is(BlockTags.RAILS)`): thất bại `InteractionResult.FAIL`.
+    - Dốc ray (`shape.isSlope()`): cộng thêm `offset = 0.5` (`MINECART_PLACEMENT_SLOPE_Y_OFFSET = 0.5`), ray bằng phẳng `offset = 0.0`.
+    - Tọa độ sinh xe: `spawnPos = (pos.getX() + 0.5, pos.getY() + 0.0625 + offset, pos.getZ() + 0.5)` (căn giữa khối theo trục X và Z bằng `MINECART_PLACEMENT_HORIZONTAL_OFFSET = 0.5`, thay vì đặt lệch tại góc Tây Bắc như trước đây).
+    - Sao chép tên tùy chỉnh (`custom_name`) từ ItemStack sang xe minecart nếu có.
+    - Phát sinh sự kiện game `GameEvent::EntityPlace` tại vị trí đặt xe (`serverLevel.gameEvent(GameEvent.ENTITY_PLACE, pos, ...)`).
+- **Điều Kiện Phóng Xe Từ Máy Phân Phát (Dispenser Minecart Launch Parity)**:
+  - Vanilla `MinecartDispenseItemBehavior.java:26-59`:
+    - Bước dịch chuyển theo hướng máy phân phát: `spawnX = center.x + stepX * 1.125`, `spawnZ = center.z + stepZ * 1.125` (`MINECART_DISPENSER_STEP_XZ_SCALE = 1.125 = 9/8`).
+    - Kiểm tra khối đằng trước `frontPos`:
+      - Nếu `front` là ray:
+        - Ray dốc: `yOffset = 0.6` (`MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET = 0.6`).
+        - Ray phẳng: `yOffset = 0.1` (`MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET = 0.1`).
+      - Nếu `front` không phải ray:
+        - Nếu `front` không phải không khí (`!isAir()`): thất bại, rơi vật phẩm minecart ra ngoài (`defaultDispenseItemBehavior.dispense`).
+        - Nếu khối phía dưới `front.down()` không phải ray: thất bại, rơi vật phẩm.
+        - Nếu ray bên dưới là dốc VÀ máy phân phát không quay mặt xuống (`direction != Direction.DOWN`): `yOffset = -0.4` (`MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET = -0.4`).
+        - Ngược lại: `yOffset = -0.9` (`MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET = -0.9`).
+    - Tọa độ Y sinh xe: `pos.y + stepY + yOffset`.
+    - Sao chép tên tùy chỉnh `custom_name` từ ItemStack nếu có.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `MINECART_PLACEMENT_BASE_Y_OFFSET`, `MINECART_PLACEMENT_SLOPE_Y_OFFSET`, `MINECART_PLACEMENT_HORIZONTAL_OFFSET`, `MINECART_DISPENSER_STEP_XZ_SCALE`, `MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET`, `MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET`, `MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET`, `MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET`.
+    - Bổ sung hàm thuần: `calculate_minecart_placement_spawn_position`, `calculate_minecart_dispenser_y_offset`, `calculate_minecart_dispenser_spawn_position`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/minecart.rs`:
+    - Sử dụng `calculate_minecart_placement_spawn_position`, sửa lỗi đặt lệch góc Tây Bắc sang căn giữa khối `+0.5` trên X và Z.
+    - Sao chép `custom_name` từ ItemStack vào entity.
+    - Phát sinh sự kiện `GameEvent::EntityPlace`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Kết nối `calculate_minecart_dispenser_y_offset` và `calculate_minecart_dispenser_spawn_position`.
+    - Sao chép `custom_name` từ ItemStack vào entity.
+  - **Unit Tests**: `test_minecart_item_placement_and_dispenser_parity_gap445`.
+
+
 
 
 

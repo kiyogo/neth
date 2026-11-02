@@ -1042,12 +1042,8 @@ impl DispenserBlock {
     }
 
     fn dispense_minecart(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
-        fn rail_is_ascending(world: &Arc<World>, pos: &BlockPos) -> Option<bool> {
-            let (block, state_id) = world.get_block_and_state_id(pos);
-            if !block.has_tag(&tag::Block::MINECRAFT_RAILS) {
-                return None;
-            }
-            Some(if PoweredRailLikeProperties::handles_block_id(block.id) {
+        fn rail_is_ascending(block: &Block, state_id: BlockStateId) -> bool {
+            if PoweredRailLikeProperties::handles_block_id(block.id) {
                 PoweredRailLikeProperties::from_state_id(state_id)
                     .shape
                     .is_ascending()
@@ -1055,36 +1051,48 @@ impl DispenserBlock {
                 RailLikeProperties::from_state_id(state_id)
                     .shape
                     .is_ascending()
-            })
+            }
         }
 
-        let target = Self::target_position(ctx);
-        let height = if let Some(ascending) = rail_is_ascending(ctx.world, &target) {
-            if ascending { 0.6 } else { 0.1 }
-        } else if ctx.world.get_block_state(&target).is_air()
-            && let Some(ascending) = rail_is_ascending(ctx.world, &target.down())
-        {
-            if ascending && ctx.facing != Facing::Down {
-                -0.4
-            } else {
-                -0.9
-            }
-        } else {
+        let front_pos = Self::target_position(ctx);
+        let (front_block, front_state) = ctx.world.get_block_and_state_id(&front_pos);
+        let front_is_rail = front_block.has_tag(&tag::Block::MINECRAFT_RAILS);
+        let front_rail_is_slope = front_is_rail && rail_is_ascending(front_block, front_state);
+
+        let front_is_air = ctx.world.get_block_state(&front_pos).is_air();
+        let below_pos = front_pos.down();
+        let (below_block, below_state) = ctx.world.get_block_and_state_id(&below_pos);
+        let below_is_rail = below_block.has_tag(&tag::Block::MINECRAFT_RAILS);
+        let below_rail_is_slope = below_is_rail && rail_is_ascending(below_block, below_state);
+
+        let Some(y_offset) = crate::entity::combat::calculate_minecart_dispenser_y_offset(
+            front_is_rail,
+            front_rail_is_slope,
+            front_is_air,
+            below_is_rail,
+            below_rail_is_slope,
+            ctx.facing == Facing::Down,
+        ) else {
             return false;
         };
 
         let entity_type = MinecartItem::item_to_entity(item.item);
-        let _ = item.split(1);
-
         let normal = to_normal(ctx.facing);
         let center = ctx.position.to_centered_f64();
-        let spawn_pos = Vector3::new(
-            normal.x.mul_add(1.125, center.x),
-            f64::from(ctx.position.0.y) + normal.y + height,
-            normal.z.mul_add(1.125, center.z),
+        let spawn_pos = crate::entity::combat::calculate_minecart_dispenser_spawn_position(
+            center,
+            ctx.position.0.y,
+            normal.x as i32,
+            normal.y as i32,
+            normal.z as i32,
+            y_offset,
         );
 
         let entity = Entity::new(ctx.world.clone(), spawn_pos, entity_type);
+        if let Some(custom_name) = item.get_custom_name() {
+            entity.set_custom_name(custom_name.clone());
+        }
+        let _ = item.split(1);
         ctx.world
             .spawn_entity(Arc::new(MinecartEntity::new(entity)));
 
