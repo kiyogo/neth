@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Arc;
 
 use pumpkin_data::attributes::Attributes;
@@ -66,6 +66,7 @@ pub struct PufferfishEntity {
     puff_state: AtomicI32,
     inflate_counter: AtomicI32,
     deflate_timer: AtomicI32,
+    pub from_bucket: AtomicBool,
 }
 
 impl PufferfishEntity {
@@ -91,6 +92,7 @@ impl PufferfishEntity {
             puff_state: AtomicI32::new(PuffState::Small.id()),
             inflate_counter: AtomicI32::new(0),
             deflate_timer: AtomicI32::new(0),
+            from_bucket: AtomicBool::new(false),
         };
         let mob_arc = Arc::new(pufferfish);
         mob_arc.refresh_dimensions();
@@ -148,12 +150,17 @@ impl PufferfishEntity {
 
     pub fn refresh_dimensions(&self) {
         let entity = &self.mob_entity.living_entity.entity;
-        let scale = crate::entity::combat::calculate_pufferfish_scale(self.get_puff_state().id());
+        let (width, height, eye_height) = crate::entity::combat::calculate_pufferfish_dimensions(
+            self.get_puff_state().id(),
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
 
         let dimensions = EntityDimensions {
-            width: entity.entity_type.dimension[0] * scale,
-            height: entity.entity_type.dimension[1] * scale,
-            eye_height: entity.entity_type.eye_height * scale,
+            width,
+            height,
+            eye_height,
         };
 
         let pos = entity.pos.load();
@@ -161,6 +168,19 @@ impl PufferfishEntity {
             .bounding_box
             .store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
         entity.entity_dimension.store(dimensions);
+    }
+
+    #[must_use]
+    pub fn is_from_bucket(&self) -> bool {
+        self.from_bucket.load(Ordering::Relaxed)
+    }
+
+    pub fn set_from_bucket(&self, from_bucket: bool) {
+        self.from_bucket.store(from_bucket, Ordering::Relaxed);
+        self.mob_entity
+            .living_entity
+            .entity
+            .set_synced_data(tracked_data::pufferfish::FROM_BUCKET, from_bucket);
     }
 
     pub(crate) fn start_inflating(&self) {
@@ -277,6 +297,10 @@ impl Mob for PufferfishEntity {
             tracked_data::pufferfish::PUFF_STATE,
             VarInt(self.get_puff_state().id()),
         );
+        entity.set_synced_data(
+            tracked_data::pufferfish::FROM_BUCKET,
+            self.is_from_bucket(),
+        );
     }
 
     fn mob_travel_in_water(&self, caller: &dyn EntityBase) -> bool {
@@ -365,12 +389,17 @@ impl Mob for PufferfishEntity {
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
         nbt.put_int("PuffState", self.puff_state.load(Ordering::Relaxed));
+        nbt.put_bool("FromBucket", self.is_from_bucket());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
         if let Some(state_id) = nbt.get_int("PuffState") {
             self.set_puff_state(PuffState::from_id(state_id.clamp(0, 2)));
         }
+        if let Some(from_bucket) = nbt.get_bool("FromBucket") {
+            self.set_from_bucket(from_bucket);
+        }
+        self.refresh_dimensions();
     }
 }
 
@@ -425,5 +454,12 @@ mod tests {
         let mut nbt = NbtCompound::new();
         nbt.put_int("PuffState", 2);
         assert_eq!(nbt.get_int("PuffState"), Some(2));
+        let (dw, dh, deye) = crate::entity::combat::calculate_pufferfish_dimensions(0, 0.7, 0.7, 0.455);
+        assert_eq!(dw, 0.35);
+        assert_eq!(dh, 0.35);
+        assert_eq!(deye, 0.2275);
+
+        nbt.put_bool("FromBucket", true);
+        assert_eq!(nbt.get_bool("FromBucket"), Some(true));
     }
 }

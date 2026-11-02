@@ -7171,12 +7171,55 @@ pub fn calculate_pufferfish_sting_damage(puff_state: i32) -> f32 {
 /// Mirrors vanilla `Pufferfish.java:185-191`:
 /// state 0 -> 0.5, state 1 -> 0.7, state 2 -> 1.0.
 #[must_use]
-pub fn calculate_pufferfish_scale(puff_state: i32) -> f32 {
+pub const fn calculate_pufferfish_scale(puff_state: i32) -> f32 {
     match puff_state {
         0 => 0.5,
         1 => 0.7,
         _ => 1.0,
     }
+}
+
+/// Pufferfish adult default width (0.7).
+/// Mirrors vanilla `EntityTypes.java:842` (`.sized(0.7F, 0.7F).eyeHeight(0.455F)`).
+pub const PUFFERFISH_DEFAULT_WIDTH: f32 = 0.7;
+
+/// Pufferfish adult default height (0.7).
+/// Mirrors vanilla `EntityTypes.java:842` (`.sized(0.7F, 0.7F).eyeHeight(0.455F)`).
+pub const PUFFERFISH_DEFAULT_HEIGHT: f32 = 0.7;
+
+/// Pufferfish adult default eye height (0.455).
+/// Mirrors vanilla `EntityTypes.java:842` (`.eyeHeight(0.455F)`).
+pub const PUFFERFISH_DEFAULT_EYE_HEIGHT: f32 = 0.455;
+
+/// Pufferfish scale factor when deflated (puff state 0) (0.5).
+/// Mirrors vanilla `Pufferfish.java:187` (`case 0 -> 0.5F;`).
+pub const PUFFERFISH_SCALE_DEFLATED: f32 = 0.5;
+
+/// Pufferfish scale factor when half-puffed (puff state 1) (0.7).
+/// Mirrors vanilla `Pufferfish.java:188` (`case 1 -> 0.7F;`).
+pub const PUFFERFISH_SCALE_HALF: f32 = 0.7;
+
+/// Pufferfish scale factor when fully puffed (puff state 2) (1.0).
+/// Mirrors vanilla `Pufferfish.java:189` (`default -> 1.0F;`).
+pub const PUFFERFISH_SCALE_FULL: f32 = 1.0;
+
+/// Calculates Pufferfish dimensions based on puff state.
+///
+/// Mirrors vanilla `Pufferfish.java:181-191`:
+/// `return super.getDefaultDimensions(pose).scale(getScale(this.getPuffState()));`
+#[must_use]
+pub fn calculate_pufferfish_dimensions(
+    puff_state: i32,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let scale = calculate_pufferfish_scale(puff_state);
+    (
+        default_width * scale,
+        default_height * scale,
+        default_eye_height * scale,
+    )
 }
 
 /// Calculates wolf tail rotation angle based on state and health.
@@ -11811,6 +11854,66 @@ pub const SALMON_LARGE_SCALE: f32 = 1.5;
 /// Salmon maximum school size (5).
 /// Mirrors vanilla `Salmon.java:46` (`return 5;`).
 pub const SALMON_MAX_SCHOOL_SIZE: i32 = 5;
+
+/// Salmon adult default width (0.7).
+/// Mirrors vanilla `EntityTypes.java:856` (`.sized(0.7F, 0.4F).eyeHeight(0.26F)`).
+pub const SALMON_DEFAULT_WIDTH: f32 = 0.7;
+
+/// Salmon adult default height (0.4).
+/// Mirrors vanilla `EntityTypes.java:856` (`.sized(0.7F, 0.4F).eyeHeight(0.26F)`).
+pub const SALMON_DEFAULT_HEIGHT: f32 = 0.4;
+
+/// Salmon adult default eye height (0.26).
+/// Mirrors vanilla `EntityTypes.java:856` (`.eyeHeight(0.26F)`).
+pub const SALMON_DEFAULT_EYE_HEIGHT: f32 = 0.26;
+
+/// Salmon spawn weight for Small variant (30).
+/// Mirrors vanilla `Salmon.java:140` (`builder.add(Salmon.Variant.SMALL, 30);`).
+pub const SALMON_SPAWN_WEIGHT_SMALL: u32 = 30;
+
+/// Salmon spawn weight for Medium variant (50).
+/// Mirrors vanilla `Salmon.java:141` (`builder.add(Salmon.Variant.MEDIUM, 50);`).
+pub const SALMON_SPAWN_WEIGHT_MEDIUM: u32 = 50;
+
+/// Salmon spawn weight for Large variant (15).
+/// Mirrors vanilla `Salmon.java:142` (`builder.add(Salmon.Variant.LARGE, 15);`).
+pub const SALMON_SPAWN_WEIGHT_LARGE: u32 = 15;
+
+/// Salmon total spawn weight sum (95 = 30 + 50 + 15).
+pub const SALMON_TOTAL_SPAWN_WEIGHT: u32 =
+    SALMON_SPAWN_WEIGHT_SMALL + SALMON_SPAWN_WEIGHT_MEDIUM + SALMON_SPAWN_WEIGHT_LARGE;
+
+/// Calculates Salmon scale factor based on variant ID.
+///
+/// Mirrors vanilla `Salmon.java:147-149, 157-159`:
+/// Small = 0 -> 0.5, Medium = 1 -> 1.0, Large = 2 -> 1.5.
+#[must_use]
+pub const fn calculate_salmon_scale(variant_id: i32) -> f32 {
+    match variant_id {
+        0 => SALMON_SMALL_SCALE,
+        2 => SALMON_LARGE_SCALE,
+        _ => SALMON_MEDIUM_SCALE,
+    }
+}
+
+/// Calculates Salmon dimensions based on variant ID.
+///
+/// Mirrors vanilla `Salmon.java:147-154`:
+/// `return super.getDefaultDimensions(pose).scale(this.getSalmonScale());`
+#[must_use]
+pub fn calculate_salmon_dimensions(
+    variant_id: i32,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let scale = calculate_salmon_scale(variant_id);
+    (
+        default_width * scale,
+        default_height * scale,
+        default_eye_height * scale,
+    )
+}
 
 /// Sniffer base max health (14.0 HP / 7 hearts).
 /// Mirrors vanilla Sniffer.java:86 (Attributes.MAX_HEALTH, 14.0).
@@ -25920,6 +26023,47 @@ mod tests {
         assert!(can_baby_piglin_ride_hoglin(true, 2));
         assert!(!can_baby_piglin_ride_hoglin(true, 3));
         assert!(!can_baby_piglin_ride_hoglin(false, 0));
+    }
+
+    #[test]
+    fn test_pufferfish_and_salmon_dimensions_gap424() {
+        // Pufferfish tests (Pufferfish.java:181-191, EntityTypes.java:842)
+        assert_eq!(PUFFERFISH_DEFAULT_WIDTH, 0.7);
+        assert_eq!(PUFFERFISH_DEFAULT_HEIGHT, 0.7);
+        assert_eq!(PUFFERFISH_DEFAULT_EYE_HEIGHT, 0.455);
+        assert_eq!(PUFFERFISH_SCALE_DEFLATED, 0.5);
+        assert_eq!(PUFFERFISH_SCALE_HALF, 0.7);
+        assert_eq!(PUFFERFISH_SCALE_FULL, 1.0);
+
+        let deflated = calculate_pufferfish_dimensions(0, 0.7, 0.7, 0.455);
+        assert_eq!(deflated, (0.35, 0.35, 0.2275));
+
+        let half = calculate_pufferfish_dimensions(1, 0.7, 0.7, 0.455);
+        assert_eq!(half, (0.48999998, 0.48999998, 0.3185));
+
+        let full = calculate_pufferfish_dimensions(2, 0.7, 0.7, 0.455);
+        assert_eq!(full, (0.7, 0.7, 0.455));
+
+        // Salmon tests (Salmon.java:147-159, EntityTypes.java:856)
+        assert_eq!(SALMON_DEFAULT_WIDTH, 0.7);
+        assert_eq!(SALMON_DEFAULT_HEIGHT, 0.4);
+        assert_eq!(SALMON_DEFAULT_EYE_HEIGHT, 0.26);
+        assert_eq!(SALMON_SMALL_SCALE, 0.5);
+        assert_eq!(SALMON_MEDIUM_SCALE, 1.0);
+        assert_eq!(SALMON_LARGE_SCALE, 1.5);
+        assert_eq!(SALMON_SPAWN_WEIGHT_SMALL, 30);
+        assert_eq!(SALMON_SPAWN_WEIGHT_MEDIUM, 50);
+        assert_eq!(SALMON_SPAWN_WEIGHT_LARGE, 15);
+        assert_eq!(SALMON_TOTAL_SPAWN_WEIGHT, 95);
+
+        let s_small = calculate_salmon_dimensions(0, 0.7, 0.4, 0.26);
+        assert_eq!(s_small, (0.35, 0.2, 0.13));
+
+        let s_med = calculate_salmon_dimensions(1, 0.7, 0.4, 0.26);
+        assert_eq!(s_med, (0.7, 0.4, 0.26));
+
+        let s_large = calculate_salmon_dimensions(2, 0.7, 0.4, 0.26);
+        assert_eq!(s_large, (1.05, 0.6, 0.39));
     }
 
 }

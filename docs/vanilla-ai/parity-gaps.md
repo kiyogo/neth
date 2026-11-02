@@ -10721,3 +10721,31 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Triển khai helper `can_baby_piglin_ride_hoglin(is_baby, current_passengers)` trong `combat.rs`.
 - **Hằng số Parity**: `PIGLIN_ADULT_WIDTH` (0.6), `PIGLIN_ADULT_HEIGHT` (1.95), `PIGLIN_ADULT_EYE_HEIGHT` (1.79), `PIGLIN_BABY_WIDTH` (0.49), `PIGLIN_BABY_HEIGHT` (0.98), `PIGLIN_BABY_EYE_HEIGHT` (0.78), `PIGLIN_BABY_SCALE` (0.5), `calculate_piglin_dimensions`, `can_baby_piglin_ride_hoglin`.
 - **Unit Tests**: `test_piglin_dimensions_gap423`, `test_piglin_dimensions_and_hoglin_riding_parity`, `test_piglin_baby_speed_and_conversion_nausea_parity`, `test_piglin_family_parity` pass 100%.
+
+
+### Gap 424: Pufferfish & Salmon Puff State and Variant Scalable Dimensions Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.fish.Pufferfish.java:51-84, 180-191`, `net.minecraft.world.entity.animal.fish.Salmon.java:35-43, 75-86, 89-98, 106-113, 136-184`, `net.minecraft.world.entity.EntityTypes.java:841-842, 855-856`
+
+- **Kích thước Theo Trạng thái Phồng của Cá nóc (Pufferfish Puff State Scalable Dimensions & Bounding Box Refresh)**:
+  - Vanilla `Pufferfish.java:180-191`:
+    - Base dimensions: `0.7 x 0.7`, eye height `0.455`.
+    - Trạng thái 0 (`PuffState::Small` / deflated): tỉ lệ `0.5F` -> `0.35 x 0.35`, eye `0.2275`.
+    - Trạng thái 1 (`PuffState::Mid` / half-puffed): tỉ lệ `0.7F` -> `0.49 x 0.49`, eye `0.3185`.
+    - Trạng thái 2 (`PuffState::Full` / fully puffed): tỉ lệ `1.0F` -> `0.7 x 0.7`, eye `0.455`.
+  - Bổ sung `PUFFERFISH_DEFAULT_WIDTH` (0.7), `PUFFERFISH_DEFAULT_HEIGHT` (0.7), `PUFFERFISH_DEFAULT_EYE_HEIGHT` (0.455), `PUFFERFISH_SCALE_DEFLATED` (0.5), `PUFFERFISH_SCALE_HALF` (0.7), `PUFFERFISH_SCALE_FULL` (1.0), `calculate_pufferfish_dimensions` trong `combat.rs`.
+  - Bổ sung `from_bucket: AtomicBool` cùng `is_from_bucket` và `set_from_bucket` đồng bộ `tracked_data::pufferfish::FROM_BUCKET`.
+  - Cập nhật `mob_init_data_tracker`, `mob_write_nbt`, `mob_read_nbt` và `refresh_dimensions()`.
+- **Kích thước Theo Biến thể của Cá hồi (Salmon Variant Scalable Dimensions, Weight Spawning & Bounding Box Refresh)**:
+  - Vanilla `Salmon.java:147-184`:
+    - Base dimensions: `0.7 x 0.4`, eye height `0.26`.
+    - Biến thể `SalmonVariant::Small` (id 0, "small"): tỉ lệ `0.5F` -> `0.35 x 0.20`, eye `0.13`. Trọng số spawn: 30.
+    - Biến thể `SalmonVariant::Medium` (id 1, "medium", DEFAULT): tỉ lệ `1.0F` -> `0.70 x 0.40`, eye `0.26`. Trọng số spawn: 50.
+    - Biến thể `SalmonVariant::Large` (id 2, "large"): tỉ lệ `1.5F` -> `1.05 x 0.60`, eye `0.39`. Trọng số spawn: 15.
+    - Tổng trọng số sinh ngẫu nhiên: 95.
+  - Triển khai enum `SalmonVariant` (`Small`, `Medium`, `Large`) với `id()`, `from_id()`, `name()`, `from_name()`, `scale()`.
+  - Triển khai `variant: AtomicI32`, `from_bucket: AtomicBool`, `get_variant`, `set_variant`, `get_salmon_scale`, `finalize_spawn`, `refresh_dimensions`, `is_from_bucket`, `set_from_bucket` trên `SalmonEntity`.
+  - Đồng bộ `tracked_data::salmon::DATA_TYPE` và `tracked_data::salmon::FROM_BUCKET` trong `mob_init_data_tracker`.
+  - Xử lý nạp và lưu NBT `"type"` (chuỗi và số nguyên) và `"FromBucket"` trong `mob_write_nbt` / `mob_read_nbt`.
+  - Bổ sung `SALMON_DEFAULT_WIDTH` (0.7), `SALMON_DEFAULT_HEIGHT` (0.4), `SALMON_DEFAULT_EYE_HEIGHT` (0.26), `SALMON_SPAWN_WEIGHT_SMALL` (30), `SALMON_SPAWN_WEIGHT_MEDIUM` (50), `SALMON_SPAWN_WEIGHT_LARGE` (15), `SALMON_TOTAL_SPAWN_WEIGHT` (95), `calculate_salmon_scale`, `calculate_salmon_dimensions` trong `combat.rs`.
+- **Unit Tests**: `test_pufferfish_and_salmon_dimensions_gap424`, `test_pufferfish_parity_constants`, `test_pufferfish_scales_and_sting`, `test_salmon_parity_constants`, `test_salmon_variants_and_scales`, `test_salmon_dimensions_scaling`, `test_salmon_nbt_roundtrip` pass 100%.
