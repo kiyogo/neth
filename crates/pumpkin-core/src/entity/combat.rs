@@ -5073,6 +5073,10 @@ pub const PHANTOM_SPAWN_XZ_VARIATION: i32 = 21;
 /// Mirrors vanilla `PhantomSpawner.java:32`: `level.getSkyDarken() >= 5`.
 pub const PHANTOM_SKY_DARKEN_MIN: i32 = 5;
 
+/// Base eye height for Phantom (0.175).
+/// Mirrors vanilla `EntityTypes.java:766` (`.eyeHeight(0.175F)`).
+pub const PHANTOM_BASE_EYE_HEIGHT: f32 = 0.175;
+
 /// Calculates scaled Phantom dimensions (width, height) based on size (0..=64).
 ///
 /// Mirrors vanilla `Phantom.java:194-198`:
@@ -5081,6 +5085,25 @@ pub const PHANTOM_SKY_DARKEN_MIN: i32 = 5;
 pub fn calculate_phantom_dimensions(phantom_size: i32) -> (f32, f32) {
     let scale = calculate_phantom_dimension_scale(phantom_size);
     (PHANTOM_BASE_WIDTH * scale, PHANTOM_BASE_HEIGHT * scale)
+}
+
+/// Calculates Phantom full scalable dimensions (width, height, eye_height) based on size (0..=64).
+///
+/// Mirrors vanilla `Phantom.java:194-198`:
+/// `return originalDimensions.scale(1.0F + 0.15F * size);`
+#[must_use]
+pub fn calculate_phantom_full_dimensions(
+    phantom_size: i32,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let scale = calculate_phantom_dimension_scale(phantom_size);
+    (
+        default_width * scale,
+        default_height * scale,
+        default_eye_height * scale,
+    )
 }
 
 /// Calculates Phantom spawn group size based on game difficulty and a random offset.
@@ -5295,6 +5318,37 @@ pub const CUBE_MOB_MAX_SIZE: i32 = 127;
 /// Maximum natural spawn size scale for wild CubeMobs (4).
 /// Mirrors vanilla `AbstractCubeMob.java:46` (`MAX_NATURAL_SIZE = 4`).
 pub const CUBE_MOB_MAX_NATURAL_SIZE: i32 = 4;
+
+/// Base width for AbstractCubeMob (Slime, MagmaCube, SulfurCube) at size 1 (0.52).
+/// Mirrors vanilla `EntityTypes.java:648, 893` (`.sized(0.52F, 0.52F).eyeHeight(0.325F)`).
+pub const CUBE_MOB_BASE_WIDTH: f32 = 0.52;
+
+/// Base height for AbstractCubeMob (Slime, MagmaCube, SulfurCube) at size 1 (0.52).
+/// Mirrors vanilla `EntityTypes.java:648, 893` (`.sized(0.52F, 0.52F).eyeHeight(0.325F)`).
+pub const CUBE_MOB_BASE_HEIGHT: f32 = 0.52;
+
+/// Base eye height for AbstractCubeMob (Slime, MagmaCube, SulfurCube) at size 1 (0.325).
+/// Mirrors vanilla `EntityTypes.java:648, 893` (`.eyeHeight(0.325F)`).
+pub const CUBE_MOB_BASE_EYE_HEIGHT: f32 = 0.325;
+
+/// Calculates AbstractCubeMob dimensions based on actual size.
+///
+/// Mirrors vanilla `AbstractCubeMob.java:262-263`:
+/// `return this.getType().getDimensions().scale(this.getSize());`
+#[must_use]
+pub fn calculate_cube_mob_dimensions(
+    size: i32,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let actual_size = size.clamp(CUBE_MOB_MIN_SIZE, CUBE_MOB_MAX_SIZE) as f32;
+    (
+        default_width * actual_size,
+        default_height * actual_size,
+        default_eye_height * actual_size,
+    )
+}
 
 /// Ticks a CubeMob attack goal can continue before growing tired (300 ticks = 15s).
 /// Mirrors vanilla `AbstractCubeMob.java:352` (`reducedTickDelay(300)`).
@@ -26064,6 +26118,49 @@ mod tests {
 
         let s_large = calculate_salmon_dimensions(2, 0.7, 0.4, 0.26);
         assert_eq!(s_large, (1.05, 0.6, 0.39));
+    }
+
+    #[test]
+    fn test_cube_mob_and_phantom_dimensions_gap425() {
+        // CubeMob (Slime & MagmaCube) dimensions (AbstractCubeMob.java:262-263, EntityTypes.java:648, 893)
+        assert_eq!(CUBE_MOB_BASE_WIDTH, 0.52);
+        assert_eq!(CUBE_MOB_BASE_HEIGHT, 0.52);
+        assert_eq!(CUBE_MOB_BASE_EYE_HEIGHT, 0.325);
+
+        // Size 1 (tiny)
+        let (w1, h1, eye1) = calculate_cube_mob_dimensions(1, 0.52, 0.52, 0.325);
+        assert_eq!(w1, 0.52);
+        assert_eq!(h1, 0.52);
+        assert_eq!(eye1, 0.325);
+
+        // Size 2 (small)
+        let (w2, h2, eye2) = calculate_cube_mob_dimensions(2, 0.52, 0.52, 0.325);
+        assert_eq!(w2, 1.04);
+        assert_eq!(h2, 1.04);
+        assert_eq!(eye2, 0.65);
+
+        // Size 4 (large)
+        let (w4, h4, eye4) = calculate_cube_mob_dimensions(4, 0.52, 0.52, 0.325);
+        assert_eq!(w4, 2.08);
+        assert_eq!(h4, 2.08);
+        assert_eq!(eye4, 1.3);
+
+        // Phantom dimensions (Phantom.java:194-198, EntityTypes.java:765-766)
+        assert_eq!(PHANTOM_BASE_WIDTH, 0.9);
+        assert_eq!(PHANTOM_BASE_HEIGHT, 0.5);
+        assert_eq!(PHANTOM_BASE_EYE_HEIGHT, 0.175);
+
+        // Size 0 (default)
+        let (pw0, ph0, peye0) = calculate_phantom_full_dimensions(0, 0.9, 0.5, 0.175);
+        assert_eq!(pw0, 0.9);
+        assert_eq!(ph0, 0.5);
+        assert_eq!(peye0, 0.175);
+
+        // Size 1 (scale 1.15)
+        let (pw1, ph1, peye1) = calculate_phantom_full_dimensions(1, 0.9, 0.5, 0.175);
+        assert!((pw1 - 1.035).abs() < 1e-6);
+        assert!((ph1 - 0.575).abs() < 1e-6);
+        assert!((peye1 - 0.20125).abs() < 1e-6);
     }
 
 }

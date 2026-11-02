@@ -10749,3 +10749,33 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Xử lý nạp và lưu NBT `"type"` (chuỗi và số nguyên) và `"FromBucket"` trong `mob_write_nbt` / `mob_read_nbt`.
   - Bổ sung `SALMON_DEFAULT_WIDTH` (0.7), `SALMON_DEFAULT_HEIGHT` (0.4), `SALMON_DEFAULT_EYE_HEIGHT` (0.26), `SALMON_SPAWN_WEIGHT_SMALL` (30), `SALMON_SPAWN_WEIGHT_MEDIUM` (50), `SALMON_SPAWN_WEIGHT_LARGE` (15), `SALMON_TOTAL_SPAWN_WEIGHT` (95), `calculate_salmon_scale`, `calculate_salmon_dimensions` trong `combat.rs`.
 - **Unit Tests**: `test_pufferfish_and_salmon_dimensions_gap424`, `test_pufferfish_parity_constants`, `test_pufferfish_scales_and_sting`, `test_salmon_parity_constants`, `test_salmon_variants_and_scales`, `test_salmon_dimensions_scaling`, `test_salmon_nbt_roundtrip` pass 100%.
+
+
+### Gap 425: Slime, Magma Cube & Phantom Size Scalable Dimensions Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.monster.cubemob.AbstractCubeMob.java:42-46, 78-89, 158-175, 262-263`, `net.minecraft.world.entity.monster.Phantom.java:47, 83-99, 158-165, 194-198`, `net.minecraft.world.entity.EntityTypes.java:646-648, 763-766, 891-893`
+
+- **Kích thước Theo Kích cỡ của Slime & Magma Cube (CubeMob Size Scalable Dimensions & Bounding Box Refresh)**:
+  - Vanilla `AbstractCubeMob.java:262-263`:
+    - `public EntityDimensions getDefaultDimensions(final Pose pose) { return this.getType().getDimensions().scale(this.getSize()); }`
+    - Base dimensions (`SLIME` & `MAGMA_CUBE`): `0.52 x 0.52`, eye height `0.325`.
+    - Kích cỡ 1 (tiny): `0.52 x 0.52`, eye `0.325`.
+    - Kích cỡ 2 (small): `1.04 x 1.04`, eye `0.65`.
+    - Kích cỡ 4 (large): `2.08 x 2.08`, eye `1.30`.
+    - Giới hạn kích cỡ: `MIN_SIZE = 1`, `MAX_SIZE = 127`.
+  - Bổ sung `CUBE_MOB_BASE_WIDTH` (0.52), `CUBE_MOB_BASE_HEIGHT` (0.52), `CUBE_MOB_BASE_EYE_HEIGHT` (0.325), `calculate_cube_mob_dimensions` trong `combat.rs`.
+  - Triển khai `refresh_dimensions(&self)` trên `CubeMobEntity` và gọi trong `set_size`.
+  - Triển khai `mob_init_data_tracker` đồng bộ `tracked_data::abstract_cube_mob::ID_SIZE`.
+- **Kích thước Theo Kích cỡ của Phantom (Phantom Size Scalable Dimensions & Bounding Box Refresh)**:
+  - Vanilla `Phantom.java:194-198`:
+    - `return originalDimensions.scale(1.0F + 0.15F * size);`
+    - Base dimensions: `0.9 x 0.5`, eye height `0.175`.
+    - Kích cỡ 0 (mặc định): tỉ lệ `1.0F` -> `0.9 x 0.5`, eye `0.175`.
+    - Kích cỡ 1: tỉ lệ `1.15F` -> `1.035 x 0.575`, eye `0.20125`.
+    - Kích cỡ 2: tỉ lệ `1.30F` -> `1.17 x 0.65`, eye `0.2275`.
+    - Kích cỡ 3: tỉ lệ `1.45F` -> `1.305 x 0.725`, eye `0.25375`.
+    - Giới hạn kích cỡ: `0..=64`.
+  - Bổ sung `PHANTOM_BASE_EYE_HEIGHT` (0.175), `calculate_phantom_full_dimensions` trong `combat.rs`.
+  - Bổ sung `get_phantom_size(&self) -> i32` và `refresh_dimensions(&self)` trên `PhantomEntity`.
+  - Tự động gọi `refresh_dimensions()` khi khởi tạo `PhantomEntity::new` và trong `set_phantom_size`.
+- **Unit Tests**: `test_cube_mob_and_phantom_dimensions_gap425`, `test_cube_mob_parity_constants`, `test_phantom_attributes_and_mechanics_parity`, `test_phantom_spawner_dimensions_and_insomnia_parity` pass 100%.

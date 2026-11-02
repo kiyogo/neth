@@ -80,6 +80,7 @@ impl PhantomEntity {
             phantom_size: AtomicI32::new(0),
         };
         let mob_arc = Arc::new(phantom);
+        mob_arc.refresh_dimensions();
         let phantom_weak = Arc::downgrade(&mob_arc);
 
         {
@@ -107,6 +108,11 @@ impl PhantomEntity {
         mob_arc
     }
 
+    #[must_use]
+    pub fn get_phantom_size(&self) -> i32 {
+        self.phantom_size.load(Ordering::Relaxed)
+    }
+
     pub fn set_phantom_size(&self, size: i32) {
         let clamped = size.clamp(0, PHANTOM_MAX_SIZE);
         self.phantom_size.store(clamped, Ordering::Relaxed);
@@ -116,13 +122,21 @@ impl PhantomEntity {
         self.mob_entity
             .living_entity
             .set_attribute_base(&Attributes::ATTACK_DAMAGE, attack_damage as f64);
+        self.refresh_dimensions();
+    }
 
-        // Vanilla parity (Phantom.java:88, 197): refresh dimensions based on 1.0 + 0.15 * size
-        let scale = crate::entity::combat::calculate_phantom_dimension_scale(clamped);
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let (width, height, eye_height) = crate::entity::combat::calculate_phantom_full_dimensions(
+            self.get_phantom_size(),
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
         let scaled_dimensions = EntityDimensions {
-            width: entity.entity_type.dimension[0] * scale,
-            height: entity.entity_type.dimension[1] * scale,
-            eye_height: entity.entity_type.eye_height * scale,
+            width,
+            height,
+            eye_height,
         };
         entity.entity_dimension.store(scaled_dimensions);
         let pos = entity.pos.load();
@@ -640,6 +654,13 @@ mod tests {
         assert_eq!(calculate_phantom_dimension_scale(0), 1.0);
         assert!((calculate_phantom_dimension_scale(5) - 1.75).abs() < 1e-6);
         assert!((calculate_phantom_dimension_scale(64) - 10.6).abs() < 1e-6);
+        assert_eq!(PHANTOM_BASE_WIDTH, 0.9);
+        assert_eq!(PHANTOM_BASE_HEIGHT, 0.5);
+        assert_eq!(PHANTOM_BASE_EYE_HEIGHT, 0.175);
+        let (pw, ph, peye) = calculate_phantom_full_dimensions(0, 0.9, 0.5, 0.175);
+        assert_eq!(pw, 0.9);
+        assert_eq!(ph, 0.5);
+        assert_eq!(peye, 0.175);
 
         // NBT serialization parity
         let mut compound = NbtCompound::new();

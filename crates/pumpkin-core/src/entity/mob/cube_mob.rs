@@ -198,10 +198,22 @@ impl CubeMobEntity {
             living_entity.health.store(max_health);
         }
 
+        self.refresh_dimensions();
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let living_entity = &self.mob_entity.living_entity;
+        let entity = &living_entity.entity;
+        let (width, height, eye_height) = crate::entity::combat::calculate_cube_mob_dimensions(
+            self.get_size(),
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
         let scaled_dimensions = EntityDimensions {
-            width: entity.entity_type.dimension[0] * actual_size as f32,
-            height: entity.entity_type.dimension[1] * actual_size as f32,
-            eye_height: entity.entity_type.eye_height * actual_size as f32,
+            width,
+            height,
+            eye_height,
         };
         entity.entity_dimension.store(scaled_dimensions);
         let pos = entity.pos.load();
@@ -362,6 +374,11 @@ impl Mob for CubeMobEntity {
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
+    }
+
+    fn mob_init_data_tracker(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_synced_data(ID_SIZE, self.get_size());
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
@@ -690,5 +707,13 @@ mod tests {
         assert_eq!(crate::entity::combat::MAGMA_CUBE_ARMOR_PER_SIZE, 3.0);
         assert_eq!(crate::entity::combat::SLIME_SQUISH_DECAY, 0.6);
         assert_eq!(crate::entity::combat::MAGMA_CUBE_SQUISH_DECAY, 0.9);
+        assert_eq!(crate::entity::combat::CUBE_MOB_BASE_WIDTH, 0.52);
+        assert_eq!(crate::entity::combat::CUBE_MOB_BASE_HEIGHT, 0.52);
+        assert_eq!(crate::entity::combat::CUBE_MOB_BASE_EYE_HEIGHT, 0.325);
+
+        let (w, h, eye) = crate::entity::combat::calculate_cube_mob_dimensions(2, 0.52, 0.52, 0.325);
+        assert_eq!(w, 1.04);
+        assert_eq!(h, 1.04);
+        assert_eq!(eye, 0.65);
     }
 }
