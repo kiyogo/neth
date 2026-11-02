@@ -18,6 +18,7 @@ use pumpkin_data::{
     tag::{self, Taggable},
 };
 use pumpkin_nbt::{compound::NbtCompound, tag::NbtTag};
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::{euler_angle::EulerAngle, vector3::Vector3};
 
 #[derive(Debug, Clone, Copy)]
@@ -102,17 +103,44 @@ impl ArmorStandEntity {
         let living_entity = LivingEntity::new(entity);
         let packed_rotation = PackedRotation::default();
 
-        Self {
+        let stand = Self {
             living_entity,
             armor_stand_flags: AtomicU8::new(0),
             last_hit_time: AtomicI64::new(0),
             disabled_slots: AtomicI32::new(0),
             rotation: AtomicCell::new(packed_rotation),
-        }
+        };
+        stand.refresh_dimensions();
+        stand
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.living_entity.entity;
+        let (w, h, eye) = crate::entity::combat::calculate_armor_stand_dimensions(
+            self.is_marker(),
+            self.is_small(),
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+
+    #[must_use]
+    pub fn is_baby(&self) -> bool {
+        self.is_small()
     }
 
     pub fn set_small(&self, small: bool) {
         self.set_bit_field(ArmorStandFlags::Small, small);
+        self.refresh_dimensions();
     }
 
     pub fn is_small(&self) -> bool {
@@ -137,6 +165,7 @@ impl ArmorStandEntity {
 
     pub fn set_marker(&self, marker: bool) {
         self.set_bit_field(ArmorStandFlags::Marker, marker);
+        self.refresh_dimensions();
     }
 
     pub fn is_marker(&self) -> bool {
@@ -151,6 +180,10 @@ impl ArmorStandEntity {
             current & !(bit_field as u8)
         };
         self.armor_stand_flags.store(new_value, Ordering::Relaxed);
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::armor_stand::DATA_CLIENT_FLAGS,
+            new_value,
+        );
     }
 
     pub fn can_use_slot(&self, slot: &EquipmentSlot) -> bool {
@@ -495,11 +528,23 @@ impl EntityBase for ArmorStandEntity {
         }
 
         self.armor_stand_flags.store(flags, Ordering::Relaxed);
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::armor_stand::DATA_CLIENT_FLAGS,
+            flags,
+        );
+        self.refresh_dimensions();
 
         if let Some(pose_tag) = nbt.get("Pose") {
             let packed: PackedRotation = pose_tag.clone().into();
             self.unpack_rotation(&packed);
         }
+    }
+
+    fn init_data_tracker(&self) {
+        self.get_entity().set_synced_data(
+            pumpkin_data::tracked_data::armor_stand::DATA_CLIENT_FLAGS,
+            self.armor_stand_flags.load(Ordering::Relaxed),
+        );
     }
 
     fn get_entity(&self) -> &Entity {
@@ -674,6 +719,35 @@ pub enum ArmorStandFlags {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_armor_stand_dimensions_and_small_marker_parity() {
+        // Adult Armor Stand (sized(0.5, 1.975), eyeHeight(1.7775))
+        let adult = crate::entity::combat::calculate_armor_stand_dimensions(false, false, 0.5, 1.975, 1.7775);
+        assert_eq!(adult, (0.5, 1.975, 1.7775));
+        assert_eq!(crate::entity::combat::ARMOR_STAND_ADULT_WIDTH, 0.5);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_ADULT_HEIGHT, 1.975);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_ADULT_EYE_HEIGHT, 1.7775);
+
+        // Small Armor Stand (scale(0.5).withEyeHeight(0.9875))
+        let small = crate::entity::combat::calculate_armor_stand_dimensions(false, true, 0.5, 1.975, 1.7775);
+        assert_eq!(small, (0.25, 0.9875, 0.9875));
+        assert_eq!(crate::entity::combat::ARMOR_STAND_SMALL_SCALE, 0.5);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_SMALL_WIDTH, 0.25);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_SMALL_HEIGHT, 0.9875);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_SMALL_EYE_HEIGHT, 0.9875);
+
+        // Marker Armor Stand (fixed(0.0, 0.0))
+        let marker = crate::entity::combat::calculate_armor_stand_dimensions(true, false, 0.5, 1.975, 1.7775);
+        assert_eq!(marker, (0.0, 0.0, 0.0));
+        assert_eq!(crate::entity::combat::ARMOR_STAND_MARKER_WIDTH, 0.0);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_MARKER_HEIGHT, 0.0);
+        assert_eq!(crate::entity::combat::ARMOR_STAND_MARKER_EYE_HEIGHT, 0.0);
+
+        // Marker takes precedence over Small in vanilla getDimensionsMarker
+        let marker_small = crate::entity::combat::calculate_armor_stand_dimensions(true, true, 0.5, 1.975, 1.7775);
+        assert_eq!(marker_small, (0.0, 0.0, 0.0));
+    }
 
     #[test]
     fn clicked_slot_uses_vanilla_hit_area_and_existing_items() {

@@ -8540,6 +8540,72 @@ pub const ARMOR_STAND_BURN_DAMAGE: f32 = 4.0;
 /// `if (health <= 0.5F)`
 pub const ARMOR_STAND_BREAK_HEALTH_THRESHOLD: f32 = 0.5;
 
+/// Adult armor stand default width (0.5 blocks).
+/// Mirrors vanilla `EntityTypes.java:sized(0.5F, 1.975F)`.
+pub const ARMOR_STAND_ADULT_WIDTH: f32 = 0.5;
+
+/// Adult armor stand default height (1.975 blocks).
+/// Mirrors vanilla `EntityTypes.java:sized(0.5F, 1.975F)`.
+pub const ARMOR_STAND_ADULT_HEIGHT: f32 = 1.975;
+
+/// Adult armor stand default standing eye height (1.7775 blocks).
+/// Mirrors vanilla `EntityTypes.java:eyeHeight(1.7775F)`.
+pub const ARMOR_STAND_ADULT_EYE_HEIGHT: f32 = 1.7775;
+
+/// Small armor stand scale factor relative to adult (0.5).
+/// Mirrors vanilla `ArmorStand.java:64`:
+/// `BABY_DIMENSIONS = EntityTypes.ARMOR_STAND.getDimensions().scale(0.5F).withEyeHeight(0.9875F);`
+pub const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
+
+/// Small armor stand width (0.25 blocks).
+pub const ARMOR_STAND_SMALL_WIDTH: f32 = 0.25;
+
+/// Small armor stand height (0.9875 blocks).
+pub const ARMOR_STAND_SMALL_HEIGHT: f32 = 0.9875;
+
+/// Small armor stand standing eye height (0.9875 blocks).
+/// Mirrors vanilla `ArmorStand.java:64`.
+pub const ARMOR_STAND_SMALL_EYE_HEIGHT: f32 = 0.9875;
+
+/// Marker armor stand width (0.0 blocks).
+/// Mirrors vanilla `ArmorStand.java:63`:
+/// `MARKER_DIMENSIONS = EntityDimensions.fixed(0.0F, 0.0F);`
+pub const ARMOR_STAND_MARKER_WIDTH: f32 = 0.0;
+
+/// Marker armor stand height (0.0 blocks).
+pub const ARMOR_STAND_MARKER_HEIGHT: f32 = 0.0;
+
+/// Marker armor stand eye height (0.0 blocks).
+pub const ARMOR_STAND_MARKER_EYE_HEIGHT: f32 = 0.0;
+
+/// Calculates armor stand dimensions based on marker and small flags.
+/// Mirrors vanilla `ArmorStand.java:627-637`:
+/// `return isMarker ? MARKER_DIMENSIONS : (this.isBaby() ? BABY_DIMENSIONS : this.getType().getDimensions());`
+#[must_use]
+pub fn calculate_armor_stand_dimensions(
+    is_marker: bool,
+    is_small: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_marker {
+        (
+            ARMOR_STAND_MARKER_WIDTH,
+            ARMOR_STAND_MARKER_HEIGHT,
+            ARMOR_STAND_MARKER_EYE_HEIGHT,
+        )
+    } else if is_small {
+        (
+            default_width * ARMOR_STAND_SMALL_SCALE,
+            default_height * ARMOR_STAND_SMALL_SCALE,
+            ARMOR_STAND_SMALL_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Default initial radius of an Area Effect Cloud (3.0 blocks).
 /// Mirrors vanilla `AreaEffectCloud.java:40`:
 /// `private static final float DEFAULT_RADIUS = 3.0F;`
@@ -25742,6 +25808,37 @@ mod tests {
         assert_eq!(GOAT_BABY_HEIGHT, 0.65);
         assert_eq!(GOAT_BABY_EYE_HEIGHT, 0.59375);
         assert_eq!(GOAT_LONG_JUMPING_SCALE, 0.7);
+    }
+
+    #[test]
+    fn test_armor_stand_dimensions_gap422() {
+        use super::*;
+
+        // 1. Adult Armor Stand (sized(0.5, 1.975), eyeHeight(1.7775))
+        let adult = calculate_armor_stand_dimensions(false, false, 0.5, 1.975, 1.7775);
+        assert_eq!(adult, (0.5, 1.975, 1.7775));
+        assert_eq!(ARMOR_STAND_ADULT_WIDTH, 0.5);
+        assert_eq!(ARMOR_STAND_ADULT_HEIGHT, 1.975);
+        assert_eq!(ARMOR_STAND_ADULT_EYE_HEIGHT, 1.7775);
+
+        // 2. Small Armor Stand (scale(0.5).withEyeHeight(0.9875))
+        let small = calculate_armor_stand_dimensions(false, true, 0.5, 1.975, 1.7775);
+        assert_eq!(small, (0.25, 0.9875, 0.9875));
+        assert_eq!(ARMOR_STAND_SMALL_SCALE, 0.5);
+        assert_eq!(ARMOR_STAND_SMALL_WIDTH, 0.25);
+        assert_eq!(ARMOR_STAND_SMALL_HEIGHT, 0.9875);
+        assert_eq!(ARMOR_STAND_SMALL_EYE_HEIGHT, 0.9875);
+
+        // 3. Marker Armor Stand (fixed(0.0, 0.0))
+        let marker = calculate_armor_stand_dimensions(true, false, 0.5, 1.975, 1.7775);
+        assert_eq!(marker, (0.0, 0.0, 0.0));
+        assert_eq!(ARMOR_STAND_MARKER_WIDTH, 0.0);
+        assert_eq!(ARMOR_STAND_MARKER_HEIGHT, 0.0);
+        assert_eq!(ARMOR_STAND_MARKER_EYE_HEIGHT, 0.0);
+
+        // 4. Marker takes precedence over Small in vanilla getDimensionsMarker
+        let marker_small = calculate_armor_stand_dimensions(true, true, 0.5, 1.975, 1.7775);
+        assert_eq!(marker_small, (0.0, 0.0, 0.0));
     }
 
 }

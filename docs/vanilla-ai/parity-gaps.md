@@ -10682,3 +10682,22 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Đảm bảo `self.refresh_dimensions()` được gọi sau khi nạp NBT tuổi trong `mob_read_nbt` của `AxolotlEntity`, `RabbitEntity`, `ArmadilloEntity`.
 - **Hằng số Parity**: `SQUID_BABY_WIDTH` (0.5), `SQUID_BABY_HEIGHT` (0.5), `SQUID_BABY_EYE_HEIGHT` (0.37), `SQUID_BABY_SCALE` (0.625), `calculate_squid_dimensions`.
 - **Unit Tests**: `test_dolphin_axolotl_squid_rabbit_armadillo_goat_baby_dimensions_gap421`, `test_squid_baby_dimensions_and_nbt`, `test_glow_squid_baby_dimensions_and_age_nbt`, `test_dolphin_baby_dimensions_and_rotation_limits`, `test_goat_baby_dimensions_and_long_jumping_parity`, `test_rabbit_baby_dimensions_and_dispenser_parity`, `test_armadillo_baby_dimensions_and_parity` pass 100%.
+
+
+### Gap 422: Small & Marker Armor Stand Scalable Dimensions & Synched Data Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.decoration.ArmorStand.java:62-75, 106-113, 144-150, 458-460, 486-488, 612-616, 626-637` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Giá để Giáp Nhỏ & Marker (Small & Marker Armor Stand Scalable Dimensions & Eye Height)**:
+  - Vanilla `ArmorStand.java:63-64, 627-637`:
+    - `private static final EntityDimensions MARKER_DIMENSIONS = EntityDimensions.fixed(0.0F, 0.0F);`
+    - `private static final EntityDimensions BABY_DIMENSIONS = EntityTypes.ARMOR_STAND.getDimensions().scale(0.5F).withEyeHeight(0.9875F);`
+    - `getDimensionsMarker(boolean isMarker)`: Nếu là `Marker`, trả về `MARKER_DIMENSIONS` (0.0 x 0.0, eye 0.0); nếu là `Small` (`isBaby()`), trả về `BABY_DIMENSIONS` (0.25 x 0.9875, eye 0.9875); ngược lại là kích thước mặc định (0.5 x 1.975, eye 1.7775).
+  - Triển khai `calculate_armor_stand_dimensions(is_marker, is_small, default_w, default_h, default_eye)` trong `combat.rs`.
+- **Tự động Cập nhật Bounding Box & Đồng bộ Synched Data**:
+  - Triển khai `refresh_dimensions()` trên `ArmorStandEntity`, tính toán và gán lại `BoundingBox` và `EntityDimensions` cho entity.
+  - Tự động gọi `refresh_dimensions()` khi khởi tạo `new()`, khi gọi `set_small()`, `set_marker()`, và khi nạp NBT trong `read_custom_nbt()`.
+  - Cập nhật `DATA_CLIENT_FLAGS` thông qua `set_synced_data` trong `set_bit_field`, `init_data_tracker` và `read_custom_nbt` để client hiển thị chính xác các flag (Small, ShowArms, HideBasePlate, Marker).
+  - Bổ sung helper `is_baby(&self) -> bool { self.is_small() }` chuẩn parity với `ArmorStand.java:458-460`.
+- **Hằng số Parity**: `ARMOR_STAND_ADULT_WIDTH` (0.5), `ARMOR_STAND_ADULT_HEIGHT` (1.975), `ARMOR_STAND_ADULT_EYE_HEIGHT` (1.7775), `ARMOR_STAND_SMALL_SCALE` (0.5), `ARMOR_STAND_SMALL_WIDTH` (0.25), `ARMOR_STAND_SMALL_HEIGHT` (0.9875), `ARMOR_STAND_SMALL_EYE_HEIGHT` (0.9875), `ARMOR_STAND_MARKER_WIDTH` (0.0), `ARMOR_STAND_MARKER_HEIGHT` (0.0), `ARMOR_STAND_MARKER_EYE_HEIGHT` (0.0), `calculate_armor_stand_dimensions`.
+- **Unit Tests**: `test_armor_stand_dimensions_and_small_marker_parity`, `test_armor_stand_dimensions_gap422`, cùng toàn bộ 9 tests trong `decoration::armor_stand` pass 100%.
