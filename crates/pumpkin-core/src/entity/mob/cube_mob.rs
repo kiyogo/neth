@@ -346,6 +346,20 @@ impl Mob for CubeMobEntity {
         }
     }
 
+    /// Vanilla `SulfurCube.java:635-637`:
+    /// `canDispenserEquipIntoSlot(slot)` returns true for EquipmentSlot.BODY on SulfurCube.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        if self.mob_entity.living_entity.entity.entity_type == &EntityType::SULFUR_CUBE {
+            return crate::entity::combat::can_sulfur_cube_dispenser_equip(
+                slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY,
+            );
+        }
+        self.mob_entity.can_pick_up_loot()
+    }
+
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
         Some(self)
     }

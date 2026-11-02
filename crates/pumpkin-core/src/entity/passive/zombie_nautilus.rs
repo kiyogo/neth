@@ -242,6 +242,20 @@ impl Mob for ZombieNautilusEntity {
         EquipmentSlot::BODY
     }
 
+    /// Vanilla `AbstractNautilus.java:160-162`:
+    /// `return slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE || super.canDispenserEquipIntoSlot(slot);`
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_body_or_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY
+            || slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        crate::entity::combat::can_nautilus_dispenser_equip(
+            is_body_or_saddle,
+            self.mob_entity.can_pick_up_loot(),
+        )
+    }
+
     fn as_animal(&self) -> Option<&dyn Animal> {
         Some(self)
     }

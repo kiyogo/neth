@@ -12872,6 +12872,89 @@ pub const fn calculate_trader_llama_dimensions(
     }
 }
 
+/// Happy Ghast dimension and dispenser equip constants and functions.
+/// Mirrors vanilla `HappyGhast.java:57, 79, 261`:
+/// `BABY_SCALE = 0.2375F;`
+/// `BABY_DIMENSIONS = EntityTypes.HAPPY_GHAST.getDimensions().scale(0.2375F).withEyeHeight(0.46875F);`
+pub const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
+pub const HAPPY_GHAST_BABY_WIDTH: f32 = 0.95;
+pub const HAPPY_GHAST_BABY_HEIGHT: f32 = 0.95;
+pub const HAPPY_GHAST_BABY_EYE_HEIGHT: f32 = 0.46875;
+
+/// Determines if a happy ghast can be equipped via dispenser.
+/// Mirrors vanilla `HappyGhast.java:276-278`: `return slot == EquipmentSlot.BODY;`
+#[must_use]
+pub const fn can_happy_ghast_dispenser_equip(slot_is_body: bool) -> bool {
+    slot_is_body
+}
+
+/// Calculates happy ghast dimensions based on baby status.
+/// Mirrors vanilla `HappyGhast.java:79, 261-263`.
+#[must_use]
+pub const fn calculate_happy_ghast_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * HAPPY_GHAST_BABY_SCALE,
+            default_height * HAPPY_GHAST_BABY_SCALE,
+            HAPPY_GHAST_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Nautilus dimension and dispenser equip constants and functions.
+/// Mirrors vanilla `Nautilus.java:26-29`:
+/// `BABY_DIMENSIONS = EntityTypes.NAUTILUS.getDimensions().scale(0.5F);`
+pub const NAUTILUS_BABY_SCALE: f32 = 0.5;
+pub const NAUTILUS_BABY_WIDTH: f32 = 0.4375;
+pub const NAUTILUS_BABY_HEIGHT: f32 = 0.475;
+pub const NAUTILUS_BABY_EYE_HEIGHT: f32 = 0.13755;
+
+/// Determines if a nautilus or zombie nautilus can be equipped via dispenser.
+/// Mirrors vanilla `AbstractNautilus.java:160-162`:
+/// `return slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE || super.canDispenserEquipIntoSlot(slot);`
+#[must_use]
+pub const fn can_nautilus_dispenser_equip(
+    slot_is_body_or_saddle: bool,
+    can_pick_up_loot: bool,
+) -> bool {
+    slot_is_body_or_saddle || can_pick_up_loot
+}
+
+/// Calculates nautilus dimensions based on baby status.
+/// Mirrors vanilla `Nautilus.java:61-63`.
+#[must_use]
+pub const fn calculate_nautilus_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            default_width * NAUTILUS_BABY_SCALE,
+            default_height * NAUTILUS_BABY_SCALE,
+            default_eye_height * NAUTILUS_BABY_SCALE,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Determines if a sulfur cube can be equipped via dispenser.
+/// Mirrors vanilla `SulfurCube.java:635-637`:
+/// `return slot == EquipmentSlot.BODY;`
+#[must_use]
+pub const fn can_sulfur_cube_dispenser_equip(slot_is_body: bool) -> bool {
+    slot_is_body
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -25160,6 +25243,44 @@ mod tests {
         assert!(!can_equine_dispenser_equip(false, true, false));  // not body/saddle & tamed -> false
         assert!(can_equine_dispenser_equip(false, false, true));  // canPickUpLoot -> true
         assert!(!can_equine_dispenser_equip(false, false, false)); // neither -> false
+    }
+
+    #[test]
+    fn test_happy_ghast_nautilus_sulfur_cube_dimensions_and_parity_gap418() {
+        use super::*;
+
+        // 1. Happy Ghast dimensions (HappyGhast.java:57, 79, 261, EntityTypes.java: sized(4.0, 4.0), eyeHeight(2.6))
+        let ghast_adult = calculate_happy_ghast_dimensions(false, 4.0, 4.0, 2.6);
+        assert_eq!(ghast_adult, (4.0, 4.0, 2.6));
+        let ghast_baby = calculate_happy_ghast_dimensions(true, 4.0, 4.0, 2.6);
+        assert_eq!(ghast_baby, (0.95, 0.95, 0.46875));
+        assert_eq!(HAPPY_GHAST_BABY_WIDTH, 0.95);
+        assert_eq!(HAPPY_GHAST_BABY_HEIGHT, 0.95);
+        assert_eq!(HAPPY_GHAST_BABY_EYE_HEIGHT, 0.46875);
+        assert_eq!(HAPPY_GHAST_BABY_SCALE, 0.2375);
+
+        // 2. Happy Ghast dispenser equip parity (HappyGhast.java:276-278: return slot == EquipmentSlot.BODY)
+        assert!(can_happy_ghast_dispenser_equip(true));
+        assert!(!can_happy_ghast_dispenser_equip(false));
+
+        // 3. Nautilus dimensions (Nautilus.java:26-29, 61-63, EntityTypes.java: sized(0.875, 0.95), eyeHeight(0.2751))
+        let naut_adult = calculate_nautilus_dimensions(false, 0.875, 0.95, 0.2751);
+        assert_eq!(naut_adult, (0.875, 0.95, 0.2751));
+        let naut_baby = calculate_nautilus_dimensions(true, 0.875, 0.95, 0.2751);
+        assert_eq!(naut_baby, (0.4375, 0.475, 0.13755));
+        assert_eq!(NAUTILUS_BABY_WIDTH, 0.4375);
+        assert_eq!(NAUTILUS_BABY_HEIGHT, 0.475);
+        assert_eq!(NAUTILUS_BABY_EYE_HEIGHT, 0.13755);
+        assert_eq!(NAUTILUS_BABY_SCALE, 0.5);
+
+        // 4. Nautilus dispenser equip parity (AbstractNautilus.java:160-162)
+        assert!(can_nautilus_dispenser_equip(true, false));  // body or saddle -> true
+        assert!(can_nautilus_dispenser_equip(false, true));  // canPickUpLoot -> true
+        assert!(!can_nautilus_dispenser_equip(false, false)); // neither -> false
+
+        // 5. Sulfur Cube dispenser equip parity (SulfurCube.java:635-637: return slot == EquipmentSlot.BODY)
+        assert!(can_sulfur_cube_dispenser_equip(true));
+        assert!(!can_sulfur_cube_dispenser_equip(false));
     }
 
 }

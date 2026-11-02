@@ -10587,3 +10587,29 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Gọi `handle_age_boundary_vehicle_dismount` khi đạt mốc tuổi để tháo gỡ vehicle/passenger theo chuẩn Java.
 - **Hằng số Parity**: `MAGIC_HORSE_WIDTH` (1.3964844), `HORSE_BABY_SCALE` (0.7), `SKELETON_HORSE_BABY_SCALE` (0.7), `ZOMBIE_HORSE_BABY_SCALE` (0.7), `DONKEY_BABY_SCALE` (0.5), `MULE_BABY_SCALE` (0.5), `LLAMA_BABY_SCALE` (0.5), `TRADER_LLAMA_BABY_SCALE` (0.5), `can_equine_dispenser_equip`, `calculate_horse_dimensions`, `calculate_skeleton_horse_dimensions`, `calculate_zombie_horse_dimensions`, `calculate_donkey_dimensions`, `calculate_mule_dimensions`, `calculate_llama_dimensions`, `calculate_trader_llama_dimensions`.
 - **Unit Tests**: `test_camel_and_equine_dimensions_and_parity_gap417`, `test_horse_baby_dimensions_and_dispenser_parity`, `test_camel_dimensions_standup_and_nbt_parity` pass 100%.
+
+
+### Gap 418: Happy Ghast, Nautilus, Zombie Nautilus & Sulfur Cube Dimensions & Dispenser Equip Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.happyghast.HappyGhast.java:57, 79, 261, 276-278`, `net.minecraft.world.entity.animal.nautilus.AbstractNautilus.java:160-162`, `net.minecraft.world.entity.animal.nautilus.Nautilus.java:26-29, 61-63`, `net.minecraft.world.entity.animal.nautilus.ZombieNautilus.java:183-185`, `net.minecraft.world.entity.monster.cubemob.SulfurCube.java:635-637` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Happy Ghast Con (Happy Ghast Baby Dimensions & Eye Height)**:
+  - Vanilla `HappyGhast.java:57, 79, 261`: `BABY_SCALE = 0.2375F`, `BABY_DIMENSIONS = EntityTypes.HAPPY_GHAST.getDimensions().scale(0.2375F).withEyeHeight(0.46875F)`.
+  - Adult Happy Ghast: width `4.0`, height `4.0`, eye height `2.6`.
+  - Baby Happy Ghast: width `0.95` (`4.0 * 0.2375`), height `0.95` (`4.0 * 0.2375`), eye height `0.46875` (`HAPPY_GHAST_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_happy_ghast_dimensions`, `refresh_dimensions()`, `set_baby`, `age_boundary_reached()` và lưu trữ NBT tuổi (`write_ageable_nbt`, `read_ageable_nbt`) trên `HappyGhastEntity`.
+- **Trang bị Dispenser cho Happy Ghast (Happy Ghast Dispenser Equip Parity)**:
+  - Vanilla `HappyGhast.java:276-278`: Dispenser chỉ có thể trang bị vị trí Thân (`EquipmentSlot::BODY`) cho Happy Ghast (`can_happy_ghast_dispenser_equip(slot_is_body)`).
+- **Kích thước & Trang bị Dispenser Ốc anh vũ (Nautilus & Zombie Nautilus Parity)**:
+  - Vanilla `Nautilus.java:26-29, 61-63`: `BABY_DIMENSIONS = EntityTypes.NAUTILUS.getDimensions().scale(0.5F)`.
+    - Adult Nautilus: width `0.875`, height `0.95`, eye height `0.2751`.
+    - Baby Nautilus: width `0.4375`, height `0.475`, eye height `0.13755`.
+  - Vanilla `ZombieNautilus.java:183-185`: `canBeABaby()` luôn trả về `false`.
+  - Vanilla `AbstractNautilus.java:160-162`: `canDispenserEquipIntoSlot(slot)` trả về `true` cho `EquipmentSlot::BODY` hoặc `EquipmentSlot::SADDLE`, hoặc khi mob có `canPickUpLoot` (`can_nautilus_dispenser_equip(slot_is_body_or_saddle, can_pick_up_loot)`).
+  - Triển khai `AgeableMob` cho `NautilusEntity` với `ageable_data`, `calculate_nautilus_dimensions`, `refresh_dimensions()`, `set_baby`, `age_boundary_reached()`, lưu trữ NBT và `ageable_ai_step()` trong `mob_tick`.
+  - Ghi đè `can_dispenser_equip_into_slot` trên cả `NautilusEntity` và `ZombieNautilusEntity`.
+- **Trang bị Dispenser cho Khối Lưu huỳnh (Sulfur Cube Dispenser Equip Parity)**:
+  - Vanilla `SulfurCube.java:635-637`: `canDispenserEquipIntoSlot(slot)` trả về `true` cho `EquipmentSlot::BODY` (`can_sulfur_cube_dispenser_equip(slot_is_body)`).
+  - Ghi đè `can_dispenser_equip_into_slot` trên `CubeMobEntity` khi thực thể là `EntityType::SULFUR_CUBE`.
+- **Hằng số Parity**: `HAPPY_GHAST_BABY_SCALE` (0.2375), `HAPPY_GHAST_BABY_WIDTH` (0.95), `HAPPY_GHAST_BABY_HEIGHT` (0.95), `HAPPY_GHAST_BABY_EYE_HEIGHT` (0.46875), `calculate_happy_ghast_dimensions`, `can_happy_ghast_dispenser_equip`, `NAUTILUS_BABY_SCALE` (0.5), `NAUTILUS_BABY_WIDTH` (0.4375), `NAUTILUS_BABY_HEIGHT` (0.475), `NAUTILUS_BABY_EYE_HEIGHT` (0.13755), `calculate_nautilus_dimensions`, `can_nautilus_dispenser_equip`, `can_sulfur_cube_dispenser_equip`.
+- **Unit Tests**: `test_happy_ghast_nautilus_sulfur_cube_dimensions_and_parity_gap418`, `test_happy_ghast_baby_dimensions_and_dispenser_parity`, `test_nautilus_baby_dimensions_and_dispenser_parity` pass 100%.

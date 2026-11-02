@@ -5,6 +5,7 @@ use std::sync::{
 
 use pumpkin_data::attributes::Attributes;
 use pumpkin_data::entity::EntityType;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -12,7 +13,7 @@ use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
     ageable::{AgeableData, AgeableMob},
     ai::goal::{
         look_around::RandomLookAroundGoal, look_at_entity::LookAtEntityGoal, swim::SwimGoal,
@@ -115,6 +116,7 @@ impl HappyGhastEntity {
             goal_selector.add_goal(4, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -148,11 +150,42 @@ impl HappyGhastEntity {
             stays_still,
         );
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_happy_ghast_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
 }
 
 impl AgeableMob for HappyGhastEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -188,6 +221,7 @@ impl Mob for HappyGhastEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_int(
             "still_timeout",
             self.server_still_timeout.load(Ordering::Relaxed),
@@ -195,9 +229,22 @@ impl Mob for HappyGhastEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(timeout) = nbt.get_int("still_timeout") {
             self.set_server_still_timeout(timeout);
         }
+        self.refresh_dimensions();
+    }
+
+    /// Vanilla `HappyGhast.java:276-278`:
+    /// `canDispenserEquipIntoSlot(slot)` returns true for EquipmentSlot.BODY.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        combat::can_happy_ghast_dispenser_equip(
+            slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY,
+        )
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -298,5 +345,26 @@ impl CustomSound for HappyGhastEntity {
         } else {
             Sound::EntityHappyGhastHurt
         })
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_happy_ghast_baby_dimensions_and_dispenser_parity() {
+        // 1. Dimensions scaling (HappyGhast.java:57, 79, 261)
+        let adult = combat::calculate_happy_ghast_dimensions(false, 4.0, 4.0, 2.6);
+        assert_eq!(adult, (4.0, 4.0, 2.6));
+        let baby = combat::calculate_happy_ghast_dimensions(true, 4.0, 4.0, 2.6);
+        assert_eq!(baby, (0.95, 0.95, 0.46875));
+        assert_eq!(combat::HAPPY_GHAST_BABY_SCALE, 0.2375);
+        assert_eq!(combat::HAPPY_GHAST_BABY_EYE_HEIGHT, 0.46875);
+
+        // 2. Dispenser equip parity (HappyGhast.java:276-278)
+        assert!(combat::can_happy_ghast_dispenser_equip(true));
+        assert!(!combat::can_happy_ghast_dispenser_equip(false));
     }
 }

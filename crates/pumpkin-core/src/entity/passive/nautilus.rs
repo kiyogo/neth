@@ -17,8 +17,10 @@ use pumpkin_data::{
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::vector3::Vector3;
 
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use crate::entity::{
-    Entity, EntityBase,
+    Entity, EntityBase, combat,
+    ageable::{AgeableData, AgeableMob},
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
@@ -27,6 +29,7 @@ use crate::entity::{
 
 pub struct NautilusEntity {
     pub mob_entity: MobEntity,
+    pub ageable_data: AgeableData,
     pub is_tame: AtomicBool,
     pub owner: AtomicCell<Option<Uuid>>,
     pub is_dashing: AtomicBool,
@@ -67,6 +70,7 @@ impl NautilusEntity {
 
         let nautilus = Self {
             mob_entity,
+            ageable_data: AgeableData::default(),
             is_tame: AtomicBool::new(false),
             owner: AtomicCell::new(None),
             is_dashing: AtomicBool::new(false),
@@ -75,7 +79,9 @@ impl NautilusEntity {
             inventory: Mutex::new(vec![ItemStack::new(0, &pumpkin_data::item::Item::AIR); 9]),
         };
 
-        Arc::new(nautilus)
+        let mob_arc = Arc::new(nautilus);
+        mob_arc.refresh_dimensions();
+        mob_arc
     }
 
     pub fn is_dashing(&self) -> bool {
@@ -97,6 +103,29 @@ impl NautilusEntity {
     pub fn set_tame(&self, tame: bool, owner: Option<Uuid>) {
         self.is_tame.store(tame, Ordering::Relaxed);
         self.owner.store(owner);
+    }
+
+    pub fn is_baby(&self) -> bool {
+        self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_nautilus_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     pub fn get_ambient_sound(&self) -> Sound {
@@ -185,6 +214,24 @@ impl NautilusEntity {
     }
 }
 
+impl AgeableMob for NautilusEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let mob = self.get_mob_entity();
+        let entity = &mob.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
+}
+
 impl Animal for NautilusEntity {
     fn is_food(&self, item_stack: &ItemStack) -> bool {
         item_stack.item == &pumpkin_data::item::Item::NAUTILUS_SHELL
@@ -266,11 +313,30 @@ impl Mob for NautilusEntity {
         true
     }
 
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
     fn as_animal(&self) -> Option<&dyn Animal> {
         Some(self)
     }
 
+    /// Vanilla `AbstractNautilus.java:160-162`:
+    /// `return slot == EquipmentSlot.BODY || slot == EquipmentSlot.SADDLE || super.canDispenserEquipIntoSlot(slot);`
+    fn can_dispenser_equip_into_slot(
+        &self,
+        slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        let is_body_or_saddle = slot == &pumpkin_data::data_component_impl::EquipmentSlot::BODY
+            || slot == &pumpkin_data::data_component_impl::EquipmentSlot::SADDLE;
+        combat::can_nautilus_dispenser_equip(
+            is_body_or_saddle,
+            self.mob_entity.can_pick_up_loot(),
+        )
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("IsTame", self.is_tame.load(Ordering::Relaxed));
         nbt.put_bool("Saddled", self.is_saddled.load(Ordering::Relaxed));
         nbt.put_int("DashCooldown", self.dash_cooldown.load(Ordering::Relaxed));
@@ -280,6 +346,7 @@ impl Mob for NautilusEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(is_tame) = nbt.get_bool("IsTame") {
             self.is_tame.store(is_tame, Ordering::Relaxed);
         }
@@ -292,6 +359,7 @@ impl Mob for NautilusEntity {
         if let Some(owner) = nbt.get_uuid("Owner") {
             self.owner.store(Some(owner));
         }
+        self.refresh_dimensions();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
@@ -306,6 +374,7 @@ impl Mob for NautilusEntity {
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
         let entity = &self.mob_entity.living_entity.entity;
 
         let Ok(passengers) = entity.passengers.try_lock() else {
@@ -428,5 +497,27 @@ impl Mob for NautilusEntity {
 
     fn set_saddled(&self, saddled: bool) {
         self.is_saddled.store(saddled, Ordering::Relaxed);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_nautilus_baby_dimensions_and_dispenser_parity() {
+        // 1. Dimensions scaling (Nautilus.java:26-29, 61-63)
+        let adult = combat::calculate_nautilus_dimensions(false, 0.875, 0.95, 0.2751);
+        assert_eq!(adult, (0.875, 0.95, 0.2751));
+        let baby = combat::calculate_nautilus_dimensions(true, 0.875, 0.95, 0.2751);
+        assert_eq!(baby, (0.4375, 0.475, 0.13755));
+        assert_eq!(combat::NAUTILUS_BABY_SCALE, 0.5);
+        assert_eq!(combat::NAUTILUS_BABY_EYE_HEIGHT, 0.13755);
+
+        // 2. Dispenser equip parity (AbstractNautilus.java:160-162)
+        assert!(combat::can_nautilus_dispenser_equip(true, false));
+        assert!(combat::can_nautilus_dispenser_equip(false, true));
+        assert!(!combat::can_nautilus_dispenser_equip(false, false));
     }
 }
