@@ -716,6 +716,11 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         None
     }
 
+    /// Returns the inventory of a container entity (e.g. Chest Minecart, Hopper Minecart, Chest Boat).
+    fn get_container_inventory(&self) -> Option<Arc<dyn pumpkin_inventory::Inventory>> {
+        None
+    }
+
     /// Should return the name of the entity without click or hover events.
     fn get_name(&self) -> TextComponent {
         let entity = self.get_entity();

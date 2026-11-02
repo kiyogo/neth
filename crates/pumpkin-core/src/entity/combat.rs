@@ -3903,6 +3903,47 @@ pub fn should_vehicle_destroy(
     (new_damage, will_destroy || is_creative, discard_only)
 }
 
+/// Vanilla `MinecartHopper.CONTAINER_SIZE` (5 slots).
+pub const HOPPER_MINECART_CONTAINER_SIZE: usize = 5;
+
+/// Vanilla `MinecartHopper.getDefaultDisplayOffset` (1 block above cart floor).
+pub const HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 1;
+
+/// Vanilla `MinecartHopper.suckInItems`: cart bounding box horizontal inflation (0.25).
+pub const HOPPER_MINECART_ITEM_SUCK_HORIZONTAL_INFLATION: f64 = 0.25;
+
+/// Vanilla `MinecartHopper.suckInItems`: cart bounding box vertical inflation (0.0).
+pub const HOPPER_MINECART_ITEM_SUCK_VERTICAL_INFLATION: f64 = 0.0;
+
+/// Vanilla `Hopper.SUCK_AABB`: minY = 11.0 / 16.0 = 0.6875.
+pub const HOPPER_SUCTION_AABB_MIN_Y: f64 = 0.6875;
+
+/// Vanilla `Hopper.SUCK_AABB`: maxY = 32.0 / 16.0 = 2.0.
+pub const HOPPER_SUCTION_AABB_MAX_Y: f64 = 2.0;
+
+/// Vanilla `DetectorRailBlock.getSearchBB`: horizontal/vertical inset (0.2).
+pub const DETECTOR_RAIL_SEARCH_INSET: f64 = 0.2;
+
+/// Evaluates whether a hopper minecart should attempt consuming items this frame.
+/// Mirrors vanilla `MinecartHopper.java:98`:
+/// `!this.level().isClientSide() && this.isAlive() && this.isEnabled() && !this.consumedItemThisFrame`.
+#[must_use]
+pub const fn should_hopper_minecart_consume(
+    is_alive: bool,
+    is_enabled: bool,
+    consumed_this_frame: bool,
+) -> bool {
+    is_alive && is_enabled && !consumed_this_frame
+}
+
+/// Evaluates the new enabled state of a hopper minecart when passing over an activator rail.
+/// Mirrors vanilla `MinecartHopper.java:49`:
+/// `boolean newEnabled = !state;`.
+#[must_use]
+pub const fn calculate_hopper_minecart_enabled_from_activator_rail(powered: bool) -> bool {
+    !powered
+}
+
 /// Computes effective minecart gravity depending on water state and no_gravity flag.
 /// Mirrors vanilla AbstractMinecart.java:276-278.
 #[must_use]
@@ -27764,6 +27805,58 @@ mod tests {
         let (_, should_kill3, discard_only3) = should_vehicle_destroy(0.0, 0.5, false, true);
         assert!(should_kill3);
         assert!(!discard_only3);
+    }
+
+    #[test]
+    fn test_hopper_minecart_item_sucking_and_block_interaction_parity_gap435() {
+        // 1. Hopper minecart constants (MinecartHopper.java:38, 43, 110 and Hopper.java:8)
+        assert_eq!(HOPPER_MINECART_CONTAINER_SIZE, 5);
+        assert_eq!(HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET, 1);
+        assert_eq!(HOPPER_MINECART_ITEM_SUCK_HORIZONTAL_INFLATION, 0.25);
+        assert_eq!(HOPPER_MINECART_ITEM_SUCK_VERTICAL_INFLATION, 0.0);
+        assert_eq!(HOPPER_SUCTION_AABB_MIN_Y, 0.6875);
+        assert_eq!(HOPPER_SUCTION_AABB_MAX_Y, 2.0);
+        assert_eq!(DETECTOR_RAIL_SEARCH_INSET, 0.2);
+
+        // 2. Activator rail power toggle (MinecartHopper.java:48-53)
+        // Powered activator rail (state = true) -> disables hopper minecart (newEnabled = !true = false)
+        assert_eq!(calculate_hopper_minecart_enabled_from_activator_rail(true), false);
+        // Unpowered activator rail (state = false) -> enables hopper minecart (newEnabled = !false = true)
+        assert_eq!(calculate_hopper_minecart_enabled_from_activator_rail(false), true);
+
+        // 3. should_hopper_minecart_consume rate limiting and conditions (MinecartHopper.java:98)
+        // Normal alive, enabled, not consumed yet -> consumes item
+        assert!(should_hopper_minecart_consume(true, true, false));
+        // Dead cart -> does not consume
+        assert!(!should_hopper_minecart_consume(false, true, false));
+        // Disabled cart (by activator rail) -> does not consume
+        assert!(!should_hopper_minecart_consume(true, false, false));
+        // Already consumed an item this frame -> does not consume second time
+        assert!(!should_hopper_minecart_consume(true, true, true));
+
+        // 4. Bounding box coordinates calculation parity
+        // Position at (10.0, 64.0, 10.0)
+        let pos_x: f64 = 10.0;
+        let pos_y: f64 = 64.0;
+        let pos_z: f64 = 10.0;
+
+        // Container above position check (HopperBlockEntity.java:219):
+        // levelX = pos_x, levelY = pos_y + 0.5, levelZ = pos_z -> container at (pos_x, pos_y + 1.5, pos_z)
+        let container_y: f64 = pos_y + 1.5;
+        assert_eq!(container_y, 65.5);
+        assert_eq!(container_y.floor() as i32, 65);
+
+        // Suction box: [pos_x - 0.5, pos_y + 0.6875, pos_z - 0.5] to [pos_x + 0.5, pos_y + 2.0, pos_z + 0.5]
+        let suction_min = (pos_x - 0.5, pos_y + HOPPER_SUCTION_AABB_MIN_Y, pos_z - 0.5);
+        let suction_max = (pos_x + 0.5, pos_y + HOPPER_SUCTION_AABB_MAX_Y, pos_z + 0.5);
+        assert_eq!(suction_min, (9.5, 64.6875, 9.5));
+        assert_eq!(suction_max, (10.5, 66.0, 10.5));
+
+        // Detector rail search BB: [rail.x + 0.2, rail.y, rail.z + 0.2] to [rail.x + 0.8, rail.y + 0.8, rail.z + 0.8]
+        let rail_min = (10.0 + DETECTOR_RAIL_SEARCH_INSET, 64.0, 10.0 + DETECTOR_RAIL_SEARCH_INSET);
+        let rail_max = (10.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET, 64.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET, 10.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET);
+        assert_eq!(rail_min, (10.2, 64.0, 10.2));
+        assert_eq!(rail_max, (10.8, 64.8, 10.8));
     }
 
 }

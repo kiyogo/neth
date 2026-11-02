@@ -391,6 +391,14 @@ impl EntityBase for BoatEntity {
     fn get_vehicle_entity(&self) -> Option<&VehicleEntity> {
         Some(&self.vehicle)
     }
+
+    fn get_container_inventory(&self) -> Option<Arc<dyn pumpkin_inventory::Inventory>> {
+        if let BoatKind::Chest(boat) = &self.kind {
+            Some(boat.inventory().clone() as Arc<dyn pumpkin_inventory::Inventory>)
+        } else {
+            None
+        }
+    }
     fn tick(&self, caller: &dyn EntityBase, server: &Server) {
         let status = self.get_status();
         let old_status = self.status.swap(Some(status));

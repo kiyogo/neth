@@ -364,6 +364,10 @@ impl MinecartEntity {
         );
         if step.length_squared() > 0.0 {
             self.move_entity(caller, step);
+            // Vanilla makeStepAlongTrack calls tryConsumeItems() for Hopper minecart
+            if let MinecartKind::Hopper(minecart) = &self.kind {
+                minecart.try_consume_items(&self.vehicle.entity);
+            }
         }
 
         // Climb onto the higher end of a slope.
@@ -627,6 +631,9 @@ impl EntityBase for MinecartEntity {
         if let MinecartKind::Furnace(minecart) = &self.kind {
             minecart.tick(&self.vehicle.entity);
         }
+        if let MinecartKind::Hopper(minecart) = &self.kind {
+            minecart.reset_consumed_item_this_frame();
+        }
 
         let world = self.vehicle.entity.world.load();
         let start = self.vehicle.entity.pos.load();
@@ -758,7 +765,7 @@ impl EntityBase for MinecartEntity {
         }
 
         if let MinecartKind::Hopper(minecart) = &self.kind {
-            minecart.tick(&self.vehicle.entity);
+            minecart.try_consume_items(&self.vehicle.entity);
         }
     }
 
@@ -772,6 +779,14 @@ impl EntityBase for MinecartEntity {
 
     fn get_vehicle_entity(&self) -> Option<&VehicleEntity> {
         Some(&self.vehicle)
+    }
+
+    fn get_container_inventory(&self) -> Option<Arc<dyn Inventory>> {
+        match &self.kind {
+            MinecartKind::Chest(c) => Some(c.inventory().clone() as Arc<dyn Inventory>),
+            MinecartKind::Hopper(h) => Some(h.inventory().clone() as Arc<dyn Inventory>),
+            _ => None,
+        }
     }
 
     fn is_pushable(&self) -> bool {

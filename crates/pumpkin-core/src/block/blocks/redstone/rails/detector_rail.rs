@@ -177,6 +177,22 @@ impl BlockBehaviour for DetectorRailBlock {
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
         let props = DetectorRailProperties::from_state_id(args.state.id);
-        props.powered.then_some(0)
+        if !props.powered {
+            return Some(0);
+        }
+        // Vanilla DetectorRailBlock.getSearchBB: [pos.x + 0.2, pos.y, pos.z + 0.2] to [pos.x + 0.8, pos.y + 0.8, pos.z + 0.8]
+        let p = args.position;
+        let search_box = BoundingBox::new(
+            pumpkin_util::math::vector3::Vector3::new(p.0.x as f64 + 0.2, p.0.y as f64, p.0.z as f64 + 0.2),
+            pumpkin_util::math::vector3::Vector3::new(p.0.x as f64 + 0.8, p.0.y as f64 + 0.8, p.0.z as f64 + 0.8),
+        );
+        for entity in args.world.get_entities_at_box(&search_box) {
+            if entity.get_entity().is_alive()
+                && let Some(inv) = entity.get_container_inventory()
+            {
+                return Some(crate::block::calculate_comparator_output(inv.as_ref()));
+            }
+        }
+        Some(0)
     }
 }

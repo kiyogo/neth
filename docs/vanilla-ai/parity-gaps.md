@@ -11035,3 +11035,36 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Tự động thả rơi dây buộc khi phương tiện bị phá hủy.
     - Bảo toàn `custom_name` trên item stack rơi ra khi phương tiện bị đập vỡ.
   - **Unit Tests**: `test_vehicle_damage_wobble_and_destruction_parity_gap434` kiểm tra 100% các hằng số, logic nổ, phân bậc sát thương và chế độ sáng tạo.
+
+### Gap 435: Hopper Minecart Item Sucking & Block Interaction Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.MinecartHopper.java:23-145`, `net.minecraft.world.level.block.entity.Hopper.java:8-22`, `net.minecraft.world.level.block.entity.HopperBlockEntity.java:218-388`, `net.minecraft.world.level.block.DetectorRailBlock.java:136-163`
+
+- **Tốc độ Hút Vật phẩm & Cơ chế Bật/Tắt bằng Ray Kích hoạt (Hopper Minecart Sucking & Activator Rail Parity)**:
+  - Vanilla `MinecartHopper.suckInItems` (`MinecartHopper.java:84-117`):
+    - Hopper Minecart không có thời gian hồi 8 ticks (`cooldownTime`) như khối Hopper thông thường; thay vào đó nó có tốc độ hút 1 vật phẩm mỗi tick/frame (`consumedItemThisFrame` reset mỗi tick, cho phép hút tối đa 20 vật phẩm/giây).
+    - Ray kích hoạt (`Activator Rail`, `MinecartHopper.java:48-53`): Khi ray được cấp điện (`powered = true`), xe chở phễu bị vô hiệu hóa (`enabled = false`, `boolean newEnabled = !state;`); khi ray tắt điện (`powered = false`), xe chở phễu được kích hoạt lại (`enabled = true`). Trạng thái được lưu vào NBT `Enabled`.
+    - Hút trong lúc di chuyển dọc ray (`MinecartHopper.java:91-95`): Khi xe di chuyển dọc đường ray (`makeStepAlongTrack`), nó liên tục gọi `tryConsumeItems()`, cho phép hút vật phẩm ngay khi vừa lướt qua rương hoặc item entity.
+- **Thứ tự & Hộp Va chạm Hút Vật phẩm (Suction Order & Hitbox Inflation Parity)**:
+  - Thứ tự hút theo vanilla:
+    1. Kiểm tra khối chứa đồ trực tiếp phía trên tại `BlockPos.containing(x, y + 1.5, z)` (`HopperBlockEntity.java:219-231`), tôn trọng các ô và quy tắc lấy đồ hướng xuống (`BlockDirection::Down`).
+    2. Kiểm tra thực thể chứa đồ (`EntitySelector.CONTAINER_ENTITY_SELECTOR`) phía trên trong hộp va chạm 1x1x1 `[x - 0.5, y + 1.0, z - 0.5]` đến `[x + 0.5, y + 2.0, z + 0.5]` (cho phép hút đồ từ Chest Minecart, Hopper Minecart hoặc Chest Boat chạy trên ray tầng trên).
+    3. Nếu không có thùng chứa nào phía trên: hút `ItemEntity` trong hộp giác hút phía trên (`SUCK_AABB`: `[x - 0.5, y + 0.6875, z - 0.5]` đến `[x + 0.5, y + 2.0, z + 0.5]`). Vì Hopper Minecart không canh ô lưới (`isGridAligned = false`), nó có thể hút item xuyên qua cả khối đặc phía trên.
+    4. Hút `ItemEntity` xung quanh thân xe trong hộp va chạm mở rộng theo phương ngang 0.25 (`hitbox.inflate(0.25, 0.0, 0.25)`).
+- **Tương tác Ray Cảm biến & Khối Hopper (Detector Rail Comparator & Container Entity Interoperability)**:
+  - Tín hiệu so sánh qua ray cảm biến (`DetectorRailBlock.java:145-148`): Khi ray cảm biến được cấp điện bởi xe mỏ chở đồ, `get_comparator_output` tìm kiếm xe chở đồ trong hộp tìm kiếm `[x + 0.2, y, z + 0.2]` đến `[x + 0.8, y + 0.8, z + 0.8]` và tính toán tín hiệu so sánh analog chuẩn từ kho đồ của xe.
+  - Khối Hopper hút đồ từ xe mỏ (`HopperBlockEntity.java:370-373`): Khối Hopper bên dưới đường ray có thể rút vật phẩm từ Chest Minecart và Hopper Minecart chạy ngang qua; đồng thời khối Hopper hướng ngang có thể đẩy vật phẩm vào xe mỏ (giải quyết `TODO getEntityContainer`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Bổ sung `get_container_inventory(&self) -> Option<Arc<dyn pumpkin_inventory::Inventory>>` trên trait `EntityBase`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat.rs` & `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Triển khai `get_container_inventory` cho ChestBoat, ChestMinecart, HopperMinecart.
+    - Kích hoạt `try_consume_items` cả trong quá trình di chuyển trên ray (`move_along_track`) và ở cuối tick của xe.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart/hopper.rs`:
+    - Triển khai đầy đủ `consumed_item_this_frame`, `try_consume_items`, thứ tự hút 4 bước chuẩn vanilla.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/hopper.rs`:
+    - Thêm kiểm tra thực thể thùng chứa khi kéo đồ (`pull_from`) và đẩy đồ (`eject_items`).
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/rails/detector_rail.rs`:
+    - Triển khai `get_comparator_output` đọc trực tiếp kho đồ của xe mỏ trên ray cảm biến.
+  - **Unit Tests**: `test_hopper_minecart_item_sucking_and_block_interaction_parity_gap435`, `hopper_minecart_enabled_toggle_and_nbt`, `hopper_minecart_rate_limiting_consumed_per_frame`.
+

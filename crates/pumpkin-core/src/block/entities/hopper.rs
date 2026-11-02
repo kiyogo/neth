@@ -315,6 +315,40 @@ impl HopperBlockEntity {
         }
         let (block, state) = world.get_block_and_state(pos_up);
         if !state.is_full_cube() || block.has_tag(&tag::Block::MINECRAFT_DOES_NOT_BLOCK_HOPPERS) {
+            // Check for container entity above (e.g. Chest Minecart, Hopper Minecart)
+            let entity_box = BoundingBox::from_block(pos_up);
+            for entity_base in world.get_entities_at_box(&entity_box) {
+                if entity_base.get_entity().is_alive()
+                    && let Some(container) = entity_base.get_container_inventory()
+                {
+                    let slots: Vec<usize> = if let Some(face_slots) =
+                        container.get_slots_for_face(pumpkin_util::BlockDirection::Down)
+                    {
+                        face_slots.to_vec()
+                    } else {
+                        (0..container.size()).collect()
+                    };
+                    for i in slots {
+                        let mut item = container.get_stack(i);
+                        if !item.is_empty()
+                            && container.can_take_item_through_face(
+                                i,
+                                &item,
+                                pumpkin_util::BlockDirection::Down,
+                            )
+                            && container.can_transfer_to(self, i, &item)
+                        {
+                            let one_item = item.split(1);
+                            if Self::add_one_item(container.as_ref(), self, &one_item) {
+                                container.set_stack(i, item);
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+            }
+
             let entities = world.get_entities_at_box(&SUCK_AABB.at_pos(self.position));
             for entity_base in entities {
                 let Some(item_entity) = entity_base.get_item_entity() else {
@@ -397,13 +431,20 @@ impl HopperBlockEntity {
     }
 
     fn eject_items(&self, world: &Arc<World>) -> bool {
-        // TODO getEntityContainer
+        // Vanilla HopperBlockEntity.java: getAttachedContainer -> getContainerAt -> getEntityContainer
         let facing = &self.position.offset(to_offset(&self.facing));
 
-        if let Some(entity) = world.get_block_entity(facing)
-            && let Some(container) = get_container(world, facing, &entity, true)
-                .or_else(|| entity.clone().get_inventory())
-        {
+        let container_opt: Option<Arc<dyn Inventory>> = if let Some(entity) = world.get_block_entity(facing) {
+            get_container(world, facing, &entity, true).or_else(|| entity.clone().get_inventory())
+        } else {
+            let target_box = BoundingBox::from_block(facing);
+            world
+                .get_entities_at_box(&target_box)
+                .into_iter()
+                .find_map(|e| if e.get_entity().is_alive() { e.get_container_inventory() } else { None })
+        };
+
+        if let Some(container) = container_opt {
             // TODO check WorldlyContainer
             let mut is_full = true;
             for i in 0..container.size() {
