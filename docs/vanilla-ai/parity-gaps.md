@@ -10463,3 +10463,21 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Cả Heo và Cừu đều lưu và nạp trạng thái tuổi qua `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)`.
 - **Hằng số Parity**: `PIG_BABY_WIDTH` (0.45), `PIG_BABY_HEIGHT` (0.45), `PIG_BABY_EYE_HEIGHT` (0.40625), `PIG_BABY_SCALE` (0.5), `SHEEP_BABY_WIDTH` (0.45), `SHEEP_BABY_HEIGHT` (0.65), `SHEEP_BABY_EYE_HEIGHT` (0.65625), `SHEEP_BABY_SCALE` (0.5), `calculate_pig_dimensions`, `calculate_sheep_dimensions`, `can_pig_dispenser_equip_saddle`.
 - **Unit Tests**: `test_pig_and_sheep_dimensions_and_parity_gap412`, `test_pig_baby_dimensions_and_dispenser_parity`, `test_sheep_baby_dimensions_and_dispenser_parity`, `test_pig_parity_constants` pass 100%.
+
+
+### Gap 413: Chicken Baby Scalable Dimensions, Dispenser Equip Immunity, Ageable NBT & AI Step Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.chicken.Chicken.java:59-61, 109-111, 135-142` & `net.minecraft.world.entity.EntityTypes.java: sized(0.4, 0.7), eyeHeight(0.644)`
+
+- **Kích thước Gà Con Cố định (Chicken Baby Scalable Dimensions & Eye Height)**:
+  - Vanilla định nghĩa `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.4F).withEyeHeight(0.28125F)`.
+  - Adult chicken: width `0.4`, height `0.7`, eye height `0.644`.
+  - Baby chicken: width `0.3`, height `0.4`, eye height `0.28125` (`CHICKEN_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_chicken_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên `ChickenEntity`. Tự động cập nhật bounding box, eye height và tháo gỡ khỏi phương tiện nếu không phù hợp (`handle_age_boundary_vehicle_dismount`).
+- **Dispenser Equip Immunity Parity**:
+  - Gà không thể nhận hoặc trang bị bất kỳ vật phẩm/giáp nào từ Dispenser (`can_dispenser_equip_into_slot -> false`).
+- **Lưu trữ NBT và Tích tắc Phát triển (Ageable NBT Persistence & AI Step)**:
+  - Tích hợp `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)` trong `mob_write_nbt` và `mob_read_nbt`.
+  - Bổ sung gọi `self.ageable_ai_step()` trong `mob_tick()` để đếm lùi thời gian trưởng thành của gà con theo từng tick game.
+- **Hằng số Parity**: `CHICKEN_BABY_WIDTH` (0.3), `CHICKEN_BABY_HEIGHT` (0.4), `CHICKEN_BABY_EYE_HEIGHT` (0.28125), `CHICKEN_BABY_SCALE` (0.5), `calculate_chicken_dimensions`.
+- **Unit Tests**: `test_chicken_dimensions_and_parity_gap413`, `test_chicken_baby_dimensions_and_dispenser_parity`, `test_chicken_parity_constants` pass 100%.

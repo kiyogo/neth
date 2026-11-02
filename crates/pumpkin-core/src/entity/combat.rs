@@ -11097,6 +11097,31 @@ pub const CHICKEN_EGG_TIME_MIN: i32 = 6000;
 pub const CHICKEN_EGG_TIME_MAX: i32 = 12000;
 pub const CHICKEN_JOCKEY_CHANCE: f64 = 0.05;
 
+/// Chicken baby dimension constants, mirroring vanilla `Chicken.java:59-61`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.4F).withEyeHeight(0.28125F)`.
+pub const CHICKEN_BABY_WIDTH: f32 = 0.3;
+pub const CHICKEN_BABY_HEIGHT: f32 = 0.4;
+pub const CHICKEN_BABY_EYE_HEIGHT: f32 = 0.28125;
+pub const CHICKEN_BABY_SCALE: f32 = 0.5;
+
+/// Calculates chicken dimensions based on baby status.
+///
+/// Mirrors vanilla `Chicken.java:109-111`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_chicken_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (CHICKEN_BABY_WIDTH, CHICKEN_BABY_HEIGHT, CHICKEN_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 
 // =========================================================================
 // Gap 229: Frog, Tadpole, Goat & Rabbit Combat, Attributes, Leaping & Breeding Parity
@@ -24500,6 +24525,23 @@ mod tests {
         assert_eq!(SHEEP_BABY_HEIGHT, 0.65);
         assert_eq!(SHEEP_BABY_EYE_HEIGHT, 0.65625);
         assert_eq!(SHEEP_BABY_SCALE, 0.5);
+    }
+
+    #[test]
+    fn test_chicken_dimensions_and_parity_gap413() {
+        use super::*;
+
+        // 1. Adult chicken dimensions (Chicken.java, EntityTypes.java: sized(0.4, 0.7), eyeHeight(0.644))
+        let adult = calculate_chicken_dimensions(false, 0.4, 0.7, 0.644);
+        assert_eq!(adult, (0.4, 0.7, 0.644));
+
+        // 2. Baby chicken dimensions (Chicken.java:59-61: scalable(0.3, 0.4).withEyeHeight(0.28125))
+        let baby = calculate_chicken_dimensions(true, 0.4, 0.7, 0.644);
+        assert_eq!(baby, (0.3, 0.4, 0.28125));
+        assert_eq!(CHICKEN_BABY_WIDTH, 0.3);
+        assert_eq!(CHICKEN_BABY_HEIGHT, 0.4);
+        assert_eq!(CHICKEN_BABY_EYE_HEIGHT, 0.28125);
+        assert_eq!(CHICKEN_BABY_SCALE, 0.5);
     }
 
 }

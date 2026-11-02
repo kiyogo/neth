@@ -12,6 +12,7 @@ use pumpkin_data::sound::Sound;
 use pumpkin_data::{entity::EntityType, item::Item};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::custom_sound::CustomSound;
@@ -108,7 +109,27 @@ impl ChickenEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_chicken_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -167,6 +188,17 @@ impl AgeableMob for ChickenEntity {
     fn get_ageable_data(&self) -> &crate::entity::ageable::AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for ChickenEntity {
@@ -204,7 +236,16 @@ impl Mob for ChickenEntity {
         Some(self)
     }
 
+    /// Vanilla Chicken.java: Chickens cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("IsChickenJockey", self.is_chicken_jockey());
         nbt.put_int("EggLayTime", self.egg_lay_time.load(Ordering::Relaxed));
         let variant =
@@ -220,6 +261,7 @@ impl Mob for ChickenEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(jockey) = nbt.get_bool("IsChickenJockey") {
             self.set_chicken_jockey(jockey);
         }
@@ -270,6 +312,7 @@ impl Mob for ChickenEntity {
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
         if self.mob_entity.living_entity.dead.load(Relaxed) {
             return;
         }
@@ -345,5 +388,13 @@ mod tests {
         assert_eq!(combat::CHICKEN_EGG_TIME_MIN, 6000);
         assert_eq!(combat::CHICKEN_EGG_TIME_MAX, 12000);
         assert_eq!(combat::CHICKEN_JOCKEY_CHANCE, 0.05);
+    }
+
+    #[test]
+    fn test_chicken_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_chicken_dimensions(false, 0.4, 0.7, 0.644);
+        assert_eq!(adult, (0.4, 0.7, 0.644));
+        let baby = combat::calculate_chicken_dimensions(true, 0.4, 0.7, 0.644);
+        assert_eq!(baby, (0.3, 0.4, 0.28125));
     }
 }
