@@ -941,8 +941,8 @@ impl EntityBase for ArrowEntity {
                     damage as f32,
                     DamageType::ARROW,
                     Some(hit_pos),
+                    Some(self),
                     owner_entity.as_deref(),
-                    None,
                 );
 
                 if !damage_succeeded && is_on_fire && !is_enderman {

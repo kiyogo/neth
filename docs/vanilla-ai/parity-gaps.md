@@ -11173,6 +11173,59 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Đồng bộ tính toán `forward_dir` cho xe mỏ khi thực hiện dismount hành khách.
   - **Unit Tests**: `test_minecart_rail_physics_and_slope_transition_parity_gap438`, `boat_dismount_rejects_downward_motion_from_a_rounding_overlap`, `test_boat_passenger_rotation_and_dismount_parity_gap431`.
 
+### Gap 439: Minecart TNT Explosion Calculations, Speed Multiplier & Rail Fuse Priming Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.MinecartTNT.java:23-219`, `net.minecraft.world.entity.vehicle.VehicleEntity.java:20-120`, `net.minecraft.world.level.Explosion.java`
+
+- **Công thức Sức mạnh Nổ & Giới hạn Tốc độ (Explosion Strength Formula & Speed Cap)**:
+  - Vanilla `MinecartTNT.java:100-120`:
+    - `speed = Math.min(Math.sqrt(speedSqr), 5.0)` (`MINECART_TNT_MAX_EXPLOSION_SPEED = 5.0`).
+    - Sức mạnh nổ: `power = explosionPowerBase + explosionSpeedFactor * random.nextDouble() * 1.5 * speed`.
+    - Mặc định: `explosionPowerBase = 4.0F`, `explosionSpeedFactor = 1.0F`, hệ số tốc độ `1.5` (`MINECART_TNT_EXPLOSION_SPEED_MULTIPLIER = 1.5`).
+    - Cường độ nổ tối đa khi đứng yên: `4.0`. Khi chạy tốc độ tối đa (capped tại `5.0`): lên tới `4.0 + 1.0 * 1.0 * 1.5 * 5.0 = 11.5`.
+    - NBT: Đọc/ghi `fuse`, `explosion_power` (clamp `0.0..128.0`), `explosion_speed_factor` (clamp `0.0..128.0`).
+- **Phát nổ do Va chạm Ngang & Rơi từ trên cao (Horizontal Collision & Fall Damage Explosion)**:
+  - Vanilla `MinecartTNT.java:59-64`:
+    - Khi `horizontalCollision` và `horizontalDistanceSqr() >= 0.01` (`MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ = 0.01`), nổ ngay lập tức.
+  - Vanilla `MinecartTNT.java:123-130`:
+    - Theo dõi khoảng cách rơi (`fallDistance`).
+    - Khi tiếp đất, nếu `fallDistance >= 3.0` (`MINECART_TNT_FALL_EXPLOSION_MIN_DISTANCE = 3.0`):
+      `power = fallDistance / 10.0; this.explode(this.ignitionSource, power * power);`.
+      Phát nổ tức thì với bình phương vận tốc nổ tỷ lệ `(fallDistance / 10.0)^2`.
+- **Kích nổ do Mũi tên Đang Cháy & Nguồn Sát thương Lửa/Nổ (Flaming Arrow Detonation & Igniting Sources)**:
+  - Vanilla `MinecartTNT.java:68-75`:
+    - Bị trúng đạn bắn trực tiếp bởi mũi tên đang cháy (`projectile.isOnFire()`):
+      Nổ ngay tức khắc với bình phương vận tốc của mũi tên: `this.explode(damageSource, projectile.getDeltaMovement().lengthSqr())`.
+  - Vanilla `MinecartTNT.java:78-88, 210-218`:
+    - Nguồn sát thương gây kích nổ (`damageSourceIgnitesTnt`):
+      Đạn bắn trực tiếp đang cháy HOẶC sát thương thuộc tag `#minecraft:is_fire` HOẶC `#minecraft:is_explosion`.
+    - Khi bị phá hủy (`destroy`):
+      - Nếu KHÔNG kích nổ bởi nguồn sát thương VÀ xe không chạy (`speedSqr < 0.01`):
+        Rơi ra vật phẩm `Items.TNT_MINECART`.
+      - Ngược lại (bị đốt cháy, nổ, hoặc xe đang chạy với `speedSqr >= 0.01`):
+        KHÔNG rơi vật phẩm!
+        Kích hoạt ngòi nổ với thời gian ngẫu nhiên: `fuse = random.nextInt(20) + random.nextInt(20)` (ngòi nổ 0..38 ticks, trung bình 19 ticks ~ 0.95 giây), phát âm thanh `SoundEvents.TNT_PRIMED` (volume 1.0, pitch 1.0) và broadcast entity event 70.
+- **Bảo toàn Đường ray khi Nổ Xe mỏ TNT (Rail Preservation During Explosion)**:
+  - Vanilla `MinecartTNT.java:173-187`:
+    - Khi xe mỏ TNT đã kích nổ ngòi (`isPrimed() == true`), vụ nổ của xe mỏ không phá hủy các khối ray (`#minecraft:rails`) cũng như các khối nền trực tiếp nâng đỡ ray ở phía trên (`pos.above() is rails`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `MINECART_TNT_DEFAULT_POWER`, `MINECART_TNT_DEFAULT_SPEED_FACTOR`, `MINECART_TNT_DEFAULT_FUSE`, `MINECART_TNT_MAX_EXPLOSION_SPEED`, `MINECART_TNT_EXPLOSION_SPEED_MULTIPLIER`, `MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ`, `MINECART_TNT_FALL_EXPLOSION_MIN_DISTANCE`, `MINECART_TNT_FALL_EXPLOSION_POWER_RATIO`, `MINECART_TNT_RANDOM_FUSE_RANGE`.
+    - Bổ sung hàm parity: `calculate_tnt_minecart_explosion_power`, `calculate_tnt_minecart_fall_speed_squared`, `is_damage_source_igniting_tnt`, `should_tnt_minecart_prime_on_destroy`, `calculate_tnt_minecart_destroyed_fuse`, `should_tnt_minecart_preserve_rails`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart/tnt.rs`:
+    - Triển khai `TntMinecart` với `ignition_source_id`, `is_primed`, `get_fuse`, `set_fuse`.
+    - Kích hoạt ngòi với `prime_with_fuse_and_source`, `cause_fall_damage`, `explode_with_source`.
+    - Đọc/ghi NBT `fuse`, `explosion_power`, `explosion_speed_factor`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Bổ sung `fall_distance: AtomicCell<f64>` vào `MinecartEntity`.
+    - Tích lũy khoảng cách rơi khi trôi khỏi ray (`come_off_track`) và tự kích nổ khi chạm đất nếu rơi `>= 3.0` khối.
+    - Xử lý va chạm ngang phát nổ chuẩn `MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ`.
+    - Xử lý sát thương mũi tên đang cháy nổ ngay lập tức, và xử lý phá hủy kích hoạt ngòi nổ ngẫu nhiên 0..38 ticks.
+  - Cập nhật `crates/pumpkin-core/src/entity/projectile/arrow.rs` & `crates/pumpkin-core/src/entity/mod.rs`:
+    - Truyền đúng `source = Some(self)` (direct entity) và `cause = owner` trong `damage_with_context`.
+    - Bổ sung chuyển tiếp sát thương vehicle entity trong mặc định `damage_with_context`.
+  - **Unit Tests**: `test_tnt_minecart_explosion_speed_multiplier_and_priming_parity_gap439`, `tnt_minecart_explosion_bonus_is_speed_capped`, `tnt_minecart_defaults_and_nbt_roundtrip`, `tnt_minecart_rail_protection_covers_every_rail_type`.
+
 
 
 

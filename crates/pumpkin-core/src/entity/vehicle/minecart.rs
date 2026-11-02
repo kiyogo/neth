@@ -10,6 +10,7 @@ mod tnt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crossbeam::atomic::AtomicCell;
 use pumpkin_protocol::java::server::play::SPlayerInput;
 use rand::RngExt;
 
@@ -184,6 +185,7 @@ pub struct MinecartEntity {
     pub vehicle: VehicleEntity,
     kind: MinecartKind,
     flipped: AtomicBool,
+    pub fall_distance: AtomicCell<f64>,
 }
 
 enum MinecartKind {
@@ -221,6 +223,7 @@ impl MinecartEntity {
             vehicle: VehicleEntity::new(entity),
             kind,
             flipped: AtomicBool::new(false),
+            fall_distance: AtomicCell::new(0.0),
         }
     }
 
@@ -439,6 +442,7 @@ impl MinecartEntity {
         if power_track {
             movement = boost(world, pos, shape, movement);
         }
+        self.fall_distance.store(0.0);
         self.store_movement(movement);
     }
 
@@ -460,8 +464,23 @@ impl MinecartEntity {
             // Pumpkin `move_entity` leaves the collided step as velocity.
             movement = entity.velocity.load();
         }
-        if !self.grounded(world, pos) {
+        let is_grounded = self.grounded(world, pos);
+        if !is_grounded {
             movement = movement * f64::from(AIR_DRAG);
+            if movement.y < 0.0 {
+                let current_fall = self.fall_distance.load();
+                self.fall_distance.store(current_fall - movement.y);
+            }
+        } else {
+            let fallen = self.fall_distance.swap(0.0);
+            if fallen >= crate::entity::combat::MINECART_TNT_FALL_EXPLOSION_MIN_DISTANCE {
+                if let MinecartKind::Tnt(minecart) = &self.kind {
+                    minecart.cause_fall_damage(&self.vehicle.entity, fallen);
+                    if self.vehicle.entity.is_removed() {
+                        return;
+                    }
+                }
+            }
         }
         self.store_movement(movement);
     }
@@ -788,7 +807,8 @@ impl EntityBase for MinecartEntity {
                 .entity
                 .horizontal_collision
                 .load(Ordering::Relaxed)
-            && velocity.horizontal_length_squared() >= 0.01
+            && velocity.horizontal_length_squared()
+                >= crate::entity::combat::MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ
         {
             minecart.explode(&self.vehicle.entity, velocity.horizontal_length_squared());
             return;
@@ -941,59 +961,78 @@ impl EntityBase for MinecartEntity {
     ) -> bool {
         let creative = source
             .and_then(EntityBase::get_player)
+            .or_else(|| cause.and_then(EntityBase::get_player))
             .is_some_and(|player| player.gamemode.load() == GameMode::Creative);
 
-        if let MinecartKind::Tnt(minecart) = &self.kind
-            && damage_type == DamageType::ARROW
-            && self.vehicle.entity.fire_ticks.load(Ordering::Relaxed) > 0
-        {
-            let projectile_speed_squared = cause
-                .map(|entity| entity.get_entity().velocity.load().length_squared())
-                .unwrap_or_default();
-            minecart.explode(&self.vehicle.entity, projectile_speed_squared);
-            if self.vehicle.entity.is_removed() {
-                return true;
+        // Vanilla MinecartTNT.java:68-75:
+        // if (source.getDirectEntity() instanceof AbstractArrow projectile && projectile.isOnFire()) {
+        //     DamageSource damageSource = this.damageSources().explosion(this, source.getEntity());
+        //     this.explode(damageSource, projectile.getDeltaMovement().lengthSqr());
+        // }
+        if let MinecartKind::Tnt(minecart) = &self.kind {
+            let direct_is_flaming_arrow = source
+                .map(|s| {
+                    let ent = s.get_entity();
+                    let is_arrow = ent.entity_type == &EntityType::ARROW
+                        || ent.entity_type == &EntityType::SPECTRAL_ARROW;
+                    let is_fire = ent.is_on_fire() || ent.fire_ticks.load(Ordering::Relaxed) > 0;
+                    is_arrow && is_fire
+                })
+                .unwrap_or(false);
+
+            if direct_is_flaming_arrow {
+                let projectile_speed_squared = source
+                    .map(|entity| entity.get_entity().velocity.load().length_squared())
+                    .unwrap_or_default();
+                let source_id = cause.or(source).map(|e| e.get_entity().entity_id);
+                minecart.explode_with_source(
+                    &self.vehicle.entity,
+                    projectile_speed_squared,
+                    source_id,
+                );
+                if self.vehicle.entity.is_removed() {
+                    return true;
+                }
             }
         }
 
-        let (_, will_break_step) = crate::entity::combat::calculate_vehicle_damage_step(
-            self.vehicle.get_damage(),
+        // Vanilla VehicleEntity.java:49-56 & MinecartTNT.java:78-88, 210-218
+        let direct_on_fire = source
+            .map(|s| s.get_entity().is_on_fire() || s.get_entity().fire_ticks.load(Ordering::Relaxed) > 0)
+            .unwrap_or(false);
+        let is_tnt = matches!(&self.kind, MinecartKind::Tnt(_));
+        let is_igniting = is_tnt
+            && crate::entity::combat::is_damage_source_igniting_tnt(damage_type, direct_on_fire);
+
+        let current_damage = self.vehicle.get_damage();
+        let (_new_damage, will_break_step) = crate::entity::combat::calculate_vehicle_damage_step(
+            current_damage,
             amount,
             creative,
         );
-        let will_break = self.vehicle.entity.is_alive() && will_break_step;
+        let should_source_destroy = is_igniting;
+        let will_break = self.vehicle.entity.is_alive() && (will_break_step || should_source_destroy);
 
         if let MinecartKind::Tnt(minecart) = &self.kind
             && will_break
-            && !creative
+            && (!creative || should_source_destroy)
         {
             let velocity = self.vehicle.entity.velocity.load();
             let speed_squared = velocity.x.mul_add(velocity.x, velocity.z * velocity.z);
-            let ignites = damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_FIRE)
-                || damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_EXPLOSION)
-                || self.vehicle.entity.fire_ticks.load(Ordering::Relaxed) > 0;
-            if ignites || speed_squared >= 0.01 {
+            if crate::entity::combat::should_tnt_minecart_prime_on_destroy(is_igniting, speed_squared) {
                 self.vehicle.apply_damage_wobble(amount);
-                let fuse = rand::rng().random_range(0..20) + rand::rng().random_range(0..20);
-                if self
-                    .vehicle
-                    .entity
-                    .world
-                    .load()
-                    .level_info
-                    .load()
-                    .game_rules
-                    .tnt_explodes
-                {
-                    minecart.prime(&self.vehicle.entity, fuse);
-                } else {
-                    minecart.set_fuse(fuse);
+                if minecart.get_fuse() < 0 {
+                    let rand_a = rand::rng().random_range(0..crate::entity::combat::MINECART_TNT_RANDOM_FUSE_RANGE);
+                    let rand_b = rand::rng().random_range(0..crate::entity::combat::MINECART_TNT_RANDOM_FUSE_RANGE);
+                    let fuse = crate::entity::combat::calculate_tnt_minecart_destroyed_fuse(rand_a, rand_b);
+                    let source_id = cause.or(source).map(|e| e.get_entity().entity_id);
+                    minecart.prime_with_fuse_and_source(&self.vehicle.entity, fuse, source_id);
                 }
                 return true;
             }
         }
 
-        let damaged = self.vehicle.damage_with_context(amount, source);
+        let damaged = self.vehicle.damage_with_context(amount, source.or(cause));
 
         if will_break && !creative && self.vehicle.entity.is_removed() {
             let world = self.vehicle.entity.world.load();

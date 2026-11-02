@@ -536,6 +536,9 @@ pub trait EntityBase: Send + Sync + std::any::Any {
                 cause,
             );
         }
+        if let Some(vehicle) = caller.get_vehicle_entity() {
+            return vehicle.damage_with_context(amount, source.or(cause));
+        }
         false
     }
 

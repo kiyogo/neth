@@ -3909,13 +3909,119 @@ pub const MINECART_RAIL_HEIGHT_OFFSET: f64 = 0.0625;
 
 /// TNT Minecart default base explosion power (4.0).
 /// Mirrors vanilla MinecartTNT.java:33:
-/// private static final float DEFAULT_EXPLOSION_POWER_BASE = 4.0F;
+/// `private static final float DEFAULT_EXPLOSION_POWER_BASE = 4.0F;`
 pub const MINECART_TNT_DEFAULT_POWER: f32 = 4.0;
+
+/// TNT Minecart default explosion speed factor (1.0).
+/// Mirrors vanilla MinecartTNT.java:34:
+/// `private static final float DEFAULT_EXPLOSION_SPEED_FACTOR = 1.0F;`
+pub const MINECART_TNT_DEFAULT_SPEED_FACTOR: f32 = 1.0;
 
 /// TNT Minecart default activator rail prime fuse in ticks (80 ticks = 4 seconds).
 /// Mirrors vanilla MinecartTNT.java:150:
-/// 	his.fuse = 80;
+/// `this.fuse = 80;`
 pub const MINECART_TNT_DEFAULT_FUSE: i32 = 80;
+
+/// TNT Minecart max speed cap in explosion power formula (5.0).
+/// Mirrors vanilla MinecartTNT.java:103:
+/// `double speed = Math.min(Math.sqrt(speedSqr), 5.0);`
+pub const MINECART_TNT_MAX_EXPLOSION_SPEED: f64 = 5.0;
+
+/// TNT Minecart speed multiplier in explosion power formula (1.5).
+/// Mirrors vanilla MinecartTNT.java:111:
+/// `(float)(this.explosionPowerBase + this.explosionSpeedFactor * this.random.nextDouble() * 1.5 * speed)`
+pub const MINECART_TNT_EXPLOSION_SPEED_MULTIPLIER: f32 = 1.5;
+
+/// TNT Minecart minimum horizontal speed squared to detonate on horizontal collision or prime on destruction (0.01).
+/// Mirrors vanilla MinecartTNT.java:61, 80:
+/// `if (speedSqr >= 0.01F)`
+pub const MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ: f64 = 0.01;
+
+/// TNT Minecart minimum fall distance to detonate upon landing (3.0 blocks).
+/// Mirrors vanilla MinecartTNT.java:124:
+/// `if (fallDistance >= 3.0)`
+pub const MINECART_TNT_FALL_EXPLOSION_MIN_DISTANCE: f64 = 3.0;
+
+/// TNT Minecart fall distance to power ratio in fall damage explosion formula (10.0).
+/// Mirrors vanilla MinecartTNT.java:125:
+/// `double power = fallDistance / 10.0;`
+pub const MINECART_TNT_FALL_EXPLOSION_POWER_RATIO: f64 = 10.0;
+
+/// TNT Minecart random fuse range when destroyed by igniting damage or while moving (20 ticks).
+/// Mirrors vanilla MinecartTNT.java:85:
+/// `this.fuse = this.random.nextInt(20) + this.random.nextInt(20);`
+pub const MINECART_TNT_RANDOM_FUSE_RANGE: i32 = 20;
+
+/// Calculates TNT Minecart explosion power from base power, speed factor, horizontal/impact speed squared, and a random float [0.0, 1.0).
+/// Mirrors vanilla MinecartTNT.java:103-111:
+/// `double speed = Math.min(Math.sqrt(speedSqr), 5.0);`
+/// `(float)(this.explosionPowerBase + this.explosionSpeedFactor * this.random.nextDouble() * 1.5 * speed)`
+#[must_use]
+pub fn calculate_tnt_minecart_explosion_power(
+    base_power: f32,
+    speed_factor: f32,
+    speed_sq: f64,
+    random_factor: f64,
+) -> f32 {
+    let speed = speed_sq.max(0.0).sqrt().min(MINECART_TNT_MAX_EXPLOSION_SPEED);
+    (f64::from(base_power)
+        + (f64::from(speed_factor)
+            * random_factor
+            * f64::from(MINECART_TNT_EXPLOSION_SPEED_MULTIPLIER)
+            * speed)) as f32
+}
+
+/// Calculates equivalent speed squared for TNT Minecart fall damage explosion.
+/// Mirrors vanilla MinecartTNT.java:125-126:
+/// `double power = fallDistance / 10.0; this.explode(this.ignitionSource, power * power);`
+#[must_use]
+pub fn calculate_tnt_minecart_fall_speed_squared(fall_distance: f64) -> f64 {
+    let power = fall_distance / MINECART_TNT_FALL_EXPLOSION_POWER_RATIO;
+    power * power
+}
+
+/// Checks whether a damage source ignites a TNT minecart, triggering immediate destruction/priming.
+/// Mirrors vanilla MinecartTNT.java:214-218:
+/// `source.getDirectEntity() instanceof Projectile projectile ? projectile.isOnFire() : source.is(DamageTypeTags.IS_FIRE) || source.is(DamageTypeTags.IS_EXPLOSION)`
+#[must_use]
+pub fn is_damage_source_igniting_tnt(
+    damage_type: pumpkin_data::damage::DamageType,
+    direct_entity_on_fire: bool,
+) -> bool {
+    direct_entity_on_fire
+        || damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_FIRE)
+        || damage_type.has_tag(&tag::DamageType::MINECRAFT_IS_EXPLOSION)
+}
+
+/// Determines whether a destroyed TNT minecart primes a fuse instead of dropping as an item.
+/// Mirrors vanilla MinecartTNT.java:79-88:
+/// `if (!damageSourceIgnitesTnt(source) && !(speedSqr >= 0.01F)) { this.destroy(level, this.getDropItem()); } else { ... primeFuse ... }`
+#[must_use]
+pub fn should_tnt_minecart_prime_on_destroy(
+    is_igniting_source: bool,
+    speed_squared: f64,
+) -> bool {
+    is_igniting_source || speed_squared >= MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ
+}
+
+/// Calculates the randomized fuse ticks for a TNT minecart primed on destruction (0..38 ticks, avg 19 ticks).
+/// Mirrors vanilla MinecartTNT.java:85:
+/// `this.fuse = this.random.nextInt(20) + this.random.nextInt(20);`
+#[must_use]
+pub const fn calculate_tnt_minecart_destroyed_fuse(rand_a: i32, rand_b: i32) -> i32 {
+    rand_a + rand_b
+}
+
+/// Determines whether a primed TNT minecart preserves rails and blocks supporting rails during explosion.
+/// Mirrors vanilla MinecartTNT.java:176, 183:
+/// `!this.isPrimed() || !state.is(BlockTags.RAILS) && !level.getBlockState(pos.above()).is(BlockTags.RAILS)`
+#[must_use]
+pub const fn should_tnt_minecart_preserve_rails(
+    is_primed: bool,
+    is_rail_or_rail_above: bool,
+) -> bool {
+    is_primed && is_rail_or_rail_above
+}
 
 /// Calculates new accumulated damage and destruction state for a vehicle entity.
 ///
@@ -28352,5 +28458,72 @@ mod tests {
         assert_eq!(MINECART_RIDER_NUDGE_SPEED_SQ_THRESHOLD, 0.01);
         assert_eq!(MINECART_RIDER_NUDGE_FACTOR, 0.001);
         assert_eq!(MINECART_RAIL_HEIGHT_OFFSET, 0.0625);
+    }
+
+    #[test]
+    fn test_tnt_minecart_explosion_speed_multiplier_and_priming_parity_gap439() {
+        // 1. TNT Minecart constants (MinecartTNT.java:31-38, 61, 85, 103, 111, 124-125)
+        assert_eq!(MINECART_TNT_DEFAULT_POWER, 4.0);
+        assert_eq!(MINECART_TNT_DEFAULT_SPEED_FACTOR, 1.0);
+        assert_eq!(MINECART_TNT_DEFAULT_FUSE, 80);
+        assert_eq!(MINECART_TNT_MAX_EXPLOSION_SPEED, 5.0);
+        assert_eq!(MINECART_TNT_EXPLOSION_SPEED_MULTIPLIER, 1.5);
+        assert_eq!(MINECART_TNT_COLLISION_EXPLOSION_SPEED_THRESHOLD_SQ, 0.01);
+        assert_eq!(MINECART_TNT_FALL_EXPLOSION_MIN_DISTANCE, 3.0);
+        assert_eq!(MINECART_TNT_FALL_EXPLOSION_POWER_RATIO, 10.0);
+        assert_eq!(MINECART_TNT_RANDOM_FUSE_RANGE, 20);
+
+        // 2. Explosion power formula with speed cap (MinecartTNT.java:103, 111)
+        // At rest (speed_sq = 0.0): power = base_power = 4.0
+        assert_eq!(calculate_tnt_minecart_explosion_power(4.0, 1.0, 0.0, 1.0), 4.0);
+        // At speed = 2.0 (speed_sq = 4.0) with random = 1.0: 4.0 + 1.0 * 1.0 * 1.5 * 2.0 = 7.0
+        assert_eq!(calculate_tnt_minecart_explosion_power(4.0, 1.0, 4.0, 1.0), 7.0);
+        // At speed = 10.0 (speed_sq = 100.0) -> speed capped at 5.0: 4.0 + 1.0 * 1.0 * 1.5 * 5.0 = 11.5
+        assert_eq!(calculate_tnt_minecart_explosion_power(4.0, 1.0, 100.0, 1.0), 11.5);
+        // Custom explosion_power = 6.0, explosion_speed_factor = 2.0, speed = 5.0, random = 0.5:
+        // 6.0 + 2.0 * 0.5 * 1.5 * 5.0 = 13.5
+        assert_eq!(calculate_tnt_minecart_explosion_power(6.0, 2.0, 25.0, 0.5), 13.5);
+
+        // 3. Fall speed squared formula (MinecartTNT.java:125-126)
+        // Fall distance 3.0: power = 0.3, speed_sq = 0.09
+        assert!((calculate_tnt_minecart_fall_speed_squared(3.0) - 0.09).abs() < 1e-6);
+        // Fall distance 10.0: power = 1.0, speed_sq = 1.0
+        assert!((calculate_tnt_minecart_fall_speed_squared(10.0) - 1.0).abs() < 1e-6);
+        // Fall distance 50.0: power = 5.0, speed_sq = 25.0
+        assert!((calculate_tnt_minecart_fall_speed_squared(50.0) - 25.0).abs() < 1e-6);
+
+        // 4. Igniting damage sources (MinecartTNT.java:214-218)
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::IN_FIRE, false));
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::ON_FIRE, false));
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::LAVA, false));
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::EXPLOSION, false));
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::PLAYER_EXPLOSION, false));
+        // Projectile on fire ignites regardless of damage type
+        assert!(is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::ARROW, true));
+        // Non-igniting sources
+        assert!(!is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::GENERIC, false));
+        assert!(!is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::FALL, false));
+        assert!(!is_damage_source_igniting_tnt(pumpkin_data::damage::DamageType::PLAYER_ATTACK, false));
+
+        // 5. Priming on destroy vs item drop (MinecartTNT.java:79-88)
+        // Igniting source always primes on destroy even when standing still
+        assert!(should_tnt_minecart_prime_on_destroy(true, 0.0));
+        // Moving cart (speed_sq >= 0.01) primes on destroy even from non-igniting damage
+        assert!(should_tnt_minecart_prime_on_destroy(false, 0.01));
+        assert!(should_tnt_minecart_prime_on_destroy(false, 0.05));
+        // Stationary cart with normal damage drops item (should not prime)
+        assert!(!should_tnt_minecart_prime_on_destroy(false, 0.009));
+        assert!(!should_tnt_minecart_prime_on_destroy(false, 0.0));
+
+        // 6. Randomized fuse ticks on destroy (MinecartTNT.java:85)
+        assert_eq!(calculate_tnt_minecart_destroyed_fuse(0, 0), 0);
+        assert_eq!(calculate_tnt_minecart_destroyed_fuse(10, 10), 20);
+        assert_eq!(calculate_tnt_minecart_destroyed_fuse(19, 19), 38);
+
+        // 7. Rail preservation during primed explosion (MinecartTNT.java:176, 183)
+        assert!(should_tnt_minecart_preserve_rails(true, true));
+        assert!(!should_tnt_minecart_preserve_rails(true, false));
+        assert!(!should_tnt_minecart_preserve_rails(false, true));
+        assert!(!should_tnt_minecart_preserve_rails(false, false));
     }
 }
