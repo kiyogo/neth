@@ -10545,6 +10545,62 @@ pub fn calculate_furnace_experience_reward(amount: u32, xp_per_item: f32, rand_v
     }
 }
 
+/// Returns true if an item in the fuel slot can be extracted through the bottom face.
+///
+/// Mirrors vanilla `AbstractFurnaceBlockEntity.java:310` & `ItemTags.FURNACE_FUEL_BOTTOM_TAKEABLE`:
+/// `minecraft:bucket` and `minecraft:water_bucket`.
+#[must_use]
+pub fn is_furnace_fuel_bottom_takeable(item_id: u16) -> bool {
+    item_id == pumpkin_data::item::Item::BUCKET.id
+        || item_id == pumpkin_data::item::Item::WATER_BUCKET.id
+}
+
+/// Calculates updated cooking timer when changing recipe or fuel speed multiplier.
+///
+/// Mirrors vanilla `AbstractFurnaceBlockEntity.java:180-184`:
+/// ```java
+/// if (entity.cookingTotalTime > 0 && entity.cookingTimer < entity.cookingTotalTime) {
+///    float completionRatio = (float)entity.cookingTimer / entity.cookingTotalTime;
+///    entity.cookingTotalTime = getTotalCookTime(recipe, entity);
+///    entity.cookingTimer = (int)Math.ceil(completionRatio * entity.cookingTotalTime);
+/// }
+/// ```
+#[must_use]
+pub fn scale_cooking_timer_on_speed_change(
+    cooking_timer: u16,
+    old_total_time: u16,
+    new_total_time: u16,
+) -> u16 {
+    if old_total_time > 0 && cooking_timer < old_total_time && new_total_time > 0 {
+        let ratio = (cooking_timer as f32) / (old_total_time as f32);
+        ((ratio * (new_total_time as f32)).ceil() as u16).min(new_total_time)
+    } else {
+        cooking_timer
+    }
+}
+
+/// Calculates redstone comparator output for a furnace container.
+///
+/// Mirrors vanilla `AbstractContainerMenu.java:771-781` & `Mth.lerpDiscrete(alpha, 0, 15)`.
+#[must_use]
+pub fn calculate_furnace_comparator_output(slot_counts: &[u8; 3], max_stack_sizes: &[u8; 3]) -> u8 {
+    let mut fill_sum = 0.0f32;
+    let mut has_items = false;
+    for i in 0..3 {
+        let count = slot_counts[i] as f32;
+        let max_stack = (max_stack_sizes[i].max(1)) as f32;
+        if count > 0.0 {
+            fill_sum += count / max_stack;
+            has_items = true;
+        }
+    }
+    if !has_items {
+        return 0;
+    }
+    let alpha = fill_sum / 3.0f32;
+    (1.0f32 + alpha * 14.0f32).floor() as u8
+}
+
 /// Vanilla `BrewingStandBlockEntity.java:38-52`:
 pub const BREWING_STAND_POTION_SLOTS: [usize; 3] = [0, 1, 2];
 pub const BREWING_STAND_INGREDIENT_SLOT: usize = 3;
@@ -30655,5 +30711,52 @@ mod tests {
         assert!(should_render_end_crystal_at_distance(50000.0, true, 4096.0));
         assert!(should_render_end_crystal_at_distance(2000.0, false, 4096.0));
         assert!(!should_render_end_crystal_at_distance(5000.0, false, 4096.0));
+    }
+
+    #[test]
+    fn test_furnace_cooking_times_fuel_cooldown_and_comparator_parity_gap451() {
+        use pumpkin_data::item::Item;
+
+        // 1. Constants parity (AbstractFurnaceBlockEntity.java:49-61)
+        assert_eq!(FURNACE_SLOT_INPUT, 0);
+        assert_eq!(FURNACE_SLOT_FUEL, 1);
+        assert_eq!(FURNACE_SLOT_RESULT, 2);
+        assert_eq!(FURNACE_DATA_LIT_TIME, 0);
+        assert_eq!(FURNACE_DATA_LIT_DURATION, 1);
+        assert_eq!(FURNACE_DATA_COOKING_PROGRESS, 2);
+        assert_eq!(FURNACE_DATA_COOKING_TOTAL_TIME, 3);
+        assert_eq!(FURNACE_NUM_DATA_VALUES, 4);
+        assert_eq!(FURNACE_BURN_TIME_STANDARD, 200);
+        assert_eq!(FURNACE_BURN_COOL_SPEED, 2);
+        assert_eq!(FURNACE_DEFAULT_COOK_TIME, 200);
+        assert_eq!(FURNACE_FAST_COOK_TIME, 100);
+
+        // 2. Fuel bottom takeable parity (AbstractFurnaceBlockEntity.java:310 & ItemTags.FURNACE_FUEL_BOTTOM_TAKEABLE)
+        assert!(is_furnace_fuel_bottom_takeable(Item::BUCKET.id));
+        assert!(is_furnace_fuel_bottom_takeable(Item::WATER_BUCKET.id));
+        assert!(!is_furnace_fuel_bottom_takeable(Item::LAVA_BUCKET.id));
+        assert!(!is_furnace_fuel_bottom_takeable(Item::COAL.id));
+
+        // 3. Speed multiplier timer scaling parity (AbstractFurnaceBlockEntity.java:180-184)
+        assert_eq!(scale_cooking_timer_on_speed_change(100, 200, 100), 50);
+        assert_eq!(scale_cooking_timer_on_speed_change(1, 200, 100), 1);
+        assert_eq!(scale_cooking_timer_on_speed_change(0, 200, 100), 0);
+        assert_eq!(scale_cooking_timer_on_speed_change(50, 100, 200), 100);
+
+        // 4. Cool-down step parity (AbstractFurnaceBlockEntity.java:212-214)
+        assert_eq!(calculate_furnace_cool_down(10, 200), 8);
+        assert_eq!(calculate_furnace_cool_down(1, 200), 0);
+        assert_eq!(calculate_furnace_cool_down(0, 200), 0);
+
+        // 5. Experience reward parity (AbstractFurnaceBlockEntity.java:398-406)
+        assert_eq!(calculate_furnace_experience_reward(10, 0.1, 0.5), 1);
+        assert_eq!(calculate_furnace_experience_reward(1, 0.7, 0.5), 1);
+        assert_eq!(calculate_furnace_experience_reward(1, 0.7, 0.8), 0);
+
+        // 6. Comparator signal output parity (AbstractContainerMenu.java:771-781)
+        assert_eq!(calculate_furnace_comparator_output(&[0, 0, 0], &[64, 64, 64]), 0);
+        assert_eq!(calculate_furnace_comparator_output(&[1, 0, 0], &[64, 64, 64]), 1);
+        assert_eq!(calculate_furnace_comparator_output(&[64, 0, 0], &[64, 64, 64]), 5);
+        assert_eq!(calculate_furnace_comparator_output(&[64, 64, 64], &[64, 64, 64]), 15);
     }
 }

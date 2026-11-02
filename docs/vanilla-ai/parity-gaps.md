@@ -11628,6 +11628,36 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Phát sinh sự kiện `GameEvent::EntityPlace`.
   - **Unit Tests**: `test_end_crystal_placement_and_show_bottom_parity_gap450` (292 tests passed).
 
+### Gap 451: Furnace/Smoker/Blast Furnace Cooking Times, Fuel Bottom Takeable, Cooldown & Drop Experience Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity.java:49-140, 151-295, 309-353, 398-421`, `net.minecraft.world.level.block.entity.FurnaceBlockEntity.java`, `net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity.java`, `net.minecraft.world.level.block.entity.SmokerBlockEntity.java`, `net.minecraft.tags.ItemTags.java:203` (`FURNACE_FUEL_BOTTOM_TAKEABLE`)
+
+- **Thời Gian Nấu, Tốc Độ & Hạ Nhiệt Khi Tắt Lửa (Cooking Times, Speed Multipliers & Cooldown Step Parity)**:
+  - Vanilla `AbstractFurnaceBlockEntity.java:60-61, 180-184, 212-214`:
+    - `BURN_TIME_STANDARD = 200` ticks.
+    - `BURN_COOL_SPEED = 2` ticks mỗi game tick khi lò tắt lửa (`litTimeRemaining <= 0`) và không có đủ nguyên liệu/nhiên liệu hợp lệ: `entity.cookingTimer = Mth.clamp(entity.cookingTimer - 2, 0, entity.cookingTotalTime)`.
+    - Khi thay đổi công thức nấu hoặc hệ số tốc độ (speed multiplier): tỷ lệ hoàn thành được bảo toàn:
+      `completionRatio = cookingTimer / cookingTotalTime; cookingTotalTime = newTotal; cookingTimer = ceil(completionRatio * newTotal)`.
+- **Rút Vật Phẩm Đáy Bằng Phễu / Hoppers & Thẻ FURNACE_FUEL_BOTTOM_TAKEABLE**:
+  - Vanilla `AbstractFurnaceBlockEntity.java:309-311` & `ItemTags.FURNACE_FUEL_BOTTOM_TAKEABLE` (`data/minecraft/tags/item/furnace_fuel_bottom_takeable.json`):
+    - Khi phễu ở mặt dưới (`Direction.DOWN`) hút vật phẩm từ ô nhiên liệu (`SLOT_FUEL = 1`), vanilla chỉ cho phép lấy vật phẩm thuộc thẻ `#minecraft:furnace_fuel_bottom_takeable`, gồm cả `minecraft:bucket` VÀ `minecraft:water_bucket` (khi xô nước được tạo ra từ việc sấy khô bọt biển ướt `WET_SPONGE`).
+    - Neth trước đây chỉ cho phép rút `BUCKET`, khiến xô nước `WATER_BUCKET` bị kẹt trong ô nhiên liệu khi hút tự động từ đáy.
+- **Rơi Kinh Nghiệm Khi Phá Khối Lò (Experience Drop on Block Break Parity)**:
+  - Vanilla `AbstractFurnaceBlockEntity.java:416-421`:
+    - Khi khối lò/lò luyện kim/lò hun khói bị phá hủy (`preRemoveSideEffects`), kinh nghiệm nấu tích lũy trong `RecipesUsed` được tính toán (`calculate_furnace_experience_reward`) và rơi dưới dạng thực thể hạt kinh nghiệm `ExperienceOrb` tại tâm khối `Vec3.atCenterOf(pos)`.
+    - Neth trước đây không hiện thực hàm `broken` trên `FurnaceBlock`, `BlastFurnaceBlock`, và `SmokerBlock`, khiến toàn bộ kinh nghiệm nấu chưa thu thập bị mất sạch khi phá lò.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hàm: `is_furnace_fuel_bottom_takeable`, `scale_cooking_timer_on_speed_change`, `calculate_furnace_comparator_output`.
+    - Đã có sẵn: `calculate_furnace_cool_down`, `can_furnace_accept_output`, `calculate_furnace_experience_reward`.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/furnace_like_block_entity.rs`:
+    - Cho phép cả `BUCKET` và `WATER_BUCKET` được rút qua mặt đáy (`can_take_item_through_face`).
+    - Sử dụng `calculate_furnace_cool_down` khi lò tắt lửa.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/furnace.rs`, `blast_furnace.rs`, `smoker.rs`:
+    - Hiện thực `broken(&self, args: BrokenArgs<'_>)` để spawn hạt kinh nghiệm `ExperienceOrbEntity::spawn` từ kinh nghiệm tích lũy khi lò bị phá hủy.
+  - **Unit Tests**: `test_furnace_cooking_times_fuel_cooldown_and_comparator_parity_gap451` (293 tests passed).
+
+
 
 
 

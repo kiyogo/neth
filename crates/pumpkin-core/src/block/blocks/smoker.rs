@@ -16,7 +16,7 @@ use pumpkin_inventory::{
 use pumpkin_macros::pumpkin_block;
 
 use crate::block::{
-    BlockBehaviour, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
+    BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
     OnPlaceArgs, PlacedArgs, registry::BlockActionResult,
 };
 
@@ -121,6 +121,21 @@ impl BlockBehaviour for SmokerBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let smoker_block_entity = SmokerBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(smoker_block_entity));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(exp_container) = block_entity.to_experience_container()
+        {
+            let xp = exp_container.extract_experience();
+            if xp > 0 {
+                crate::entity::experience_orb::ExperienceOrbEntity::spawn(
+                    args.world,
+                    args.position.to_centered_f64(),
+                    xp as u32,
+                );
+            }
+        }
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {

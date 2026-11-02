@@ -434,11 +434,11 @@ macro_rules! impl_inventory_for_cooking {
                 direction: pumpkin_util::BlockDirection,
             ) -> bool {
                 // Vanilla AbstractFurnaceBlockEntity.java:309-311:
-                // Down extraction from fuel slot (1) is only allowed for empty buckets.
+                // Down extraction from fuel slot (1) is only allowed for empty buckets and water buckets.
                 if direction == pumpkin_util::BlockDirection::Down
                     && slot == $crate::block::entities::furnace_like_block_entity::FURNACE_SLOT_FUEL
                 {
-                    stack.item.id == pumpkin_data::item::Item::BUCKET.id
+                    $crate::entity::combat::is_furnace_fuel_bottom_takeable(stack.item.id)
                 } else {
                     true
                 }
@@ -614,14 +614,12 @@ macro_rules! impl_block_entity_for_cooking {
                         self.set_cooking_time_spent(0);
                     }
                 } else if !self.is_burning() && self.get_cooking_time_spent() > 0 {
+                    let total = self.cooking_total_time.load(Ordering::Acquire);
                     let _ = self.cooking_time_spent.try_update(
                         Ordering::Acquire,
                         Ordering::Acquire,
                         |v| {
-                            Some(
-                                v.saturating_sub(2)
-                                    .min(self.cooking_total_time.load(Ordering::Acquire)),
-                            )
+                            Some($crate::entity::combat::calculate_furnace_cool_down(v, total))
                         },
                     );
                 }
