@@ -27,7 +27,7 @@ impl ItemMetadata for LeadItem {
 impl ItemBehaviour for LeadItem {
     fn use_on_block(
         &self,
-        item: &mut ItemStack,
+        _item: &mut ItemStack,
         player: &Player,
         location: BlockPos,
         _face: BlockDirection,
@@ -85,10 +85,12 @@ impl ItemBehaviour for LeadItem {
         }
 
         if any_leashed {
-            if player.gamemode.load() != pumpkin_util::GameMode::Creative {
-                item.decrement(1);
-            }
+            // Vanilla LeadItem.java:37-58: tying already-leashed mobs to a fence does NOT consume the lead from hand.
             world.play_sound(Sound::ItemLeadTied, SoundCategory::Neutral, &center);
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::BlockAttach.name(),
+                center,
+            );
             BlockActionResult::Success
         } else {
             BlockActionResult::Pass

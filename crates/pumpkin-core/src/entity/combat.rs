@@ -10343,6 +10343,89 @@ pub const fn calculate_painting_area(width: u32, height: u32) -> u32 {
     width * height
 }
 
+/// Vanilla `LeashFenceKnotEntity.java:31`: vertical Y offset above fence block base (0.375 = 3/8 block).
+pub const LEASH_KNOT_OFFSET_Y: f64 = 0.375;
+
+/// Vanilla `EntityType.LEASH_KNOT`: width of leash fence knot entity (0.375 block).
+pub const LEASH_KNOT_WIDTH: f64 = 0.375;
+
+/// Vanilla `EntityType.LEASH_KNOT`: height of leash fence knot entity (0.5 block).
+pub const LEASH_KNOT_HEIGHT: f64 = 0.5;
+
+/// Vanilla `LeashFenceKnotEntity.java:162`: rope attachment point Y offset above knot base (0.2 block).
+pub const LEASH_KNOT_ROPE_OFFSET_Y: f64 = 0.2;
+
+/// Vanilla `LeashFenceKnotEntity.java:58`: maximum squared render distance for leash knot (1024.0 = 32 blocks squared).
+pub const LEASH_KNOT_RENDER_DISTANCE_SQ: f64 = 1024.0;
+
+/// Calculates exact center/base position for a leash fence knot placed on a fence at `block_pos`.
+///
+/// Mirrors vanilla `LeashFenceKnotEntity.java:48`:
+/// `this.setPosRaw(this.pos.getX() + 0.5, this.pos.getY() + 0.375, this.pos.getZ() + 0.5);`
+#[must_use]
+pub fn calculate_leash_knot_position(
+    block_pos: pumpkin_util::math::position::BlockPos,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    Vector3::new(
+        f64::from(block_pos.0.x) + 0.5,
+        f64::from(block_pos.0.y) + LEASH_KNOT_OFFSET_Y,
+        f64::from(block_pos.0.z) + 0.5,
+    )
+}
+
+/// Calculates bounding box for a leash fence knot.
+///
+/// Mirrors vanilla `LeashFenceKnotEntity.java:48-53`:
+/// ```java
+/// double halfWidth = this.getType().getWidth() / 2.0;
+/// double height = this.getType().getHeight();
+/// this.setBoundingBox(new AABB(x - halfWidth, y, z - halfWidth, x + halfWidth, y + height, z + halfWidth));
+/// ```
+#[must_use]
+pub fn calculate_leash_knot_bounding_box(
+    knot_pos: pumpkin_util::math::vector3::Vector3<f64>,
+) -> pumpkin_util::math::boundingbox::BoundingBox {
+    use pumpkin_util::math::boundingbox::BoundingBox;
+    use pumpkin_util::math::vector3::Vector3;
+    let half_width = LEASH_KNOT_WIDTH / 2.0;
+    BoundingBox::new(
+        Vector3::new(knot_pos.x - half_width, knot_pos.y, knot_pos.z - half_width),
+        Vector3::new(knot_pos.x + half_width, knot_pos.y + LEASH_KNOT_HEIGHT, knot_pos.z + half_width),
+    )
+}
+
+/// Calculates rope hold position for leash rendering.
+///
+/// Mirrors vanilla `LeashFenceKnotEntity.java:161-163`:
+/// `return this.getPosition(partialTickTime).add(0.0, 0.2, 0.0);`
+#[must_use]
+pub fn calculate_leash_knot_rope_position(
+    knot_pos: pumpkin_util::math::vector3::Vector3<f64>,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    Vector3::new(knot_pos.x, knot_pos.y + LEASH_KNOT_ROPE_OFFSET_Y, knot_pos.z)
+}
+
+/// Calculates search box for locating existing leash fence knot at a fence block position.
+///
+/// Mirrors vanilla `LeashFenceKnotEntity.java:136`:
+/// `new AABB(x - 1.0, y - 1.0, z - 1.0, x + 1.0, y + 1.0, z + 1.0)`
+#[must_use]
+pub fn calculate_leash_knot_search_box(
+    block_pos: pumpkin_util::math::position::BlockPos,
+) -> pumpkin_util::math::boundingbox::BoundingBox {
+    use pumpkin_util::math::boundingbox::BoundingBox;
+    use pumpkin_util::math::vector3::Vector3;
+    let x = f64::from(block_pos.0.x);
+    let y = f64::from(block_pos.0.y);
+    let z = f64::from(block_pos.0.z);
+    BoundingBox::new(
+        Vector3::new(x - 1.0, y - 1.0, z - 1.0),
+        Vector3::new(x + 2.0, y + 2.0, z + 2.0),
+    )
+}
+
 /// Checks if an entity type is able to damage End Crystals.
 /// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
 #[must_use]
@@ -30433,5 +30516,47 @@ mod tests {
         assert_eq!(calculate_painting_area(2, 1), 2);
         assert_eq!(calculate_painting_area(4, 2), 8);
         assert_eq!(calculate_painting_area(4, 4), 16);
+    }
+
+    #[test]
+    fn test_leash_knot_placement_bounding_box_and_rope_position_parity_gap449() {
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Constants parity (LeashFenceKnotEntity.java:31, 58, 162; EntityTypes.java)
+        assert_eq!(LEASH_KNOT_OFFSET_Y, 0.375);
+        assert_eq!(LEASH_KNOT_WIDTH, 0.375);
+        assert_eq!(LEASH_KNOT_HEIGHT, 0.5);
+        assert_eq!(LEASH_KNOT_ROPE_OFFSET_Y, 0.2);
+        assert_eq!(LEASH_KNOT_RENDER_DISTANCE_SQ, 1024.0);
+
+        // 2. Position calculation (LeashFenceKnotEntity.java:48)
+        let block_pos = BlockPos(pumpkin_util::math::vector3::Vector3::new(14, 63, -8));
+        let knot_pos = calculate_leash_knot_position(block_pos);
+        assert!((knot_pos.x - 14.5).abs() < 1e-6);
+        assert!((knot_pos.y - 63.375).abs() < 1e-6);
+        assert!((knot_pos.z - (-7.5)).abs() < 1e-6);
+
+        // 3. Bounding box calculation (LeashFenceKnotEntity.java:48-53)
+        let bbox = calculate_leash_knot_bounding_box(knot_pos);
+        assert!(((bbox.max.x - bbox.min.x) - 0.375).abs() < 1e-6);
+        assert!(((bbox.max.y - bbox.min.y) - 0.5).abs() < 1e-6);
+        assert!(((bbox.max.z - bbox.min.z) - 0.375).abs() < 1e-6);
+        assert!((bbox.min.y - 63.375).abs() < 1e-6);
+        assert!((bbox.max.y - 63.875).abs() < 1e-6);
+
+        // 4. Rope attachment hold position (LeashFenceKnotEntity.java:161-163)
+        let rope_pos = calculate_leash_knot_rope_position(knot_pos);
+        assert!((rope_pos.x - knot_pos.x).abs() < 1e-6);
+        assert!((rope_pos.y - (knot_pos.y + 0.2)).abs() < 1e-6);
+        assert!((rope_pos.z - knot_pos.z).abs() < 1e-6);
+
+        // 5. Knot search box (LeashFenceKnotEntity.java:136)
+        let search_box = calculate_leash_knot_search_box(block_pos);
+        assert!((search_box.min.x - 13.0).abs() < 1e-6);
+        assert!((search_box.min.y - 62.0).abs() < 1e-6);
+        assert!((search_box.min.z - (-9.0)).abs() < 1e-6);
+        assert!((search_box.max.x - 16.0).abs() < 1e-6);
+        assert!((search_box.max.y - 65.0).abs() < 1e-6);
+        assert!((search_box.max.z - (-6.0)).abs() < 1e-6);
     }
 }

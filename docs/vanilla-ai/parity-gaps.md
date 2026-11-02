@@ -11565,6 +11565,42 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Đồng bộ `yaw/pitch`, sao chép `custom_name`, và phát `GameEvent::EntityPlace` khi người chơi đặt tranh.
   - **Unit Tests**: `test_painting_placement_bounding_box_and_support_parity_gap448`.
 
+### Gap 449: Leash Fence Knot Placement, Bounding Box, Shears Interaction & Leashable Mob Transfer Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.decoration.LeashFenceKnotEntity.java:30-169`, `net.minecraft.world.item.LeadItem.java:23-66`, `net.minecraft.world.entity.Leashable.java`
+
+- **Tọa Độ Nút Buộc Hàng Rào, Bounding Box & Điểm Nối Dây (Position, Bounding Box & Rope Attachment Parity)**:
+  - Vanilla `LeashFenceKnotEntity.java:31, 48-53, 161-163`:
+    - Độ cao gắn nút trên khối hàng rào: `OFFSET_Y = 0.375` ($3/8$ khối). Tọa độ thực thể: `pos = (pos.getX() + 0.5, pos.getY() + 0.375, pos.getZ() + 0.5)`.
+    - Kích thước bounding box thực thể (`EntityType.LEASH_KNOT`): `width = 0.375`, `height = 0.5`. Bounding box: `[x - 0.1875, y, z - 0.1875]` đến `[x + 0.1875, y + 0.5, z + 0.1875]`.
+    - Điểm treo dây dắt (`getRopeHoldPosition`): `pos.add(0.0, 0.2, 0.0)`.
+    - Khoảng cách hiển thị: `LEASH_KNOT_RENDER_DISTANCE_SQ = 1024.0` ($32$ khối).
+    - Hộp tìm kiếm nút hàng rào tồn tại (`getKnot`): `new AABB(x - 1.0, y - 1.0, z - 1.0, x + 1.0, y + 1.0, z + 1.0)`.
+- **Hành Vi Cầm Dây Dắt Tương Tác Hàng Rào (LeadItem Fence Interaction Parity)**:
+  - Vanilla `LeadItem.java:37-65`:
+    - Khi người chơi click hàng rào (`BlockTags.FENCES`) khi đang dắt quái/thú: nút buộc dây `LeashFenceKnotEntity` được tạo hoặc tìm kiếm tại vị trí hàng rào, và toàn bộ các thú đang được dắt bởi người chơi được chuyển sang gắn vào nút buộc hàng rào.
+    - **Không tiêu hao dây dắt trên tay người chơi** (`item.decrement`): Trong vanilla, dây dắt dùng để dắt thú đã được tiêu hao từ trước khi trói thú; thao tác chuyển dây dắt từ tay người chơi sang cọc hàng rào không tốn thêm dây dắt trong túi đồ. Neth trước đây trừ thêm 1 dây dắt từ tay người chơi.
+    - Phát sinh sự kiện game `GameEvent::BlockAttach` tại vị trí hàng rào.
+- **Tương Tác Kéo Cắt, Tháo Dây & Sự Kiện BlockAttach/BlockDetach**:
+  - Vanilla `LeashFenceKnotEntity.java:75-125`:
+    - Dùng kéo (`Items.SHEARS`): cắt đứt toàn bộ liên kết dây dắt, làm rơi các vật phẩm dây dắt và tiêu hủy nút buộc, đồng thời phát sinh sự kiện `GameEvent::BlockDetach`.
+    - Khi người chơi click tay không (hoặc vật phẩm khác): nếu người chơi đang dắt thú, chuyển thú sang gắn vào nút (`attachedMob = true`, phát sinh `GameEvent::BlockAttach`). Nếu người chơi không dắt thú, chuyển toàn bộ thú đang buộc trên cọc sang người chơi (`anyDropped = true`, phát sinh `GameEvent::BlockAttach`).
+    - Nếu khối hàng rào bị phá hủy (`!survives()`): toàn bộ dây dắt bị tháo rơi thành vật phẩm, nút buộc bị tiêu hủy và phát sinh `GameEvent::BlockDetach`.
+    - Khi bị tấn công tiêu hủy (`damage_with_context`): phát âm thanh `Sound::ItemLeadUntied`, phát sinh `GameEvent::BlockDetach` và tiêu hủy nút.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `LEASH_KNOT_OFFSET_Y`, `LEASH_KNOT_WIDTH`, `LEASH_KNOT_HEIGHT`, `LEASH_KNOT_ROPE_OFFSET_Y`, `LEASH_KNOT_RENDER_DISTANCE_SQ`.
+    - Bổ sung hàm thuần: `calculate_leash_knot_position`, `calculate_leash_knot_bounding_box`, `calculate_leash_knot_rope_position`, `calculate_leash_knot_search_box`.
+  - Cập nhật `crates/pumpkin-core/src/entity/decoration/leash_knot.rs`:
+    - Sử dụng `calculate_leash_knot_position` và `calculate_leash_knot_bounding_box`.
+    - Phát sinh sự kiện `GameEvent::BlockAttach` khi buộc/chuyển thú và `GameEvent::BlockDetach` khi cắt/tháo/tiêu hủy nút.
+    - Bổ sung `rope_hold_position`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/lead.rs`:
+    - Bỏ thao tác trừ dây dắt không đúng chuẩn vanilla khi buộc thú đang dắt vào hàng rào.
+    - Phát sinh sự kiện `GameEvent::BlockAttach`.
+  - **Unit Tests**: `test_leash_knot_placement_bounding_box_and_rope_position_parity_gap449`.
+
+
 
 
 

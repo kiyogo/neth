@@ -1,8 +1,15 @@
+use crate::entity::combat::{
+    calculate_leash_knot_bounding_box, calculate_leash_knot_position,
+    calculate_leash_knot_rope_position, calculate_leash_knot_search_box,
+    LEASH_KNOT_OFFSET_Y,
+};
 use crate::entity::player::Player;
 use crate::entity::{Entity, EntityBase, living::LivingEntity};
+use crate::server::Server;
 use crate::world::World;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::Taggable;
@@ -16,7 +23,7 @@ pub struct LeashKnotEntity {
 }
 
 impl LeashKnotEntity {
-    pub const OFFSET_Y: f64 = 0.375;
+    pub const OFFSET_Y: f64 = LEASH_KNOT_OFFSET_Y;
 
     pub const fn new(entity: Entity) -> Self {
         Self { entity }
@@ -48,33 +55,18 @@ impl LeashKnotEntity {
     }
 
     fn search_box(pos: BlockPos) -> BoundingBox {
-        let center = Vector3::new(
-            f64::from(pos.0.x) + 0.5,
-            f64::from(pos.0.y) + Self::OFFSET_Y,
-            f64::from(pos.0.z) + 0.5,
-        );
-
-        let search_dim = EntityDimensions {
-            width: 2.0,
-            height: 2.0,
-            eye_height: 1.0,
-        };
-
-        BoundingBox::new_from_pos(center.x, center.y, center.z, &search_dim)
+        calculate_leash_knot_search_box(pos)
     }
 
     pub fn create_knot(world: &Arc<World>, pos: BlockPos) -> Arc<Self> {
-        let raw_pos = Vector3::new(
-            f64::from(pos.0.x) + 0.5,
-            f64::from(pos.0.y) + Self::OFFSET_Y,
-            f64::from(pos.0.z) + 0.5,
-        );
-
+        let raw_pos = calculate_leash_knot_position(pos);
         let entity = Entity::new(world.clone(), raw_pos, &EntityType::LEASH_KNOT);
+        entity.bounding_box.store(calculate_leash_knot_bounding_box(raw_pos));
         let knot = Arc::new(Self::new(entity));
         world.spawn_entity(knot.clone() as Arc<dyn EntityBase>);
 
         world.play_sound(Sound::ItemLeadTied, SoundCategory::Neutral, &raw_pos);
+        world.emit_game_event(GameEvent::BlockAttach.name(), raw_pos);
 
         knot
     }
@@ -83,9 +75,11 @@ impl LeashKnotEntity {
         let pos = self.entity.pos.load();
         world.play_sound(Sound::ItemLeadTied, SoundCategory::Neutral, &pos);
     }
-}
 
-use crate::server::Server;
+    pub fn rope_hold_position(&self) -> Vector3<f64> {
+        calculate_leash_knot_rope_position(self.entity.pos.load())
+    }
+}
 
 impl EntityBase for LeashKnotEntity {
     fn get_entity(&self) -> &Entity {
@@ -134,6 +128,7 @@ impl EntityBase for LeashKnotEntity {
             }
 
             world.play_sound(Sound::ItemLeadUntied, SoundCategory::Neutral, &pos);
+            world.emit_game_event(GameEvent::BlockDetach.name(), pos);
             self.entity.remove();
         }
     }
@@ -145,6 +140,8 @@ impl EntityBase for LeashKnotEntity {
                 if player.gamemode.load() != pumpkin_util::GameMode::Creative {
                     let _ = item_stack.damage_item(1);
                 }
+                let world = player.world();
+                world.emit_game_event(GameEvent::BlockDetach.name(), self.entity.pos.load());
                 self.entity.remove();
                 return true;
             }
@@ -198,6 +195,7 @@ impl EntityBase for LeashKnotEntity {
 
         if attached_mob || any_dropped {
             self.play_placement_sound(&world);
+            world.emit_game_event(GameEvent::BlockAttach.name(), pos);
             true
         } else {
             false
@@ -230,10 +228,15 @@ impl EntityBase for LeashKnotEntity {
         }
         // Hitting the knot destroys it. The mobs leashed to it drop their lead on their next tick,
         // once they see the holder is gone.
+        let pos = self.entity.pos.load();
         world.play_sound(
             Sound::ItemLeadUntied,
             SoundCategory::Neutral,
-            &self.entity.pos.load(),
+            &pos,
+        );
+        world.emit_game_event(
+            GameEvent::BlockDetach.name(),
+            pos,
         );
         self.entity.remove();
         true
