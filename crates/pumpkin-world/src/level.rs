@@ -564,24 +564,22 @@ impl Level {
             .map(|p| *p)
             .collect();
         for pos in scheduled_chunk_pos {
+            let Some(chunk) = self.loaded_chunks.get(&pos) else {
+                self.chunks_with_scheduled_ticks.remove(&pos); // Chunk unloaded
+                continue;
+            };
+
+            // Vanilla keeps ticks pending until the chunk is simulated (LevelTicks.tickCheck).
             if !active_chunks.contains(&pos) {
                 continue;
             }
-            if let Some(chunk) = self.loaded_chunks.get(&pos) {
-                // Vanilla keeps ticks pending until the chunk is simulated (`LevelTicks.tickCheck`).
-                if !active_chunks.contains(&pos) {
-                    continue;
-                }
-                let chunk = chunk.value();
-                ticks.block_ticks.append(&mut chunk.block_ticks.step_tick());
-                ticks.fluid_ticks.append(&mut chunk.fluid_ticks.step_tick());
+            let chunk = chunk.value();
+            ticks.block_ticks.append(&mut chunk.block_ticks.step_tick());
+            ticks.fluid_ticks.append(&mut chunk.fluid_ticks.step_tick());
 
-                // Remove from set if it no longer has ticks
-                if !chunk.block_ticks.has_ticks() && !chunk.fluid_ticks.has_ticks() {
-                    self.chunks_with_scheduled_ticks.remove(&pos);
-                }
-            } else {
-                self.chunks_with_scheduled_ticks.remove(&pos); // Chunk unloaded
+            // Remove from set if it no longer has ticks
+            if !chunk.block_ticks.has_ticks() && !chunk.fluid_ticks.has_ticks() {
+                self.chunks_with_scheduled_ticks.remove(&pos);
             }
         }
 

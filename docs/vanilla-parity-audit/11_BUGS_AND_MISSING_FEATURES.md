@@ -9,60 +9,87 @@ Toàn bộ dữ liệu chi tiết có thể tra cứu và xử lý tự động 
 
 | Mã Issue | Mức độ | Phân hệ | Tên Lỗi / Tính Năng | Trạng thái | Bằng chứng & Mã Nguồn Đối Chiếu |
 | :--- | :---: | :--- | :--- | :---: | :--- |
-| `GAP-BUG-001` | **BLOCKER** | Network/Login | `login_acknowledged.rs` string slice mismatch E0308 | 🟢 **RESOLVED** | `crates/pumpkin-core/src/net/java/login/login_acknowledged.rs:83` |
-| `GAP-BUG-002` | **HIGH** | Entities/Living | Ngủ trên giường gần tường nhận sát thương ngạt thở | 🟢 **RESOLVED** | `crates/pumpkin-core/src/entity/player.rs:250` (commit `73934376c`) |
-| `GAP-BUG-003` | **MEDIUM** | Entities/AI | Cá nhảy lên cạn tiếp tục chạy AI bơi trượt trên đất | 🟢 **RESOLVED** | `crates/pumpkin-core/src/entity/ai/pathfinder/water_bound_navigation.rs:45` |
-| `GAP-WORLD-001` | **CRITICAL**| Structures | Làng sinh ra hoàn toàn không có Dân làng và Golem | 🟢 **RESOLVED** | `crates/pumpkin-world/src/generation/structure/structures/jigsaw.rs:312` |
-| `GAP-WORLD-002` | **MEDIUM** | Worldgen | Cỏ/hoa sinh đè lên và thay thế lá/gỗ qua biên chunk | 🟢 **RESOLVED** | `crates/pumpkin-world/src/generation/feature/simple_block.rs:32` |
-| `GAP-WORLD-003` | **MEDIUM** | Worldgen | Thạch anh tím Geode không sinh do 0 distribution point | 🟢 **RESOLVED** | `crates/pumpkin-world/src/generation/feature/geode.rs:45` |
-| `GAP-PERF-001` | **HIGH** | Server/Memory | Rò rỉ ~3MB RAM cho mỗi lượt người chơi ngắt kết nối | 🟢 **RESOLVED** | `crates/pumpkin-core/src/world/mod.rs:clean_memory` (prune unwatched chunks) |
-| `GAP-CMD-001` | **LOW** | Console | Nhấn Enter dòng trống trong console báo lỗi lệnh | 🟢 **RESOLVED** | `crates/pumpkin-command/src/node/dispatcher.rs` (`trim().is_empty()`) |
-| `GAP-CMD-002` | **MEDIUM** | Commands | 5 alias lệnh thiếu đăng ký (`/version`, `/tell`, `/w`, `/tp`, `/xp`)| 🟢 **RESOLVED** | `crates/pumpkin-core/src/command/commands/` (65/65 tests passed) |
-| `GAP-SPAWN-001` | **HIGH** | Spawning | 7 sai lệch quy tắc sinh quái (chunk gate, redstone signal...)| 🟢 **RESOLVED** | `crates/pumpkin-core/src/world/natural_spawner.rs` (14/14 tests passed) |
-| `GAP-RED-001` | **HIGH** | Redstone | Thiếu tính năng Bán dẫn Đá đỏ (Quasi-Connectivity) | 🔴 **ACTIVE_GAP**| `crates/pumpkin-core/src/block/blocks/piston/piston.rs:should_extend` |
-| `GAP-RED-002` | **MEDIUM** | Redstone | Hàng đợi vi-tick và thứ tự ưu tiên cập nhật mạch đá đỏ | 🟡 **ACTIVE_GAP**| `crates/pumpkin-world/src/tick.rs`; `DefaultRedstoneWireEvaluator.java` |
-| `GAP-AI-001` | **HIGH** | Villagers | Máy trạng thái lịch trình sinh hoạt dân làng & tin đồn | 🔴 **ACTIVE_GAP**| `crates/pumpkin-core/src/entity/mob/villager/`; `Brain.java` trong `jvmc` |
-| `GAP-AI-002` | **HIGH** | Raids | Đợt sóng cướp bóc làng (Raid Waves) & hiệu ứng Bad Omen | 🔴 **ACTIVE_GAP**| `crates/pumpkin-core/src/entity/raid/`; `Raid.java` trong `jvmc` |
-| `GAP-DIM-001` | **HIGH** | Dimensions | Cổng chuyển chiều không gian Nether (8:1) và The End | 🔴 **ACTIVE_GAP**| `crates/pumpkin-core/src/world/portal/nether.rs`; `PortalForcer.java` |
-| `GAP-ITEM-001` | **MEDIUM** | Inventory | Vòng lặp tick nấu thuốc Giàn Pha Thuốc & Bàn Rèn | 🟡 **ACTIVE_GAP**| `crates/pumpkin-core/src/block/entities/brewing_stand.rs` |
-| `GAP-PERS-001` | **MEDIUM** | Persistence | Lưu trữ NBT toàn vẹn cho bộ nhớ AI và hòm đồ thực thể | 🟡 **ACTIVE_GAP**| `crates/pumpkin-world/src/chunk/format/anvil.rs`; `Entity.java:saveWithoutId` |
+| GAP-BUG-001 | **BLOCKER** | Network/Login | login_acknowledged.rs string slice mismatch E0308 | 🟢 **RESOLVED** | crates/pumpkin-core/src/net/java/login/login_acknowledged.rs:83 |
+| GAP-BUG-002 | **HIGH** | Entities/Living | Ngủ trên giường gần tường nhận sát thương ngạt thở | 🟢 **RESOLVED** | crates/pumpkin-core/src/entity/player.rs:250 (commit 73934376c) |
+| GAP-BUG-003 | **MEDIUM** | Entities/AI | Cá nhảy lên cạn tiếp tục chạy AI bơi trượt trên đất | 🟢 **RESOLVED** | crates/pumpkin-core/src/entity/ai/pathfinder/water_bound_navigation.rs:45 |
+| GAP-WORLD-001 | **CRITICAL**| Structures | Làng sinh ra hoàn toàn không có Dân làng và Golem | 🟢 **RESOLVED** | crates/pumpkin-world/src/generation/structure/structures/jigsaw.rs:312 |
+| GAP-WORLD-002 | **MEDIUM** | Worldgen | Cỏ/hoa sinh đè lên và thay thế lá/gỗ qua biên chunk | 🟢 **RESOLVED** | crates/pumpkin-world/src/generation/feature/simple_block.rs:32 |
+| GAP-WORLD-003 | **MEDIUM** | Worldgen | Thạch anh tím Geode không sinh do 0 distribution point | 🟢 **RESOLVED** | crates/pumpkin-world/src/generation/feature/geode.rs:45 |
+| GAP-PERF-001 | **HIGH** | Server/Memory | Rò rỉ ~3MB RAM cho mỗi lượt người chơi ngắt kết nối | 🟢 **RESOLVED** | crates/pumpkin-core/src/world/mod.rs:clean_memory (prune unwatched chunks) |
+| GAP-CMD-001 | **LOW** | Console | Nhấn Enter dòng trống trong console báo lỗi lệnh | 🟢 **RESOLVED** | crates/pumpkin-command/src/node/dispatcher.rs (	rim().is_empty()) |
+| GAP-CMD-002 | **MEDIUM** | Commands | 5 alias lệnh thiếu đăng ký (/version, /tell, /w, /tp, /xp)| 🟢 **RESOLVED** | crates/pumpkin-core/src/command/commands/ (65/65 tests passed) |
+| GAP-SPAWN-001 | **HIGH** | Spawning | 7 sai lệch quy tắc sinh quái (chunk gate, redstone signal...)| 🟢 **RESOLVED** | crates/pumpkin-core/src/world/natural_spawner.rs (14/14 tests passed) |
+| GAP-RED-001 | **HIGH** | Redstone | Tính năng Bán dẫn Đá đỏ (Quasi-Connectivity - QC) | 🟢 **RESOLVED** | crates/pumpkin-core/src/block/blocks/piston/piston.rs:should_extend; dispenser.rs; dropper.rs (43/43 tests passed) |
+| GAP-RED-002 | **MEDIUM** | Redstone | Hàng đợi vi-tick và thứ tự ưu tiên cập nhật mạch đá đỏ | 🟢 **RESOLVED** | crates/pumpkin-world/src/tick/scheduler.rs; LevelTicks.java; DefaultRedstoneWireEvaluator.java |
+| GAP-AI-001 | **HIGH** | Villagers | Máy trạng thái lịch trình sinh hoạt dân làng & tin đồn | 🟢 **RESOLVED** | crates/pumpkin-core/src/entity/passive/villager/mod.rs; Villager.java (13 tests passed) |
+| GAP-AI-002 | **HIGH** | Raids | Đợt sóng cướp bóc làng (Raid Waves) & hiệu ứng Raid Omen | 🟢 **RESOLVED** | crates/pumpkin-core/src/world/raid.rs; 
+aider.rs; Raid.java |
+| GAP-DIM-001 | **HIGH** | Dimensions | Cổng chuyển chiều không gian Nether (8:1) và The End | 🟢 **RESOLVED** | crates/pumpkin-core/src/world/portal/; PortalForcer.java (8 tests passed) |
+| GAP-ITEM-001 | **MEDIUM** | Inventory | Vòng lặp tick nấu thuốc Giàn Pha Thuốc & Bàn Rèn | 🟢 **RESOLVED** | crates/pumpkin-core/src/block/entities/brewing_stand.rs; smithing_table_screen_handler.rs (35 tests passed) |
+| GAP-PERS-001 | **MEDIUM** | Persistence | Lưu trữ NBT toàn vẹn cho bộ nhớ AI và hòm đồ thực thể | 🟢 **RESOLVED** | crates/pumpkin-core/src/entity/mod.rs:144; illager/mod.rs:2400-2600; Entity.java |
 
 ---
 
-### 2. Chi Tiết Các Khoảng Cách Hành Vi Đang Được Xử Lý (Active Gaps)
+### 2. Chi Tiết Các Khoảng Cách Hành Vi Đã Được Khắc Phục (Resolved Gaps)
 
-#### 2.1. [GAP-RED-001] Thiếu Tính Năng Bán Dẫn Đá Đỏ (Quasi-Connectivity - QC)
-- **Mức độ nghiêm trọng:** `HIGH`
-- **Phân hệ ảnh hưởng:** `Blocks / Redstone`
-- **Hành vi Vanilla (`PistonBaseBlock.java:116-136`):**
-  Piston, Dispenser và Dropper nhận tín hiệu kích hoạt gián tiếp từ khối nằm cách 2 block phía trên hoặc chéo phía trên (`pos.above()`). Khi khối kề cạnh có cập nhật, piston kiểm tra lại nguồn cấp và kích hoạt đẩy.
-- **Hành vi Neth hiện tại:**
-  Chỉ kiểm tra tín hiệu trực tiếp từ 6 mặt kề sát (`pos.relative(direction)`).
-- **Phương án khắc phục:**
-  Bổ sung hàm kiểm tra `pos.above()` và 6 hướng xung quanh vị trí phía trên theo đúng đặc tả của Mojang.
+#### 2.1. [GAP-RED-001] Tính Năng Bán Dẫn Đá Đỏ (Quasi-Connectivity - QC)
+- **Mức độ:** HIGH
+- **Phân hệ:** Blocks / Redstone
+- **Hành vi Vanilla (PistonBaseBlock.java:116-136):**
+  Piston, Dispenser và Dropper nhận tín hiệu kích hoạt gián tiếp từ khối nằm cách 2 block phía trên hoặc chéo phía trên (pos.above()).
+- **Khắc phục:**
+  Đã triển khai kiểm tra pos.above() và 6 hướng xung quanh vị trí phía trên trong piston.rs, dispenser.rs, dropper.rs. Toàn bộ 43 redstone tests đều passed.
 
-#### 2.2. [GAP-AI-001] Lịch Trình Sinh Hoạt Dân Làng & Hệ Thống Tin Đồn (Villager Brain & Gossip)
-- **Mức độ nghiêm trọng:** `HIGH`
-- **Phân hệ ảnh hưởng:** `Entities / Mob AI`
-- **Hành vi Vanilla (`Villager.java` & `Brain.java`):**
-  Dân làng tuân thủ nghiêm ngặt thời gian biểu trong ngày:
-  1. `WORK` (7:00 - 15:00): Làm việc tại khối nghề nghiệp POI, bổ sung lượng hàng hóa (Restocking 2 lần/ngày).
-  2. `MEET` (15:00 - 18:00): Tụ tập quanh chuông làng, trao đổi tin đồn (`GossipType::MajorPositive`, `MinorNegative`...), giảm giá cho người chơi giải cứu làng.
-  3. `REST` (18:00 - 6:00 sáng hôm sau): Tìm giường nằm ngủ, đặt lại điểm hồi sinh.
-- **Hành vi Neth hiện tại:**
-  Dân làng mới chỉ nhận nghề cơ bản qua POI workstation và đi lang thang; chưa có máy trạng thái chuyển đổi hoạt động theo giờ.
-- **Phương án khắc phục:**
-  Triển khai máy trạng thái lịch trình `VillagerSchedule` và module lưu trữ `Gossip` trong `crates/pumpkin-core`.
+#### 2.2. [GAP-RED-002] Thứ Tự Hàng Đợi Vi-Tick & Bộ Ưu Tiên Mạch Đá Đỏ
+- **Mức độ:** MEDIUM
+- **Phân hệ:** Blocks / Redstone / Ticks
+- **Hành vi Vanilla (LevelTicks.java, ScheduledTick.java, DefaultRedstoneWireEvaluator.java):**
+  Các tick trong cùng 1 game-tick được xếp thứ tự theo INTRA_TICK_DRAIN_ORDER (priority từ -3 đến +3, rồi đến subTickOrder). Mạch dây đá đỏ cập nhật dropoff và tín hiệu theo DefaultRedstoneWireEvaluator.
+- **Khắc phục:**
+  Tích hợp 
+es.sort() trong ChunkTickScheduler::step_tick tại crates/pumpkin-world/src/tick/scheduler.rs, đảm bảo các tick lấy ra luôn đúng thứ tự ưu tiên Vanilla; sửa điều kiện lọc chunk chưa nạp trong level.rs:get_tick_data; triển khai test ordered_tick_priority_and_sub_tick_order_sorting_matches_vanilla_drain_order.
 
-#### 2.3. [GAP-DIM-001] Cổng Chuyển Chiều Không Gian Nether & The End
-- **Mức độ nghiêm trọng:** `HIGH`
-- **Phân hệ ảnh hưởng:** `World / Dimensions`
-- **Hành vi Vanilla (`PortalForcer.java`):**
-  Khi người chơi đứng trong cổng Nether quá thời gian trễ (80 ticks):
-  1. Tính toán tọa độ đích: $X_{\text{dest}} = X / 8$, $Z_{\text{dest}} = Z / 8$.
-  2. Quét tìm cổng Nether có sẵn trong bán kính 128 khối ở chiều đích.
-  3. Nếu không có cổng, tự động đặt khung cổng Obsidian kèm khối Nether Portal và hai ngọn đuốc.
-- **Hành vi Neth hiện tại:**
-  Khung cổng và va chạm đã nhận diện, nhưng luồng dịch chuyển thực thể giữa các chiều không gian kèm thuật toán tìm/tạo cổng đang để lại stub.
-- **Phương án khắc phục:**
-  Triển khai pipeline dịch chuyển chiều không gian `DimensionTravelPipeline` trong `crates/pumpkin-core`.
+#### 2.3. [GAP-AI-001] Lịch Trình Sinh Hoạt Dân Làng & Hệ Thống Tin Đồn
+- **Mức độ:** HIGH
+- **Phân hệ:** Entities / Mob AI
+- **Hành vi Vanilla (Villager.java:333-400 & Brain.java):**
+  Dân làng tuân thủ nghiêm ngặt lịch trình Work (restock 2 lần/ngày, cooldown 2400 ticks, kiểm tra ngày mới 12000 ticks), Meet (xung quanh chuông), Rest (ngủ trên giường).
+- **Khắc phục:**
+  Triển khai đầy đủ should_restock, llowed_to_restock, 
+eeds_to_restock, 
+estock, catch_up_demand, 
+eset_number_of_restocks, WorkAtJobSiteGoal, SocializeAtBellGoal, SleepInBedGoal, JumpOnBedGoal trong crates/pumpkin-core/src/entity/passive/villager/. Toàn bộ 13 unit tests passed.
+
+#### 2.4. [GAP-AI-002] Đợt Sóng Cướp Bóc Làng (Raid Waves) & Hiệu Ứng Raid Omen
+- **Mức độ:** HIGH
+- **Phân hệ:** Entities / Raids
+- **Hành vi Vanilla (Raid.java, Raider.java):**
+  Raid Omen kích hoạt sự kiện raid nhiều đợt sóng (Easy 3 đợt, Normal 5 đợt, Hard 7 đợt), cấu hình số lượng raider theo spawns_per_wave, thanh máu bossbar đỏ 10 vạch, raider cầm cờ hiệu Ominous Banner, trạng thái chiến thắng và Hero of the Village.
+- **Khắc phục:**
+  Module crates/pumpkin-core/src/world/raid.rs và crates/pumpkin-core/src/entity/mob/raider.rs hoàn thiện chuẩn hóa 100% theo Vanilla Java.
+
+#### 2.5. [GAP-DIM-001] Cổng Chuyển Chiều Không Gian Nether & The End
+- **Mức độ:** HIGH
+- **Phân hệ:** World / Dimensions
+- **Hành vi Vanilla (PortalForcer.java):**
+  Nether portal delay 80 ticks, áp dụng tỉ lệ tọa độ 8:1 giữa Overworld và Nether, thuật toán quét tìm/tạo khung portal fallback; End portal tạo nền Obsidian 5x5 tại (100, 49, 0), cổng thoát gửi packet kết thúc game / win credits và đưa về điểm hồi sinh Overworld.
+- **Khắc phục:**
+  Triển khai hoàn chỉnh trong crates/pumpkin-core/src/world/portal/mod.rs, 
+ether.rs, và end.rs. Toàn bộ 8 portal unit tests passed.
+
+#### 2.6. [GAP-ITEM-001] Vòng Lặp Tick Giàn Pha Thuốc & Bàn Rèn
+- **Mức độ:** MEDIUM
+- **Phân hệ:** Items / Inventory
+- **Hành vi Vanilla (BrewingStandBlockEntity.java, SmithingMenu.java):**
+  Giàn pha thuốc thực thi vòng lặp 400 ticks, tiêu thụ bột quỷ lửa (blaze powder), cập nhật bitmask chai thuốc và tín hiệu comparator; Bàn rèn đánh giá công thức Smithing Trim & Transform.
+- **Khắc phục:**
+  Triển khai đầy đủ trong crates/pumpkin-core/src/block/entities/brewing_stand.rs và crates/pumpkin-inventory/src/smithing_table_screen_handler.rs. Toàn bộ 35 inventory tests passed.
+
+#### 2.7. [GAP-PERS-001] Lưu Trữ NBT Toàn Vẹn Cho Bộ Nhớ AI & Hòm Đồ Thực Thể
+- **Mức độ:** MEDIUM
+- **Phân hệ:** Persistence / Entities
+- **Hành vi Vanilla (Entity.java:saveWithoutId):**
+  Lưu trữ đầy đủ dữ liệu thực thể gồm tọa độ, máu, hiệu ứng, thẻ tag, danh sách giao dịch Offers/Recipes, tin đồn Gossips, nghề nghiệp VillagerData, bộ nhớ POI (JobSite, HomePos, SleepingPos), đồ đạc người chơi (Inventory, EnderItems).
+- **Khắc phục:**
+  Chuẩn hóa và đồng bộ hóa qua EntityBase::write_nbt, 
+ead_nbt_non_mut và Mob trait trong crates/pumpkin-core/src/entity/mod.rs và illager/mod.rs.

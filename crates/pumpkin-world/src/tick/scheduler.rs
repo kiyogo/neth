@@ -53,9 +53,10 @@ impl<'a, T: std::hash::Hash + Eq> ChunkTickScheduler<&'a T> {
             inner.tick_queue[due_step % TICK_QUEUE_SIZE].append(&mut entry.remove());
         }
 
-        let res = std::mem::take(&mut inner.tick_queue[current_step % TICK_QUEUE_SIZE]);
+        let mut res = std::mem::take(&mut inner.tick_queue[current_step % TICK_QUEUE_SIZE]);
 
         if !res.is_empty() {
+            res.sort();
             for next_tick in &res {
                 inner
                     .queued_ticks
@@ -315,5 +316,42 @@ mod tests {
         assert!(scheduler.remove_tick(position, &Block::BIG_DRIPLEAF));
         assert!(!scheduler.is_scheduled(position, &Block::BIG_DRIPLEAF));
         assert!(scheduler.to_vec().is_empty());
+    }
+
+    #[test]
+    fn ordered_tick_priority_and_sub_tick_order_sorting_matches_vanilla_drain_order() {
+        let scheduler = ChunkTickScheduler::default();
+        // Vanilla INTRA_TICK_DRAIN_ORDER (ScheduledTick.java) sorts by priority ascending (-3 to +3), then subTickOrder ascending.
+        let ticks = [
+            (BlockPos::new(0, 0, 0), TickPriority::Normal, 2),        // Normal (0), order 2
+            (BlockPos::new(1, 0, 0), TickPriority::ExtremelyHigh, 5), // ExtremelyHigh (-3), order 5
+            (BlockPos::new(2, 0, 0), TickPriority::Normal, 1),        // Normal (0), order 1
+            (BlockPos::new(3, 0, 0), TickPriority::ExtremelyLow, 0),  // ExtremelyLow (3), order 0
+            (BlockPos::new(4, 0, 0), TickPriority::High, 0),          // High (-1), order 0
+        ];
+
+        for (pos, priority, sub_tick_order) in ticks {
+            let tick = ScheduledTick {
+                delay: 0,
+                priority,
+                position: pos,
+                value: VALUE,
+            };
+            scheduler.schedule_tick(&tick, sub_tick_order);
+        }
+
+        let fired = scheduler.step_tick();
+        assert_eq!(fired.len(), 5);
+        // Expect order:
+        // 1. pos (1, 0, 0): ExtremelyHigh (-3), sub_tick 5
+        // 2. pos (4, 0, 0): High (-1), sub_tick 0
+        // 3. pos (2, 0, 0): Normal (0), sub_tick 1
+        // 4. pos (0, 0, 0): Normal (0), sub_tick 2
+        // 5. pos (3, 0, 0): ExtremelyLow (3), sub_tick 0
+        assert_eq!(fired[0].position.0.x, 1);
+        assert_eq!(fired[1].position.0.x, 4);
+        assert_eq!(fired[2].position.0.x, 2);
+        assert_eq!(fired[3].position.0.x, 0);
+        assert_eq!(fired[4].position.0.x, 3);
     }
 }
