@@ -169,6 +169,10 @@ impl AgeableMob for FrogEntity {
 
     /// Vanilla `Frog.java:251-253`: `canBeABaby() -> false`. Frogs cannot be babies;
     /// their offspring stage is Tadpole.
+    fn can_be_baby(&self) -> bool {
+        false
+    }
+
     fn can_be_a_baby(&self) -> bool {
         false
     }

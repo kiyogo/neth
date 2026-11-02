@@ -10613,3 +10613,24 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Ghi đè `can_dispenser_equip_into_slot` trên `CubeMobEntity` khi thực thể là `EntityType::SULFUR_CUBE`.
 - **Hằng số Parity**: `HAPPY_GHAST_BABY_SCALE` (0.2375), `HAPPY_GHAST_BABY_WIDTH` (0.95), `HAPPY_GHAST_BABY_HEIGHT` (0.95), `HAPPY_GHAST_BABY_EYE_HEIGHT` (0.46875), `calculate_happy_ghast_dimensions`, `can_happy_ghast_dispenser_equip`, `NAUTILUS_BABY_SCALE` (0.5), `NAUTILUS_BABY_WIDTH` (0.4375), `NAUTILUS_BABY_HEIGHT` (0.475), `NAUTILUS_BABY_EYE_HEIGHT` (0.13755), `calculate_nautilus_dimensions`, `can_nautilus_dispenser_equip`, `can_sulfur_cube_dispenser_equip`.
 - **Unit Tests**: `test_happy_ghast_nautilus_sulfur_cube_dimensions_and_parity_gap418`, `test_happy_ghast_baby_dimensions_and_dispenser_parity`, `test_nautilus_baby_dimensions_and_dispenser_parity` pass 100%.
+
+### Gap 419: Villager & Wandering Trader Baby Scaling Dimensions & Ageable Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.npc.villager.Villager.java:117, 361-363`, `net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader.java:101-103, 232`, `net.minecraft.world.entity.AgeableMob.java:225-239`, `net.minecraft.world.entity.animal.frog.Frog.java:251-253`, `net.minecraft.world.entity.animal.parrot.Parrot.java:99-101`, `net.minecraft.world.entity.animal.nautilus.ZombieNautilus.java:183-185` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Dân Làng Con (Villager Baby Scalable Dimensions & Eye Height)**:
+  - Vanilla `Villager.java:117, 361-363`:
+    - `private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.63F);`
+    - `public EntityDimensions getDefaultDimensions(final Pose pose) { return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose); }`
+  - Adult Villager: width `0.6`, height `1.95`, eye height `1.62`.
+  - Baby Villager: width `0.49`, height `0.98`, eye height `0.63`.
+  - Triển khai `calculate_villager_dimensions`, `refresh_dimensions()`, `set_baby`, `age_boundary_reached()`, lưu trữ NBT tuổi (`write_ageable_nbt`, `read_ageable_nbt`) trên `VillagerEntity`.
+- **Wandering Trader Baby Parity**:
+  - Vanilla `WanderingTrader.java:232`: Thương nhân lang thang không thể là baby (`can_be_baby() -> false`, `set_age(Math.max(0, this.get_age()))` khi đọc NBT).
+  - Khắc phục `can_be_baby()` trên `WanderingTraderEntity` để trả về `false` chuẩn Yác theo `AgeableMob` trait.
+- **Tính năng `can_be_baby` trên `AgeableMob` Trait & Đồng bộ Toàn diện**:
+  - Cập nhhật `is_baby()` trên `AgeableMob` trait để kiểm tra `self.can_be_baby() && self.get_age() < 0` theo đúng `AgeableMob.java:225-227`.
+  - Đảm bảo `can_be_baby(&self) -> bool`và Bí danh `can_be_a_baby(&self) -> bool` hoạt động đồng nhất trên các mob không thể là baby: `WanderingTraderEntity`, `FrogEntity` (`Frog.java:251-253`), `ParrotEntity` (`Parrot.java:99-101`), `ZombieNautilusEntity`(`ZombieNautilus.java:183-185`).
+- **Hằng số Parity**: `VILLAGER_BABY_WIDTH` (0.49), `VILLAGER_BABY_HEIGHT` (0.98), `VILLAGER_BABY_EYE_HEIGHT` (0.63), `VILLAGER_BABY_SCALE` (0.5), `calculate_villager_dimensions`.
+- **Unit Tests**: `test_villager_and_wandering_trader_dimensions_and_parity_gap419`, `test_villager_baby_dimensions_and_ageable_parity`, `test_wandering_trader_cannot_be_baby_parity` pass 100%.
+

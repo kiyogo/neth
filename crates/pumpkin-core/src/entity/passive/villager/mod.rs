@@ -570,6 +570,7 @@ impl VillagerEntity {
             .get_entity()
             .send_bedrock_actor_data(&bedrock_metadata);
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -2282,11 +2283,46 @@ impl VillagerEntity {
             }
         }
     }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_villager_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = pumpkin_util::math::boundingbox::EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(pumpkin_util::math::boundingbox::BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
+    }
 }
 
 impl AgeableMob for VillagerEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -2297,6 +2333,7 @@ impl Mob for VillagerEntity {
 
     #[expect(clippy::too_many_lines)]
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         {
             let data = self
                 .villager_data
@@ -2436,6 +2473,7 @@ impl Mob for VillagerEntity {
 
     #[allow(clippy::too_many_lines)]
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(villager_data_nbt) = nbt
             .get_compound("VillagerData")
             .or_else(|| nbt.get_compound("villager_data"))
@@ -2650,6 +2688,7 @@ impl Mob for VillagerEntity {
                 }
             }
         }
+        self.refresh_dimensions();
     }
 
     fn mob_on_lightning_strike(
@@ -3312,5 +3351,29 @@ mod tests {
         assert_eq!(VillagerType::from_biome_name("minecraft:old_growth_pine_taiga"), VillagerType::Taiga);
         assert_eq!(VillagerType::from_biome_name("minecraft:plains"), VillagerType::Plains);
         assert_eq!(VillagerType::from_biome_name("minecraft:forest"), VillagerType::Plains);
+    }
+
+    #[test]
+    fn test_villager_baby_dimensions_and_ageable_parity() {
+        use crate::entity::combat::{
+            VILLAGER_BABY_EYE_HEIGHT, VILLAGER_BABY_HEIGHT, VILLAGER_BABY_SCALE,
+            VILLAGER_BABY_WIDTH, calculate_villager_dimensions,
+        };
+
+        // Adult dimensions (sized 0.6, 1.95, eyeHeight 1.62)
+        let (w, h, eye) = calculate_villager_dimensions(false, 0.6, 1.95, 1.62);
+        assert_eq!(w, 0.6);
+        assert_eq!(h, 1.95);
+        assert_eq!(eye, 1.62);
+
+        // Baby dimensions (Villager.java:117: EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.63F))
+        let (bw, bh, beye) = calculate_villager_dimensions(true, 0.6, 1.95, 1.62);
+        assert_eq!(bw, 0.49);
+        assert_eq!(bh, 0.98);
+        assert_eq!(beye, 0.63);
+        assert_eq!(VILLAGER_BABY_WIDTH, 0.49);
+        assert_eq!(VILLAGER_BABY_HEIGHT, 0.98);
+        assert_eq!(VILLAGER_BABY_EYE_HEIGHT, 0.63);
+        assert_eq!(VILLAGER_BABY_SCALE, 0.5);
     }
 }

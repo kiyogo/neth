@@ -10585,7 +10585,7 @@ pub const WOLF_BABY_SCALE: f32 = 0.5;
 /// Calculates wolf dimensions based on baby status.
 ///
 /// Mirrors vanilla `Wolf.java:588-590`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_wolf_dimensions(
     is_baby: bool,
@@ -10610,7 +10610,7 @@ pub const FELINE_BABY_SCALE: f32 = 0.5;
 /// Calculates feline (cat and ocelot) dimensions based on baby status.
 ///
 /// Mirrors vanilla `Cat.java:291-293` and `Ocelot.java:225-227`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_feline_dimensions(
     is_baby: bool,
@@ -10698,7 +10698,7 @@ pub const FOX_PICKUP_DELAY: i32 = 40;
 /// Calculates Fox dimensions based on baby status.
 ///
 /// Mirrors vanilla `Fox.java:384-385`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_fox_dimensions(
     is_baby: bool,
@@ -10776,7 +10776,7 @@ pub const PANDA_BABY_SCALE: f32 = 0.5;
 /// Calculates panda dimensions based on baby status.
 ///
 /// Mirrors vanilla `Panda.java:695-697`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_panda_dimensions(
     is_baby: bool,
@@ -11064,7 +11064,7 @@ pub const BOVINE_BABY_SCALE: f32 = 0.5;
 /// Calculates bovine (cow and mooshroom) dimensions based on baby status.
 ///
 /// Mirrors vanilla `AbstractCow.java:103-105`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_bovine_dimensions(
     is_baby: bool,
@@ -11096,7 +11096,7 @@ pub const SHEEP_BABY_SCALE: f32 = 0.5;
 /// Calculates sheep dimensions based on baby status.
 ///
 /// Mirrors vanilla `Sheep.java:277-279`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_sheep_dimensions(
     is_baby: bool,
@@ -11127,7 +11127,7 @@ pub const PIG_BABY_SCALE: f32 = 0.5;
 /// Calculates pig dimensions based on baby status.
 ///
 /// Mirrors vanilla `Pig.java:238-240`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_pig_dimensions(
     is_baby: bool,
@@ -11171,7 +11171,7 @@ pub const CHICKEN_BABY_SCALE: f32 = 0.5;
 /// Calculates chicken dimensions based on baby status.
 ///
 /// Mirrors vanilla `Chicken.java:109-111`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_chicken_dimensions(
     is_baby: bool,
@@ -11349,7 +11349,7 @@ pub const RABBIT_BABY_SCALE: f32 = 0.5;
 /// Calculates rabbit dimensions based on baby status.
 ///
 /// Mirrors vanilla `Rabbit.java:134-137`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_rabbit_dimensions(
     is_baby: bool,
@@ -11436,7 +11436,7 @@ pub const TURTLE_BABY_EYE_HEIGHT: f32 = 0.102;
 /// Calculates turtle dimensions based on baby status.
 ///
 /// Mirrors vanilla `Turtle.java:288-290`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_turtle_dimensions(
     is_baby: bool,
@@ -11497,7 +11497,7 @@ pub const AXOLOTL_BABY_SCALE: f32 = 0.5;
 /// Calculates axolotl dimensions based on baby status.
 ///
 /// Mirrors vanilla `Axolotl.java:578-580`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_axolotl_dimensions(
     is_baby: bool,
@@ -11877,7 +11877,7 @@ pub const ARMADILLO_BABY_SCALE: f32 = 0.6;
 /// Calculates armadillo dimensions based on baby status.
 ///
 /// Mirrors vanilla `Armadillo.java:186-188`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_armadillo_dimensions(
     is_baby: bool,
@@ -11918,7 +11918,7 @@ pub const STRIDER_BABY_SCALE: f32 = 0.5;
 /// Calculates strider dimensions based on baby status.
 ///
 /// Mirrors vanilla `Strider.java:186-188`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub fn calculate_strider_dimensions(
     is_baby: bool,
@@ -12733,7 +12733,7 @@ pub const fn can_equine_dispenser_equip(
 
 /// Calculates horse dimensions based on baby status.
 /// Mirrors vanilla `Horse.java:255-257`:
-/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
 #[must_use]
 pub const fn calculate_horse_dimensions(
     is_baby: bool,
@@ -12953,6 +12953,38 @@ pub const fn calculate_nautilus_dimensions(
 #[must_use]
 pub const fn can_sulfur_cube_dispenser_equip(slot_is_body: bool) -> bool {
     slot_is_body
+}
+
+/// Villager baby dimensions and scale constants.
+///
+/// Mirrors vanilla Villager.java:117:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.63F);
+pub const VILLAGER_BABY_WIDTH: f32 = 0.49;
+pub const VILLAGER_BABY_HEIGHT: f32 = 0.98;
+pub const VILLAGER_BABY_EYE_HEIGHT: f32 = 0.63;
+pub const VILLAGER_BABY_SCALE: f32 = 0.5;
+
+/// Calculates villager dimensions based on baby status.
+///
+/// Mirrors vanilla Villager.java:361-363:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_villager_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            VILLAGER_BABY_WIDTH,
+            VILLAGER_BABY_HEIGHT,
+            VILLAGER_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
 }
 
 #[cfg(test)]
@@ -25281,6 +25313,21 @@ mod tests {
         // 5. Sulfur Cube dispenser equip parity (SulfurCube.java:635-637: return slot == EquipmentSlot.BODY)
         assert!(can_sulfur_cube_dispenser_equip(true));
         assert!(!can_sulfur_cube_dispenser_equip(false));
+    }
+
+    #[test]
+    fn test_villager_and_wandering_trader_dimensions_and_parity_gap419() {
+        use super::*;
+
+        // 1. Villager adult & baby dimensions (Villager.java:117, 361-363, EntityTypes.java: sized(0.6, 1.95), eyeHeight(1.62))
+        let villager_adult = calculate_villager_dimensions(false, 0.6, 1.95, 1.62);
+        assert_eq!(villager_adult, (0.6, 1.95, 1.62));
+        let villager_baby = calculate_villager_dimensions(true, 0.6, 1.95, 1.62);
+        assert_eq!(villager_baby, (0.49, 0.98, 0.63));
+        assert_eq!(VILLAGER_BABY_WIDTH, 0.49);
+        assert_eq!(VILLAGER_BABY_HEIGHT, 0.98);
+        assert_eq!(VILLAGER_BABY_EYE_HEIGHT, 0.63);
+        assert_eq!(VILLAGER_BABY_SCALE, 0.5);
     }
 
 }

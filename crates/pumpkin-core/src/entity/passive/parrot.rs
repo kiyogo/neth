@@ -14,6 +14,7 @@ use pumpkin_protocol::codec::var_int::VarInt;
 
 use crate::entity::{
     Entity, EntityBase,
+    ageable::{AgeableData, AgeableMob},
     ai::control::flying_move_control::FlyingMoveControl,
     ai::goal::{
         escape_danger::EscapeDangerGoal, follow_owner::FollowOwnerGoal,
@@ -71,6 +72,7 @@ pub struct ParrotEntity {
     pub mob_entity: MobEntity,
     pub tamable_data: TamableData,
     pub variant: AtomicI32,
+    pub ageable_data: AgeableData,
 }
 
 impl ParrotEntity {
@@ -93,6 +95,7 @@ impl ParrotEntity {
             mob_entity,
             tamable_data: TamableData::default(),
             variant: AtomicI32::new(variant.id()),
+            ageable_data: AgeableData::default(),
         };
         let mob_arc = Arc::new(parrot);
         let mob_weak: Weak<dyn Mob> = {
@@ -221,7 +224,26 @@ impl TamableAnimal for ParrotEntity {
     }
 }
 
+impl AgeableMob for ParrotEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    /// Vanilla Parrot.java:99-101: canBeABaby() -> false.
+    fn can_be_baby(&self) -> bool {
+        false
+    }
+
+    fn can_be_a_baby(&self) -> bool {
+        false
+    }
+}
+
 impl Mob for ParrotEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
     fn get_base_experience_reward(&self) -> u32 {
         if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
             0

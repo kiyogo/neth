@@ -31,12 +31,19 @@ pub trait AgeableMob: Mob {
         BABY_START_AGE
     }
 
+    /// Mirrors vanilla AgeableMob.java:225-227:
+    /// public final boolean isBaby() { return this.canBeABaby() && this.getAge() < 0; }
     fn is_baby(&self) -> bool {
-        self.get_mob_entity().living_entity.entity.age.load(Relaxed) < 0
+        self.can_be_baby() && self.get_mob_entity().living_entity.entity.age.load(Relaxed) < 0
     }
 
-    /// Mirrors vanilla `AgeableMob.java:237-239`: `public boolean canBeABaby() { return true; }`
+    /// Mirrors vanilla AgeableMob.java:237-239: public boolean canBeABaby() { return true; }
     fn can_be_baby(&self) -> bool {
+        self.can_be_a_baby()
+    }
+
+    /// Backwards-compatibility alias for can_be_baby.
+    fn can_be_a_baby(&self) -> bool {
         true
     }
 
@@ -135,10 +142,6 @@ pub trait AgeableMob: Mob {
                 .store(nbt.get_int("ForcedAge").unwrap_or(0), Relaxed);
             self.set_age_locked(nbt.get_bool("AgeLocked").unwrap_or(false));
         }
-    }
-
-    fn can_be_a_baby(&self) -> bool {
-        true
     }
 
     fn ageable_ai_step(&self) {

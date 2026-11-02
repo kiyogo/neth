@@ -667,6 +667,11 @@ impl AgeableMob for WanderingTraderEntity {
         &self.ageable_data
     }
 
+    /// Vanilla WanderingTrader.java: wandering traders cannot be babies.
+    fn can_be_baby(&self) -> bool {
+        false
+    }
+
     fn can_be_a_baby(&self) -> bool {
         false
     }
@@ -759,6 +764,8 @@ impl Mob for WanderingTraderEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        // Vanilla WanderingTrader.java:232: this.setAge(Math.max(0, this.getAge()))
+        self.set_age(self.get_age().max(0));
         if let Some(delay) = nbt.get_int("DespawnDelay") {
             self.despawn_delay.store(delay, Ordering::Relaxed);
         }
@@ -1407,5 +1414,15 @@ mod tests {
         assert_eq!(potion.item, &Item::POTION);
         assert_eq!(potion.item_count, 1);
         assert!(!potion.patch.is_empty());
+    }
+
+    #[test]
+    fn test_wandering_trader_cannot_be_baby_parity() {
+        use crate::entity::combat;
+        // Vanilla WanderingTrader.java: wandering traders cannot be babies
+        assert_eq!(combat::VILLAGER_BABY_WIDTH, 0.49);
+        assert_eq!(combat::VILLAGER_BABY_HEIGHT, 0.98);
+        assert_eq!(combat::VILLAGER_BABY_EYE_HEIGHT, 0.63);
+        assert_eq!(combat::VILLAGER_BABY_SCALE, 0.5);
     }
 }

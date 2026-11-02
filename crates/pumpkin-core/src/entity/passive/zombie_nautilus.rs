@@ -23,6 +23,7 @@ use pumpkin_util::math::vector3::Vector3;
 
 use crate::entity::{
     Entity, EntityBase,
+    ageable::{AgeableData, AgeableMob},
     custom_sound::CustomSound,
     mob::{Mob, MobEntity},
     passive::animal::Animal,
@@ -38,6 +39,7 @@ pub struct ZombieNautilusEntity {
     pub dash_cooldown: AtomicI32,
     pub is_saddled: AtomicBool,
     pub inventory: Mutex<Vec<ItemStack>>,
+    pub ageable_data: AgeableData,
 }
 
 impl ZombieNautilusEntity {
@@ -79,6 +81,7 @@ impl ZombieNautilusEntity {
             dash_cooldown: AtomicI32::new(0),
             is_saddled: AtomicBool::new(false),
             inventory: Mutex::new(vec![ItemStack::new(0, &pumpkin_data::item::Item::AIR); 9]),
+            ageable_data: AgeableData::default(),
         };
 
         Arc::new(nautilus)
@@ -201,7 +204,26 @@ impl CustomSound for ZombieNautilusEntity {
     }
 }
 
+impl AgeableMob for ZombieNautilusEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    /// Vanilla ZombieNautilus.java:183-185: canBeABaby() -> false.
+    fn can_be_baby(&self) -> bool {
+        false
+    }
+
+    fn can_be_a_baby(&self) -> bool {
+        false
+    }
+}
+
 impl Mob for ZombieNautilusEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
     fn as_zombie_nautilus(&self) -> Option<&ZombieNautilusEntity> {
         Some(self)
     }
