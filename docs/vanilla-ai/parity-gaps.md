@@ -11533,6 +11533,39 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Phát sinh sự kiện `GameEvent::EntityPlace` khi đặt tranh vẽ hoặc khung tranh.
   - **Unit Tests**: `test_item_frame_rotation_bounding_box_and_comparator_parity_gap447`.
 
+### Gap 448: Painting Placement Area, Variant Selection, Bounding Box & Support Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.decoration.painting.Painting.java:93-125, 151-170, 172-181`, `net.minecraft.world.entity.decoration.HangingEntity.java:42, 64, 120-131`, `net.minecraft.world.item.HangingEntityItem.java:30-80`
+
+- **Thuật Toán Chọn Mẫu Tranh Lớn Nhất & Đặt Tranh (Variant Selection & Placement Parity)**:
+  - Vanilla `Painting.java:93-125`:
+    - Duyệt tất cả các biến thể tranh thuộc `#minecraft:painting_variant/placeable`.
+    - Kiểm tra độ vừa vặn trên tường: toàn bộ các khối phía sau bức tranh phải là khối rắn (`isSolid()`), và toàn bộ các khối phía trước không được là khối rắn.
+    - Tìm diện tích tranh lớn nhất có thể gắn vừa: `largestPaintingAreaSize = max(variant.value().area())` (`width * height`).
+    - Lọc và chỉ giữ lại tập hợp các biến thể có cùng diện tích lớn nhất `largestPaintingAreaSize`, sau đó chọn ngẫu nhiên đồng đều một biến thể từ tập hợp này (`Util.getRandomSafe(potentialVariants, candidate.random)`).
+- **Tâm Tranh, Bounding Box & Độ Lệch Khối Chẵn/Lẻ (Center, Bounding Box & Even/Odd Offsets)**:
+  - Vanilla `Painting.java:152-169`:
+    - Độ lệch áp tường: `PAINTING_WALL_OFFSET = 0.46875` ($15/32$ khối), độ dày tranh: `PAINTING_DEPTH = 0.0625` ($1/16$ khối).
+    - Độ lệch kích thước chẵn/lẻ: `offsetForPaintingSize(size) = size % 2 == 0 ? 0.5 : 0.0`. Nếu chiều rộng/chiều cao là số chẵn khối (ví dụ 2x2, 4x2, 4x4), tâm tranh được dịch thêm $0.5$ khối về phía trái ngược chiều kim đồng hồ (`left = direction.getCounterClockWise()`) và lên phía trên (`Direction.UP`).
+    - Bounding box được tính theo `AABB.ofSize(position, xSize, ySize, zSize)`.
+- **Kiểm Tra Điểm Tựa Định Kỳ & Rơi Vật Phẩm (Support Interval & Drop Parity)**:
+  - Vanilla `HangingEntity.java:42, 64, 120-131` & `Painting.java:172-181`:
+    - Chu kỳ kiểm tra điểm tựa: mỗi 100 ticks (`PAINTING_SURVIVAL_CHECK_INTERVAL = 100`), thực thể kiểm tra lại điểm tựa trên tường (`survives()`). Nếu khối tường phía sau bị phá hủy, tranh sẽ rơi ra và tự tiêu hủy.
+    - Tọa độ rơi vật phẩm: dịch chuyển ra ngoài mặt tường theo vector hướng treo một khoảng `PAINTING_DROP_OFFSET = 0.15` (`pos.x + stepX * 0.15`, `pos.y`, `pos.z + stepZ * 0.15`), rơi chính xác bằng `world.drop_stack_at`.
+    - Sao chép tên tùy chỉnh `custom_name` từ ItemStack khi đặt và bảo toàn tên khi rơi lại thành vật phẩm.
+    - Phát sinh sự kiện `GameEvent::EntityPlace` khi đặt tranh và `GameEvent::BlockChange` khi phá/rơi tranh.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `PAINTING_DEPTH`, `PAINTING_WALL_OFFSET`, `PAINTING_DROP_OFFSET`, `PAINTING_SURVIVAL_CHECK_INTERVAL`.
+    - Bổ sung hàm thuần: `calculate_painting_size_offset`, `calculate_painting_center_pos`, `calculate_painting_bounding_box`, `calculate_painting_rotation_yaw`, `calculate_painting_drop_position`, `calculate_painting_area`.
+  - Cập nhật `crates/pumpkin-core/src/entity/decoration/painting.rs`:
+    - Tích hợp `survival_check_ticks`, phương thức `survives`, `check_support`, và ghi đè `tick` kiểm tra điểm tựa định kỳ 100 ticks.
+    - Cập nhật `drop_and_remove` sử dụng `calculate_painting_drop_position`, bảo toàn `custom_name`, và phát sinh sự kiện `GameEvent::BlockChange`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/hanging_entity.rs`:
+    - Đồng bộ `yaw/pitch`, sao chép `custom_name`, và phát `GameEvent::EntityPlace` khi người chơi đặt tranh.
+  - **Unit Tests**: `test_painting_placement_bounding_box_and_support_parity_gap448`.
+
+
 
 
 

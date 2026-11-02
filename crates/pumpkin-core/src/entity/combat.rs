@@ -10205,6 +10205,144 @@ pub const fn can_damage_fixed_item_frame(bypasses_invulnerability: bool, is_crea
     bypasses_invulnerability || is_creative_player
 }
 
+/// Vanilla `Painting.java:44`: depth/thickness of painting (0.0625 = 1/16 block).
+pub const PAINTING_DEPTH: f64 = 0.0625;
+
+/// Vanilla `Painting.java:153`: shift from block center to wall plane (0.46875 = 15/32).
+pub const PAINTING_WALL_OFFSET: f64 = 0.46875;
+
+/// Vanilla `HangingEntity.java:123, 125`: drop offset along facing vector (0.15 block).
+pub const PAINTING_DROP_OFFSET: f64 = 0.15;
+
+/// Vanilla `HangingEntity.checkInterval`: survival support check interval (100 ticks).
+pub const PAINTING_SURVIVAL_CHECK_INTERVAL: u32 = 100;
+
+/// Calculates dimension offset for even vs odd painting size in blocks.
+///
+/// Mirrors vanilla `Painting.java:167-169`:
+/// `return size % 2 == 0 ? 0.5 : 0.0;`
+#[must_use]
+pub const fn calculate_painting_size_offset(size: u32) -> f64 {
+    if size % 2 == 0 {
+        0.5
+    } else {
+        0.0
+    }
+}
+
+/// Calculates center position of a painting placed on a wall.
+///
+/// Mirrors vanilla `Painting.java:152-160`:
+/// ```java
+/// Vec3 attachedToWall = Vec3.atCenterOf(pos).relative(direction, -0.46875);
+/// double horizontalOffset = this.offsetForPaintingSize(variant.width());
+/// double verticalOffset = this.offsetForPaintingSize(variant.height());
+/// Direction left = direction.getCounterClockWise();
+/// Vec3 position = attachedToWall.relative(left, horizontalOffset).relative(Direction.UP, verticalOffset);
+/// ```
+#[must_use]
+pub fn calculate_painting_center_pos(
+    attached_block_pos: pumpkin_util::math::position::BlockPos,
+    face: pumpkin_data::BlockDirection,
+    width: u32,
+    height: u32,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    let face_ccw = face.rotate_counter_clockwise();
+    let step = face.to_offset();
+    let ccw_step = face_ccw.to_offset();
+
+    let attached_to_wall = Vector3::new(
+        f64::from(attached_block_pos.0.x) + 0.5 - f64::from(step.x) * PAINTING_WALL_OFFSET,
+        f64::from(attached_block_pos.0.y) + 0.5,
+        f64::from(attached_block_pos.0.z) + 0.5 - f64::from(step.z) * PAINTING_WALL_OFFSET,
+    );
+
+    let horizontal_offset = calculate_painting_size_offset(width);
+    let vertical_offset = calculate_painting_size_offset(height);
+
+    Vector3::new(
+        attached_to_wall.x + horizontal_offset * f64::from(ccw_step.x),
+        attached_to_wall.y + vertical_offset,
+        attached_to_wall.z + horizontal_offset * f64::from(ccw_step.z),
+    )
+}
+
+/// Calculates bounding box for a painting based on its center position, face, and dimensions.
+///
+/// Mirrors vanilla `Painting.java:160-164`:
+/// ```java
+/// Direction.Axis axis = direction.getAxis();
+/// double xSize = axis == Direction.Axis.X ? 0.0625 : variant.width();
+/// double ySize = variant.height();
+/// double zSize = axis == Direction.Axis.Z ? 0.0625 : variant.width();
+/// return AABB.ofSize(position, xSize, ySize, zSize);
+/// ```
+#[must_use]
+pub fn calculate_painting_bounding_box(
+    center: pumpkin_util::math::vector3::Vector3<f64>,
+    face: pumpkin_data::BlockDirection,
+    width: u32,
+    height: u32,
+) -> pumpkin_util::math::boundingbox::BoundingBox {
+    use pumpkin_util::math::boundingbox::BoundingBox;
+    use pumpkin_util::math::vector3::Vector3;
+    let step = face.to_offset();
+    let w = f64::from(width);
+    let h = f64::from(height);
+    let x_size = if step.x != 0 { PAINTING_DEPTH } else { w };
+    let y_size = h;
+    let z_size = if step.z != 0 { PAINTING_DEPTH } else { w };
+    let half = Vector3::new(x_size / 2.0, y_size / 2.0, z_size / 2.0);
+    BoundingBox::new(
+        Vector3::new(center.x - half.x, center.y - half.y, center.z - half.z),
+        Vector3::new(center.x + half.x, center.y + half.y, center.z + half.z),
+    )
+}
+
+/// Calculates horizontal entity yaw rotation for a painting facing a wall direction.
+///
+/// Mirrors vanilla `HangingEntity.java:64`:
+/// `this.setYRot(direction.get2DDataValue() * 90);`
+#[must_use]
+pub const fn calculate_painting_rotation_yaw(face: pumpkin_data::BlockDirection) -> f32 {
+    use pumpkin_data::BlockDirection;
+    match face {
+        BlockDirection::South => 0.0,
+        BlockDirection::West => 90.0,
+        BlockDirection::North => 180.0,
+        BlockDirection::East => 270.0,
+        _ => 0.0,
+    }
+}
+
+/// Calculates dropped painting item spawn position.
+///
+/// Mirrors vanilla `HangingEntity.java:120-131`:
+/// `this.getX() + this.getDirection().getStepX() * 0.15F`
+#[must_use]
+pub fn calculate_painting_drop_position(
+    center: pumpkin_util::math::vector3::Vector3<f64>,
+    face: pumpkin_data::BlockDirection,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    let step = face.to_offset();
+    Vector3::new(
+        center.x + f64::from(step.x) * PAINTING_DROP_OFFSET,
+        center.y,
+        center.z + f64::from(step.z) * PAINTING_DROP_OFFSET,
+    )
+}
+
+/// Calculates painting variant area in block units squared.
+///
+/// Mirrors vanilla `Painting.java:122-124`:
+/// `return variant.value().area();` (width * height).
+#[must_use]
+pub const fn calculate_painting_area(width: u32, height: u32) -> u32 {
+    width * height
+}
+
 /// Checks if an entity type is able to damage End Crystals.
 /// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
 #[must_use]
@@ -30235,5 +30373,65 @@ mod tests {
         assert!(can_damage_fixed_item_frame(true, false)); // bypasses invulnerability can damage fixed
         assert!(can_damage_fixed_item_frame(false, true)); // creative player can damage fixed
         assert!(!can_damage_fixed_item_frame(false, false)); // regular damage cannot damage fixed
+    }
+
+    #[test]
+    fn test_painting_placement_bounding_box_and_support_parity_gap448() {
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Constants parity (Painting.java:44, 153; HangingEntity.java:42, 123, 125)
+        assert_eq!(PAINTING_DEPTH, 0.0625);
+        assert_eq!(PAINTING_WALL_OFFSET, 0.46875);
+        assert_eq!(PAINTING_DROP_OFFSET, 0.15);
+        assert_eq!(PAINTING_SURVIVAL_CHECK_INTERVAL, 100);
+
+        // 2. Size offsets parity (Painting.java:167-169)
+        assert_eq!(calculate_painting_size_offset(1), 0.0);
+        assert_eq!(calculate_painting_size_offset(2), 0.5);
+        assert_eq!(calculate_painting_size_offset(3), 0.0);
+        assert_eq!(calculate_painting_size_offset(4), 0.5);
+
+        // 3. Center and Bounding Box calculation (Painting.java:152-165)
+        let block_pos = BlockPos(pumpkin_util::math::vector3::Vector3::new(5, 64, 12));
+        // Facing South: counter-clockwise is East (+X)
+        // 1x1 painting: offsets (0.0, 0.0)
+        let center_1x1 = calculate_painting_center_pos(block_pos, BlockDirection::South, 1, 1);
+        assert!((center_1x1.x - 5.5).abs() < 1e-6);
+        assert!((center_1x1.y - 64.5).abs() < 1e-6);
+        assert!((center_1x1.z - (12.5 - 0.46875)).abs() < 1e-6);
+
+        let bbox_1x1 = calculate_painting_bounding_box(center_1x1, BlockDirection::South, 1, 1);
+        assert!(((bbox_1x1.max.z - bbox_1x1.min.z) - 0.0625).abs() < 1e-6);
+        assert!(((bbox_1x1.max.x - bbox_1x1.min.x) - 1.0).abs() < 1e-6);
+        assert!(((bbox_1x1.max.y - bbox_1x1.min.y) - 1.0).abs() < 1e-6);
+
+        // 2x2 painting: offsets (0.5, 0.5)
+        let center_2x2 = calculate_painting_center_pos(block_pos, BlockDirection::South, 2, 2);
+        assert!((center_2x2.x - 6.0).abs() < 1e-6);
+        assert!((center_2x2.y - 65.0).abs() < 1e-6);
+
+        let bbox_2x2 = calculate_painting_bounding_box(center_2x2, BlockDirection::South, 2, 2);
+        assert!(((bbox_2x2.max.z - bbox_2x2.min.z) - 0.0625).abs() < 1e-6);
+        assert!(((bbox_2x2.max.x - bbox_2x2.min.x) - 2.0).abs() < 1e-6);
+        assert!(((bbox_2x2.max.y - bbox_2x2.min.y) - 2.0).abs() < 1e-6);
+
+        // 4. Rotation yaw parity (HangingEntity.java:64)
+        assert_eq!(calculate_painting_rotation_yaw(BlockDirection::South), 0.0);
+        assert_eq!(calculate_painting_rotation_yaw(BlockDirection::West), 90.0);
+        assert_eq!(calculate_painting_rotation_yaw(BlockDirection::North), 180.0);
+        assert_eq!(calculate_painting_rotation_yaw(BlockDirection::East), 270.0);
+
+        // 5. Dropped item position parity (HangingEntity.java:120-131)
+        let drop_pos = calculate_painting_drop_position(center_1x1, BlockDirection::South);
+        assert!((drop_pos.x - center_1x1.x).abs() < 1e-6);
+        assert!((drop_pos.y - center_1x1.y).abs() < 1e-6);
+        assert!((drop_pos.z - (center_1x1.z + 0.15)).abs() < 1e-6);
+
+        // 6. Area calculation parity (Painting.java:122-124)
+        assert_eq!(calculate_painting_area(1, 1), 1);
+        assert_eq!(calculate_painting_area(2, 1), 2);
+        assert_eq!(calculate_painting_area(4, 2), 8);
+        assert_eq!(calculate_painting_area(4, 4), 16);
     }
 }

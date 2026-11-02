@@ -79,6 +79,14 @@ impl ItemBehaviour for HangingEntityItem {
                 variant.height(),
             );
             let entity = Entity::new(world.clone(), spawn_pos, &EntityType::PAINTING);
+            if let Some(custom_name) = item.get_custom_name() {
+                entity.set_custom_name(custom_name.clone());
+            }
+            let yaw = crate::entity::combat::calculate_painting_rotation_yaw(face);
+            entity.yaw.store(yaw);
+            entity.prev_yaw.store(yaw);
+            entity.pitch.store(0.0);
+            entity.prev_pitch.store(0.0);
             entity
                 .data
                 .store(i32::from(face.to_index()), Ordering::Relaxed);

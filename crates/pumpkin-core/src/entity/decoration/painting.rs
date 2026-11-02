@@ -1,11 +1,17 @@
 use core::f32;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use crate::entity::decoration::hanging::{self, DEPTH};
+use crate::entity::combat::{
+    calculate_painting_bounding_box, calculate_painting_center_pos,
+    calculate_painting_drop_position, PAINTING_SURVIVAL_CHECK_INTERVAL,
+};
+use crate::entity::decoration::hanging;
 use crate::entity::player::Player;
 use crate::entity::{Entity, EntityBase, living::LivingEntity};
+use crate::server::Server;
 use pumpkin_data::BlockDirection;
 use pumpkin_data::damage::DamageType;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::painting_variant::PaintingVariant;
@@ -56,6 +62,7 @@ const fn variant_metadata_value(variant: PaintingVariant) -> VarInt {
 pub struct PaintingEntity {
     pub entity: Entity,
     variant_id: AtomicU32,
+    survival_check_ticks: AtomicU32,
 }
 
 impl PaintingEntity {
@@ -69,7 +76,14 @@ impl PaintingEntity {
         Self {
             entity,
             variant_id: AtomicU32::new(variant.id()),
+            survival_check_ticks: AtomicU32::new(0),
         }
+    }
+
+    #[must_use]
+    pub fn facing(&self) -> BlockDirection {
+        BlockDirection::from_index(self.entity.data.load(Ordering::Relaxed) as u8)
+            .unwrap_or(BlockDirection::South)
     }
 
     #[must_use]
@@ -84,22 +98,27 @@ impl PaintingEntity {
     pub fn set_variant(&self, variant: PaintingVariant) {
         self.variant_id.store(variant.id(), Ordering::Relaxed);
         self.sync_variant();
+        let facing = self.facing();
+        let bbox = calculate_painting_bounding_box(
+            self.entity.pos.load(),
+            facing,
+            variant.width(),
+            variant.height(),
+        );
+        self.entity.bounding_box.store(bbox);
     }
 
     /// Vanilla `Painting.calculateBoundingBox`, around the already wall-shifted position.
     #[must_use]
     pub fn hanging_bounding_box(&self) -> BoundingBox {
-        let facing = BlockDirection::from_index(self.entity.data.load(Ordering::Relaxed) as u8)
-            .unwrap_or(BlockDirection::South);
+        let facing = self.facing();
         let variant = self.variant();
-        let step = facing.to_offset();
-        let width = f64::from(variant.width());
-        let size = Vector3::new(
-            if step.x == 0 { width } else { DEPTH },
-            f64::from(variant.height()),
-            if step.z == 0 { width } else { DEPTH },
-        );
-        hanging::box_of_size(self.entity.pos.load(), size)
+        calculate_painting_bounding_box(
+            self.entity.pos.load(),
+            facing,
+            variant.width(),
+            variant.height(),
+        )
     }
 
     /// Pushes the current variant into the tracked entity data so clients receive it.
@@ -119,25 +138,17 @@ impl PaintingEntity {
         width: u32,
         height: u32,
     ) -> Vector3<f64> {
-        let target_pos = location.offset(face.to_offset());
-        let face_ccw = face.rotate_counter_clockwise();
-        let step_x = f64::from(face.to_offset().x);
-        let step_z = f64::from(face.to_offset().z);
-        let ccw_step_x = f64::from(face_ccw.to_offset().x);
-        let ccw_step_z = f64::from(face_ccw.to_offset().z);
+        calculate_painting_center_pos(location, face, width, height)
+    }
 
-        let mut x = f64::from(target_pos.0.x) + 0.5 - step_x * 0.46875;
-        let mut y = f64::from(target_pos.0.y) + 0.5;
-        let mut z = f64::from(target_pos.0.z) + 0.5 - step_z * 0.46875;
-
-        let width_offset = if width.is_multiple_of(2) { 0.5 } else { 0.0 };
-        let height_offset = if height.is_multiple_of(2) { 0.5 } else { 0.0 };
-
-        x += width_offset * ccw_step_x;
-        z += width_offset * ccw_step_z;
-        y += height_offset;
-
-        Vector3::new(x, y, z)
+    /// Checks whether this painting survives in its current position on the wall.
+    #[must_use]
+    pub fn survives(&self) -> bool {
+        let world = self.entity.world.load();
+        let facing = self.facing();
+        let location = self.entity.block_pos.load().offset(facing.opposite().to_offset());
+        Self::painting_fits(&world, location, facing, self.variant())
+            && !hanging::overlaps_hanging_entity(&world, &self.hanging_bounding_box(), self.entity.entity_id)
     }
 
     /// Checks if a painting of the specified variant fits on the wall at `location` facing `face`.
@@ -212,13 +223,31 @@ impl PaintingEntity {
         fitting_variants.choose(&mut rng).copied()
     }
 
+    /// Checks support and drops if invalid.
+    pub fn check_support(&self) {
+        if self.entity.is_removed() {
+            return;
+        }
+        if !self.survives() {
+            self.drop_and_remove(None);
+        }
+    }
+
     fn drop_and_remove(&self, caused_by: Option<&dyn EntityBase>) {
         let entity = &self.entity;
         let world = entity.world.load();
+        let pos = entity.pos.load();
+        let facing = self.facing();
+        let drop_pos = calculate_painting_drop_position(pos, facing);
+
         world.play_sound(
             Sound::EntityPaintingBreak,
             SoundCategory::Blocks,
-            &entity.pos.load(),
+            &pos,
+        );
+        world.emit_game_event(
+            GameEvent::BlockChange.name(),
+            pos,
         );
 
         let is_creative = caused_by.is_some_and(|c| {
@@ -228,7 +257,11 @@ impl PaintingEntity {
         });
 
         if !is_creative {
-            world.drop_stack(&entity.block_pos.load(), ItemStack::new(1, &Item::PAINTING));
+            let mut stack = ItemStack::new(1, &Item::PAINTING);
+            if let Some(custom_name) = entity.custom_name.load().as_ref().clone() {
+                stack.set_custom_name(custom_name.to_pretty_console());
+            }
+            world.drop_stack_at(drop_pos, stack);
         }
 
         entity.remove();
@@ -303,6 +336,16 @@ impl EntityBase for PaintingEntity {
 
     fn can_hit(&self) -> bool {
         self.entity.is_alive()
+    }
+
+    fn tick(&self, caller: &dyn EntityBase, server: &Server) {
+        self.entity.tick(caller, server);
+
+        let ticks = self.survival_check_ticks.fetch_add(1, Ordering::Relaxed) + 1;
+        if ticks >= PAINTING_SURVIVAL_CHECK_INTERVAL {
+            self.survival_check_ticks.store(0, Ordering::Relaxed);
+            self.check_support();
+        }
     }
 
     fn cast_any(&self) -> &dyn std::any::Any {
