@@ -10481,3 +10481,25 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Bổ sung gọi `self.ageable_ai_step()` trong `mob_tick()` để đếm lùi thời gian trưởng thành của gà con theo từng tick game.
 - **Hằng số Parity**: `CHICKEN_BABY_WIDTH` (0.3), `CHICKEN_BABY_HEIGHT` (0.4), `CHICKEN_BABY_EYE_HEIGHT` (0.28125), `CHICKEN_BABY_SCALE` (0.5), `calculate_chicken_dimensions`.
 - **Unit Tests**: `test_chicken_dimensions_and_parity_gap413`, `test_chicken_baby_dimensions_and_dispenser_parity`, `test_chicken_parity_constants` pass 100%.
+
+
+### Gap 414: Rabbit & Panda Baby Scalable Dimensions, Panda Dispenser Equip, CanPickUpLoot & Ageable Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.rabbit.Rabbit.java:83, 134-137` & `net.minecraft.world.entity.animal.panda.Panda.java:83-86, 110-118, 695-697` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Thỏ và Gấu Trúc Con (Rabbit & Panda Baby Scalable Dimensions & Eye Height)**:
+  - Thỏ (`Rabbit.java:83`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.24F, 0.4F).withEyeHeight(0.39F)`.
+    - Adult rabbit: width `0.49`, height `0.6`, eye height `0.59`.
+    - Baby rabbit: width `0.24`, height `0.4`, eye height `0.39` (`RABBIT_BABY_EYE_HEIGHT`).
+  - Gấu trúc (`Panda.java:83-86`): `BABY_DIMENSIONS = EntityTypes.PANDA.getDimensions().scale(0.5F).withEyeHeight(0.28125F)`.
+    - Adult panda: width `1.3`, height `1.25`, eye height `1.0625`.
+    - Baby panda: width `0.65`, height `0.625`, eye height `0.28125` (`PANDA_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_rabbit_dimensions`, `calculate_panda_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên cả `RabbitEntity` và `PandaEntity`.
+- **Trang bị Dispenser cho Gấu Trúc và Thỏ (Panda Dispenser Equip & CanPickUpLoot Parity)**:
+  - Gấu trúc (`Panda.java:110-118`): khi sinh ra nếu không phải gấu trúc con (`!isBaby()`), gấu trúc tự động kích hoạt khả năng nhặt đồ (`setCanPickUpLoot(true)`).
+  - Gấu trúc có thể nhận trang bị từ Dispenser DUY NHẤT ở vị trí tay chính (`slot == EquipmentSlot.MAINHAND`) và khi `canPickUpLoot()` là true (`can_panda_dispenser_equip(slot_is_main_hand, can_pick_up_loot)`).
+  - Thỏ hoàn toàn không thể nhận đồ từ Dispenser.
+- **Dismount Parity**:
+  - Khi thỏ con hoặc gấu trúc con trưởng thành, tự động kiểm tra điều kiện kích thước và tháo gỡ khỏi phương tiện nếu không phù hợp (`handle_age_boundary_vehicle_dismount`).
+- **Hằng số Parity**: `RABBIT_BABY_WIDTH` (0.24), `RABBIT_BABY_HEIGHT` (0.4), `RABBIT_BABY_EYE_HEIGHT` (0.39), `RABBIT_BABY_SCALE` (0.5), `calculate_rabbit_dimensions`, `PANDA_BABY_WIDTH` (0.65), `PANDA_BABY_HEIGHT` (0.625), `PANDA_BABY_EYE_HEIGHT` (0.28125), `PANDA_BABY_SCALE` (0.5), `calculate_panda_dimensions`, `can_panda_dispenser_equip`.
+- **Unit Tests**: `test_rabbit_and_panda_dimensions_and_parity_gap414`, `test_rabbit_baby_dimensions_and_dispenser_parity`, `test_panda_baby_dimensions_and_dispenser_parity` pass 100%.

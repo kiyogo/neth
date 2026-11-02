@@ -12,6 +12,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::vector3::Vector3;
 use rand::RngExt;
 
@@ -186,8 +187,31 @@ impl PandaEntity {
             combat::PANDA_MAX_HEALTH as f32
         };
         mob_arc.mob_entity.living_entity.set_health(max_hp);
+        if !mob_arc.is_baby() {
+            mob_arc.mob_entity.set_can_pick_up_loot(true);
+        }
+        mob_arc.refresh_dimensions();
 
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_panda_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -367,6 +391,17 @@ impl PandaEntity {
 impl AgeableMob for PandaEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -593,5 +628,17 @@ mod tests {
         assert_eq!(combat::PANDA_FLAG_SIT, 8);
         assert_eq!(combat::PANDA_FLAG_ON_BACK, 16);
         assert!(!combat::is_mob_leashable(&EntityType::PANDA));
+    }
+
+    #[test]
+    fn test_panda_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_panda_dimensions(false, 1.3, 1.25, 1.0625);
+        assert_eq!(adult, (1.3, 1.25, 1.0625));
+        let baby = combat::calculate_panda_dimensions(true, 1.3, 1.25, 1.0625);
+        assert_eq!(baby, (0.65, 0.625, 0.28125));
+
+        assert!(combat::can_panda_dispenser_equip(true, true));
+        assert!(!combat::can_panda_dispenser_equip(false, true));
+        assert!(!combat::can_panda_dispenser_equip(true, false));
     }
 }

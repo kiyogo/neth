@@ -10734,6 +10734,38 @@ pub const PANDA_FLAG_ROLL: u8 = 4;
 pub const PANDA_FLAG_SIT: u8 = 8;
 pub const PANDA_FLAG_ON_BACK: u8 = 16;
 
+/// Panda baby dimension constants, mirroring vanilla `Panda.java:83-86`.
+/// `BABY_DIMENSIONS = EntityTypes.PANDA.getDimensions().scale(0.5F).withEyeHeight(0.28125F)`.
+pub const PANDA_BABY_WIDTH: f32 = 0.65;
+pub const PANDA_BABY_HEIGHT: f32 = 0.625;
+pub const PANDA_BABY_EYE_HEIGHT: f32 = 0.28125;
+pub const PANDA_BABY_SCALE: f32 = 0.5;
+
+/// Calculates panda dimensions based on baby status.
+///
+/// Mirrors vanilla `Panda.java:695-697`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_panda_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (PANDA_BABY_WIDTH, PANDA_BABY_HEIGHT, PANDA_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Determines if a panda can be equipped via dispenser.
+/// Mirrors vanilla `Panda.java:116-118`: `slot == EquipmentSlot.MAINHAND && this.canPickUpLoot()`.
+#[must_use]
+pub const fn can_panda_dispenser_equip(slot_is_main_hand: bool, can_pick_up_loot: bool) -> bool {
+    slot_is_main_hand && can_pick_up_loot
+}
+
 /// Polar Bear combat and attribute constants, mirroring vanilla `PolarBear.java:58-66, 110-120, 205-207`.
 pub const POLAR_BEAR_MAX_HEALTH: f64 = 30.0;
 pub const POLAR_BEAR_BASE_MOVEMENT_SPEED: f64 = 0.25;
@@ -11274,6 +11306,31 @@ pub const RABBIT_BASE_ATTACK_DAMAGE: f64 = 3.0;
 pub const RABBIT_EVIL_ATTACK_DAMAGE_BONUS: f64 = 5.0;
 pub const RABBIT_EVIL_TYPE_ID: i32 = 99;
 pub const RABBIT_XP_REWARD: u32 = 2;
+
+/// Rabbit baby dimension constants, mirroring vanilla `Rabbit.java:83`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.24F, 0.4F).withEyeHeight(0.39F)`.
+pub const RABBIT_BABY_WIDTH: f32 = 0.24;
+pub const RABBIT_BABY_HEIGHT: f32 = 0.4;
+pub const RABBIT_BABY_EYE_HEIGHT: f32 = 0.39;
+pub const RABBIT_BABY_SCALE: f32 = 0.5;
+
+/// Calculates rabbit dimensions based on baby status.
+///
+/// Mirrors vanilla `Rabbit.java:134-137`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_rabbit_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (RABBIT_BABY_WIDTH, RABBIT_BABY_HEIGHT, RABBIT_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
 
 
 // =========================================================================
@@ -24542,6 +24599,41 @@ mod tests {
         assert_eq!(CHICKEN_BABY_HEIGHT, 0.4);
         assert_eq!(CHICKEN_BABY_EYE_HEIGHT, 0.28125);
         assert_eq!(CHICKEN_BABY_SCALE, 0.5);
+    }
+
+    #[test]
+    fn test_rabbit_and_panda_dimensions_and_parity_gap414() {
+        use super::*;
+
+        // 1. Adult rabbit dimensions (Rabbit.java, EntityTypes.java: sized(0.49, 0.6), eyeHeight(0.59))
+        let rabbit_adult = calculate_rabbit_dimensions(false, 0.49, 0.6, 0.59);
+        assert_eq!(rabbit_adult, (0.49, 0.6, 0.59));
+
+        // 2. Baby rabbit dimensions (Rabbit.java:83: scalable(0.24, 0.4).withEyeHeight(0.39))
+        let rabbit_baby = calculate_rabbit_dimensions(true, 0.49, 0.6, 0.59);
+        assert_eq!(rabbit_baby, (0.24, 0.4, 0.39));
+        assert_eq!(RABBIT_BABY_WIDTH, 0.24);
+        assert_eq!(RABBIT_BABY_HEIGHT, 0.4);
+        assert_eq!(RABBIT_BABY_EYE_HEIGHT, 0.39);
+        assert_eq!(RABBIT_BABY_SCALE, 0.5);
+
+        // 3. Adult panda dimensions (Panda.java, EntityTypes.java: sized(1.3, 1.25), eyeHeight(1.0625))
+        let panda_adult = calculate_panda_dimensions(false, 1.3, 1.25, 1.0625);
+        assert_eq!(panda_adult, (1.3, 1.25, 1.0625));
+
+        // 4. Baby panda dimensions (Panda.java:83-86: scale(0.5).withEyeHeight(0.28125))
+        let panda_baby = calculate_panda_dimensions(true, 1.3, 1.25, 1.0625);
+        assert_eq!(panda_baby, (0.65, 0.625, 0.28125));
+        assert_eq!(PANDA_BABY_WIDTH, 0.65);
+        assert_eq!(PANDA_BABY_HEIGHT, 0.625);
+        assert_eq!(PANDA_BABY_EYE_HEIGHT, 0.28125);
+        assert_eq!(PANDA_BABY_SCALE, 0.5);
+
+        // 5. Panda dispenser equip (Panda.java:116-118: slot == MAINHAND && canPickUpLoot())
+        assert!(can_panda_dispenser_equip(true, true));
+        assert!(!can_panda_dispenser_equip(true, false));
+        assert!(!can_panda_dispenser_equip(false, true));
+        assert!(!can_panda_dispenser_equip(false, false));
     }
 
 }

@@ -11,6 +11,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::{
@@ -165,7 +166,27 @@ impl RabbitEntity {
             goal_selector.add_goal(11, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_rabbit_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -252,6 +273,17 @@ impl RabbitEntity {
 impl AgeableMob for RabbitEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -405,5 +437,13 @@ mod tests {
         assert_eq!(combat::RABBIT_FOLLOW_SPEED_MOD, 1.0);
         assert_eq!(combat::RABBIT_FLEE_SPEED_MOD, 2.2);
         assert_eq!(combat::RABBIT_ATTACK_SPEED_MOD, 1.4);
+    }
+
+    #[test]
+    fn test_rabbit_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_rabbit_dimensions(false, 0.49, 0.6, 0.59);
+        assert_eq!(adult, (0.49, 0.6, 0.59));
+        let baby = combat::calculate_rabbit_dimensions(true, 0.49, 0.6, 0.59);
+        assert_eq!(baby, (0.24, 0.4, 0.39));
     }
 }
