@@ -3877,6 +3877,32 @@ pub fn calculate_vehicle_damage_step(
     (new_damage, will_destroy)
 }
 
+/// Vanilla `VehicleEntity.java:115-117` (`getDimensionChangingDelay`):
+/// Dimension changing portal delay for vehicles (10 ticks = 0.5 seconds).
+pub const VEHICLE_DIMENSION_CHANGING_DELAY: i32 = 10;
+
+/// Vanilla `VehicleEntity.java:66-68` (`ignoreExplosion`):
+/// Vehicles ignore explosions caused by mobs if `mob_griefing` gamerule is disabled.
+#[must_use]
+pub fn should_vehicle_ignore_explosion(is_mob_cause: bool, mob_griefing: bool) -> bool {
+    is_mob_cause && !mob_griefing
+}
+
+/// Vanilla `VehicleEntity.java:49-56` (`hurtServer`):
+/// Determines vehicle destruction and creative player discard actions.
+#[must_use]
+pub fn should_vehicle_destroy(
+    current_damage: f32,
+    incoming_damage: f32,
+    is_creative: bool,
+    source_destroys: bool,
+) -> (f32, bool, bool) {
+    let new_damage = current_damage + incoming_damage * VEHICLE_DAMAGE_PER_HIT_MULTIPLIER;
+    let will_destroy = source_destroys || (new_damage > VEHICLE_DAMAGE_THRESHOLD);
+    let discard_only = is_creative && !will_destroy;
+    (new_damage, will_destroy || is_creative, discard_only)
+}
+
 /// Computes effective minecart gravity depending on water state and no_gravity flag.
 /// Mirrors vanilla AbstractMinecart.java:276-278.
 #[must_use]
@@ -27689,6 +27715,55 @@ mod tests {
         // za = 1.0 * 0.5 * 0.05 = 0.025
         assert!((impulse2.0 - 0.0).abs() < 1e-6);
         assert!((impulse2.1 - 0.025).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_vehicle_damage_wobble_and_destruction_parity_gap434() {
+        // 1. Vehicle damage and wobble constants (VehicleEntity.java:21-23, 37, 45, 47, 50, 116)
+        assert_eq!(VEHICLE_HURT_TIME, 10);
+        assert_eq!(VEHICLE_DAMAGE_THRESHOLD, 40.0);
+        assert_eq!(VEHICLE_DAMAGE_PER_HIT_MULTIPLIER, 10.0);
+        assert_eq!(VEHICLE_DAMAGE_DECAY_PER_TICK, 1.0);
+        assert_eq!(VEHICLE_DIMENSION_CHANGING_DELAY, 10);
+
+        // 2. should_vehicle_ignore_explosion (VehicleEntity.java:66-68)
+        // Ignored only if cause is mob AND mob_griefing is disabled
+        assert!(should_vehicle_ignore_explosion(true, false));
+        assert!(!should_vehicle_ignore_explosion(true, true));
+        assert!(!should_vehicle_ignore_explosion(false, false));
+        assert!(!should_vehicle_ignore_explosion(false, true));
+
+        // 3. calculate_vehicle_damage_step (VehicleEntity.java:47-50)
+        // Hit 2.0 damage: 0.0 + 2.0 * 10.0 = 20.0 (< 40.0 -> no destroy)
+        let (dmg1, destroy1) = calculate_vehicle_damage_step(0.0, 2.0, false);
+        assert_eq!(dmg1, 20.0);
+        assert!(!destroy1);
+
+        // Hit 3.0 damage on 20.0: 20.0 + 3.0 * 10.0 = 50.0 (> 40.0 -> destroy)
+        let (dmg2, destroy2) = calculate_vehicle_damage_step(20.0, 3.0, false);
+        assert_eq!(dmg2, 50.0);
+        assert!(destroy2);
+
+        // Creative attacker: immediately marks will_destroy regardless of damage
+        let (dmg3, destroy3) = calculate_vehicle_damage_step(0.0, 1.0, true);
+        assert_eq!(dmg3, 10.0);
+        assert!(destroy3);
+
+        // 4. should_vehicle_destroy (VehicleEntity.java:49-56)
+        // Creative hitting vehicle below 40 damage: discard_only = true (no item dropped)
+        let (_, should_kill1, discard_only1) = should_vehicle_destroy(0.0, 1.0, true, false);
+        assert!(should_kill1);
+        assert!(discard_only1);
+
+        // Survival hitting vehicle above 40 damage: will_destroy = true, discard_only = false (drops item)
+        let (_, should_kill2, discard_only2) = should_vehicle_destroy(25.0, 2.0, false, false);
+        assert!(should_kill2);
+        assert!(!discard_only2);
+
+        // Source destroys unconditionally (e.g. TNT ignition on primed cart)
+        let (_, should_kill3, discard_only3) = should_vehicle_destroy(0.0, 0.5, false, true);
+        assert!(should_kill3);
+        assert!(!discard_only3);
     }
 
 }

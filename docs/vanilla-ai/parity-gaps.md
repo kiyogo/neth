@@ -11003,3 +11003,35 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
     - Đồng bộ `push_and_pickup_entities` và `push` dùng `calculate_minecart_push_impulse` và tỷ lệ giảm 1/4 cho sinh vật.
   - **Unit Tests**: `test_vehicle_collision_and_pushing_parity_gap433` kiểm tra 100% các điều kiện va chạm, kích thước lòng thuyền, giới hạn cao độ đẩy thuyền và xung lực xe mỏ.
+
+
+### Gap 434: Vehicle Damage, Wobble Decay & Destruction Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.VehicleEntity.java:21-77, 115-117`, `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:224-230, 745-747`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:282-288`, `net.minecraft.world.entity.vehicle.minecart.MinecartTNT.java:78-88, 210-218`
+
+- **Cơ chế Nhận sát thương, Rung lắc và Suy giảm Sát thương (Damage Wobble & Decay Parity)**:
+  - Vanilla `VehicleEntity.hurtServer` (`VehicleEntity.java:35-59`):
+    - Đảo hướng rung lắc mỗi lần bị đánh: `hurtDir = -hurtDir`.
+    - Thời gian rung lắc: 10 ticks (`VEHICLE_HURT_TIME = 10`).
+    - Hệ số tích lũy sát thương: mỗi 1.0 damage nhân 10.0 vào thanh tích lũy (`damage += incoming_damage * 10.0F`, `VEHICLE_DAMAGE_PER_HIT_MULTIPLIER = 10.0`).
+    - Ngưỡng phá hủy phương tiện: `damage > 40.0F` (`VEHICLE_DAMAGE_THRESHOLD = 40.0`).
+    - Người chơi chế độ Creative: một đòn đánh là lập tức loại bỏ phương tiện (`discard()`), không rơi item.
+  - Vanilla `VehicleEntity.tick()` (`AbstractBoat.java:224-230`, `AbstractMinecart.java:282-288`):
+    - `hurtTime` giảm 1 mỗi tick nếu > 0.
+    - `damage` giảm 1.0 mỗi tick nếu > 0.0 (`VEHICLE_DAMAGE_DECAY_PER_TICK = 1.0`).
+    - Đồng bộ client tracked data: `ID_HURT` (index 8), `ID_HURTDIR` (index 9), `ID_DAMAGE` (index 10).
+- **Cơ chế Phá hủy, Rơi Dây buộc và Giữ Tên Tùy chỉnh (Vehicle Destruction & Custom Name Drops)**:
+  - Rơi dây buộc (`AbstractBoat.java:745-747`): Khi thuyền bị phá hủy (`kill_and_drop_self`), nếu đang có dây buộc (`is_leashed`), tự động rơi ra item dây buộc (`drop_leash_with_item()`).
+  - Bảo toàn tên đặt (`VehicleEntity.java:73-75`): Khi phương tiện bị phá vỡ và rơi item mặc định, nếu có tên tùy chỉnh (`custom_name`), thuộc tính `custom_name` được gán vào `ItemStack` rơi ra.
+  - Bỏ qua vụ nổ của mob (`VehicleEntity.java:66-68`): Bỏ qua sát thương nổ từ mob nếu luật `mobGriefing` tắt (`should_vehicle_ignore_explosion`).
+  - Độ trễ cổng dịch chuyển (`VehicleEntity.java:115-117`): Phương tiện chuyển thế giới với độ trễ 10 ticks (`VEHICLE_DIMENSION_CHANGING_DELAY = 10`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Thêm `VEHICLE_DIMENSION_CHANGING_DELAY = 10`.
+    - Thêm các hàm parity: `should_vehicle_ignore_explosion`, `should_vehicle_destroy`.
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Cho phép `drop_leash_with_item` được gọi nội bộ package (`pub(crate)`).
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/vehicle.rs`:
+    - Tự động thả rơi dây buộc khi phương tiện bị phá hủy.
+    - Bảo toàn `custom_name` trên item stack rơi ra khi phương tiện bị đập vỡ.
+  - **Unit Tests**: `test_vehicle_damage_wobble_and_destruction_parity_gap434` kiểm tra 100% các hằng số, logic nổ, phân bậc sát thương và chế độ sáng tạo.

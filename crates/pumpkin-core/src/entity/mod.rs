@@ -3927,7 +3927,7 @@ impl Entity {
     }
 
     /// Vanilla `Leashable.dropLeash(true)`: release the holder and drop a lead item.
-    fn drop_leash_with_item(&self) {
+    pub(crate) fn drop_leash_with_item(&self) {
         // `unleash` fires a cancellable `EntityUnleashEvent` and leaves the holder in place when a
         // plugin cancels it, and it is a no-op when there is no leash. Only refund a lead when a
         // leash was present and actually released, otherwise every tick would drop another one.

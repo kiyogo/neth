@@ -195,6 +195,10 @@ impl VehicleEntity {
     }
 
     pub fn kill_and_drop_self(&self) {
+        if self.entity.is_leashed() {
+            self.entity.drop_leash_with_item();
+        }
+
         let world = self.entity.world.load();
         let entity_drops = world.level_info.load().game_rules.entity_drops;
 
@@ -209,7 +213,11 @@ impl VehicleEntity {
                 }
             } else if let Some(item) = Self::get_default_vehicle_drop_item(&self.entity.entity_type) {
                 let pos = self.entity.block_pos.load();
-                world.drop_stack(&pos, ItemStack::new(1, item));
+                let mut stack = ItemStack::new(1, item);
+                if let Some(custom_name) = &**self.entity.custom_name.load() {
+                    stack.set_custom_name(custom_name.clone().get_text());
+                }
+                world.drop_stack(&pos, stack);
             }
         }
 
