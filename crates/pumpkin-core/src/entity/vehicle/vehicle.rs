@@ -257,7 +257,8 @@ impl VehicleEntity {
             id if id == EntityType::FURNACE_MINECART.id => Some(&Item::FURNACE_MINECART),
             id if id == EntityType::TNT_MINECART.id => Some(&Item::TNT_MINECART),
             id if id == EntityType::HOPPER_MINECART.id => Some(&Item::HOPPER_MINECART),
-            id if id == EntityType::COMMAND_BLOCK_MINECART.id => Some(&Item::COMMAND_BLOCK_MINECART),
+            // Vanilla parity: MinecartCommandBlock.java:41-43 (drops normal minecart in survival)
+            id if id == EntityType::COMMAND_BLOCK_MINECART.id => Some(&Item::MINECART),
             id if id == EntityType::SPAWNER_MINECART.id => Some(&Item::MINECART),
             _ => None,
         }

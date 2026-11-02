@@ -187,10 +187,13 @@ impl BlockBehaviour for DetectorRailBlock {
             pumpkin_util::math::vector3::Vector3::new(p.0.x as f64 + 0.8, p.0.y as f64 + 0.8, p.0.z as f64 + 0.8),
         );
         for entity in args.world.get_entities_at_box(&search_box) {
-            if entity.get_entity().is_alive()
-                && let Some(inv) = entity.get_container_inventory()
-            {
-                return Some(crate::block::calculate_comparator_output(inv.as_ref()));
+            if entity.get_entity().is_alive() {
+                if let Some(success_count) = entity.get_command_block_success_count() {
+                    return Some(success_count.min(15) as u8);
+                }
+                if let Some(inv) = entity.get_container_inventory() {
+                    return Some(crate::block::calculate_comparator_output(inv.as_ref()));
+                }
             }
         }
         Some(0)

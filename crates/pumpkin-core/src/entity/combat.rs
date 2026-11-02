@@ -3990,6 +3990,60 @@ pub const fn can_furnace_minecart_accept_fuel(current_fuel: i32, is_fuel_item: b
     is_fuel_item && current_fuel + FURNACE_MINECART_FUEL_PER_ITEM <= FURNACE_MINECART_MAX_FUEL
 }
 
+/// Vanilla `MinecartCommandBlock.ACTIVATION_DELAY` (4 ticks).
+pub const COMMAND_BLOCK_MINECART_ACTIVATION_DELAY: i32 = 4;
+
+/// Evaluates whether an activator rail triggers a Command Block Minecart.
+/// Mirrors vanilla `MinecartCommandBlock.java:81-86`:
+/// `if (state && this.tickCount - this.lastActivated >= 4)`
+#[must_use]
+pub const fn can_command_block_minecart_activate(
+    state: bool,
+    tick_count: i32,
+    last_activated: i32,
+) -> bool {
+    state && tick_count - last_activated >= COMMAND_BLOCK_MINECART_ACTIVATION_DELAY
+}
+
+/// Evaluates whether a player can use / edit game master blocks (Command Blocks, Command Block Minecarts).
+/// Mirrors vanilla `Player.canUseGameMasterBlocks()` (`hasPermissions(2) && getAbilities().instabuild`).
+#[must_use]
+pub const fn can_player_use_game_master_blocks(creative: bool, permission_lvl: u8) -> bool {
+    creative && permission_lvl >= 2
+}
+
+/// Vanilla `BaseSpawner` default spawn delay (20 ticks).
+pub const SPAWNER_MINECART_DEFAULT_DELAY: i32 = 20;
+
+/// Vanilla `BaseSpawner` default min spawn delay (200 ticks = 10s).
+pub const SPAWNER_MINECART_DEFAULT_MIN_SPAWN_DELAY: i32 = 200;
+
+/// Vanilla `BaseSpawner` default max spawn delay (800 ticks = 40s).
+pub const SPAWNER_MINECART_DEFAULT_MAX_SPAWN_DELAY: i32 = 800;
+
+/// Vanilla `BaseSpawner` default spawn count (4 mobs per spawn event).
+pub const SPAWNER_MINECART_DEFAULT_SPAWN_COUNT: i32 = 4;
+
+/// Vanilla `BaseSpawner` default spawn range (4 blocks).
+pub const SPAWNER_MINECART_DEFAULT_SPAWN_RANGE: i32 = 4;
+
+/// Vanilla `BaseSpawner` default max nearby entities (6 entities).
+pub const SPAWNER_MINECART_DEFAULT_MAX_NEARBY_ENTITIES: i32 = 6;
+
+/// Vanilla `BaseSpawner` default required player range (16 blocks).
+pub const SPAWNER_MINECART_DEFAULT_REQUIRED_PLAYER_RANGE: i32 = 16;
+
+/// Calculates next spawn delay for a spawner.
+/// Mirrors vanilla `BaseSpawner.java:202-206`.
+#[must_use]
+pub const fn calculate_spawner_next_delay(min_delay: i32, max_delay: i32, random_offset: i32) -> i32 {
+    if max_delay <= min_delay {
+        min_delay
+    } else {
+        min_delay + random_offset
+    }
+}
+
 /// Computes effective minecart gravity depending on water state and no_gravity flag.
 /// Mirrors vanilla AbstractMinecart.java:276-278.
 #[must_use]
@@ -27946,4 +28000,50 @@ mod tests {
         assert_eq!(push_z, 0.0);
     }
 
+    #[test]
+    fn test_command_block_and_spawner_minecarts_parity_gap437() {
+        // 1. Command block minecart activation delay parity (MinecartCommandBlock.java:33, 81-86)
+        assert_eq!(COMMAND_BLOCK_MINECART_ACTIVATION_DELAY, 4);
+        // Unpowered activator rail -> no activation
+        assert!(!can_command_block_minecart_activate(false, 10, 0));
+        // Powered rail, but < 4 ticks since last activation -> no activation
+        assert!(!can_command_block_minecart_activate(true, 3, 0));
+        // Powered rail and >= 4 ticks elapsed -> activation allowed
+        assert!(can_command_block_minecart_activate(true, 4, 0));
+        assert!(can_command_block_minecart_activate(true, 100, 10));
+
+        // 2. Game master blocks permission parity (Player.java / ServerGamePacketListenerImpl.java:687)
+        assert!(can_player_use_game_master_blocks(true, 2));
+        assert!(can_player_use_game_master_blocks(true, 4));
+        assert!(!can_player_use_game_master_blocks(false, 4)); // Survival with OP level 4 cannot use
+        assert!(!can_player_use_game_master_blocks(true, 1));  // Creative with OP level 1 cannot use
+
+        // 3. Spawner minecart defaults & delay parity (MinecartSpawner.java / BaseSpawner.java:42-48)
+        assert_eq!(SPAWNER_MINECART_DEFAULT_DELAY, 20);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_MIN_SPAWN_DELAY, 200);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_MAX_SPAWN_DELAY, 800);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_SPAWN_COUNT, 4);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_SPAWN_RANGE, 4);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_MAX_NEARBY_ENTITIES, 6);
+        assert_eq!(SPAWNER_MINECART_DEFAULT_REQUIRED_PLAYER_RANGE, 16);
+
+        // Next delay calculation (BaseSpawner.java:202-206)
+        assert_eq!(calculate_spawner_next_delay(200, 800, 50), 250);
+        assert_eq!(calculate_spawner_next_delay(300, 200, 50), 300); // max <= min defaults to min
+
+        // 4. Survival drop parity (MinecartCommandBlock.java:41-43, MinecartSpawner.java:32-34)
+        // In survival, breaking either vehicle drops standard Items.MINECART
+        assert_eq!(
+            crate::entity::vehicle::vehicle::VehicleEntity::get_default_vehicle_drop_item(
+                &EntityType::COMMAND_BLOCK_MINECART
+            ),
+            Some(&pumpkin_data::item::Item::MINECART)
+        );
+        assert_eq!(
+            crate::entity::vehicle::vehicle::VehicleEntity::get_default_vehicle_drop_item(
+                &EntityType::SPAWNER_MINECART
+            ),
+            Some(&pumpkin_data::item::Item::MINECART)
+        );
+    }
 }

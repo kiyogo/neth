@@ -11095,4 +11095,44 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung hằng số và hàm: `FURNACE_MINECART_FUEL_PER_ITEM`, `FURNACE_MINECART_MAX_FUEL`, `calculate_furnace_minecart_max_speed`, `can_furnace_minecart_accept_fuel`.
   - **Unit Tests**: `test_furnace_minecart_fuel_push_and_friction_parity_gap436`, `furnace_minecart_default_state`, `furnace_minecart_slowdown_with_and_without_push`, `furnace_minecart_projection_along_movement`, `furnace_minecart_nbt_read_write`.
 
+### Gap 437: Command Block & Spawner Minecarts Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock.java:23-99`, `net.minecraft.world.level.BaseCommandBlock.java:23-145`, `net.minecraft.world.entity.vehicle.minecart.MinecartSpawner.java:21-47`, `net.minecraft.world.level.BaseSpawner.java:34-220`, `net.minecraft.world.level.block.DetectorRailBlock.java:140-143`
+
+- **Vật phẩm Rơi khi Phá hủy (Survival Drop Item Parity)**:
+  - Vanilla `MinecartCommandBlock.java:41-43` & `MinecartSpawner.java:32-34`:
+    - Trong chế độ sinh tồn (Survival), cả xe mỏ khối lệnh (Command Block Minecart) và xe mỏ lồng đẻ quái (Spawner Minecart) khi bị phá hủy bởi người chơi hoặc sát thương nổ đều rơi ra `Items.MINECART` (xe mỏ tiêu chuẩn), không bao giờ rơi ra khối lệnh hay lồng spawner. (Trước đây Neth rơi nhầm `Item::COMMAND_BLOCK_MINECART`).
+- **Kích hoạt Ray Kích hoạt & Thực thi Lệnh (Activator Rail Execution & Cooldown)**:
+  - Vanilla `MinecartCommandBlock.java:33, 81-86` & `BaseCommandBlock.java:89-130`:
+    - Cooldown kích hoạt: `ACTIVATION_DELAY = 4` ticks. Khi đi qua ray kích hoạt (`ActivatorRail`), xe chỉ thực thi lệnh nếu `current_tick - last_activated >= 4`.
+    - Ngăn chặn thực thi lặp trong cùng 1 tick: Kiểm tra `world.level_time == last_execution`.
+    - Trứng phục sinh (Easter Egg): Nếu lệnh đặt là `"Searge"`, xe thiết lập kết quả `#itzlipofutzli`, `success_count = 1` mà không chuyển tiếp tới dispatcher.
+    - Quyền hạn quản trị viên: Gói mạng `ServerboundSetCommandMinecartPacket` kiểm tra nghiêm ngặt `player.canUseGameMasterBlocks()` (`creative_mode && permission_level >= 2`). Nếu không đủ quyền, gửi thông báo bản địa `advMode.notAllowed`.
+  - Ray cảm biến và tín hiệu Redstone Comparator (`DetectorRailBlock.java:140-142`):
+    - Khi xe mỏ khối lệnh chạy qua ray cảm biến, `get_comparator_output` ưu tiên đọc `success_count` từ khối lệnh trước khi kiểm tra container inventory.
+- **Cơ chế Lồng Spawner Di động (Spawner Minecart Mechanics)**:
+  - Vanilla `MinecartSpawner.java` & `BaseSpawner.java`:
+    - Khoảng cách kích hoạt người chơi (`required_player_range = 16.0` blocks). Khi không có người chơi trong phạm vi, spawner tạm dừng hoạt động và giữ nguyên đếm lùi `delay`.
+    - Hiệu ứng hạt khói & lửa (`smoke` và `flame`) tỏa ra từ xe mỏ khi người chơi ở gần.
+    - Đếm lùi `delay` (mặc định 20 ticks cho lần spawn đầu tiên), sau mỗi lần spawn đặt lại ngẫu nhiên trong khoảng `[min_spawn_delay, max_spawn_delay]` (mặc định 200 đến 800 ticks).
+    - Giới hạn sức chứa sinh vật: Kiểm tra số lượng thực thể cùng loại trong phạm vi `spawn_range * 2` không vượt quá `max_nearby_entities` (mặc định 6).
+    - Đồng bộ sự kiện `EntityStatus::Jump` (event 1) để client reset animation quay quái vật bên trong.
+    - Đọc/ghi NBT đầy đủ: `Delay`, `MinSpawnDelay`, `MaxSpawnDelay`, `SpawnCount`, `SpawnRange`, `MaxNearbyEntities`, `RequiredPlayerRange`, `SpawnData`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/vehicle.rs`:
+    - Chỉnh drop item của `COMMAND_BLOCK_MINECART` thành `Some(&Item::MINECART)`.
+  - Tạo mới `crates/pumpkin-core/src/entity/vehicle/minecart/command_block.rs` và `spawner.rs`.
+  - Tích hợp vào `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Mở rộng `MinecartKind::CommandBlock` và `MinecartKind::Spawner`.
+    - Xử lý activator rail gọi `command_block.activate()` và tick logic cho `spawner.tick()`.
+    - Triển khai `get_command_block_success_count` trên `EntityBase`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/rails/detector_rail.rs`:
+    - Ưu tiên đọc `get_command_block_success_count()` từ xe mỏ.
+  - Cập nhật `crates/pumpkin-core/src/net/java/play/set_command_minecart.rs`:
+    - Kiểm tra `can_use_game_master_blocks` và gửi phản hồi trạng thái chuẩn vanilla.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung các hằng số và hàm: `COMMAND_BLOCK_MINECART_ACTIVATION_DELAY`, `can_command_block_minecart_activate`, `can_player_use_game_master_blocks`, `calculate_spawner_next_delay`.
+  - **Unit Tests**: `test_command_block_and_spawner_minecarts_parity_gap437`, `test_command_block_minecart_defaults`, `test_command_block_minecart_nbt_roundtrip`, `test_spawner_minecart_defaults`, `test_spawner_minecart_nbt_roundtrip`.
+
+
 

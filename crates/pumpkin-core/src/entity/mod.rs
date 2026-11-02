@@ -721,6 +721,12 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         None
     }
 
+    /// Returns the command block success count if this entity is a Command Block Minecart.
+    /// Vanilla `DetectorRailBlock.java:140-142`.
+    fn get_command_block_success_count(&self) -> Option<u32> {
+        None
+    }
+
     /// Should return the name of the entity without click or hover events.
     fn get_name(&self) -> TextComponent {
         let entity = self.get_entity();
