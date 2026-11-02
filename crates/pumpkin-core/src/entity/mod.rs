@@ -1326,31 +1326,8 @@ impl Entity {
 
     #[must_use]
     pub fn get_dimensions(&self, pose: EntityPose) -> EntityDimensions {
-        if pose == EntityPose::Sleeping {
-            return EntityDimensions::new(0.2, 0.2, 0.2);
-        }
-        if self.entity_type == &EntityType::PLAYER {
-            match pose {
-                EntityPose::FallFlying | EntityPose::Swimming | EntityPose::SpinAttack => {
-                    return EntityDimensions::new(0.6, 0.6, 0.4);
-                }
-                EntityPose::Crouching => return EntityDimensions::new(0.6, 1.5, 1.27),
-                EntityPose::Dying => return EntityDimensions::new(0.2, 0.2, 1.62),
-                _ => {}
-            }
-        }
-        if self.entity_type == &EntityType::WARDEN
-            && (pose == EntityPose::Digging || pose == EntityPose::Emerging)
-        {
-            let (w, h, eye) = crate::entity::combat::calculate_warden_dimensions(
-                true,
-                self.entity_type.dimension[0],
-                self.entity_type.dimension[1],
-                self.entity_type.eye_height,
-            );
-            return EntityDimensions::new(w, h, eye);
-        }
-        Self::type_dimensions(self.entity_type)
+        let (w, h, eye) = crate::entity::combat::get_entity_pose_dimensions(self.entity_type, pose);
+        EntityDimensions::new(w, h, eye)
     }
 
     /// Eye height follows the retained dimensions (vanilla `Entity#getEyeHeight`), not the

@@ -10841,3 +10841,23 @@ et.minecraft.world.entity.AgeableMob.java:273-275
 - **Unit Tests**:
   - `test_combat_mob_effects_constants_formulas_and_triggers_parity` kiểm tra đầy đủ công thức, màu sắc, khoảng cách tick và tỷ lệ sát thương/hồi máu.
   - `test_omen_effects_and_transformation_parity` kiểm tra chu kỳ chuyển đổi Bad Omen -> Raid Omen -> Raid.
+
+
+### Gap 429: Camel, CamelHusk, Sniffer, Warden & Entity Pose Scalable Dimensions Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.camel.Camel.java:85-87, 165-168`, `net.minecraft.world.entity.animal.sniffer.Sniffer.java:75-76, 123-125`, `net.minecraft.world.entity.monster.warden.Warden.java:519-521`, `net.minecraft.world.entity.Entity.java`
+
+- **Tương quan Kích thước Tư thế Thực thể (Entity Pose Dimensions Parity)**:
+  - Vanilla `Camel.java:165-168`:
+    - `getDefaultDimensions(pose)`: Khi `pose == Pose.SITTING`, trả về `ADULT_SITTING_DIMENSIONS` (`1.7 x 0.945`, eye height `0.845`) hoặc `BABY_SITTING_DIMENSIONS` (`0.95 x 0.425`, eye height `0.41`).
+    - Khi `pose == Pose.STANDING`, trả về `BABY_STANDING_DIMENSIONS` (`0.95 x 1.4`, eye height `1.38`) hoặc `EntityTypes.CAMEL` (`1.7 x 2.375`, eye height `2.275`).
+  - Vanilla `Sniffer.java:75-76, 123-125`:
+    - `DIGGING_DIMENSIONS = EntityDimensions.scalable(1.9F, 1.75F - 0.4F)` -> `1.9 x 1.35`, eye height `0.81`.
+    - `getDefaultDimensions(pose)`: Trả về `DIGGING_DIMENSIONS` khi đang đào đất (`Pose.DIGGING`).
+  - Vanilla `Warden.java:519-521`:
+    - Trả về `(0.9, 1.0, 0.85)` khi `Pose.DIGGING` hoặc `Pose.EMERGING`.
+  - Vanilla `Entity.java`:
+    - Tư thế ngủ `Pose.SLEEPING`: cố định `(0.2, 0.2, 0.2)`.
+  - Chuẩn hóa hàm tập trung `get_entity_pose_dimensions(entity_type, pose)` trong `crates/pumpkin-core/src/entity/combat.rs`.
+  - Tối ưu `Entity::get_dimensions(&self, pose)` trong `crates/pumpkin-core/src/entity/mod.rs` gọi trực tiếp `get_entity_pose_dimensions`.
+- **Unit Tests**: `test_camel_sniffer_pose_dimensions_gap429` kiểm tra chính xác 100% kích thước hộp va chạm và chiều cao mắt của Camel ngồi, CamelHusk ngồi, Sniffer đào đất, Warden đào/chui lên, và Sleeping.

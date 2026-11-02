@@ -1788,6 +1788,60 @@ pub const fn get_player_pose_dimensions(pose: pumpkin_data::entity::EntityPose) 
     }
 }
 
+/// Returns the dimensions `(width, height, eye_height)` for any entity given its type and pose.
+///
+/// Mirrors vanilla `Entity.java` / `Player.java` / `Warden.java` / `Camel.java` / `Sniffer.java`:
+/// - Sleeping: (0.2, 0.2, 0.2)
+/// - Player poses (crouching, swimming, flying, dying)
+/// - Warden: Digging / Emerging (0.9, 1.0, 0.85)
+/// - Camel / CamelHusk: Sitting (1.7, 0.945, 0.845)
+/// - Sniffer: Digging (1.9, 1.35, 0.81)
+#[must_use]
+pub fn get_entity_pose_dimensions(
+    entity_type: &'static pumpkin_data::entity::EntityType,
+    pose: pumpkin_data::entity::EntityPose,
+) -> (f32, f32, f32) {
+    use pumpkin_data::entity::EntityPose;
+    use pumpkin_data::entity::EntityType;
+    if pose == EntityPose::Sleeping {
+        return (0.2, 0.2, 0.2);
+    }
+    if entity_type == &EntityType::PLAYER {
+        return get_player_pose_dimensions(pose);
+    }
+    if entity_type == &EntityType::WARDEN
+        && (pose == EntityPose::Digging || pose == EntityPose::Emerging)
+    {
+        return calculate_warden_dimensions(
+            true,
+            entity_type.dimension[0],
+            entity_type.dimension[1],
+            entity_type.eye_height,
+        );
+    }
+    if (entity_type == &EntityType::CAMEL || entity_type == &EntityType::CAMEL_HUSK)
+        && pose == EntityPose::Sitting
+    {
+        return calculate_camel_dimensions(
+            true,
+            false,
+            entity_type.dimension[0],
+            entity_type.dimension[1],
+            entity_type.eye_height,
+        );
+    }
+    if entity_type == &EntityType::SNIFFER && pose == EntityPose::Digging {
+        return calculate_sniffer_dimensions(
+            false,
+            true,
+            entity_type.dimension[0],
+            entity_type.dimension[1],
+            entity_type.eye_height,
+        );
+    }
+    (entity_type.dimension[0], entity_type.dimension[1], entity_type.eye_height)
+}
+
 /// Determines the actual pose of a player based on desired pose and collision clearance.
 ///
 /// Mirrors vanilla `Player.java:345-358`:
@@ -26206,6 +26260,59 @@ mod tests {
         assert!((pw1 - 1.035).abs() < 1e-6);
         assert!((ph1 - 0.575).abs() < 1e-6);
         assert!((peye1 - 0.20125).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_camel_sniffer_pose_dimensions_gap429() {
+        use pumpkin_data::entity::EntityPose;
+        use pumpkin_data::entity::EntityType;
+
+        // Default Camel standing dimensions (EntityTypes.CAMEL)
+        let (cw, ch, ceye) = get_entity_pose_dimensions(&EntityType::CAMEL, EntityPose::Standing);
+        assert_eq!(cw, 1.7);
+        assert_eq!(ch, 2.375);
+        assert_eq!(ceye, 2.275);
+
+        // Sitting pose dimensions (Camel.java:165-168)
+        let (csw, csh, cseye) = get_entity_pose_dimensions(&EntityType::CAMEL, EntityPose::Sitting);
+        assert_eq!(csw, 1.7);
+        assert_eq!(csh, 0.945);
+        assert_eq!(cseye, 0.845);
+
+        // CamelHusk sitting pose dimensions
+        let (chw, chh, cheye) = get_entity_pose_dimensions(&EntityType::CAMEL_HUSK, EntityPose::Sitting);
+        assert_eq!(chw, 1.7);
+        assert_eq!(chh, 0.945);
+        assert_eq!(cheye, 0.845);
+
+        // Sniffer standing dimensions (EntityTypes.SNIFFER)
+        let (snw, snh, sneye) = get_entity_pose_dimensions(&EntityType::SNIFFER, EntityPose::Standing);
+        assert_eq!(snw, 1.9);
+        assert_eq!(snh, 1.75);
+        assert_eq!(sneye, 1.05);
+
+        // Sniffer digging pose dimensions (Sniffer.java:75-76, 123-125)
+        let (sndw, sndh, sndeye) = get_entity_pose_dimensions(&EntityType::SNIFFER, EntityPose::Digging);
+        assert_eq!(sndw, 1.9);
+        assert_eq!(sndh, 1.35);
+        assert_eq!(sndeye, 0.81);
+
+        // Warden digging and emerging pose dimensions (Warden.java:519-521)
+        let (wdw, wdh, wdeye) = get_entity_pose_dimensions(&EntityType::WARDEN, EntityPose::Digging);
+        assert_eq!(wdw, 0.9);
+        assert_eq!(wdh, 1.0);
+        assert_eq!(wdeye, 0.85);
+
+        let (wew, weh, weeye) = get_entity_pose_dimensions(&EntityType::WARDEN, EntityPose::Emerging);
+        assert_eq!(wew, 0.9);
+        assert_eq!(weh, 1.0);
+        assert_eq!(weeye, 0.85);
+
+        // Sleeping dimensions for any entity (Entity.java)
+        let (slw, slh, sleye) = get_entity_pose_dimensions(&EntityType::ZOMBIE, EntityPose::Sleeping);
+        assert_eq!(slw, 0.2);
+        assert_eq!(slh, 0.2);
+        assert_eq!(sleye, 0.2);
     }
 
 }
