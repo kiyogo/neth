@@ -242,19 +242,21 @@ impl ArmorStandEntity {
         }
     }
 
-    fn break_and_drop_items(&self) {
+    fn break_and_drop_items(&self, is_player_break: bool) {
         let entity = self.get_entity();
-        let mut armor_stand_item = ItemStack::new(1, &Item::ARMOR_STAND);
-        if let Some(name) = &**entity.custom_name.load() {
-            armor_stand_item.patch.push((
-                DataComponent::CustomName,
-                Some(CustomNameImpl { name: name.clone() }.to_dyn()),
-            ));
+        if crate::entity::combat::should_armor_stand_drop_self(is_player_break) {
+            let mut armor_stand_item = ItemStack::new(1, &Item::ARMOR_STAND);
+            if let Some(name) = &**entity.custom_name.load() {
+                armor_stand_item.patch.push((
+                    DataComponent::CustomName,
+                    Some(CustomNameImpl { name: name.clone() }.to_dyn()),
+                ));
+            }
+            entity
+                .world
+                .load()
+                .drop_stack(&entity.block_pos.load(), armor_stand_item);
         }
-        entity
-            .world
-            .load()
-            .drop_stack(&entity.block_pos.load(), armor_stand_item);
 
         self.on_break();
     }
@@ -382,7 +384,7 @@ impl ArmorStandEntity {
     }
 
     /// Deals damage to the armor stand, breaking and dropping its items if health falls <= 0.5.
-    /// Mirrors vanilla `ArmorStand.java:388-394`.
+    /// Mirrors vanilla `ArmorStand.java:386-396`.
     fn cause_damage(&self, damage: f32) {
         let (new_hp, will_break) = crate::entity::combat::calculate_armor_stand_damage(
             self.living_entity.health.load(),
@@ -391,8 +393,17 @@ impl ArmorStandEntity {
         self.living_entity.health.store(new_hp);
         if will_break {
             Self::spawn_break_particles(self.get_entity());
-            self.break_and_drop_items();
+            self.break_and_drop_items(false);
+            self.get_entity().world.load().emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityDie.name(),
+                self.get_entity().pos.load(),
+            );
             self.get_entity().remove();
+        } else {
+            self.get_entity().world.load().emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityDamage.name(),
+                self.get_entity().pos.load(),
+            );
         }
     }
 }
@@ -449,25 +460,23 @@ fn clicked_slot(
     small: bool,
     has_item: impl Fn(&EquipmentSlot) -> bool,
 ) -> &'static EquipmentSlot {
-    let mut slot = &EquipmentSlot::MAIN_HAND;
-    let feet_top = 0.1 + if small { 0.8 } else { 0.45 };
-    let chest_bottom = 0.9 + if small { 0.3 } else { 0.0 };
-    let chest_top = 0.9 + if small { 1.0 } else { 0.7 };
-    let legs_top = 0.4 + if small { 1.0 } else { 0.8 };
-
-    if y >= 0.1 && y < feet_top && has_item(&EquipmentSlot::FEET) {
-        slot = &EquipmentSlot::FEET;
-    } else if y >= chest_bottom && y < chest_top && has_item(&EquipmentSlot::CHEST) {
-        slot = &EquipmentSlot::CHEST;
-    } else if y >= 0.4 && y < legs_top && has_item(&EquipmentSlot::LEGS) {
-        slot = &EquipmentSlot::LEGS;
-    } else if y >= 1.6 && has_item(&EquipmentSlot::HEAD) {
-        slot = &EquipmentSlot::HEAD;
-    } else if !has_item(&EquipmentSlot::MAIN_HAND) && has_item(&EquipmentSlot::OFF_HAND) {
-        slot = &EquipmentSlot::OFF_HAND;
+    match crate::entity::combat::calculate_armor_stand_clicked_slot(
+        y,
+        small,
+        has_item(&EquipmentSlot::FEET),
+        has_item(&EquipmentSlot::CHEST),
+        has_item(&EquipmentSlot::LEGS),
+        has_item(&EquipmentSlot::HEAD),
+        has_item(&EquipmentSlot::MAIN_HAND),
+        has_item(&EquipmentSlot::OFF_HAND),
+    ) {
+        EquipmentSlot::Feet(_) => &EquipmentSlot::FEET,
+        EquipmentSlot::Chest(_) => &EquipmentSlot::CHEST,
+        EquipmentSlot::Legs(_) => &EquipmentSlot::LEGS,
+        EquipmentSlot::Head(_) => &EquipmentSlot::HEAD,
+        EquipmentSlot::OffHand(_) => &EquipmentSlot::OFF_HAND,
+        _ => &EquipmentSlot::MAIN_HAND,
     }
-
-    slot
 }
 
 impl EntityBase for ArmorStandEntity {
@@ -650,6 +659,15 @@ impl EntityBase for ArmorStandEntity {
                 return false;
             } else if player.is_creative() {
                 Self::spawn_break_particles(entity);
+                world.play_sound(
+                    Sound::EntityArmorStandBreak,
+                    SoundCategory::Neutral,
+                    &entity.pos.load(),
+                );
+                world.emit_game_event(
+                    pumpkin_data::game_event::GameEvent::EntityDie.name(),
+                    entity.pos.load(),
+                );
                 entity.remove();
                 return true;
             }
@@ -661,12 +679,20 @@ impl EntityBase for ArmorStandEntity {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .query_gametime();
 
-        if time - self.last_hit_time.load(Ordering::Relaxed) > 5 && !always_kills {
+        if crate::entity::combat::should_armor_stand_wobble(
+            time,
+            self.last_hit_time.load(Ordering::Relaxed),
+            always_kills,
+        ) {
             world.send_entity_status(entity, EntityStatus::ArmorstandWobble, None);
             world.play_sound(
                 Sound::EntityArmorStandHit,
                 SoundCategory::Neutral,
                 &entity.block_pos.load().to_f64(),
+            );
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityDamage.name(),
+                entity.pos.load(),
             );
             self.last_hit_time.store(time, Ordering::Relaxed);
         } else {
@@ -676,7 +702,12 @@ impl EntityBase for ArmorStandEntity {
                 SoundCategory::Neutral,
                 &entity.block_pos.load().to_f64(),
             );
-            self.break_and_drop_items();
+            let is_player = attacker.and_then(|a| a.get_player()).is_some();
+            self.break_and_drop_items(is_player);
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityDie.name(),
+                entity.pos.load(),
+            );
             entity.remove();
         }
 

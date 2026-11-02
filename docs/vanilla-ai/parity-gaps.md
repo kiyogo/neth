@@ -11452,43 +11452,44 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Sử dụng `calculate_minecart_container_drag` chuẩn hóa cản tự nhiên dựa trên tín hiệu redstone và độ rỗng container.
   - **Unit Tests**: `test_minecart_rail_movement_slope_and_activator_parity_gap444`.
 
-### Gap 445: Minecart Item Placement, Rail Center Offset, GameEvent::EntityPlace & Dispenser Parity
 
-**Vanilla Reference**: `net.minecraft.world.item.MinecartItem.java:28-68`, `net.minecraft.core.dispenser.MinecartDispenseItemBehavior.java:26-79`
+### Gap 446: Armor Stand Placement Angle Snapping, Non-Player Break Drops, Wobble/Die GameEvent & Slot Raycast Parity
 
-- **Tọa Độ Đặt Xe Của Người Chơi & Sự Kiện GameEvent (Player Placement Coordinates & Game Event)**:
-  - Vanilla `MinecartItem.java:40-45`:
-    - Nếu khối không phải là ray (`!blockState.is(BlockTags.RAILS)`): thất bại `InteractionResult.FAIL`.
-    - Dốc ray (`shape.isSlope()`): cộng thêm `offset = 0.5` (`MINECART_PLACEMENT_SLOPE_Y_OFFSET = 0.5`), ray bằng phẳng `offset = 0.0`.
-    - Tọa độ sinh xe: `spawnPos = (pos.getX() + 0.5, pos.getY() + 0.0625 + offset, pos.getZ() + 0.5)` (căn giữa khối theo trục X và Z bằng `MINECART_PLACEMENT_HORIZONTAL_OFFSET = 0.5`, thay vì đặt lệch tại góc Tây Bắc như trước đây).
-    - Sao chép tên tùy chỉnh (`custom_name`) từ ItemStack sang xe minecart nếu có.
-    - Phát sinh sự kiện game `GameEvent::EntityPlace` tại vị trí đặt xe (`serverLevel.gameEvent(GameEvent.ENTITY_PLACE, pos, ...)`).
-- **Điều Kiện Phóng Xe Từ Máy Phân Phát (Dispenser Minecart Launch Parity)**:
-  - Vanilla `MinecartDispenseItemBehavior.java:26-59`:
-    - Bước dịch chuyển theo hướng máy phân phát: `spawnX = center.x + stepX * 1.125`, `spawnZ = center.z + stepZ * 1.125` (`MINECART_DISPENSER_STEP_XZ_SCALE = 1.125 = 9/8`).
-    - Kiểm tra khối đằng trước `frontPos`:
-      - Nếu `front` là ray:
-        - Ray dốc: `yOffset = 0.6` (`MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET = 0.6`).
-        - Ray phẳng: `yOffset = 0.1` (`MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET = 0.1`).
-      - Nếu `front` không phải ray:
-        - Nếu `front` không phải không khí (`!isAir()`): thất bại, rơi vật phẩm minecart ra ngoài (`defaultDispenseItemBehavior.dispense`).
-        - Nếu khối phía dưới `front.down()` không phải ray: thất bại, rơi vật phẩm.
-        - Nếu ray bên dưới là dốc VÀ máy phân phát không quay mặt xuống (`direction != Direction.DOWN`): `yOffset = -0.4` (`MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET = -0.4`).
-        - Ngược lại: `yOffset = -0.9` (`MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET = -0.9`).
-    - Tọa độ Y sinh xe: `pos.y + stepY + yOffset`.
-    - Sao chép tên tùy chỉnh `custom_name` từ ItemStack nếu có.
+**Vanilla Reference**: `net.minecraft.world.entity.decoration.ArmorStand.java:227-244, 320-415`, `net.minecraft.world.item.ArmorStandItem.java:28-60`
+
+- **Góc Xoay Đặt Armor Stand (Placement Yaw Snapping Parity)**:
+  - Vanilla `ArmorStandItem.java:48`:
+    - `float yaw = (float)Mth.floor((Mth.wrapDegrees(context.getRotation() - 180.0F) + 22.5F) / 45.0F) * 45.0F;`
+    - Khóa góc quay của giá giáp khi người chơi đặt vào 8 hướng chia đều $45^\circ$, điều chỉnh lệch góc $180^\circ$ và làm tròn biên $22.5^\circ$.
+    - Khi khối đặt là khối có thể thay thế (`blockState.canBeReplaced()`), giữ nguyên vị trí đặt tại khối được click thay vì dịch chuyển sang khối kế bên (`clickedPos.relative(clickedFace)`).
+    - Sao chép tên tùy chỉnh `custom_name` từ ItemStack sang entity giá giáp.
+    - Phát sinh sự kiện game `GameEvent::EntityPlace` tại vị trí chân giá giáp.
+- **Rơi Vật Phẩm Khi Phá Hủy (Broken By Player vs Environmental Damage)**:
+  - Vanilla `ArmorStand.java:398-415`:
+    - `brokenByPlayer`: Làm rơi chính vật phẩm `Items.ARMOR_STAND` (kèm custom name nếu có) tại tọa độ chân `blockPosition()`, đồng thời làm rơi trang bị tại `blockPosition().above()`.
+    - `brokenByAnything`: Chỉ làm rơi trang bị mang trên người tại `blockPosition().above()`. **Tuyệt đối không bao giờ làm rơi vật phẩm `ARMOR_STAND`** khi bị phá vỡ bởi sát thương môi trường (nham thạch, nổ, rơi tự do, v.v.). Trước đây Neth luôn làm rơi vật phẩm armor stand trong mọi trường hợp.
+- **Hiệu Ứng Lắc Lư, Sự Kiện GameEvent & Tọa Độ Raycast Tương Tác Slot Trang Bị**:
+  - Vanilla `ArmorStand.java:320-334, 462-465`:
+    - Khi người chơi đánh trong chế độ sinh tồn: nếu khoảng cách thời gian giữa hai đòn đánh $> 5$ ticks (`ARMOR_STAND_WOBBLE_TICKS = 5`) và giá giáp chưa vỡ: phát broadcast entity event 32 để tạo animation lắc lư (wobble), và phát sinh `GameEvent::EntityDamage`.
+    - Khi giá giáp vỡ hoặc bị tiêu diệt: phát sinh sự kiện `GameEvent::EntityDie`.
+    - Raycast slot trang bị: chuẩn hóa phân vùng tương tác theo chiều cao Y click tương đối so với giá giáp:
+      - Chân (`FEET`): $0.1 \le y < (0.55 \text{ hoặc } 0.9 \text{ nếu nhỏ})$.
+      - Ống chân (`LEGS`): $0.4 \le y < (1.2 \text{ hoặc } 1.4 \text{ nếu nhỏ})$.
+      - Ngực (`CHEST`): $(0.9 \text{ hoặc } 1.2) \le y < (1.6 \text{ hoặc } 1.9)$.
+      - Đầu (`HEAD`): $y \ge 1.6$.
 - **Neth Status**: **RESOLVED & VERIFIED**
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
-    - Bổ sung hằng số: `MINECART_PLACEMENT_BASE_Y_OFFSET`, `MINECART_PLACEMENT_SLOPE_Y_OFFSET`, `MINECART_PLACEMENT_HORIZONTAL_OFFSET`, `MINECART_DISPENSER_STEP_XZ_SCALE`, `MINECART_DISPENSER_RAIL_SLOPE_Y_OFFSET`, `MINECART_DISPENSER_RAIL_FLAT_Y_OFFSET`, `MINECART_DISPENSER_AIR_RAIL_BELOW_SLOPE_Y_OFFSET`, `MINECART_DISPENSER_AIR_RAIL_BELOW_FLAT_Y_OFFSET`.
-    - Bổ sung hàm thuần: `calculate_minecart_placement_spawn_position`, `calculate_minecart_dispenser_y_offset`, `calculate_minecart_dispenser_spawn_position`.
-  - Cập nhật `crates/pumpkin-core/src/item/items/minecart.rs`:
-    - Sử dụng `calculate_minecart_placement_spawn_position`, sửa lỗi đặt lệch góc Tây Bắc sang căn giữa khối `+0.5` trên X và Z.
-    - Sao chép `custom_name` từ ItemStack vào entity.
-    - Phát sinh sự kiện `GameEvent::EntityPlace`.
-  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
-    - Kết nối `calculate_minecart_dispenser_y_offset` và `calculate_minecart_dispenser_spawn_position`.
-    - Sao chép `custom_name` từ ItemStack vào entity.
-  - **Unit Tests**: `test_minecart_item_placement_and_dispenser_parity_gap445`.
+    - Bổ sung hằng số: `ARMOR_STAND_WOBBLE_TICKS`, `ARMOR_STAND_ROTATION_SNAP_DEGREES`, `ARMOR_STAND_ROTATION_OFFSET_DEGREES`, `ARMOR_STAND_ROTATION_ROUNDING_DEGREES`, `ARMOR_STAND_FEET_MIN_Y`, `ARMOR_STAND_FEET_MAX_Y_NORMAL`, `ARMOR_STAND_FEET_MAX_Y_SMALL`, `ARMOR_STAND_LEGS_MIN_Y`, `ARMOR_STAND_LEGS_MAX_Y_NORMAL`, `ARMOR_STAND_LEGS_MAX_Y_SMALL`, `ARMOR_STAND_CHEST_MIN_Y_NORMAL`, `ARMOR_STAND_CHEST_MIN_Y_SMALL`, `ARMOR_STAND_CHEST_MAX_Y_NORMAL`, `ARMOR_STAND_CHEST_MAX_Y_SMALL`, `ARMOR_STAND_HEAD_MIN_Y`, `ARMOR_STAND_PLACE_SOUND_VOLUME`, `ARMOR_STAND_PLACE_SOUND_PITCH`.
+    - Bổ sung hàm thuần: `calculate_armor_stand_placement_yaw`, `should_armor_stand_wobble`, `should_armor_stand_drop_self`, `calculate_armor_stand_clicked_slot`.
+  - Cập nhật `crates/pumpkin-core/src/entity/decoration/armor_stand.rs`:
+    - Cập nhật `break_and_drop_items` chấp nhận cờ `is_player_break`, chỉ làm rơi vật phẩm `ARMOR_STAND` khi người chơi phá vỡ (`should_armor_stand_drop_self`).
+    - Thêm phát sinh sự kiện `GameEvent::EntityDamage` khi bị rung lắc (wobble) và `GameEvent::EntityDie` khi vỡ.
+    - Cập nhật `clicked_slot` sử dụng `calculate_armor_stand_clicked_slot`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/armor_stand.rs`:
+    - Áp dụng `calculate_armor_stand_placement_yaw` khớp hoàn toàn góc quay snap $45^\circ$.
+    - Xử lý khối thay thế (`replaceable()`), sao chép `custom_name`, và phát `GameEvent::EntityPlace`.
+  - **Unit Tests**: `test_armor_stand_angle_snapping_drops_and_slot_click_parity_gap446`.
+
 
 
 

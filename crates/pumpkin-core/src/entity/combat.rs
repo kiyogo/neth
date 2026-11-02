@@ -9900,6 +9900,121 @@ pub fn calculate_armor_stand_damage(current_health: f32, damage: f32) -> (f32, b
     (new_health, will_break)
 }
 
+/// Vanilla `ArmorStand.java:55`: wobble / hit cooldown time (5 ticks).
+pub const ARMOR_STAND_WOBBLE_TICKS: i64 = 5;
+
+/// Vanilla `ArmorStandItem.java:48`: angle snapping discrete increment (45.0 degrees).
+pub const ARMOR_STAND_ROTATION_SNAP_DEGREES: f32 = 45.0;
+
+/// Vanilla `ArmorStandItem.java:48`: rotation offset subtracted from player yaw (180.0 degrees).
+pub const ARMOR_STAND_ROTATION_OFFSET_DEGREES: f32 = 180.0;
+
+/// Vanilla `ArmorStandItem.java:48`: half-step rounding offset for discrete angle snapping (22.5 degrees).
+pub const ARMOR_STAND_ROTATION_ROUNDING_DEGREES: f32 = 22.5;
+
+/// Vanilla `ArmorStand.java:231`: minimum click Y offset for feet slot (0.1).
+pub const ARMOR_STAND_FEET_MIN_Y: f64 = 0.1;
+
+/// Vanilla `ArmorStand.java:231`: maximum click Y offset for feet slot on normal armor stand (0.55 = 0.1 + 0.45).
+pub const ARMOR_STAND_FEET_MAX_Y_NORMAL: f64 = 0.55;
+
+/// Vanilla `ArmorStand.java:231`: maximum click Y offset for feet slot on small armor stand (0.9 = 0.1 + 0.8).
+pub const ARMOR_STAND_FEET_MAX_Y_SMALL: f64 = 0.9;
+
+/// Vanilla `ArmorStand.java:235`: minimum click Y offset for legs slot (0.4).
+pub const ARMOR_STAND_LEGS_MIN_Y: f64 = 0.4;
+
+/// Vanilla `ArmorStand.java:235`: maximum click Y offset for legs slot on normal armor stand (1.2 = 0.4 + 0.8).
+pub const ARMOR_STAND_LEGS_MAX_Y_NORMAL: f64 = 1.2;
+
+/// Vanilla `ArmorStand.java:235`: maximum click Y offset for legs slot on small armor stand (1.4 = 0.4 + 1.0).
+pub const ARMOR_STAND_LEGS_MAX_Y_SMALL: f64 = 1.4;
+
+/// Vanilla `ArmorStand.java:233`: minimum click Y offset for chest slot on normal armor stand (0.9 = 0.9 + 0.0).
+pub const ARMOR_STAND_CHEST_MIN_Y_NORMAL: f64 = 0.9;
+
+/// Vanilla `ArmorStand.java:233`: minimum click Y offset for chest slot on small armor stand (1.2 = 0.9 + 0.3).
+pub const ARMOR_STAND_CHEST_MIN_Y_SMALL: f64 = 1.2;
+
+/// Vanilla `ArmorStand.java:233`: maximum click Y offset for chest slot on normal armor stand (1.6 = 0.9 + 0.7).
+pub const ARMOR_STAND_CHEST_MAX_Y_NORMAL: f64 = 1.6;
+
+/// Vanilla `ArmorStand.java:233`: maximum click Y offset for chest slot on small armor stand (1.9 = 0.9 + 1.0).
+pub const ARMOR_STAND_CHEST_MAX_Y_SMALL: f64 = 1.9;
+
+/// Vanilla `ArmorStand.java:237`: minimum click Y offset for head slot (1.6).
+pub const ARMOR_STAND_HEAD_MIN_Y: f64 = 1.6;
+
+/// Vanilla `ArmorStandItem.java:51`: volume of armor stand place sound (0.75).
+pub const ARMOR_STAND_PLACE_SOUND_VOLUME: f32 = 0.75;
+
+/// Vanilla `ArmorStandItem.java:51`: pitch of armor stand place sound (0.8).
+pub const ARMOR_STAND_PLACE_SOUND_PITCH: f32 = 0.8;
+
+/// Snaps player yaw to one of 8 discrete 45-degree angles when placing an armor stand.
+/// Mirrors vanilla `ArmorStandItem.java:48`:
+/// `Mth.floor((Mth.wrapDegrees(context.getRotation() - 180.0F) + 22.5F) / 45.0F) * 45.0F`.
+#[must_use]
+pub fn calculate_armor_stand_placement_yaw(player_yaw: f32) -> f32 {
+    let wrapped = pumpkin_util::math::wrap_degrees(player_yaw - ARMOR_STAND_ROTATION_OFFSET_DEGREES);
+    ((wrapped + ARMOR_STAND_ROTATION_ROUNDING_DEGREES) / ARMOR_STAND_ROTATION_SNAP_DEGREES).floor()
+        * ARMOR_STAND_ROTATION_SNAP_DEGREES
+}
+
+/// Evaluates whether an armor stand wobbles or breaks when damaged.
+/// Mirrors vanilla `ArmorStand.java:331`:
+/// `time - this.lastHit > 5L && !shouldKill`.
+#[must_use]
+pub const fn should_armor_stand_wobble(
+    current_time: i64,
+    last_hit_time: i64,
+    always_kills: bool,
+) -> bool {
+    current_time - last_hit_time > ARMOR_STAND_WOBBLE_TICKS && !always_kills
+}
+
+/// Determines whether an armor stand drops itself as an item when broken.
+/// In vanilla `ArmorStand.java:398-406`, only `brokenByPlayer` drops the armor stand item (`Items.ARMOR_STAND`);
+/// environmental breakage (`brokenByAnything`) only drops equipped items.
+#[must_use]
+pub const fn should_armor_stand_drop_self(is_player_break: bool) -> bool {
+    is_player_break
+}
+
+/// Determines clicked equipment slot from relative click Y coordinate on an armor stand.
+/// Mirrors vanilla `ArmorStand.java:226-244` (`getClickedSlot`).
+#[must_use]
+pub fn calculate_armor_stand_clicked_slot(
+    click_y: f64,
+    is_small: bool,
+    has_feet: bool,
+    has_chest: bool,
+    has_legs: bool,
+    has_head: bool,
+    has_mainhand: bool,
+    has_offhand: bool,
+) -> pumpkin_data::data_component_impl::EquipmentSlot {
+    use pumpkin_data::data_component_impl::EquipmentSlot;
+    let feet_top = if is_small { ARMOR_STAND_FEET_MAX_Y_SMALL } else { ARMOR_STAND_FEET_MAX_Y_NORMAL };
+    let chest_bottom = if is_small { ARMOR_STAND_CHEST_MIN_Y_SMALL } else { ARMOR_STAND_CHEST_MIN_Y_NORMAL };
+    let chest_top = if is_small { ARMOR_STAND_CHEST_MAX_Y_SMALL } else { ARMOR_STAND_CHEST_MAX_Y_NORMAL };
+    let legs_top = if is_small { ARMOR_STAND_LEGS_MAX_Y_SMALL } else { ARMOR_STAND_LEGS_MAX_Y_NORMAL };
+
+    if click_y >= ARMOR_STAND_FEET_MIN_Y && click_y < feet_top && has_feet {
+        EquipmentSlot::FEET
+    } else if click_y >= chest_bottom && click_y < chest_top && has_chest {
+        EquipmentSlot::CHEST
+    } else if click_y >= ARMOR_STAND_LEGS_MIN_Y && click_y < legs_top && has_legs {
+        EquipmentSlot::LEGS
+    } else if click_y >= ARMOR_STAND_HEAD_MIN_Y && has_head {
+        EquipmentSlot::HEAD
+    } else if !has_mainhand && has_offhand {
+        EquipmentSlot::OFF_HAND
+    } else {
+        EquipmentSlot::MAIN_HAND
+    }
+}
+
 
 /// Checks if an entity type is able to damage End Crystals.
 /// In vanilla `EndCrystal.java:85, 94`, the Ender Dragon cannot damage End Crystals.
@@ -29756,5 +29871,98 @@ mod tests {
         assert_eq!(pos_down.x, 10.5);
         assert!((pos_down.y - (64.0 - 1.0 - 0.9)).abs() < 1e-6); // 62.1
         assert_eq!(pos_down.z, 20.5);
+    }
+
+    #[test]
+    fn test_armor_stand_angle_snapping_drops_and_slot_click_parity_gap446() {
+        use pumpkin_data::data_component_impl::EquipmentSlot;
+
+        // 1. Constants parity (ArmorStand.java:55, 231, 233, 235, 237; ArmorStandItem.java:48, 51)
+        assert_eq!(ARMOR_STAND_WOBBLE_TICKS, 5);
+        assert_eq!(ARMOR_STAND_ROTATION_SNAP_DEGREES, 45.0f32);
+        assert_eq!(ARMOR_STAND_ROTATION_OFFSET_DEGREES, 180.0f32);
+        assert_eq!(ARMOR_STAND_ROTATION_ROUNDING_DEGREES, 22.5f32);
+        assert_eq!(ARMOR_STAND_FEET_MIN_Y, 0.1);
+        assert_eq!(ARMOR_STAND_FEET_MAX_Y_NORMAL, 0.55);
+        assert_eq!(ARMOR_STAND_FEET_MAX_Y_SMALL, 0.9);
+        assert_eq!(ARMOR_STAND_LEGS_MIN_Y, 0.4);
+        assert_eq!(ARMOR_STAND_LEGS_MAX_Y_NORMAL, 1.2);
+        assert_eq!(ARMOR_STAND_LEGS_MAX_Y_SMALL, 1.4);
+        assert_eq!(ARMOR_STAND_CHEST_MIN_Y_NORMAL, 0.9);
+        assert_eq!(ARMOR_STAND_CHEST_MIN_Y_SMALL, 1.2);
+        assert_eq!(ARMOR_STAND_CHEST_MAX_Y_NORMAL, 1.6);
+        assert_eq!(ARMOR_STAND_CHEST_MAX_Y_SMALL, 1.9);
+        assert_eq!(ARMOR_STAND_HEAD_MIN_Y, 1.6);
+        assert_eq!(ARMOR_STAND_PLACE_SOUND_VOLUME, 0.75f32);
+        assert_eq!(ARMOR_STAND_PLACE_SOUND_PITCH, 0.8f32);
+
+        // 2. Placement yaw snapping to 8 discrete angles (ArmorStandItem.java:48)
+        // Player facing South (yaw = 0.0) -> wrapped = -180.0 -> floor((-180 + 22.5)/45) * 45 = floor(-3.5) * 45 = -4 * 45 = -180.0
+        assert_eq!(calculate_armor_stand_placement_yaw(0.0), -180.0);
+        // Player facing West (yaw = 90.0) -> wrapped = -90.0 -> floor((-90 + 22.5)/45) * 45 = floor(-1.5) * 45 = -2 * 45 = -90.0
+        assert_eq!(calculate_armor_stand_placement_yaw(90.0), -90.0);
+        // Player facing North (yaw = 180.0) -> wrapped = 0.0 -> floor((0 + 22.5)/45) * 45 = floor(0.5) * 45 = 0.0
+        assert_eq!(calculate_armor_stand_placement_yaw(180.0), 0.0);
+        // Player facing East (yaw = 270.0) -> wrapped = 90.0 -> floor((90 + 22.5)/45) * 45 = floor(2.5) * 45 = 90.0
+        assert_eq!(calculate_armor_stand_placement_yaw(270.0), 90.0);
+        // Slight angle near North (yaw = 195.0) -> should snap to 0.0
+        assert_eq!(calculate_armor_stand_placement_yaw(195.0), 0.0);
+        // Larger angle near North (yaw = 210.0) -> should snap to 45.0
+        assert_eq!(calculate_armor_stand_placement_yaw(210.0), 45.0);
+
+        // 3. Wobble vs Break conditions (ArmorStand.java:331)
+        assert!(should_armor_stand_wobble(100, 90, false)); // 10 ticks passed -> wobble
+        assert!(!should_armor_stand_wobble(100, 96, false)); // 4 ticks passed -> break (hit within 5 ticks)
+        assert!(!should_armor_stand_wobble(100, 95, false)); // exactly 5 ticks passed -> break
+        assert!(!should_armor_stand_wobble(100, 80, true)); // always_kills -> break immediately
+
+        // 4. Drop self logic (ArmorStand.java:398-406)
+        assert!(should_armor_stand_drop_self(true)); // Player break -> drops ARMOR_STAND item
+        assert!(!should_armor_stand_drop_self(false)); // Environmental break -> NO armor stand item
+
+        // 5. Clicked slot raycast (ArmorStand.java:226-244)
+        // Normal stand with all items:
+        // Head (>= 1.6)
+        assert!(
+            calculate_armor_stand_clicked_slot(1.7, false, true, true, true, true, true, true)
+                == EquipmentSlot::HEAD
+        );
+        // Chest ([0.9, 1.6))
+        assert!(
+            calculate_armor_stand_clicked_slot(1.3, false, true, true, true, true, true, true)
+                == EquipmentSlot::CHEST
+        );
+        // Legs ([0.4, 0.9) when chest has item, or [0.4, 1.2) when chest empty)
+        assert!(
+            calculate_armor_stand_clicked_slot(0.7, false, true, true, true, true, true, true)
+                == EquipmentSlot::LEGS
+        );
+        // Feet ([0.1, 0.55))
+        assert!(
+            calculate_armor_stand_clicked_slot(0.3, false, true, true, true, true, true, true)
+                == EquipmentSlot::FEET
+        );
+        // Offhand fallback when mainhand empty
+        assert!(
+            calculate_armor_stand_clicked_slot(0.05, false, false, false, false, false, false, true)
+                == EquipmentSlot::OFF_HAND
+        );
+        // Mainhand default
+        assert!(
+            calculate_armor_stand_clicked_slot(0.05, false, false, false, false, false, true, true)
+                == EquipmentSlot::MAIN_HAND
+        );
+
+        // Small stand:
+        // Small chest [1.2, 1.9)
+        assert!(
+            calculate_armor_stand_clicked_slot(1.3, true, true, true, true, false, true, true)
+                == EquipmentSlot::CHEST
+        );
+        // Small feet [0.1, 0.9)
+        assert!(
+            calculate_armor_stand_clicked_slot(0.8, true, true, false, false, false, true, true)
+                == EquipmentSlot::FEET
+        );
     }
 }

@@ -14,7 +14,6 @@ use pumpkin_data::{Block, BlockDirection};
 use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
-use pumpkin_util::math::wrap_degrees;
 
 pub struct ArmorStandItem;
 
@@ -40,7 +39,11 @@ impl ItemBehaviour for ArmorStandItem {
         }
 
         let world = player.world();
-        let target_pos = location.offset(face.to_offset());
+        let target_pos = if world.get_block_state(&location).replaceable() {
+            location
+        } else {
+            location.offset(face.to_offset())
+        };
         let bottom_center = Vector3::new(
             f64::from(target_pos.0.x) + 0.5,
             f64::from(target_pos.0.y),
@@ -67,9 +70,12 @@ impl ItemBehaviour for ArmorStandItem {
         if world.is_space_empty(bounding_box) && world.get_entities_at_box(&bounding_box).is_empty()
         {
             let (player_yaw, _) = player.rotation();
-            let rotation = ((wrap_degrees(player_yaw - 180.0) + 22.5) / 45.0).floor() * 45.0;
+            let rotation = crate::entity::combat::calculate_armor_stand_placement_yaw(player_yaw);
 
             let entity = Entity::new(world.clone(), bottom_center, &EntityType::ARMOR_STAND);
+            if let Some(custom_name) = item.get_custom_name() {
+                entity.set_custom_name(custom_name.clone());
+            }
 
             entity.set_rotation(rotation, 0.0);
 
@@ -82,6 +88,10 @@ impl ItemBehaviour for ArmorStandItem {
             let armor_stand = ArmorStandEntity::new(entity);
 
             world.spawn_entity(Arc::new(armor_stand));
+            world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::EntityPlace.name(),
+                bottom_center,
+            );
             item.decrement_unless_creative(player.gamemode.load(), 1);
             BlockActionResult::Success
         } else {
