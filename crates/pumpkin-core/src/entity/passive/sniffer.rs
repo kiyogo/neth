@@ -11,6 +11,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 
@@ -157,7 +158,29 @@ impl SnifferEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let is_digging = self.get_state() == SnifferState::Digging;
+        let (w, h, eye) = crate::entity::combat::calculate_sniffer_dimensions(
+            is_baby,
+            is_digging,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -172,6 +195,7 @@ impl SnifferEntity {
             pumpkin_data::tracked_data::sniffer::STATE,
             VarInt(state.id()),
         );
+        self.refresh_dimensions();
     }
 
     pub fn transition_to(&self, state: SnifferState) {
@@ -389,6 +413,17 @@ impl AgeableMob for SnifferEntity {
 
     fn get_baby_start_age(&self) -> i32 {
         SNIFFER_BABY_START_AGE
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -674,5 +709,17 @@ mod tests {
         assert_eq!(RISING_DURATION_TICKS, 40);
         assert_eq!(SNIFFING_COOLDOWN_TICKS, 9600);
         assert_eq!(DIGGING_DROP_SEED_OFFSET_TICKS, 120);
+    }
+
+    #[test]
+    fn test_sniffer_baby_and_digging_dimensions_parity() {
+        let adult_stand = crate::entity::combat::calculate_sniffer_dimensions(false, false, 1.9, 1.75, 1.05);
+        assert_eq!(adult_stand, (1.9, 1.75, 1.05));
+        let adult_dig = crate::entity::combat::calculate_sniffer_dimensions(false, true, 1.9, 1.75, 1.05);
+        assert_eq!(adult_dig, (1.9, 1.35, 0.81));
+        let baby_stand = crate::entity::combat::calculate_sniffer_dimensions(true, false, 1.9, 1.75, 1.05);
+        assert_eq!(baby_stand, (0.95, 0.875, 0.525));
+        let baby_dig = crate::entity::combat::calculate_sniffer_dimensions(true, true, 1.9, 1.75, 1.05);
+        assert_eq!(baby_dig, (0.95, 0.675, 0.405));
     }
 }

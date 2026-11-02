@@ -15,6 +15,7 @@ use pumpkin_data::wolf_sound_variant::WolfSoundVariant;
 use pumpkin_data::wolf_variant::WolfVariant;
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::combat;
@@ -222,7 +223,27 @@ impl WolfEntity {
             }
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_wolf_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     pub fn get_tame_flags(&self) -> u8 {
@@ -252,6 +273,17 @@ impl WolfEntity {
 impl AgeableMob for WolfEntity {
     fn get_ageable_data(&self) -> &crate::entity::ageable::AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -341,6 +373,7 @@ impl Mob for WolfEntity {
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
         let entity = self.get_entity();
         if !entity.is_alive() {
             self.is_wet.store(false, Ordering::Relaxed);
@@ -471,6 +504,7 @@ impl Mob for WolfEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         let variant_id = self.variant.load(Ordering::Relaxed);
         let variant_str = WolfVariant::all()
             .get(variant_id as usize)
@@ -489,6 +523,7 @@ impl Mob for WolfEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(variant_str) = nbt.get_string("variant") {
             let variant =
                 WolfVariant::from_name(variant_str).map_or(WolfVariant::Pale.id(), |v| v.id());
@@ -862,6 +897,14 @@ mod tests {
         assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_COUNT, 20);
         assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_OFFSET, (0.2, 0.1, 0.2));
         assert_eq!(combat::WOLF_ARMOR_CRACK_PARTICLE_SPEED, 0.1);
+    }
+
+    #[test]
+    fn test_wolf_baby_dimensions_and_parity() {
+        let adult = combat::calculate_wolf_dimensions(false, 0.6, 0.85, 0.68);
+        assert_eq!(adult, (0.6, 0.85, 0.68));
+        let baby = combat::calculate_wolf_dimensions(true, 0.6, 0.85, 0.68);
+        assert_eq!(baby, (0.3, 0.425, 0.34375));
     }
 }
 

@@ -10527,3 +10527,31 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Bổ sung `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)` trong `mob_write_nbt` và `mob_read_nbt` cho Kỳ giông và Tatu.
 - **Hằng số Parity**: `AXOLOTL_BABY_WIDTH` (0.375), `AXOLOTL_BABY_HEIGHT` (0.21), `AXOLOTL_BABY_EYE_HEIGHT` (0.09375), `AXOLOTL_BABY_SCALE` (0.5), `calculate_axolotl_dimensions`, `ARMADILLO_BABY_WIDTH` (0.42), `ARMADILLO_BABY_HEIGHT` (0.39), `ARMADILLO_BABY_EYE_HEIGHT` (0.21875), `ARMADILLO_BABY_SCALE` (0.6), `calculate_armadillo_dimensions`, `STRIDER_BABY_WIDTH` (0.45), `STRIDER_BABY_HEIGHT` (0.85), `STRIDER_BABY_EYE_HEIGHT` (0.4375), `STRIDER_BABY_SCALE` (0.5), `calculate_strider_dimensions`, `can_strider_dispenser_equip_saddle`.
 - **Unit Tests**: `test_axolotl_armadillo_strider_dimensions_and_parity_gap415`, `test_axolotl_baby_dimensions_and_parity`, `test_armadillo_baby_dimensions_and_parity`, `test_strider_baby_dimensions_and_dispenser_parity` pass 100%.
+
+
+### Gap 416: Turtle, Sniffer, Fox & Wolf Baby Scalable Dimensions, Sniffer Digging Dimensions, Fox Dispenser Equip & Ageable Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.turtle.Turtle.java:69-73, 288-290`, `net.minecraft.world.entity.animal.sniffer.Sniffer.java:73-76, 123-125`, `net.minecraft.world.entity.animal.fox.Fox.java:133-136, 384-385, 508-510`, `net.minecraft.world.entity.animal.wolf.Wolf.java:104-106, 588-590` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Rùa, Sniffer và Chó Sói Con (Baby Scalable Dimensions & Eye Height)**:
+  - Rùa (`Turtle.java:69-73`): `BABY_DIMENSIONS = EntityTypes.TURTLE.getDimensions().scale(0.3F)`.
+    - Adult turtle: width `1.2`, height `0.4`, eye height `0.34`.
+    - Baby turtle: width `0.36`, height `0.12`, eye height `0.102` (`TURTLE_BABY_EYE_HEIGHT`).
+  - Sniffer (`Sniffer.java:74-76, 123-125`):
+    - Adult standing: width `1.9`, height `1.75`, eye height `1.05`.
+    - Adult digging (`DIGGING_DIMENSIONS`): width `1.9`, height `1.35`, eye height `0.81`.
+    - Baby standing (`scale 0.5`): width `0.95`, height `0.875`, eye height `0.525`.
+    - Baby digging (`scale 0.5`): width `0.95`, height `0.675`, eye height `0.405`.
+    - Thời gian trưởng thành sniffer baby đặc thù: `SNIFFER_BABY_START_AGE = -48000` (40 phút).
+  - Chó sói (`Wolf.java:104-106`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.425F).withEyeHeight(0.34375F)`.
+    - Adult wolf: width `0.6`, height `0.85`, eye height `0.68`.
+    - Baby wolf: width `0.3`, height `0.425`, eye height `0.34375` (`WOLF_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_turtle_dimensions`, `calculate_sniffer_dimensions`, `calculate_wolf_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên `TurtleEntity`, `SnifferEntity`, `WolfEntity`.
+  - Tự động gọi `refresh_dimensions()` trên Sniffer khi chuyển đổi qua lại giữa trạng thái đào bới (`Digging`) và đứng/đi bộ.
+- **Trang bị Dispenser cho Cáo (Fox Dispenser Equip Parity)**:
+  - Cáo (`Fox.java:508-510`): có thể nhận trang bị từ Dispenser ở vị trí tay ngậm chính (`slot == MAIN_HAND`) khi `canPickUpLoot()` là true (`can_fox_dispenser_equip(slot_is_main_hand, can_pick_up_loot)`).
+  - Rùa hoàn toàn không thể nhận trang bị từ Dispenser.
+- **Lưu trữ NBT Tuổi và AI Step (Ageable NBT Persistence & AI Step)**:
+  - Bổ sung `write_ageable_nbt(nbt)`, `read_ageable_nbt(nbt)` và `self.ageable_ai_step()` trong `mob_tick` cho Chó sói (`WolfEntity`).
+- **Hằng số Parity**: `TURTLE_BABY_WIDTH` (0.36), `TURTLE_BABY_HEIGHT` (0.12), `TURTLE_BABY_EYE_HEIGHT` (0.102), `calculate_turtle_dimensions`, `SNIFFER_ADULT_WIDTH` (1.9), `SNIFFER_ADULT_HEIGHT` (1.75), `SNIFFER_ADULT_EYE_HEIGHT` (1.05), `SNIFFER_DIGGING_HEIGHT` (1.35), `SNIFFER_DIGGING_EYE_HEIGHT` (0.81), `SNIFFER_BABY_SCALE` (0.5), `calculate_sniffer_dimensions`, `WOLF_BABY_WIDTH` (0.3), `WOLF_BABY_HEIGHT` (0.425), `WOLF_BABY_EYE_HEIGHT` (0.34375), `WOLF_BABY_SCALE` (0.5), `calculate_wolf_dimensions`, `can_fox_dispenser_equip`.
+- **Unit Tests**: `test_turtle_sniffer_wolf_dimensions_and_parity_gap416`, `test_turtle_baby_dimensions_and_parity`, `test_sniffer_baby_and_digging_dimensions_parity`, `test_wolf_baby_dimensions_and_parity`, `test_fox_baby_dimensions_dispenser_and_food_swap_parity` pass 100%.

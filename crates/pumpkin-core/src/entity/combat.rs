@@ -10575,6 +10575,31 @@ pub const WOLF_ANGRY_TAIL_ANGLE: f32 = 1.539_380_4;
 pub const WOLF_PERSISTENT_ANGER_MIN_TICKS: i32 = 400;
 pub const WOLF_PERSISTENT_ANGER_MAX_TICKS: i32 = 780;
 
+/// Wolf baby dimension constants, mirroring vanilla `Wolf.java:104-106`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.425F).withEyeHeight(0.34375F)`.
+pub const WOLF_BABY_WIDTH: f32 = 0.3;
+pub const WOLF_BABY_HEIGHT: f32 = 0.425;
+pub const WOLF_BABY_EYE_HEIGHT: f32 = 0.34375;
+pub const WOLF_BABY_SCALE: f32 = 0.5;
+
+/// Calculates wolf dimensions based on baby status.
+///
+/// Mirrors vanilla `Wolf.java:588-590`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_wolf_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (WOLF_BABY_WIDTH, WOLF_BABY_HEIGHT, WOLF_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Feline (Cat & Ocelot) baby dimension constants, mirroring vanilla `Cat.java:86-88` & `Ocelot.java:65-67`.
 /// `BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.35F).withEyeHeight(0.34375F)`.
 pub const FELINE_BABY_WIDTH: f32 = 0.3;
@@ -10699,6 +10724,13 @@ pub fn calculate_fox_dimensions(
 #[must_use]
 pub const fn can_fox_move(is_sleeping: bool, is_sitting: bool, is_faceplanted: bool) -> bool {
     !is_sleeping && !is_sitting && !is_faceplanted
+}
+
+/// Determines if a fox can be equipped via dispenser.
+/// Mirrors vanilla `Fox.java:508-510`: `slot == EquipmentSlot.MAINHAND && this.canPickUpLoot()`.
+#[must_use]
+pub const fn can_fox_dispenser_equip(slot_is_main_hand: bool, can_pick_up_loot: bool) -> bool {
+    slot_is_main_hand && can_pick_up_loot
 }
 
 /// Determines if a fox can pick up/hold an item.
@@ -11395,6 +11427,30 @@ pub const TURTLE_CLOSE_HOME_RADIUS: f64 = 16.0;
 pub const TURTLE_GIVE_UP_HOME_TICKS: i32 = 600;
 pub const TURTLE_LIGHTNING_DROP_ITEM: &pumpkin_data::item::Item = &pumpkin_data::item::Item::BOWL;
 
+/// Turtle baby dimension constants, mirroring vanilla `Turtle.java:69-73`.
+/// `BABY_DIMENSIONS = EntityTypes.TURTLE.getDimensions().scale(0.3F)`.
+pub const TURTLE_BABY_WIDTH: f32 = 0.36;
+pub const TURTLE_BABY_HEIGHT: f32 = 0.12;
+pub const TURTLE_BABY_EYE_HEIGHT: f32 = 0.102;
+
+/// Calculates turtle dimensions based on baby status.
+///
+/// Mirrors vanilla `Turtle.java:288-290`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_turtle_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (TURTLE_BABY_WIDTH, TURTLE_BABY_HEIGHT, TURTLE_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Axolotl base max health (14.0 HP / 7 hearts).
 /// Mirrors vanilla Axolotl.java:390 (Attributes.MAX_HEALTH, 14.0).
 pub const AXOLOTL_MAX_HEALTH: f32 = 14.0;
@@ -11698,6 +11754,38 @@ pub const SNIFFER_SPEED_MULTIPLIER_WHEN_PANICKING: f64 = 2.0;
 /// Sniffer entity event status ID for digging sound/animation (63).
 /// Mirrors vanilla Sniffer.java:246 (`this.level().broadcastEntityEvent(this, (byte)63)`).
 pub const SNIFFER_DIGGING_EVENT_ID: u8 = 63;
+
+/// Sniffer dimension constants, mirroring vanilla `Sniffer.java:74-76, 123-125`.
+/// `DIGGING_DIMENSIONS = EntityDimensions.scalable(1.9F, 1.35F).withEyeHeight(0.81F)`.
+/// `getAgeScale() = isBaby() ? 0.5F : 1.0F`.
+pub const SNIFFER_ADULT_WIDTH: f32 = 1.9;
+pub const SNIFFER_ADULT_HEIGHT: f32 = 1.75;
+pub const SNIFFER_ADULT_EYE_HEIGHT: f32 = 1.05;
+pub const SNIFFER_DIGGING_HEIGHT: f32 = 1.35;
+pub const SNIFFER_DIGGING_EYE_HEIGHT: f32 = 0.81;
+pub const SNIFFER_BABY_SCALE: f32 = 0.5;
+
+/// Calculates sniffer dimensions based on baby and digging status.
+///
+/// Mirrors vanilla `Sniffer.java:123-125`:
+/// `return this.getState() == Sniffer.State.DIGGING ? DIGGING_DIMENSIONS.scale(this.getAgeScale()) : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_sniffer_dimensions(
+    is_baby: bool,
+    is_digging: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    let scale = if is_baby { SNIFFER_BABY_SCALE } else { 1.0 };
+    if is_digging {
+        (default_width * scale, SNIFFER_DIGGING_HEIGHT * scale, SNIFFER_DIGGING_EYE_HEIGHT * scale)
+    } else if is_baby {
+        (default_width * scale, default_height * scale, default_eye_height * scale)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
 
 /// Armadillo base max health (12.0 HP / 6 hearts).
 /// Mirrors vanilla Armadillo.java:93 (Attributes.MAX_HEALTH, 12.0).
@@ -24757,6 +24845,53 @@ mod tests {
         assert!(!can_strider_dispenser_equip_saddle(true, true, true));
         assert!(!can_strider_dispenser_equip_saddle(false, false, true));
         assert!(!can_strider_dispenser_equip_saddle(true, false, false));
+    }
+
+    #[test]
+    fn test_turtle_sniffer_wolf_dimensions_and_parity_gap416() {
+        use super::*;
+
+        // 1. Turtle adult & baby dimensions (Turtle.java:69-73, EntityTypes.java: sized(1.2, 0.4))
+        let turtle_adult = calculate_turtle_dimensions(false, 1.2, 0.4, 0.34);
+        assert_eq!(turtle_adult, (1.2, 0.4, 0.34));
+        let turtle_baby = calculate_turtle_dimensions(true, 1.2, 0.4, 0.34);
+        assert_eq!(turtle_baby, (0.36, 0.12, 0.102));
+        assert_eq!(TURTLE_BABY_WIDTH, 0.36);
+        assert_eq!(TURTLE_BABY_HEIGHT, 0.12);
+        assert_eq!(TURTLE_BABY_EYE_HEIGHT, 0.102);
+        assert_eq!(TURTLE_BABY_SCALE, 0.3);
+
+        // 2. Sniffer adult & baby dimensions (Sniffer.java:74-76, 123-125, EntityTypes.java: sized(1.9, 1.75), eyeHeight(1.05))
+        let sniffer_adult_stand = calculate_sniffer_dimensions(false, false, 1.9, 1.75, 1.05);
+        assert_eq!(sniffer_adult_stand, (1.9, 1.75, 1.05));
+        let sniffer_adult_dig = calculate_sniffer_dimensions(false, true, 1.9, 1.75, 1.05);
+        assert_eq!(sniffer_adult_dig, (1.9, 1.35, 0.81));
+        let sniffer_baby_stand = calculate_sniffer_dimensions(true, false, 1.9, 1.75, 1.05);
+        assert_eq!(sniffer_baby_stand, (0.95, 0.875, 0.525));
+        let sniffer_baby_dig = calculate_sniffer_dimensions(true, true, 1.9, 1.75, 1.05);
+        assert_eq!(sniffer_baby_dig, (0.95, 0.675, 0.405));
+        assert_eq!(SNIFFER_ADULT_WIDTH, 1.9);
+        assert_eq!(SNIFFER_ADULT_HEIGHT, 1.75);
+        assert_eq!(SNIFFER_ADULT_EYE_HEIGHT, 1.05);
+        assert_eq!(SNIFFER_DIGGING_HEIGHT, 1.35);
+        assert_eq!(SNIFFER_DIGGING_EYE_HEIGHT, 0.81);
+        assert_eq!(SNIFFER_BABY_SCALE, 0.5);
+
+        // 3. Wolf adult & baby dimensions (Wolf.java:104-106, EntityTypes.java: sized(0.6, 0.85))
+        let wolf_adult = calculate_wolf_dimensions(false, 0.6, 0.85, 0.68);
+        assert_eq!(wolf_adult, (0.6, 0.85, 0.68));
+        let wolf_baby = calculate_wolf_dimensions(true, 0.6, 0.85, 0.68);
+        assert_eq!(wolf_baby, (0.3, 0.425, 0.34375));
+        assert_eq!(WOLF_BABY_WIDTH, 0.3);
+        assert_eq!(WOLF_BABY_HEIGHT, 0.425);
+        assert_eq!(WOLF_BABY_EYE_HEIGHT, 0.34375);
+        assert_eq!(WOLF_BABY_SCALE, 0.5);
+
+        // 4. Fox dispenser equip parity (Fox.java:508-510)
+        assert!(can_fox_dispenser_equip(true, true));
+        assert!(!can_fox_dispenser_equip(true, false));
+        assert!(!can_fox_dispenser_equip(false, true));
+        assert!(!can_fox_dispenser_equip(false, false));
     }
 
 }

@@ -540,8 +540,10 @@ impl Mob for FoxEntity {
         &self,
         slot: &pumpkin_data::data_component_impl::EquipmentSlot,
     ) -> bool {
-        slot == &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND
-            && self.mob_entity.can_pick_up_loot()
+        combat::can_fox_dispenser_equip(
+            slot == &pumpkin_data::data_component_impl::EquipmentSlot::MAIN_HAND,
+            self.mob_entity.can_pick_up_loot(),
+        )
     }
 
     /// Vanilla `SweetBerryBushBlock`: foxes are immune to sweet berry bush damage.
@@ -887,6 +889,11 @@ mod tests {
         assert!(!combat::can_fox_hold_item(false, 0, true, false));
         // Mouth has non-food, ticksSinceEaten > 0, new item is food -> CAN SWAP!
         assert!(combat::can_fox_hold_item(false, 10, true, false));
+        // Dispenser equip parity (Fox.java:508-510)
+        assert!(combat::can_fox_dispenser_equip(true, true));
+        assert!(!combat::can_fox_dispenser_equip(true, false));
+        assert!(!combat::can_fox_dispenser_equip(false, true));
+
         // Mouth already has food -> cannot swap
         assert!(!combat::can_fox_hold_item(false, 10, true, true));
         // New item is not food -> cannot swap
