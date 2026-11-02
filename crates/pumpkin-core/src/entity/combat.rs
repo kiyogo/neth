@@ -10990,6 +10990,31 @@ pub const COW_BASE_MOVEMENT_SPEED: f64 = 0.2;
 pub const COW_XP_REWARD: u32 = 2;
 pub const MOOSHROOM_SHEAR_MUSHROOM_COUNT: usize = 5;
 
+/// Bovine (Cow & Mooshroom) baby dimension constants, mirroring vanilla `AbstractCow.java:33`.
+/// `BABY_DIMENSIONS = EntityTypes.COW.getDimensions().scale(0.5F).withEyeHeight(0.665F)`.
+pub const BOVINE_BABY_WIDTH: f32 = 0.45;
+pub const BOVINE_BABY_HEIGHT: f32 = 0.7;
+pub const BOVINE_BABY_EYE_HEIGHT: f32 = 0.665;
+pub const BOVINE_BABY_SCALE: f32 = 0.5;
+
+/// Calculates bovine (cow and mooshroom) dimensions based on baby status.
+///
+/// Mirrors vanilla `AbstractCow.java:103-105`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_bovine_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (BOVINE_BABY_WIDTH, BOVINE_BABY_HEIGHT, BOVINE_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Sheep attribute and shearing constants, mirroring vanilla `Sheep.java:50-52`.
 pub const SHEEP_MAX_HEALTH: f64 = 8.0;
 pub const SHEEP_BASE_MOVEMENT_SPEED: f64 = 0.23;
@@ -24358,6 +24383,27 @@ mod tests {
         assert_eq!(FELINE_BABY_HEIGHT, 0.35);
         assert_eq!(FELINE_BABY_EYE_HEIGHT, 0.34375);
         assert_eq!(FELINE_BABY_SCALE, 0.5);
+    }
+
+    #[test]
+    fn test_bovine_dimensions_and_parity_gap411() {
+        use super::*;
+
+        // 1. Adult bovine dimensions (Cow.java, MushroomCow.java, EntityTypes.java: sized(0.9, 1.4), eyeHeight(1.3))
+        let adult = calculate_bovine_dimensions(false, 0.9, 1.4, 1.3);
+        assert_eq!(adult.0, 0.9);
+        assert_eq!(adult.1, 1.4);
+        assert_eq!(adult.2, 1.3);
+
+        // 2. Baby bovine dimensions (AbstractCow.java:33: scale(0.5F).withEyeHeight(0.665F))
+        let baby = calculate_bovine_dimensions(true, 0.9, 1.4, 1.3);
+        assert_eq!(baby.0, BOVINE_BABY_WIDTH);
+        assert_eq!(baby.1, BOVINE_BABY_HEIGHT);
+        assert_eq!(baby.2, BOVINE_BABY_EYE_HEIGHT);
+        assert_eq!(BOVINE_BABY_WIDTH, 0.45);
+        assert_eq!(BOVINE_BABY_HEIGHT, 0.7);
+        assert_eq!(BOVINE_BABY_EYE_HEIGHT, 0.665);
+        assert_eq!(BOVINE_BABY_SCALE, 0.5);
     }
 
 }

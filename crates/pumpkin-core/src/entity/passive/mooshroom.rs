@@ -15,6 +15,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use pumpkin_util::math::vector3::Vector3;
 use uuid::Uuid;
 
@@ -140,7 +141,27 @@ impl MooshroomEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_bovine_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -350,6 +371,17 @@ impl AgeableMob for MooshroomEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for MooshroomEntity {
@@ -384,7 +416,16 @@ impl Mob for MooshroomEntity {
         Some(self)
     }
 
+    /// Vanilla AbstractCow.java: Mooshrooms cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_string("Type", self.get_variant().as_str().to_string());
         if let Some(effect) = self.stew_effect.load() {
             nbt.put_int("EffectId", effect as i32);
@@ -392,6 +433,7 @@ impl Mob for MooshroomEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(variant_str) = nbt.get_string("Type") {
             self.set_variant(MooshroomVariant::from_name(variant_str));
         }
@@ -562,5 +604,13 @@ mod tests {
         assert_eq!(combat::COW_MAX_HEALTH, 10.0);
         assert_eq!(combat::COW_BASE_MOVEMENT_SPEED, 0.2);
         assert_eq!(combat::MOOSHROOM_SHEAR_MUSHROOM_COUNT, 5);
+    }
+
+    #[test]
+    fn test_mooshroom_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_bovine_dimensions(false, 0.9, 1.4, 1.3);
+        assert_eq!(adult, (0.9, 1.4, 1.3));
+        let baby = combat::calculate_bovine_dimensions(true, 0.9, 1.4, 1.3);
+        assert_eq!(baby, (0.45, 0.7, 0.665));
     }
 }

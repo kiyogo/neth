@@ -10424,3 +10424,20 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Khi chưa được thuần hóa (`!is_tame`) và đang chạy mục tiêu dụ dỗ (`is_tempted`), mèo kêu xin ăn (`beg_for_food_sound(is_baby)`) định kỳ mỗi 100 ticks (`age % 100 == 0`) khớp 100% với `Cat.java:303-305`.
 - **Hằng số Parity**: `FELINE_BABY_WIDTH` (0.3), `FELINE_BABY_HEIGHT` (0.35), `FELINE_BABY_EYE_HEIGHT` (0.34375), `FELINE_BABY_SCALE` (0.5), `calculate_feline_dimensions`.
 - **Unit Tests**: `test_feline_dimensions_and_parity_gap410`, `test_cat_baby_dimensions_and_dispenser_parity`, `test_ocelot_baby_dimensions_and_dispenser_parity`, `test_cat_parity_constants`, `test_ocelot_parity_constants` pass 100%.
+
+
+### Gap 411: Cow & Mooshroom Bovine Baby Scaling Dimensions, Dispenser Equip Immunity, Ageable NBT & Dismount Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.cow.AbstractCow.java:32-34, 103-105` & `net.minecraft.world.entity.animal.cow.Cow.java` & `net.minecraft.world.entity.animal.cow.MushroomCow.java:59, 85-92` & `net.minecraft.world.entity.EntityTypes.java:307-310, 688-691`
+
+- **Kích thước Bò và Bò Nấm Con (Bovine Baby Scaling Dimensions & Eye Height)**:
+  - Vanilla định nghĩa `BABY_DIMENSIONS = EntityTypes.COW.getDimensions().scale(0.5F).withEyeHeight(0.665F)`.
+  - Adult bovine (Cow & Mooshroom): width `0.9`, height `1.4`, eye height `1.3`.
+  - Baby bovine: width `0.45` (`0.9 * 0.5`), height `0.7` (`1.4 * 0.5`), eye height `0.665` (`BOVINE_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_bovine_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên cả `CowEntity` và `MooshroomEntity`. Khi bò lớn lên hoặc đổi trạng thái baby, tự động cập nhật bounding box, eye height và tháo gỡ khỏi phương tiện nếu không phù hợp (`handle_age_boundary_vehicle_dismount`).
+- **Dispenser Equip Immunity Parity**:
+  - Cả Bò (`CowEntity`) và Bò Nấm (`MooshroomEntity`) đều không thể nhận hoặc trang bị bất kỳ vật phẩm/giáp nào từ Dispenser (`can_dispenser_equip_into_slot -> false`).
+- **Lưu trữ NBT Dữ liệu Tuổi (Ageable NBT Persistence)**:
+  - Cả hai thực thể đều tích hợp `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)` trong `mob_write_nbt` và `mob_read_nbt` để lưu trữ trạng thái tuổi và thời gian sinh sản đồng bộ với vanilla.
+- **Hằng số Parity**: `BOVINE_BABY_WIDTH` (0.45), `BOVINE_BABY_HEIGHT` (0.7), `BOVINE_BABY_EYE_HEIGHT` (0.665), `BOVINE_BABY_SCALE` (0.5), `calculate_bovine_dimensions`.
+- **Unit Tests**: `test_bovine_dimensions_and_parity_gap411`, `test_cow_baby_dimensions_and_dispenser_parity`, `test_mooshroom_baby_dimensions_and_dispenser_parity`, `test_cow_parity_constants`, `test_mooshroom_parity_constants` pass 100%.

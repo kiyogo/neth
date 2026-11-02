@@ -12,6 +12,7 @@ use pumpkin_data::sound::Sound;
 use pumpkin_data::{entity::EntityType, item::Item};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 
 use crate::entity::{
     Entity, EntityBase,
@@ -96,7 +97,27 @@ impl CowEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_bovine_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -144,6 +165,17 @@ impl AgeableMob for CowEntity {
     fn get_ageable_data(&self) -> &crate::entity::ageable::AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for CowEntity {
@@ -157,16 +189,26 @@ impl Animal for CowEntity {
 }
 
 impl Mob for CowEntity {
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+    /// Vanilla AbstractCow.java: Cows cannot equip items via dispensers.
+    fn can_dispenser_equip_into_slot(
+        &self,
+        _slot: &pumpkin_data::data_component_impl::EquipmentSlot,
+    ) -> bool {
+        false
+    }
+
+    fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
+    }
     fn get_base_experience_reward(&self) -> u32 {
         if self.mob_entity.living_entity.entity.age.load(Ordering::Relaxed) < 0 {
             0
         } else {
             Self::XP_REWARD
         }
-    }
-
-    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
-        Some(self)
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {
@@ -214,6 +256,7 @@ impl Mob for CowEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         let variant = CowVariant::from_id(self.variant.load(Ordering::Relaxed)).unwrap_or_default();
         nbt.put_string("variant", format!("minecraft:{}", variant.to_name()));
         let sound_variant = CowSoundVariant::from_id(self.sound_variant.load(Ordering::Relaxed))
@@ -225,6 +268,7 @@ impl Mob for CowEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(variant_str) = nbt.get_string("variant")
             && let Some(variant) = CowVariant::from_name(variant_str)
         {
@@ -269,5 +313,13 @@ mod tests {
         assert_eq!(CowEntity::XP_REWARD, 2);
         assert_eq!(combat::COW_MAX_HEALTH, 10.0);
         assert_eq!(combat::COW_BASE_MOVEMENT_SPEED, 0.2);
+    }
+
+    #[test]
+    fn test_cow_baby_dimensions_and_dispenser_parity() {
+        let adult = combat::calculate_bovine_dimensions(false, 0.9, 1.4, 1.3);
+        assert_eq!(adult, (0.9, 1.4, 1.3));
+        let baby = combat::calculate_bovine_dimensions(true, 0.9, 1.4, 1.3);
+        assert_eq!(baby, (0.45, 0.7, 0.665));
     }
 }
