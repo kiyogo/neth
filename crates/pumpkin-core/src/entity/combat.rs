@@ -3947,6 +3947,123 @@ pub fn calculate_boat_bubble_column_effect_y(current_y: f64, drag_down: bool) ->
     }
 }
 
+// ============================================================================
+// Vehicle Collisions & Pushing Mechanics Parity (AbstractBoat, AbstractMinecart)
+// Mirrors vanilla AbstractBoat.java:110-186, 277-295, 640-642 and
+// AbstractMinecart.java:515-583, OldMinecartBehavior.java:358-384
+// ============================================================================
+
+/// Bounding box horizontal expansion for boat collision check: 0.2
+/// Mirrors vanilla `AbstractBoat.java:277`: `this.getBoundingBox().inflate(0.2F, -0.01F, 0.2F)`
+pub const BOAT_PUSH_HORIZONTAL_INFLATION: f64 = 0.2;
+
+/// Bounding box vertical expansion for boat collision check: -0.01
+/// Mirrors vanilla `AbstractBoat.java:277`: `this.getBoundingBox().inflate(0.2F, -0.01F, 0.2F)`
+pub const BOAT_PUSH_VERTICAL_INFLATION: f64 = -0.01;
+
+/// Bounding box horizontal expansion for minecart push check: 0.2
+/// Mirrors vanilla `OldMinecartBehavior.java:359`: `this.minecart.getBoundingBox().inflate(0.2F, 0.0, 0.2F)`
+pub const MINECART_PUSH_HORIZONTAL_INFLATION: f64 = 0.2;
+
+/// Minimum squared horizontal speed for a rideable minecart to pick up passengers: 0.01
+/// Mirrors vanilla `OldMinecartBehavior.java:360`: `this.getDeltaMovement().horizontalDistanceSqr() >= 0.01`
+pub const MINECART_PUSH_MIN_HORIZONTAL_SPEED_SQ: f64 = 0.01;
+
+/// Minimum squared distance for minecart push impulse: 1.0E-4
+/// Mirrors vanilla `AbstractMinecart.java:522`: `if (dd >= 1.0E-4F)`
+pub const MINECART_PUSH_MIN_DISTANCE_SQ: f64 = 1.0e-4;
+
+/// Normal push impulse scaling factor for minecart: `0.1 * 0.5 = 0.05`
+/// Mirrors vanilla `AbstractMinecart.java:533-536`: `xa *= 0.1F; xa *= 0.5;`
+pub const MINECART_PUSH_FACTOR: f64 = 0.05;
+
+/// Push reduction factor for non-minecart entity pushed by minecart: 0.25 (1/4th)
+/// Mirrors vanilla `AbstractMinecart.java:541`: `entity.push(xa / 4.0, 0.0, za / 4.0)`
+pub const MINECART_PASSENGER_PUSH_REDUCTION_FACTOR: f64 = 0.25;
+
+/// Dot product threshold between facing and relative direction for minecart collisions: 0.8
+/// Mirrors vanilla `AbstractMinecart.java:562-563`: `double dot = Math.abs(dir.dot(facing)); if (!(dot < 0.8F))`
+pub const MINECART_COLLISION_DIRECTION_DOT_THRESHOLD: f64 = 0.8;
+
+/// Furnace minecart velocity reduction factor when colliding with non-furnace minecart: 0.2
+/// Mirrors vanilla `AbstractMinecart.java:567, 571`: `this.setDeltaMovement(movement.multiply(0.2, 1.0, 0.2))`
+pub const MINECART_COLLISION_SLOWDOWN_FACTOR: f64 = 0.2;
+
+/// Furnace minecart pushed velocity factor when colliding with another minecart: 0.95
+/// Mirrors vanilla `AbstractMinecart.java:569, 573`: `otherMinecart.setDeltaMovement(entityMovement.multiply(0.95, 1.0, 0.95))`
+pub const MINECART_COLLISION_PUSHED_FACTOR: f64 = 0.95;
+
+/// Checks whether a vehicle can collide with an entity.
+///
+/// Mirrors vanilla `AbstractBoat.java:116-118` (`canVehicleCollide`):
+/// `(entity.canBeCollidedWith(vehicle) || entity.isPushable()) && !vehicle.isPassengerOfSameVehicle(entity)`
+#[must_use]
+pub fn can_vehicle_collide(
+    entity_can_be_collided_with: bool,
+    entity_is_pushable: bool,
+    is_passenger_of_same_vehicle: bool,
+) -> bool {
+    (entity_can_be_collided_with || entity_is_pushable) && !is_passenger_of_same_vehicle
+}
+
+/// Checks whether a boat can push another entity based on vertical bounding boxes.
+///
+/// Mirrors vanilla `AbstractBoat.java:178-185` (`push`):
+/// ```java
+/// if (entity instanceof AbstractBoat) {
+///    if (entity.getBoundingBox().minY < this.getBoundingBox().maxY) {
+///       super.push(entity);
+///    }
+/// } else if (entity.getBoundingBox().minY <= this.getBoundingBox().minY) {
+///    super.push(entity);
+/// }
+/// ```
+#[must_use]
+pub fn boat_can_push(
+    other_min_y: f64,
+    boat_min_y: f64,
+    boat_max_y: f64,
+    is_other_boat: bool,
+) -> bool {
+    if is_other_boat {
+        other_min_y < boat_max_y
+    } else {
+        other_min_y <= boat_min_y
+    }
+}
+
+/// Calculates impulse (xa, za) for minecart collisions.
+///
+/// Mirrors vanilla `AbstractMinecart.java:519-536`:
+/// ```java
+/// double xa = entity.getX() - this.getX();
+/// double za = entity.getZ() - this.getZ();
+/// double dd = xa * xa + za * za;
+/// if (dd >= 1.0E-4F) {
+///    dd = Math.sqrt(dd);
+///    xa /= dd;
+///    za /= dd;
+///    double pow = 1.0 / dd;
+///    if (pow > 1.0) pow = 1.0;
+///    xa *= pow * 0.05;
+///    za *= pow * 0.05;
+/// }
+/// ```
+#[must_use]
+pub fn calculate_minecart_push_impulse(dx: f64, dz: f64) -> Option<(f64, f64)> {
+    let dd = dx * dx + dz * dz;
+    if dd < MINECART_PUSH_MIN_DISTANCE_SQ {
+        return None;
+    }
+    let dist = dd.sqrt();
+    let norm_x = dx / dist;
+    let norm_z = dz / dist;
+    let pow = (1.0 / dist).min(1.0);
+    let xa = norm_x * pow * MINECART_PUSH_FACTOR;
+    let za = norm_z * pow * MINECART_PUSH_FACTOR;
+    Some((xa, za))
+}
+
 /// Damage inflicted on a turtle when struck by lightning.
 ///
 /// Mirrors vanilla `Turtle.java:283-285` (`thunderHit`):
@@ -27512,6 +27629,66 @@ mod tests {
         assert!((escape.y - 0.0).abs() < 1e-6);
         assert!((escape.x - 0.0).abs() < 1e-6);
         assert!(escape.z > 0.9); // distance = (1.4 + 0.6 + 1e-5)/2 = 1.000005
+    }
+
+    #[test]
+    fn test_vehicle_collision_and_pushing_parity_gap433() {
+        // 1. Boat collision inflation constants
+        assert_eq!(BOAT_PUSH_HORIZONTAL_INFLATION, 0.2);
+        assert_eq!(BOAT_PUSH_VERTICAL_INFLATION, -0.01);
+
+        // 2. Minecart push constants
+        assert_eq!(MINECART_PUSH_HORIZONTAL_INFLATION, 0.2);
+        assert_eq!(MINECART_PUSH_MIN_HORIZONTAL_SPEED_SQ, 0.01);
+        assert_eq!(MINECART_PUSH_MIN_DISTANCE_SQ, 1.0e-4);
+        assert_eq!(MINECART_PUSH_FACTOR, 0.05);
+        assert_eq!(MINECART_PASSENGER_PUSH_REDUCTION_FACTOR, 0.25);
+        assert_eq!(MINECART_COLLISION_DIRECTION_DOT_THRESHOLD, 0.8);
+        assert_eq!(MINECART_COLLISION_SLOWDOWN_FACTOR, 0.2);
+        assert_eq!(MINECART_COLLISION_PUSHED_FACTOR, 0.95);
+
+        // 3. can_vehicle_collide (AbstractBoat.java:116-118)
+        assert!(can_vehicle_collide(true, false, false));
+        assert!(can_vehicle_collide(false, true, false));
+        assert!(can_vehicle_collide(true, true, false));
+        assert!(!can_vehicle_collide(true, true, true));
+        assert!(!can_vehicle_collide(false, false, false));
+
+        // 4. boat_has_enough_space_for (AbstractBoat.java:640-642: passenger.width < boat.width)
+        let boat_width = 1.375f32;
+        assert!(boat_has_enough_space_for(boat_width, 0.6));  // Zombie width = 0.6
+        assert!(boat_has_enough_space_for(boat_width, 0.9));  // Pig width = 0.9
+        assert!(boat_has_enough_space_for(boat_width, 0.49)); // Baby Zombie = 0.49
+        assert!(!boat_has_enough_space_for(boat_width, 1.4)); // Iron Golem = 1.4
+        assert!(!boat_has_enough_space_for(boat_width, 1.375)); // Equal width -> false
+
+        // 5. boat_can_push (AbstractBoat.java:178-185)
+        let boat_min_y = 64.0;
+        let boat_max_y = 64.5625;
+        // Other boat: pushes if other.min_y < boat.max_y
+        assert!(boat_can_push(64.2, boat_min_y, boat_max_y, true));
+        assert!(boat_can_push(64.0, boat_min_y, boat_max_y, true));
+        assert!(!boat_can_push(64.6, boat_min_y, boat_max_y, true));
+
+        // Non-boat: pushes only if other.min_y <= boat.min_y
+        assert!(boat_can_push(64.0, boat_min_y, boat_max_y, false));
+        assert!(boat_can_push(63.5, boat_min_y, boat_max_y, false));
+        assert!(!boat_can_push(64.01, boat_min_y, boat_max_y, false));
+        assert!(!boat_can_push(64.5, boat_min_y, boat_max_y, false));
+
+        // 6. calculate_minecart_push_impulse (AbstractMinecart.java:519-536)
+        assert!(calculate_minecart_push_impulse(0.001, 0.001).is_none()); // dd = 2e-6 < 1e-4
+        let impulse = calculate_minecart_push_impulse(0.5, 0.0).unwrap();
+        // dist = 0.5, norm_x = 1.0, norm_z = 0.0, pow = min(1.0/0.5, 1.0) = 1.0
+        // xa = 1.0 * 1.0 * 0.05 = 0.05, za = 0.0
+        assert!((impulse.0 - 0.05).abs() < 1e-6);
+        assert!((impulse.1 - 0.0).abs() < 1e-6);
+
+        let impulse2 = calculate_minecart_push_impulse(0.0, 2.0).unwrap();
+        // dist = 2.0, norm_x = 0.0, norm_z = 1.0, pow = min(1.0/2.0, 1.0) = 0.5
+        // za = 1.0 * 0.5 * 0.05 = 0.025
+        assert!((impulse2.0 - 0.0).abs() < 1e-6);
+        assert!((impulse2.1 - 0.025).abs() < 1e-6);
     }
 
 }

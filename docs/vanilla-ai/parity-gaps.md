@@ -10961,3 +10961,45 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Reset `fall_distance` của thực thể khi tương tác với cột bong bóng.
   - Đồng bộ `BoatEntity` với `pumpkin_data::tracked_data::boat::DATA_ID_BUBBLE_TIME`.
   - **Unit Tests**: `test_bubble_column_velocity_and_surface_parity_gap432` kiểm tra 100% các giá trị giới hạn vận tốc mặt trên và bên trong theo đúng chuẩn vanilla.
+
+
+### Gap 433: Vehicle Collisions & Pushing Mechanics Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:110-186, 277-295, 640-642`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:515-583`, `net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior.java:358-384`, `net.minecraft.world.entity.EntitySelector.java:29-56`
+
+- **Cơ chế Va chạm, Đẩy lùi và Tự động Lên thuyền (Boat Collision & Passenger Pickup Parity)**:
+  - Vanilla `AbstractBoat.tick()` (`AbstractBoat.java:277-295`):
+    - Rà quét các thực thể va chạm trong hộp `boundingBox.inflate(0.2F, -0.01F, 0.2F)` (`BOAT_PUSH_HORIZONTAL_INFLATION = 0.2`, `BOAT_PUSH_VERTICAL_INFLATION = -0.01`) thỏa mãn `EntitySelector.pushableBy(this)`.
+    - Điều kiện tự động nhận khách (`addNewPassengers`): Thuyền không được điều khiển bởi người chơi (`!(getControllingPassenger() instanceof Player)`).
+    - Mọi sinh vật sống (`LivingEntity`) chạm vào thuyền sẽ tự động lên thuyền (`startRiding(this)`) nếu:
+      - Thuyền còn chỗ (`passengers.size() < maxPassengers`).
+      - Sinh vật chưa cưỡi phương tiện nào (`!entity.isPassenger()`).
+      - Kích thước chiều ngang của sinh vật nhỏ hơn lòng thuyền (`hasEnoughSpaceFor` -> `entity.getBbWidth() < this.getBbWidth()`).
+      - Sinh vật không nằm trong tag `#minecraft:cannot_be_pushed_onto_boats` (người chơi, rùa khổng lồ, cá, mực, lợn biển, creaking, nautilus...).
+      - Cooldown cưỡi bằng 0 (`riding_cooldown == 0`).
+    - Ngược lại (thuyền đầy, có người lái, hoặc không đủ điều kiện): thuyền thực hiện đẩy lùi thực thể (`this.push(entity)`).
+  - Quy tắc đẩy lùi của thuyền (`AbstractBoat.push`):
+    - Khi chạm vào thuyền khác (`AbstractBoat`): đẩy nếu `other.minY < this.maxY`.
+    - Khi chạm vào các thực thể khác (quái vật, người chơi): chỉ đẩy nếu thực thể đứng dưới hoặc ngang sàn thuyền (`other.minY <= this.minY`), bỏ qua nếu thực thể đang đứng trên nóc thuyền.
+  - Thiết lập thuộc tính va chạm thuyền: `canCollideWith` (`canVehicleCollide`), `isCollidable = true`, `hasEntityCollisions = true`.
+- **Cơ chế Đẩy lùi và Hấp thụ Xung lực Xe mỏ (Minecart Pushing & Impulse Parity)**:
+  - Vanilla `AbstractMinecart.push` (`AbstractMinecart.java:515-546`):
+    - Ngưỡng khoảng cách tối thiểu tính xung lực: `dd >= 1.0E-4F` (`MINECART_PUSH_MIN_DISTANCE_SQ = 1.0e-4`).
+    - Hệ số đẩy xung lực: `norm * min(1.0 / dist, 1.0) * 0.1F * 0.5 = 0.05` (`MINECART_PUSH_FACTOR = 0.05`).
+    - Phân bổ xung lực khi va chạm với người chơi/sinh vật:
+      - Xe mỏ hấp thụ toàn bộ xung lực lùi `this.push(-xa, 0.0, -za)`.
+      - Thực thể bị va chạm chỉ nhận 1/4 xung lực đẩy: `entity.push(xa / 4.0, 0.0, za / 4.0)` (`MINECART_PASSENGER_PUSH_REDUCTION_FACTOR = 0.25`).
+    - Va chạm giữa các xe mỏ (`pushOtherMinecart`):
+      - Kiểm tra góc hướng di chuyển: `Math.abs(dir.dot(facing)) >= 0.8F` (`MINECART_COLLISION_DIRECTION_DOT_THRESHOLD = 0.8`).
+      - Xe lò (`FurnaceMinecart`): xe đẩy hấp thụ giảm tốc 0.2 (`MINECART_COLLISION_SLOWDOWN_FACTOR = 0.2`), xe được đẩy nhận 0.95 xung lực (`MINECART_COLLISION_PUSHED_FACTOR = 0.95`).
+      - Xe thường: chia đôi vận tốc tương hỗ `(v1 + v2) / 2.0`, áp dụng hệ số suy hao 0.2 cho cả hai.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Thêm các hằng số vanilla: `BOAT_PUSH_HORIZONTAL_INFLATION`, `BOAT_PUSH_VERTICAL_INFLATION`, `MINECART_PUSH_HORIZONTAL_INFLATION`, `MINECART_PUSH_MIN_HORIZONTAL_SPEED_SQ`, `MINECART_PUSH_MIN_DISTANCE_SQ`, `MINECART_PUSH_FACTOR`, `MINECART_PASSENGER_PUSH_REDUCTION_FACTOR`, `MINECART_COLLISION_DIRECTION_DOT_THRESHOLD`, `MINECART_COLLISION_SLOWDOWN_FACTOR`, `MINECART_COLLISION_PUSHED_FACTOR`.
+    - Thêm các hàm chuẩn parity: `can_vehicle_collide`, `boat_can_push`, `calculate_minecart_push_impulse`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat.rs`:
+    - Thêm `push_and_pickup_entities` vào `BoatEntity::tick()` hỗ trợ tự động gom mob vào thuyền khi thuyền trống/di chuyển.
+    - Cài đặt `can_collide_with`, `has_entity_collisions`, `push` trong `EntityBase for BoatEntity`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Đồng bộ `push_and_pickup_entities` và `push` dùng `calculate_minecart_push_impulse` và tỷ lệ giảm 1/4 cho sinh vật.
+  - **Unit Tests**: `test_vehicle_collision_and_pushing_parity_gap433` kiểm tra 100% các điều kiện va chạm, kích thước lòng thuyền, giới hạn cao độ đẩy thuyền và xung lực xe mỏ.

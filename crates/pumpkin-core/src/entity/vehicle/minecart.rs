@@ -493,11 +493,16 @@ impl MinecartEntity {
     fn push_and_pickup_entities(&self, caller: &dyn EntityBase) {
         let entity = &self.vehicle.entity;
         let world = entity.world.load();
-        let hitbox = entity.bounding_box.load().expand(0.2, 0.0, 0.2);
+        let hitbox = entity.bounding_box.load().expand(
+            crate::entity::combat::MINECART_PUSH_HORIZONTAL_INFLATION,
+            0.0,
+            crate::entity::combat::MINECART_PUSH_HORIZONTAL_INFLATION,
+        );
         let is_minecart = |other: &dyn EntityBase| other.cast_any().is::<Self>();
 
         if !(matches!(self.kind, MinecartKind::Rideable(_))
-            && entity.velocity.load().horizontal_length_squared() >= 0.01)
+            && entity.velocity.load().horizontal_length_squared()
+                >= crate::entity::combat::MINECART_PUSH_MIN_HORIZONTAL_SPEED_SQ)
         {
             for other in world.get_all_at_box(&hitbox) {
                 if other.get_entity().entity_id != entity.entity_id
@@ -531,7 +536,7 @@ impl MinecartEntity {
                 || self.vehicle.collide_entity(other_entity.entity_id)
             {
                 // A minecart fires the collision event in its own `push`.
-                other.push(caller);
+                caller.push(other.as_ref());
             }
         }
     }
@@ -544,7 +549,7 @@ impl MinecartEntity {
         let dir = Vector3::new(other_pos.x - pos.x, 0.0, other_pos.z - pos.z).normalize();
         let yaw = this.yaw.load().to_radians();
         let facing = Vector3::new(f64::from(yaw.cos()), 0.0, f64::from(yaw.sin())).normalize();
-        if dir.dot(&facing).abs() < f64::from(0.8f32) {
+        if dir.dot(&facing).abs() < crate::entity::combat::MINECART_COLLISION_DIRECTION_DOT_THRESHOLD {
             return;
         }
 
@@ -797,25 +802,24 @@ impl EntityBase for MinecartEntity {
             return;
         }
 
-        let mut xa = other_entity.pos.load().x - self_entity.pos.load().x;
-        let mut za = other_entity.pos.load().z - self_entity.pos.load().z;
-        let mut dd = xa * xa + za * za;
+        let dx = other_entity.pos.load().x - self_entity.pos.load().x;
+        let dz = other_entity.pos.load().z - self_entity.pos.load().z;
+        let Some((xa, za)) = crate::entity::combat::calculate_minecart_push_impulse(dx, dz) else {
+            return;
+        };
         // Plugin hook: only for pushes that happen.
-        if dd < f64::from(1.0E-4f32) || !self.vehicle.collide_entity(other_entity.entity_id) {
+        if !self.vehicle.collide_entity(other_entity.entity_id) {
             return;
         }
-        dd = dd.sqrt();
-        xa /= dd;
-        za /= dd;
-        let pow = (1.0 / dd).min(1.0);
-        xa = xa * pow * f64::from(0.1f32) * 0.5;
-        za = za * pow * f64::from(0.1f32) * 0.5;
 
         if let Some(other) = entity.cast_any().downcast_ref::<Self>() {
             self.push_other_minecart(other, xa, za);
         } else {
             self_entity.push_velocity(-xa, -za);
-            other_entity.push_velocity(xa / 4.0, za / 4.0);
+            other_entity.push_velocity(
+                xa * crate::entity::combat::MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
+                za * crate::entity::combat::MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
+            );
         }
     }
 
@@ -829,11 +833,13 @@ impl EntityBase for MinecartEntity {
 
     /// Vanilla `AbstractBoat.canVehicleCollide`.
     fn can_collide_with(&self, other: &dyn EntityBase) -> bool {
-        (other.is_collidable(None) || other.is_pushable())
-            && !self
-                .vehicle
+        crate::entity::combat::can_vehicle_collide(
+            other.is_collidable(None),
+            other.is_pushable(),
+            self.vehicle
                 .entity
-                .is_passenger_of_same_vehicle(other.get_entity())
+                .is_passenger_of_same_vehicle(other.get_entity()),
+        )
     }
 
     fn init_data_tracker(&self) {

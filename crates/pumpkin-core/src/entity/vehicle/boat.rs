@@ -16,7 +16,8 @@ use crate::server::Server;
 
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::item_stack::ItemStack;
-use pumpkin_data::tag;
+use pumpkin_data::tag::{self, Taggable};
+use crate::entity::velocity;
 use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_protocol::java::client::play::Metadata;
 
@@ -326,10 +327,54 @@ impl BoatEntity {
     pub(in crate::entity) fn can_push(&self, other: &Entity, is_boat: bool) -> bool {
         let bounds = self.vehicle.entity.bounding_box.load();
         let other_bottom = other.bounding_box.load().min.y;
-        if is_boat {
-            other_bottom < bounds.max.y
-        } else {
-            other_bottom <= bounds.min.y
+        crate::entity::combat::boat_can_push(other_bottom, bounds.min.y, bounds.max.y, is_boat)
+    }
+
+    /// Vanilla `AbstractBoat.java:277-295`:
+    /// Query entities in `hitbox = boundingBox.inflate(0.2, -0.01, 0.2)` with `EntitySelector.pushableBy(this)`.
+    pub fn push_and_pickup_entities(&self, caller: &dyn EntityBase) {
+        let entity = &self.vehicle.entity;
+        let world = entity.world.load();
+        let hitbox = entity.bounding_box.load().expand(
+            crate::entity::combat::BOAT_PUSH_HORIZONTAL_INFLATION,
+            crate::entity::combat::BOAT_PUSH_VERTICAL_INFLATION,
+            crate::entity::combat::BOAT_PUSH_HORIZONTAL_INFLATION,
+        );
+        let pushable = velocity::pushable_entities(caller, &hitbox);
+        if pushable.is_empty() {
+            return;
+        }
+
+        let add_new_passengers = !self.is_client_controlled();
+        let max_passengers = self.get_max_passengers();
+
+        for other in pushable {
+            let other_entity = other.get_entity();
+            if !other_entity.has_passenger(entity.entity_id) {
+                let current_passengers = entity
+                    .passengers
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let pass_count = current_passengers.len();
+                drop(current_passengers);
+
+                if add_new_passengers
+                    && pass_count < max_passengers
+                    && !other.is_passenger()
+                    && self.has_enough_space_for(other_entity)
+                    && other.get_living_entity().is_some()
+                    && !other_entity
+                        .entity_type
+                        .has_tag(&pumpkin_data::tag::EntityType::MINECRAFT_CANNOT_BE_PUSHED_ONTO_BOATS)
+                    && other_entity.riding_cooldown.load(Ordering::Relaxed) == 0
+                    && self.vehicle.collide_entity(other_entity.entity_id)
+                    && let Some(this) = world.get_entity_by_id(entity.entity_id)
+                {
+                    entity.add_passenger(this, other.clone());
+                } else {
+                    caller.push(other.as_ref());
+                }
+            }
         }
     }
 }
@@ -372,6 +417,7 @@ impl EntityBase for BoatEntity {
         self.apply_effects_from_blocks();
         self.tick_bubble_column();
         entity.tick_block_collisions(caller);
+        self.push_and_pickup_entities(caller);
         self.tick_passengers();
     }
 
@@ -473,6 +519,34 @@ impl EntityBase for BoatEntity {
 
     fn is_pushable(&self) -> bool {
         true
+    }
+
+    fn can_collide_with(&self, other: &dyn EntityBase) -> bool {
+        crate::entity::combat::can_vehicle_collide(
+            other.is_collidable(None),
+            other.is_pushable(),
+            self.vehicle.entity.is_passenger_of_same_vehicle(other.get_entity()),
+        )
+    }
+
+    fn has_entity_collisions(&self) -> bool {
+        true
+    }
+
+    fn push(&self, entity: &dyn EntityBase) {
+        let other_entity = entity.get_entity();
+        let is_boat = entity.cast_any().is::<BoatEntity>();
+        let bounds = self.vehicle.entity.bounding_box.load();
+        let other_bounds = other_entity.bounding_box.load();
+        if !crate::entity::combat::boat_can_push(
+            other_bounds.min.y,
+            bounds.min.y,
+            bounds.max.y,
+            is_boat,
+        ) {
+            return;
+        }
+        velocity::push_apart(self, entity);
     }
 
     fn get_gravity(&self) -> f64 {
