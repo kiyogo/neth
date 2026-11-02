@@ -4262,7 +4262,6 @@ impl Entity {
         let chunk_pos = self.chunk_pos.load();
 
         if let Some(passenger) = removed_passenger {
-            let vehicle_box = self.bounding_box.load();
             let passenger_entity = passenger.get_entity();
 
             // Vanilla: ridingCooldown = 60 (prevents immediate re-mount)
@@ -4291,181 +4290,165 @@ impl Entity {
             }
 
             let world = self.world.load();
-            // Calculate dismount directions and offsets (vanilla DismountHelper)
-            let vehicle_yaw = self.yaw.load();
-            // Wrap yaw to 0..360 range
-            let wrapped_yaw = (vehicle_yaw % 360.0 + 360.0) % 360.0;
-            let forward_dir = if !(45.0..315.0).contains(&wrapped_yaw) {
-                BlockDirection::South
-            } else if (45.0..135.0).contains(&wrapped_yaw) {
-                BlockDirection::West
-            } else if (135.0..225.0).contains(&wrapped_yaw) {
-                BlockDirection::North
-            } else {
-                BlockDirection::East
-            };
-
-            let get_step = |dir: BlockDirection| -> (i32, i32) {
-                match dir {
-                    BlockDirection::North => (0, -1),
-                    BlockDirection::South => (0, 1),
-                    BlockDirection::East => (1, 0),
-                    BlockDirection::West => (-1, 0),
-                    _ => (0, 0),
-                }
-            };
-
-            let get_clockwise = |dir: BlockDirection| -> BlockDirection {
-                match dir {
-                    BlockDirection::North => BlockDirection::East,
-                    BlockDirection::East => BlockDirection::South,
-                    BlockDirection::South => BlockDirection::West,
-                    BlockDirection::West => BlockDirection::North,
-                    other => other,
-                }
-            };
-
-            let get_opposite = |dir: BlockDirection| -> BlockDirection {
-                match dir {
-                    BlockDirection::North => BlockDirection::South,
-                    BlockDirection::South => BlockDirection::North,
-                    BlockDirection::East => BlockDirection::West,
-                    BlockDirection::West => BlockDirection::East,
-                    other => other,
-                }
-            };
-
-            let right_dir = get_clockwise(forward_dir);
-            let left_dir = get_opposite(right_dir);
-            let back_dir = get_opposite(forward_dir);
-
-            let (fx, fz) = get_step(forward_dir);
-            let (rx, rz) = get_step(right_dir);
-            let (lx, lz) = get_step(left_dir);
-            let (bx, bz) = get_step(back_dir);
-
-            let offsets = [
-                (rx, rz),
-                (lx, lz),
-                (bx + rx, bz + rz),
-                (bx + lx, bz + lz),
-                (fx + rx, fz + rz),
-                (fx + lx, fz + lz),
-                (bx, bz),
-                (fx, fz),
-            ];
-
-            let target_block_y = vehicle_box.max.y.floor() as i32;
-            let below_pos = BlockPos(Vector3::new(
-                self.pos.load().x.floor() as i32,
-                target_block_y - 1,
-                self.pos.load().z.floor() as i32,
-            ));
-
-            let below_state_id = world.get_block_state_id(&below_pos);
-            // Vanilla: isWater checks specifically for water fluid, not any fluid
-            let is_water = Fluid::from_state_id(below_state_id)
-                .is_some_and(|f| f.id == Fluid::WATER.id || f.id == Fluid::FLOWING_WATER.id);
-
+            let vehicle_box = self.bounding_box.load();
             let fallback_pos =
                 Vector3::new(self.pos.load().x, vehicle_box.max.y, self.pos.load().z);
+            let vehicle_block_pos = self.block_pos.load();
+            let is_player = passenger.get_player().is_some();
+            let dismount_poses = combat::get_entity_dismount_poses(is_player);
 
-            let boat_target = world.get_entity_by_id(self.entity_id).and_then(|vehicle| {
-                vehicle
-                    .cast_any()
-                    .downcast_ref::<BoatEntity>()
-                    .map(|boat| boat.get_dismount_location_for_passenger(passenger.as_ref()))
-            });
-            let dismount_pos = if boat_target.is_some() || is_water {
+            let forward_dir = combat::horizontal_direction_from_yaw(self.yaw.load());
+            let offsets = combat::dismount_offsets_for_direction(forward_dir);
+
+            let dismount_pos = if combat::is_boat_entity_type(self.entity_type)
+                || combat::is_chest_boat_entity_type(self.entity_type)
+                || combat::is_raft_entity_type(self.entity_type)
+            {
+                // Boat / Raft dismount (AbstractBoat.java:658-691)
+                let boat_target = world.get_entity_by_id(self.entity_id).and_then(|vehicle| {
+                    vehicle
+                        .cast_any()
+                        .downcast_ref::<BoatEntity>()
+                        .map(|boat| boat.get_dismount_location_for_passenger(passenger.as_ref()))
+                });
                 boat_target.unwrap_or(fallback_pos)
-            } else {
-                // Vanilla checks Standing, Crouching, Swimming poses and their respective height checks
-                let poses_and_heights = [
-                    (EntityPose::Standing, vec![0, 1, -1]),
-                    (EntityPose::Crouching, vec![0, 1, -1]),
-                    (EntityPose::Swimming, vec![0, 1]),
-                ];
+            } else if self.entity_type == &EntityType::STRIDER {
+                // Strider dismount (Strider.java:215-240)
+                let mut found_strider = None;
+                let collider_top = vehicle_box.max.y.floor() as i32;
+                let collider_bottom = (vehicle_box.min.y - 0.5).floor() as i32;
 
-                let vehicle_block_pos = self.block_pos.load();
-                let mut found = None;
+                'strider_search: for &angle in &combat::STRIDER_DISMOUNT_ESCAPE_ANGLES {
+                    let dir = combat::get_collision_horizontal_escape_vector(
+                        f64::from(self.width()),
+                        f64::from(passenger_entity.width()),
+                        passenger_entity.yaw.load() + angle,
+                    );
+                    let target_x = self.pos.load().x + dir.x;
+                    let target_z = self.pos.load().z + dir.z;
+                    let block_x = target_x.floor() as i32;
+                    let block_z = target_z.floor() as i32;
 
-                'search: for (pose, y_offsets) in poses_and_heights {
-                    let dims = passenger_entity.get_dimensions(pose);
-
-                    for y_offset in y_offsets {
-                        for &(ox, oz) in &offsets {
-                            let target_block_x = vehicle_block_pos.0.x + ox;
-                            let target_block_y = vehicle_block_pos.0.y + y_offset;
-                            let target_block_z = vehicle_block_pos.0.z + oz;
-
-                            let target_pos = BlockPos(Vector3::new(
-                                target_block_x,
-                                target_block_y,
-                                target_block_z,
-                            ));
-                            let height = world.get_dismount_height(&target_pos);
-
-                            if height.is_finite() && height < 1.0 {
-                                let location = Vector3::new(
-                                    f64::from(target_block_x) + 0.5,
-                                    f64::from(target_block_y) + height,
-                                    f64::from(target_block_z) + 0.5,
-                                );
-
+                    for y in (collider_bottom..=collider_top).rev() {
+                        let target_pos = BlockPos(Vector3::new(block_x, y, block_z));
+                        let (fluid, _) = world.get_fluid_and_fluid_state(&target_pos);
+                        if fluid.has_tag(&tag::Fluid::MINECRAFT_LAVA) {
+                            continue;
+                        }
+                        let floor = world.get_dismount_height(&target_pos);
+                        if combat::is_block_floor_valid(floor) {
+                            let location = Vector3::new(
+                                f64::from(block_x) + 0.5,
+                                f64::from(y) + floor,
+                                f64::from(block_z) + 0.5,
+                            );
+                            for &pose in dismount_poses {
+                                let dims = passenger_entity.get_dimensions(pose);
                                 let bbox = BoundingBox::new_from_pos(
                                     location.x, location.y, location.z, &dims,
                                 );
                                 if world.is_space_empty(bbox) {
-                                    found = Some((location, pose));
-                                    break 'search;
+                                    found_strider = Some((location, pose));
+                                    break 'strider_search;
                                 }
                             }
                         }
                     }
                 }
 
-                if let Some((pos, pose)) = found {
-                    if pose != EntityPose::Standing {
+                if let Some((pos, pose)) = found_strider {
+                    if is_player && pose != EntityPose::Standing {
                         passenger_entity.set_pose(pose);
                     }
                     pos
                 } else {
-                    // Try dismounting directly on top of the vehicle as fallback
-                    let mut found_fallback = None;
-                    let vehicle_top = vehicle_box.max.y;
-
-                    let poses = [
-                        EntityPose::Standing,
-                        EntityPose::Crouching,
-                        EntityPose::Swimming,
-                    ];
-
-                    for pose in poses {
-                        let dims = passenger_entity.get_dimensions(pose);
-                        let bbox = BoundingBox::new_from_pos(
-                            self.pos.load().x,
-                            vehicle_top,
-                            self.pos.load().z,
-                            &dims,
-                        );
-                        if world.is_space_empty(bbox) {
-                            found_fallback = Some((
-                                Vector3::new(self.pos.load().x, vehicle_top, self.pos.load().z),
-                                pose,
-                            ));
-                            break;
+                    fallback_pos
+                }
+            } else if combat::is_animal_entity_type(self.entity_type) {
+                // Animal mounts (Horse, Camel, Pig, Donkey, Mule, Llama) (Animal.java:251-280)
+                let mut found_animal = None;
+                'animal_search: for &pose in dismount_poses {
+                    let dims = passenger_entity.get_dimensions(pose);
+                    for &(ox, oz) in &offsets {
+                        let target_block_x = vehicle_block_pos.0.x + ox;
+                        let target_block_y = vehicle_block_pos.0.y;
+                        let target_block_z = vehicle_block_pos.0.z + oz;
+                        let target_pos = BlockPos(Vector3::new(
+                            target_block_x,
+                            target_block_y,
+                            target_block_z,
+                        ));
+                        let height = world.get_dismount_height(&target_pos);
+                        if combat::is_block_floor_valid(height) {
+                            let location = Vector3::new(
+                                f64::from(target_block_x) + 0.5,
+                                f64::from(target_block_y) + height,
+                                f64::from(target_block_z) + 0.5,
+                            );
+                            let bbox = BoundingBox::new_from_pos(
+                                location.x, location.y, location.z, &dims,
+                            );
+                            if world.is_space_empty(bbox) {
+                                found_animal = Some((location, pose));
+                                break 'animal_search;
+                            }
                         }
-                    }
-
-                    if let Some((pos, pose)) = found_fallback {
-                        if pose != EntityPose::Standing {
-                            passenger_entity.set_pose(pose);
-                        }
-                        pos
-                    } else {
-                        fallback_pos
                     }
                 }
+
+                if let Some((pos, pose)) = found_animal {
+                    if is_player && pose != EntityPose::Standing {
+                        passenger_entity.set_pose(pose);
+                    }
+                    pos
+                } else {
+                    fallback_pos
+                }
+            } else if combat::is_minecart_entity_type(self.entity_type) {
+                // Minecart dismount (AbstractMinecart.java:186-246)
+                let mut found_cart = None;
+                'minecart_search: for &pose in dismount_poses {
+                    let dims = passenger_entity.get_dimensions(pose);
+                    let y_offsets = combat::get_minecart_dismount_y_offsets(pose);
+                    for &y_offset in y_offsets {
+                        for &(ox, oz) in &offsets {
+                            let target_block_x = vehicle_block_pos.0.x + ox;
+                            let target_block_y = vehicle_block_pos.0.y + y_offset;
+                            let target_block_z = vehicle_block_pos.0.z + oz;
+                            let target_pos = BlockPos(Vector3::new(
+                                target_block_x,
+                                target_block_y,
+                                target_block_z,
+                            ));
+                            let height = world.get_dismount_height(&target_pos);
+                            if combat::is_block_floor_valid(height) {
+                                let location = Vector3::new(
+                                    f64::from(target_block_x) + 0.5,
+                                    f64::from(target_block_y) + height,
+                                    f64::from(target_block_z) + 0.5,
+                                );
+                                let bbox = BoundingBox::new_from_pos(
+                                    location.x, location.y, location.z, &dims,
+                                );
+                                if world.is_space_empty(bbox) {
+                                    found_cart = Some((location, pose));
+                                    break 'minecart_search;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let Some((pos, pose)) = found_cart {
+                    if is_player && pose != EntityPose::Standing {
+                        passenger_entity.set_pose(pose);
+                    }
+                    pos
+                } else {
+                    fallback_pos
+                }
+            } else {
+                fallback_pos
             };
 
             // Clean up any remaining reference to the dismounted passenger.

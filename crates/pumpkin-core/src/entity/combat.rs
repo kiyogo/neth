@@ -14146,6 +14146,231 @@ pub fn calculate_passenger_position(
     vehicle_pos + passenger_attachment - vehicle_attachment
 }
 
+// ============================================================================
+// Gap 431: Vehicle Passenger Rotation Clamping & Dismount Placement Parity
+// ============================================================================
+
+/// Maximum head rotation angle (in degrees) away from the boat body orientation.
+/// Mirrors vanilla `AbstractBoat.java:702`: `float maxHeadRotation = 105.0F;`
+pub const BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES: f32 = 105.0;
+
+/// Default maximum passenger count for standard boats / rafts (driver + 1 passenger).
+pub const BOAT_DEFAULT_MAX_PASSENGERS: usize = 2;
+
+/// Small epsilon used for distance and boundary calculations during dismounting.
+/// Mirrors vanilla `DismountHelper.java` and `Entity.java:3754` (`1.0E-5F`).
+pub const DISMOUNT_EPSILON: f64 = 1.0e-5;
+
+/// Strider escape angles in degrees: `[0.0, -22.5, 22.5, -45.0, 45.0]`.
+/// Mirrors vanilla `Strider.java:216-222`.
+pub const STRIDER_DISMOUNT_ESCAPE_ANGLES: [f32; 5] = [0.0, -22.5, 22.5, -45.0, 45.0];
+
+/// Calculates the body yaw for a passenger riding a boat.
+/// Animals riding in a completely full boat (2 passengers) face sideways (perpendicular, 90 or 270 degrees).
+/// Mirrors vanilla `AbstractBoat.java:709-713`:
+/// ```java
+/// private float calculatePassengerBodyYRot(final Entity passenger) {
+///    return passenger instanceof Animal && this.getPassengers().size() == this.getMaxPassengers()
+///       ? this.getYRot() + (passenger.getId() % 2 == 0 ? 90.0F : 270.0F)
+///       : this.getYRot();
+/// }
+/// ```
+#[must_use]
+pub fn calculate_boat_passenger_body_y_rot(
+    boat_yaw: f32,
+    passenger_type: &'static pumpkin_data::entity::EntityType,
+    passenger_id: i32,
+    total_passengers: usize,
+    max_passengers: usize,
+) -> f32 {
+    if is_animal_entity_type(passenger_type) && total_passengers >= max_passengers {
+        let side_offset = if passenger_id % 2 == 0 { 90.0 } else { 270.0 };
+        boat_yaw + side_offset
+    } else {
+        boat_yaw
+    }
+}
+
+/// Clamps the passenger rotation inside a boat.
+/// - If passenger has tag `#minecraft:can_turn_in_boats` (Breeze), no clamping is applied.
+/// - If passenger is a Mob, its yaw is locked to the body yaw (`mob.clampHeadRotationToBody()`).
+/// - If passenger is a Player / other, yaw is clamped to within +/- 105 degrees of the boat's body yaw.
+/// Returns `(clamped_yaw, y_delta)` where `y_delta` is the delta applied to `passenger.yRotO`.
+/// Mirrors vanilla `AbstractBoat.java:693-706`:
+/// ```java
+/// protected float clampRotation(final Entity passenger) {
+///    float passengerBodyYRot = this.calculatePassengerBodyYRot(passenger);
+///    passenger.setYBodyRot(passengerBodyYRot);
+///    if (passenger instanceof Mob mob) {
+///       passenger.setYRot(passengerBodyYRot);
+///       mob.clampHeadRotationToBody();
+///       return Mth.wrapDegrees(passengerBodyYRot - passenger.getYRot());
+///    } else {
+///       float delta = Mth.wrapDegrees(passenger.getYRot() - passengerBodyYRot);
+///       float maxHeadRotation = 105.0F;
+///       float targetDelta = Mth.clamp(delta, -105.0F, 105.0F);
+///       passenger.setYRot(passenger.getYRot() + targetDelta - delta);
+///       return targetDelta - delta;
+///    }
+/// }
+/// ```
+#[must_use]
+pub fn clamp_boat_passenger_rotation(
+    boat_yaw: f32,
+    passenger_type: &'static pumpkin_data::entity::EntityType,
+    passenger_id: i32,
+    passenger_yaw: f32,
+    total_passengers: usize,
+    max_passengers: usize,
+    is_mob: bool,
+) -> (f32, f32) {
+    if passenger_type == &pumpkin_data::entity::EntityType::BREEZE {
+        return (passenger_yaw, 0.0);
+    }
+
+    let passenger_body_y_rot = calculate_boat_passenger_body_y_rot(
+        boat_yaw,
+        passenger_type,
+        passenger_id,
+        total_passengers,
+        max_passengers,
+    );
+
+    use pumpkin_util::math::wrap_degrees;
+
+    if is_mob {
+        let y_delta = wrap_degrees(passenger_body_y_rot - passenger_yaw);
+        (passenger_body_y_rot, y_delta)
+    } else {
+        let delta = wrap_degrees(passenger_yaw - passenger_body_y_rot);
+        let target_delta = delta.clamp(
+            -BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES,
+            BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES,
+        );
+        let new_yaw = passenger_yaw + target_delta - delta;
+        let y_delta = target_delta - delta;
+        (new_yaw, y_delta)
+    }
+}
+
+/// Calculates the horizontal escape vector for dismounting an entity.
+/// Mirrors vanilla `Entity.getCollisionHorizontalEscapeVector` (`Entity.java:3753-3758`):
+/// ```java
+/// double distance = (colliderWidth + collidingWidth + 1.0E-5F) / 2.0;
+/// float directionX = -Mth.sin(directionDegrees * (float) (Math.PI / 180.0));
+/// float directionZ = Mth.cos(directionDegrees * (float) (Math.PI / 180.0));
+/// float scale = Math.max(Math.abs(directionX), Math.abs(directionZ));
+/// return new Vec3(directionX * distance / scale, 0.0, directionZ * distance / scale);
+/// ```
+#[must_use]
+pub fn get_collision_horizontal_escape_vector(
+    collider_width: f64,
+    colliding_width: f64,
+    direction_degrees: f32,
+) -> Vector3<f64> {
+    let distance = (collider_width + colliding_width + DISMOUNT_EPSILON) / 2.0;
+    let rad = (direction_degrees as f64).to_radians();
+    let dir_x = -rad.sin();
+    let dir_z = rad.cos();
+    let scale = dir_x.abs().max(dir_z.abs());
+    Vector3::new(
+        dir_x * distance / scale,
+        0.0,
+        dir_z * distance / scale,
+    )
+}
+
+/// Converts a yaw rotation into a 2D horizontal Direction matching vanilla `Direction.fromYRot` (`Direction.java:299-301`):
+/// `from2DDataValue(Mth.floor(yRot / 90.0 + 0.5) & 3)`
+/// where `0 -> SOUTH, 1 -> WEST, 2 -> NORTH, 3 -> EAST`.
+#[must_use]
+pub fn horizontal_direction_from_yaw(yaw: f32) -> pumpkin_data::BlockDirection {
+    use pumpkin_data::BlockDirection;
+    let idx = ((f64::from(yaw) / 90.0 + 0.5).floor() as i32) & 3;
+    match idx {
+        0 => BlockDirection::South,
+        1 => BlockDirection::West,
+        2 => BlockDirection::North,
+        3 => BlockDirection::East,
+        _ => BlockDirection::South,
+    }
+}
+
+/// Returns the 8 horizontal block offsets around a vehicle in vanilla order:
+/// `[right, left, back+right, back+left, forward+right, forward+left, back, forward]`.
+/// Mirrors vanilla `DismountHelper.offsetsForDirection` (`DismountHelper.java:22-36`).
+#[must_use]
+pub fn dismount_offsets_for_direction(forward: pumpkin_data::BlockDirection) -> [(i32, i32); 8] {
+    use pumpkin_data::BlockDirection;
+    let (fx, fz) = match forward {
+        BlockDirection::North => (0, -1),
+        BlockDirection::South => (0, 1),
+        BlockDirection::East => (1, 0),
+        BlockDirection::West => (-1, 0),
+        _ => (0, 1),
+    };
+    // In Minecraft 2D coordinates:
+    // South (0, 1) -> clockwise is West (-1, 0)
+    // West (-1, 0) -> clockwise is North (0, -1)
+    // North (0, -1) -> clockwise is East (1, 0)
+    // East (1, 0) -> clockwise is South (0, 1)
+    // Hence right = (-fz, fx), left = (fz, -fx), back = (-fx, -fz)
+    let (rx, rz) = (-fz, fx);
+    let (lx, lz) = (fz, -fx);
+    let (bx, bz) = (-fx, -fz);
+
+    [
+        (rx, rz),
+        (lx, lz),
+        (bx + rx, bz + rz),
+        (bx + lx, bz + lz),
+        (fx + rx, fz + rz),
+        (fx + lx, fz + lz),
+        (bx, bz),
+        (fx, fz),
+    ]
+}
+
+/// Checks whether a block floor height is valid for dismounting onto.
+/// Mirrors vanilla `DismountHelper.isBlockFloorValid` (`DismountHelper.java:38-40`):
+/// `return !Double.isInfinite(blockFloorHeight) && blockFloorHeight < 1.0;`
+#[must_use]
+pub fn is_block_floor_valid(floor_height: f64) -> bool {
+    floor_height.is_finite() && floor_height < 1.0
+}
+
+/// Returns the candidate dismount poses for an entity.
+/// Players check `[Standing, Crouching, Swimming]`, mobs only check `[Standing]`.
+/// Mirrors vanilla `Player.getDismountPoses` (`Player.java:1855`) and `LivingEntity.getDismountPoses` (`LivingEntity.java:3761`).
+#[must_use]
+pub fn get_entity_dismount_poses(is_player: bool) -> &'static [pumpkin_data::entity::EntityPose] {
+    if is_player {
+        &[
+            pumpkin_data::entity::EntityPose::Standing,
+            pumpkin_data::entity::EntityPose::Crouching,
+            pumpkin_data::entity::EntityPose::Swimming,
+        ]
+    } else {
+        &[pumpkin_data::entity::EntityPose::Standing]
+    }
+}
+
+/// Returns the Y offsets to test for minecart dismount for a given pose.
+/// Mirrors vanilla `AbstractMinecart.POSE_DISMOUNT_HEIGHTS` (`AbstractMinecart.java:57-59`):
+/// - Standing: `[0, 1, -1]`
+/// - Crouching: `[0, 1, -1]`
+/// - Swimming: `[0, 1]`
+#[must_use]
+pub fn get_minecart_dismount_y_offsets(pose: pumpkin_data::entity::EntityPose) -> &'static [i32] {
+    match pose {
+        pumpkin_data::entity::EntityPose::Standing | pumpkin_data::entity::EntityPose::Crouching => {
+            &[0, 1, -1]
+        }
+        pumpkin_data::entity::EntityPose::Swimming => &[0, 1],
+        _ => &[0],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -27147,6 +27372,146 @@ mod tests {
         assert!(!is_animal_entity_type(&EntityType::SKELETON));
         assert!(!is_animal_entity_type(&EntityType::PLAYER));
         assert!(!is_animal_entity_type(&EntityType::VILLAGER));
+    }
+
+    #[test]
+    fn test_boat_passenger_rotation_and_dismount_parity_gap431() {
+        use pumpkin_data::entity::{EntityPose, EntityType};
+        use pumpkin_data::BlockDirection;
+
+        // 1. Boat passenger body yaw calculation
+        // Animal in a full boat (total == 2)
+        // If passenger id is even -> +90, if odd -> +270
+        let cow_body_even = calculate_boat_passenger_body_y_rot(45.0, &EntityType::COW, 20, 2, 2);
+        assert_eq!(cow_body_even, 45.0 + 90.0);
+        let cow_body_odd = calculate_boat_passenger_body_y_rot(45.0, &EntityType::COW, 21, 2, 2);
+        assert_eq!(cow_body_odd, 45.0 + 270.0);
+
+        // Animal in a single-passenger boat -> faces boat forward
+        let cow_body_single = calculate_boat_passenger_body_y_rot(45.0, &EntityType::COW, 20, 1, 2);
+        assert_eq!(cow_body_single, 45.0);
+
+        // Player / Non-animal in a full boat -> faces boat forward
+        let player_body = calculate_boat_passenger_body_y_rot(45.0, &EntityType::PLAYER, 20, 2, 2);
+        assert_eq!(player_body, 45.0);
+
+        // 2. Boat passenger rotation clamping
+        // Breeze has tag CAN_TURN_IN_BOATS -> rotation not clamped at all
+        let (breeze_yaw, breeze_delta) = clamp_boat_passenger_rotation(
+            0.0,
+            &EntityType::BREEZE,
+            1,
+            180.0,
+            1,
+            2,
+            true,
+        );
+        assert_eq!(breeze_yaw, 180.0);
+        assert_eq!(breeze_delta, 0.0);
+
+        // Mob locked to body yaw
+        let (zombie_yaw, zombie_delta) = clamp_boat_passenger_rotation(
+            0.0,
+            &EntityType::ZOMBIE,
+            1,
+            45.0,
+            1,
+            2,
+            true,
+        );
+        assert_eq!(zombie_yaw, 0.0); // forced to boat body yaw
+        assert_eq!(zombie_delta, -45.0);
+
+        // Player clamped to +/- 105 degrees from boat yaw
+        assert_eq!(BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES, 105.0);
+        // Player at +90 degrees -> within 105, unclamped
+        let (p_yaw_90, p_delta_90) = clamp_boat_passenger_rotation(
+            0.0,
+            &EntityType::PLAYER,
+            1,
+            90.0,
+            1,
+            2,
+            false,
+        );
+        assert_eq!(p_yaw_90, 90.0);
+        assert_eq!(p_delta_90, 0.0);
+
+        // Player at +130 degrees -> clamped to +105 degrees (delta = -25)
+        let (p_yaw_130, p_delta_130) = clamp_boat_passenger_rotation(
+            0.0,
+            &EntityType::PLAYER,
+            1,
+            130.0,
+            1,
+            2,
+            false,
+        );
+        assert_eq!(p_yaw_130, 105.0);
+        assert!((p_delta_130 - (-25.0)).abs() < 1e-6);
+
+        // Player at -150 degrees -> clamped to -105 degrees (delta = +45)
+        let (p_yaw_neg150, p_delta_neg150) = clamp_boat_passenger_rotation(
+            0.0,
+            &EntityType::PLAYER,
+            1,
+            -150.0,
+            1,
+            2,
+            false,
+        );
+        assert_eq!(p_yaw_neg150, -105.0);
+        assert!((p_delta_neg150 - 45.0).abs() < 1e-6);
+
+        // 3. Direction from yaw (Direction.fromYRot: floor(yaw / 90.0 + 0.5) & 3)
+        // 0 -> South, 90 -> West, 180 -> North, 270 -> East
+        assert_eq!(horizontal_direction_from_yaw(0.0), BlockDirection::South);
+        assert_eq!(horizontal_direction_from_yaw(10.0), BlockDirection::South);
+        assert_eq!(horizontal_direction_from_yaw(85.0), BlockDirection::West);
+        assert_eq!(horizontal_direction_from_yaw(90.0), BlockDirection::West);
+        assert_eq!(horizontal_direction_from_yaw(180.0), BlockDirection::North);
+        assert_eq!(horizontal_direction_from_yaw(270.0), BlockDirection::East);
+        assert_eq!(horizontal_direction_from_yaw(-90.0), BlockDirection::East);
+
+        // 4. Dismount offsets for direction (DismountHelper.offsetsForDirection)
+        // Order: [right, left, back+right, back+left, forward+right, forward+left, back, forward]
+        let south_offsets = dismount_offsets_for_direction(BlockDirection::South);
+        // forward = South (0, 1), right = West (-1, 0), left = East (1, 0), back = North (0, -1)
+        assert_eq!(south_offsets[0], (-1, 0)); // right
+        assert_eq!(south_offsets[1], (1, 0));  // left
+        assert_eq!(south_offsets[2], (-1, -1));// back + right
+        assert_eq!(south_offsets[3], (1, -1)); // back + left
+        assert_eq!(south_offsets[4], (-1, 1)); // forward + right
+        assert_eq!(south_offsets[5], (1, 1));  // forward + left
+        assert_eq!(south_offsets[6], (0, -1)); // back
+        assert_eq!(south_offsets[7], (0, 1));  // forward
+
+        // 5. Floor validity and dismount poses
+        assert!(is_block_floor_valid(0.0));
+        assert!(is_block_floor_valid(0.5));
+        assert!(!is_block_floor_valid(1.0));
+        assert!(!is_block_floor_valid(f64::INFINITY));
+
+        let player_poses = get_entity_dismount_poses(true);
+        assert_eq!(player_poses.len(), 3);
+        assert!(matches!(player_poses[0], EntityPose::Standing));
+        assert!(matches!(player_poses[1], EntityPose::Crouching));
+        assert!(matches!(player_poses[2], EntityPose::Swimming));
+
+        let mob_poses = get_entity_dismount_poses(false);
+        assert_eq!(mob_poses.len(), 1);
+        assert!(matches!(mob_poses[0], EntityPose::Standing));
+
+        let minecart_standing_y = get_minecart_dismount_y_offsets(EntityPose::Standing);
+        assert_eq!(minecart_standing_y, &[0, 1, -1]);
+        let minecart_swimming_y = get_minecart_dismount_y_offsets(EntityPose::Swimming);
+        assert_eq!(minecart_swimming_y, &[0, 1]);
+
+        // 6. Horizontal escape vector
+        let escape = get_collision_horizontal_escape_vector(1.4, 0.6, 0.0);
+        assert!((escape.y - 0.0).abs() < 1e-6);
+        assert!((escape.x - 0.0).abs() < 1e-6);
+        assert!(escape.z > 0.9); // distance = (1.4 + 0.6 + 1e-5)/2 = 1.000005
     }
 
 }

@@ -23,6 +23,17 @@ impl JavaClient {
             wrap_degrees(rotation.yaw) % 360.0,
             wrap_degrees(rotation.pitch),
         );
+
+        // Vanilla `Entity.turn`: if (this.vehicle != null) this.vehicle.onPassengerTurned(this);
+        if let Some(vehicle) = entity.get_vehicle() {
+            if let Some(boat) = vehicle
+                .cast_any()
+                .downcast_ref::<crate::entity::vehicle::boat::BoatEntity>()
+            {
+                boat.on_passenger_turned(player);
+            }
+        }
+
         // Send the new position to tracking players only.
         let entity_id = entity.entity_id;
         // TODO: use `pumpkin_util::math::pack_degrees`.

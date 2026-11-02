@@ -10901,3 +10901,28 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Cập nhật `crates/pumpkin-core/src/net/java/play/move_vehicle.rs`:
     - Đặt vị trí của người lái xe và tất cả người chơi ngồi sau theo đúng `calculate_passenger_pos`, xóa bỏ việc ghi đè ép người lái về tọa độ gốc của phương tiện.
 - **Unit Tests**: `test_passenger_attachments_and_vehicle_position_parity_gap430` kiểm tra chính xác 100% tọa độ ngồi của tất cả phương tiện vanilla (thuyền, bè, minecart, lạc đà, ngựa, strider, pig, villager).
+
+
+### Gap 431: Vehicle Passenger Rotation Clamping & Dismount Placement Mechanics Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:645-720`, `net.minecraft.world.entity.vehicle.DismountHelper.java:20-112`, `net.minecraft.world.entity.animal.Animal.java:251-280`, `net.minecraft.world.entity.monster.Strider.java:214-240`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:186-246`, `net.minecraft.world.entity.Entity.java:508-513, 3753-3763`, `net.minecraft.core.Direction.java:295-301`
+
+- **Giới hạn Góc Xoay Hành khách trên Thuyền (Boat Passenger Rotation Clamping Parity)**:
+  - Vanilla `AbstractBoat.clampRotation` (`AbstractBoat.java:693-706`):
+    - Động vật ngồi trên thuyền đủ 2 người (`total_passengers == max_passengers`): thân quay ngang 90 độ hoặc 270 độ tùy theo chẵn/lẻ của entity ID (`boat_yaw + (passenger.getId() % 2 == 0 ? 90.0F : 270.0F)`).
+    - Mob thông thường: bị khóa cứng góc quay theo thân thuyền (`passenger.setYRot(bodyRot); mob.clampHeadRotationToBody()`).
+    - Người chơi: góc đầu và thân được giới hạn tối đa +/- 105 độ so với góc thân thuyền (`maxHeadRotation = 105.0F`, `delta.clamp(-105.0, 105.0)`).
+    - Ngoại lệ: thực thể mang tag `#minecraft:can_turn_in_boats` (chỉ duy nhất `Breeze`) được phép xoay tự do không bị clamp.
+  - Tích hợp hook `on_passenger_turned` trong `BoatEntity` và xử lý trực tiếp khi người chơi gửi gói xoay `SPlayerRotation` trong `player_rotation.rs`.
+- **Hệ thống Định vị Thoát khỏi Phương tiện (Dismount Placement Mechanics Parity)**:
+  - Vanilla `DismountHelper.offsetsForDirection` (`DismountHelper.java:22-36`):
+    - Tính hướng phía trước qua `Direction.fromYRot(yaw)` (`(floor(yaw / 90.0 + 0.5) & 3)`).
+    - 8 vị trí offset xung quanh phương tiện theo đúng thứ tự vanilla:
+      `[right, left, back+right, back+left, forward+right, forward+left, back, forward]`.
+  - Phân loại vị trí nhảy xuống theo từng loại phương tiện:
+    - **Thuyền/Bè (`Boat / Raft`)**: Sử dụng escape vector `width * SQRT_2`, né tránh các khối nước (`!isWaterAt`), kiểm tra chiều cao sàn hợp lệ (`isBlockFloorValid`) cho các tư thế `Standing`, `Crouching`, `Swimming`.
+    - **Strider (`Strider.java:215-240`)**: Kiểm tra 5 góc thoát `[0.0, -22.5, 22.5, -45.0, 45.0]`, rà quét độ cao từ `maxY` xuống `minY - 0.5`, lọc bỏ dung nham (`!is(FluidTags.LAVA)`), kiểm tra vị trí an toàn không bị va chạm.
+    - **Động vật cưng / Cưỡi (`Horse, Camel, Pig, Donkey, Mule, Llama`)**: Kiểm tra 8 ô xung quanh tại đúng cao độ của con vật (`Animal.java:267-275`).
+    - **Xe mỏ (`Minecart`)**: Kiểm tra các độ cao `POSE_DISMOUNT_HEIGHTS` (`Standing/Crouching: [0, 1, -1]`, `Swimming: [0, 1]`), kiểm tra trần xe không bị nghẹt (`findCeilingFrom`).
+    - **Fallback**: Đặt ngay trên nóc phương tiện `(x, bounding_box.maxY, z)`.
+- **Unit Tests**: `test_boat_passenger_rotation_and_dismount_parity_gap431` kiểm tra chính xác 100% logic quay của động vật trên thuyền 2 chỗ (+90/+270), clamp góc 105 độ của người chơi, bypass của Breeze, hướng 2D và 8 offset dismount, kiểm tra sàn và các tư thế nhảy xuống.

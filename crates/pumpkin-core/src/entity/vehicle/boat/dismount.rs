@@ -1,18 +1,13 @@
-use pumpkin_data::entity::EntityPose;
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_util::math::{
     boundingbox::{BoundingBox, EntityDimensions},
-    cos,
     position::BlockPos,
-    sin,
     vector3::Vector3,
 };
 
 use super::BoatEntity;
 use crate::entity::EntityBase;
 use crate::world::World;
-
-const DISMOUNT_EPSILON: f64 = 1.0e-5f32 as f64;
 
 impl BoatEntity {
     pub(in crate::entity) fn get_dismount_location_for_passenger(
@@ -24,7 +19,7 @@ impl BoatEntity {
         let pos = entity.pos.load();
         let top = entity.bounding_box.load().max.y;
         let fallback = Vector3::new(pos.x, top, pos.z);
-        let direction = get_collision_horizontal_escape_vector(
+        let direction = crate::entity::combat::get_collision_horizontal_escape_vector(
             f64::from(entity.width() * std::f32::consts::SQRT_2),
             f64::from(passenger_entity.width()),
             passenger_entity.yaw.load(),
@@ -46,12 +41,8 @@ impl BoatEntity {
             ))
         });
         let is_player = passenger.get_player().is_some();
-        let poses = [
-            EntityPose::Standing,
-            EntityPose::Crouching,
-            EntityPose::Swimming,
-        ];
-        for pose in poses.into_iter().take(if is_player { 3 } else { 1 }) {
+        let poses = crate::entity::combat::get_entity_dismount_poses(is_player);
+        for &pose in poses {
             let dimensions = if is_player {
                 passenger_entity.get_dimensions(pose)
             } else {
@@ -74,24 +65,7 @@ impl BoatEntity {
     }
 }
 
-fn get_collision_horizontal_escape_vector(
-    collider_width: f64,
-    colliding_width: f64,
-    direction_degrees: f32,
-) -> Vector3<f64> {
-    let distance = (collider_width + colliding_width + DISMOUNT_EPSILON) / 2.0;
-    let direction = direction_degrees.to_radians();
-    let x = -sin(direction);
-    let z = cos(direction);
-    let scale = f64::from(x.abs().max(z.abs()));
-    Vector3::new(
-        f64::from(x) * distance / scale,
-        0.0,
-        f64::from(z) * distance / scale,
-    )
-}
-
-fn can_dismount_to(
+pub(crate) fn can_dismount_to(
     world: &World,
     passenger: &dyn EntityBase,
     location: Vector3<f64>,
@@ -107,7 +81,7 @@ fn can_dismount_to(
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     border.contains(bounds.min.x, bounds.min.z)
         && border.contains(
-            bounds.max.x - DISMOUNT_EPSILON,
-            bounds.max.z - DISMOUNT_EPSILON,
+            bounds.max.x - crate::entity::combat::DISMOUNT_EPSILON,
+            bounds.max.z - crate::entity::combat::DISMOUNT_EPSILON,
         )
 }
