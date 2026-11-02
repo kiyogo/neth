@@ -10,30 +10,48 @@ use super::memory::{MemoryModuleId, types};
 use super::{BrainTick, VisibilityContext};
 
 pub mod adult;
+pub mod armadillo_scare;
+pub mod axolotl_attackables;
+pub mod breeze_attack_entity;
 pub mod dummy;
+pub mod frog_attackables;
+pub mod golem_detected;
+pub mod hoglin_specific;
 pub mod hurt_by;
+pub mod is_in_water;
+pub mod nearest_bed;
 pub mod nearest_items;
 pub mod nearest_living_entities;
 pub mod nearest_players;
-pub mod golem_detected;
 pub mod piglin_brute_specific;
 pub mod piglin_specific;
-pub mod villager_babies;
+pub mod secondary_pois;
 pub mod tempting;
+pub mod villager_babies;
 pub mod villager_hostiles;
+pub mod warden_entity;
 
-pub use adult::AdultSensor;
+pub use adult::{AdultSensor, AdultSensorAnyType};
+pub use armadillo_scare::ArmadilloScareSensor;
+pub use axolotl_attackables::AxolotlAttackablesSensor;
+pub use breeze_attack_entity::BreezeAttackEntitySensor;
 pub use dummy::DummySensor;
+pub use frog_attackables::FrogAttackablesSensor;
+pub use golem_detected::GolemSensor;
+pub use hoglin_specific::HoglinSpecificSensor;
 pub use hurt_by::HurtBySensor;
+pub use is_in_water::IsInWaterSensor;
+pub use nearest_bed::NearestBedSensor;
 pub use nearest_items::NearestItemSensor;
 pub use nearest_living_entities::NearestLivingEntitySensor;
 pub use nearest_players::PlayerSensor;
-pub use golem_detected::GolemSensor;
 pub use piglin_brute_specific::PiglinBruteSpecificSensor;
 pub use piglin_specific::PiglinSpecificSensor;
-pub use villager_babies::VillagerBabiesSensor;
+pub use secondary_pois::SecondaryPoiSensor;
 pub use tempting::TemptingSensor;
+pub use villager_babies::VillagerBabiesSensor;
 pub use villager_hostiles::VillagerHostilesSensor;
+pub use warden_entity::WardenEntitySensor;
 
 pub const DEFAULT_SCAN_RATE: i32 = 20;
 
@@ -48,14 +66,24 @@ pub enum SensorType {
     NearestLivingEntities,
     NearestPlayers,
     NearestItems,
+    NearestBed,
     HurtBy,
-    PiglinSpecific,
-    PiglinBruteSpecific,
     VillagerHostiles,
     VillagerBabies,
+    SecondaryPois,
     Golem,
+    ArmadilloScare,
+    PiglinSpecific,
+    PiglinBruteSpecific,
+    HoglinSpecific,
     Adult,
+    AdultAnyType,
     Tempting,
+    AxolotlAttackables,
+    FrogAttackables,
+    IsInWater,
+    WardenEntity,
+    BreezeAttackEntity,
 }
 
 impl SensorType {
@@ -66,14 +94,24 @@ impl SensorType {
             Self::NearestLivingEntities => "minecraft:nearest_living_entities",
             Self::NearestPlayers => "minecraft:nearest_players",
             Self::NearestItems => "minecraft:nearest_items",
+            Self::NearestBed => "minecraft:nearest_bed",
             Self::HurtBy => "minecraft:hurt_by",
-            Self::PiglinSpecific => "minecraft:piglin_specific_sensor",
-            Self::PiglinBruteSpecific => "minecraft:piglin_brute_specific_sensor",
             Self::VillagerHostiles => "minecraft:villager_hostiles",
             Self::VillagerBabies => "minecraft:villager_babies",
+            Self::SecondaryPois => "minecraft:secondary_pois",
             Self::Golem => "minecraft:golem_detected",
-            Self::Adult => "minecraft:adult",
+            Self::ArmadilloScare => "minecraft:armadillo_scare_detected",
+            Self::PiglinSpecific => "minecraft:piglin_specific_sensor",
+            Self::PiglinBruteSpecific => "minecraft:piglin_brute_specific_sensor",
+            Self::HoglinSpecific => "minecraft:hoglin_specific_sensor",
+            Self::Adult => "minecraft:nearest_adult",
+            Self::AdultAnyType => "minecraft:nearest_adult_any_type",
             Self::Tempting => "minecraft:tempting",
+            Self::AxolotlAttackables => "minecraft:axolotl_attackables",
+            Self::FrogAttackables => "minecraft:frog_attackables",
+            Self::IsInWater => "minecraft:is_in_water",
+            Self::WardenEntity => "minecraft:warden_entity_sensor",
+            Self::BreezeAttackEntity => "minecraft:breeze_attack_entity_sensor",
         }
     }
 
@@ -81,17 +119,27 @@ impl SensorType {
     pub const fn scan_rate(self) -> i32 {
         match self {
             Self::Golem => golem_detected::GOLEM_SCAN_RATE,
+            Self::ArmadilloScare => armadillo_scare::ARMADILLO_SCARE_SCAN_RATE,
+            Self::SecondaryPois => secondary_pois::SECONDARY_POI_SCAN_RATE,
             Self::Dummy
             | Self::NearestLivingEntities
             | Self::NearestPlayers
             | Self::NearestItems
+            | Self::NearestBed
             | Self::HurtBy
             | Self::PiglinSpecific
             | Self::PiglinBruteSpecific
+            | Self::HoglinSpecific
             | Self::VillagerHostiles
             | Self::VillagerBabies
             | Self::Adult
-            | Self::Tempting => DEFAULT_SCAN_RATE,
+            | Self::AdultAnyType
+            | Self::Tempting
+            | Self::AxolotlAttackables
+            | Self::FrogAttackables
+            | Self::IsInWater
+            | Self::WardenEntity
+            | Self::BreezeAttackEntity => DEFAULT_SCAN_RATE,
         }
     }
 
@@ -101,14 +149,24 @@ impl SensorType {
             Self::NearestLivingEntities => Box::new(NearestLivingEntitySensor),
             Self::NearestPlayers => Box::new(PlayerSensor),
             Self::NearestItems => Box::new(NearestItemSensor),
+            Self::NearestBed => Box::new(NearestBedSensor),
             Self::HurtBy => Box::new(HurtBySensor),
-            Self::PiglinSpecific => Box::new(PiglinSpecificSensor),
-            Self::PiglinBruteSpecific => Box::new(PiglinBruteSpecificSensor),
             Self::VillagerHostiles => Box::new(VillagerHostilesSensor),
             Self::VillagerBabies => Box::new(VillagerBabiesSensor),
+            Self::SecondaryPois => Box::new(SecondaryPoiSensor),
             Self::Golem => Box::new(GolemSensor),
+            Self::ArmadilloScare => Box::new(ArmadilloScareSensor),
+            Self::PiglinSpecific => Box::new(PiglinSpecificSensor),
+            Self::PiglinBruteSpecific => Box::new(PiglinBruteSpecificSensor),
+            Self::HoglinSpecific => Box::new(HoglinSpecificSensor),
             Self::Adult => Box::new(AdultSensor),
+            Self::AdultAnyType => Box::new(AdultSensorAnyType),
             Self::Tempting => Box::new(TemptingSensor::new()),
+            Self::AxolotlAttackables => Box::new(AxolotlAttackablesSensor),
+            Self::FrogAttackables => Box::new(FrogAttackablesSensor),
+            Self::IsInWater => Box::new(IsInWaterSensor),
+            Self::WardenEntity => Box::new(WardenEntitySensor),
+            Self::BreezeAttackEntity => Box::new(BreezeAttackEntitySensor),
         }
     }
 

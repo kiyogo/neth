@@ -113,3 +113,22 @@ ead_nbt_non_mut và Mob trait trong crates/pumpkin-core/src/entity/mod.rs và i
 - **Khắc phục:**
   - Triển khai `crates/pumpkin-core/src/entity/ai/brain/sensing/adult.rs` và `tempting.rs`, đăng ký trong `sensing/mod.rs`.
   - Toàn bộ unit tests kiểm tra parity đã passed 100%.
+
+#### 2.10. [GAP-AI-005] Hoàn Thiện Toàn Bộ 22 Cảm Biến Não Bộ AI Vanilla (Full Parity JVMC)
+- **Mức độ:** MEDIUM
+- **Phân hệ:** Entities / AI / Brain Sensing
+- **Hành vi Vanilla (`net.minecraft.world.entity.ai.sensing.*`):**
+  - Triển khai toàn bộ 10 cảm biến còn lại của Minecraft Java Edition:
+    1. `AdultSensorAnyType`: Dò tìm động vật thân thiện trưởng thành gần nhất theo `#minecraft:followable_friendly_mobs`.
+    2. `IsInWaterSensor`: Kiểm tra trạng thái chìm dưới nước của thực thể và ghi nhớ `IS_IN_WATER`.
+    3. `AxolotlAttackablesSensor`: Dò tìm mục tiêu dưới nước trong bán kính 8m (khoảng cách bình phương 64m²), tấn công thực thể mang tag `#minecraft:axolotl_always_hostiles` hoặc săn mồi `#minecraft:axolotl_hunt_targets` khi không có cooldown săn mồi.
+    4. `FrogAttackablesSensor`: Dò tìm sinh vật có thể nuốt (Slime và Magma Cube kích thước 1, hoặc tag `#minecraft:frog_food`) trong bán kính 10m, loại trừ mục tiêu không thể với tới lưỡi (`unreachable_tongue_targets`).
+    5. `WardenEntitySensor`: Quét các thực thể sống xung quanh, ưu tiên nhắm vào người chơi (`Player`), tiếp đó mới đến sinh vật sống khác; loại bỏ Armor Stand và Warden khác.
+    6. `BreezeAttackEntitySensor`: Tìm thực thể tấn công gần nhất (loại bỏ spectator và creative).
+    7. `HoglinSpecificSensor`: Tìm khối xua đuổi (`#minecraft:hoglin_repellents`) gần nhất trong hình hộp Manhattan 8x4; đếm và lưu danh sách Piglin và Hoglin trưởng thành nhìn thấy.
+    8. `SecondaryPoiSensor`: Quét POI phụ trong hộp 9x5x9 (Farmland cho Dân làng Nông dân Farmer), chu kỳ 40 ticks (`SECONDARY_POI_SCAN_RATE`).
+    9. `ArmadilloScareSensor`: Phát hiện mối nguy hiểm xung quanh khi Armadillo có thể cuộn tròn (`can_stay_rolled_up`), ghi nhớ `DANGER_DETECTED_RECENTLY` với TTL 80 ticks, chu kỳ quét 5 ticks.
+    10. `NearestBedSensor`: Dò tìm giường POI gần nhất trong phạm vi 48 blocks cho dân làng con chơi đùa / nhảy giường.
+- **Khắc phục:**
+  - Triển khai đầy đủ mã nguồn và đăng ký vào enum `SensorType`.
+  - 13/13 unit tests kiểm tra parity passed 100%. Đạt độ tương thích 100% với danh mục cảm biến gốc của Java MC.

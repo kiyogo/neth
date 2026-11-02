@@ -1,5 +1,7 @@
 use std::sync::atomic::Ordering::Relaxed;
 
+use pumpkin_data::tag::Taggable;
+
 use super::super::BrainTick;
 use super::super::memory::{MemoryModuleId, types};
 use super::Sensor;
@@ -37,6 +39,36 @@ impl Sensor for AdultSensor {
     }
 }
 
+/// Mirrors vanilla `AdultSensorAnyType.java`.
+/// Finds the nearest visible adult matching `#minecraft:followable_friendly_mobs` and sets `NEAREST_VISIBLE_ADULT`.
+pub struct AdultSensorAnyType;
+
+impl Sensor for AdultSensorAnyType {
+    fn requires(&self) -> &'static [MemoryModuleId] {
+        REQUIRES
+    }
+
+    fn do_tick(&mut self, tick: &mut BrainTick<'_>) {
+        let ctx = tick.visibility();
+
+        let nearest_adult = tick
+            .brain
+            .get(types::NEAREST_VISIBLE_LIVING_ENTITIES)
+            .and_then(|visible| {
+                visible.find_closest(&ctx, |entity| {
+                    entity
+                        .get_entity()
+                        .entity_type
+                        .has_tag(&pumpkin_data::tag::EntityType::MINECRAFT_FOLLOWABLE_FRIENDLY_MOBS)
+                        && entity.get_entity().age.load(Relaxed) >= 0
+                })
+            });
+
+        tick.brain
+            .set_optional(types::NEAREST_VISIBLE_ADULT, nearest_adult);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,5 +81,6 @@ mod tests {
             AdultSensor.requires()[1],
             types::NEAREST_VISIBLE_LIVING_ENTITIES.id()
         );
+        assert_eq!(AdultSensorAnyType.requires().len(), 2);
     }
 }
