@@ -14908,6 +14908,42 @@ pub const BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES: f32 = 105.0;
 /// Default maximum passenger count for standard boats / rafts (driver + 1 passenger).
 pub const BOAT_DEFAULT_MAX_PASSENGERS: usize = 2;
 
+/// Animal body yaw rotation offset when passenger ID is even (90.0 degrees sideways).
+/// Mirrors vanilla `AbstractBoat.java:711`: `passenger.getId() % 2 == 0 ? 90.0F : 270.0F`.
+pub const BOAT_ANIMAL_PASSENGER_EVEN_YAW_OFFSET: f32 = 90.0;
+
+/// Animal body yaw rotation offset when passenger ID is odd (270.0 degrees sideways).
+/// Mirrors vanilla `AbstractBoat.java:711`: `passenger.getId() % 2 == 0 ? 90.0F : 270.0F`.
+pub const BOAT_ANIMAL_PASSENGER_ODD_YAW_OFFSET: f32 = 270.0;
+
+/// Maximum head rotation angle (in degrees) for mobs relative to their body yaw (75.0 degrees).
+/// Mirrors vanilla `Mob.java:758`: `public int getMaxHeadYRot() { return 75; }`.
+pub const MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES: f32 = 75.0;
+
+/// Single leash offset height ratio for boats: `0.88 * height`.
+/// Mirrors vanilla `AbstractBoat.java:386`: `new Vec3(0.0, 0.88F * this.getBbHeight(), 0.64F * this.getBbWidth())`.
+pub const BOAT_LEASH_OFFSET_HEIGHT_RATIO: f64 = 0.88;
+
+/// Single leash offset width ratio for boats: `0.64 * width`.
+/// Mirrors vanilla `AbstractBoat.java:386`: `new Vec3(0.0, 0.88F * this.getBbHeight(), 0.64F * this.getBbWidth())`.
+pub const BOAT_LEASH_OFFSET_WIDTH_RATIO: f64 = 0.64;
+
+/// Quad leash attachment front offset ratio (0.0).
+/// Mirrors vanilla `AbstractBoat.java:396`: `createQuadLeashOffsets(this, 0.0, 0.64, 0.382, 0.88)`.
+pub const BOAT_QUAD_LEASH_FRONT_OFFSET_RATIO: f64 = 0.0;
+
+/// Quad leash attachment front-back distance ratio (0.64).
+/// Mirrors vanilla `AbstractBoat.java:396`: `createQuadLeashOffsets(this, 0.0, 0.64, 0.382, 0.88)`.
+pub const BOAT_QUAD_LEASH_FRONT_BACK_RATIO: f64 = 0.64;
+
+/// Quad leash attachment left-right distance ratio (0.382).
+/// Mirrors vanilla `AbstractBoat.java:396`: `createQuadLeashOffsets(this, 0.0, 0.64, 0.382, 0.88)`.
+pub const BOAT_QUAD_LEASH_LEFT_RIGHT_RATIO: f64 = 0.382;
+
+/// Quad leash attachment height ratio (0.88).
+/// Mirrors vanilla `AbstractBoat.java:396`: `createQuadLeashOffsets(this, 0.0, 0.64, 0.382, 0.88)`.
+pub const BOAT_QUAD_LEASH_HEIGHT_RATIO: f64 = 0.88;
+
 /// Small epsilon used for distance and boundary calculations during dismounting.
 /// Mirrors vanilla `DismountHelper.java` and `Entity.java:3754` (`1.0E-5F`).
 pub const DISMOUNT_EPSILON: f64 = 1.0e-5;
@@ -14915,6 +14951,140 @@ pub const DISMOUNT_EPSILON: f64 = 1.0e-5;
 /// Strider escape angles in degrees: `[0.0, -22.5, 22.5, -45.0, 45.0]`.
 /// Mirrors vanilla `Strider.java:216-222`.
 pub const STRIDER_DISMOUNT_ESCAPE_ANGLES: [f32; 5] = [0.0, -22.5, 22.5, -45.0, 45.0];
+
+/// Returns whether an entity type is exempt from boat passenger rotation clamping.
+/// Only entities with tag `#minecraft:can_turn_in_boats` are exempt (Vanilla 1.21.4: `minecraft:breeze`).
+/// Mirrors vanilla `AbstractBoat.java:647`: `!passenger.is(EntityTypeTags.CAN_TURN_IN_BOATS)`.
+#[must_use]
+pub fn is_entity_exempt_from_boat_rotation_clamp(
+    entity_type: &pumpkin_data::entity::EntityType,
+) -> bool {
+    entity_type == &pumpkin_data::entity::EntityType::BREEZE
+}
+
+/// Clamps a mob's head rotation relative to its body rotation.
+/// Mirrors vanilla `Mob.java:762-769` (`clampHeadRotationToBody`):
+/// ```java
+/// float limit = this.getMaxHeadYRot();
+/// float headYRot = this.getYHeadRot();
+/// float delta = Mth.wrapDegrees(this.yBodyRot - headYRot);
+/// float targetDelta = Mth.clamp(Mth.wrapDegrees(this.yBodyRot - headYRot), -limit, limit);
+/// float newHeadYRot = headYRot + delta - targetDelta;
+/// this.setYHeadRot(newHeadYRot);
+/// ```
+#[must_use]
+pub fn clamp_mob_head_rotation_to_body(body_yaw: f32, head_yaw: f32, max_head_rot: f32) -> f32 {
+    let delta = pumpkin_util::math::wrap_degrees(body_yaw - head_yaw);
+    let target_delta = delta.clamp(-max_head_rot, max_head_rot);
+    head_yaw + delta - target_delta
+}
+
+/// Calculates the single lead attachment offset for a boat.
+/// Mirrors vanilla `AbstractBoat.java:385-387`:
+/// `new Vec3(0.0, 0.88F * this.getBbHeight(), 0.64F * this.getBbWidth())`.
+#[must_use]
+pub fn calculate_boat_leash_offset(width: f32, height: f32) -> Vector3<f64> {
+    Vector3::new(
+        0.0,
+        height as f64 * BOAT_LEASH_OFFSET_HEIGHT_RATIO,
+        width as f64 * BOAT_LEASH_OFFSET_WIDTH_RATIO,
+    )
+}
+
+/// Calculates 4 quad leash attachment point offsets for an entity.
+/// Mirrors vanilla `Leashable.java:279-291` (`createQuadLeashOffsets`).
+#[must_use]
+pub fn calculate_quad_leash_offsets(
+    width: f32,
+    height: f32,
+    front_offset: f64,
+    front_back: f64,
+    left_right: f64,
+    height_ratio: f64,
+) -> [Vector3<f64>; 4] {
+    let width_f64 = width as f64;
+    let front_offset_scaled = front_offset * width_f64;
+    let front_back_scaled = front_back * width_f64;
+    let left_right_scaled = left_right * width_f64;
+    let height_scaled = height_ratio * height as f64;
+    [
+        Vector3::new(-left_right_scaled, height_scaled, front_back_scaled + front_offset_scaled),
+        Vector3::new(-left_right_scaled, height_scaled, -front_back_scaled + front_offset_scaled),
+        Vector3::new(left_right_scaled, height_scaled, -front_back_scaled + front_offset_scaled),
+        Vector3::new(left_right_scaled, height_scaled, front_back_scaled + front_offset_scaled),
+    ]
+}
+
+/// Calculates the 4 quad leash attachment offsets for a boat.
+/// Mirrors vanilla `AbstractBoat.java:395-397`.
+#[must_use]
+pub fn calculate_boat_quad_leash_offsets(width: f32, height: f32) -> [Vector3<f64>; 4] {
+    calculate_quad_leash_offsets(
+        width,
+        height,
+        BOAT_QUAD_LEASH_FRONT_OFFSET_RATIO,
+        BOAT_QUAD_LEASH_FRONT_BACK_RATIO,
+        BOAT_QUAD_LEASH_LEFT_RIGHT_RATIO,
+        BOAT_QUAD_LEASH_HEIGHT_RATIO,
+    )
+}
+
+/// Modifies passenger fluid interaction box when riding a boat.
+/// If not underwater, clamps passenger fluid bounding box to start at `max(passenger_min_y, boat_max_y)`.
+/// If `boat_max_y >= passenger_max_y`, the passenger fluid interaction box is null (cannot touch fluid).
+/// Mirrors vanilla `AbstractBoat.java:816-829`:
+/// ```java
+/// if (this.isUnderWater()) {
+///    return passengerBox;
+/// }
+/// AABB boatBox = this.getBoundingBox();
+/// if (boatBox.maxY >= passengerBox.maxY) {
+///    return null;
+/// }
+/// double minY = Math.max(passengerBox.minY, boatBox.maxY);
+/// return new AABB(passengerBox.minX, minY, passengerBox.minZ, passengerBox.maxX, passengerBox.maxY, passengerBox.maxZ);
+/// ```
+#[must_use]
+pub fn modify_boat_passenger_fluid_box(
+    passenger_min: Vector3<f64>,
+    passenger_max: Vector3<f64>,
+    boat_max_y: f64,
+    is_underwater: bool,
+) -> Option<(Vector3<f64>, Vector3<f64>)> {
+    if is_underwater {
+        return Some((passenger_min, passenger_max));
+    }
+    if boat_max_y >= passenger_max.y {
+        return None;
+    }
+    let min_y = passenger_min.y.max(boat_max_y);
+    Some((
+        Vector3::new(passenger_min.x, min_y, passenger_min.z),
+        passenger_max,
+    ))
+}
+
+/// Calculates the updated fall distance for a boat.
+/// Resets to 0 when on ground. Does not accumulate while in water.
+/// Mirrors vanilla `AbstractBoat.java:753-762` (`checkFallDamage`).
+#[must_use]
+pub fn calculate_boat_fall_distance(
+    current_fall_distance: f32,
+    ya: f64,
+    on_ground: bool,
+    is_passenger: bool,
+    is_water_below: bool,
+) -> f32 {
+    if is_passenger {
+        current_fall_distance
+    } else if on_ground {
+        0.0
+    } else if !is_water_below && ya < 0.0 {
+        current_fall_distance - ya as f32
+    } else {
+        current_fall_distance
+    }
+}
 
 /// Calculates the body yaw for a passenger riding a boat.
 /// Animals riding in a completely full boat (2 passengers) face sideways (perpendicular, 90 or 270 degrees).
@@ -14935,7 +15105,11 @@ pub fn calculate_boat_passenger_body_y_rot(
     max_passengers: usize,
 ) -> f32 {
     if is_animal_entity_type(passenger_type) && total_passengers >= max_passengers {
-        let side_offset = if passenger_id % 2 == 0 { 90.0 } else { 270.0 };
+        let side_offset = if passenger_id % 2 == 0 {
+            BOAT_ANIMAL_PASSENGER_EVEN_YAW_OFFSET
+        } else {
+            BOAT_ANIMAL_PASSENGER_ODD_YAW_OFFSET
+        };
         boat_yaw + side_offset
     } else {
         boat_yaw
@@ -14975,7 +15149,7 @@ pub fn clamp_boat_passenger_rotation(
     max_passengers: usize,
     is_mob: bool,
 ) -> (f32, f32) {
-    if passenger_type == &pumpkin_data::entity::EntityType::BREEZE {
+    if is_entity_exempt_from_boat_rotation_clamp(passenger_type) {
         return (passenger_yaw, 0.0);
     }
 
@@ -28827,5 +29001,104 @@ mod tests {
         // self (regular) slowed down by 0.2 + receives furnace momentum - impulse:
         // 0.0 * 0.2 + (0.4 - (-0.05)) = 0.45
         assert!((res_furnace_other.self_velocity.x - 0.45).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_boat_passenger_rotation_clamp_and_leash_gap442() {
+        // 1. Tag #minecraft:can_turn_in_boats exemption (AbstractBoat.java:647)
+        assert!(is_entity_exempt_from_boat_rotation_clamp(&EntityType::BREEZE));
+        assert!(!is_entity_exempt_from_boat_rotation_clamp(&EntityType::PLAYER));
+        assert!(!is_entity_exempt_from_boat_rotation_clamp(&EntityType::ZOMBIE));
+        assert!(!is_entity_exempt_from_boat_rotation_clamp(&EntityType::PIG));
+
+        // 2. Animal sideways body rotation (AbstractBoat.java:709-713)
+        let boat_yaw = 45.0f32;
+        // Even passenger ID (0) in full boat (2 passengers) -> +90 deg offset
+        let pig_even_body = calculate_boat_passenger_body_y_rot(boat_yaw, &EntityType::PIG, 0, 2, 2);
+        assert_eq!(pig_even_body, 45.0 + BOAT_ANIMAL_PASSENGER_EVEN_YAW_OFFSET); // 135.0
+
+        // Odd passenger ID (1) in full boat (2 passengers) -> +270 deg offset
+        let pig_odd_body = calculate_boat_passenger_body_y_rot(boat_yaw, &EntityType::PIG, 1, 2, 2);
+        assert_eq!(pig_odd_body, 45.0 + BOAT_ANIMAL_PASSENGER_ODD_YAW_OFFSET); // 315.0
+
+        // Animal in non-full boat (1 passenger) -> faces forward with boat yaw
+        let pig_single_body = calculate_boat_passenger_body_y_rot(boat_yaw, &EntityType::PIG, 0, 1, 2);
+        assert_eq!(pig_single_body, 45.0);
+
+        // Non-animal (player) always faces forward with boat yaw
+        let player_body = calculate_boat_passenger_body_y_rot(boat_yaw, &EntityType::PLAYER, 0, 2, 2);
+        assert_eq!(player_body, 45.0);
+
+        // 3. Mob head rotation clamping (Mob.java:762-769)
+        // Head rotated +90 deg relative to body 0 deg -> clamped to +75 deg
+        let clamped_head_pos = clamp_mob_head_rotation_to_body(0.0, 90.0, MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES);
+        assert_eq!(clamped_head_pos, 75.0);
+
+        // Head rotated -90 deg relative to body 0 deg -> clamped to -75 deg
+        let clamped_head_neg = clamp_mob_head_rotation_to_body(0.0, -90.0, MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES);
+        assert_eq!(clamped_head_neg, -75.0);
+
+        // Head within limits (30 deg) -> remains 30 deg
+        let clamped_head_mid = clamp_mob_head_rotation_to_body(0.0, 30.0, MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES);
+        assert_eq!(clamped_head_mid, 30.0);
+
+        // 4. Boat Leash Offset (AbstractBoat.java:385-387)
+        let width = 1.375f32;
+        let height = 0.5625f32;
+        let leash_offset = calculate_boat_leash_offset(width, height);
+        assert_eq!(leash_offset.x, 0.0);
+        assert!((leash_offset.y - (0.5625 * 0.88)).abs() < 1e-6);
+        assert!((leash_offset.z - (1.375 * 0.64)).abs() < 1e-6);
+
+        // 5. Boat Quad Leash Offsets (AbstractBoat.java:395-397 & Leashable.java:279-291)
+        let quad_offsets = calculate_boat_quad_leash_offsets(width, height);
+        let left_right = 0.382 * 1.375;
+        let front_back = 0.64 * 1.375;
+        let height_y = 0.88 * 0.5625;
+        // Offset 0: (-left_right, height, front_back)
+        assert!((quad_offsets[0].x - (-left_right)).abs() < 1e-6);
+        assert!((quad_offsets[0].y - height_y).abs() < 1e-6);
+        assert!((quad_offsets[0].z - front_back).abs() < 1e-6);
+        // Offset 1: (-left_right, height, -front_back)
+        assert!((quad_offsets[1].x - (-left_right)).abs() < 1e-6);
+        assert!((quad_offsets[1].y - height_y).abs() < 1e-6);
+        assert!((quad_offsets[1].z - (-front_back)).abs() < 1e-6);
+        // Offset 2: (left_right, height, -front_back)
+        assert!((quad_offsets[2].x - left_right).abs() < 1e-6);
+        assert!((quad_offsets[2].y - height_y).abs() < 1e-6);
+        assert!((quad_offsets[2].z - (-front_back)).abs() < 1e-6);
+        // Offset 3: (left_right, height, front_back)
+        assert!((quad_offsets[3].x - left_right).abs() < 1e-6);
+        assert!((quad_offsets[3].y - height_y).abs() < 1e-6);
+        assert!((quad_offsets[3].z - front_back).abs() < 1e-6);
+
+        // 6. Boat Passenger Fluid Box (AbstractBoat.java:816-829)
+        let pass_min = Vector3::new(-0.3, 64.0, -0.3);
+        let pass_max = Vector3::new(0.3, 65.8, 0.3);
+        // Underwater: unchanged
+        let box_underwater = modify_boat_passenger_fluid_box(pass_min, pass_max, 64.5, true).unwrap();
+        assert_eq!(box_underwater.0.y, 64.0);
+        assert_eq!(box_underwater.1.y, 65.8);
+
+        // Surface: boat_max_y = 64.5 -> passenger_min.y raised to 64.5
+        let box_surface = modify_boat_passenger_fluid_box(pass_min, pass_max, 64.5, false).unwrap();
+        assert_eq!(box_surface.0.y, 64.5);
+        assert_eq!(box_surface.1.y, 65.8);
+
+        // Boat top covers passenger completely: returns None
+        let box_covered = modify_boat_passenger_fluid_box(pass_min, pass_max, 66.0, false);
+        assert!(box_covered.is_none());
+
+        // 7. Boat Fall Distance (AbstractBoat.java:753-762)
+        // Passenger boat: unchanged
+        assert_eq!(calculate_boat_fall_distance(5.0, -1.0, false, true, false), 5.0);
+        // On ground: resets to 0.0
+        assert_eq!(calculate_boat_fall_distance(5.0, -1.0, true, false, false), 0.0);
+        // Falling over non-water: accumulates -ya
+        assert_eq!(calculate_boat_fall_distance(5.0, -2.5, false, false, false), 7.5);
+        // Falling into water: does not accumulate
+        assert_eq!(calculate_boat_fall_distance(5.0, -2.5, false, false, true), 5.0);
+        // Moving upward over non-water: does not accumulate
+        assert_eq!(calculate_boat_fall_distance(5.0, 1.5, false, false, false), 5.0);
     }
 }

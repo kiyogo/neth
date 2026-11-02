@@ -952,12 +952,16 @@ pub struct Entity {
     pub lava_height: AtomicCell<f64>,
     /// The entity's yaw rotation (horizontal rotation) ← →
     pub yaw: AtomicCell<f32>,
+    /// The entity's previous yaw rotation (horizontal rotation). Mirrors vanilla `Entity.yRotO`.
+    pub prev_yaw: AtomicCell<f32>,
     /// The entity's head yaw rotation (horizontal rotation of the head)
     pub head_yaw: AtomicCell<f32>,
     /// The entity's body yaw rotation (horizontal rotation of the body)
     pub body_yaw: AtomicCell<f32>,
     /// The entity's pitch rotation (vertical rotation) ↑ ↓
     pub pitch: AtomicCell<f32>,
+    /// The entity's previous pitch rotation (vertical rotation). Mirrors vanilla `Entity.xRotO`.
+    pub prev_pitch: AtomicCell<f32>,
     /// The entity's current pose (e.g., standing, sitting, swimming).
     pub pose: AtomicCell<EntityPose>,
     /// The bounding box of an entity (hitbox)
@@ -1127,9 +1131,11 @@ impl Entity {
             sprinting: AtomicBool::new(false),
             fall_flying: AtomicBool::new(false),
             yaw: AtomicCell::new(0.0),
+            prev_yaw: AtomicCell::new(0.0),
             head_yaw: AtomicCell::new(0.0),
             body_yaw: AtomicCell::new(0.0),
             pitch: AtomicCell::new(0.0),
+            prev_pitch: AtomicCell::new(0.0),
             velocity: AtomicCell::new(Vector3::new(0.0, 0.0, 0.0)),
             pose: AtomicCell::new(EntityPose::Standing),
             bounding_box: AtomicCell::new(BoundingBox::new_from_pos(
@@ -2726,10 +2732,12 @@ impl Entity {
     /// Sets the `Entity` yaw & pitch rotation
     pub fn set_rotation(&self, yaw: f32, pitch: f32) {
         // TODO
+        self.prev_yaw.store(self.yaw.load());
         self.yaw.store(yaw);
         // Java players have no separate head-yaw packet from the client- look yaw is also head yaw.
         // Bedrock `MovePlayer` / `MoveActorDelta` need this field, not only `yaw`.
         self.head_yaw.store(yaw);
+        self.prev_pitch.store(self.pitch.load());
         self.set_pitch(pitch);
     }
 

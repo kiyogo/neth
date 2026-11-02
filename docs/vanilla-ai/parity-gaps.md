@@ -11316,6 +11316,62 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Chuẩn hóa gọi `caller.push(other.as_ref())` trong `push_and_pickup_entities`.
   - **Unit Tests**: `test_minecart_collision_impulse_alignment_dot_and_mutual_push_parity_gap441`.
 
+### Gap 442: Boat Passenger Rotation Clamping, `#minecraft:can_turn_in_boats` Exemption, Animal Sideways Seating & Leash/Fluid Mechanics Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:385-397, 645-719, 753-762, 816-829`, `net.minecraft.world.entity.Mob.java:758-769`, `net.minecraft.world.entity.Leashable.java:279-291`, `data/minecraft/tags/entity_type/can_turn_in_boats.json`
+
+- **Miễn trừ Khóa Góc Quay (`#minecraft:can_turn_in_boats` Exemption)**:
+  - Vanilla `AbstractBoat.java:647`:
+    - Khi hành khách nằm trong tag `#minecraft:can_turn_in_boats` (trong Minecraft 1.21.4 chỉ có duy nhất thực thể `minecraft:breeze`), góc quay cơ thể và đầu không bị khóa hay giới hạn bởi thuyền.
+- **Tư thế Ngồi Nghiêng của Động vật (Animal Sideways Seating)**:
+  - Vanilla `AbstractBoat.java:709-713` (`calculatePassengerBodyYRot`):
+    - Khi hành khách là động vật (`Animal`) VÀ thuyền đã chở đầy khách (`getPassengers().size() == getMaxPassengers()` tức 2 khách):
+      - Hành khách có ID chẵn (`passenger.getId() % 2 == 0`): `boat_yaw + 90.0F` (ngồi quay sang mạn thuyền).
+      - Hành khách có ID lẻ: `boat_yaw + 270.0F` (ngồi quay sang mạn thuyền đối diện).
+    - Các trường hợp khác (thuyền chỉ có 1 động vật hoặc hành khách là người/quái vật): ngồi quay mặt thẳng về phía trước theo `boat_yaw`.
+- **Khóa Góc Quay Đầu & Cơ thể Quái vật/Người chơi (Mob & Player Rotation Clamping)**:
+  - Vanilla `AbstractBoat.java:693-706` & `Mob.java:758-769`:
+    - Với quái vật (`Mob`): góc quay cơ thể bị khóa theo `body_yaw`. Góc quay đầu bị giới hạn trong phạm vi `[-75.0F, 75.0F]` so với góc quay cơ thể (`MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES = 75.0F`, qua hàm `clampHeadRotationToBody()`).
+    - Với người chơi (`Player` / non-mob): góc quay cơ thể khóa theo thuyền, góc nhìn của đầu được phép quay tự do trong khoảng `[-105.0F, 105.0F]` (`BOAT_PASSENGER_MAX_HEAD_ROTATION_DEGREES = 105.0F`).
+  - Vanilla `AbstractBoat.java:716-719` (`onPassengerTurned`):
+    - Cập nhật độ lệch góc quay `passenger.yRotO += yDelta` (đồng bộ `prev_yaw`).
+- **Dây Dắt Thuyền Đơn & Dây Dắt Bộ 4 Điểm (Boat Single & Quad Leash Offsets)**:
+  - Vanilla `AbstractBoat.java:385-397` & `Leashable.java:279-291`:
+    - Điểm gắn dây đơn `getLeashOffset()`: `(0.0, 0.88 * height, 0.64 * width)`.
+    - Hỗ trợ buộc 4 dây: `supportQuadLeash() -> true`.
+    - Tọa độ 4 điểm buộc dây `createQuadLeashOffsets(this, 0.0, 0.64, 0.382, 0.88)`:
+      - 0: `(-0.382 * width, 0.88 * height, 0.64 * width)`
+      - 1: `(-0.382 * width, 0.88 * height, -0.64 * width)`
+      - 2: `(0.382 * width, 0.88 * height, -0.64 * width)`
+      - 3: `(0.382 * width, 0.88 * height, 0.64 * width)`
+    - Rơi dây dắt khi thuyền bị phá hủy (`will_break && is_removed()`): gọi `drop_leash_with_item()`.
+- **Hộp Tương tác Chất lỏng & Khoảng cách Rơi (Fluid Interaction Box & Fall Damage)**:
+  - Vanilla `AbstractBoat.java:816-829` (`modifyPassengerFluidInteractionBox`):
+    - Nếu thuyền đang chìm dưới nước (`isUnderWater()`): giữ nguyên hitbox hành khách.
+    - Nếu đỉnh thuyền bao trọn đỉnh hành khách (`boat.maxY >= passenger.maxY`): trả về null (hành khách không tiếp xúc chất lỏng).
+    - Ngược lại: đáy hộp tương tác bị nâng lên bằng đỉnh thuyền `minY = max(passenger.minY, boat.maxY)`.
+  - Vanilla `AbstractBoat.java:753-762` (`checkFallDamage`):
+    - Thuyền chạm đất: reset `fall_distance = 0.0`.
+    - Thuyền rơi trong không trung (không phải trên mặt nước): tích lũy khoảng cách rơi `fall_distance -= ya`.
+    - Rơi trên mặt nước: không tích lũy sát thương rơi.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `BOAT_ANIMAL_PASSENGER_EVEN_YAW_OFFSET`, `BOAT_ANIMAL_PASSENGER_ODD_YAW_OFFSET`, `MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES`, `BOAT_LEASH_OFFSET_HEIGHT_RATIO`, `BOAT_LEASH_OFFSET_WIDTH_RATIO`, `BOAT_QUAD_LEASH_FRONT_BACK_RATIO`, `BOAT_QUAD_LEASH_LEFT_RIGHT_RATIO`, `BOAT_QUAD_LEASH_HEIGHT_RATIO`, `BOAT_QUAD_LEASH_FRONT_OFFSET_RATIO`.
+    - Bổ sung hàm: `is_entity_exempt_from_boat_rotation_clamp`, `clamp_mob_head_rotation_to_body`, `calculate_boat_leash_offset`, `calculate_quad_leash_offsets`, `calculate_boat_quad_leash_offsets`, `modify_boat_passenger_fluid_box`, `calculate_boat_fall_distance`.
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Bổ sung `prev_yaw` và `prev_pitch` vào `Entity` struct (tương đương `yRotO` và `xRotO` trong vanilla Java).
+    - Cập nhật `set_rotation` lưu giá trị cũ vào `prev_yaw` và `prev_pitch`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat/passengers.rs`:
+    - Áp dụng kiểm tra `is_entity_exempt_from_boat_rotation_clamp` trong `position_rider` và `clamp_rotation`.
+    - Áp dụng `clamp_mob_head_rotation_to_body` cho hành khách là Mob.
+    - Cập nhật `on_passenger_turned` đồng bộ delta vào `passenger.prev_yaw`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat.rs`:
+    - Bổ sung các phương thức `get_leash_offset`, `support_quad_leash`, `get_quad_leash_offsets`, `check_fall_damage`, `get_fall_distance`, `reset_fall_distance`.
+    - Đảm bảo rơi dây dắt `drop_leash_with_item()` khi thuyền bị phá vỡ.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat/physics.rs`:
+    - Kết nối `modify_passenger_fluid_interaction_box` với `combat::modify_boat_passenger_fluid_box`.
+  - **Unit Tests**: `test_boat_passenger_rotation_clamp_and_leash_gap442`.
+
 
 
 

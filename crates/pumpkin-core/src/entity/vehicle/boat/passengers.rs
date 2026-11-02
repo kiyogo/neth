@@ -7,13 +7,23 @@ use crate::entity::{player::Player, EntityBase};
 impl BoatEntity {
     pub(in crate::entity) fn position_rider(&self, passenger: &dyn EntityBase) {
         self.vehicle.entity.position_rider(passenger);
-        self.clamp_rotation(passenger);
+        if !crate::entity::combat::is_entity_exempt_from_boat_rotation_clamp(
+            passenger.get_entity().entity_type,
+        ) {
+            self.clamp_rotation(passenger);
+        }
     }
 
     /// Clamps passenger body and head yaw inside a boat (`AbstractBoat.java:693-706`).
     pub fn clamp_rotation(&self, passenger: &dyn EntityBase) -> f32 {
         let entity = &self.vehicle.entity;
         let passenger_entity = passenger.get_entity();
+        if crate::entity::combat::is_entity_exempt_from_boat_rotation_clamp(
+            passenger_entity.entity_type,
+        ) {
+            return 0.0;
+        }
+
         let passengers = entity
             .passengers
             .lock()
@@ -44,6 +54,15 @@ impl BoatEntity {
         passenger_entity.body_yaw.store(body_yaw);
         if (passenger_entity.yaw.load() - new_yaw).abs() > 1e-4 {
             passenger_entity.yaw.store(new_yaw);
+        }
+        if is_mob {
+            let clamped_head = crate::entity::combat::clamp_mob_head_rotation_to_body(
+                body_yaw,
+                passenger_entity.head_yaw.load(),
+                crate::entity::combat::MOB_DEFAULT_MAX_HEAD_ROTATION_DEGREES,
+            );
+            passenger_entity.head_yaw.store(clamped_head);
+        } else {
             passenger_entity.head_yaw.store(new_yaw);
         }
         y_delta
@@ -51,7 +70,9 @@ impl BoatEntity {
 
     /// Called when a passenger turns their head / body while riding this boat (`AbstractBoat.java:716-719`).
     pub fn on_passenger_turned(&self, passenger: &dyn EntityBase) {
-        self.clamp_rotation(passenger);
+        let y_delta = self.clamp_rotation(passenger);
+        let p_entity = passenger.get_entity();
+        p_entity.prev_yaw.store(p_entity.prev_yaw.load() + y_delta);
     }
 
     pub(in crate::entity) fn synchronize_mount(&self, player: &Player) -> bool {

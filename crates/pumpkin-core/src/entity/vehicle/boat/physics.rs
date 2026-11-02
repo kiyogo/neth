@@ -29,17 +29,17 @@ impl BoatStatus {
 impl BoatEntity {
     pub(in crate::entity) fn modify_passenger_fluid_interaction_box(
         &self,
-        mut bounds: BoundingBox,
+        bounds: BoundingBox,
     ) -> Option<BoundingBox> {
-        if self.status.load().is_some_and(BoatStatus::is_underwater) {
-            return Some(bounds);
-        }
-        let top = self.vehicle.entity.bounding_box.load().max.y;
-        if top >= bounds.max.y {
-            return None;
-        }
-        bounds.min.y = bounds.min.y.max(top);
-        Some(bounds)
+        let is_underwater = self.status.load().is_some_and(BoatStatus::is_underwater);
+        let boat_max_y = self.vehicle.entity.bounding_box.load().max.y;
+        crate::entity::combat::modify_boat_passenger_fluid_box(
+            bounds.min,
+            bounds.max,
+            boat_max_y,
+            is_underwater,
+        )
+        .map(|(min, max)| BoundingBox::new(min, max))
     }
 
     pub(super) fn is_eye_in_water(&self) -> bool {

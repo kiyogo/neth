@@ -46,6 +46,7 @@ pub struct BoatEntity {
     water_level: AtomicCell<f64>,
     land_friction: AtomicCell<f32>,
     last_yd: AtomicCell<f64>,
+    fall_distance: AtomicCell<f32>,
     movements: Mutex<VecDeque<BoatMovement>>,
     left_paddle_moving: AtomicBool,
     right_paddle_moving: AtomicBool,
@@ -86,6 +87,7 @@ impl BoatEntity {
             water_level: AtomicCell::new(0.0),
             land_friction: AtomicCell::new(0.0),
             last_yd: AtomicCell::new(0.0),
+            fall_distance: AtomicCell::new(0.0),
             movements: Mutex::new(VecDeque::new()),
             left_paddle_moving: AtomicBool::new(false),
             right_paddle_moving: AtomicBool::new(false),
@@ -130,6 +132,56 @@ impl BoatEntity {
     #[must_use]
     pub fn get_bubble_time(&self) -> i32 {
         self.bubble_time.load()
+    }
+
+    /// Returns single lead leash offset for boat: `(0.0, 0.88 * height, 0.64 * width)`.
+    /// Mirrors vanilla `AbstractBoat.java:385-387`.
+    #[must_use]
+    pub fn get_leash_offset(&self) -> Vector3<f64> {
+        let width = self.vehicle.entity.width();
+        let height = self.vehicle.entity.height();
+        crate::entity::combat::calculate_boat_leash_offset(width, height)
+    }
+
+    /// Whether this boat supports 4-lead quad leashing. Returns true.
+    /// Mirrors vanilla `AbstractBoat.java:390-392`.
+    #[must_use]
+    pub fn support_quad_leash(&self) -> bool {
+        true
+    }
+
+    /// Returns the 4 attachment point offsets for quad leashing.
+    /// Mirrors vanilla `AbstractBoat.java:394-397` & `Leashable.java:279-291`.
+    #[must_use]
+    pub fn get_quad_leash_offsets(&self) -> [Vector3<f64>; 4] {
+        let width = self.vehicle.entity.width();
+        let height = self.vehicle.entity.height();
+        crate::entity::combat::calculate_boat_quad_leash_offsets(width, height)
+    }
+
+    /// Checks fall damage for the boat, resetting fall distance on ground or accumulating while falling over non-water.
+    /// Mirrors vanilla `AbstractBoat.java:753-762`.
+    pub fn check_fall_damage(&self, ya: f64, on_ground: bool, is_water_below: bool) {
+        self.last_yd.store(self.vehicle.entity.velocity.load().y);
+        let is_passenger = self.vehicle.entity.has_vehicle();
+        let cur = self.fall_distance.load();
+        let next = crate::entity::combat::calculate_boat_fall_distance(
+            cur,
+            ya,
+            on_ground,
+            is_passenger,
+            is_water_below,
+        );
+        self.fall_distance.store(next);
+    }
+
+    #[must_use]
+    pub fn get_fall_distance(&self) -> f32 {
+        self.fall_distance.load()
+    }
+
+    pub fn reset_fall_distance(&self) {
+        self.fall_distance.store(0.0);
     }
 
     /// Ticks bubble column timer and applies vertical impulse / passenger ejection.
@@ -462,15 +514,17 @@ impl EntityBase for BoatEntity {
 
         let damaged = self.vehicle.damage_with_context(amount, source);
 
-        if let BoatKind::Chest(boat) = &self.kind
-            && will_break
-            && self.vehicle.entity.is_removed()
-        {
-            let world = self.vehicle.entity.world.load();
-            if world.level_info.load().game_rules.entity_drops {
-                let position = self.vehicle.entity.block_pos.load();
-                let inventory: Arc<dyn Inventory> = boat.inventory().clone();
-                world.scatter_inventory(&position, &inventory);
+        if will_break && self.vehicle.entity.is_removed() {
+            if self.vehicle.entity.is_leashed() {
+                self.vehicle.entity.drop_leash_with_item();
+            }
+            if let BoatKind::Chest(boat) = &self.kind {
+                let world = self.vehicle.entity.world.load();
+                if world.level_info.load().game_rules.entity_drops {
+                    let position = self.vehicle.entity.block_pos.load();
+                    let inventory: Arc<dyn Inventory> = boat.inventory().clone();
+                    world.scatter_inventory(&position, &inventory);
+                }
             }
         }
         damaged
