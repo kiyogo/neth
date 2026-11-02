@@ -13632,6 +13632,520 @@ pub const fn calculate_zoglin_dimensions(
     }
 }
 
+/// Default vehicle attachment point for Player and Mannequin (0.0, 0.6, 0.0).
+/// Mirrors vanilla `Avatar.DEFAULT_VEHICLE_ATTACHMENT` (`Avatar.java:17`):
+/// `public static final Vec3 DEFAULT_VEHICLE_ATTACHMENT = new Vec3(0.0, 0.6, 0.0);`
+pub const DEFAULT_VEHICLE_ATTACHMENT: Vector3<f64> = Vector3::new(0.0, 0.6, 0.0);
+
+/// Minecart passenger attachment point height (0.1875 = 3/16).
+/// Mirrors vanilla `EntityTypes.java:287, 305, 486, 544, 686, 927, 1002`:
+/// `.passengerAttachments(0.1875F)`
+pub const MINECART_PASSENGER_ATTACHMENT_Y: f64 = 0.1875;
+
+/// Minecart lowered passenger attachment point (0.0, 0.0, 0.0) used when passenger is Villager or Wandering Trader.
+/// Mirrors vanilla `AbstractMinecart.java:52, 181-182`:
+/// `private static final Vec3 LOWERED_PASSENGER_ATTACHMENT = new Vec3(0.0, 0.0, 0.0);`
+pub const MINECART_LOWERED_PASSENGER_ATTACHMENT: Vector3<f64> = Vector3::new(0.0, 0.0, 0.0);
+
+/// Multi-passenger boat driver X offset (0.2).
+/// Mirrors vanilla `AbstractBoat.java:143`:
+/// `if (index == 0) { offset = 0.2F; }`
+pub const BOAT_MULTI_PASSENGER_DRIVER_OFFSET: f32 = 0.2;
+
+/// Multi-passenger boat rider X offset (-0.6).
+/// Mirrors vanilla `AbstractBoat.java:145`:
+/// `else { offset = -0.6F; }`
+pub const BOAT_MULTI_PASSENGER_RIDER_OFFSET: f32 = -0.6;
+
+/// Boat animal passenger extra offset (+0.2).
+/// Mirrors vanilla `AbstractBoat.java:149`:
+/// `if (passenger instanceof Animal) { offset += 0.2F; }`
+pub const BOAT_ANIMAL_PASSENGER_EXTRA_OFFSET: f32 = 0.2;
+
+/// Camel driver offset along Z axis (0.5).
+/// Mirrors vanilla `Camel.java:496`:
+/// `float offset = 0.5F;`
+pub const CAMEL_DRIVER_OFFSET: f32 = 0.5;
+
+/// Camel secondary passenger offset along Z axis (-0.7).
+/// Mirrors vanilla `Camel.java:500`:
+/// `if (!driver) { offset = -0.7F; }`
+pub const CAMEL_PASSENGER_OFFSET: f32 = -0.7;
+
+/// Camel animal passenger extra offset (+0.2).
+/// Mirrors vanilla `Camel.java:505`:
+/// `if (passenger instanceof Animal) { offset += 0.2F; }`
+pub const CAMEL_ANIMAL_EXTRA_OFFSET: f32 = 0.2;
+
+/// Camel vertical drop margin (0.2 blocks).
+/// Mirrors vanilla `Camel.java:520`:
+/// `float verticalDrop = sittingHeightDifference - scale * 0.2F;`
+pub const CAMEL_VERTICAL_DROP_MARGIN: f32 = 0.2;
+
+/// Camel adult age sit Y offset (0.375).
+/// Mirrors vanilla `Camel.java:517`:
+/// `double ageSitYOffset = this.isBaby() ? 0.09375 : 0.375;`
+pub const CAMEL_ADULT_AGE_SIT_OFFSET: f32 = 0.375;
+
+/// Camel baby age sit Y offset (0.09375).
+/// Mirrors vanilla `Camel.java:517`:
+/// `double ageSitYOffset = this.isBaby() ? 0.09375 : 0.375;`
+pub const CAMEL_BABY_AGE_SIT_OFFSET: f32 = 0.09375;
+
+/// Horse passenger attachment point height (1.44375).
+/// Mirrors vanilla `EntityTypes.java:548`:
+/// `.passengerAttachments(1.44375F)`
+pub const HORSE_PASSENGER_ATTACHMENT_Y: f64 = 1.44375;
+
+/// Donkey passenger attachment point height (1.1125).
+/// Mirrors vanilla `EntityTypes.java:348`:
+/// `.passengerAttachments(1.1125F)`
+pub const DONKEY_PASSENGER_ATTACHMENT_Y: f64 = 1.1125;
+
+/// Mule passenger attachment point height (1.2125).
+/// Mirrors vanilla `EntityTypes.java:697`:
+/// `.passengerAttachments(1.2125F)`
+pub const MULE_PASSENGER_ATTACHMENT_Y: f64 = 1.2125;
+
+/// Skeleton and Zombie Horse passenger attachment point height (1.31875).
+/// Mirrors vanilla `EntityTypes.java:888, 1141`:
+/// `.passengerAttachments(1.31875F)`
+pub const EQUINE_UNDEAD_PASSENGER_ATTACHMENT_Y: f64 = 1.31875;
+
+/// Llama and Trader Llama passenger attachment point (0.0, 1.37, -0.3).
+/// Mirrors vanilla `EntityTypes.java:645, 1009`:
+/// `.passengerAttachments(new Vec3(0.0, 1.37, -0.3))`
+pub const LLAMA_PASSENGER_ATTACHMENT: Vector3<f64> = Vector3::new(0.0, 1.37, -0.3);
+
+/// Pig passenger attachment point height (0.86875).
+/// Mirrors vanilla `EntityTypes.java:774`:
+/// `.passengerAttachments(0.86875F)`
+pub const PIG_PASSENGER_ATTACHMENT_Y: f64 = 0.86875;
+
+/// Strider passenger attachment point height (1.7 = dimensions.height).
+/// Mirrors vanilla `EntityTypes.java:976` and `Strider.java:191-200`:
+/// `EntityAttachment.Fallback.AT_HEIGHT`
+pub const STRIDER_PASSENGER_ATTACHMENT_Y: f64 = 1.7;
+
+/// Checks if an entity type is classified as an Animal (`Animal.java`),
+/// which triggers the `+0.2` passenger offset in boats and camels.
+#[must_use]
+pub fn is_animal_entity_type(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    let id = entity_type.id;
+    id == EntityType::ARMADILLO.id
+        || id == EntityType::AXOLOTL.id
+        || id == EntityType::BEE.id
+        || id == EntityType::CAMEL.id
+        || id == EntityType::CAMEL_HUSK.id
+        || id == EntityType::CAT.id
+        || id == EntityType::CHICKEN.id
+        || id == EntityType::COW.id
+        || id == EntityType::DONKEY.id
+        || id == EntityType::FOX.id
+        || id == EntityType::FROG.id
+        || id == EntityType::GOAT.id
+        || id == EntityType::HOGLIN.id
+        || id == EntityType::HORSE.id
+        || id == EntityType::LLAMA.id
+        || id == EntityType::MOOSHROOM.id
+        || id == EntityType::MULE.id
+        || id == EntityType::OCELOT.id
+        || id == EntityType::PANDA.id
+        || id == EntityType::PARROT.id
+        || id == EntityType::PIG.id
+        || id == EntityType::POLAR_BEAR.id
+        || id == EntityType::RABBIT.id
+        || id == EntityType::SHEEP.id
+        || id == EntityType::SNIFFER.id
+        || id == EntityType::STRIDER.id
+        || id == EntityType::TRADER_LLAMA.id
+        || id == EntityType::TURTLE.id
+        || id == EntityType::WOLF.id
+}
+
+/// Checks if an entity type is a Boat (including Chest Boats and Rafts).
+#[must_use]
+pub fn is_boat_entity_type(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    let id = entity_type.id;
+    id == EntityType::ACACIA_BOAT.id
+        || id == EntityType::ACACIA_CHEST_BOAT.id
+        || id == EntityType::BAMBOO_CHEST_RAFT.id
+        || id == EntityType::BAMBOO_RAFT.id
+        || id == EntityType::BIRCH_BOAT.id
+        || id == EntityType::BIRCH_CHEST_BOAT.id
+        || id == EntityType::CHERRY_BOAT.id
+        || id == EntityType::CHERRY_CHEST_BOAT.id
+        || id == EntityType::DARK_OAK_BOAT.id
+        || id == EntityType::DARK_OAK_CHEST_BOAT.id
+        || id == EntityType::JUNGLE_BOAT.id
+        || id == EntityType::JUNGLE_CHEST_BOAT.id
+        || id == EntityType::MANGROVE_BOAT.id
+        || id == EntityType::MANGROVE_CHEST_BOAT.id
+        || id == EntityType::OAK_BOAT.id
+        || id == EntityType::OAK_CHEST_BOAT.id
+        || id == EntityType::PALE_OAK_BOAT.id
+        || id == EntityType::PALE_OAK_CHEST_BOAT.id
+        || id == EntityType::POPLAR_BOAT.id
+        || id == EntityType::POPLAR_CHEST_BOAT.id
+        || id == EntityType::SPRUCE_BOAT.id
+        || id == EntityType::SPRUCE_CHEST_BOAT.id
+}
+
+/// Checks if an entity type is a Chest Boat or Chest Raft.
+#[must_use]
+pub fn is_chest_boat_entity_type(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    let id = entity_type.id;
+    id == EntityType::ACACIA_CHEST_BOAT.id
+        || id == EntityType::BAMBOO_CHEST_RAFT.id
+        || id == EntityType::BIRCH_CHEST_BOAT.id
+        || id == EntityType::CHERRY_CHEST_BOAT.id
+        || id == EntityType::DARK_OAK_CHEST_BOAT.id
+        || id == EntityType::JUNGLE_CHEST_BOAT.id
+        || id == EntityType::MANGROVE_CHEST_BOAT.id
+        || id == EntityType::OAK_CHEST_BOAT.id
+        || id == EntityType::PALE_OAK_CHEST_BOAT.id
+        || id == EntityType::POPLAR_CHEST_BOAT.id
+        || id == EntityType::SPRUCE_CHEST_BOAT.id
+}
+
+/// Checks if an entity type is a Raft or Chest Raft.
+#[must_use]
+pub fn is_raft_entity_type(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    let id = entity_type.id;
+    id == EntityType::BAMBOO_RAFT.id || id == EntityType::BAMBOO_CHEST_RAFT.id
+}
+
+/// Checks if an entity type is any kind of Minecart.
+#[must_use]
+pub fn is_minecart_entity_type(entity_type: &pumpkin_data::entity::EntityType) -> bool {
+    use pumpkin_data::entity::EntityType;
+    let id = entity_type.id;
+    id == EntityType::MINECART.id
+        || id == EntityType::CHEST_MINECART.id
+        || id == EntityType::COMMAND_BLOCK_MINECART.id
+        || id == EntityType::FURNACE_MINECART.id
+        || id == EntityType::HOPPER_MINECART.id
+        || id == EntityType::SPAWNER_MINECART.id
+        || id == EntityType::TNT_MINECART.id
+}
+
+/// Rotates a 3D attachment point vector around the Y axis by -yaw (in degrees),
+/// matching vanilla `EntityAttachments.java:79` and `Vec3.java:245`.
+#[must_use]
+pub fn transform_attachment_point(point: Vector3<f64>, yaw_degrees: f32) -> Vector3<f64> {
+    let radians = (-yaw_degrees).to_radians();
+    let cos = f64::from(radians.cos());
+    let sin = f64::from(radians.sin());
+    Vector3::new(
+        point.x * cos + point.z * sin,
+        point.y,
+        point.z * cos - point.x * sin,
+    )
+}
+
+/// Vanilla `Entity.getVehicleAttachmentPoint(vehicle)` (`Entity.java:2470-2472`).
+/// Returns the offset applied to this passenger when riding a vehicle:
+/// `(0.0, -riding_offset, 0.0)` for mobs with ridingOffset,
+/// `Avatar.DEFAULT_VEHICLE_ATTACHMENT = (0.0, 0.6, 0.0)` for players/mannequins,
+/// or `(0.0, 0.0, 0.0)` fallback (`EntityAttachment.Fallback.AT_FEET`).
+#[must_use]
+pub fn get_entity_vehicle_attachment_point(
+    passenger_type: &'static pumpkin_data::entity::EntityType,
+    passenger_yaw: f32,
+) -> Vector3<f64> {
+    use pumpkin_data::entity::EntityType;
+    let point = if passenger_type == &EntityType::PLAYER || passenger_type == &EntityType::MANNEQUIN {
+        DEFAULT_VEHICLE_ATTACHMENT
+    } else if passenger_type == &EntityType::BOGGED
+        || passenger_type == &EntityType::SKELETON
+        || passenger_type == &EntityType::STRAY
+        || passenger_type == &EntityType::ZOMBIE
+        || passenger_type == &EntityType::DROWNED
+        || passenger_type == &EntityType::HUSK
+        || passenger_type == &EntityType::ZOMBIE_VILLAGER
+        || passenger_type == &EntityType::ZOMBIFIED_PIGLIN
+        || passenger_type == &EntityType::PIGLIN
+        || passenger_type == &EntityType::PIGLIN_BRUTE
+        || passenger_type == &EntityType::PARCHED
+    {
+        // EntityTypes.java: ridingOffset(-0.7F) -> attach(0.0, 0.7, 0.0)
+        Vector3::new(0.0, 0.7, 0.0)
+    } else if passenger_type == &EntityType::WITHER_SKELETON {
+        // EntityTypes.java: ridingOffset(-0.875F) -> attach(0.0, 0.875, 0.0)
+        Vector3::new(0.0, 0.875, 0.0)
+    } else if passenger_type == &EntityType::EVOKER
+        || passenger_type == &EntityType::PILLAGER
+        || passenger_type == &EntityType::VINDICATOR
+        || passenger_type == &EntityType::ILLUSIONER
+    {
+        // EntityTypes.java: ridingOffset(-0.6F) -> attach(0.0, 0.6, 0.0)
+        Vector3::new(0.0, 0.6, 0.0)
+    } else if passenger_type == &EntityType::GIANT {
+        // EntityTypes.java: ridingOffset(-3.75F) -> attach(0.0, 3.75, 0.0)
+        Vector3::new(0.0, 3.75, 0.0)
+    } else if passenger_type == &EntityType::PHANTOM {
+        // EntityTypes.java: ridingOffset(-0.125F) -> attach(0.0, 0.125, 0.0)
+        Vector3::new(0.0, 0.125, 0.0)
+    } else if passenger_type == &EntityType::GHAST || passenger_type == &EntityType::HAPPY_GHAST {
+        // EntityTypes.java: ridingOffset(0.5F) -> attach(0.0, -0.5, 0.0)
+        Vector3::new(0.0, -0.5, 0.0)
+    } else if passenger_type == &EntityType::ALLAY || passenger_type == &EntityType::VEX {
+        // EntityTypes.java: ridingOffset(0.04F) -> attach(0.0, -0.04, 0.0)
+        Vector3::new(0.0, -0.04, 0.0)
+    } else {
+        Vector3::new(0.0, 0.0, 0.0)
+    };
+    transform_attachment_point(point, passenger_yaw)
+}
+
+/// Vanilla `Entity.getPassengerAttachmentPoint(passenger, dimensions, scale)`
+/// (`Entity.java:2478-2485`, `AbstractBoat.java:138-154`, `AbstractMinecart.java:180-183`,
+/// `Camel.java:493-509`, `AbstractHorse.java:1042-1045`, `AbstractCubeMob.java:249-251`).
+#[must_use]
+pub fn get_passenger_attachment_point(
+    vehicle_type: &'static pumpkin_data::entity::EntityType,
+    passenger_type: &'static pumpkin_data::entity::EntityType,
+    passenger_index: usize,
+    total_passengers: usize,
+    vehicle_yaw: f32,
+    vehicle_pose: pumpkin_data::entity::EntityPose,
+    vehicle_scale: f32,
+    is_animal_passenger: bool,
+    stand_anim: f32,
+) -> Vector3<f64> {
+    use pumpkin_data::entity::EntityType;
+
+    // 1. Boats & Rafts (AbstractBoat.java:138-154)
+    if is_boat_entity_type(vehicle_type) {
+        let is_raft = is_raft_entity_type(vehicle_type);
+        let is_chest = is_chest_boat_entity_type(vehicle_type);
+        let ride_height = if is_raft {
+            f64::from(0.5625f32 * RAFT_RIDE_HEIGHT_RATIO)
+        } else {
+            f64::from(0.5625f32 * BOAT_RIDE_HEIGHT_RATIO)
+        };
+        let offset = if total_passengers > 1 {
+            let base = if passenger_index == 0 {
+                BOAT_MULTI_PASSENGER_DRIVER_OFFSET
+            } else {
+                BOAT_MULTI_PASSENGER_RIDER_OFFSET
+            };
+            if is_animal_passenger {
+                base + BOAT_ANIMAL_PASSENGER_EXTRA_OFFSET
+            } else {
+                base
+            }
+        } else if is_chest {
+            CHEST_BOAT_PASSENGER_OFFSET_X
+        } else {
+            0.0f32
+        };
+        let point = Vector3::new(0.0, ride_height, f64::from(offset));
+        return transform_attachment_point(point, vehicle_yaw);
+    }
+
+    // 2. Minecarts (AbstractMinecart.java:180-183)
+    if is_minecart_entity_type(vehicle_type) {
+        if passenger_type == &EntityType::VILLAGER || passenger_type == &EntityType::WANDERING_TRADER {
+            return MINECART_LOWERED_PASSENGER_ATTACHMENT;
+        }
+        return Vector3::new(0.0, MINECART_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+
+    // 3. Camels (Camel.java:493-509)
+    if vehicle_type == &EntityType::CAMEL || vehicle_type == &EntityType::CAMEL_HUSK {
+        let is_driver = passenger_index == 0;
+        let mut offset = CAMEL_DRIVER_OFFSET;
+        if total_passengers > 1 {
+            if !is_driver {
+                offset = CAMEL_PASSENGER_OFFSET;
+            }
+            if is_animal_passenger {
+                offset += CAMEL_ANIMAL_EXTRA_OFFSET;
+            }
+        }
+        let scale = if vehicle_scale <= 0.0 { 1.0f32 } else { vehicle_scale };
+        let is_sitting = vehicle_pose == pumpkin_data::entity::EntityPose::Sitting;
+        let age_sit_y_offset = if scale < 0.9f32 {
+            f64::from(CAMEL_BABY_AGE_SIT_OFFSET)
+        } else {
+            f64::from(CAMEL_ADULT_AGE_SIT_OFFSET)
+        };
+        let dim_height = if is_sitting { 0.945f64 } else { 2.375f64 };
+        let mut base_sit_offset = dim_height - age_sit_y_offset;
+        let sitting_height_diff = f64::from(scale * CAMEL_SITTING_HEIGHT_DIFFERENCE);
+        let vertical_drop = sitting_height_diff - f64::from(scale * CAMEL_VERTICAL_DROP_MARGIN);
+        let bottom_point = sitting_height_diff - vertical_drop;
+        if is_sitting {
+            base_sit_offset += bottom_point;
+        }
+        let point = Vector3::new(0.0, base_sit_offset, f64::from(offset * scale));
+        return transform_attachment_point(point, vehicle_yaw);
+    }
+
+    // 4. Horses & Equines (AbstractHorse.java:1042-1045, EntityTypes.java)
+    if vehicle_type == &EntityType::HORSE {
+        let scale = if vehicle_scale <= 0.0 { 1.0f64 } else { f64::from(vehicle_scale) };
+        let anim = f64::from(stand_anim);
+        let point = Vector3::new(
+            0.0,
+            HORSE_PASSENGER_ATTACHMENT_Y + 0.15 * anim * scale,
+            -0.7 * anim * scale,
+        );
+        return transform_attachment_point(point, vehicle_yaw);
+    }
+    if vehicle_type == &EntityType::DONKEY {
+        return Vector3::new(0.0, DONKEY_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+    if vehicle_type == &EntityType::MULE {
+        return Vector3::new(0.0, MULE_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+    if vehicle_type == &EntityType::SKELETON_HORSE || vehicle_type == &EntityType::ZOMBIE_HORSE {
+        return Vector3::new(0.0, EQUINE_UNDEAD_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+    if vehicle_type == &EntityType::LLAMA || vehicle_type == &EntityType::TRADER_LLAMA {
+        return transform_attachment_point(LLAMA_PASSENGER_ATTACHMENT, vehicle_yaw);
+    }
+    if vehicle_type == &EntityType::PIG {
+        return Vector3::new(0.0, PIG_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+    if vehicle_type == &EntityType::STRIDER {
+        return Vector3::new(0.0, STRIDER_PASSENGER_ATTACHMENT_Y, 0.0);
+    }
+
+    // 5. Slime & Magma Cube (AbstractCubeMob.java:249-251)
+    if vehicle_type == &EntityType::SLIME || vehicle_type == &EntityType::MAGMA_CUBE {
+        let size = if vehicle_scale <= 0.0 { 1.0f64 } else { f64::from(vehicle_scale) };
+        let height = 0.51 * size;
+        let y = height - 0.015625 * size * size;
+        return Vector3::new(0.0, y, 0.0);
+    }
+
+    // 6. Other specific mobs (EntityTypes.java)
+    let point = if vehicle_type == &EntityType::CHICKEN {
+        Vector3::new(0.0, 0.7, -0.1)
+    } else if vehicle_type == &EntityType::COW || vehicle_type == &EntityType::MOOSHROOM {
+        Vector3::new(0.0, 1.36875, 0.0)
+    } else if vehicle_type == &EntityType::SHEEP {
+        Vector3::new(0.0, 1.2375, 0.0)
+    } else if vehicle_type == &EntityType::GOAT {
+        Vector3::new(0.0, 1.1125, 0.0)
+    } else if vehicle_type == &EntityType::FROG {
+        Vector3::new(0.0, 0.375, -0.25)
+    } else if vehicle_type == &EntityType::FOX {
+        Vector3::new(0.0, 0.6375, -0.25)
+    } else if vehicle_type == &EntityType::WOLF {
+        Vector3::new(0.0, 0.81875, -0.0625)
+    } else if vehicle_type == &EntityType::CAT {
+        Vector3::new(0.0, 0.5125, 0.0)
+    } else if vehicle_type == &EntityType::OCELOT {
+        Vector3::new(0.0, 0.6375, 0.0)
+    } else if vehicle_type == &EntityType::PARROT {
+        Vector3::new(0.0, 0.4625, 0.0)
+    } else if vehicle_type == &EntityType::TURTLE {
+        Vector3::new(0.0, 0.55625, -0.25)
+    } else if vehicle_type == &EntityType::RAVAGER {
+        Vector3::new(0.0, 2.2625, -0.0625)
+    } else if vehicle_type == &EntityType::HOGLIN || vehicle_type == &EntityType::ZOGLIN {
+        Vector3::new(0.0, 1.49375, 0.0)
+    } else if vehicle_type == &EntityType::ZOMBIE
+        || vehicle_type == &EntityType::DROWNED
+        || vehicle_type == &EntityType::PIGLIN
+        || vehicle_type == &EntityType::PIGLIN_BRUTE
+    {
+        Vector3::new(0.0, 2.0125, 0.0)
+    } else if vehicle_type == &EntityType::HUSK {
+        Vector3::new(0.0, 2.075, 0.0)
+    } else if vehicle_type == &EntityType::ZOMBIE_VILLAGER {
+        Vector3::new(0.0, 2.125, 0.0)
+    } else if vehicle_type == &EntityType::ZOMBIFIED_PIGLIN
+        || vehicle_type == &EntityType::EVOKER
+        || vehicle_type == &EntityType::PILLAGER
+        || vehicle_type == &EntityType::VINDICATOR
+        || vehicle_type == &EntityType::ILLUSIONER
+    {
+        Vector3::new(0.0, 2.0, 0.0)
+    } else if vehicle_type == &EntityType::WITCH {
+        Vector3::new(0.0, 2.2625, 0.0)
+    } else if vehicle_type == &EntityType::WARDEN {
+        Vector3::new(0.0, 3.15, 0.0)
+    } else if vehicle_type == &EntityType::SNIFFER {
+        Vector3::new(0.0, 2.09375, 0.0)
+    } else if vehicle_type == &EntityType::SPIDER {
+        Vector3::new(0.0, 0.765, 0.0)
+    } else if vehicle_type == &EntityType::GHAST {
+        Vector3::new(0.0, 4.0625, 0.0)
+    } else if vehicle_type == &EntityType::HAPPY_GHAST {
+        let points = [
+            Vector3::new(0.0, 4.0, 1.7),
+            Vector3::new(-1.7, 4.0, 0.0),
+            Vector3::new(0.0, 4.0, -1.7),
+            Vector3::new(1.7, 4.0, 0.0),
+        ];
+        let clamped = passenger_index.min(points.len() - 1);
+        points[clamped]
+    } else if vehicle_type == &EntityType::ENDER_DRAGON {
+        Vector3::new(0.0, 3.0, 0.0)
+    } else if vehicle_type == &EntityType::ELDER_GUARDIAN {
+        Vector3::new(0.0, 2.350625, 0.0)
+    } else if vehicle_type == &EntityType::GUARDIAN {
+        Vector3::new(0.0, 0.975, 0.0)
+    } else if vehicle_type == &EntityType::ENDERMAN {
+        Vector3::new(0.0, 2.80625, 0.0)
+    } else if vehicle_type == &EntityType::ENDERMITE || vehicle_type == &EntityType::SILVERFISH {
+        Vector3::new(0.0, 0.2375, 0.0)
+    } else if vehicle_type == &EntityType::PHANTOM {
+        Vector3::new(0.0, 0.3375, 0.0)
+    } else if vehicle_type == &EntityType::VEX {
+        Vector3::new(0.0, 0.7375, 0.0)
+    } else if vehicle_type == &EntityType::NAUTILUS || vehicle_type == &EntityType::ZOMBIE_NAUTILUS {
+        Vector3::new(0.0, 1.1375, 0.0)
+    } else {
+        // Fallback AT_HEIGHT
+        let (_, height, _) = get_entity_pose_dimensions(vehicle_type, vehicle_pose);
+        Vector3::new(0.0, f64::from(height), 0.0)
+    };
+
+    transform_attachment_point(point, vehicle_yaw)
+}
+
+/// Vanilla `positionRider` calculation (`Entity.java:2461-2465`):
+/// `position = vehicle.getPassengerRidingPosition(passenger)`
+/// `offset = passenger.getVehicleAttachmentPoint(vehicle)`
+/// `result = position - offset`
+#[must_use]
+pub fn calculate_passenger_position(
+    vehicle_pos: Vector3<f64>,
+    vehicle_type: &'static pumpkin_data::entity::EntityType,
+    vehicle_yaw: f32,
+    vehicle_pose: pumpkin_data::entity::EntityPose,
+    vehicle_scale: f32,
+    passenger_type: &'static pumpkin_data::entity::EntityType,
+    passenger_yaw: f32,
+    passenger_index: usize,
+    total_passengers: usize,
+    is_animal_passenger: bool,
+    stand_anim: f32,
+) -> Vector3<f64> {
+    let passenger_attachment = get_passenger_attachment_point(
+        vehicle_type,
+        passenger_type,
+        passenger_index,
+        total_passengers,
+        vehicle_yaw,
+        vehicle_pose,
+        vehicle_scale,
+        is_animal_passenger,
+        stand_anim,
+    );
+    let vehicle_attachment = get_entity_vehicle_attachment_point(passenger_type, passenger_yaw);
+    vehicle_pos + passenger_attachment - vehicle_attachment
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -26313,6 +26827,326 @@ mod tests {
         assert_eq!(slw, 0.2);
         assert_eq!(slh, 0.2);
         assert_eq!(sleye, 0.2);
+    }
+
+    #[test]
+    fn test_passenger_attachments_and_vehicle_position_parity_gap430() {
+        use super::*;
+        use pumpkin_data::entity::{EntityPose, EntityType};
+        use pumpkin_util::math::vector3::Vector3;
+
+        // 1. Vehicle Attachment Points (Entity.java:2470-2472, EntityTypes.java, Avatar.java:17)
+        let player_veh_att = get_entity_vehicle_attachment_point(&EntityType::PLAYER, 0.0);
+        assert_eq!(player_veh_att, Vector3::new(0.0, 0.6, 0.0));
+        assert_eq!(DEFAULT_VEHICLE_ATTACHMENT, Vector3::new(0.0, 0.6, 0.0));
+
+        let zombie_veh_att = get_entity_vehicle_attachment_point(&EntityType::ZOMBIE, 0.0);
+        assert_eq!(zombie_veh_att, Vector3::new(0.0, 0.7, 0.0));
+
+        let wither_skel_veh_att = get_entity_vehicle_attachment_point(&EntityType::WITHER_SKELETON, 0.0);
+        assert_eq!(wither_skel_veh_att, Vector3::new(0.0, 0.875, 0.0));
+
+        let pillager_veh_att = get_entity_vehicle_attachment_point(&EntityType::PILLAGER, 0.0);
+        assert_eq!(pillager_veh_att, Vector3::new(0.0, 0.6, 0.0));
+
+        let giant_veh_att = get_entity_vehicle_attachment_point(&EntityType::GIANT, 0.0);
+        assert_eq!(giant_veh_att, Vector3::new(0.0, 3.75, 0.0));
+
+        let ghast_veh_att = get_entity_vehicle_attachment_point(&EntityType::GHAST, 0.0);
+        assert_eq!(ghast_veh_att, Vector3::new(0.0, -0.5, 0.0));
+
+        let vex_veh_att = get_entity_vehicle_attachment_point(&EntityType::VEX, 0.0);
+        assert_eq!(vex_veh_att, Vector3::new(0.0, -0.04, 0.0));
+
+        let villager_veh_att = get_entity_vehicle_attachment_point(&EntityType::VILLAGER, 0.0);
+        assert_eq!(villager_veh_att, Vector3::new(0.0, 0.0, 0.0));
+
+        // 2. Minecart Passenger Attachment & Lowered Attachment Point (AbstractMinecart.java:180-183)
+        let cart_pos = Vector3::new(10.0, 64.0, 20.0);
+        let cart_att_player = get_passenger_attachment_point(
+            &EntityType::MINECART,
+            &EntityType::PLAYER,
+            0,
+            1,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            false,
+            0.0,
+        );
+        assert_eq!(cart_att_player, Vector3::new(0.0, 0.1875, 0.0));
+        assert_eq!(MINECART_PASSENGER_ATTACHMENT_Y, 0.1875);
+
+        // Player seated position in minecart: vehicle_pos + (0, 0.1875, 0) - (0, 0.6, 0)
+        let player_cart_pos = calculate_passenger_position(
+            cart_pos,
+            &EntityType::MINECART,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert_eq!(player_cart_pos, Vector3::new(10.0, 64.0 + 0.1875 - 0.6, 20.0));
+
+        // Villager lowered attachment point in minecart (0.0, 0.0, 0.0)
+        let cart_att_villager = get_passenger_attachment_point(
+            &EntityType::MINECART,
+            &EntityType::VILLAGER,
+            0,
+            1,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            false,
+            0.0,
+        );
+        assert_eq!(cart_att_villager, Vector3::new(0.0, 0.0, 0.0));
+        assert_eq!(MINECART_LOWERED_PASSENGER_ATTACHMENT, Vector3::new(0.0, 0.0, 0.0));
+
+        let villager_cart_pos = calculate_passenger_position(
+            cart_pos,
+            &EntityType::MINECART,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::VILLAGER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert_eq!(villager_cart_pos, cart_pos);
+
+        // 3. Boat & Raft Passenger Attachments (AbstractBoat.java:138-154, Boat.java:16, Raft.java:16)
+        let boat_pos = Vector3::new(0.0, 60.0, 0.0);
+        // Single player in regular boat (yaw = 0)
+        let boat_p0 = calculate_passenger_position(
+            boat_pos,
+            &EntityType::OAK_BOAT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert_eq!(boat_p0, Vector3::new(0.0, 60.0 + 0.1875 - 0.6, 0.0));
+
+        // Single passenger in chest boat (offset = 0.15)
+        let chest_boat_p0 = calculate_passenger_position(
+            boat_pos,
+            &EntityType::OAK_CHEST_BOAT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert!((chest_boat_p0.z - 0.15).abs() < 1e-6);
+        assert!((chest_boat_p0.y - (60.0 + 0.1875 - 0.6)).abs() < 1e-6);
+
+        // Multi-passenger boat: driver at 0.2, second player at -0.6
+        let multi_boat_driver = calculate_passenger_position(
+            boat_pos,
+            &EntityType::OAK_BOAT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            2,
+            false,
+            0.0,
+        );
+        assert!((multi_boat_driver.z - 0.2).abs() < 1e-6);
+        assert!((multi_boat_driver.y - (60.0 + 0.1875 - 0.6)).abs() < 1e-6);
+
+        let multi_boat_rider = calculate_passenger_position(
+            boat_pos,
+            &EntityType::OAK_BOAT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            1,
+            2,
+            false,
+            0.0,
+        );
+        assert!((multi_boat_rider.z - (-0.6)).abs() < 1e-6);
+        assert!((multi_boat_rider.y - (60.0 + 0.1875 - 0.6)).abs() < 1e-6);
+
+        // Multi-passenger boat with animal second passenger: -0.6 + 0.2 = -0.4
+        let multi_boat_animal = calculate_passenger_position(
+            boat_pos,
+            &EntityType::OAK_BOAT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PIG,
+            0.0,
+            1,
+            2,
+            true,
+            0.0,
+        );
+        assert!((multi_boat_animal.z - (-0.4)).abs() < 1e-6);
+        assert!((multi_boat_animal.y - (60.0 + 0.1875)).abs() < 1e-6);
+
+        // Bamboo raft ride height (0.5625 * 8 / 9 = 0.5)
+        let raft_p0 = calculate_passenger_position(
+            boat_pos,
+            &EntityType::BAMBOO_RAFT,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert_eq!(raft_p0, Vector3::new(0.0, 60.0 + 0.5 - 0.6, 0.0));
+
+        // 4. Camel Passenger Attachment Points (Camel.java:493-509)
+        let camel_pos = Vector3::new(0.0, 64.0, 0.0);
+        // Adult standing camel driver (height = 2.375 - 0.375 = 2.0, offset = 0.5)
+        let camel_driver = calculate_passenger_position(
+            camel_pos,
+            &EntityType::CAMEL,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert!((camel_driver.y - (64.0 + 2.0 - 0.6)).abs() < 1e-6);
+        assert!((camel_driver.z - 0.5).abs() < 1e-6);
+
+        // Adult sitting camel driver (height = 0.945 - 0.375 + 0.2 = 0.77, offset = 0.5)
+        let camel_sit_driver = calculate_passenger_position(
+            camel_pos,
+            &EntityType::CAMEL,
+            0.0,
+            EntityPose::Sitting,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert!((camel_sit_driver.y - (64.0 + 0.77 - 0.6)).abs() < 1e-4);
+        assert_eq!(camel_sit_driver.z, 0.5);
+
+        // Adult standing camel 2nd passenger (rider at -0.7)
+        let camel_rider = calculate_passenger_position(
+            camel_pos,
+            &EntityType::CAMEL,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            1,
+            2,
+            false,
+            0.0,
+        );
+        assert!((camel_rider.y - (64.0 + 2.0 - 0.6)).abs() < 1e-6);
+        assert!((camel_rider.z - (-0.7)).abs() < 1e-6);
+
+        // Adult standing camel 2nd passenger animal (rider at -0.7 + 0.2 = -0.5)
+        let camel_animal_rider = calculate_passenger_position(
+            camel_pos,
+            &EntityType::CAMEL,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PIG,
+            0.0,
+            1,
+            2,
+            true,
+            0.0,
+        );
+        assert!((camel_animal_rider.y - (64.0 + 2.0)).abs() < 1e-6);
+        assert!((camel_animal_rider.z - (-0.5)).abs() < 1e-6);
+
+        // 5. Horse, Donkey, Mule, Undead Horse, Llama, Pig, Strider (AbstractHorse.java, EntityTypes.java)
+        let horse_pos = Vector3::new(0.0, 64.0, 0.0);
+        let horse_rider = calculate_passenger_position(
+            horse_pos,
+            &EntityType::HORSE,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            0.0,
+        );
+        assert!((horse_rider.y - (64.0 + 1.44375 - 0.6)).abs() < 1e-6);
+        assert_eq!(HORSE_PASSENGER_ATTACHMENT_Y, 1.44375);
+
+        // Rearing horse with standAnim = 1.0 (AbstractHorse.java:1044: Y + 0.15, Z - 0.7)
+        let rearing_horse_rider = calculate_passenger_position(
+            horse_pos,
+            &EntityType::HORSE,
+            0.0,
+            EntityPose::Standing,
+            1.0,
+            &EntityType::PLAYER,
+            0.0,
+            0,
+            1,
+            false,
+            1.0,
+        );
+        assert!((rearing_horse_rider.y - (64.0 + 1.44375 + 0.15 - 0.6)).abs() < 1e-6);
+        assert!((rearing_horse_rider.z - (-0.7)).abs() < 1e-6);
+
+        assert_eq!(DONKEY_PASSENGER_ATTACHMENT_Y, 1.1125);
+        assert_eq!(MULE_PASSENGER_ATTACHMENT_Y, 1.2125);
+        assert_eq!(EQUINE_UNDEAD_PASSENGER_ATTACHMENT_Y, 1.31875);
+        assert_eq!(PIG_PASSENGER_ATTACHMENT_Y, 0.86875);
+        assert_eq!(STRIDER_PASSENGER_ATTACHMENT_Y, 1.7);
+        assert_eq!(LLAMA_PASSENGER_ATTACHMENT, Vector3::new(0.0, 1.37, -0.3));
+
+        // 6. Animal classification parity
+        assert!(is_animal_entity_type(&EntityType::COW));
+        assert!(is_animal_entity_type(&EntityType::SHEEP));
+        assert!(is_animal_entity_type(&EntityType::PIG));
+        assert!(is_animal_entity_type(&EntityType::HORSE));
+        assert!(is_animal_entity_type(&EntityType::CAMEL));
+        assert!(is_animal_entity_type(&EntityType::WOLF));
+        assert!(!is_animal_entity_type(&EntityType::ZOMBIE));
+        assert!(!is_animal_entity_type(&EntityType::SKELETON));
+        assert!(!is_animal_entity_type(&EntityType::PLAYER));
+        assert!(!is_animal_entity_type(&EntityType::VILLAGER));
     }
 
 }

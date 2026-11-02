@@ -118,7 +118,6 @@ impl JavaClient {
             return;
         }
 
-        let mut final_pos = pos;
         let mut other_player_passengers = Vec::new();
         let from = vehicle_entity.pos.load();
 
@@ -126,53 +125,66 @@ impl JavaClient {
             if !boat.move_from_client(player, pos, packet.yaw, packet.pitch) {
                 return;
             }
-            final_pos = vehicle_entity.pos.load();
         } else {
             vehicle_entity.set_pos(pos);
             vehicle_entity.set_rotation(packet.yaw, packet.pitch);
 
             if let Some(vehicle) = vehicle.get_vehicle_entity() {
                 let move_result = vehicle.move_vehicle(from, pos);
-                final_pos = move_result.position;
-                vehicle_entity.set_pos(final_pos);
-
-                let passengers = vehicle_entity
-                    .passengers
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .clone();
-                let world = vehicle_entity.world.load();
-                for passenger in passengers {
-                    let passenger_entity = passenger.get_entity();
-                    passenger_entity.set_pos(final_pos);
-                    if passenger_entity.entity_id != entity.entity_id
-                        && let Some(player) = world.get_player_by_id(passenger_entity.entity_id)
-                    {
-                        other_player_passengers.push(player);
-                    }
-                }
+                let corrected_pos = move_result.position;
+                vehicle_entity.set_pos(corrected_pos);
 
                 if move_result.cancelled {
                     vehicle_entity.velocity.store(Vector3::new(0.0, 0.0, 0.0));
                     vehicle_entity.send_velocity();
                 }
 
-                if final_pos != pos {
+                if corrected_pos != pos {
                     self.try_send_packet(&CMoveVehicle::new(
-                        final_pos.x,
-                        final_pos.y,
-                        final_pos.z,
+                        corrected_pos.x,
+                        corrected_pos.y,
+                        corrected_pos.z,
                         vehicle_entity.yaw.load(),
                         vehicle_entity.pitch.load(),
                     ));
                 }
             }
         }
-        entity.set_pos(final_pos);
+
+        let passengers = vehicle_entity
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        let world = vehicle_entity.world.load();
+        let total_passengers = passengers.len();
+        let mut controller_positioned = false;
+
+        for (idx, passenger) in passengers.iter().enumerate() {
+            let passenger_entity = passenger.get_entity();
+            let rider_pos = vehicle_entity.calculate_passenger_pos(
+                passenger.as_ref(),
+                idx,
+                total_passengers,
+            );
+            passenger_entity.set_pos(rider_pos);
+            if passenger_entity.entity_id == entity.entity_id {
+                controller_positioned = true;
+            } else if let Some(player) = world.get_player_by_id(passenger_entity.entity_id) {
+                other_player_passengers.push(player);
+            }
+        }
+
+        if !controller_positioned {
+            let rider_pos = vehicle_entity.calculate_passenger_pos(player.as_ref(), 0, 1);
+            entity.set_pos(rider_pos);
+        }
+
         for passenger in other_player_passengers {
             chunker::update_position(&passenger);
         }
-        let distance = last_pos.squared_distance_to_vec(&final_pos).sqrt();
+        let current_pos = entity.pos.load();
+        let distance = last_pos.squared_distance_to_vec(&current_pos).sqrt();
         let cm = (distance * 100.0).round() as i32;
         if cm > 0 {
             let stat = player.get_movement_statistic();

@@ -10861,3 +10861,43 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Chuẩn hóa hàm tập trung `get_entity_pose_dimensions(entity_type, pose)` trong `crates/pumpkin-core/src/entity/combat.rs`.
   - Tối ưu `Entity::get_dimensions(&self, pose)` trong `crates/pumpkin-core/src/entity/mod.rs` gọi trực tiếp `get_entity_pose_dimensions`.
 - **Unit Tests**: `test_camel_sniffer_pose_dimensions_gap429` kiểm tra chính xác 100% kích thước hộp va chạm và chiều cao mắt của Camel ngồi, CamelHusk ngồi, Sniffer đào đất, Warden đào/chui lên, và Sleeping.
+
+
+### Gap 430: Passenger Attachment Points & Riding Position Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.Entity.java:2455-2485, 3478-3485`, `net.minecraft.world.entity.EntityAttachments.java:20-85`, `net.minecraft.world.entity.EntityAttachment.java:10-25`, `net.minecraft.world.entity.EntityTypes.java:100-1100`, `net.minecraft.world.entity.Avatar.java:17`, `net.minecraft.world.entity.animal.camel.Camel.java:493-509`, `net.minecraft.world.entity.vehicle.AbstractBoat.java:138-154`, `net.minecraft.world.entity.vehicle.AbstractMinecart.java:180-183`, `net.minecraft.world.entity.animal.horse.AbstractHorse.java:1042-1045`, `net.minecraft.world.entity.monster.AbstractCubeMob.java:249-251`
+
+- **Tọa độ Điểm Gắn Hành Khách (Passenger Attachment Points Parity)**:
+  - Vanilla `Entity.positionRider(Entity passenger, Entity.MoveFunction moveFunction)` (`Entity.java:2461-2465`):
+    - `position = vehicle.getPassengerRidingPosition(passenger);`
+    - `offset = passenger.getVehicleAttachmentPoint(vehicle);`
+    - `moveFunction.accept(passenger, position.x - offset.x, position.y - offset.y, position.z - offset.z);`
+  - Vanilla `Avatar.DEFAULT_VEHICLE_ATTACHMENT`: Người chơi/Avatar có attachment điểm ngồi là `(0.0, 0.6, 0.0)`.
+  - Mobs với `.ridingOffset(offset)`: điểm ngồi là `(0.0, -offset, 0.0)` (ví dụ Skeleton/Zombie/Husk/Drowned/Piglin: `-0.7`, Wither Skeleton: `-0.875`, Giant: `-3.75`, v.v.).
+  - AbstractMinecart (`AbstractMinecart.java:180-183`): attachment mặc định `0.1875F`, nhưng hạ xuống `(0.0, 0.0, 0.0)` cho `Villager` và `WanderingTrader`.
+  - AbstractBoat / Raft (`AbstractBoat.java:138-154`):
+    - Driver (`index == 0`): tiến trước `0.2`.
+    - Passenger phụ (`index > 0`): lùi sau `-0.6`.
+    - Nếu là Động vật (`is_animal`): dịch thêm `+0.2` về phía trước.
+    - Chiều cao sàn thuyền: Gỗ thông thường `0.5625 * 1/3 = 0.1875`, Bè tre (`Raft`) `0.5625 * 8/9 = 0.5`.
+  - Camel (`Camel.java:493-509`):
+    - Ghế lái trước: `0.5`, ghế sau: `-0.7` (+`0.2` nếu là animal).
+    - Giảm độ cao khi ngồi (`is_sitting`): hạ `0.375 + 0.2 = 0.575` cho lạc đà trưởng thành, `0.09375 + 0.2 = 0.29375` cho lạc đà con.
+  - Ngựa (`AbstractHorse`):
+    - Horse: `1.44375`, Donkey: `1.1125`, Mule: `1.2125`, Skeleton/Zombie Horse: `1.31875`.
+    - Khi đứng bằng 2 chân sau (`stand_anim > 0.0`): xoay lùi `z -= 0.7 * stand_anim`, nâng cao `y += 0.5 * stand_anim`.
+  - Pig (`0.86875`), Strider (`1.7`), Llama (`(0.0, 1.37, -0.3)`).
+- **Đồng bộ hóa Hệ thống Di chuyển & Đổi Thế giới của Neth**:
+  - Bổ sung `crates/pumpkin-core/src/entity/combat.rs`:
+    - Đầy đủ các hằng số vanilla attachment và hàm `transform_attachment_point`, `get_entity_vehicle_attachment_point`, `get_passenger_attachment_point`, `calculate_passenger_position`.
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Thêm `calculate_passenger_pos_at`, `calculate_passenger_pos`, `position_rider`, `position_riders`.
+    - Ngay khi `add_passenger()` được gọi, lập tức định vị hành khách theo `position_rider`.
+    - Nâng cấp `teleport_passengers_recursive` dùng `calculate_passenger_pos_at` đảm bảo hành khách giữ đúng vị trí ngồi khi dịch chuyển xuyên thế giới / cổng.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/boat/passengers.rs`:
+    - Tối ưu `position_rider`, `synchronize_mount`, `rider_position` theo `calculate_passenger_pos`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Định vị tất cả hành khách qua `position_riders()` mỗi tick.
+  - Cập nhật `crates/pumpkin-core/src/net/java/play/move_vehicle.rs`:
+    - Đặt vị trí của người lái xe và tất cả người chơi ngồi sau theo đúng `calculate_passenger_pos`, xóa bỏ việc ghi đè ép người lái về tọa độ gốc của phương tiện.
+- **Unit Tests**: `test_passenger_attachments_and_vehicle_position_parity_gap430` kiểm tra chính xác 100% tọa độ ngồi của tất cả phương tiện vanilla (thuyền, bè, minecart, lạc đà, ngựa, strider, pig, villager).

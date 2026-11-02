@@ -2374,7 +2374,8 @@ impl Entity {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone();
-        for passenger in passengers {
+        let total_passengers = passengers.len();
+        for (idx, passenger) in passengers.into_iter().enumerate() {
             let passenger_entity = passenger.get_entity();
             let passenger_yaw = yaw_delta.map(|delta| passenger_entity.yaw.load() + delta);
             passenger_entity.portal_cooldown.store(
@@ -2390,25 +2391,31 @@ impl Entity {
                 .clone();
 
             let cur_world = passenger_entity.world.load_full();
+            let rider_pos = entity.calculate_passenger_pos_at(
+                position,
+                passenger.as_ref(),
+                idx,
+                total_passengers,
+            );
             if passenger.get_player().is_some() {
-                passenger.teleport(position, passenger_yaw, None, dest_world.clone());
+                passenger.teleport(rider_pos, passenger_yaw, None, dest_world.clone());
             } else if !Arc::ptr_eq(&cur_world, dest_world) {
                 Self::teleport_entity_cross_world(
                     &passenger,
                     &cur_world,
                     dest_world,
-                    position,
+                    rider_pos,
                     passenger_yaw,
                     None,
                 );
             } else {
-                passenger.teleport(position, passenger_yaw, None, dest_world.clone());
+                passenger.teleport(rider_pos, passenger_yaw, None, dest_world.clone());
             }
 
             // Recursively teleport nested passengers
             for nested in nested_passengers {
                 let nested_entity = nested.get_entity();
-                Self::teleport_passengers_recursive(nested_entity, position, yaw_delta, dest_world);
+                Self::teleport_passengers_recursive(nested_entity, rider_pos, yaw_delta, dest_world);
             }
         }
     }
@@ -4061,6 +4068,8 @@ impl Entity {
             .collect();
         drop(passengers);
 
+        self.position_rider(mounted_passenger.as_ref());
+
         let world = self.world.load();
         if let Some(vehicle) = world.get_entity_by_id(self.entity_id)
             && let Some(boat) = vehicle.cast_any().downcast_ref::<BoatEntity>()
@@ -4120,6 +4129,85 @@ impl Entity {
 
     pub fn remove_passenger_before_teleport(&self, passenger_id: i32) {
         self.remove_passenger_internal(passenger_id, false);
+    }
+
+    /// Calculates the world position of a passenger riding this vehicle,
+    /// matching vanilla `Entity.positionRider` (`Entity.java:2461-2465`).
+    /// Calculates the world position of a passenger riding this vehicle at a specific vehicle position,
+    /// matching vanilla `Entity.positionRider` (`Entity.java:2461-2465`).
+    pub fn calculate_passenger_pos_at(
+        &self,
+        base_pos: Vector3<f64>,
+        passenger: &dyn EntityBase,
+        passenger_index: usize,
+        total_passengers: usize,
+    ) -> Vector3<f64> {
+        let passenger_entity = passenger.get_entity();
+        let passenger_type = passenger_entity.entity_type;
+        let passenger_yaw = passenger_entity.yaw.load();
+        let is_animal = crate::entity::combat::is_animal_entity_type(passenger_type);
+        crate::entity::combat::calculate_passenger_position(
+            base_pos,
+            self.entity_type,
+            self.yaw.load(),
+            self.pose.load(),
+            1.0,
+            passenger_type,
+            passenger_yaw,
+            passenger_index,
+            total_passengers,
+            is_animal,
+            0.0,
+        )
+    }
+
+    /// Calculates the world position of a passenger riding this vehicle,
+    /// matching vanilla `Entity.positionRider` (`Entity.java:2461-2465`).
+    pub fn calculate_passenger_pos(
+        &self,
+        passenger: &dyn EntityBase,
+        passenger_index: usize,
+        total_passengers: usize,
+    ) -> Vector3<f64> {
+        self.calculate_passenger_pos_at(
+            self.pos.load(),
+            passenger,
+            passenger_index,
+            total_passengers,
+        )
+    }
+
+    /// Positions a single passenger at its attachment point on this vehicle (`Entity.java:2455-2465`).
+    pub fn position_rider(&self, passenger: &dyn EntityBase) {
+        let (index, total) = {
+            let passengers = self
+                .passengers
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let Some(index) = passengers
+                .iter()
+                .position(|p| p.get_entity().entity_id == passenger.get_entity().entity_id)
+            else {
+                return;
+            };
+            (index, passengers.len())
+        };
+        let rider_pos = self.calculate_passenger_pos(passenger, index, total);
+        passenger.get_entity().set_pos(rider_pos);
+    }
+
+    /// Positions all current passengers at their respective attachment points (`Entity.java:2455-2465`).
+    pub fn position_riders(&self) {
+        let passengers = self
+            .passengers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        let total = passengers.len();
+        for (index, passenger) in passengers.into_iter().enumerate() {
+            let rider_pos = self.calculate_passenger_pos(passenger.as_ref(), index, total);
+            passenger.get_entity().set_pos(rider_pos);
+        }
     }
 
     #[allow(clippy::too_many_lines)]

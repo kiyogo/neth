@@ -708,18 +708,7 @@ impl EntityBase for MinecartEntity {
             None => self.come_off_track(caller, &world, block_pos),
         }
 
-        {
-            let pos = self.vehicle.entity.pos.load();
-            let passengers = self
-                .vehicle
-                .entity
-                .passengers
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            for passenger in passengers.iter() {
-                passenger.get_entity().set_pos(pos);
-            }
-        }
+        self.vehicle.entity.position_riders();
 
         self.update_rotation(start, start_yaw);
         self.push_and_pickup_entities(caller);
