@@ -11372,6 +11372,42 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Kết nối `modify_passenger_fluid_interaction_box` với `combat::modify_boat_passenger_fluid_box`.
   - **Unit Tests**: `test_boat_passenger_rotation_clamp_and_leash_gap442`.
 
+### Gap 443: Boat Item Placement Raycast, Fluid Intersection & Dispenser Launch Parity
+
+**Vanilla Reference**: `net.minecraft.world.item.BoatItem.java:30-74`, `net.minecraft.core.dispenser.BoatDispenseItemBehavior.java:23-53`, `net.minecraft.core.Direction.java:311-312`
+
+- **Tọa độ & Điều kiện Bắn Thuyền từ Máy Phân Phát (Dispenser Boat Launch)**:
+  - Vanilla `BoatDispenseItemBehavior.java:23-42`:
+    - Tính vị trí trung tâm nguồn: `center = source.center()`.
+    - Tính khoảng cách nhô ra khỏi mặt máy phân phát: `justOutsideDispenser = 0.5625 + this.type.getWidth() / 2.0` (`BOAT_DISPENSER_OUTSIDE_BASE_OFFSET = 0.5625 = 9/16`, với thuyền rộng 1.375 thì `justOutsideDispenser = 1.25`).
+    - Tọa độ cơ bản: `spawnX = center.x + stepX * justOutsideDispenser`, `spawnY = center.y + stepY * 1.125F` (`BOAT_DISPENSER_STEP_Y_SCALE = 1.125 = 9/8`), `spawnZ = center.z + stepZ * justOutsideDispenser`.
+    - Kiểm tra điều kiện nước tại ô trước mặt `frontPos = source.pos().relative(direction)`:
+      - Nếu `frontPos` là nước (`FluidTags.WATER`): `yOffset = 1.0` (`BOAT_DISPENSER_WATER_Y_OFFSET`).
+      - Ngược lại: nếu `frontPos` là không khí (`isAir()`) VÀ ô dưới chân nó `frontPos.below()` là nước: `yOffset = 0.0`.
+      - Các trường hợp khác: Không phóng được thuyền, máy phân phát rơi lại item thuyền ra ngoài như bình thường (`defaultDispenseItemBehavior.dispense`).
+    - Góc quay thuyền khi phóng: `direction.toYRot()` tương ứng `(data2d & 3) * 90` (South = 0.0°, West = 90.0°, North = 180.0°, East = 270.0°).
+    - Âm thanh và sự kiện: Phát `WorldEvent::SoundDispenserDispense` và phát ra `GameEvent::EntityPlace`.
+- **Kiểm tra Va chạm Thực thể khi Đặt Thuyền (Player Placement Entity Intersection)**:
+  - Vanilla `BoatItem.java:38-50`:
+    - Quét raycast với chất lỏng `ClipContext.Fluid.ANY` trong tầm với `BOAT_PLACEMENT_REACH_DISTANCE = 5.0`.
+    - Hộp tìm kiếm thực thể cản trở: mở rộng dọc theo vector nhìn `player.getBoundingBox().expandTowards(viewVector.scale(5.0)).inflate(1.0)`.
+    - Kiểm tra nếu vị trí mắt người chơi `player.getEyePosition()` nằm bên trong hitbox của bất kỳ thực thể chọn được (`bb.inflate(getPickRadius()).contains(from)`), hủy thao tác đặt thuyền (`InteractionResult.PASS`).
+- **Khoảng Không Gian Trống & Game Event (No Collision Space & Game Event)**:
+  - Vanilla `BoatItem.java:59-66`:
+    - Kiểm tra va chạm với không gian: `level.noCollision(boat, boat.getBoundingBox())`.
+    - Đặt thành công: phát sinh sự kiện `GameEvent::EntityPlace` tại điểm va chạm raycast `hitResult.getLocation()` cho Sculk Sensor cảm biến.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung các hằng số: `BOAT_DISPENSER_OUTSIDE_BASE_OFFSET`, `BOAT_DISPENSER_STEP_Y_SCALE`, `BOAT_DISPENSER_WATER_Y_OFFSET`, `BOAT_DISPENSER_AIR_WATER_BELOW_Y_OFFSET`, `BOAT_PLACEMENT_REACH_DISTANCE`, `BOAT_PLACEMENT_SEARCH_BOX_INFLATION`.
+    - Bổ sung các hàm thuần: `can_dispense_boat`, `calculate_boat_dispense_spawn_position`, `facing_to_boat_dispense_yaw`, `is_point_inside_entity_pick_box`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Căn chỉnh `dispense_boat` sang công thức vị trí vanilla và góc quay chuẩn xác theo `Facing`.
+    - Thêm phát sinh sự kiện `GameEvent::EntityPlace`.
+  - Cập nhật `crates/pumpkin-core/src/item/items/boat.rs`:
+    - Sử dụng `is_point_inside_entity_pick_box` kiểm tra điểm mắt người chơi.
+    - Bổ sung phát sinh sự kiện `GameEvent::EntityPlace` khi người chơi đặt thuyền xuống nước/khối.
+  - **Unit Tests**: `test_boat_item_placement_and_dispense_parity_gap443`.
+
 
 
 

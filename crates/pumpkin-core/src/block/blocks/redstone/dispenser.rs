@@ -599,37 +599,48 @@ impl DispenserBlock {
     }
 
     fn dispense_boat(ctx: &DispenseContext<'_>, item: &mut ItemStack) -> bool {
-        let target = Self::target_position(ctx);
+        let facing_norm = to_normal(ctx.facing);
+        let step_x = facing_norm.x as i32;
+        let step_y = facing_norm.y as i32;
+        let step_z = facing_norm.z as i32;
+        let center = ctx.position.to_centered_f64();
+        let front_pos = Self::target_position(ctx);
         let is_water = |id: u16| id == Fluid::WATER.id || id == Fluid::FLOWING_WATER.id;
 
-        let spawn_pos = if is_water(ctx.world.get_fluid(&target).id) {
-            target.to_f64()
-        } else if ctx.world.get_block_state(&target).is_air()
-            && is_water(ctx.world.get_fluid(&target.down()).id)
-        {
-            target.down().to_f64()
-        } else {
+        let is_front_water = is_water(ctx.world.get_fluid(&front_pos).id);
+        let is_front_air = ctx.world.get_block_state(&front_pos).is_air();
+        let is_below_front_water = is_water(ctx.world.get_fluid(&front_pos.down()).id);
+
+        let Some(y_offset) = crate::entity::combat::can_dispense_boat(
+            is_front_water,
+            is_front_air,
+            is_below_front_water,
+        ) else {
             return false;
         };
 
         let entity_type = BoatItem::item_to_entity(item.item);
-        let dimensions = EntityDimensions::new(
-            entity_type.dimension[0],
-            entity_type.dimension[1],
-            entity_type.eye_height,
+        let boat_width = entity_type.dimension[0];
+
+        let spawn_pos = crate::entity::combat::calculate_boat_dispense_spawn_position(
+            center,
+            step_x,
+            step_y,
+            step_z,
+            boat_width,
+            y_offset,
         );
-        if !Self::has_room_for(ctx, spawn_pos, &dimensions) {
-            return false;
-        }
 
         let _ = item.split(1);
-        let facing = to_normal(ctx.facing);
+        let yaw = crate::entity::combat::facing_to_boat_dispense_yaw(ctx.facing);
         let entity = Entity::new(ctx.world.clone(), spawn_pos, entity_type);
-        entity.set_rotation(facing.x.atan2(facing.z) as f32 * 57.295_776, 0.0);
+        entity.set_rotation(yaw, 0.0);
         ctx.world.spawn_entity(Arc::new(BoatEntity::new(entity)));
 
         ctx.world
             .sync_world_event(WorldEvent::SoundDispenserDispense, *ctx.position, 0);
+        ctx.world
+            .emit_game_event(GameEvent::EntityPlace.name(), spawn_pos);
         true
     }
 

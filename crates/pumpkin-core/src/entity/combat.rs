@@ -15086,6 +15086,126 @@ pub fn calculate_boat_fall_distance(
     }
 }
 
+// ============================================================================
+// Gap 443: Boat Item Placement Raycast, Fluid Intersection & Dispense Parity
+// ============================================================================
+
+/// Base distance in front of dispenser to spawn a boat: 0.5625 blocks (9/16).
+/// Total offset is `0.5625 + boat.width / 2.0`.
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:27`: `double justOutsideDispenser = 0.5625 + this.type.getWidth() / 2.0;`.
+pub const BOAT_DISPENSER_OUTSIDE_BASE_OFFSET: f64 = 0.5625;
+
+/// Vertical scale applied to dispenser stepY: 1.125 blocks (9/8).
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:29`: `double spawnY = center.y() + direction.getStepY() * 1.125F;`.
+pub const BOAT_DISPENSER_STEP_Y_SCALE: f64 = 1.125;
+
+/// Vertical offset applied when the target block in front of the dispenser is water (1.0 block).
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:34`: `yOffset = 1.0;`.
+pub const BOAT_DISPENSER_WATER_Y_OFFSET: f64 = 1.0;
+
+/// Vertical offset applied when the target block in front of dispenser is air and the block below is water (0.0 blocks).
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:40`: `yOffset = 0.0;`.
+pub const BOAT_DISPENSER_AIR_WATER_BELOW_Y_OFFSET: f64 = 0.0;
+
+/// Maximum reach distance for boat item placement raycasting (5.0 blocks).
+/// Mirrors vanilla `BoatItem.java:39-40`: `double range = 5.0;`.
+pub const BOAT_PLACEMENT_REACH_DISTANCE: f64 = 5.0;
+
+/// Inflation applied to the raycast search bounding box when looking for blocking entities (1.0 block).
+/// Mirrors vanilla `BoatItem.java:40`: `player.getBoundingBox().expandTowards(viewVector.scale(5.0)).inflate(1.0)`.
+pub const BOAT_PLACEMENT_SEARCH_BOX_INFLATION: f64 = 1.0;
+
+/// Checks whether a dispenser can spawn a boat based on fluid conditions in front.
+/// Returns `Some(y_offset)` if boat can be spawned, or `None` if item should drop instead.
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:33-41`:
+/// ```java
+/// double yOffset;
+/// if (level.getFluidState(frontPos).is(FluidTags.WATER)) {
+///    yOffset = 1.0;
+/// } else {
+///    if (!level.getBlockState(frontPos).isAir() || !level.getFluidState(frontPos.below()).is(FluidTags.WATER)) {
+///       return this.defaultDispenseItemBehavior.dispense(source, dispensed);
+///    }
+///    yOffset = 0.0;
+/// }
+/// ```
+#[must_use]
+pub fn can_dispense_boat(
+    is_front_water: bool,
+    is_front_air: bool,
+    is_below_front_water: bool,
+) -> Option<f64> {
+    if is_front_water {
+        Some(BOAT_DISPENSER_WATER_Y_OFFSET)
+    } else if is_front_air && is_below_front_water {
+        Some(BOAT_DISPENSER_AIR_WATER_BELOW_Y_OFFSET)
+    } else {
+        None
+    }
+}
+
+/// Calculates the exact spawn position for a dispensed boat.
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:27-30, 45`:
+/// ```java
+/// double justOutsideDispenser = 0.5625 + this.type.getWidth() / 2.0;
+/// double spawnX = center.x() + direction.getStepX() * justOutsideDispenser;
+/// double spawnY = center.y() + direction.getStepY() * 1.125F;
+/// double spawnZ = center.z() + direction.getStepZ() * justOutsideDispenser;
+/// boat.setInitialPos(spawnX, spawnY + yOffset, spawnZ);
+/// ```
+#[must_use]
+pub fn calculate_boat_dispense_spawn_position(
+    center: Vector3<f64>,
+    step_x: i32,
+    step_y: i32,
+    step_z: i32,
+    boat_width: f32,
+    y_offset: f64,
+) -> Vector3<f64> {
+    let just_outside = BOAT_DISPENSER_OUTSIDE_BASE_OFFSET + f64::from(boat_width) / 2.0;
+    let spawn_x = center.x + f64::from(step_x) * just_outside;
+    let spawn_y = center.y + f64::from(step_y) * BOAT_DISPENSER_STEP_Y_SCALE + y_offset;
+    let spawn_z = center.z + f64::from(step_z) * just_outside;
+    Vector3::new(spawn_x, spawn_y, spawn_z)
+}
+
+/// Converts a dispenser Facing property to a boat spawn yaw angle in degrees.
+/// Mirrors vanilla `BoatDispenseItemBehavior.java:47` (`direction.toYRot()`):
+/// `(direction.data2d & 3) * 90` where `South=0.0, West=90.0, North=180.0, East=270.0`.
+#[must_use]
+pub fn facing_to_boat_dispense_yaw(facing: pumpkin_data::block_properties::Facing) -> f32 {
+    use pumpkin_data::block_properties::Facing;
+    match facing {
+        Facing::South => 0.0,
+        Facing::West => 90.0,
+        Facing::North => 180.0,
+        Facing::East => 270.0,
+        Facing::Up | Facing::Down => 0.0,
+    }
+}
+
+/// Checks whether a point is contained inside an entity's pick bounding box inflated by pick radius.
+/// Mirrors vanilla `BoatItem.java:45-47`:
+/// ```java
+/// AABB bb = entity.getBoundingBox().inflate(entity.getPickRadius());
+/// if (bb.contains(from)) return InteractionResult.PASS;
+/// ```
+#[must_use]
+pub fn is_point_inside_entity_pick_box(
+    point: Vector3<f64>,
+    box_min: Vector3<f64>,
+    box_max: Vector3<f64>,
+    pick_radius: f32,
+) -> bool {
+    let r = f64::from(pick_radius);
+    point.x >= box_min.x - r
+        && point.x <= box_max.x + r
+        && point.y >= box_min.y - r
+        && point.y <= box_max.y + r
+        && point.z >= box_min.z - r
+        && point.z <= box_max.z + r
+}
+
 /// Calculates the body yaw for a passenger riding a boat.
 /// Animals riding in a completely full boat (2 passengers) face sideways (perpendicular, 90 or 270 degrees).
 /// Mirrors vanilla `AbstractBoat.java:709-713`:
@@ -29100,5 +29220,59 @@ mod tests {
         assert_eq!(calculate_boat_fall_distance(5.0, -2.5, false, false, true), 5.0);
         // Moving upward over non-water: does not accumulate
         assert_eq!(calculate_boat_fall_distance(5.0, 1.5, false, false, false), 5.0);
+    }
+
+    #[test]
+    fn test_boat_item_placement_and_dispense_parity_gap443() {
+        use pumpkin_data::block_properties::Facing;
+
+        // 1. Boat dispense eligibility & y_offset (BoatDispenseItemBehavior.java:33-41)
+        assert_eq!(can_dispense_boat(true, false, false), Some(1.0)); // front is water -> +1.0
+        assert_eq!(can_dispense_boat(false, true, true), Some(0.0));  // front is air & below is water -> +0.0
+        assert_eq!(can_dispense_boat(false, true, false), None);      // front is air & below is air -> drops item
+        assert_eq!(can_dispense_boat(false, false, true), None);      // front is solid -> drops item
+
+        // 2. Dispense spawn position (BoatDispenseItemBehavior.java:27-30)
+        let center = Vector3::new(10.5, 64.5, 20.5);
+        let boat_width = 1.375f32; // Standard Boat / Chest Boat / Bamboo Raft
+        // just_outside = 0.5625 + 1.375 / 2.0 = 1.25
+
+        // Facing South (+Z: step_x=0, step_y=0, step_z=1), front is water (y_offset=1.0)
+        let pos_south_water = calculate_boat_dispense_spawn_position(center, 0, 0, 1, boat_width, 1.0);
+        assert!((pos_south_water.x - 10.5).abs() < 1e-6);
+        assert!((pos_south_water.y - 65.5).abs() < 1e-6); // 64.5 + 1.0
+        assert!((pos_south_water.z - 21.75).abs() < 1e-6); // 20.5 + 1.25
+
+        // Facing East (+X: step_x=1, step_y=0, step_z=0), front is air, below is water (y_offset=0.0)
+        let pos_east_air = calculate_boat_dispense_spawn_position(center, 1, 0, 0, boat_width, 0.0);
+        assert!((pos_east_air.x - 11.75).abs() < 1e-6); // 10.5 + 1.25
+        assert!((pos_east_air.y - 64.5).abs() < 1e-6);
+        assert!((pos_east_air.z - 20.5).abs() < 1e-6);
+
+        // Facing Down (-Y: step_x=0, step_y=-1, step_z=0)
+        let pos_down = calculate_boat_dispense_spawn_position(center, 0, -1, 0, boat_width, 1.0);
+        assert!((pos_down.x - 10.5).abs() < 1e-6);
+        assert!((pos_down.y - (64.5 - 1.125 + 1.0)).abs() < 1e-6); // 64.375
+        assert!((pos_down.z - 20.5).abs() < 1e-6);
+
+        // 3. Dispense Facing to Yaw (Direction.java:311-312: (data2d & 3) * 90)
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::South), 0.0);
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::West), 90.0);
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::North), 180.0);
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::East), 270.0);
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::Up), 0.0);
+        assert_eq!(facing_to_boat_dispense_yaw(Facing::Down), 0.0);
+
+        // 4. Point inside entity pick bounding box (BoatItem.java:45-47)
+        let box_min = Vector3::new(10.0, 64.0, 10.0);
+        let box_max = Vector3::new(11.0, 66.0, 11.0);
+        // Inside exact box
+        assert!(is_point_inside_entity_pick_box(Vector3::new(10.5, 65.0, 10.5), box_min, box_max, 0.0));
+        // Outside exact box
+        assert!(!is_point_inside_entity_pick_box(Vector3::new(9.5, 65.0, 10.5), box_min, box_max, 0.0));
+        // Outside exact box but inside pick_radius = 1.0
+        assert!(is_point_inside_entity_pick_box(Vector3::new(9.5, 65.0, 10.5), box_min, box_max, 1.0));
+        // Outside inflated box
+        assert!(!is_point_inside_entity_pick_box(Vector3::new(8.5, 65.0, 10.5), box_min, box_max, 1.0));
     }
 }

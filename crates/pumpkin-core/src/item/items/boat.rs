@@ -7,7 +7,6 @@ use crate::entity::vehicle::boat::BoatEntity;
 use crate::item::{ItemBehaviour, ItemMetadata};
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::item::Item;
-use pumpkin_util::math::boundingbox::BoundingBox;
 
 pub struct BoatItem;
 
@@ -111,10 +110,11 @@ impl ItemBehaviour for BoatItem {
         }
 
         let hit_vec = hit.location;
-        // Vanilla: Check for entities in the path that would block placement
-        // Get player's rotation vector stretched by 5.0 and expanded by 1.0
+        // Vanilla: Check for entities in the path that would block placement (BoatItem.java:38-50)
         let player_entity = player.get_entity().bounding_box.load();
-        let search_box = player_entity.stretch(view_vector * 5.0).expand_all(1.0);
+        let search_box = player_entity
+            .stretch(view_vector * crate::entity::combat::BOAT_PLACEMENT_REACH_DISTANCE)
+            .expand_all(crate::entity::combat::BOAT_PLACEMENT_SEARCH_BOX_INFLATION);
 
         let entities = world.get_all_at_box(&search_box);
 
@@ -127,10 +127,14 @@ impl ItemBehaviour for BoatItem {
                 continue;
             }
 
-            // Vanilla: expand by getTargetingMargin() (0.0 for most entities)
+            // Vanilla: expand by getPickRadius() (0.0 for most entities, BoatItem.java:45)
             let entity_box = entity.get_entity().bounding_box.load();
-            // Check if entity's bounding box contains the player's eye position
-            if entity_box.intersects(&BoundingBox::new(start_pos, start_pos)) {
+            if crate::entity::combat::is_point_inside_entity_pick_box(
+                start_pos,
+                entity_box.min,
+                entity_box.max,
+                0.0,
+            ) {
                 // Entity is blocking the line of sight at eye position
                 return;
             }
@@ -144,7 +148,7 @@ impl ItemBehaviour for BoatItem {
         let entity = boat_entity.get_entity();
         let boat_box = entity.bounding_box.load();
 
-        // Vanilla: if (!world.isSpaceEmpty(lv7, lv7.getBoundingBox())) return FAIL
+        // Vanilla: if (!level.noCollision(boat, boat.getBoundingBox())) return FAIL (BoatItem.java:59-61)
         if !world.is_space_empty(boat_box)
             || entity
                 .get_boat_collisions(boat_box, boat_entity.as_ref())
@@ -154,6 +158,10 @@ impl ItemBehaviour for BoatItem {
             return;
         }
         world.spawn_entity(boat_entity);
+        world.emit_game_event(
+            pumpkin_data::game_event::GameEvent::EntityPlace.name(),
+            hit_vec,
+        );
 
         let mut stack = player.inventory.get_stack_in_hand(hand);
         if !stack.is_empty() && stack.item.id == item.id {
