@@ -97,7 +97,50 @@ impl HoglinEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    #[must_use]
+    pub fn is_baby(&self) -> bool {
+        self.is_baby.load(Ordering::Relaxed)
+    }
+
+    pub fn set_baby(&self, baby: bool) {
+        self.is_baby.store(baby, Ordering::Relaxed);
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_synced_data(pumpkin_data::tracked_data::hoglin::DATA_BABY_ID, baby);
+        entity.set_bedrock_baby(baby);
+        let living = &self.mob_entity.living_entity;
+        living.set_attribute_base(
+            &Attributes::ATTACK_DAMAGE,
+            crate::entity::combat::get_hoglin_attack_damage_for_age(baby),
+        );
+        self.refresh_dimensions();
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_hoglin_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = pumpkin_util::math::boundingbox::EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(pumpkin_util::math::boundingbox::BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -198,12 +241,7 @@ impl Mob for HoglinEntity {
     }
 
     fn spawn_as_baby(&self) -> bool {
-        self.is_baby.store(true, Ordering::Relaxed);
-        self.mob_entity.set_baby_by_age();
-        self.mob_entity.living_entity.set_attribute_base(
-            &Attributes::ATTACK_DAMAGE,
-            crate::entity::combat::get_hoglin_attack_damage_for_age(true),
-        );
+        self.set_baby(true);
         true
     }
 
@@ -213,6 +251,9 @@ impl Mob for HoglinEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        if self.is_baby() {
+            nbt.put_bool("IsBaby", true);
+        }
         if self.is_immune_to_zombification() {
             nbt.put_bool("IsImmuneToZombification", true);
         }
@@ -226,6 +267,9 @@ impl Mob for HoglinEntity {
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        if let Some(is_baby) = nbt.get_bool("IsBaby") {
+            self.set_baby(is_baby);
+        }
         if let Some(immune) = nbt.get_bool("IsImmuneToZombification") {
             self.set_immune_to_zombification(immune);
         }

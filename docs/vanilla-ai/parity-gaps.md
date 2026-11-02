@@ -10634,3 +10634,24 @@ et.minecraft.world.entity.AgeableMob.java:273-275
 - **Hằng số Parity**: `VILLAGER_BABY_WIDTH` (0.49), `VILLAGER_BABY_HEIGHT` (0.98), `VILLAGER_BABY_EYE_HEIGHT` (0.63), `VILLAGER_BABY_SCALE` (0.5), `calculate_villager_dimensions`.
 - **Unit Tests**: `test_villager_and_wandering_trader_dimensions_and_parity_gap419`, `test_villager_baby_dimensions_and_ageable_parity`, `test_wandering_trader_cannot_be_baby_parity` pass 100%.
 
+
+
+### Gap 420: Zombie, Husk, Drowned, Zombie Villager, Zombified Piglin & Hoglin Baby Scalable Dimensions Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.monster.zombie.Zombie.java:62, 231-233`, `net.minecraft.world.entity.monster.zombie.Husk.java:31, 62-64`, `net.minecraft.world.entity.monster.zombie.Drowned.java:49, 101-103`, `net.minecraft.world.entity.monster.zombie.ZombieVillager.java:44, 89-91`, `net.minecraft.world.entity.monster.zombie.ZombifiedPiglin.java:43, 94-96`, `net.minecraft.world.entity.monster.hoglin.Hoglin.java:49, 101-103`, `net.minecraft.world.entity.monster.zoglin.Zoglin.java:45, 95-97` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Quái vật Zombie Con (Zombie Baby Scalable Dimensions & Eye Height)**:
+  - Vanilla `Zombie.java:62`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.775F)`. Adult: `0.6 x 1.95` (eye `1.74`). Baby: `0.49 x 0.98` (eye `0.775`).
+  - Vanilla `Husk.java:31`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.825F)`. Adult: `0.6 x 1.95` (eye `1.74`). Baby: `0.49 x 0.98` (eye `0.825`).
+  - Vanilla `Drowned.java:49`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.775F)`. Adult: `0.6 x 1.95` (eye `1.74`). Baby: `0.49 x 0.98` (eye `0.775`).
+  - Vanilla `ZombieVillager.java:44`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.67F)`. Adult: `0.6 x 1.95` (eye `1.74`). Baby: `0.49 x 0.98` (eye `0.67`).
+  - Triển khai `calculate_zombie_dimensions`, `calculate_husk_dimensions`, `calculate_drowned_dimensions`, `calculate_zombie_villager_dimensions`, và điều phối `calculate_zombie_dimensions_for_type` trong `combat.rs`.
+  - Triển khai `refresh_dimensions()` trên `ZombieEntityBase`, tự động cập nhật khi khởi tạo và khi gọi `set_baby`.
+- **Kích thước Zombified Piglin Con (Zombified Piglin Baby Scalable Dimensions)**:
+  - Vanilla `ZombifiedPiglin.java:43, 94-96`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.78F)`. Adult: `0.6 x 1.95` (eye `1.79`). Baby: `0.49 x 0.98` (eye `0.78`).
+  - Triển khai `calculate_zombified_piglin_dimensions`, `is_baby`, `set_baby`, `refresh_dimensions()`, lưu trữ NBT `IsBaby` trên `ZombifiedPiglinEntity`.
+- **Kích thước Hoglin & Zoglin Con (Hoglin & Zoglin Baby Scalable Dimensions)**:
+  - Vanilla `Hoglin.java:49, 101-103` & `Zoglin.java:45, 95-97`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F).withEyeHeight(0.625F)`. Adult: `1.3964844 x 1.4` (eye `1.3`). Baby: `0.75 x 0.85` (eye `0.625`).
+  - Triển khai `calculate_hoglin_dimensions`, `calculate_zoglin_dimensions`, `set_baby`, `refresh_dimensions()`, lưu trữ NBT `IsBaby` trên `HoglinEntity`.
+- **Hằng số Parity**: `ZOMBIE_BABY_WIDTH` (0.49), `ZOMBIE_BABY_HEIGHT` (0.98), `ZOMBIE_BABY_EYE_HEIGHT` (0.775), `HUSK_BABY_WIDTH` (0.49), `HUSK_BABY_HEIGHT` (0.98), `HUSK_BABY_EYE_HEIGHT` (0.825), `DROWNED_BABY_WIDTH` (0.49), `DROWNED_BABY_HEIGHT` (0.98), `DROWNED_BABY_EYE_HEIGHT` (0.775), `ZOMBIE_VILLAGER_BABY_WIDTH` (0.49), `ZOMBIE_VILLAGER_BABY_HEIGHT` (0.98), `ZOMBIE_VILLAGER_BABY_EYE_HEIGHT` (0.67), `ZOMBIFIED_PIGLIN_BABY_WIDTH` (0.49), `ZOMBIFIED_PIGLIN_BABY_HEIGHT` (0.98), `ZOMBIFIED_PIGLIN_BABY_EYE_HEIGHT` (0.78), `HOGLIN_BABY_WIDTH` (0.75), `HOGLIN_BABY_HEIGHT` (0.85), `HOGLIN_BABY_EYE_HEIGHT` (0.625), `ZOGLIN_BABY_WIDTH` (0.75), `ZOGLIN_BABY_HEIGHT` (0.85), `ZOGLIN_BABY_EYE_HEIGHT` (0.625).
+- **Unit Tests**: `test_zombie_and_nether_baby_dimensions_parity_gap420`, `test_zombie_baby_dimensions_parity`, `test_zombified_piglin_anger_speed_parity`, `test_hoglin_throw_and_conversion_parity` pass 100%.

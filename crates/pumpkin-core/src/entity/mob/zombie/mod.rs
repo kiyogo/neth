@@ -107,6 +107,7 @@ impl ZombieEntityBase {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -221,6 +222,32 @@ impl ZombieEntityBase {
             living,
             vec![pumpkin_data::attributes::Attributes::MOVEMENT_SPEED],
         );
+        self.refresh_dimensions();
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_zombie_dimensions_for_type(
+            entity.entity_type,
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = pumpkin_util::math::boundingbox::EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(pumpkin_util::math::boundingbox::BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]

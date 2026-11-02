@@ -10585,7 +10585,7 @@ pub const WOLF_BABY_SCALE: f32 = 0.5;
 /// Calculates wolf dimensions based on baby status.
 ///
 /// Mirrors vanilla `Wolf.java:588-590`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_wolf_dimensions(
     is_baby: bool,
@@ -10610,7 +10610,7 @@ pub const FELINE_BABY_SCALE: f32 = 0.5;
 /// Calculates feline (cat and ocelot) dimensions based on baby status.
 ///
 /// Mirrors vanilla `Cat.java:291-293` and `Ocelot.java:225-227`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_feline_dimensions(
     is_baby: bool,
@@ -10698,7 +10698,7 @@ pub const FOX_PICKUP_DELAY: i32 = 40;
 /// Calculates Fox dimensions based on baby status.
 ///
 /// Mirrors vanilla `Fox.java:384-385`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_fox_dimensions(
     is_baby: bool,
@@ -10776,7 +10776,7 @@ pub const PANDA_BABY_SCALE: f32 = 0.5;
 /// Calculates panda dimensions based on baby status.
 ///
 /// Mirrors vanilla `Panda.java:695-697`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_panda_dimensions(
     is_baby: bool,
@@ -11064,7 +11064,7 @@ pub const BOVINE_BABY_SCALE: f32 = 0.5;
 /// Calculates bovine (cow and mooshroom) dimensions based on baby status.
 ///
 /// Mirrors vanilla `AbstractCow.java:103-105`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_bovine_dimensions(
     is_baby: bool,
@@ -11096,7 +11096,7 @@ pub const SHEEP_BABY_SCALE: f32 = 0.5;
 /// Calculates sheep dimensions based on baby status.
 ///
 /// Mirrors vanilla `Sheep.java:277-279`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_sheep_dimensions(
     is_baby: bool,
@@ -11127,7 +11127,7 @@ pub const PIG_BABY_SCALE: f32 = 0.5;
 /// Calculates pig dimensions based on baby status.
 ///
 /// Mirrors vanilla `Pig.java:238-240`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_pig_dimensions(
     is_baby: bool,
@@ -11171,7 +11171,7 @@ pub const CHICKEN_BABY_SCALE: f32 = 0.5;
 /// Calculates chicken dimensions based on baby status.
 ///
 /// Mirrors vanilla `Chicken.java:109-111`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_chicken_dimensions(
     is_baby: bool,
@@ -11349,7 +11349,7 @@ pub const RABBIT_BABY_SCALE: f32 = 0.5;
 /// Calculates rabbit dimensions based on baby status.
 ///
 /// Mirrors vanilla `Rabbit.java:134-137`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_rabbit_dimensions(
     is_baby: bool,
@@ -11436,7 +11436,7 @@ pub const TURTLE_BABY_EYE_HEIGHT: f32 = 0.102;
 /// Calculates turtle dimensions based on baby status.
 ///
 /// Mirrors vanilla `Turtle.java:288-290`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_turtle_dimensions(
     is_baby: bool,
@@ -11497,7 +11497,7 @@ pub const AXOLOTL_BABY_SCALE: f32 = 0.5;
 /// Calculates axolotl dimensions based on baby status.
 ///
 /// Mirrors vanilla `Axolotl.java:578-580`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_axolotl_dimensions(
     is_baby: bool,
@@ -11877,7 +11877,7 @@ pub const ARMADILLO_BABY_SCALE: f32 = 0.6;
 /// Calculates armadillo dimensions based on baby status.
 ///
 /// Mirrors vanilla `Armadillo.java:186-188`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_armadillo_dimensions(
     is_baby: bool,
@@ -11918,7 +11918,7 @@ pub const STRIDER_BABY_SCALE: f32 = 0.5;
 /// Calculates strider dimensions based on baby status.
 ///
 /// Mirrors vanilla `Strider.java:186-188`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub fn calculate_strider_dimensions(
     is_baby: bool,
@@ -12733,7 +12733,7 @@ pub const fn can_equine_dispenser_equip(
 
 /// Calculates horse dimensions based on baby status.
 /// Mirrors vanilla `Horse.java:255-257`:
-/// `r/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);``
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
 #[must_use]
 pub const fn calculate_horse_dimensions(
     is_baby: bool,
@@ -12981,6 +12981,243 @@ pub const fn calculate_villager_dimensions(
             VILLAGER_BABY_WIDTH,
             VILLAGER_BABY_HEIGHT,
             VILLAGER_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Zombie baby dimensions and eye height constants.
+///
+/// Mirrors vanilla Zombie.java:62:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.775F)...
+pub const ZOMBIE_BABY_WIDTH: f32 = 0.49;
+pub const ZOMBIE_BABY_HEIGHT: f32 = 0.98;
+pub const ZOMBIE_BABY_EYE_HEIGHT: f32 = 0.775;
+
+/// Calculates zombie dimensions based on baby status.
+///
+/// Mirrors vanilla Zombie.java:231-233:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_zombie_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            ZOMBIE_BABY_WIDTH,
+            ZOMBIE_BABY_HEIGHT,
+            ZOMBIE_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Husk baby dimensions and eye height constants.
+///
+/// Mirrors vanilla Husk.java:31:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.825F)...
+pub const HUSK_BABY_WIDTH: f32 = 0.49;
+pub const HUSK_BABY_HEIGHT: f32 = 0.98;
+pub const HUSK_BABY_EYE_HEIGHT: f32 = 0.825;
+
+/// Calculates husk dimensions based on baby status.
+///
+/// Mirrors vanilla Husk.java:62-64:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_husk_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            HUSK_BABY_WIDTH,
+            HUSK_BABY_HEIGHT,
+            HUSK_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Drowned baby dimensions and eye height constants.
+///
+/// Mirrors vanilla Drowned.java:49:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.775F)...
+pub const DROWNED_BABY_WIDTH: f32 = 0.49;
+pub const DROWNED_BABY_HEIGHT: f32 = 0.98;
+pub const DROWNED_BABY_EYE_HEIGHT: f32 = 0.775;
+
+/// Calculates drowned dimensions based on baby status.
+///
+/// Mirrors vanilla Drowned.java:101-103:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_drowned_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            DROWNED_BABY_WIDTH,
+            DROWNED_BABY_HEIGHT,
+            DROWNED_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Zombie Villager baby dimensions and eye height constants.
+///
+/// Mirrors vanilla ZombieVillager.java:44:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.67F)...
+pub const ZOMBIE_VILLAGER_BABY_WIDTH: f32 = 0.49;
+pub const ZOMBIE_VILLAGER_BABY_HEIGHT: f32 = 0.98;
+pub const ZOMBIE_VILLAGER_BABY_EYE_HEIGHT: f32 = 0.67;
+
+/// Calculates zombie villager dimensions based on baby status.
+///
+/// Mirrors vanilla ZombieVillager.java:89-91:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_zombie_villager_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            ZOMBIE_VILLAGER_BABY_WIDTH,
+            ZOMBIE_VILLAGER_BABY_HEIGHT,
+            ZOMBIE_VILLAGER_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Dispatches zombie dimensions calculation based on the specific zombie entity type.
+#[must_use]
+pub fn calculate_zombie_dimensions_for_type(
+    entity_type: &EntityType,
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if entity_type == &EntityType::HUSK {
+        calculate_husk_dimensions(is_baby, default_width, default_height, default_eye_height)
+    } else if entity_type == &EntityType::DROWNED {
+        calculate_drowned_dimensions(is_baby, default_width, default_height, default_eye_height)
+    } else if entity_type == &EntityType::ZOMBIE_VILLAGER {
+        calculate_zombie_villager_dimensions(is_baby, default_width, default_height, default_eye_height)
+    } else {
+        calculate_zombie_dimensions(is_baby, default_width, default_height, default_eye_height)
+    }
+}
+
+/// Zombified Piglin baby dimensions and eye height constants.
+///
+/// Mirrors vanilla ZombifiedPiglin.java:43:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.49F, 0.98F).withEyeHeight(0.78F)...
+pub const ZOMBIFIED_PIGLIN_BABY_WIDTH: f32 = 0.49;
+pub const ZOMBIFIED_PIGLIN_BABY_HEIGHT: f32 = 0.98;
+pub const ZOMBIFIED_PIGLIN_BABY_EYE_HEIGHT: f32 = 0.78;
+
+/// Calculates zombified piglin dimensions based on baby status.
+///
+/// Mirrors vanilla ZombifiedPiglin.java:94-96:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_zombified_piglin_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            ZOMBIFIED_PIGLIN_BABY_WIDTH,
+            ZOMBIFIED_PIGLIN_BABY_HEIGHT,
+            ZOMBIFIED_PIGLIN_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Hoglin baby dimensions and eye height constants.
+///
+/// Mirrors vanilla Hoglin.java:49:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F).withEyeHeight(0.625F)...
+pub const HOGLIN_BABY_WIDTH: f32 = 0.75;
+pub const HOGLIN_BABY_HEIGHT: f32 = 0.85;
+pub const HOGLIN_BABY_EYE_HEIGHT: f32 = 0.625;
+
+/// Calculates hoglin dimensions based on baby status.
+///
+/// Mirrors vanilla Hoglin.java:101-103:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_hoglin_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            HOGLIN_BABY_WIDTH,
+            HOGLIN_BABY_HEIGHT,
+            HOGLIN_BABY_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Zoglin baby dimensions and eye height constants.
+///
+/// Mirrors vanilla Zoglin.java:45:
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F).withEyeHeight(0.625F)...
+pub const ZOGLIN_BABY_WIDTH: f32 = 0.75;
+pub const ZOGLIN_BABY_HEIGHT: f32 = 0.85;
+pub const ZOGLIN_BABY_EYE_HEIGHT: f32 = 0.625;
+
+/// Calculates zoglin dimensions based on baby status.
+///
+/// Mirrors vanilla Zoglin.java:95-97:
+/// 
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub const fn calculate_zoglin_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (
+            ZOGLIN_BABY_WIDTH,
+            ZOGLIN_BABY_HEIGHT,
+            ZOGLIN_BABY_EYE_HEIGHT,
         )
     } else {
         (default_width, default_height, default_eye_height)
@@ -25328,6 +25565,80 @@ mod tests {
         assert_eq!(VILLAGER_BABY_HEIGHT, 0.98);
         assert_eq!(VILLAGER_BABY_EYE_HEIGHT, 0.63);
         assert_eq!(VILLAGER_BABY_SCALE, 0.5);
+    }
+
+    #[test]
+    fn test_zombie_and_nether_baby_dimensions_parity_gap420() {
+        use super::*;
+
+        // 1. Zombie (Zombie.java:62, EntityTypes.java: sized(0.6, 1.95), eyeHeight(1.74))
+        let z_adult = calculate_zombie_dimensions(false, 0.6, 1.95, 1.74);
+        assert_eq!(z_adult, (0.6, 1.95, 1.74));
+        let z_baby = calculate_zombie_dimensions(true, 0.6, 1.95, 1.74);
+        assert_eq!(z_baby, (0.49, 0.98, 0.775));
+        assert_eq!(ZOMBIE_BABY_WIDTH, 0.49);
+        assert_eq!(ZOMBIE_BABY_HEIGHT, 0.98);
+        assert_eq!(ZOMBIE_BABY_EYE_HEIGHT, 0.775);
+
+        // 2. Husk (Husk.java:31)
+        let husk_adult = calculate_husk_dimensions(false, 0.6, 1.95, 1.74);
+        assert_eq!(husk_adult, (0.6, 1.95, 1.74));
+        let husk_baby = calculate_husk_dimensions(true, 0.6, 1.95, 1.74);
+        assert_eq!(husk_baby, (0.49, 0.98, 0.825));
+        assert_eq!(HUSK_BABY_WIDTH, 0.49);
+        assert_eq!(HUSK_BABY_HEIGHT, 0.98);
+        assert_eq!(HUSK_BABY_EYE_HEIGHT, 0.825);
+
+        // 3. Drowned (Drowned.java:49)
+        let drowned_adult = calculate_drowned_dimensions(false, 0.6, 1.95, 1.74);
+        assert_eq!(drowned_adult, (0.6, 1.95, 1.74));
+        let drowned_baby = calculate_drowned_dimensions(true, 0.6, 1.95, 1.74);
+        assert_eq!(drowned_baby, (0.49, 0.98, 0.775));
+        assert_eq!(DROWNED_BABY_WIDTH, 0.49);
+        assert_eq!(DROWNED_BABY_HEIGHT, 0.98);
+        assert_eq!(DROWNED_BABY_EYE_HEIGHT, 0.775);
+
+        // 4. Zombie Villager (ZombieVillager.java:44)
+        let zv_adult = calculate_zombie_villager_dimensions(false, 0.6, 1.95, 1.74);
+        assert_eq!(zv_adult, (0.6, 1.95, 1.74));
+        let zv_baby = calculate_zombie_villager_dimensions(true, 0.6, 1.95, 1.74);
+        assert_eq!(zv_baby, (0.49, 0.98, 0.67));
+        assert_eq!(ZOMBIE_VILLAGER_BABY_WIDTH, 0.49);
+        assert_eq!(ZOMBIE_VILLAGER_BABY_HEIGHT, 0.98);
+        assert_eq!(ZOMBIE_VILLAGER_BABY_EYE_HEIGHT, 0.67);
+
+        // Dispatch helper test
+        assert_eq!(calculate_zombie_dimensions_for_type(&EntityType::ZOMBIE, true, 0.6, 1.95, 1.74), z_baby);
+        assert_eq!(calculate_zombie_dimensions_for_type(&EntityType::HUSK, true, 0.6, 1.95, 1.74), husk_baby);
+        assert_eq!(calculate_zombie_dimensions_for_type(&EntityType::DROWNED, true, 0.6, 1.95, 1.74), drowned_baby);
+        assert_eq!(calculate_zombie_dimensions_for_type(&EntityType::ZOMBIE_VILLAGER, true, 0.6, 1.95, 1.74), zv_baby);
+
+        // 5. Zombified Piglin (ZombifiedPiglin.java:43, EntityTypes.java: sized(0.6, 1.95), eyeHeight(1.79))
+        let zp_adult = calculate_zombified_piglin_dimensions(false, 0.6, 1.95, 1.79);
+        assert_eq!(zp_adult, (0.6, 1.95, 1.79));
+        let zp_baby = calculate_zombified_piglin_dimensions(true, 0.6, 1.95, 1.79);
+        assert_eq!(zp_baby, (0.49, 0.98, 0.78));
+        assert_eq!(ZOMBIFIED_PIGLIN_BABY_WIDTH, 0.49);
+        assert_eq!(ZOMBIFIED_PIGLIN_BABY_HEIGHT, 0.98);
+        assert_eq!(ZOMBIFIED_PIGLIN_BABY_EYE_HEIGHT, 0.78);
+
+        // 6. Hoglin (Hoglin.java:49, EntityTypes.java: sized(1.3964844, 1.4), eyeHeight(1.3))
+        let hoglin_adult = calculate_hoglin_dimensions(false, 1.3964844, 1.4, 1.3);
+        assert_eq!(hoglin_adult, (1.3964844, 1.4, 1.3));
+        let hoglin_baby = calculate_hoglin_dimensions(true, 1.3964844, 1.4, 1.3);
+        assert_eq!(hoglin_baby, (0.75, 0.85, 0.625));
+        assert_eq!(HOGLIN_BABY_WIDTH, 0.75);
+        assert_eq!(HOGLIN_BABY_HEIGHT, 0.85);
+        assert_eq!(HOGLIN_BABY_EYE_HEIGHT, 0.625);
+
+        // 7. Zoglin (Zoglin.java:45, EntityTypes.java: sized(1.3964844, 1.4), eyeHeight(1.3))
+        let zoglin_adult = calculate_zoglin_dimensions(false, 1.3964844, 1.4, 1.3);
+        assert_eq!(zoglin_adult, (1.3964844, 1.4, 1.3));
+        let zoglin_baby = calculate_zoglin_dimensions(true, 1.3964844, 1.4, 1.3);
+        assert_eq!(zoglin_baby, (0.75, 0.85, 0.625));
+        assert_eq!(ZOGLIN_BABY_WIDTH, 0.75);
+        assert_eq!(ZOGLIN_BABY_HEIGHT, 0.85);
+        assert_eq!(ZOGLIN_BABY_EYE_HEIGHT, 0.625);
     }
 
 }

@@ -112,7 +112,44 @@ impl ZombifiedPiglinEntity {
             apply_targets(&mut target_selector, &mob_arc.mob_entity, 2, 3, true);
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn is_baby(&self) -> bool {
+        self.is_baby_mob()
+    }
+
+    pub fn set_baby(&self, baby: bool) {
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.age.store(if baby { -24000 } else { 0 }, Ordering::Relaxed);
+        entity.set_synced_data(pumpkin_data::tracked_data::zombie::BABY, baby);
+        entity.set_bedrock_baby(baby);
+        self.refresh_dimensions();
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_zombified_piglin_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = pumpkin_util::math::boundingbox::EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(pumpkin_util::math::boundingbox::BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
     }
 
     /// Hands the current target to nearby piglins that have none of their own.
@@ -173,8 +210,20 @@ impl Mob for ZombifiedPiglinEntity {
     }
 
     fn spawn_as_baby(&self) -> bool {
-        self.mob_entity.set_baby_by_age();
+        self.set_baby(true);
         true
+    }
+
+    fn mob_write_nbt(&self, nbt: &mut pumpkin_nbt::compound::NbtCompound) {
+        if self.is_baby() {
+            nbt.put_bool("IsBaby", true);
+        }
+    }
+
+    fn mob_read_nbt(&self, nbt: &pumpkin_nbt::compound::NbtCompound) {
+        if let Some(is_baby) = nbt.get_bool("IsBaby") {
+            self.set_baby(is_baby);
+        }
     }
 
     fn as_neutral(&self) -> Option<&dyn NeutralMob> {

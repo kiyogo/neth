@@ -363,5 +363,20 @@ mod tests {
         assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 3.0, 0.8), Some(6));
         assert_eq!(calculate_zombie_fire_attack_seconds(true, true, 3.0, 0.95), None);
     }
-}
+    #[test]
+    fn test_zombie_baby_dimensions_parity() {
+        use crate::entity::combat::{
+            ZOMBIE_BABY_EYE_HEIGHT, ZOMBIE_BABY_HEIGHT, ZOMBIE_BABY_WIDTH,
+            calculate_zombie_dimensions,
+        };
 
+        let adult = calculate_zombie_dimensions(false, 0.6, 1.95, 1.74);
+        assert_eq!(adult, (0.6, 1.95, 1.74));
+
+        let baby = calculate_zombie_dimensions(true, 0.6, 1.95, 1.74);
+        assert_eq!(baby, (0.49, 0.98, 0.775));
+        assert_eq!(ZOMBIE_BABY_WIDTH, 0.49);
+        assert_eq!(ZOMBIE_BABY_HEIGHT, 0.98);
+        assert_eq!(ZOMBIE_BABY_EYE_HEIGHT, 0.775);
+    }
+}
