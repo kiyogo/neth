@@ -13,10 +13,10 @@ impl MobEffect for RaidOmenMobEffect {
         duration == 1
     }
 
-    fn apply_effect_tick(&self, living: &LivingEntity, _amplifier: u8) {
+    fn apply_effect_tick(&self, living: &LivingEntity, _amplifier: u8) -> bool {
         let world = living.entity.world.load();
         if !world.dimension.can_start_raid {
-            return;
+            return true;
         }
         if let Some(entity) = world.get_entity_by_id(living.entity.entity_id)
             && let Some(player) = entity.get_player()
@@ -36,6 +36,8 @@ impl MobEffect for RaidOmenMobEffect {
                 1,
             );
             player.clear_raid_omen_position();
+            return false;
         }
+        true
     }
 }

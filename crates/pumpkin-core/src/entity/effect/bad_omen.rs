@@ -24,17 +24,17 @@ impl MobEffect for BadOmenMobEffect {
         true
     }
 
-    fn apply_effect_tick(&self, living: &LivingEntity, amplifier: u8) {
+    fn apply_effect_tick(&self, living: &LivingEntity, amplifier: u8) -> bool {
         let world = living.entity.world.load();
         if !world.dimension.can_start_raid {
-            return;
+            return true;
         }
         if let Some(entity) = world.get_entity_by_id(living.entity.entity_id)
             && let Some(player) = entity.get_player()
             && !player.is_spectator()
         {
             if player.has_effect(&StatusEffect::RAID_OMEN) {
-                return;
+                return true;
             }
             let player_pos = living.entity.block_pos.load();
             let pos_f64 = living.entity.pos.load();
@@ -53,7 +53,6 @@ impl MobEffect for BadOmenMobEffect {
                 });
 
             if let Some(pos) = village_pos {
-                living.remove_effect(&StatusEffect::BAD_OMEN);
                 player.set_raid_omen_position(pos);
                 let effect = Effect {
                     effect_type: &StatusEffect::RAID_OMEN,
@@ -66,7 +65,9 @@ impl MobEffect for BadOmenMobEffect {
                 };
                 living.add_effect(effect);
                 world.play_sound(Sound::BlockBellResonate, SoundCategory::Neutral, &pos_f64);
+                return false;
             }
         }
+        true
     }
 }

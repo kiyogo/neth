@@ -19,5 +19,7 @@ impl MobEffect for TrialOmenMobEffect {
         false
     }
 
-    fn apply_effect_tick(&self, _living: &LivingEntity, _amplifier: u8) {}
+    fn apply_effect_tick(&self, _living: &LivingEntity, _amplifier: u8) -> bool {
+        true
+    }
 }

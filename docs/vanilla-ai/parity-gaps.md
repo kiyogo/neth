@@ -10813,3 +10813,31 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Tự động gọi `refresh_dimensions()` khi khởi tạo `WardenEntity::new`, trong `emerge()`, `dig()`, `EmergeGoal::stop`, và `DigGoal::start`.
   - Cập nhật `is_digging_or_emerging(&self)` kiểm tra cả `EntityPose::Digging`, `EntityPose::Emerging` cũng như `emerge_ticks` và `dig_ticks`.
 - **Unit Tests**: `test_warden_digging_and_emerging_dimensions_parity`, `test_warden_sonic_boom_constants_and_knockback_parity`, `test_warden_spawn_tracker_warning_levels` pass 100%.
+
+
+### Gap 428: Mob Effects Parity, Inverted Healing/Harm & Status Effect Lifecycle Parity
+
+**Vanilla Reference**: `net.minecraft.world.effect.AbsorptionMobEffect.java:6-26`, `net.minecraft.world.effect.HealOrHarmMobEffect.java:8-48`, `net.minecraft.world.effect.InstantaneousMobEffect.java:3-17`, `net.minecraft.world.effect.HungerMobEffect.java:7-25`, `net.minecraft.world.effect.PoisonMobEffect.java:6-27`, `net.minecraft.world.effect.RegenerationMobEffect.java:6-25`, `net.minecraft.world.effect.WitherMobEffect.java:6-24`, `net.minecraft.world.effect.MobEffect.java:81-175`, `net.minecraft.world.effect.MobEffects.java:15-132`, `net.minecraft.world.entity.LivingEntity.java:845-861, 1012-1060, 1963-1976, 3396-3405`
+
+- **AbsorptionMobEffect Parity**:
+  - Triển khai `crates/pumpkin-core/src/entity/effect/absorption.rs`:
+    - `should_apply_effect_tick` luôn trả về `true`.
+    - `apply_effect_tick` trả về `living.get_absorption() > 0.0`. Khi lượng máu vàng hết (<= 0.0), trả về `false` giúp `tick_effects` tự động gỡ bỏ hiệu ứng Absorption ngay lập tức khỏi entity, đồng bộ với client và hạ `MAX_ABSORPTION`.
+    - `on_effect_started` đặt `current.max(4.0 * (amplifier + 1.0))` (chứ không cộng dồn vượt max).
+    - `LivingEntity::set_absorption` giới hạn trong `[0.0, max_absorption]` theo `LivingEntity.java:3400-3401`.
+- **HealOrHarmMobEffect & Inverted Healing/Harm Parity**:
+  - Triển khai `crates/pumpkin-core/src/entity/effect/heal_or_harm.rs`:
+    - Bổ sung `is_inverted_heal_and_harm(&self) -> bool` trên `LivingEntity` kiểm tra tag `#minecraft:inverted_healing_and_harm` (Undead: Zombie, Skeleton, Wither, Phantom, v.v.).
+    - Đảo chiều sát thương và hồi máu:
+      - `is_harm == living.is_inverted_heal_and_harm()` -> Hồi máu (`4 << amplifier` hoặc scaled `(scale * (4 << amp) + 0.5)`).
+      - `is_harm != living.is_inverted_heal_and_harm()` -> Gây sát thương phép (`6 << amplifier` hoặc scaled `(scale * (6 << amp) + 0.5)` qua `DamageType::MAGIC`).
+    - Cập nhật cả `LivingEntity::add_effect` (khi uống potion/lệnh) và `PotionContents::apply_effects_to` (splash potion, area effect cloud) sử dụng chung logic này.
+- **Hunger, Poison, Regeneration & Wither Tick Interval Parity**:
+  - `HungerMobEffect`: `should_apply_effect_tick` kích hoạt mỗi tick (thay vì mỗi 20 ticks) với `0.005F * (amplifier + 1)` exhaustion mỗi tick (`HungerMobEffect.java:15, 23`).
+  - `PoisonMobEffect`, `RegenerationMobEffect`, `WitherMobEffect`: Bỏ clamp `.min(4)` nhân tạo; tính `interval = BASE >> amplifier`. Khi `interval <= 0` (amplifier >= 5 hoặc 6), tick mỗi tick theo đúng Java edition.
+- **MobEffect::apply_effect_tick Return Type & Dynamic Removal**:
+  - Sửa `apply_effect_tick` trả về `bool` (mặc định `true`). Nếu trả về `false`, `tick_effects` gọi `self.remove_effect(effect_type)` để lập tức xóa hiệu ứng (`BadOmen` chuyển `RaidOmen`, `RaidOmen` khi hết giờ kích hoạt raid, `Absorption` khi hết máu vàng).
+  - Đăng ký `ABSORPTION`, `INSTANT_HEALTH`, `INSTANT_DAMAGE` vào `get_mob_effect`.
+- **Unit Tests**:
+  - `test_combat_mob_effects_constants_formulas_and_triggers_parity` kiểm tra đầy đủ công thức, màu sắc, khoảng cách tick và tỷ lệ sát thương/hồi máu.
+  - `test_omen_effects_and_transformation_parity` kiểm tra chu kỳ chuyển đổi Bad Omen -> Raid Omen -> Raid.

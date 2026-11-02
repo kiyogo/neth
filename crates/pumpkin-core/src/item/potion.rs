@@ -1,4 +1,3 @@
-use crate::entity::EntityBase;
 use crate::entity::living::LivingEntity;
 use pumpkin_data::effect::StatusEffect;
 use pumpkin_data::item_stack::ItemStack;
@@ -150,18 +149,13 @@ impl PotionContents {
                 // Instant potency scaling
                 let instant_scale = source.instant_scale(scale);
 
-                // Apply instant effects logic directly as they don't tick
+                // Apply instant effects logic directly using vanilla inverted healing/harm parity
                 if effect_type.id == pumpkin_data::effect::StatusEffect::INSTANT_HEALTH.id {
-                    let amount = 4.0 * (1 << amplifier) as f32 * instant_scale;
-                    target.heal(amount);
+                    crate::entity::effect::heal_or_harm::HealOrHarmMobEffect::INSTANT_HEALTH
+                        .apply_instantaneous_effect(target, amplifier, instant_scale);
                 } else if effect_type.id == pumpkin_data::effect::StatusEffect::INSTANT_DAMAGE.id {
-                    let amount = 6.0 * (1 << amplifier) as f32 * instant_scale;
-
-                    let _ = target.damage(
-                        target.get_entity(),
-                        amount,
-                        pumpkin_data::damage::DamageType::MAGIC,
-                    );
+                    crate::entity::effect::heal_or_harm::HealOrHarmMobEffect::INSTANT_DAMAGE
+                        .apply_instantaneous_effect(target, amplifier, instant_scale);
                 }
 
                 // Like vanilla, instant effects are applied once and never added to the active

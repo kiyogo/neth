@@ -1,4 +1,6 @@
+pub mod absorption;
 pub mod bad_omen;
+pub mod heal_or_harm;
 pub mod hunger;
 pub mod infested;
 pub mod oozing;
@@ -27,7 +29,17 @@ pub trait MobEffect: Send + Sync {
     }
 
     /// Applies periodic/tick-based effect logic on a living entity.
-    fn apply_effect_tick(&self, _living: &LivingEntity, _amplifier: u8) {}
+    ///
+    /// Vanilla parity: `MobEffect.applyEffectTick` returns `boolean` (MobEffect.java:81).
+    /// When returning `false`, the effect is immediately terminated and removed from `active_effects`
+    /// (e.g. `Absorption` when absorption hearts reach 0, `BadOmen` when converting into `RaidOmen`,
+    /// or `RaidOmen` when duration reaches 1 and creates/extends a raid).
+    fn apply_effect_tick(&self, _living: &LivingEntity, _amplifier: u8) -> bool {
+        true
+    }
+
+    /// Called when an effect is started on an entity (Vanilla `MobEffect.onEffectStarted`).
+    fn on_effect_started(&self, _living: &LivingEntity, _amplifier: u8) {}
 
     /// Called when an entity carrying this effect is hurt.
     fn on_mob_hurt(
@@ -55,6 +67,9 @@ pub static INFESTED: infested::InfestedMobEffect = infested::InfestedMobEffect;
 pub static OOZING: oozing::OozingMobEffect = oozing::OozingMobEffect;
 pub static WEAVING: weaving::WeavingMobEffect = weaving::WeavingMobEffect;
 pub static WIND_CHARGED: wind_charged::WindChargedMobEffect = wind_charged::WindChargedMobEffect;
+pub static ABSORPTION: absorption::AbsorptionMobEffect = absorption::AbsorptionMobEffect;
+pub static INSTANT_HEALTH: heal_or_harm::HealOrHarmMobEffect = heal_or_harm::HealOrHarmMobEffect::INSTANT_HEALTH;
+pub static INSTANT_DAMAGE: heal_or_harm::HealOrHarmMobEffect = heal_or_harm::HealOrHarmMobEffect::INSTANT_DAMAGE;
 
 #[must_use]
 pub fn get_mob_effect(effect: &'static StatusEffect) -> Option<&'static dyn MobEffect> {
@@ -82,6 +97,12 @@ pub fn get_mob_effect(effect: &'static StatusEffect) -> Option<&'static dyn MobE
         Some(&BAD_OMEN)
     } else if effect == &StatusEffect::TRIAL_OMEN {
         Some(&TRIAL_OMEN)
+    } else if effect == &StatusEffect::ABSORPTION {
+        Some(&ABSORPTION)
+    } else if effect == &StatusEffect::INSTANT_HEALTH {
+        Some(&INSTANT_HEALTH)
+    } else if effect == &StatusEffect::INSTANT_DAMAGE {
+        Some(&INSTANT_DAMAGE)
     } else {
         None
     }
@@ -139,10 +160,12 @@ impl NBTStorageInit for pumpkin_data::potion::Effect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity::effect::wind_charged::WindChargedMobEffect;
-    use crate::entity::effect::weaving::WeavingMobEffect;
-    use crate::entity::effect::oozing::OozingMobEffect;
+    use crate::entity::effect::absorption::AbsorptionMobEffect;
+    use crate::entity::effect::heal_or_harm::HealOrHarmMobEffect;
     use crate::entity::effect::infested::InfestedMobEffect;
+    use crate::entity::effect::oozing::OozingMobEffect;
+    use crate::entity::effect::weaving::WeavingMobEffect;
+    use crate::entity::effect::wind_charged::WindChargedMobEffect;
     use pumpkin_data::entity::EntityType;
 
     #[test]
@@ -204,7 +227,78 @@ mod tests {
         assert!(!InfestedMobEffect::is_immune(&EntityType::ZOMBIE));
         assert!(!InfestedMobEffect::is_immune(&EntityType::PLAYER));
 
-        // 5. get_mob_effect registry lookup parity
+        // 5. Absorption parity (AbsorptionMobEffect.java:6-26, MobEffects.java:ABSORPTION)
+        assert_eq!(AbsorptionMobEffect::COLOR, 2445989);
+        assert_eq!(StatusEffect::ABSORPTION.color, 2445989);
+        assert_eq!(AbsorptionMobEffect::ABSORPTION_PER_LEVEL, 4.0);
+        assert!(ABSORPTION.should_apply_effect_tick(1, 0));
+        assert!(ABSORPTION.should_apply_effect_tick(600, 2));
+
+        // 6. HealOrHarm parity (HealOrHarmMobEffect.java:8-48, MobEffects.java:INSTANT_HEALTH, INSTANT_DAMAGE)
+        assert_eq!(HealOrHarmMobEffect::HEALTH_COLOR, 16262179);
+        assert_eq!(StatusEffect::INSTANT_HEALTH.color, 16262179);
+        assert_eq!(HealOrHarmMobEffect::DAMAGE_COLOR, 11101546);
+        assert_eq!(StatusEffect::INSTANT_DAMAGE.color, 11101546);
+
+        // Direct heal: 4 << amp
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_heal(0), 4.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_heal(1), 8.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_heal(2), 16.0);
+
+        // Direct harm: 6 << amp
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_harm(0), 6.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_harm(1), 12.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_direct_harm(2), 24.0);
+
+        // Scaled instantaneous: (int)(scale * amount + 0.5)
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_heal(0, 1.0), 4.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_heal(0, 0.5), 2.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_heal(1, 0.5), 4.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_harm(0, 1.0), 6.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_harm(0, 0.5), 3.0);
+        assert_eq!(HealOrHarmMobEffect::calculate_scaled_harm(1, 0.5), 6.0);
+
+        // Instantaneous should_apply_effect_tick: duration >= 1
+        assert!(INSTANT_HEALTH.should_apply_effect_tick(1, 0));
+        assert!(!INSTANT_HEALTH.should_apply_effect_tick(0, 0));
+
+        // 7. Poison, Regeneration, Wither tick interval parity
+        // Poison: 25 >> amp (25, 12, 6, 3, 1, 0 -> true)
+        assert!(POISON.should_apply_effect_tick(25, 0));
+        assert!(!POISON.should_apply_effect_tick(24, 0));
+        assert!(POISON.should_apply_effect_tick(12, 1));
+        assert!(!POISON.should_apply_effect_tick(11, 1));
+        assert!(POISON.should_apply_effect_tick(6, 2));
+        assert!(POISON.should_apply_effect_tick(3, 3));
+        assert!(POISON.should_apply_effect_tick(1, 4));
+        assert!(POISON.should_apply_effect_tick(1, 5)); // 25 >> 5 == 0 -> every tick
+        assert!(POISON.should_apply_effect_tick(7, 5));
+
+        // Regeneration: 50 >> amp (50, 25, 12, 6, 3, 1, 0 -> true)
+        assert!(REGENERATION.should_apply_effect_tick(50, 0));
+        assert!(!REGENERATION.should_apply_effect_tick(49, 0));
+        assert!(REGENERATION.should_apply_effect_tick(25, 1));
+        assert!(REGENERATION.should_apply_effect_tick(12, 2));
+        assert!(REGENERATION.should_apply_effect_tick(6, 3));
+        assert!(REGENERATION.should_apply_effect_tick(3, 4));
+        assert!(REGENERATION.should_apply_effect_tick(1, 5));
+        assert!(REGENERATION.should_apply_effect_tick(1, 6)); // 50 >> 6 == 0 -> every tick
+
+        // Wither: 40 >> amp (40, 20, 10, 5, 2, 1, 0 -> true)
+        assert!(WITHER.should_apply_effect_tick(40, 0));
+        assert!(!WITHER.should_apply_effect_tick(39, 0));
+        assert!(WITHER.should_apply_effect_tick(20, 1));
+        assert!(WITHER.should_apply_effect_tick(10, 2));
+        assert!(WITHER.should_apply_effect_tick(5, 3));
+        assert!(WITHER.should_apply_effect_tick(2, 4));
+        assert!(WITHER.should_apply_effect_tick(1, 5));
+        assert!(WITHER.should_apply_effect_tick(1, 6)); // 40 >> 6 == 0 -> every tick
+
+        // Hunger: ticks every tick
+        assert!(HUNGER.should_apply_effect_tick(1, 0));
+        assert!(HUNGER.should_apply_effect_tick(17, 0));
+
+        // 8. get_mob_effect registry lookup parity
         assert!(get_mob_effect(&StatusEffect::WIND_CHARGED).is_some());
         assert!(get_mob_effect(&StatusEffect::WEAVING).is_some());
         assert!(get_mob_effect(&StatusEffect::OOZING).is_some());
@@ -212,6 +306,9 @@ mod tests {
         assert!(get_mob_effect(&StatusEffect::BAD_OMEN).is_some());
         assert!(get_mob_effect(&StatusEffect::TRIAL_OMEN).is_some());
         assert!(get_mob_effect(&StatusEffect::RAID_OMEN).is_some());
+        assert!(get_mob_effect(&StatusEffect::ABSORPTION).is_some());
+        assert!(get_mob_effect(&StatusEffect::INSTANT_HEALTH).is_some());
+        assert!(get_mob_effect(&StatusEffect::INSTANT_DAMAGE).is_some());
     }
 
     #[test]

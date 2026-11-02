@@ -1063,8 +1063,9 @@ impl LivingEntity {
 
     /// Sets the current absorption amount for this entity (yellow hearts)
     pub fn set_absorption(&self, new_abs: f32) {
-        // Must be at least 0
-        let new_abs = new_abs.max(0.0);
+        // Vanilla LivingEntity.java:3400-3401: clamp to [0.0, max_absorption]
+        let max_abs = self.get_attribute_value(&Attributes::MAX_ABSORPTION) as f32;
+        let new_abs = new_abs.clamp(0.0, max_abs.max(0.0));
 
         // Set local state
         self.absorption.store(new_abs);
@@ -1081,6 +1082,15 @@ impl LivingEntity {
             self.entity
                 .set_synced_data(tracked_data::player::DATA_PLAYER_ABSORPTION_ID, new_abs);
         }
+    }
+
+    /// Vanilla parity: `LivingEntity.isInvertedHealAndHarm()` (LivingEntity.java:1055-1057)
+    /// Mobs tagged `#minecraft:inverted_healing_and_harm` (e.g. undead) take damage from Instant Health and heal from Instant Damage.
+    #[must_use]
+    pub fn is_inverted_heal_and_harm(&self) -> bool {
+        self.entity
+            .entity_type
+            .has_tag(&tag::EntityType::MINECRAFT_INVERTED_HEALING_AND_HARM)
     }
 
     /// Convenience helper to mutate an attribute instance. Automatically inserts
@@ -1240,22 +1250,14 @@ impl LivingEntity {
             return;
         }
 
-        // Apply instant effects immediately before storing
+        // Apply instant effects immediately before storing (Vanilla HealOrHarmMobEffect.java:18-24)
         if effect.effect_type == &StatusEffect::INSTANT_HEALTH {
-            let heal_amount = 4.0 * (1 << effect.amplifier) as f32;
-            self.heal(heal_amount);
-            // Like vanilla, instant effects are never sent or stored as active effects.
+            crate::entity::effect::heal_or_harm::HealOrHarmMobEffect::INSTANT_HEALTH
+                .apply_effect_tick(self, effect.amplifier);
             return;
         } else if effect.effect_type == &StatusEffect::INSTANT_DAMAGE {
-            let damage_amount = 6.0 * (1 << effect.amplifier) as f32;
-            let dyn_self = self
-                .entity
-                .world
-                .load()
-                .get_entity_by_id(self.entity.entity_id);
-            if let Some(dyn_self) = dyn_self {
-                let _ = dyn_self.damage(&*dyn_self, damage_amount, DamageType::MAGIC);
-            }
+            crate::entity::effect::heal_or_harm::HealOrHarmMobEffect::INSTANT_DAMAGE
+                .apply_effect_tick(self, effect.amplifier);
             return;
         }
 
@@ -1299,12 +1301,9 @@ impl LivingEntity {
             }
         }
 
-        // Apply absorption effect (+4 absorption per level)
-        if effect.effect_type == &StatusEffect::ABSORPTION {
-            let added = 4.0 * (effect.amplifier as f32 + 1.0);
-            let max_abs = self.get_attribute_value(&Attributes::MAX_ABSORPTION) as f32;
-            let new_abs = (self.absorption.load() + added).min(max_abs);
-            self.set_absorption(new_abs);
+        // Vanilla MobEffect.onEffectStarted: notify mob effect when started
+        if let Some(mob_effect) = crate::entity::effect::get_mob_effect(effect.effect_type) {
+            mob_effect.on_effect_started(self, effect.amplifier);
         }
 
         // Apply invisible effect
@@ -3149,7 +3148,7 @@ impl LivingEntity {
                 if let Some(mob_effect) = crate::entity::effect::get_mob_effect(effect.effect_type)
                     && mob_effect.should_apply_effect_tick(tick_duration, effect.amplifier)
                 {
-                    effects_to_apply.push((mob_effect, effect.amplifier));
+                    effects_to_apply.push((mob_effect, effect.amplifier, effect.effect_type));
                 }
 
                 if effect.duration != -1 {
@@ -3169,8 +3168,10 @@ impl LivingEntity {
             self.remove_effect(effect_type);
         }
 
-        for (mob_effect, amplifier) in effects_to_apply {
-            mob_effect.apply_effect_tick(self, amplifier);
+        for (mob_effect, amplifier, effect_type) in effects_to_apply {
+            if !mob_effect.apply_effect_tick(self, amplifier) {
+                self.remove_effect(effect_type);
+            }
         }
 
         for effect in effects_to_refresh {
