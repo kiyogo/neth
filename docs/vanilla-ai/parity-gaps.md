@@ -11273,6 +11273,50 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung các phương thức `get_minecart_display_block_state`, `get_minecart_display_offset`, `set_minecart_display_block` trên `EntityBase`.
   - **Unit Tests**: `test_minecart_custom_display_block_and_offset_parity_gap440`, `test_display_state_parsing_and_writing`, `test_display_offset_and_flags`.
 
+### Gap 441: Minecart & Vehicle Collision Impulse, Dot Product Alignment & Mutual Push Mechanics Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:514-583`, `net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior.java:358-384`
+
+- **Kiểm tra Điều kiện Va chạm & Đẩy (Push Eligibility & Distance Checks)**:
+  - Vanilla `AbstractMinecart.java:514-522`:
+    - Chỉ chạy trên server (`!level.isClientSide()`), bỏ qua nếu thực thể có `noPhysics` hoặc là hành khách (`hasPassenger(entity)`).
+    - Tính khoảng cách bình phương `dd = xa * xa + za * za`. Nếu `dd < 1.0E-4F` (`MINECART_PUSH_MIN_DISTANCE_SQ`), bỏ qua va chạm.
+- **Tính toán Xung lực Đẩy (Push Impulse Calculations)**:
+  - Vanilla `AbstractMinecart.java:523-536`:
+    - Chuẩn hóa vector khoảng cách: `xa /= dd`, `za /= dd` với `dd = Math.sqrt(dd)`.
+    - Tính tỷ lệ nghịch khoảng cách: `pow = min(1.0 / dd, 1.0)`.
+    - Tính xung lực đẩy: `xa *= pow * 0.1F * 0.5; za *= pow * 0.1F * 0.5;` (`MINECART_PUSH_FACTOR = 0.05`).
+- **Va chạm với Thực thể Không phải Xe mỏ (Non-Minecart Entity Collision)**:
+  - Vanilla `AbstractMinecart.java:539-542`:
+    - Xe mỏ nhận xung lực phản hồi: `this.push(-xa, 0.0, -za)`.
+    - Thực thể khác nhận xung lực giảm 1/4: `entity.push(xa / 4.0, 0.0, za / 4.0)` (`MINECART_PASSENGER_PUSH_REDUCTION_FACTOR = 0.25`).
+- **Căn chỉnh Hướng Tích Vô hướng & Va chạm Giữa 2 Xe mỏ (Dot Product Alignment & Mutual Push)**:
+  - Vanilla `AbstractMinecart.java:549-583`:
+    - Tính vector hướng tương đối `dir = normalize(xo, 0.0, zo)`.
+    - Tính vector hướng nhìn của xe mỏ `facing = normalize(cos(yaw * PI / 180), 0.0, sin(yaw * PI / 180))`.
+    - Tính tích vô hướng căn chỉnh: `dot = Math.abs(dir.dot(facing))`.
+    - Điều kiện va chạm: `!(dot < 0.8F)` (`MINECART_COLLISION_DIRECTION_DOT_THRESHOLD = 0.8`), giúp loại bỏ va chạm sai góc giữa hai đường ray song song hoặc giao cắt chéo.
+    - Động lượng truyền động khi va chạm:
+      - Nếu một bên là xe mỏ lò luyện (`MinecartFurnace`) và bên kia là xe mỏ thường:
+        - Xe mỏ thường bị giảm vận tốc xuống 0.2 (`movement.multiply(0.2, 1.0, 0.2)`) và nhận xung lực đẩy từ xe lò: `furnace_movement - impulse`.
+        - Xe lò giữ lại phần lớn động lượng với hệ số 0.95 (`movement.multiply(0.95, 1.0, 0.95)`).
+      - Nếu cả hai cùng là xe thường hoặc cùng là xe lò:
+        - Động lượng trung bình: `xdd = (v1.x + v2.x) / 2.0`, `zdd = (v1.z + v2.z) / 2.0`.
+        - Cả hai xe đều giảm vận tốc hiện tại xuống 0.2 (`movement.multiply(0.2, 1.0, 0.2)`).
+        - Xe 1 nhận xung lực: `xdd - xa, zdd - za`.
+        - Xe 2 nhận xung lực: `xdd + xa, zdd + za`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung struct `MinecartCollisionVelocities { self_velocity, other_velocity }`.
+    - Bổ sung các hàm: `calculate_minecart_non_vehicle_push_impulse`, `calculate_minecart_alignment_dot`, `should_minecart_collide`, `calculate_minecart_mutual_collision`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Áp dụng `calculate_minecart_alignment_dot`, `should_minecart_collide`, `calculate_minecart_mutual_collision`.
+    - Đảm bảo đánh dấu cờ `velocity_dirty = true` cho cả 2 xe mỏ sau va chạm để đảm bảo đồng bộ gói vận tốc chuẩn xác tới client.
+    - Áp dụng `calculate_minecart_non_vehicle_push_impulse` trong `push`.
+    - Chuẩn hóa gọi `caller.push(other.as_ref())` trong `push_and_pickup_entities`.
+  - **Unit Tests**: `test_minecart_collision_impulse_alignment_dot_and_mutual_push_parity_gap441`.
+
+
 
 
 

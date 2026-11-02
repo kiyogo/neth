@@ -4564,6 +4564,140 @@ pub fn calculate_minecart_push_impulse(dx: f64, dz: f64) -> Option<(f64, f64)> {
     Some((xa, za))
 }
 
+/// Calculates the push impulse applied to a non-minecart entity collided with a minecart.
+///
+/// Mirrors vanilla `AbstractMinecart.java:541`:
+/// `entity.push(xa / 4.0, 0.0, za / 4.0);`
+#[must_use]
+pub fn calculate_minecart_non_vehicle_push_impulse(xa: f64, za: f64) -> (f64, f64) {
+    (
+        xa * MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
+        za * MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
+    )
+}
+
+/// Calculates the minecart collision alignment dot product between the minecart's facing
+/// vector and the relative vector towards the other minecart.
+///
+/// Mirrors vanilla `AbstractMinecart.java:560-562`:
+/// ```java
+/// Vec3 dir = new Vec3(xo, 0.0, zo).normalize();
+/// Vec3 facing = new Vec3(Mth.cos(this.getYRot() * (float) (Math.PI / 180.0)), 0.0, Mth.sin(this.getYRot() * (float) (Math.PI / 180.0))).normalize();
+/// double dot = Math.abs(dir.dot(facing));
+/// ```
+#[must_use]
+pub fn calculate_minecart_alignment_dot(yaw_deg: f32, dx: f64, dz: f64) -> f64 {
+    let dir = Vector3::new(dx, 0.0, dz).normalize();
+    let yaw_rad = yaw_deg * (std::f32::consts::PI / 180.0);
+    let facing = Vector3::new(
+        f64::from(pumpkin_util::math::cos(yaw_rad)),
+        0.0,
+        f64::from(pumpkin_util::math::sin(yaw_rad)),
+    )
+    .normalize();
+    (dir.dot(&facing)).abs()
+}
+
+/// Checks whether minecart collision should occur based on alignment dot product.
+///
+/// Mirrors vanilla `AbstractMinecart.java:563`:
+/// `if (!(dot < 0.8F) || useExperimentalMovement(this.level()))`
+#[must_use]
+pub fn should_minecart_collide(alignment_dot: f64) -> bool {
+    !(alignment_dot < (MINECART_COLLISION_DIRECTION_DOT_THRESHOLD as f32 as f64))
+}
+
+/// Resulting velocities for both minecarts involved in a mutual collision.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MinecartCollisionVelocities {
+    pub self_velocity: Vector3<f64>,
+    pub other_velocity: Vector3<f64>,
+}
+
+/// Calculates the new velocities for both minecarts in a collision according to vanilla parity.
+///
+/// Mirrors vanilla `AbstractMinecart.java:564-582`:
+/// ```java
+/// Vec3 movement = this.getDeltaMovement();
+/// Vec3 entityMovement = otherMinecart.getDeltaMovement();
+/// if (otherMinecart.isFurnace() && !this.isFurnace()) {
+///    this.setDeltaMovement(movement.multiply(0.2, 1.0, 0.2));
+///    this.push(entityMovement.x - xa, 0.0, entityMovement.z - za);
+///    otherMinecart.setDeltaMovement(entityMovement.multiply(0.95, 1.0, 0.95));
+/// } else if (!otherMinecart.isFurnace() && this.isFurnace()) {
+///    otherMinecart.setDeltaMovement(entityMovement.multiply(0.2, 1.0, 0.2));
+///    otherMinecart.push(movement.x + xa, 0.0, movement.z + za);
+///    this.setDeltaMovement(movement.multiply(0.95, 1.0, 0.95));
+/// } else {
+///    double xdd = (entityMovement.x + movement.x) / 2.0;
+///    double zdd = (entityMovement.z + movement.z) / 2.0;
+///    this.setDeltaMovement(movement.multiply(0.2, 1.0, 0.2));
+///    this.push(xdd - xa, 0.0, zdd - za);
+///    otherMinecart.setDeltaMovement(entityMovement.multiply(0.2, 1.0, 0.2));
+///    otherMinecart.push(xdd + xa, 0.0, zdd + za);
+/// }
+/// ```
+#[must_use]
+pub fn calculate_minecart_mutual_collision(
+    self_vel: Vector3<f64>,
+    other_vel: Vector3<f64>,
+    self_is_furnace: bool,
+    other_is_furnace: bool,
+    xa: f64,
+    za: f64,
+) -> MinecartCollisionVelocities {
+    if other_is_furnace && !self_is_furnace {
+        let self_new = Vector3::new(
+            self_vel.x * MINECART_COLLISION_SLOWDOWN_FACTOR + (other_vel.x - xa),
+            self_vel.y,
+            self_vel.z * MINECART_COLLISION_SLOWDOWN_FACTOR + (other_vel.z - za),
+        );
+        let other_new = Vector3::new(
+            other_vel.x * MINECART_COLLISION_PUSHED_FACTOR,
+            other_vel.y,
+            other_vel.z * MINECART_COLLISION_PUSHED_FACTOR,
+        );
+        MinecartCollisionVelocities {
+            self_velocity: self_new,
+            other_velocity: other_new,
+        }
+    } else if !other_is_furnace && self_is_furnace {
+        let other_new = Vector3::new(
+            other_vel.x * MINECART_COLLISION_SLOWDOWN_FACTOR + (self_vel.x + xa),
+            other_vel.y,
+            other_vel.z * MINECART_COLLISION_SLOWDOWN_FACTOR + (self_vel.z + za),
+        );
+        let self_new = Vector3::new(
+            self_vel.x * MINECART_COLLISION_PUSHED_FACTOR,
+            self_vel.y,
+            self_vel.z * MINECART_COLLISION_PUSHED_FACTOR,
+        );
+        MinecartCollisionVelocities {
+            self_velocity: self_new,
+            other_velocity: other_new,
+        }
+    } else {
+        #[expect(clippy::manual_midpoint, reason = "vanilla rounding")]
+        let xdd = (other_vel.x + self_vel.x) / 2.0;
+        #[expect(clippy::manual_midpoint, reason = "vanilla rounding")]
+        let zdd = (other_vel.z + self_vel.z) / 2.0;
+        let self_new = Vector3::new(
+            self_vel.x * MINECART_COLLISION_SLOWDOWN_FACTOR + (xdd - xa),
+            self_vel.y,
+            self_vel.z * MINECART_COLLISION_SLOWDOWN_FACTOR + (zdd - za),
+        );
+        let other_new = Vector3::new(
+            other_vel.x * MINECART_COLLISION_SLOWDOWN_FACTOR + (xdd + xa),
+            other_vel.y,
+            other_vel.z * MINECART_COLLISION_SLOWDOWN_FACTOR + (zdd + za),
+        );
+        MinecartCollisionVelocities {
+            self_velocity: self_new,
+            other_velocity: other_new,
+        }
+    }
+}
+
 /// Damage inflicted on a turtle when struck by lightning.
 ///
 /// Mirrors vanilla `Turtle.java:283-285` (`thunderHit`):
@@ -28606,5 +28740,92 @@ mod tests {
         assert!(should_serialize_minecart_display_offset(12, 6));
         assert!(should_serialize_minecart_display_offset(6, 8));
         assert!(should_serialize_minecart_display_offset(0, 1));
+    }
+
+    #[test]
+    fn test_minecart_collision_impulse_alignment_dot_and_mutual_push_parity_gap441() {
+        // 1. Constants parity (AbstractMinecart.java:522, 533-536, 541, 563, 567-573)
+        assert_eq!(MINECART_PUSH_MIN_DISTANCE_SQ, 1.0e-4);
+        assert_eq!(MINECART_PUSH_FACTOR, 0.05);
+        assert_eq!(MINECART_PASSENGER_PUSH_REDUCTION_FACTOR, 0.25);
+        assert_eq!(MINECART_COLLISION_DIRECTION_DOT_THRESHOLD, 0.8);
+        assert_eq!(MINECART_COLLISION_SLOWDOWN_FACTOR, 0.2);
+        assert_eq!(MINECART_COLLISION_PUSHED_FACTOR, 0.95);
+
+        // 2. Alignment dot product (AbstractMinecart.java:560-562)
+        // Collinear along X axis with yaw = 0: facing is (1, 0, 0)
+        let dot_collinear_forward = calculate_minecart_alignment_dot(0.0, 2.0, 0.0);
+        assert!((dot_collinear_forward - 1.0).abs() < 1e-6);
+
+        let dot_collinear_backward = calculate_minecart_alignment_dot(0.0, -2.0, 0.0);
+        assert!((dot_collinear_backward - 1.0).abs() < 1e-6);
+
+        // Perpendicular along Z axis: dot is 0.0
+        let dot_perpendicular = calculate_minecart_alignment_dot(0.0, 0.0, 2.0);
+        assert!(dot_perpendicular.abs() < 1e-6);
+
+        // 3. Collision threshold check (AbstractMinecart.java:563: !(dot < 0.8F))
+        assert!(should_minecart_collide(1.0));
+        assert!(should_minecart_collide(0.85));
+        assert!(should_minecart_collide(0.80001));
+        assert!(!should_minecart_collide(0.7999));
+        assert!(!should_minecart_collide(0.5));
+        assert!(!should_minecart_collide(0.0));
+
+        // 4. Non-vehicle push impulse (AbstractMinecart.java:541: entity.push(xa / 4.0, 0.0, za / 4.0))
+        let non_veh_impulse = calculate_minecart_non_vehicle_push_impulse(0.08, 0.04);
+        assert!((non_veh_impulse.0 - 0.02).abs() < 1e-6);
+        assert!((non_veh_impulse.1 - 0.01).abs() < 1e-6);
+
+        // 5. Mutual collision: Regular cart vs Regular cart (AbstractMinecart.java:574-581)
+        let v_reg1 = Vector3::new(0.2, 0.0, 0.0);
+        let v_reg2 = Vector3::new(-0.1, 0.0, 0.0);
+        let res_reg = calculate_minecart_mutual_collision(
+            v_reg1,
+            v_reg2,
+            false,
+            false,
+            0.05,
+            0.0,
+        );
+        // xdd = (0.2 + (-0.1)) / 2 = 0.05
+        // self: 0.2 * 0.2 + (0.05 - 0.05) = 0.04
+        assert!((res_reg.self_velocity.x - 0.04).abs() < 1e-6);
+        // other: -0.1 * 0.2 + (0.05 + 0.05) = -0.02 + 0.1 = 0.08
+        assert!((res_reg.other_velocity.x - 0.08).abs() < 1e-6);
+
+        // 6. Mutual collision: Furnace cart vs Regular cart (AbstractMinecart.java:570-573)
+        // self is furnace, other is regular
+        let v_furnace = Vector3::new(0.4, 0.0, 0.0);
+        let v_regular = Vector3::new(0.0, 0.0, 0.0);
+        let res_furnace_self = calculate_minecart_mutual_collision(
+            v_furnace,
+            v_regular,
+            true,
+            false,
+            0.05,
+            0.0,
+        );
+        // self (furnace) keeps momentum with 0.95 factor: 0.4 * 0.95 = 0.38
+        assert!((res_furnace_self.self_velocity.x - 0.38).abs() < 1e-6);
+        // other (regular) slowed down by 0.2 + receives furnace momentum + impulse:
+        // 0.0 * 0.2 + (0.4 + 0.05) = 0.45
+        assert!((res_furnace_self.other_velocity.x - 0.45).abs() < 1e-6);
+
+        // 7. Mutual collision: Regular cart vs Furnace cart (AbstractMinecart.java:566-569)
+        // self is regular, other is furnace
+        let res_furnace_other = calculate_minecart_mutual_collision(
+            v_regular,
+            v_furnace,
+            false,
+            true,
+            -0.05,
+            0.0,
+        );
+        // other (furnace) keeps momentum with 0.95 factor: 0.4 * 0.95 = 0.38
+        assert!((res_furnace_other.other_velocity.x - 0.38).abs() < 1e-6);
+        // self (regular) slowed down by 0.2 + receives furnace momentum - impulse:
+        // 0.0 * 0.2 + (0.4 - (-0.05)) = 0.45
+        assert!((res_furnace_other.self_velocity.x - 0.45).abs() < 1e-6);
     }
 }

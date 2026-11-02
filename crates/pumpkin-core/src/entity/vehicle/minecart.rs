@@ -712,7 +712,7 @@ impl MinecartEntity {
                     && other.is_pushable()
                     && is_minecart(other.as_ref())
                 {
-                    other.push(caller);
+                    caller.push(other.as_ref());
                 }
             }
             return;
@@ -748,46 +748,32 @@ impl MinecartEntity {
         let this = &self.vehicle.entity;
         let that = &other.vehicle.entity;
         let (pos, other_pos) = (this.pos.load(), that.pos.load());
-        let dir = Vector3::new(other_pos.x - pos.x, 0.0, other_pos.z - pos.z).normalize();
-        let yaw = this.yaw.load().to_radians();
-        let facing = Vector3::new(f64::from(yaw.cos()), 0.0, f64::from(yaw.sin())).normalize();
-        if dir.dot(&facing).abs() < crate::entity::combat::MINECART_COLLISION_DIRECTION_DOT_THRESHOLD {
+        let dx = other_pos.x - pos.x;
+        let dz = other_pos.z - pos.z;
+        let dot = crate::entity::combat::calculate_minecart_alignment_dot(this.yaw.load(), dx, dz);
+        if !crate::entity::combat::should_minecart_collide(dot) {
             return;
         }
 
         let movement = this.velocity.load();
         let other_movement = that.velocity.load();
-        let slow_down = |entity: &Entity, velocity: Vector3<f64>, factor: f64| {
-            entity
-                .velocity
-                .store(velocity.multiply(factor, 1.0, factor));
-        };
-        match (
-            matches!(self.kind, MinecartKind::Furnace(_)),
-            matches!(other.kind, MinecartKind::Furnace(_)),
-        ) {
-            (false, true) => {
-                slow_down(this, movement, 0.2);
-                this.push_velocity(other_movement.x - xa, other_movement.z - za);
-                slow_down(that, other_movement, 0.95);
-            }
-            (true, false) => {
-                slow_down(that, other_movement, 0.2);
-                that.push_velocity(movement.x + xa, movement.z + za);
-                slow_down(this, movement, 0.95);
-            }
-            _ => {
-                #[expect(clippy::manual_midpoint, reason = "vanilla rounding")]
-                let (xdd, zdd) = (
-                    (other_movement.x + movement.x) / 2.0,
-                    (other_movement.z + movement.z) / 2.0,
-                );
-                slow_down(this, movement, 0.2);
-                this.push_velocity(xdd - xa, zdd - za);
-                slow_down(that, other_movement, 0.2);
-                that.push_velocity(xdd + xa, zdd + za);
-            }
-        }
+        let self_is_furnace = matches!(self.kind, MinecartKind::Furnace(_));
+        let other_is_furnace = matches!(other.kind, MinecartKind::Furnace(_));
+
+        let results = crate::entity::combat::calculate_minecart_mutual_collision(
+            movement,
+            other_movement,
+            self_is_furnace,
+            other_is_furnace,
+            xa,
+            za,
+        );
+
+        this.velocity.store(results.self_velocity);
+        this.velocity_dirty.store(true, Ordering::SeqCst);
+
+        that.velocity.store(results.other_velocity);
+        that.velocity_dirty.store(true, Ordering::SeqCst);
     }
 
     /// Mirrors vanilla `activateMinecart` in `OldMinecartBehavior.java:59-61` and subclasses.
@@ -1087,10 +1073,9 @@ impl EntityBase for MinecartEntity {
             self.push_other_minecart(other, xa, za);
         } else {
             self_entity.push_velocity(-xa, -za);
-            other_entity.push_velocity(
-                xa * crate::entity::combat::MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
-                za * crate::entity::combat::MINECART_PASSENGER_PUSH_REDUCTION_FACTOR,
-            );
+            let (other_xa, other_za) =
+                crate::entity::combat::calculate_minecart_non_vehicle_push_impulse(xa, za);
+            other_entity.push_velocity(other_xa, other_za);
         }
     }
 
