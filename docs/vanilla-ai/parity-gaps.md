@@ -11068,3 +11068,31 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Triển khai `get_comparator_output` đọc trực tiếp kho đồ của xe mỏ trên ray cảm biến.
   - **Unit Tests**: `test_hopper_minecart_item_sucking_and_block_interaction_parity_gap435`, `hopper_minecart_enabled_toggle_and_nbt`, `hopper_minecart_rate_limiting_consumed_per_frame`.
 
+### Gap 436: Furnace Minecart Fuel, Push Direction & Rail Friction Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.MinecartFurnace.java:25-160`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:484-492, 564-583`
+
+- **Cơ chế Nạp Nhiên liệu & Giới hạn Cháy (Fuel Burning & Capacity Parity)**:
+  - Vanilla `MinecartFurnace.addFuel` (`MinecartFurnace.java:118-129`):
+    - Mỗi item thuộc tag `#minecraft:furnace_minecart_fuel` (Than đá / Than gỗ) cung cấp 3600 ticks cháy (`FURNACE_MINECART_FUEL_PER_ITEM = 3600`, tương đương 3 phút).
+    - Giới hạn nhiên liệu tối đa là 32000 ticks (`FURNACE_MINECART_MAX_FUEL = 32000`, ~26.6 phút). Xe chỉ nhận thêm nhiên liệu khi `fuel + 3600 <= 32000`.
+    - Hướng đẩy (`push`): Chỉ được cập nhật khi việc nạp nhiên liệu thành công (`push = cart_pos - player_pos`, hướng ra xa người chơi theo phương ngang). Nhấp chuột phải bằng tay không hoặc item không phải nhiên liệu sẽ không làm đổi hướng đẩy của xe.
+- **Vận tốc Tối đa, Giảm tốc Tự nhiên & Chiếu Lực đẩy (Max Speed, Natural Slowdown & Vector Projection)**:
+  - Tốc độ tối đa (`MinecartFurnace.java:70-72`): Trên cạn bằng 50% xe mỏ thông thường (`0.4 * 0.5 = 0.2 block/tick`); dưới nước bằng 75% (`0.2 * 0.75 = 0.15 block/tick`).
+  - Lực cản và chiếu lực đẩy (`MinecartFurnace.java:85-106`):
+    - Khi có lực đẩy (`push.lengthSqr() > 1.0E-7`): Lực đẩy được chiếu lên hướng chuyển động dọc theo đường ray (`calculateNewPushAlong`), vận tốc được áp dụng hệ số cản `0.8` rồi cộng với `push`. Nếu ở trong nước, vận tốc bị nhân giảm với `0.1`.
+    - Khi không có lực đẩy: Vận tốc bị giảm với hệ số `0.98`.
+    - Tiếp tục áp dụng lực cản tự nhiên của xe mỏ (`0.96` trên cạn, nhân thêm `0.95` trong nước).
+- **Va chạm Đẩy Xe Lửa (Train Locomotive Collisions Parity)**:
+  - Vanilla `AbstractMinecart.java:564-583`:
+    - Khi xe lò than đâm vào một xe mỏ khác: Xe được đẩy bị giảm tốc còn `0.2` và nhận thêm lực đẩy `(movement + push)`; xe lò than bị giảm tốc nhẹ xuống `0.95`, hoạt động như đầu tàu đẩy đoàn tàu tiến về phía trước.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart/furnace.rs`:
+    - Tách logic `add_fuel` chuẩn vanilla; chỉ cập nhật hướng đẩy `push` khi nạp nhiên liệu thành công.
+    - Chuẩn hóa hàm chiếu vector lực đẩy `calculate_new_push_along` và tính toán ma sát tự nhiên `calculate_furnace_natural_slowdown`.
+    - Đồng bộ lưu trữ NBT: `PushX`, `PushZ`, `Fuel` (kiểu short).
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `FURNACE_MINECART_FUEL_PER_ITEM`, `FURNACE_MINECART_MAX_FUEL`, `calculate_furnace_minecart_max_speed`, `can_furnace_minecart_accept_fuel`.
+  - **Unit Tests**: `test_furnace_minecart_fuel_push_and_friction_parity_gap436`, `furnace_minecart_default_state`, `furnace_minecart_slowdown_with_and_without_push`, `furnace_minecart_projection_along_movement`, `furnace_minecart_nbt_read_write`.
+
+

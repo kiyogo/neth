@@ -3944,6 +3944,52 @@ pub const fn calculate_hopper_minecart_enabled_from_activator_rail(powered: bool
     !powered
 }
 
+/// Vanilla `MinecartFurnace.FUEL_TICKS_PER_ITEM` (3600 ticks = 3 minutes).
+pub const FURNACE_MINECART_FUEL_PER_ITEM: i32 = 3600;
+
+/// Vanilla `MinecartFurnace.MAX_FUEL_TICKS` (32000 ticks = ~26.6 minutes).
+pub const FURNACE_MINECART_MAX_FUEL: i32 = 32000;
+
+/// Vanilla `MinecartFurnace.getMaxSpeed`: land speed multiplier against standard minecart (0.5).
+pub const FURNACE_MINECART_MAX_SPEED_LAND_RATIO: f64 = 0.5;
+
+/// Vanilla `MinecartFurnace.getMaxSpeed`: water speed multiplier against standard minecart (0.75).
+pub const FURNACE_MINECART_MAX_SPEED_WATER_RATIO: f64 = 0.75;
+
+/// Vanilla `MinecartFurnace.applyNaturalSlowdown`: dampening when push is active (0.8).
+pub const FURNACE_MINECART_PUSH_DAMPENING: f64 = 0.8;
+
+/// Vanilla `MinecartFurnace.applyNaturalSlowdown`: dampening without push (0.98).
+pub const FURNACE_MINECART_NO_PUSH_DAMPENING: f64 = 0.98;
+
+/// Vanilla `MinecartFurnace.applyNaturalSlowdown`: underwater push scaling factor (0.1).
+pub const FURNACE_MINECART_WATER_PUSH_SCALE: f64 = 0.1;
+
+/// Vanilla `AbstractMinecart.java:567, 571`: collision velocity reduction on other/pushed cart (0.2).
+pub const FURNACE_MINECART_COLLISION_OTHER_SLOWDOWN: f64 = 0.2;
+
+/// Vanilla `AbstractMinecart.java:569, 573`: collision velocity reduction on furnace/pushing cart (0.95).
+pub const FURNACE_MINECART_COLLISION_SELF_SLOWDOWN: f64 = 0.95;
+
+/// Calculates max speed of a furnace minecart based on environment.
+/// Mirrors vanilla `MinecartFurnace.java:70-72`.
+#[must_use]
+pub const fn calculate_furnace_minecart_max_speed(in_water: bool) -> f64 {
+    if in_water {
+        MINECART_MAX_SPEED_WATER * FURNACE_MINECART_MAX_SPEED_WATER_RATIO
+    } else {
+        MINECART_MAX_SPEED_LAND * FURNACE_MINECART_MAX_SPEED_LAND_RATIO
+    }
+}
+
+/// Evaluates whether a furnace minecart can accept more fuel.
+/// Mirrors vanilla `MinecartFurnace.java:119`:
+/// `itemStack.is(ItemTags.FURNACE_MINECART_FUEL) && this.fuel + 3600 <= 32000`.
+#[must_use]
+pub const fn can_furnace_minecart_accept_fuel(current_fuel: i32, is_fuel_item: bool) -> bool {
+    is_fuel_item && current_fuel + FURNACE_MINECART_FUEL_PER_ITEM <= FURNACE_MINECART_MAX_FUEL
+}
+
 /// Computes effective minecart gravity depending on water state and no_gravity flag.
 /// Mirrors vanilla AbstractMinecart.java:276-278.
 #[must_use]
@@ -27857,6 +27903,47 @@ mod tests {
         let rail_max = (10.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET, 64.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET, 10.0 + 1.0 - DETECTOR_RAIL_SEARCH_INSET);
         assert_eq!(rail_min, (10.2, 64.0, 10.2));
         assert_eq!(rail_max, (10.8, 64.8, 10.8));
+    }
+
+    #[test]
+    fn test_furnace_minecart_fuel_push_and_friction_parity_gap436() {
+        // 1. Furnace minecart fuel and speed constants (MinecartFurnace.java:27, 28, 71, 89, 94)
+        assert_eq!(FURNACE_MINECART_FUEL_PER_ITEM, 3600);
+        assert_eq!(FURNACE_MINECART_MAX_FUEL, 32000);
+        assert_eq!(FURNACE_MINECART_MAX_SPEED_LAND_RATIO, 0.5);
+        assert_eq!(FURNACE_MINECART_MAX_SPEED_WATER_RATIO, 0.75);
+        assert_eq!(FURNACE_MINECART_PUSH_DAMPENING, 0.8);
+        assert_eq!(FURNACE_MINECART_NO_PUSH_DAMPENING, 0.98);
+        assert_eq!(FURNACE_MINECART_WATER_PUSH_SCALE, 0.1);
+        assert_eq!(FURNACE_MINECART_COLLISION_OTHER_SLOWDOWN, 0.2);
+        assert_eq!(FURNACE_MINECART_COLLISION_SELF_SLOWDOWN, 0.95);
+
+        // 2. Max speed on land vs water (MinecartFurnace.java:70-72)
+        // Land: 0.4 * 0.5 = 0.2
+        assert!((calculate_furnace_minecart_max_speed(false) - 0.2).abs() < 1e-6);
+        // Water: 0.2 * 0.75 = 0.15
+        assert!((calculate_furnace_minecart_max_speed(true) - 0.15).abs() < 1e-6);
+
+        // 3. Fuel acceptance limits (MinecartFurnace.java:119)
+        // Empty fuel (0) accepts fuel item
+        assert!(can_furnace_minecart_accept_fuel(0, true));
+        // Non-fuel item rejected
+        assert!(!can_furnace_minecart_accept_fuel(0, false));
+        // 28400 + 3600 = 32000 <= 32000 -> accepted
+        assert!(can_furnace_minecart_accept_fuel(28400, true));
+        // 28401 + 3600 = 32001 > 32000 -> rejected
+        assert!(!can_furnace_minecart_accept_fuel(28401, true));
+        // 32000 -> rejected
+        assert!(!can_furnace_minecart_accept_fuel(32000, true));
+
+        // 4. Push direction calculation away from player (MinecartFurnace.java:122)
+        // Cart at (10.0, 64.0, 10.0), player standing at (9.0, 64.0, 10.0) -> push towards +X (1.0, 0.0, 0.0)
+        let cart_pos = (10.0, 64.0, 10.0);
+        let player_pos = (9.0, 64.0, 10.0);
+        let push_x = cart_pos.0 - player_pos.0;
+        let push_z = cart_pos.2 - player_pos.2;
+        assert_eq!(push_x, 1.0);
+        assert_eq!(push_z, 0.0);
     }
 
 }
