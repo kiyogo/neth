@@ -11614,6 +11614,39 @@ pub const SQUID_MAX_HEALTH: f32 = 10.0;
 /// Mirrors vanilla WaterAnimal.java:36.
 pub const SQUID_XP_REWARD: u32 = 2;
 
+/// Squid baby width (0.5 blocks).
+/// Mirrors vanilla Squid.java:51:
+/// BABY_DIMENSIONS = EntityDimensions.scalable(0.5F, 0.5F).withEyeHeight(0.37F).
+pub const SQUID_BABY_WIDTH: f32 = 0.5;
+
+/// Squid baby height (0.5 blocks).
+/// Mirrors vanilla Squid.java:51.
+pub const SQUID_BABY_HEIGHT: f32 = 0.5;
+
+/// Squid baby eye height (0.37 blocks).
+/// Mirrors vanilla Squid.java:51.
+pub const SQUID_BABY_EYE_HEIGHT: f32 = 0.37;
+
+/// Squid baby scale factor relative to adult (0.625).
+pub const SQUID_BABY_SCALE: f32 = 0.625;
+
+/// Calculates Squid and Glow Squid dimensions based on baby status.
+/// Mirrors vanilla `Squid.java:236-238` and `GlowSquid.java`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_squid_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (SQUID_BABY_WIDTH, SQUID_BABY_HEIGHT, SQUID_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Glow Squid base max health (10.0 HP / 5 hearts).
 /// Mirrors vanilla Squid.java:65 (Attributes.MAX_HEALTH, 10.0).
 pub const GLOW_SQUID_MAX_HEALTH: f32 = 10.0;
@@ -25639,6 +25672,76 @@ mod tests {
         assert_eq!(ZOGLIN_BABY_WIDTH, 0.75);
         assert_eq!(ZOGLIN_BABY_HEIGHT, 0.85);
         assert_eq!(ZOGLIN_BABY_EYE_HEIGHT, 0.625);
+    }
+
+    #[test]
+    fn test_dolphin_axolotl_squid_rabbit_armadillo_goat_baby_dimensions_gap421() {
+        use super::*;
+
+        // 1. Dolphin (Dolphin.java:82-85, 361-363: scale(0.65).withEyeHeight(0.09375))
+        let dol_adult = calculate_dolphin_dimensions(0.9, 0.6, 0.3, false);
+        assert_eq!(dol_adult, (0.9, 0.6, 0.3));
+        let (dol_bw, dol_bh, dol_beye) = calculate_dolphin_dimensions(0.9, 0.6, 0.3, true);
+        assert!((dol_bw - 0.585).abs() < 1e-4);
+        assert!((dol_bh - 0.39).abs() < 1e-4);
+        assert_eq!(dol_beye, 0.09375);
+        assert_eq!(DOLPHIN_BABY_SCALE, 0.65);
+        assert_eq!(DOLPHIN_BABY_EYE_HEIGHT, 0.09375);
+
+        // 2. Axolotl (Axolotl.java:114-116, 578-580: scalable(0.375, 0.21).withEyeHeight(0.09375))
+        let ax_adult = calculate_axolotl_dimensions(false, 0.75, 0.42, 0.2751);
+        assert_eq!(ax_adult, (0.75, 0.42, 0.2751));
+        let ax_baby = calculate_axolotl_dimensions(true, 0.75, 0.42, 0.2751);
+        assert_eq!(ax_baby, (0.375, 0.21, 0.09375));
+        assert_eq!(AXOLOTL_BABY_WIDTH, 0.375);
+        assert_eq!(AXOLOTL_BABY_HEIGHT, 0.21);
+        assert_eq!(AXOLOTL_BABY_EYE_HEIGHT, 0.09375);
+
+        // 3. Squid & Glow Squid (Squid.java:51, 236-238, GlowSquid.java: scalable(0.5, 0.5).withEyeHeight(0.37))
+        let sq_adult = calculate_squid_dimensions(false, 0.8, 0.8, 0.4);
+        assert_eq!(sq_adult, (0.8, 0.8, 0.4));
+        let sq_baby = calculate_squid_dimensions(true, 0.8, 0.8, 0.4);
+        assert_eq!(sq_baby, (0.5, 0.5, 0.37));
+        assert_eq!(SQUID_BABY_WIDTH, 0.5);
+        assert_eq!(SQUID_BABY_HEIGHT, 0.5);
+        assert_eq!(SQUID_BABY_EYE_HEIGHT, 0.37);
+        assert_eq!(SQUID_BABY_SCALE, 0.625);
+
+        // 4. Rabbit (Rabbit.java:83, 135-137: scalable(0.24, 0.4).withEyeHeight(0.39))
+        let rab_adult = calculate_rabbit_dimensions(false, 0.49, 0.6, 0.59);
+        assert_eq!(rab_adult, (0.49, 0.6, 0.59));
+        let rab_baby = calculate_rabbit_dimensions(true, 0.49, 0.6, 0.59);
+        assert_eq!(rab_baby, (0.24, 0.4, 0.39));
+        assert_eq!(RABBIT_BABY_WIDTH, 0.24);
+        assert_eq!(RABBIT_BABY_HEIGHT, 0.4);
+        assert_eq!(RABBIT_BABY_EYE_HEIGHT, 0.39);
+
+        // 5. Armadillo (Armadillo.java:64, 186-188: scale(0.6).withEyeHeight(0.21875))
+        let arm_adult = calculate_armadillo_dimensions(false, 0.7, 0.65, 0.26);
+        assert_eq!(arm_adult, (0.7, 0.65, 0.26));
+        let arm_baby = calculate_armadillo_dimensions(true, 0.7, 0.65, 0.26);
+        assert_eq!(arm_baby, (0.42, 0.39, 0.21875));
+        assert_eq!(ARMADILLO_BABY_WIDTH, 0.42);
+        assert_eq!(ARMADILLO_BABY_HEIGHT, 0.39);
+        assert_eq!(ARMADILLO_BABY_EYE_HEIGHT, 0.21875);
+
+        // 6. Goat (Goat.java:60-62, 252-255: scalable(0.45, 0.65).withEyeHeight(0.59375), LongJumping scale(0.7))
+        let goat_adult = calculate_goat_dimensions(false, false, 0.9, 1.3, 1.105);
+        assert_eq!(goat_adult, (0.9, 1.3, 1.105));
+        let goat_baby = calculate_goat_dimensions(true, false, 0.9, 1.3, 1.105);
+        assert_eq!(goat_baby, (0.45, 0.65, 0.59375));
+        let (goat_jump_w, goat_jump_h, goat_jump_eye) = calculate_goat_dimensions(false, true, 0.9, 1.3, 1.105);
+        assert!((goat_jump_w - 0.63).abs() < 1e-4);
+        assert!((goat_jump_h - 0.91).abs() < 1e-4);
+        assert!((goat_jump_eye - 0.7735).abs() < 1e-4);
+        let (goat_bjump_w, goat_bjump_h, goat_bjump_eye) = calculate_goat_dimensions(true, true, 0.9, 1.3, 1.105);
+        assert!((goat_bjump_w - 0.315).abs() < 1e-4);
+        assert!((goat_bjump_h - 0.455).abs() < 1e-4);
+        assert!((goat_bjump_eye - 0.415625).abs() < 1e-4);
+        assert_eq!(GOAT_BABY_WIDTH, 0.45);
+        assert_eq!(GOAT_BABY_HEIGHT, 0.65);
+        assert_eq!(GOAT_BABY_EYE_HEIGHT, 0.59375);
+        assert_eq!(GOAT_LONG_JUMPING_SCALE, 0.7);
     }
 
 }

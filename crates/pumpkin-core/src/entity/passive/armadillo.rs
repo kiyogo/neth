@@ -446,6 +446,7 @@ impl Mob for ArmadilloEntity {
         if let Some(scute_time) = nbt.get_int("scute_time") {
             self.scute_time.store(scute_time, Ordering::Relaxed);
         }
+        self.refresh_dimensions();
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

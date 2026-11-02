@@ -51,9 +51,10 @@ impl GoatEntity {
     pub fn refresh_dimensions(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         let is_baby = self.is_baby();
+        let is_long_jumping = entity.pose.load() == pumpkin_data::entity::EntityPose::LongJumping;
         let (w, h, eye) = combat::calculate_goat_dimensions(
             is_baby,
-            false,
+            is_long_jumping,
             entity.entity_type.dimension[0],
             entity.entity_type.dimension[1],
             entity.entity_type.eye_height,
@@ -316,12 +317,14 @@ impl Mob for GoatEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("IsScreamingGoat", self.is_screaming());
         nbt.put_bool("HasLeftHorn", self.has_left_horn());
         nbt.put_bool("HasRightHorn", self.has_right_horn());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(screaming) = nbt.get_bool("IsScreamingGoat") {
             self.set_screaming(screaming);
         }
@@ -542,6 +545,12 @@ mod tests {
         assert_eq!(combat::GOAT_BABY_DEFAULT_X_HEAD_ROT, 22.5);
         assert_eq!(combat::GOAT_BABY_MAX_RAMMING_X_HEAD_ROT, 52.5);
         assert_eq!(combat::GOAT_ADULT_MAX_RAMMING_X_HEAD_ROT, 30.0);
+
+        let mut age_nbt = NbtCompound::new();
+        age_nbt.put_int("Age", -24000);
+        age_nbt.put_int("ForcedAge", 0);
+        assert_eq!(age_nbt.get_int("Age"), Some(-24000));
+        assert_eq!(age_nbt.get_int("ForcedAge"), Some(0));
     }
 
 }

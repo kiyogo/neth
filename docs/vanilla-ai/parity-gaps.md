@@ -10655,3 +10655,30 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Triển khai `calculate_hoglin_dimensions`, `calculate_zoglin_dimensions`, `set_baby`, `refresh_dimensions()`, lưu trữ NBT `IsBaby` trên `HoglinEntity`.
 - **Hằng số Parity**: `ZOMBIE_BABY_WIDTH` (0.49), `ZOMBIE_BABY_HEIGHT` (0.98), `ZOMBIE_BABY_EYE_HEIGHT` (0.775), `HUSK_BABY_WIDTH` (0.49), `HUSK_BABY_HEIGHT` (0.98), `HUSK_BABY_EYE_HEIGHT` (0.825), `DROWNED_BABY_WIDTH` (0.49), `DROWNED_BABY_HEIGHT` (0.98), `DROWNED_BABY_EYE_HEIGHT` (0.775), `ZOMBIE_VILLAGER_BABY_WIDTH` (0.49), `ZOMBIE_VILLAGER_BABY_HEIGHT` (0.98), `ZOMBIE_VILLAGER_BABY_EYE_HEIGHT` (0.67), `ZOMBIFIED_PIGLIN_BABY_WIDTH` (0.49), `ZOMBIFIED_PIGLIN_BABY_HEIGHT` (0.98), `ZOMBIFIED_PIGLIN_BABY_EYE_HEIGHT` (0.78), `HOGLIN_BABY_WIDTH` (0.75), `HOGLIN_BABY_HEIGHT` (0.85), `HOGLIN_BABY_EYE_HEIGHT` (0.625), `ZOGLIN_BABY_WIDTH` (0.75), `ZOGLIN_BABY_HEIGHT` (0.85), `ZOGLIN_BABY_EYE_HEIGHT` (0.625).
 - **Unit Tests**: `test_zombie_and_nether_baby_dimensions_parity_gap420`, `test_zombie_baby_dimensions_parity`, `test_zombified_piglin_anger_speed_parity`, `test_hoglin_throw_and_conversion_parity` pass 100%.
+
+
+### Gap 421: Dolphin, Axolotl, Squid, Glow Squid, Rabbit, Armadillo & Goat Baby Scalable Dimensions & Ageable NBT Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.dolphin.Dolphin.java:82-85, 361-363`, `net.minecraft.world.entity.animal.axolotl.Axolotl.java:114-116, 578-580`, `net.minecraft.world.entity.animal.squid.Squid.java:51, 236-238`, `net.minecraft.world.entity.animal.squid.GlowSquid.java`, `net.minecraft.world.entity.animal.rabbit.Rabbit.java:83, 135-137`, `net.minecraft.world.entity.animal.armadillo.Armadillo.java:64, 186-188`, `net.minecraft.world.entity.animal.goat.Goat.java:60-62, 252-255` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Mực & Mực Phát Sáng Con (Squid & Glow Squid Baby Scalable Dimensions & AgeableMob)**:
+  - Vanilla `Squid.java:51`: `BABY_DIMENSIONS = EntityDimensions.scalable(0.5F, 0.5F).withEyeHeight(0.37F)`. Adult: `0.8 x 0.8` (eye `0.4`). Baby: `0.5 x 0.5` (eye `0.37`).
+  - `GlowSquid.java` kế thừa `Squid` và không override `getDefaultDimensions`, do đó mực phát sáng con dùng chung `BABY_DIMENSIONS` của Squid.
+  - Thêm `ageable_data: AgeableData` vào `SquidEntity` và `GlowSquidEntity`.
+  - Triển khai `AgeableMob` trait với `get_ageable_data`, `set_baby`, `age_boundary_reached` (rời vehicle nếu đang cưỡi) cho cả Squid và GlowSquid.
+  - Hỗ trợ lưu trữ và nạp NBT tuổi (`write_ageable_nbt`, `read_ageable_nbt`) cùng tự động cập nhật bounding box (`refresh_dimensions()`).
+  - Kích hoạt `ageable_ai_step()` trong `mob_tick` để mực con có thể lớn dần theo thời gian.
+- **Kích thước Cá heo Con & Ageable NBT (Dolphin Baby Scalable Dimensions & NBT)**:
+  - Vanilla `Dolphin.java:82-85, 361-363`: `BABY_DIMENSIONS = EntityTypes.DOLPHIN.getDimensions().scale(0.65F).withEyeHeight(0.09375F)`. Adult: `0.9 x 0.6` (eye `0.3`). Baby: `0.585 x 0.39` (eye `0.09375`).
+  - Triển khai `set_baby(&self, baby: bool)` trên `DolphinEntity` gọi `refresh_dimensions()`.
+  - Bổ sung `write_ageable_nbt` và `read_ageable_nbt` trong `mob_write_nbt` / `mob_read_nbt` và gọi `self.ageable_ai_step()` trong `mob_tick`.
+- **Kích thước Dê Con & Dê Nhảy Cao (Goat Baby & Long Jumping Dimensions & NBT)**:
+  - Vanilla `Goat.java:60-62, 252-255`:
+    - `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.65F).withEyeHeight(0.59375F)`. Adult: `0.9 x 1.3` (eye `1.105`). Baby: `0.45 x 0.65` (eye `0.59375`).
+    - Khi ở tư thế nhảy cao (`Pose.LONG_JUMPING`), toàn bộ kích thước (rộng, cao, eye height) nhân hệ số `0.7F`.
+  - Cập nhật `refresh_dimensions()` trên `GoatEntity` kiểm tra `entity.pose.load() == EntityPose::LongJumping`.
+  - Bổ sung `write_ageable_nbt` và `read_ageable_nbt` trong `mob_write_nbt` / `mob_read_nbt` của dê.
+- **Đồng bộ Kích thước khi đọc NBT (Axolotl, Rabbit, Armadillo NBT Refresh Parity)**:
+  - Đảm bảo `self.refresh_dimensions()` được gọi sau khi nạp NBT tuổi trong `mob_read_nbt` của `AxolotlEntity`, `RabbitEntity`, `ArmadilloEntity`.
+- **Hằng số Parity**: `SQUID_BABY_WIDTH` (0.5), `SQUID_BABY_HEIGHT` (0.5), `SQUID_BABY_EYE_HEIGHT` (0.37), `SQUID_BABY_SCALE` (0.625), `calculate_squid_dimensions`.
+- **Unit Tests**: `test_dolphin_axolotl_squid_rabbit_armadillo_goat_baby_dimensions_gap421`, `test_squid_baby_dimensions_and_nbt`, `test_glow_squid_baby_dimensions_and_age_nbt`, `test_dolphin_baby_dimensions_and_rotation_limits`, `test_goat_baby_dimensions_and_long_jumping_parity`, `test_rabbit_baby_dimensions_and_dispenser_parity`, `test_armadillo_baby_dimensions_and_parity` pass 100%.

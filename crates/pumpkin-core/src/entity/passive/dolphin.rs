@@ -195,6 +195,11 @@ impl AgeableMob for DolphinEntity {
         &self.ageable_data
     }
 
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
     fn age_boundary_reached(&self) {
         let mob = self.get_mob_entity();
         let entity = &mob.living_entity.entity;
@@ -227,11 +232,13 @@ impl Mob for DolphinEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_bool("GotFish", self.got_fish());
         nbt.put_int("Moistness", self.moistness_level());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(got_fish) = nbt.get_bool("GotFish") {
             self.set_got_fish(got_fish);
         }
@@ -294,6 +301,7 @@ impl Mob for DolphinEntity {
     }
 
     fn mob_tick(&self, caller: &dyn EntityBase) {
+        self.ageable_ai_step();
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
@@ -573,5 +581,11 @@ mod tests {
         assert_eq!(aw, 0.9);
         assert_eq!(ah, 0.6);
         assert_eq!(ae, 0.3);
+
+        let mut age_nbt = NbtCompound::new();
+        age_nbt.put_int("Age", -24000);
+        age_nbt.put_int("ForcedAge", 0);
+        assert_eq!(age_nbt.get_int("Age"), Some(-24000));
+        assert_eq!(age_nbt.get_int("ForcedAge"), Some(0));
     }
 }

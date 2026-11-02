@@ -419,6 +419,7 @@ impl Mob for AxolotlEntity {
         if let Some(from_bucket) = nbt.get_bool("FromBucket") {
             self.set_from_bucket(from_bucket);
         }
+        self.refresh_dimensions();
     }
 
     fn as_custom_sound(&self) -> Option<&dyn CustomSound> {

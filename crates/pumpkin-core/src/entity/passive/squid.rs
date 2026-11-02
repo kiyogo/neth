@@ -6,6 +6,9 @@ use pumpkin_data::attributes::Attributes;
 use pumpkin_data::damage::DamageType;
 use pumpkin_data::particle::Particle;
 use pumpkin_data::sound::{Sound, SoundCategory};
+use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
+use crate::entity::ageable::{AgeableData, AgeableMob};
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_util::math::wrap_degrees;
 use rand::RngExt;
@@ -25,6 +28,7 @@ pub struct SquidEntity {
     pub rotate_speed: AtomicCell<f32>,
     pub air_supply: AtomicI32,
     pub flee_ticks: AtomicI32,
+    pub ageable_data: AgeableData,
 }
 
 impl SquidEntity {
@@ -41,6 +45,7 @@ impl SquidEntity {
             rotate_speed: AtomicCell::new(0.0),
             air_supply: AtomicI32::new(300),
             flee_ticks: AtomicI32::new(0),
+            ageable_data: AgeableData::default(),
         };
 
         // Vanilla Squid attributes: MAX_HEALTH = 10.0
@@ -50,7 +55,45 @@ impl SquidEntity {
             .set_attribute_base(&Attributes::MAX_HEALTH, combat::SQUID_MAX_HEALTH as f64);
         squid.mob_entity.living_entity.set_health(combat::SQUID_MAX_HEALTH);
 
-        Arc::new(squid)
+        let mob_arc = Arc::new(squid);
+        mob_arc.refresh_dimensions();
+        mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_squid_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
+    }
+}
+
+impl AgeableMob for SquidEntity {
+    fn get_ageable_data(&self) -> &AgeableData {
+        &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -65,6 +108,19 @@ impl Mob for SquidEntity {
 
     fn as_squid(&self) -> Option<&SquidEntity> {
         Some(self)
+    }
+
+    fn as_ageable(&self) -> Option<&dyn AgeableMob> {
+        Some(self)
+    }
+
+    fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
+    }
+
+    fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
+        self.refresh_dimensions();
     }
 
     fn is_pushed_by_fluids(&self) -> bool {
@@ -124,7 +180,7 @@ impl Mob for SquidEntity {
         let yaw = entity.yaw.load();
         let pos = entity.pos.load() + combat::rotate_squid_vector(Vector3::new(0.0, -1.0, 0.0), pitch, yaw);
         let world = entity.world.load();
-        let is_baby = entity.age.load(Ordering::Relaxed) < 0;
+        let is_baby = self.is_baby();
 
         for _ in 0..30 {
             let rx = (rng.random::<f64>() * 0.6 - 0.3) as f64;
@@ -144,6 +200,7 @@ impl Mob for SquidEntity {
     }
 
     fn mob_tick(&self, _caller: &dyn EntityBase) {
+        self.ageable_ai_step();
         let entity = &self.mob_entity.living_entity.entity;
         if !entity.is_alive() {
             return;
@@ -296,5 +353,19 @@ mod tests {
     fn test_squid_ink_trigger() {
         assert!(combat::should_squid_squirt_ink(true));
         assert!(!combat::should_squid_squirt_ink(false));
+    }
+
+    #[test]
+    fn test_squid_baby_dimensions_and_nbt() {
+        let (bw, bh, beye) = combat::calculate_squid_dimensions(true, 0.8, 0.8, 0.4);
+        assert_eq!(bw, 0.5);
+        assert_eq!(bh, 0.5);
+        assert_eq!(beye, 0.37);
+
+        let mut nbt = NbtCompound::new();
+        nbt.put_int("Age", -24000);
+        nbt.put_int("ForcedAge", 0);
+        assert_eq!(nbt.get_int("Age"), Some(-24000));
+        assert_eq!(nbt.get_int("ForcedAge"), Some(0));
     }
 }

@@ -332,6 +332,7 @@ impl Mob for RabbitEntity {
         if let Some(ticks) = nbt.get_int("MoreCarrotTicks") {
             self.more_carrot_ticks.store(ticks, Ordering::Relaxed);
         }
+        self.refresh_dimensions();
     }
 
     fn get_mob_entity(&self) -> &MobEntity {
