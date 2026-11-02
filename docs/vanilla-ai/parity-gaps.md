@@ -11226,6 +11226,53 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung chuyển tiếp sát thương vehicle entity trong mặc định `damage_with_context`.
   - **Unit Tests**: `test_tnt_minecart_explosion_speed_multiplier_and_priming_parity_gap439`, `tnt_minecart_explosion_bonus_is_speed_capped`, `tnt_minecart_defaults_and_nbt_roundtrip`, `tnt_minecart_rail_protection_covers_every_rail_type`.
 
+### Gap 440: Minecart Custom Display Block, Display Offset & Tracked Data Synchronization Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:51-161, 494-512, 585-611`, `net.minecraft.world.entity.vehicle.minecart.MinecartChest.java:44-52`, `net.minecraft.world.entity.vehicle.minecart.MinecartHopper.java:32-40`, `net.minecraft.world.entity.vehicle.minecart.MinecartFurnace.java:156-159`, `net.minecraft.world.entity.vehicle.minecart.MinecartTNT.java:44-48`, `net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock.java:71-74`, `net.minecraft.world.entity.vehicle.minecart.MinecartSpawner.java:47-50`
+
+- **Khối Hiển thị Tùy chỉnh & Khối Mặc định (Custom & Default Display Block State)**:
+  - Vanilla `AbstractMinecart.java:585-595`:
+    - `getDisplayBlockState()`: Trả về khối hiển thị tùy chỉnh (`DATA_ID_CUSTOM_DISPLAY_BLOCK`) nếu có, ngược lại trả về khối hiển thị mặc định của từng loại xe (`getDefaultDisplayBlockState()`).
+    - Khối hiển thị mặc định cho từng loại xe mỏ:
+      - `Minecart` (xe mỏ chở người): Không có / `Blocks.AIR`.
+      - `MinecartChest`: `Blocks.CHEST` hướng bắc (`ChestBlock.FACING = Direction.NORTH`).
+      - `MinecartFurnace`: `Blocks.FURNACE` hướng bắc (`FurnaceBlock.FACING = Direction.NORTH`), bật sáng (`FurnaceBlock.LIT`) khi có nhiên liệu (`has_fuel()`).
+      - `MinecartHopper`: `Blocks.HOPPER`.
+      - `MinecartTNT`: `Blocks.TNT`.
+      - `MinecartCommandBlock`: `Blocks.COMMAND_BLOCK`.
+      - `MinecartSpawner`: `Blocks.SPAWNER`.
+- **Độ lệch Hiển thị Mặc định & Tùy chỉnh (Display Offset Constants & Calculations)**:
+  - Vanilla `AbstractMinecart.java:597-603`:
+    - `getDisplayOffset()`: Trả về độ lệch hiển thị tùy chỉnh (`DATA_ID_DISPLAY_OFFSET`) nếu có, ngược lại trả về độ lệch mặc định (`getDefaultDisplayOffset()`).
+    - Hằng số độ lệch mặc định (`getDefaultDisplayOffset()`):
+      - `Minecart` (chung): `6` (`MINECART_DEFAULT_DISPLAY_OFFSET = 6`).
+      - `MinecartChest`: `8` (`CHEST_MINECART_DEFAULT_DISPLAY_OFFSET = 8`).
+      - `MinecartHopper`: `1` (`HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET = 1`).
+      - Các loại khác (Furnace, TNT, CommandBlock, Spawner): `6`.
+- **Đồng bộ Dữ liệu Thực thể (Tracked Data Metadata Synchronization)**:
+  - Vanilla `AbstractMinecart.java:53-56, 160-161, 605-611`:
+    - `DATA_ID_CUSTOM_DISPLAY_BLOCK` (index 11, `MetaDataType::OPTIONAL_BLOCK_STATE`): Gửi `VarInt(0)` khi không có khối tùy chỉnh, hoặc `VarInt(block_state_id)` khi có khối tùy chỉnh.
+    - `DATA_ID_DISPLAY_OFFSET` (index 12, `MetaDataType::INT`): Gửi `VarInt(display_offset)`.
+    - Cập nhật và gửi gói metadata tới client ngay khi thay đổi khối hoặc độ lệch hiển thị.
+- **Tuần tự hóa Dữ liệu NBT (NBT Persistence Parity)**:
+  - Vanilla `AbstractMinecart.java:495-512`:
+    - `DisplayState`: Lưu dưới dạng NBT compound gồm `Name` (chuỗi định danh `minecraft:...`) và `Properties` (compound các cặp key-value thuộc tính khối); hỗ trợ đọc tương thích cả chuỗi định danh và id nguyên thủy.
+    - `DisplayOffset`: Chỉ lưu vào NBT khi `display_offset != getDefaultDisplayOffset()`.
+    - `FlippedRotation`: Lưu/đọc trạng thái đảo chiều xoay (`boolean`).
+    - `HasTicked`: Lưu/đọc cờ đã tick qua ít nhất 1 lần (`boolean`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `MINECART_DEFAULT_DISPLAY_OFFSET = 6`, `CHEST_MINECART_DEFAULT_DISPLAY_OFFSET = 8`, `MINECART_DEFAULT_FLIPPED_ROTATION = false`, `MINECART_DEFAULT_FIRST_TICK = true`.
+    - Bổ sung hàm: `get_minecart_default_display_offset`, `should_serialize_minecart_display_offset`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Bổ sung các trường `custom_display_block_state: AtomicCell<Option<BlockStateId>>`, `custom_display_offset: AtomicCell<Option<i32>>`, `has_ticked: AtomicBool`.
+    - Triển khai `get_default_display_block_state`, `get_display_block_state`, `set_custom_display_block_state`, `get_display_offset`, `set_display_offset`, `send_display_metadata`.
+    - Xử lý đọc/ghi NBT `DisplayState`, `DisplayOffset`, `FlippedRotation`, `HasTicked`.
+    - Cập nhật `has_ticked = true` trong `tick()`.
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Bổ sung các phương thức `get_minecart_display_block_state`, `get_minecart_display_offset`, `set_minecart_display_block` trên `EntityBase`.
+  - **Unit Tests**: `test_minecart_custom_display_block_and_offset_parity_gap440`, `test_display_state_parsing_and_writing`, `test_display_offset_and_flags`.
+
 
 
 

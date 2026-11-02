@@ -11,6 +11,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::atomic::AtomicCell;
+use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_protocol::java::client::play::Metadata;
 use pumpkin_protocol::java::server::play::SPlayerInput;
 use rand::RngExt;
 
@@ -186,6 +188,9 @@ pub struct MinecartEntity {
     kind: MinecartKind,
     flipped: AtomicBool,
     pub fall_distance: AtomicCell<f64>,
+    pub custom_display_block_state: AtomicCell<Option<BlockStateId>>,
+    pub custom_display_offset: AtomicCell<Option<i32>>,
+    pub has_ticked: AtomicBool,
 }
 
 enum MinecartKind {
@@ -224,7 +229,152 @@ impl MinecartEntity {
             kind,
             flipped: AtomicBool::new(false),
             fall_distance: AtomicCell::new(0.0),
+            custom_display_block_state: AtomicCell::new(None),
+            custom_display_offset: AtomicCell::new(None),
+            has_ticked: AtomicBool::new(false),
         }
+    }
+
+    #[must_use]
+    pub fn get_default_display_block_state(&self) -> Option<BlockStateId> {
+        match &self.kind {
+            MinecartKind::Rideable(_) | MinecartKind::Other => None,
+            MinecartKind::Chest(_) => Block::CHEST
+                .state_from_properties(&[("facing", "north")])
+                .map(|s| s.id)
+                .or(Some(Block::CHEST.default_state.id)),
+            MinecartKind::Furnace(f) => {
+                let lit_str = if f.has_fuel() { "true" } else { "false" };
+                Block::FURNACE
+                    .state_from_properties(&[("facing", "north"), ("lit", lit_str)])
+                    .map(|s| s.id)
+                    .or(Some(Block::FURNACE.default_state.id))
+            }
+            MinecartKind::Hopper(_) => Some(Block::HOPPER.default_state.id),
+            MinecartKind::Tnt(_) => Some(Block::TNT.default_state.id),
+            MinecartKind::CommandBlock(_) => Some(Block::COMMAND_BLOCK.default_state.id),
+            MinecartKind::Spawner(_) => Some(Block::SPAWNER.default_state.id),
+        }
+    }
+
+    #[must_use]
+    pub fn get_display_block_state(&self) -> Option<BlockStateId> {
+        self.custom_display_block_state
+            .load()
+            .or_else(|| self.get_default_display_block_state())
+    }
+
+    #[must_use]
+    pub fn get_custom_display_block_state(&self) -> Option<BlockStateId> {
+        self.custom_display_block_state.load()
+    }
+
+    pub fn set_custom_display_block_state(&self, state: Option<BlockStateId>) {
+        self.custom_display_block_state.store(state);
+        self.send_display_metadata();
+    }
+
+    #[must_use]
+    pub fn get_default_display_offset(&self) -> i32 {
+        crate::entity::combat::get_minecart_default_display_offset(
+            self.vehicle.entity.entity_type.id,
+        )
+    }
+
+    #[must_use]
+    pub fn get_display_offset(&self) -> i32 {
+        self.custom_display_offset
+            .load()
+            .unwrap_or_else(|| self.get_default_display_offset())
+    }
+
+    pub fn set_display_offset(&self, offset: i32) {
+        self.custom_display_offset.store(Some(offset));
+        self.send_display_metadata();
+    }
+
+    #[must_use]
+    pub fn has_ticked(&self) -> bool {
+        self.has_ticked.load(Ordering::Relaxed)
+    }
+
+    pub fn set_has_ticked(&self, ticked: bool) {
+        self.has_ticked.store(ticked, Ordering::Relaxed);
+    }
+
+    pub fn send_display_metadata(&self) {
+        let block_state_val = self
+            .custom_display_block_state
+            .load()
+            .map(|id| VarInt(id.as_u16() as i32))
+            .unwrap_or(VarInt(0));
+        let offset_val = VarInt(self.get_display_offset());
+
+        self.vehicle.entity.send_meta_data(
+            &[
+                Metadata::new(
+                    pumpkin_data::tracked_data::abstract_minecart::ID_CUSTOM_DISPLAY_BLOCK,
+                    block_state_val,
+                ),
+                Metadata::new(
+                    pumpkin_data::tracked_data::abstract_minecart::ID_DISPLAY_OFFSET,
+                    offset_val,
+                ),
+            ],
+            None,
+        );
+    }
+
+    fn parse_display_state(nbt: &NbtCompound) -> Option<BlockStateId> {
+        if let Some(compound) = nbt.get_compound("DisplayState") {
+            if let Some(name) = compound.get_string("Name") {
+                let stripped = name.strip_prefix("minecraft:").unwrap_or(name);
+                if let Some(block) = Block::from_registry_key(stripped) {
+                    if let Some(props_compound) = compound.get_compound("Properties") {
+                        let props_vec: Vec<(&str, &str)> = props_compound
+                            .child_tags
+                            .iter()
+                            .filter_map(|(k, v)| {
+                                if let pumpkin_nbt::tag::NbtTag::String(s) = v {
+                                    Some((k.as_ref(), s.as_ref()))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        if let Some(state) = block.state_from_properties(&props_vec) {
+                            return Some(state.id);
+                        }
+                    }
+                    return Some(block.default_state.id);
+                }
+            }
+        } else if let Some(name) = nbt.get_string("DisplayState") {
+            let stripped = name.strip_prefix("minecraft:").unwrap_or(name);
+            if let Some(block) = Block::from_registry_key(stripped) {
+                return Some(block.default_state.id);
+            }
+        } else if let Some(raw_id) = nbt.get_int("DisplayState") {
+            return BlockStateId::from_raw(raw_id as u16);
+        }
+        None
+    }
+
+    fn write_display_state(state_id: BlockStateId, nbt: &mut NbtCompound) {
+        let block = state_id.to_block();
+        let mut compound = NbtCompound::new();
+        compound.put_string("Name", format!("minecraft:{}", block.name));
+        if let Some(props) = block.properties(state_id) {
+            let props_vec = props.to_props();
+            if !props_vec.is_empty() {
+                let mut props_compound = NbtCompound::new();
+                for (k, v) in props_vec {
+                    props_compound.put_string(k, v.to_string());
+                }
+                compound.put_compound("Properties", props_compound);
+            }
+        }
+        nbt.put_compound("DisplayState", compound);
     }
 
     #[must_use]
@@ -706,6 +856,19 @@ impl MinecartEntity {
 
 impl EntityBase for MinecartEntity {
     fn write_custom_nbt(&self, nbt: &mut NbtCompound) {
+        if let Some(state_id) = self.custom_display_block_state.load() {
+            Self::write_display_state(state_id, nbt);
+        }
+        let display_offset = self.get_display_offset();
+        if crate::entity::combat::should_serialize_minecart_display_offset(
+            display_offset,
+            self.get_default_display_offset(),
+        ) {
+            nbt.put_int("DisplayOffset", display_offset);
+        }
+        nbt.put_bool("FlippedRotation", self.is_flipped());
+        nbt.put_bool("HasTicked", self.has_ticked());
+
         match &self.kind {
             MinecartKind::Chest(minecart) => minecart.write_nbt(nbt),
             MinecartKind::Furnace(minecart) => minecart.write_nbt(nbt),
@@ -718,6 +881,19 @@ impl EntityBase for MinecartEntity {
     }
 
     fn read_custom_nbt(&self, nbt: &NbtCompound) {
+        if let Some(state_id) = Self::parse_display_state(nbt) {
+            self.custom_display_block_state.store(Some(state_id));
+        }
+        if let Some(offset) = nbt.get_int("DisplayOffset") {
+            self.custom_display_offset.store(Some(offset));
+        }
+        if let Some(flipped) = nbt.get_bool("FlippedRotation") {
+            self.flipped.store(flipped, Ordering::Relaxed);
+        }
+        if let Some(has_ticked) = nbt.get_bool("HasTicked") {
+            self.has_ticked.store(has_ticked, Ordering::Relaxed);
+        }
+
         match &self.kind {
             MinecartKind::Chest(minecart) => minecart.read_nbt(nbt),
             MinecartKind::Furnace(minecart) => minecart.read_nbt(nbt),
@@ -734,6 +910,7 @@ impl EntityBase for MinecartEntity {
     #[allow(clippy::too_many_lines)]
     fn tick(&self, caller: &dyn EntityBase, _server: &Server) {
         self.vehicle.tick();
+        self.has_ticked.store(true, Ordering::Relaxed);
         let from = self.vehicle.entity.pos.load();
         if let MinecartKind::Furnace(minecart) = &self.kind {
             minecart.tick(&self.vehicle.entity);
@@ -1084,7 +1261,89 @@ impl EntityBase for MinecartEntity {
         }
     }
 
+    fn get_minecart_display_block_state(&self) -> Option<BlockStateId> {
+        self.get_display_block_state()
+    }
+
+    fn get_minecart_display_offset(&self) -> Option<i32> {
+        Some(self.get_display_offset())
+    }
+
+    fn set_minecart_display_block(
+        &self,
+        state: Option<BlockStateId>,
+        offset: Option<i32>,
+    ) {
+        self.custom_display_block_state.store(state);
+        if let Some(off) = offset {
+            self.custom_display_offset.store(Some(off));
+        }
+        self.send_display_metadata();
+    }
+
     fn cast_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pumpkin_nbt::compound::NbtCompound;
+
+    #[test]
+    fn test_display_state_parsing_and_writing() {
+        // Block without properties (e.g. redstone_block)
+        let redstone = Block::REDSTONE_BLOCK.default_state.id;
+        let mut nbt = NbtCompound::new();
+        MinecartEntity::write_display_state(redstone, &mut nbt);
+
+        let parsed = MinecartEntity::parse_display_state(&nbt);
+        assert_eq!(parsed, Some(redstone));
+
+        // Block with properties (e.g. chest facing north)
+        let chest_state = Block::CHEST
+            .state_from_properties(&[("facing", "north")])
+            .map(|s| s.id)
+            .unwrap_or(Block::CHEST.default_state.id);
+        let mut chest_nbt = NbtCompound::new();
+        MinecartEntity::write_display_state(chest_state, &mut chest_nbt);
+
+        let parsed_chest = MinecartEntity::parse_display_state(&chest_nbt);
+        assert_eq!(parsed_chest, Some(chest_state));
+
+        // Legacy string format
+        let mut str_nbt = NbtCompound::new();
+        str_nbt.put_string("DisplayState", "minecraft:diamond_block".to_string());
+        assert_eq!(
+            MinecartEntity::parse_display_state(&str_nbt),
+            Some(Block::DIAMOND_BLOCK.default_state.id)
+        );
+
+        // Legacy int format
+        let mut int_nbt = NbtCompound::new();
+        int_nbt.put_int("DisplayState", Block::GOLD_BLOCK.default_state.id.as_u16() as i32);
+        assert_eq!(
+            MinecartEntity::parse_display_state(&int_nbt),
+            Some(Block::GOLD_BLOCK.default_state.id)
+        );
+    }
+
+    #[test]
+    fn test_display_offset_and_flags() {
+        assert_eq!(
+            crate::entity::combat::get_minecart_default_display_offset(EntityType::CHEST_MINECART.id),
+            8
+        );
+        assert_eq!(
+            crate::entity::combat::get_minecart_default_display_offset(EntityType::HOPPER_MINECART.id),
+            1
+        );
+        assert_eq!(
+            crate::entity::combat::get_minecart_default_display_offset(EntityType::MINECART.id),
+            6
+        );
+        assert!(!crate::entity::combat::should_serialize_minecart_display_offset(6, 6));
+        assert!(crate::entity::combat::should_serialize_minecart_display_offset(10, 6));
     }
 }

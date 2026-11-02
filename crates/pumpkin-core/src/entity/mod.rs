@@ -736,6 +736,27 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         combat::horizontal_direction_from_yaw(self.get_entity().yaw.load())
     }
 
+    /// Returns the display block state for a minecart entity, if applicable.
+    /// Vanilla `AbstractMinecart.java:585-587`.
+    fn get_minecart_display_block_state(&self) -> Option<pumpkin_data::BlockStateId> {
+        None
+    }
+
+    /// Returns the display offset for a minecart entity, if applicable.
+    /// Vanilla `AbstractMinecart.java:597-599`.
+    fn get_minecart_display_offset(&self) -> Option<i32> {
+        None
+    }
+
+    /// Sets the custom display block state and optional display offset for a minecart entity.
+    /// Vanilla `AbstractMinecart.java:605-611`.
+    fn set_minecart_display_block(
+        &self,
+        _state: Option<pumpkin_data::BlockStateId>,
+        _offset: Option<i32>,
+    ) {
+    }
+
     /// Should return the name of the entity without click or hover events.
     fn get_name(&self) -> TextComponent {
         let entity = self.get_entity();

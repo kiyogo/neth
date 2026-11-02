@@ -4067,8 +4067,41 @@ pub fn should_vehicle_destroy(
 /// Vanilla `MinecartHopper.CONTAINER_SIZE` (5 slots).
 pub const HOPPER_MINECART_CONTAINER_SIZE: usize = 5;
 
+/// Vanilla `AbstractMinecart.getDefaultDisplayOffset` (default 6 blocks above cart floor).
+pub const MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
+
+/// Vanilla `MinecartChest.getDefaultDisplayOffset` (8 blocks above cart floor).
+pub const CHEST_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 8;
+
 /// Vanilla `MinecartHopper.getDefaultDisplayOffset` (1 block above cart floor).
 pub const HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 1;
+
+/// Vanilla `AbstractMinecart.DEFAULT_FLIPPED_ROTATION` (false).
+pub const MINECART_DEFAULT_FLIPPED_ROTATION: bool = false;
+
+/// Vanilla `AbstractMinecart.firstTick` default before first tick has completed.
+pub const MINECART_DEFAULT_FIRST_TICK: bool = true;
+
+/// Evaluates default display offset for a minecart entity type.
+/// Mirrors vanilla `AbstractMinecart.java:601-603`, `MinecartChest.java:49-51`, `MinecartHopper.java:37-39`.
+#[must_use]
+pub fn get_minecart_default_display_offset(entity_type_id: u16) -> i32 {
+    if entity_type_id == EntityType::CHEST_MINECART.id {
+        CHEST_MINECART_DEFAULT_DISPLAY_OFFSET
+    } else if entity_type_id == EntityType::HOPPER_MINECART.id {
+        HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET
+    } else {
+        MINECART_DEFAULT_DISPLAY_OFFSET
+    }
+}
+
+/// Determines whether the display offset differs from default and must be serialized to NBT.
+/// Mirrors vanilla `AbstractMinecart.java:505-508`:
+/// `if (displayOffset != this.getDefaultDisplayOffset()) { output.putInt("DisplayOffset", displayOffset); }`
+#[must_use]
+pub const fn should_serialize_minecart_display_offset(offset: i32, default_offset: i32) -> bool {
+    offset != default_offset
+}
 
 /// Vanilla `MinecartHopper.suckInItems`: cart bounding box horizontal inflation (0.25).
 pub const HOPPER_MINECART_ITEM_SUCK_HORIZONTAL_INFLATION: f64 = 0.25;
@@ -28525,5 +28558,53 @@ mod tests {
         assert!(!should_tnt_minecart_preserve_rails(true, false));
         assert!(!should_tnt_minecart_preserve_rails(false, true));
         assert!(!should_tnt_minecart_preserve_rails(false, false));
+    }
+
+    #[test]
+    fn test_minecart_custom_display_block_and_offset_parity_gap440() {
+        // 1. Minecart display offset constants (AbstractMinecart.java:602, MinecartChest.java:51, MinecartHopper.java:39)
+        assert_eq!(MINECART_DEFAULT_DISPLAY_OFFSET, 6);
+        assert_eq!(CHEST_MINECART_DEFAULT_DISPLAY_OFFSET, 8);
+        assert_eq!(HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET, 1);
+        assert_eq!(MINECART_DEFAULT_FLIPPED_ROTATION, false);
+        assert_eq!(MINECART_DEFAULT_FIRST_TICK, true);
+
+        // 2. Default display offset resolution
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::CHEST_MINECART.id),
+            8
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::HOPPER_MINECART.id),
+            1
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::MINECART.id),
+            6
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::FURNACE_MINECART.id),
+            6
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::TNT_MINECART.id),
+            6
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::COMMAND_BLOCK_MINECART.id),
+            6
+        );
+        assert_eq!(
+            get_minecart_default_display_offset(EntityType::SPAWNER_MINECART.id),
+            6
+        );
+
+        // 3. Serialization condition (AbstractMinecart.java:506)
+        assert!(!should_serialize_minecart_display_offset(6, 6));
+        assert!(!should_serialize_minecart_display_offset(8, 8));
+        assert!(!should_serialize_minecart_display_offset(1, 1));
+        assert!(should_serialize_minecart_display_offset(12, 6));
+        assert!(should_serialize_minecart_display_offset(6, 8));
+        assert!(should_serialize_minecart_display_offset(0, 1));
     }
 }
