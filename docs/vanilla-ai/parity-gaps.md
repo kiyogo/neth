@@ -11134,5 +11134,45 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung các hằng số và hàm: `COMMAND_BLOCK_MINECART_ACTIVATION_DELAY`, `can_command_block_minecart_activate`, `can_player_use_game_master_blocks`, `calculate_spawner_next_delay`.
   - **Unit Tests**: `test_command_block_and_spawner_minecarts_parity_gap437`, `test_command_block_minecart_defaults`, `test_command_block_minecart_nbt_roundtrip`, `test_spawner_minecart_defaults`, `test_spawner_minecart_nbt_roundtrip`.
 
+### Gap 438: Minecart Physics & Rail Slope Transition Parity (Ascending/Descending Rails & Corner Snap)
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior.java:27-263, 303-350, 387-389`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:65-100, 186-218, 480-492`
+
+- **Vật lý Trượt Dốc & Gia tốc Trọng lực (Slope Gravity Slide & Constants)**:
+  - Vanilla `OldMinecartBehavior.java:112-135`:
+    - Gia tốc trượt dốc trên cạn: `slideSpeed = 0.0078125` (`1.0 / 128.0`). Dưới nước nhân giảm `0.2` (`slideSpeed = 0.0015625`).
+    - Trọng lực kéo xe xuống theo độ dốc: `AscendingEast` (`movement.x -= slide`), `AscendingWest` (`movement.x += slide`), `AscendingNorth` (`movement.z += slide`), `AscendingSouth` (`movement.z -= slide`).
+    - Trên đường dốc, độ cao cơ sở ban đầu được nâng lên: `y = pos.y + 1`.
+- **Chuyển đổi Độ cao thành Vận tốc & Bước chuyển Ô dốc (Height to Speed & Slope Cell Transitions)**:
+  - Chuyển đổi thế năng thành động năng (`OldMinecartBehavior.java:214-222`):
+    - `speed = (oldPos.y - newPos.y) * 0.05` (`MINECART_SLOPE_HEIGHT_TO_SPEED_FACTOR = 0.05`).
+    - Xe đi xuống dốc (`old.y > new.y`): `speed > 0`, nhân tăng vận tốc `(otherPow + speed) / otherPow > 1.0`.
+    - Xe đi lên dốc (`old.y < new.y`): `speed < 0`, nhân giảm vận tốc; nếu vận tốc không đủ sẽ đảo chiều trôi ngược xuống.
+  - Chuyển tiếp ô dốc phía dưới (`OldMinecartBehavior.java:203-208`): Khi xe mỏ đi vào ô kết thúc thấp của dốc (`exit.y == -1`), trừ độ cao `y += exit.y` (`y -= 1.0`) để tiếp đất chuẩn xác trên ray phía dưới.
+  - Nâng chiều cao ô dốc (`OldMinecartBehavior.java:340-344`): Khi `yd < 0.0`, nâng `1.0`; khi `yd > 0.0`, nâng `0.5`; phẳng nâng `0.0`.
+- **Bẻ góc Ô kế tiếp & Tăng tốc Ray Cấp điện (Next Block Corner Snap & Powered Boost)**:
+  - Vanilla `OldMinecartBehavior.java:224-230`: Khi đi qua ranh giới ô khối (`xn != pos.x || zn != pos.z`), vận tốc được tái chiếu toàn bộ theo hướng lưới mới `(xn - pos.x, zn - pos.z)` với độ lớn `otherPow`.
+  - Phanh ray không cấp điện (`OldMinecartBehavior.java:170-177`): Nếu vận tốc ngang `< 0.03`, xe dừng hẳn (`Vector3::ZERO`); nếu `>= 0.03`, giảm tốc 50% (`movement.multiply(0.5, 0.0, 0.5)`).
+  - Ray cấp điện (`OldMinecartBehavior.java:232-262`):
+    - Đang chạy (`speed > 0.01`): Tăng tốc `+0.06` theo hướng chuyển động (`MINECART_POWERED_RAIL_BOOST`).
+    - Đứng yên (`speed <= 0.01`): Khởi động đẩy ra xa khối đặc dẫn tín hiệu Redstone với tốc độ `0.02` (`MINECART_POWERED_RAIL_LAUNCH_SPEED`). Chỉ áp dụng cho ray phẳng `EastWest` và `NorthSouth`.
+- **Đồng bộ Hướng Chuyển động & Vị trí Rời Xe (Motion Direction & Passenger Dismount Parity)**:
+  - Vanilla `OldMinecartBehavior.java:387-389` & `AbstractMinecart.java:186-218`:
+    - Hướng chuyển động thực tế: `isFlipped() ? dir.getOpposite().getClockWise() : dir.getClockWise()`.
+    - Khi hành khách rời xe (dismount), hướng tìm vị trí tiếp đất dựa trên `get_motion_direction()` của xe mỏ, duyệt 8 vị trí xung quanh ở các độ cao `[0, 1, -1]` (hoặc `[0, 1]` khi bơi), trước khi rơi về vị trí trên nóc xe (`boundingBox.maxY`).
+  - Thứ tự kích hoạt ray kích hoạt: Gọi `activate_minecart` sau khi xe đã hoàn tất `move_along_track` theo đúng thứ tự vanilla `OldMinecartBehavior.java:58-61`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `MINECART_SLOPE_SLIDE_SPEED`, `MINECART_WATER_SLOPE_SLIDE_RATIO`, `MINECART_SLOPE_HEIGHT_TO_SPEED_FACTOR`, `MINECART_POWERED_RAIL_BOOST`, `MINECART_POWERED_RAIL_LAUNCH_SPEED`, `MINECART_HALT_TRACK_STOP_THRESHOLD`, `MINECART_HALT_TRACK_DECELERATION`, `MINECART_MAX_HORIZONTAL_MOVEMENT`, `MINECART_RIDER_NUDGE_SPEED_SQ_THRESHOLD`, `MINECART_RIDER_NUDGE_FACTOR`, `MINECART_RAIL_HEIGHT_OFFSET`.
+    - Bổ sung hàm: `calculate_minecart_slope_slide_speed`, `calculate_minecart_slope_acceleration`, `calculate_minecart_rail_slope_position_lift`, `get_minecart_motion_direction`, `apply_minecart_unpowered_rail_brake`, `calculate_minecart_next_cell_redirection`, `calculate_minecart_powered_rail_boost`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - Tích hợp chuẩn hóa `rail_pos`, `boost`, `move_along_track`.
+    - Triển khai `is_flipped`, `get_motion_direction` và `activate_minecart`.
+  - Cập nhật `crates/pumpkin-core/src/entity/mod.rs`:
+    - Bổ sung `get_motion_direction(&self)` trên `EntityBase`.
+    - Đồng bộ tính toán `forward_dir` cho xe mỏ khi thực hiện dismount hành khách.
+  - **Unit Tests**: `test_minecart_rail_physics_and_slope_transition_parity_gap438`, `boat_dismount_rejects_downward_motion_from_a_rounding_overlap`, `test_boat_passenger_rotation_and_dismount_parity_gap431`.
+
+
 
 

@@ -3852,6 +3852,61 @@ pub const MINECART_OFF_RAIL_GROUND_DRAG: f64 = 0.5;
 /// Mirrors vanilla OldMinecartBehavior.java / AbstractMinecart.java:
 pub const MINECART_AIR_DRAG: f32 = 0.95;
 
+/// Slide speed applied down ascending slopes per tick on land (0.0078125 = 1.0 / 128.0).
+/// Mirrors vanilla OldMinecartBehavior.java:112:
+/// `double slideSpeed = 0.0078125;`
+pub const MINECART_SLOPE_SLIDE_SPEED: f64 = 0.0078125;
+
+/// Ratio of slope slide speed applied when minecart is in water (0.2).
+/// Mirrors vanilla OldMinecartBehavior.java:114:
+/// `if (this.minecart.isInWater()) { slideSpeed *= 0.2; }`
+pub const MINECART_WATER_SLOPE_SLIDE_RATIO: f64 = 0.2;
+
+/// Conversion factor of height difference to horizontal speed on slopes (0.05).
+/// Mirrors vanilla OldMinecartBehavior.java:214:
+/// `double speed = (oldPos.y - newPos.y) * 0.05;`
+pub const MINECART_SLOPE_HEIGHT_TO_SPEED_FACTOR: f64 = 0.05;
+
+/// Speed boost added along movement direction when on powered rail (0.06).
+/// Mirrors vanilla OldMinecartBehavior.java:236-237:
+/// `double speed = 0.06; this.setDeltaMovement(vec3.add(vec3.x / speedLength * 0.06, 0.0, vec3.z / speedLength * 0.06));`
+pub const MINECART_POWERED_RAIL_BOOST: f64 = 0.06;
+
+/// Speed given to a standing minecart launched by a powered rail against a solid conductor block (0.02).
+/// Mirrors vanilla OldMinecartBehavior.java:244, 246, 254, 256:
+/// `dx = 0.02;`
+pub const MINECART_POWERED_RAIL_LAUNCH_SPEED: f64 = 0.02;
+
+/// Speed threshold below which a minecart on unpowered rail halts completely (0.03).
+/// Mirrors vanilla OldMinecartBehavior.java:172:
+/// `if (speedLength < 0.03) { this.setDeltaMovement(Vec3.ZERO); }`
+pub const MINECART_HALT_TRACK_STOP_THRESHOLD: f64 = 0.03;
+
+/// Deceleration factor applied when a minecart moves over unpowered rail (0.5).
+/// Mirrors vanilla OldMinecartBehavior.java:175:
+/// `this.setDeltaMovement(this.getDeltaMovement().multiply(0.5, 0.0, 0.5));`
+pub const MINECART_HALT_TRACK_DECELERATION: f64 = 0.5;
+
+/// Absolute maximum horizontal speed component redirected along track per tick (2.0).
+/// Mirrors vanilla OldMinecartBehavior.java:150:
+/// `double pow = Math.min(2.0, movement.horizontalDistance());`
+pub const MINECART_MAX_HORIZONTAL_MOVEMENT: f64 = 2.0;
+
+/// Maximum speed squared under which rider move intent can nudge a standing minecart (0.01).
+/// Mirrors vanilla OldMinecartBehavior.java:164:
+/// `if (riderMovement.lengthSqr() > 0.0 && ownDist < 0.01)`
+pub const MINECART_RIDER_NUDGE_SPEED_SQ_THRESHOLD: f64 = 0.01;
+
+/// Nudge acceleration multiplier applied from rider move intent (0.001).
+/// Mirrors vanilla OldMinecartBehavior.java:165:
+/// `this.setDeltaMovement(this.getDeltaMovement().add(moveIntent.x * 0.001, 0.0, moveIntent.z * 0.001));`
+pub const MINECART_RIDER_NUDGE_FACTOR: f64 = 0.001;
+
+/// Rail height vertical offset (0.0625 = 1.0 / 16.0).
+/// Mirrors vanilla OldMinecartBehavior.java:318, 321:
+/// `double y0 = yt + 0.0625 + exit0.getY() * 0.5;`
+pub const MINECART_RAIL_HEIGHT_OFFSET: f64 = 0.0625;
+
 /// TNT Minecart default base explosion power (4.0).
 /// Mirrors vanilla MinecartTNT.java:33:
 /// private static final float DEFAULT_EXPLOSION_POWER_BASE = 4.0F;
@@ -4054,6 +4109,145 @@ pub fn get_minecart_gravity(in_water: bool, has_no_gravity: bool) -> f64 {
         MINECART_WATER_GRAVITY
     } else {
         MINECART_DEFAULT_GRAVITY
+    }
+}
+
+/// Computes gravity slide speed along an ascending rail slope.
+/// Mirrors vanilla `OldMinecartBehavior.java:112-115`.
+#[must_use]
+pub const fn calculate_minecart_slope_slide_speed(in_water: bool) -> f64 {
+    if in_water {
+        MINECART_SLOPE_SLIDE_SPEED * MINECART_WATER_SLOPE_SLIDE_RATIO
+    } else {
+        MINECART_SLOPE_SLIDE_SPEED
+    }
+}
+
+/// Calculates change in minecart horizontal speed based on height lost along track.
+/// Mirrors vanilla `OldMinecartBehavior.java:214`.
+#[must_use]
+pub const fn calculate_minecart_slope_acceleration(old_y: f64, new_y: f64) -> f64 {
+    (old_y - new_y) * MINECART_SLOPE_HEIGHT_TO_SPEED_FACTOR
+}
+
+/// Calculates the vertical lift offset when computing position on ascending slopes.
+/// Mirrors vanilla `OldMinecartBehavior.java:340-344`:
+/// ```java
+/// if (yD < 0.0) {
+///     y++;
+/// } else if (yD > 0.0) {
+///     y += 0.5;
+/// }
+/// ```
+#[must_use]
+pub const fn calculate_minecart_rail_slope_position_lift(yd: f64) -> f64 {
+    if yd < 0.0 {
+        1.0
+    } else if yd > 0.0 {
+        0.5
+    } else {
+        0.0
+    }
+}
+
+/// Computes the motion direction of a minecart taking yaw and flipped state into account.
+/// Mirrors vanilla `OldMinecartBehavior.java:387-389`:
+/// ```java
+/// return this.minecart.isFlipped() ? this.minecart.getDirection().getOpposite().getClockWise() : this.minecart.getDirection().getClockWise();
+/// ```
+#[must_use]
+pub fn get_minecart_motion_direction(yaw: f32, flipped: bool) -> pumpkin_data::BlockDirection {
+    use pumpkin_data::BlockDirection;
+    let base_dir = horizontal_direction_from_yaw(yaw);
+    let effective = if flipped {
+        match base_dir {
+            BlockDirection::North => BlockDirection::South,
+            BlockDirection::South => BlockDirection::North,
+            BlockDirection::East => BlockDirection::West,
+            BlockDirection::West => BlockDirection::East,
+            other => other,
+        }
+    } else {
+        base_dir
+    };
+    match effective {
+        BlockDirection::North => BlockDirection::East,
+        BlockDirection::East => BlockDirection::South,
+        BlockDirection::South => BlockDirection::West,
+        BlockDirection::West => BlockDirection::North,
+        other => other,
+    }
+}
+
+/// Applies braking when a minecart is moving over an unpowered powered rail (halt track).
+/// Mirrors vanilla `OldMinecartBehavior.java:170-177`.
+#[must_use]
+pub fn apply_minecart_unpowered_rail_brake(movement: Vector3<f64>) -> Vector3<f64> {
+    if movement.horizontal_length() < MINECART_HALT_TRACK_STOP_THRESHOLD {
+        Vector3::default()
+    } else {
+        movement.multiply(MINECART_HALT_TRACK_DECELERATION, 0.0, MINECART_HALT_TRACK_DECELERATION)
+    }
+}
+
+/// Redirects horizontal velocity into the new block grid direction when entering an adjacent cell.
+/// Mirrors vanilla `OldMinecartBehavior.java:224-230`.
+#[must_use]
+pub fn calculate_minecart_next_cell_redirection(
+    current_movement: Vector3<f64>,
+    new_block_x: i32,
+    new_block_z: i32,
+    orig_block_x: i32,
+    orig_block_z: i32,
+) -> Vector3<f64> {
+    if new_block_x != orig_block_x || new_block_z != orig_block_z {
+        let other_pow = current_movement.horizontal_length();
+        Vector3::new(
+            other_pow * f64::from(new_block_x - orig_block_x),
+            current_movement.y,
+            other_pow * f64::from(new_block_z - orig_block_z),
+        )
+    } else {
+        current_movement
+    }
+}
+
+/// Calculates powered rail boost for a moving cart or launches a standing cart.
+/// Mirrors vanilla `OldMinecartBehavior.java:232-262`.
+#[must_use]
+pub fn calculate_minecart_powered_rail_boost(
+    movement: Vector3<f64>,
+    shape: pumpkin_data::block_properties::RailShape,
+    west_conductor: bool,
+    east_conductor: bool,
+    north_conductor: bool,
+    south_conductor: bool,
+) -> Vector3<f64> {
+    use pumpkin_data::block_properties::RailShape;
+    let speed = movement.horizontal_length();
+    if speed > 0.01 {
+        Vector3::new(
+            movement.x + movement.x / speed * MINECART_POWERED_RAIL_BOOST,
+            movement.y,
+            movement.z + movement.z / speed * MINECART_POWERED_RAIL_BOOST,
+        )
+    } else {
+        let mut dx = movement.x;
+        let mut dz = movement.z;
+        if shape == RailShape::EastWest {
+            if west_conductor {
+                dx = MINECART_POWERED_RAIL_LAUNCH_SPEED;
+            } else if east_conductor {
+                dx = -MINECART_POWERED_RAIL_LAUNCH_SPEED;
+            }
+        } else if shape == RailShape::NorthSouth {
+            if north_conductor {
+                dz = MINECART_POWERED_RAIL_LAUNCH_SPEED;
+            } else if south_conductor {
+                dz = -MINECART_POWERED_RAIL_LAUNCH_SPEED;
+            }
+        }
+        Vector3::new(dx, movement.y, dz)
     }
 }
 
@@ -28045,5 +28239,118 @@ mod tests {
             ),
             Some(&pumpkin_data::item::Item::MINECART)
         );
+    }
+
+    #[test]
+    fn test_minecart_rail_physics_and_slope_transition_parity_gap438() {
+        // 1. Slope slide constants and calculations (OldMinecartBehavior.java:112-115)
+        assert_eq!(MINECART_SLOPE_SLIDE_SPEED, 0.0078125);
+        assert_eq!(MINECART_WATER_SLOPE_SLIDE_RATIO, 0.2);
+        assert_eq!(calculate_minecart_slope_slide_speed(false), 0.0078125);
+        assert_eq!(calculate_minecart_slope_slide_speed(true), 0.0078125 * 0.2);
+
+        // 2. Slope height difference to speed conversion (OldMinecartBehavior.java:214)
+        assert_eq!(MINECART_SLOPE_HEIGHT_TO_SPEED_FACTOR, 0.05);
+        // Downhill: old_y (64.5) > new_y (64.0) -> positive speed gain (0.025)
+        assert!((calculate_minecart_slope_acceleration(64.5, 64.0) - 0.025).abs() < 1e-6);
+        // Uphill: old_y (64.0) < new_y (64.5) -> negative speed loss (-0.025)
+        assert!((calculate_minecart_slope_acceleration(64.0, 64.5) - (-0.025)).abs() < 1e-6);
+
+        // 3. Rail slope vertical lift (OldMinecartBehavior.java:340-344)
+        assert_eq!(calculate_minecart_rail_slope_position_lift(-1.0), 1.0);
+        assert_eq!(calculate_minecart_rail_slope_position_lift(1.0), 0.5);
+        assert_eq!(calculate_minecart_rail_slope_position_lift(0.0), 0.0);
+
+        // 4. Motion direction calculation taking yaw & flipped state into account (OldMinecartBehavior.java:387-389)
+        // South facing (yaw 0.0):
+        assert_eq!(get_minecart_motion_direction(0.0, false), pumpkin_data::BlockDirection::West);
+        assert_eq!(get_minecart_motion_direction(0.0, true), pumpkin_data::BlockDirection::East);
+        // North facing (yaw 180.0):
+        assert_eq!(get_minecart_motion_direction(180.0, false), pumpkin_data::BlockDirection::East);
+        assert_eq!(get_minecart_motion_direction(180.0, true), pumpkin_data::BlockDirection::West);
+        // West facing (yaw 90.0):
+        assert_eq!(get_minecart_motion_direction(90.0, false), pumpkin_data::BlockDirection::North);
+        assert_eq!(get_minecart_motion_direction(90.0, true), pumpkin_data::BlockDirection::South);
+        // East facing (yaw 270.0):
+        assert_eq!(get_minecart_motion_direction(270.0, false), pumpkin_data::BlockDirection::South);
+        assert_eq!(get_minecart_motion_direction(270.0, true), pumpkin_data::BlockDirection::North);
+
+        // 5. Unpowered rail brake (OldMinecartBehavior.java:170-177)
+        assert_eq!(MINECART_HALT_TRACK_STOP_THRESHOLD, 0.03);
+        assert_eq!(MINECART_HALT_TRACK_DECELERATION, 0.5);
+        // Slow cart (< 0.03) stops completely
+        let stopped = apply_minecart_unpowered_rail_brake(Vector3::new(0.02, 0.0, 0.0));
+        assert_eq!(stopped, Vector3::default());
+        // Fast cart (>= 0.03) decelerates by 0.5 horizontally
+        let decelerated = apply_minecart_unpowered_rail_brake(Vector3::new(0.2, 0.0, 0.1));
+        assert!((decelerated.x - 0.1).abs() < 1e-6);
+        assert!((decelerated.z - 0.05).abs() < 1e-6);
+        assert_eq!(decelerated.y, 0.0);
+
+        // 6. Next block corner snap redirection (OldMinecartBehavior.java:224-230)
+        let orig_movement = Vector3::new(0.1, 0.0, 0.2);
+        let speed = orig_movement.horizontal_length();
+        // Transition into block (+1, 0)
+        let redirected = calculate_minecart_next_cell_redirection(orig_movement, 11, 20, 10, 20);
+        assert!((redirected.x - speed).abs() < 1e-6);
+        assert_eq!(redirected.z, 0.0);
+        // Transition into diagonal corner (+1, +1)
+        let corner = calculate_minecart_next_cell_redirection(orig_movement, 11, 21, 10, 20);
+        assert!((corner.x - speed).abs() < 1e-6);
+        assert!((corner.z - speed).abs() < 1e-6);
+        // Staying in same block -> unchanged
+        let same = calculate_minecart_next_cell_redirection(orig_movement, 10, 20, 10, 20);
+        assert_eq!(same, orig_movement);
+
+        // 7. Powered rail boost and launch (OldMinecartBehavior.java:232-262)
+        assert_eq!(MINECART_POWERED_RAIL_BOOST, 0.06);
+        assert_eq!(MINECART_POWERED_RAIL_LAUNCH_SPEED, 0.02);
+        // Moving cart gets 0.06 boost along heading
+        let moving = Vector3::new(0.1, 0.0, 0.0);
+        let boosted = calculate_minecart_powered_rail_boost(
+            moving,
+            pumpkin_data::block_properties::RailShape::EastWest,
+            false, false, false, false,
+        );
+        assert!((boosted.x - 0.16).abs() < 1e-6);
+
+        // Standing cart against West conductor block launches East (+X)
+        let standing = Vector3::default();
+        let launched_east = calculate_minecart_powered_rail_boost(
+            standing,
+            pumpkin_data::block_properties::RailShape::EastWest,
+            true, false, false, false,
+        );
+        assert_eq!(launched_east.x, 0.02);
+
+        // Standing cart against East conductor block launches West (-X)
+        let launched_west = calculate_minecart_powered_rail_boost(
+            standing,
+            pumpkin_data::block_properties::RailShape::EastWest,
+            false, true, false, false,
+        );
+        assert_eq!(launched_west.x, -0.02);
+
+        // Standing cart against North conductor block launches South (+Z)
+        let launched_south = calculate_minecart_powered_rail_boost(
+            standing,
+            pumpkin_data::block_properties::RailShape::NorthSouth,
+            false, false, true, false,
+        );
+        assert_eq!(launched_south.z, 0.02);
+
+        // Standing cart against South conductor block launches North (-Z)
+        let launched_north = calculate_minecart_powered_rail_boost(
+            standing,
+            pumpkin_data::block_properties::RailShape::NorthSouth,
+            false, false, false, true,
+        );
+        assert_eq!(launched_north.z, -0.02);
+
+        // 8. General constants
+        assert_eq!(MINECART_MAX_HORIZONTAL_MOVEMENT, 2.0);
+        assert_eq!(MINECART_RIDER_NUDGE_SPEED_SQ_THRESHOLD, 0.01);
+        assert_eq!(MINECART_RIDER_NUDGE_FACTOR, 0.001);
+        assert_eq!(MINECART_RAIL_HEIGHT_OFFSET, 0.0625);
     }
 }

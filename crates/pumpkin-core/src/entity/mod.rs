@@ -727,6 +727,12 @@ pub trait EntityBase: Send + Sync + std::any::Any {
         None
     }
 
+    /// Returns the motion direction of this entity taking yaw and flipped state into account.
+    /// Vanilla `AbstractMinecart.java:271` & `OldMinecartBehavior.java:387-389`.
+    fn get_motion_direction(&self) -> pumpkin_data::BlockDirection {
+        combat::horizontal_direction_from_yaw(self.get_entity().yaw.load())
+    }
+
     /// Should return the name of the entity without click or hover events.
     fn get_name(&self) -> TextComponent {
         let entity = self.get_entity();
@@ -4308,7 +4314,16 @@ impl Entity {
             let is_player = passenger.get_player().is_some();
             let dismount_poses = combat::get_entity_dismount_poses(is_player);
 
-            let forward_dir = combat::horizontal_direction_from_yaw(self.yaw.load());
+            let forward_dir = if combat::is_minecart_entity_type(self.entity_type) {
+                world
+                    .get_entity_by_id(self.entity_id)
+                    .map_or_else(
+                        || combat::horizontal_direction_from_yaw(self.yaw.load()),
+                        |e| e.get_motion_direction(),
+                    )
+            } else {
+                combat::horizontal_direction_from_yaw(self.yaw.load())
+            };
             let offsets = combat::dismount_offsets_for_direction(forward_dir);
 
             let dismount_pos = if combat::is_boat_entity_type(self.entity_type)

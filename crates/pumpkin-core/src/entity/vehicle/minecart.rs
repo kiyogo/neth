@@ -143,13 +143,7 @@ fn rail_pos(world: &World, pos: Vector3<f64>) -> Option<Vector3<f64>> {
     let yd = (block_y + RAIL_HEIGHT_OFFSET + exit1.y * 0.5 - y0) * 2.0;
     let zd = block_z + 0.5 + exit1.z * 0.5 - z0;
     let progress = rail_progress(pos, block_x, block_z, x0, z0, xd, zd);
-    let lift = if yd < 0.0 {
-        1.0
-    } else if yd > 0.0 {
-        0.5
-    } else {
-        0.0
-    };
+    let lift = crate::entity::combat::calculate_minecart_rail_slope_position_lift(yd);
     Some(Vector3::new(
         x0 + xd * progress,
         y0 + yd * progress + lift,
@@ -162,31 +156,25 @@ fn boost(
     world: &World,
     pos: BlockPos,
     shape: RailShape,
-    mut movement: Vector3<f64>,
+    movement: Vector3<f64>,
 ) -> Vector3<f64> {
-    let speed = movement.horizontal_length();
-    if speed > 0.01 {
-        movement.x += movement.x / speed * 0.06;
-        movement.z += movement.z / speed * 0.06;
-        return movement;
-    }
     // A standing cart starts away from a redstone conductor.
     let conductor = |x: i32, z: i32| {
         world
             .get_block_state(&BlockPos(Vector3::new(pos.0.x + x, pos.0.y, pos.0.z + z)))
             .is_solid_block()
     };
-    match shape {
-        RailShape::EastWest if conductor(-1, 0) => movement.x = 0.02,
-        RailShape::EastWest if conductor(1, 0) => movement.x = -0.02,
-        RailShape::NorthSouth if conductor(0, -1) => movement.z = 0.02,
-        RailShape::NorthSouth if conductor(0, 1) => movement.z = -0.02,
-        _ => {}
-    }
-    movement
+    crate::entity::combat::calculate_minecart_powered_rail_boost(
+        movement,
+        shape,
+        conductor(-1, 0),
+        conductor(1, 0),
+        conductor(0, -1),
+        conductor(0, 1),
+    )
 }
 
-const RAIL_HEIGHT_OFFSET: f64 = 0.0625;
+const RAIL_HEIGHT_OFFSET: f64 = crate::entity::combat::MINECART_RAIL_HEIGHT_OFFSET;
 const AIR_DRAG: f32 = crate::entity::combat::MINECART_AIR_DRAG;
 /// Pumpkin: vanilla never zeroes a sliding cart. Below this the rest of the slide
 /// is under 0.04 blocks, even with the 0.997 rider slowdown.
@@ -234,6 +222,18 @@ impl MinecartEntity {
             kind,
             flipped: AtomicBool::new(false),
         }
+    }
+
+    #[must_use]
+    pub fn is_flipped(&self) -> bool {
+        self.flipped.load(Ordering::Relaxed)
+    }
+
+    #[must_use]
+    pub fn get_motion_direction(&self) -> pumpkin_data::BlockDirection {
+        let yaw = self.vehicle.entity.yaw.load();
+        let flipped = self.is_flipped();
+        crate::entity::combat::get_minecart_motion_direction(yaw, flipped)
     }
 
     #[must_use]
@@ -336,7 +336,7 @@ impl MinecartEntity {
         let in_water = entity.touching_water.load(Ordering::Relaxed);
         let mut movement = entity.velocity.load();
 
-        let slide = if in_water { 0.0078125 * 0.2 } else { 0.0078125 };
+        let slide = crate::entity::combat::calculate_minecart_slope_slide_speed(in_water);
         match shape {
             RailShape::AscendingEast => movement.x -= slide,
             RailShape::AscendingWest => movement.x += slide,
@@ -353,22 +353,23 @@ impl MinecartEntity {
         if movement.x * xd + movement.z * zd < 0.0 {
             (xd, zd) = (-xd, -zd);
         }
-        let pow = movement.horizontal_length().min(2.0);
+        let pow = movement
+            .horizontal_length()
+            .min(crate::entity::combat::MINECART_MAX_HORIZONTAL_MOVEMENT);
         movement = Vector3::new(pow * xd / length, movement.y, pow * zd / length);
 
         // A rider only nudges a (nearly) standing cart.
         let move_intent = self.rider_move_intent();
-        if move_intent.length_squared() > 0.0 && movement.horizontal_length_squared() < 0.01 {
-            movement.x += move_intent.x * 0.001;
-            movement.z += move_intent.z * 0.001;
+        if move_intent.length_squared() > 0.0
+            && movement.horizontal_length_squared()
+                < crate::entity::combat::MINECART_RIDER_NUDGE_SPEED_SQ_THRESHOLD
+        {
+            movement.x += move_intent.x * crate::entity::combat::MINECART_RIDER_NUDGE_FACTOR;
+            movement.z += move_intent.z * crate::entity::combat::MINECART_RIDER_NUDGE_FACTOR;
             halt_track = false;
         }
         if halt_track {
-            movement = if movement.horizontal_length() < 0.03 {
-                Vector3::default()
-            } else {
-                movement.multiply(0.5, 0.0, 0.5)
-            };
+            movement = crate::entity::combat::apply_minecart_unpowered_rail_brake(movement);
         }
 
         // Snap onto the rail line.
@@ -414,7 +415,8 @@ impl MinecartEntity {
         // Height lost on the rail becomes speed.
         let moved = entity.pos.load();
         if let (Some(old), Some(new)) = (old_rail_pos, rail_pos(world, moved)) {
-            let speed = (old.y - new.y) * 0.05;
+            let speed =
+                crate::entity::combat::calculate_minecart_slope_acceleration(old.y, new.y);
             let other_pow = movement.horizontal_length();
             if other_pow > 0.0 {
                 let factor = (other_pow + speed) / other_pow;
@@ -426,14 +428,13 @@ impl MinecartEntity {
         // Entering the next cell: head straight into it.
         let moved = entity.pos.load();
         let (xn, zn) = (moved.x.floor() as i32, moved.z.floor() as i32);
-        if xn != pos.0.x || zn != pos.0.z {
-            let other_pow = movement.horizontal_length();
-            movement = Vector3::new(
-                other_pow * f64::from(xn - pos.0.x),
-                movement.y,
-                other_pow * f64::from(zn - pos.0.z),
-            );
-        }
+        movement = crate::entity::combat::calculate_minecart_next_cell_redirection(
+            movement,
+            xn,
+            zn,
+            pos.0.x,
+            pos.0.z,
+        );
 
         if power_track {
             movement = boost(world, pos, shape, movement);
@@ -620,6 +621,56 @@ impl MinecartEntity {
         }
     }
 
+    /// Mirrors vanilla `activateMinecart` in `OldMinecartBehavior.java:59-61` and subclasses.
+    fn activate_minecart(&self, powered: bool) {
+        match &self.kind {
+            MinecartKind::Hopper(minecart) => {
+                minecart.set_enabled(!powered);
+            }
+            MinecartKind::CommandBlock(minecart) => {
+                minecart.activate(
+                    &self.vehicle.entity,
+                    powered,
+                    self.vehicle.entity.age.load(Ordering::Relaxed),
+                );
+            }
+            MinecartKind::Tnt(minecart) => {
+                if powered {
+                    minecart.prime(
+                        &self.vehicle.entity,
+                        crate::entity::combat::MINECART_TNT_DEFAULT_FUSE,
+                    );
+                }
+            }
+            MinecartKind::Rideable(_) => {
+                if powered {
+                    if let Ok(passengers) = self.vehicle.entity.passengers.try_lock() {
+                        let p_ids: Vec<i32> = passengers
+                            .iter()
+                            .map(|p| p.get_entity().entity_id)
+                            .collect();
+                        if !p_ids.is_empty() {
+                            let world = self.vehicle.entity.world.load();
+                            let vid = self.vehicle.entity.entity_id;
+                            if let Some(v) = world.get_entity_by_id(vid) {
+                                for pid in p_ids {
+                                    v.get_entity().remove_passenger_sync(pid);
+                                }
+                            }
+                        }
+                    }
+                    if self.vehicle.get_hurt_time() == 0 {
+                        self.vehicle.set_hurt_dir(-self.vehicle.get_hurt_dir());
+                        self.vehicle.set_hurt_time(10);
+                        self.vehicle.set_damage(50.0);
+                        self.vehicle.send_wobble_metadata();
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     const fn drop_item(&self) -> Option<&'static Item> {
         match &self.kind {
             MinecartKind::Chest(_) => Some(&Item::CHEST_MINECART),
@@ -684,21 +735,17 @@ impl EntityBase for MinecartEntity {
         let is_activator_rail = block.id == Block::ACTIVATOR_RAIL.id;
         let rail_shape = rail_shape_of(block, state_id);
 
-        if is_powered_rail || is_activator_rail {
-            let props = PoweredRailLikeProperties::from_state_id(state_id);
-            let powered = props.powered;
+        let mut power_track = false;
+        let mut halt_track = false;
+        let mut activator_powered = false;
 
-            if is_activator_rail {
-                if let MinecartKind::Hopper(minecart) = &self.kind {
-                    minecart.set_enabled(!powered);
-                } else if let MinecartKind::CommandBlock(minecart) = &self.kind {
-                    minecart.activate(
-                        &self.vehicle.entity,
-                        powered,
-                        self.vehicle.entity.age.load(Ordering::Relaxed),
-                    );
-                }
-            }
+        if is_powered_rail {
+            let props = PoweredRailLikeProperties::from_state_id(state_id);
+            power_track = props.powered;
+            halt_track = !props.powered;
+        } else if is_activator_rail {
+            let props = PoweredRailLikeProperties::from_state_id(state_id);
+            activator_powered = props.powered;
         } else if block.id == Block::DETECTOR_RAIL.id
             && let Some(server) = world.server.upgrade()
         {
@@ -712,49 +759,6 @@ impl EntityBase for MinecartEntity {
             );
         }
 
-        let mut power_track = false;
-        let mut halt_track = false;
-        if is_powered_rail || is_activator_rail {
-            let props = PoweredRailLikeProperties::from_state_id(state_id);
-            let powered = props.powered;
-
-            if is_powered_rail {
-                // Vanilla `moveAlongTrack`: brake before the move, boost after it.
-                power_track = powered;
-                halt_track = !powered;
-            } else if powered {
-                match &self.kind {
-                    MinecartKind::Tnt(minecart) => {
-                        minecart.prime(&self.vehicle.entity, 80);
-                    }
-                    MinecartKind::Rideable(_) => {
-                        if let Ok(passengers) = self.vehicle.entity.passengers.try_lock() {
-                            let p_ids: Vec<i32> = passengers
-                                .iter()
-                                .map(|p| p.get_entity().entity_id)
-                                .collect();
-                            if !p_ids.is_empty() {
-                                let world = self.vehicle.entity.world.load();
-                                let vid = self.vehicle.entity.entity_id;
-                                if let Some(v) = world.get_entity_by_id(vid) {
-                                    for pid in p_ids {
-                                        v.get_entity().remove_passenger_sync(pid);
-                                    }
-                                }
-                            }
-                        }
-                        if self.vehicle.get_hurt_time() == 0 {
-                            self.vehicle.set_hurt_dir(-self.vehicle.get_hurt_dir());
-                            self.vehicle.set_hurt_time(10);
-                            self.vehicle.set_damage(50.0);
-                            self.vehicle.send_wobble_metadata();
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
         if let MinecartKind::Tnt(minecart) = &self.kind
             && minecart.tick(&self.vehicle.entity)
         {
@@ -764,6 +768,9 @@ impl EntityBase for MinecartEntity {
         match rail_shape {
             Some(shape) => {
                 self.move_along_track(caller, &world, block_pos, shape, power_track, halt_track);
+                if is_activator_rail {
+                    self.activate_minecart(activator_powered);
+                }
             }
             None => self.come_off_track(caller, &world, block_pos),
         }
@@ -827,6 +834,10 @@ impl EntityBase for MinecartEntity {
 
     fn get_vehicle_entity(&self) -> Option<&VehicleEntity> {
         Some(&self.vehicle)
+    }
+
+    fn get_motion_direction(&self) -> pumpkin_data::BlockDirection {
+        self.get_motion_direction()
     }
 
     fn get_container_inventory(&self) -> Option<Arc<dyn Inventory>> {
