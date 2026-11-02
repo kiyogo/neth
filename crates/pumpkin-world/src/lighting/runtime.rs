@@ -850,6 +850,9 @@ mod tests {
             .map(|_| LightContainer::new_empty(0))
             .collect();
         drop(light);
+        chunk
+            .light_populated
+            .store(true, std::sync::atomic::Ordering::Relaxed);
 
         Arc::new(chunk)
     }

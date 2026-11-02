@@ -739,8 +739,8 @@ impl BlockPalette {
                 let mut packed_data = vec![0u32; Self::VOLUME / u32::BITS as usize];
                 let mut output_index = 0;
                 for x in 0..Self::SIZE {
-                    for y in 0..Self::SIZE {
-                        for z in 0..Self::SIZE {
+                    for z in 0..Self::SIZE {
+                        for y in 0..Self::SIZE {
                             let palette_index = match &data.storage {
                                 PaletteStorage::Indexed(indices) => {
                                     indices.get(flat_index::<{ Self::SIZE }>(x, y, z)) as usize
