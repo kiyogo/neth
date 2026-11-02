@@ -6,7 +6,7 @@ use pumpkin_data::entity::EntityType;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tracked_data;
 use pumpkin_nbt::compound::NbtCompound;
-use pumpkin_util::math::boundingbox::EntityDimensions;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 
 use crate::entity::custom_sound::CustomSound;
 use crate::entity::{
@@ -107,6 +107,7 @@ impl ZoglinEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -115,23 +116,47 @@ impl ZoglinEntity {
         self.is_baby.load(Ordering::Relaxed)
     }
 
-    /// Vanilla `Zoglin.setBaby`; growing up keeps the lowered attack damage, as in vanilla.
+    /// Vanilla Zoglin.setBaby; growing up keeps the lowered attack damage, as in vanilla.
     pub fn set_baby(&self, baby: bool) {
         self.mob_entity
             .set_baby_flag(&self.is_baby, tracked_data::zoglin::DATA_BABY_ID, baby);
         let living = &self.mob_entity.living_entity;
-        living.entity.entity_dimension.store(if baby {
-            Self::BABY_DIMENSIONS
-        } else {
-            Entity::type_dimensions(living.entity.entity_type)
-        });
         if baby {
             living.set_attribute_base(
                 &Attributes::ATTACK_DAMAGE,
                 crate::entity::combat::calculate_zoglin_attack_damage(true),
             );
         }
+        self.refresh_dimensions();
     }
+
+    /// Refreshes Zoglin dimensions and updates bounding box centered on current position.
+    ///
+    /// Mirrors vanilla Zoglin.java:117-119, 151-153 (getDefaultDimensions & refreshDimensions).
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_zoglin_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
+    }
+
 }
 
 impl CustomSound for ZoglinEntity {
@@ -271,5 +296,37 @@ mod tests {
         assert_eq!(crate::entity::combat::ZOGLIN_ATTACK_DURATION, 200);
         assert_eq!(crate::entity::combat::calculate_zoglin_attack_interval(false), 40);
         assert_eq!(crate::entity::combat::calculate_zoglin_attack_interval(true), 15);
+    }
+    #[test]
+    fn test_zoglin_baby_dimensions_and_bounding_box_refresh_parity() {
+        use crate::entity::combat::*;
+
+        // 1. Adult Zoglin dimensions (EntityTypes.java: sized(1.3964844F, 1.4F))
+        assert_eq!(ZOGLIN_ADULT_WIDTH, 1.3964844);
+        assert_eq!(ZOGLIN_ADULT_HEIGHT, 1.4);
+        assert_eq!(ZOGLIN_ADULT_EYE_HEIGHT, 1.19);
+        assert_eq!(ZOGLIN_ADULT_PASSENGER_ATTACHMENT, 1.49375);
+
+        // 2. Baby Zoglin dimensions (Zoglin.java:63-65: scalable(0.75F, 0.85F).withEyeHeight(0.625F))
+        assert_eq!(ZOGLIN_BABY_WIDTH, 0.75);
+        assert_eq!(ZOGLIN_BABY_HEIGHT, 0.85);
+        assert_eq!(ZOGLIN_BABY_EYE_HEIGHT, 0.625);
+        assert_eq!(ZOGLIN_BABY_PASSENGER_ATTACHMENT, 0.875);
+
+        // 3. calculate_zoglin_dimensions parity
+        let adult_dims = calculate_zoglin_dimensions(false, 1.3964844, 1.4, 1.19);
+        assert_eq!(adult_dims, (1.3964844, 1.4, 1.19));
+
+        let baby_dims = calculate_zoglin_dimensions(true, 1.3964844, 1.4, 1.19);
+        assert_eq!(baby_dims, (0.75, 0.85, 0.625));
+
+        // 4. BABY_DIMENSIONS constant match
+        assert_eq!(ZoglinEntity::BABY_DIMENSIONS.width, 0.75);
+        assert_eq!(ZoglinEntity::BABY_DIMENSIONS.height, 0.85);
+        assert_eq!(ZoglinEntity::BABY_DIMENSIONS.eye_height, 0.625);
+
+        // 5. Baby attack damage parity (Zoglin.java:70, 252-253)
+        assert_eq!(calculate_zoglin_attack_damage(false), 6.0);
+        assert_eq!(calculate_zoglin_attack_damage(true), 0.5);
     }
 }

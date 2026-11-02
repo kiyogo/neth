@@ -89,6 +89,9 @@ impl Goal for EmergeGoal {
         let entity = &mob.get_mob_entity().living_entity.entity;
         if entity.pose.load() == EntityPose::Emerging {
             entity.set_pose(EntityPose::Standing);
+            if let Some(warden) = mob.as_warden() {
+                warden.refresh_dimensions();
+            }
         }
     }
 
@@ -264,6 +267,9 @@ impl Goal for DigGoal {
     fn start(&mut self, mob: &dyn Mob) {
         let entity = &mob.get_mob_entity().living_entity.entity;
         entity.set_pose(EntityPose::Digging);
+        if let Some(warden) = mob.as_warden() {
+            warden.refresh_dimensions();
+        }
         entity.world.load().play_sound_fine(
             Sound::EntityWardenDig,
             SoundCategory::Hostile,
@@ -560,6 +566,7 @@ impl WardenEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
     }
 
@@ -576,6 +583,7 @@ impl WardenEntity {
     pub fn emerge(&self) {
         let entity = &self.mob_entity.living_entity.entity;
         entity.set_pose(EntityPose::Emerging);
+        self.refresh_dimensions();
         self.emerge_ticks.store(EMERGE_DURATION, Ordering::Relaxed);
         entity.world.load().play_sound_fine(
             Sound::EntityWardenEmerge,
@@ -596,6 +604,9 @@ impl WardenEntity {
 
     pub fn dig(&self) {
         self.dig_ticks.store(DIGGING_DURATION, Ordering::Relaxed);
+        let entity = &self.mob_entity.living_entity.entity;
+        entity.set_pose(EntityPose::Digging);
+        self.refresh_dimensions();
     }
 
     pub fn apply_darkness_around(world: &World, position: Vector3<f64>, radius: f64) {
@@ -780,7 +791,27 @@ impl WardenEntity {
     }
 
     pub fn is_digging_or_emerging(&self) -> bool {
-        self.emerge_ticks.load(Ordering::Relaxed) > 0 || self.dig_ticks.load(Ordering::Relaxed) > 0
+        let pose = self.mob_entity.living_entity.entity.pose.load();
+        matches!(pose, EntityPose::Digging | EntityPose::Emerging)
+            || self.emerge_ticks.load(Ordering::Relaxed) > 0
+            || self.dig_ticks.load(Ordering::Relaxed) > 0
+    }
+
+    /// Refreshes Warden dimensions and updates bounding box centered on current position.
+    ///
+    /// Mirrors vanilla Warden.java:519-521 (getDefaultDimensions & refreshDimensions).
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let pose = entity.pose.load();
+        let dimensions = entity.get_dimensions(pose);
+        let pos = entity.pos.load();
+        entity.bounding_box.store(pumpkin_util::math::boundingbox::BoundingBox::new_from_pos(
+            pos.x,
+            pos.y,
+            pos.z,
+            &dimensions,
+        ));
+        entity.entity_dimension.store(dimensions);
     }
 }
 
@@ -984,5 +1015,26 @@ mod tests {
         let (kh_full, kv_full) = crate::entity::combat::calculate_sonic_boom_knockback(1.0);
         assert_eq!(kh_full, 0.0);
         assert_eq!(kv_full, 0.0);
+    }
+
+    #[test]
+    fn test_warden_digging_and_emerging_dimensions_parity() {
+        use crate::entity::combat::*;
+
+        // 1. Default standing/normal Warden dimensions (EntityTypes.java:1059: sized(0.9F, 2.9F))
+        assert_eq!(WARDEN_DEFAULT_WIDTH, 0.9);
+        assert_eq!(WARDEN_DEFAULT_HEIGHT, 2.9);
+        assert_eq!(WARDEN_DEFAULT_EYE_HEIGHT, 2.465);
+
+        // 2. Digging and emerging dimensions (Warden.java:519-521: EntityDimensions.fixed(width, 1.0F))
+        assert_eq!(WARDEN_DIGGING_EMERGING_HEIGHT, 1.0);
+        assert_eq!(WARDEN_DIGGING_EMERGING_EYE_HEIGHT, 0.85);
+
+        // 3. calculate_warden_dimensions parity
+        let standing_dims = calculate_warden_dimensions(false, 0.9, 2.9, 2.465);
+        assert_eq!(standing_dims, (0.9, 2.9, 2.465));
+
+        let emerging_dims = calculate_warden_dimensions(true, 0.9, 2.9, 2.465);
+        assert_eq!(emerging_dims, (0.9, 1.0, 0.85));
     }
 }

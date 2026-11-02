@@ -8588,6 +8588,42 @@ pub fn calculate_warden_heartbeat_delay(client_anger: i32) -> i32 {
     40 - (ratio * 30.0).floor() as i32
 }
 
+/// Warden base and digging/emerging dimensions constants.
+///
+/// Mirrors vanilla EntityTypes.java:1059 and Warden.java:519-521:
+/// `java
+/// public EntityDimensions getDefaultDimensions(final Pose pose) {
+///    EntityDimensions dimensions = super.getDefaultDimensions(pose);
+///    return this.isDiggingOrEmerging() ? EntityDimensions.fixed(dimensions.width(), 1.0F) : dimensions;
+/// }
+/// `
+pub const WARDEN_DEFAULT_WIDTH: f32 = 0.9;
+pub const WARDEN_DEFAULT_HEIGHT: f32 = 2.9;
+pub const WARDEN_DEFAULT_EYE_HEIGHT: f32 = 2.465;
+pub const WARDEN_DIGGING_EMERGING_HEIGHT: f32 = 1.0;
+pub const WARDEN_DIGGING_EMERGING_EYE_HEIGHT: f32 = 0.85;
+
+/// Calculates Warden dimensions based on whether the warden is digging or emerging.
+///
+/// Mirrors vanilla Warden.java:519-521.
+#[must_use]
+pub const fn calculate_warden_dimensions(
+    is_digging_or_emerging: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_digging_or_emerging {
+        (
+            default_width,
+            WARDEN_DIGGING_EMERGING_HEIGHT,
+            WARDEN_DIGGING_EMERGING_EYE_HEIGHT,
+        )
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Maximum health for Ender Dragon (200.0 HP = 100 hearts).
 ///
 /// Mirrors vanilla `EnderDragon.java:840`:
@@ -13502,13 +13538,22 @@ pub const fn calculate_hoglin_dimensions(
     }
 }
 
-/// Zoglin baby dimensions and eye height constants.
+/// Zoglin dimensions and attachment constants.
 ///
-/// Mirrors vanilla Zoglin.java:45:
-/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F).withEyeHeight(0.625F)...
+/// Mirrors vanilla Zoglin.java:63-65 and EntityTypes.java:1121-1122:
+/// `java
+/// private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F)
+///    .withEyeHeight(0.625F)
+///    .withAttachments(EntityAttachments.builder().attach(EntityAttachment.PASSENGER, 0.0F, 0.875F, 0.0F));
+/// `
+pub const ZOGLIN_ADULT_WIDTH: f32 = 1.3964844;
+pub const ZOGLIN_ADULT_HEIGHT: f32 = 1.4;
+pub const ZOGLIN_ADULT_EYE_HEIGHT: f32 = 1.19;
+pub const ZOGLIN_ADULT_PASSENGER_ATTACHMENT: f32 = 1.49375;
 pub const ZOGLIN_BABY_WIDTH: f32 = 0.75;
 pub const ZOGLIN_BABY_HEIGHT: f32 = 0.85;
 pub const ZOGLIN_BABY_EYE_HEIGHT: f32 = 0.625;
+pub const ZOGLIN_BABY_PASSENGER_ATTACHMENT: f32 = 0.875;
 
 /// Calculates zoglin dimensions based on baby status.
 ///

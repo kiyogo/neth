@@ -1339,6 +1339,17 @@ impl Entity {
                 _ => {}
             }
         }
+        if self.entity_type == &EntityType::WARDEN
+            && (pose == EntityPose::Digging || pose == EntityPose::Emerging)
+        {
+            let (w, h, eye) = crate::entity::combat::calculate_warden_dimensions(
+                true,
+                self.entity_type.dimension[0],
+                self.entity_type.dimension[1],
+                self.entity_type.eye_height,
+            );
+            return EntityDimensions::new(w, h, eye);
+        }
         Self::type_dimensions(self.entity_type)
     }
 

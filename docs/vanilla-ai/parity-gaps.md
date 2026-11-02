@@ -10779,3 +10779,37 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Bổ sung `get_phantom_size(&self) -> i32` và `refresh_dimensions(&self)` trên `PhantomEntity`.
   - Tự động gọi `refresh_dimensions()` khi khởi tạo `PhantomEntity::new` và trong `set_phantom_size`.
 - **Unit Tests**: `test_cube_mob_and_phantom_dimensions_gap425`, `test_cube_mob_parity_constants`, `test_phantom_attributes_and_mechanics_parity`, `test_phantom_spawner_dimensions_and_insomnia_parity` pass 100%.
+
+
+### Gap 426: Zoglin Baby Scalable Dimensions, Bounding Box Refresh & Attack Damage Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.monster.Zoglin.java:62-72, 117-119, 151-153, 249-255`, `net.minecraft.world.entity.EntityTypes.java:1117-1125`
+
+- **Kích thước Zoglin Con & Cập nhật Hộp va chạm (Zoglin Baby Scalable Dimensions & Bounding Box Refresh)**:
+  - Vanilla `Zoglin.java:62-65, 117-119`:
+    - `BABY_DIMENSIONS = EntityDimensions.scalable(0.75F, 0.85F).withEyeHeight(0.625F).withAttachments(EntityAttachments.builder().attach(EntityAttachment.PASSENGER, 0.0F, 0.875F, 0.0F));`
+    - `getDefaultDimensions(pose)`: trả về `BABY_DIMENSIONS` nếu `isBaby()`, ngược lại trả về `super.getDefaultDimensions(pose)`.
+    - Adult dimensions: `1.3964844 x 1.4`, eye height `1.19`, passenger attachment `1.49375`.
+    - Baby dimensions: `0.75 x 0.85`, eye height `0.625`, passenger attachment `0.875`.
+  - Bổ sung `ZOGLIN_ADULT_WIDTH` (1.3964844), `ZOGLIN_ADULT_HEIGHT` (1.4), `ZOGLIN_ADULT_EYE_HEIGHT` (1.19), `ZOGLIN_ADULT_PASSENGER_ATTACHMENT` (1.49375), `ZOGLIN_BABY_WIDTH` (0.75), `ZOGLIN_BABY_HEIGHT` (0.85), `ZOGLIN_BABY_EYE_HEIGHT` (0.625), `ZOGLIN_BABY_PASSENGER_ATTACHMENT` (0.875), `calculate_zoglin_dimensions` trong `combat.rs`.
+  - Triển khai `refresh_dimensions(&self)` trên `ZoglinEntity` cập nhật đồng thời cả `entity_dimension` và `bounding_box` tại tọa độ hiện tại.
+  - Tự động gọi `refresh_dimensions()` khi khởi tạo `ZoglinEntity::new` và trong `set_baby(baby)`.
+  - Sát thương Zoglin con: thiết lập chuẩn `0.5` (`Zoglin.java:252-253`) qua `calculate_zoglin_attack_damage(true)`.
+- **Unit Tests**: `test_zoglin_baby_dimensions_and_bounding_box_refresh_parity`, `test_zoglin_combat_and_leash_parity` pass 100%.
+
+
+### Gap 427: Warden Digging & Emerging Pose Scalable Dimensions & Bounding Box Refresh Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.monster.warden.Warden.java:166-168, 519-521, 525-527`, `net.minecraft.world.entity.EntityTypes.java:1056-1065`
+
+- **Kích thước Tư thế Đào đất & Chui lên của Warden (Warden Digging & Emerging Pose Dimensions & Bounding Box Refresh)**:
+  - Vanilla `Warden.java:519-521`:
+    - `public EntityDimensions getDefaultDimensions(final Pose pose) { EntityDimensions dimensions = super.getDefaultDimensions(pose); return this.isDiggingOrEmerging() ? EntityDimensions.fixed(dimensions.width(), 1.0F) : dimensions; }`
+    - Standing / Normal Pose: `0.9 x 2.9`, eye height `2.465` (`2.9 * 0.85`).
+    - Digging / Emerging Pose (`Pose.DIGGING` hoặc `Pose.EMERGING`): cố định chiều cao `1.0F` -> `0.9 x 1.0`, eye height `0.85` (`1.0 * 0.85`).
+  - Bổ sung `WARDEN_DEFAULT_WIDTH` (0.9), `WARDEN_DEFAULT_HEIGHT` (2.9), `WARDEN_DEFAULT_EYE_HEIGHT` (2.465), `WARDEN_DIGGING_EMERGING_HEIGHT` (1.0), `WARDEN_DIGGING_EMERGING_EYE_HEIGHT` (0.85), `calculate_warden_dimensions` trong `combat.rs`.
+  - Cập nhật `Entity::get_dimensions(pose)` trong `crates/pumpkin-core/src/entity/mod.rs` tự động trả về `(0.9, 1.0, 0.85)` khi `entity_type == &EntityType::WARDEN` và `pose` là `Digging` hoặc `Emerging`.
+  - Triển khai `refresh_dimensions(&self)` trên `WardenEntity` cập nhật đồng thời cả `entity_dimension` và `bounding_box` tại vị trí hiện tại.
+  - Tự động gọi `refresh_dimensions()` khi khởi tạo `WardenEntity::new`, trong `emerge()`, `dig()`, `EmergeGoal::stop`, và `DigGoal::start`.
+  - Cập nhật `is_digging_or_emerging(&self)` kiểm tra cả `EntityPose::Digging`, `EntityPose::Emerging` cũng như `emerge_ticks` và `dig_ticks`.
+- **Unit Tests**: `test_warden_digging_and_emerging_dimensions_parity`, `test_warden_sonic_boom_constants_and_knockback_parity`, `test_warden_spawn_tracker_warning_levels` pass 100%.
