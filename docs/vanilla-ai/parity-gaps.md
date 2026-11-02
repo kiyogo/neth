@@ -10926,3 +10926,38 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - **Xe mỏ (`Minecart`)**: Kiểm tra các độ cao `POSE_DISMOUNT_HEIGHTS` (`Standing/Crouching: [0, 1, -1]`, `Swimming: [0, 1]`), kiểm tra trần xe không bị nghẹt (`findCeilingFrom`).
     - **Fallback**: Đặt ngay trên nóc phương tiện `(x, bounding_box.maxY, z)`.
 - **Unit Tests**: `test_boat_passenger_rotation_and_dismount_parity_gap431` kiểm tra chính xác 100% logic quay của động vật trên thuyền 2 chỗ (+90/+270), clamp góc 105 độ của người chơi, bypass của Breeze, hướng 2D và 8 offset dismount, kiểm tra sàn và các tư thế nhảy xuống.
+
+
+### Gap 432: Bubble Column Entity Interaction & Boat Whirlpool Ejection Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.BubbleColumnBlock.java:45-58`, `net.minecraft.world.entity.Entity.java:2941-2995`, `net.minecraft.world.entity.vehicle.boat.AbstractBoat.java:156-173, 298-355`
+
+- **Tương tác Cột Bong bóng Khí và Gia tốc Tốc độ (Bubble Column Velocity Dynamics)**:
+  - Vanilla `BubbleColumnBlock.entityInside`:
+    - Nếu khối phía trên trống (không va chạm và không có chất lỏng - `nothingAbove`): kích hoạt `entity.onAboveBubbleColumn(dragDown, pos)`.
+    - Ngược lại (thực thể đang chìm hoàn toàn bên trong cột bong bóng): kích hoạt `entity.onInsideBubbleColumn(dragDown)`.
+  - Vanilla `Entity.onAboveBubbleColumn` (`Entity.java:2945-2956`):
+    - Khi bị hút xuống (`dragDown = true` - Magma Block / Whirlpool): gia tốc Y `-0.03`, giới hạn tốc độ rơi tối đa `-0.9` (`Math.max(-0.9, y - 0.03)`).
+    - Khi bị đẩy lên (`dragDown = false` - Soul Sand / Geyser): gia tốc Y `+0.1`, giới hạn tốc độ đẩy tối đa `+1.8` (`Math.min(1.8, y + 0.1)`).
+  - Vanilla `Entity.onInsideBubbleColumn` (`Entity.java:2980-2994`):
+    - Khi bị hút xuống (`dragDown = true`): gia tốc Y `-0.03`, giới hạn tốc độ tối đa `-0.3` (`Math.max(-0.3, y - 0.03)`).
+    - Khi bị đẩy lên (`dragDown = false`): gia tốc Y `+0.06`, giới hạn tốc độ tối đa `+0.7` (`Math.min(0.7, y + 0.06)`).
+    - Đồng thời lập tức reset khoảng cách rơi của thực thể (`resetFallDistance()`, `fall_distance = 0.0`).
+- **Cơ chế Lắc thuyền, Đuổi Hành khách và Hút Chìm Lốc Xoáy (Boat Whirlpool & Ejection Parity)**:
+  - Vanilla `AbstractBoat.onAboveBubbleColumn` (`AbstractBoat.java:156-165`):
+    - Ghi nhận trạng thái `isAboveBubbleColumn = true`, `bubbleColumnDirectionIsDown = dragDown`.
+    - Đặt bộ đếm rung lắc `bubbleTime = 60` ticks (3 giây).
+  - Vanilla `AbstractBoat.tickBubbleColumn` (`AbstractBoat.java:311-335`):
+    - Mỗi tick nếu không còn trên cột bong bóng: hủy `bubbleTime = 0`.
+    - Khi còn trên cột bong bóng, `bubbleTime` giảm dần:
+      - Khi đếm ngược chạm 0 (`diff > 0 && bubbleTime == 0`):
+        - Nếu là cột xoáy hút xuống (`dragDown`): trục xuất toàn bộ hành khách (`ejectPassengers()`), phát entity status event `71` (hiệu ứng chìm lốc xoáy), và thêm xung lực thẳng đứng `-0.7` Y velocity (`movement.add(0.0, -0.7, 0.0)`).
+        - Nếu là cột đẩy lên: phát entity status event `72` (hiệu ứng nảy bọt khí), và đặt tốc độ Y thẳng đứng thành `+0.6` (`movement.x, 0.6, movement.z`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/bubble_column.rs`:
+    - Thêm `SURFACE_DOWNWARD_ACCELERATION = -0.03` và `SURFACE_DOWNWARD_MIN_SPEED = -0.9` chuẩn vanilla.
+    - Cập nhật phân biệt chính xác giữa vị trí mặt thoáng (`at_surface`) và bên trong lòng cột chất lỏng (`at_surface = false`).
+    - Gọi trực tiếp `boat.on_above_bubble_column(is_drag_down)` khi thuyền chạm mặt thoáng.
+    - Reset `fall_distance` của thực thể khi tương tác với cột bong bóng.
+  - Đồng bộ `BoatEntity` với `pumpkin_data::tracked_data::boat::DATA_ID_BUBBLE_TIME`.
+  - **Unit Tests**: `test_bubble_column_velocity_and_surface_parity_gap432` kiểm tra 100% các giá trị giới hạn vận tốc mặt trên và bên trong theo đúng chuẩn vanilla.

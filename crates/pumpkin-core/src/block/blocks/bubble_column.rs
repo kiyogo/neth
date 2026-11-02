@@ -18,12 +18,15 @@ use crate::world::World;
 const CREATE_DELAY_TICKS: u32 = 20;
 const REMOVE_DELAY_TICKS: u32 = 5;
 
+// Vanilla Entity.java:2945-2994 constants
 const UPWARD_ACCELERATION: f64 = 0.06;
 const UPWARD_MAX_SPEED: f64 = 0.7;
 const SURFACE_UPWARD_ACCELERATION: f64 = 0.1;
 const SURFACE_UPWARD_MAX_SPEED: f64 = 1.8;
 const DOWNWARD_ACCELERATION: f64 = -0.03;
 const DOWNWARD_MIN_SPEED: f64 = -0.3;
+const SURFACE_DOWNWARD_ACCELERATION: f64 = -0.03;
+const SURFACE_DOWNWARD_MIN_SPEED: f64 = -0.9;
 
 pub struct BubbleColumnBlock;
 
@@ -34,7 +37,7 @@ impl BlockMetadata for BubbleColumnBlock {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum BubbleColumnKind {
+pub enum BubbleColumnKind {
     Upward,
     Downward,
 }
@@ -130,7 +133,7 @@ fn schedule_reconcile(world: &Arc<World>, position: BlockPos, delay: u32) {
     world.schedule_block_tick(&Block::BUBBLE_COLUMN, position, delay, TickPriority::Normal);
 }
 
-fn bubble_column_vertical_velocity(
+pub fn bubble_column_vertical_velocity(
     current_y: f64,
     kind: BubbleColumnKind,
     at_surface: bool,
@@ -142,13 +145,16 @@ fn bubble_column_vertical_velocity(
         (BubbleColumnKind::Upward, false) => {
             (current_y + UPWARD_ACCELERATION).min(UPWARD_MAX_SPEED)
         }
-        (BubbleColumnKind::Downward, _) => {
+        (BubbleColumnKind::Downward, true) => {
+            (current_y + SURFACE_DOWNWARD_ACCELERATION).max(SURFACE_DOWNWARD_MIN_SPEED)
+        }
+        (BubbleColumnKind::Downward, false) => {
             (current_y + DOWNWARD_ACCELERATION).max(DOWNWARD_MIN_SPEED)
         }
     }
 }
 
-fn bubble_column_velocity(
+pub fn bubble_column_velocity(
     current: Vector3<f64>,
     kind: BubbleColumnKind,
     at_surface: bool,
@@ -161,48 +167,59 @@ fn bubble_column_velocity(
 }
 
 impl BlockBehaviour for BubbleColumnBlock {
-    /// Moves entities in the column and refills their air.
+    /// Moves entities in the column and refills their air (`BubbleColumnBlock.java:45-58`).
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
+        if args.block != &Block::BUBBLE_COLUMN {
+            return;
+        }
+
+        let kind = kind_from_state(args.state.id);
+        let block_above = args.world.get_block(&args.position.up());
+        let (fluid_above, fluid_state_above) = args.world.get_fluid_and_fluid_state(&args.position.up());
+        let at_surface = block_above == &Block::AIR
+            && (fluid_above.id == pumpkin_data::fluid::Fluid::EMPTY.id || fluid_state_above.is_empty);
+
+        let entity = args.entity.get_entity();
+        let is_drag_down = matches!(kind, BubbleColumnKind::Downward);
+
+        // Vanilla BubbleColumnBlock.java:53: onAboveBubbleColumn for boat
+        if at_surface
+            && let Some(boat) = args
+                .entity
+                .cast_any()
+                .downcast_ref::<crate::entity::vehicle::boat::BoatEntity>()
         {
-            if args.block != &Block::BUBBLE_COLUMN {
-                return;
-            }
+            boat.on_above_bubble_column(is_drag_down);
+        }
 
-            let kind = kind_from_state(args.state.id);
-            let at_surface = args.world.get_block(&args.position.up()) == &Block::AIR;
-            let entity = args.entity.get_entity();
-            entity.velocity.store(bubble_column_velocity(
-                entity.velocity.load(),
-                kind,
-                at_surface,
-            ));
+        entity.velocity.store(bubble_column_velocity(
+            entity.velocity.load(),
+            kind,
+            at_surface,
+        ));
 
-            if let Some(living) = args.entity.get_living_entity() {
-                living.breath.reset(args.entity);
-            }
+        if let Some(living) = args.entity.get_living_entity() {
+            living.breath.reset(args.entity);
+            living.fall_distance.store(0.0);
         }
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            if args.block == &Block::WATER && is_source_water(args.world, *args.position) {
-                schedule_reconcile(args.world, *args.position, CREATE_DELAY_TICKS);
-            }
+        if args.block == &Block::WATER && is_source_water(args.world, *args.position) {
+            schedule_reconcile(args.world, *args.position, CREATE_DELAY_TICKS);
         }
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
-        {
-            let state = args.world.get_block_state_id(args.position);
-            if args.block == &Block::BUBBLE_COLUMN {
-                schedule_reconcile(args.world, *args.position, REMOVE_DELAY_TICKS);
-            } else if args.block == &Block::WATER && is_source_water_state(state) {
-                let below_pos = args.position.down();
-                let below_state = args.world.get_block_state_id(&below_pos);
-                let below_block = Block::from_state_id(below_state);
-                if kind_from_below(below_block, below_state).is_some() {
-                    schedule_reconcile(args.world, *args.position, CREATE_DELAY_TICKS);
-                }
+        let state = args.world.get_block_state_id(args.position);
+        if args.block == &Block::BUBBLE_COLUMN {
+            schedule_reconcile(args.world, *args.position, REMOVE_DELAY_TICKS);
+        } else if args.block == &Block::WATER && is_source_water_state(state) {
+            let below_pos = args.position.down();
+            let below_state = args.world.get_block_state_id(&below_pos);
+            let below_block = Block::from_state_id(below_state);
+            if kind_from_below(below_block, below_state).is_some() {
+                schedule_reconcile(args.world, *args.position, CREATE_DELAY_TICKS);
             }
         }
     }
@@ -350,5 +367,25 @@ mod tests {
             ),
             ReconcileAction::RestoreWater
         );
+    }
+
+    #[test]
+    fn test_bubble_column_velocity_and_surface_parity_gap432() {
+        // 1. Upward column inside (Entity.java:2987: min(0.7, y + 0.06))
+        assert!((bubble_column_vertical_velocity(0.0, BubbleColumnKind::Upward, false) - 0.06).abs() < 1e-6);
+        assert!((bubble_column_vertical_velocity(0.68, BubbleColumnKind::Upward, false) - 0.7).abs() < 1e-6);
+
+        // 2. Upward column at surface (Entity.java:2952: min(1.8, y + 0.1))
+        assert!((bubble_column_vertical_velocity(0.0, BubbleColumnKind::Upward, true) - 0.1).abs() < 1e-6);
+        assert!((bubble_column_vertical_velocity(1.75, BubbleColumnKind::Upward, true) - 1.8).abs() < 1e-6);
+
+        // 3. Downward column inside (Entity.java:2985: max(-0.3, y - 0.03))
+        assert!((bubble_column_vertical_velocity(0.0, BubbleColumnKind::Downward, false) - (-0.03)).abs() < 1e-6);
+        assert!((bubble_column_vertical_velocity(-0.29, BubbleColumnKind::Downward, false) - (-0.3)).abs() < 1e-6);
+
+        // 4. Downward column at surface (Entity.java:2950: max(-0.9, y - 0.03))
+        assert!((bubble_column_vertical_velocity(0.0, BubbleColumnKind::Downward, true) - (-0.03)).abs() < 1e-6);
+        assert!((bubble_column_vertical_velocity(-0.89, BubbleColumnKind::Downward, true) - (-0.9)).abs() < 1e-6);
+        assert!((bubble_column_vertical_velocity(-0.5, BubbleColumnKind::Downward, true) - (-0.53)).abs() < 1e-6);
     }
 }
