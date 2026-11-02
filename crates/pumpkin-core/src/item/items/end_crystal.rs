@@ -2,15 +2,19 @@ use std::sync::Arc;
 
 use crate::block::registry::BlockActionResult;
 use crate::entity::Entity;
+use crate::entity::combat::{
+    calculate_end_crystal_placement_box, calculate_end_crystal_spawn_position,
+    can_place_end_crystal_on,
+};
 use crate::entity::decoration::end_crystal::EndCrystalEntity;
 use crate::entity::player::Player;
 use crate::item::{ItemBehaviour, ItemMetadata};
 use crate::server::Server;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::{Block, BlockDirection};
-use pumpkin_util::math::boundingbox::BoundingBox;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 
@@ -35,34 +39,26 @@ impl ItemBehaviour for EndCrystalItem {
     ) -> BlockActionResult {
         let world = player.world();
         let block = world.get_block(&location);
-        if block != &Block::OBSIDIAN && block != &Block::BEDROCK {
+        if !can_place_end_crystal_on(block.id) {
             return BlockActionResult::Fail;
         }
 
-        let location = location.up();
-        let location_vec = location.0.to_f64();
-
-        if !world.get_block_state(&location).is_air()
+        let above = location.up();
+        if !world.get_block_state(&above).is_air()
             || world
-                .get_all_at_box(&BoundingBox::new(
-                    Vector3::new(location_vec.x, location_vec.y, location_vec.z),
-                    Vector3::new(
-                        location_vec.x + 1.0,
-                        location_vec.y + 2.0,
-                        location_vec.z + 1.0,
-                    ),
-                ))
+                .get_all_at_box(&calculate_end_crystal_placement_box(location))
                 .iter()
                 .any(|entity| !entity.is_spectator())
         {
             return BlockActionResult::Fail;
         }
 
-        let spawn_pos = Vector3::new(location_vec.x + 0.5, location_vec.y, location_vec.z + 0.5);
+        let spawn_pos = calculate_end_crystal_spawn_position(location);
         let entity = Entity::new(world.clone(), spawn_pos, &EntityType::END_CRYSTAL);
         let end_crystal = Arc::new(EndCrystalEntity::new(entity));
         world.spawn_entity(end_crystal.clone());
         end_crystal.set_show_bottom(false);
+        world.emit_game_event(GameEvent::EntityPlace.name(), spawn_pos);
         item.decrement_unless_creative(player.gamemode.load(), 1);
 
         if let Some(ref fight_mutex) = world.dragon_fight

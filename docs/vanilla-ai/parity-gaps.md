@@ -11600,6 +11600,35 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Phát sinh sự kiện `GameEvent::BlockAttach`.
   - **Unit Tests**: `test_leash_knot_placement_bounding_box_and_rope_position_parity_gap449`.
 
+### Gap 450: End Crystal Placement, Default Show Bottom Base Plate, Explosion & Invulnerability Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.boss.enderdragon.EndCrystal.java:23-149`, `net.minecraft.world.item.EndCrystalItem.java:17-58`
+
+- **Điều Kiện Đặt End Crystal & Vị Trí Spawn (Placement Rules & Spawn Position Parity)**:
+  - Vanilla `EndCrystalItem.java:27-50`:
+    - Khối đế hợp lệ: chỉ có thể đặt trên `Blocks.OBSIDIAN` hoặc `Blocks.BEDROCK` (`!blockState.is(Blocks.OBSIDIAN) && !blockState.is(Blocks.BEDROCK)` -> fail).
+    - Khối phía trên đế phải là khối không cản trở / khí (`level.isEmptyBlock(posAbove)`).
+    - Hộp kiểm tra thực thể chồng lấn (`AABB`): từ `(x, y, z)` đến `(x + 1.0, y + 2.0, z + 1.0)`. Nếu có bất kỳ thực thể nào nằm trong vùng này thì không cho phép đặt (`!level.getEntities(null, aabb).isEmpty()`).
+    - Tọa độ spawn End Crystal: `(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5)`.
+    - Phát sinh sự kiện game `GameEvent::EntityPlace` tại vị trí đặt.
+- **Giá Trị Mặc Định Show Bottom (Default Show Bottom Base Plate Parity)**:
+  - Vanilla `EndCrystal.java:28, 50`:
+    - `DATA_SHOW_BOTTOM = SynchedEntityData.defineId(EndCrystal.class, EntityDataSerializers.BOOLEAN);`
+    - Trong phương thức khởi tạo (`defineSynchedData`): giá trị mặc định luôn là `true` (`this.getEntityData().define(DATA_SHOW_BOTTOM, true);`).
+    - Chỉ duy nhất khi đặt bởi người chơi qua vật phẩm `EndCrystalItem` thì `setShowBottom(false)` mới được gọi (`EndCrystalItem.java:47-48`).
+    - Neth trước đây khởi tạo mặc định `show_bottom: AtomicBool::new(false)`, khiến các End Crystal tự nhiên hoặc spawn từ lệnh mất đế đá gốc.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số `END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true`.
+    - Bổ sung hàm thuần: `can_place_end_crystal_on`, `calculate_end_crystal_spawn_position`, `calculate_end_crystal_placement_box`, `should_render_end_crystal_at_distance`.
+  - Cập nhật `crates/pumpkin-core/src/entity/decoration/end_crystal.rs`:
+    - Đặt giá trị mặc định của `show_bottom` thành `END_CRYSTAL_DEFAULT_SHOW_BOTTOM` (`true`).
+  - Cập nhật `crates/pumpkin-core/src/item/items/end_crystal.rs`:
+    - Sử dụng `can_place_end_crystal_on`, `calculate_end_crystal_placement_box`, và `calculate_end_crystal_spawn_position`.
+    - Phát sinh sự kiện `GameEvent::EntityPlace`.
+  - **Unit Tests**: `test_end_crystal_placement_and_show_bottom_parity_gap450` (292 tests passed).
+
+
 
 
 

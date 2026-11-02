@@ -10436,6 +10436,66 @@ pub fn is_end_crystal_damageable_by(attacker_type: Option<&pumpkin_data::entity:
     }
 }
 
+/// Vanilla `EndCrystal.java:28`: default show bottom base plate (true).
+pub const END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
+
+/// Validates whether a block is a valid base for placing an End Crystal.
+///
+/// Mirrors vanilla `EndCrystalItem.java:27`:
+/// `!blockState.is(Blocks.OBSIDIAN) && !blockState.is(Blocks.BEDROCK)`
+#[must_use]
+pub fn can_place_end_crystal_on(block_id: pumpkin_data::BlockId) -> bool {
+    block_id == pumpkin_data::Block::OBSIDIAN.id || block_id == pumpkin_data::Block::BEDROCK.id
+}
+
+/// Calculates spawn position for an End Crystal placed on an obsidian/bedrock block.
+///
+/// Mirrors vanilla `EndCrystalItem.java:45`:
+/// `x + 0.5, y, z + 0.5` where y is the air block above the base.
+#[must_use]
+pub fn calculate_end_crystal_spawn_position(
+    base_pos: pumpkin_util::math::position::BlockPos,
+) -> pumpkin_util::math::vector3::Vector3<f64> {
+    use pumpkin_util::math::vector3::Vector3;
+    Vector3::new(
+        f64::from(base_pos.0.x) + 0.5,
+        f64::from(base_pos.0.y) + 1.0,
+        f64::from(base_pos.0.z) + 0.5,
+    )
+}
+
+/// Calculates bounding box for collision detection when placing an End Crystal.
+///
+/// Mirrors vanilla `EndCrystalItem.java:39`:
+/// `new AABB(x, y, z, x + 1.0, y + 2.0, z + 1.0)`
+#[must_use]
+pub fn calculate_end_crystal_placement_box(
+    base_pos: pumpkin_util::math::position::BlockPos,
+) -> pumpkin_util::math::boundingbox::BoundingBox {
+    use pumpkin_util::math::boundingbox::BoundingBox;
+    use pumpkin_util::math::vector3::Vector3;
+    let x = f64::from(base_pos.0.x);
+    let y = f64::from(base_pos.0.y) + 1.0;
+    let z = f64::from(base_pos.0.z);
+    BoundingBox::new(
+        Vector3::new(x, y, z),
+        Vector3::new(x + 1.0, y + 2.0, z + 1.0),
+    )
+}
+
+/// Evaluates distance rendering condition for End Crystal.
+///
+/// Mirrors vanilla `EndCrystal.java:141-143`:
+/// `return super.shouldRenderAtSqrDistance(distance) || this.getBeamTarget() != null;`
+#[must_use]
+pub const fn should_render_end_crystal_at_distance(
+    distance_sq: f64,
+    has_beam_target: bool,
+    max_render_dist_sq: f64,
+) -> bool {
+    has_beam_target || distance_sq < max_render_dist_sq
+}
+
 /// Vanilla `AbstractFurnaceBlockEntity.java:49-61`:
 pub const FURNACE_SLOT_INPUT: usize = 0;
 pub const FURNACE_SLOT_FUEL: usize = 1;
@@ -30558,5 +30618,42 @@ mod tests {
         assert!((search_box.max.x - 16.0).abs() < 1e-6);
         assert!((search_box.max.y - 65.0).abs() < 1e-6);
         assert!((search_box.max.z - (-6.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_end_crystal_placement_and_show_bottom_parity_gap450() {
+        use pumpkin_data::Block;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Constants parity (EndCrystal.java:28, 102)
+        assert_eq!(END_CRYSTAL_DEFAULT_SHOW_BOTTOM, true);
+        assert_eq!(END_CRYSTAL_EXPLOSION_POWER, 6.0f32);
+
+        // 2. Base block validation (EndCrystalItem.java:27)
+        assert!(can_place_end_crystal_on(Block::OBSIDIAN.id));
+        assert!(can_place_end_crystal_on(Block::BEDROCK.id));
+        assert!(!can_place_end_crystal_on(Block::STONE.id));
+        assert!(!can_place_end_crystal_on(Block::AIR.id));
+
+        // 3. Spawn position calculation (EndCrystalItem.java:45)
+        let base_pos = BlockPos(pumpkin_util::math::vector3::Vector3::new(100, 65, 200));
+        let spawn_pos = calculate_end_crystal_spawn_position(base_pos);
+        assert!((spawn_pos.x - 100.5).abs() < 1e-6);
+        assert!((spawn_pos.y - 66.0).abs() < 1e-6);
+        assert!((spawn_pos.z - 200.5).abs() < 1e-6);
+
+        // 4. Placement collision search box (EndCrystalItem.java:39)
+        let place_box = calculate_end_crystal_placement_box(base_pos);
+        assert!((place_box.min.x - 100.0).abs() < 1e-6);
+        assert!((place_box.min.y - 66.0).abs() < 1e-6);
+        assert!((place_box.min.z - 200.0).abs() < 1e-6);
+        assert!((place_box.max.x - 101.0).abs() < 1e-6);
+        assert!((place_box.max.y - 68.0).abs() < 1e-6);
+        assert!((place_box.max.z - 201.0).abs() < 1e-6);
+
+        // 5. Distance rendering with beam target (EndCrystal.java:141-143)
+        assert!(should_render_end_crystal_at_distance(50000.0, true, 4096.0));
+        assert!(should_render_end_crystal_at_distance(2000.0, false, 4096.0));
+        assert!(!should_render_end_crystal_at_distance(5000.0, false, 4096.0));
     }
 }

@@ -21,7 +21,7 @@ impl EndCrystalEntity {
         Self {
             entity,
             beam_target: Mutex::new(None),
-            show_bottom: AtomicBool::new(false),
+            show_bottom: AtomicBool::new(crate::entity::combat::END_CRYSTAL_DEFAULT_SHOW_BOTTOM),
             invulnerable: AtomicBool::new(false),
         }
     }
