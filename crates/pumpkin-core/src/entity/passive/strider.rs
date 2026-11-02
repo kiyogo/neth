@@ -8,6 +8,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::{
@@ -86,7 +87,27 @@ impl StriderEntity {
             goal_selector.add_goal(8, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_strider_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -156,6 +177,17 @@ impl StriderEntity {
 impl AgeableMob for StriderEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
+    }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
     }
 }
 
@@ -381,5 +413,18 @@ mod tests {
         assert!(!crate::entity::combat::should_strider_be_happy(false, 0));
         assert!(crate::entity::combat::should_strider_retreat(true, 0));
         assert!(!crate::entity::combat::should_strider_retreat(false, 0));
+    }
+
+    #[test]
+    fn test_strider_baby_dimensions_and_dispenser_parity() {
+        let adult = crate::entity::combat::calculate_strider_dimensions(false, 0.9, 1.7, 1.445);
+        assert_eq!(adult, (0.9, 1.7, 1.445));
+        let baby = crate::entity::combat::calculate_strider_dimensions(true, 0.9, 1.7, 1.445);
+        assert_eq!(baby, (0.45, 0.85, 0.4375));
+
+        assert!(crate::entity::combat::can_strider_dispenser_equip_saddle(true, false, true));
+        assert!(!crate::entity::combat::can_strider_dispenser_equip_saddle(true, true, true));
+        assert!(!crate::entity::combat::can_strider_dispenser_equip_saddle(false, false, true));
+        assert!(!crate::entity::combat::can_strider_dispenser_equip_saddle(true, false, false));
     }
 }

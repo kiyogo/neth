@@ -10503,3 +10503,27 @@ et.minecraft.world.entity.AgeableMob.java:273-275
   - Khi thỏ con hoặc gấu trúc con trưởng thành, tự động kiểm tra điều kiện kích thước và tháo gỡ khỏi phương tiện nếu không phù hợp (`handle_age_boundary_vehicle_dismount`).
 - **Hằng số Parity**: `RABBIT_BABY_WIDTH` (0.24), `RABBIT_BABY_HEIGHT` (0.4), `RABBIT_BABY_EYE_HEIGHT` (0.39), `RABBIT_BABY_SCALE` (0.5), `calculate_rabbit_dimensions`, `PANDA_BABY_WIDTH` (0.65), `PANDA_BABY_HEIGHT` (0.625), `PANDA_BABY_EYE_HEIGHT` (0.28125), `PANDA_BABY_SCALE` (0.5), `calculate_panda_dimensions`, `can_panda_dispenser_equip`.
 - **Unit Tests**: `test_rabbit_and_panda_dimensions_and_parity_gap414`, `test_rabbit_baby_dimensions_and_dispenser_parity`, `test_panda_baby_dimensions_and_dispenser_parity` pass 100%.
+
+
+### Gap 415: Axolotl, Armadillo & Strider Baby Scalable Dimensions, Strider Saddle Dispenser Equip & Ageable Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.animal.axolotl.Axolotl.java:114-116, 578-580`, `net.minecraft.world.entity.animal.armadillo.Armadillo.java:64, 186-188`, `net.minecraft.world.entity.monster.Strider.java:88-90, 136-142, 186-188` & `net.minecraft.world.entity.EntityTypes.java`
+
+- **Kích thước Kỳ giông, Tatu và Strider Con (Baby Scalable Dimensions & Eye Height)**:
+  - Kỳ giông (`Axolotl.java:114-116`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.375F, 0.21F).withEyeHeight(0.09375F)`.
+    - Adult axolotl: width `0.75`, height `0.42`, eye height `0.2751`.
+    - Baby axolotl: width `0.375`, height `0.21`, eye height `0.09375` (`AXOLOTL_BABY_EYE_HEIGHT`).
+  - Tatu (`Armadillo.java:64`): `BABY_DIMENSIONS = EntityTypes.ARMADILLO.getDimensions().scale(0.6F).withEyeHeight(0.21875F)`.
+    - Adult armadillo: width `0.7`, height `0.65`, eye height `0.26`.
+    - Baby armadillo: width `0.42`, height `0.39`, eye height `0.21875` (`ARMADILLO_BABY_EYE_HEIGHT`).
+  - Strider (`Strider.java:88-90`): `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.85F).withEyeHeight(0.4375F)`.
+    - Adult strider: width `0.9`, height `1.7`, eye height `1.445`.
+    - Baby strider: width `0.45`, height `0.85`, eye height `0.4375` (`STRIDER_BABY_EYE_HEIGHT`).
+  - Triển khai `calculate_axolotl_dimensions`, `calculate_armadillo_dimensions`, `calculate_strider_dimensions`, `refresh_dimensions()`, `set_baby` và `age_boundary_reached()` trên cả 3 thực thể `AxolotlEntity`, `ArmadilloEntity`, `StriderEntity`.
+- **Trang bị Yên cho Strider qua Dispenser (Strider Saddle Dispenser Equip Parity)**:
+  - Strider (`Strider.java:136-142`): giống như Heo, Strider có thể được Dispenser gắn Yên ngựa (`EquipmentSlot::SADDLE`), nhưng CHỈ khi Strider còn sống và KHÔNG PHẢI strider con (`can_strider_dispenser_equip_saddle(is_alive, is_baby, slot_is_saddle)`).
+  - Kỳ giông và Tatu hoàn toàn miễn nhiễm với trang bị từ Dispenser.
+- **Lưu trữ NBT Tuổi (Ageable NBT Persistence)**:
+  - Bổ sung `write_ageable_nbt(nbt)` và `read_ageable_nbt(nbt)` trong `mob_write_nbt` và `mob_read_nbt` cho Kỳ giông và Tatu.
+- **Hằng số Parity**: `AXOLOTL_BABY_WIDTH` (0.375), `AXOLOTL_BABY_HEIGHT` (0.21), `AXOLOTL_BABY_EYE_HEIGHT` (0.09375), `AXOLOTL_BABY_SCALE` (0.5), `calculate_axolotl_dimensions`, `ARMADILLO_BABY_WIDTH` (0.42), `ARMADILLO_BABY_HEIGHT` (0.39), `ARMADILLO_BABY_EYE_HEIGHT` (0.21875), `ARMADILLO_BABY_SCALE` (0.6), `calculate_armadillo_dimensions`, `STRIDER_BABY_WIDTH` (0.45), `STRIDER_BABY_HEIGHT` (0.85), `STRIDER_BABY_EYE_HEIGHT` (0.4375), `STRIDER_BABY_SCALE` (0.5), `calculate_strider_dimensions`, `can_strider_dispenser_equip_saddle`.
+- **Unit Tests**: `test_axolotl_armadillo_strider_dimensions_and_parity_gap415`, `test_axolotl_baby_dimensions_and_parity`, `test_armadillo_baby_dimensions_and_parity`, `test_strider_baby_dimensions_and_dispenser_parity` pass 100%.

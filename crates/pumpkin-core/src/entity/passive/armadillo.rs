@@ -12,6 +12,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 
 use crate::entity::{
     Entity, EntityBase,
@@ -187,7 +188,27 @@ impl ArmadilloEntity {
             goal_selector.add_goal(7, Box::new(RandomLookAroundGoal::default()));
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = crate::entity::combat::calculate_armadillo_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -366,6 +387,17 @@ impl AgeableMob for ArmadilloEntity {
     fn get_baby_start_age(&self) -> i32 {
         ARMADILLO_BABY_START_AGE
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for ArmadilloEntity {
@@ -399,11 +431,13 @@ impl Mob for ArmadilloEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_string("state", self.get_state().name().to_string());
         nbt.put_int("scute_time", self.scute_time.load(Ordering::Relaxed));
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(state_name) = nbt.get_string("state") {
             self.switch_to_state(ArmadilloState::from_name(state_name));
         } else if let Some(state_id) = nbt.get_int("state") {
@@ -727,5 +761,13 @@ mod tests {
         assert!(crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::FREEZE));
         assert!(!crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::GENERIC));
         assert!(!crate::entity::combat::is_armadillo_panic_environmental_damage(&DamageType::PLAYER_ATTACK));
+    }
+
+    #[test]
+    fn test_armadillo_baby_dimensions_and_parity() {
+        let adult = crate::entity::combat::calculate_armadillo_dimensions(false, 0.7, 0.65, 0.26);
+        assert_eq!(adult, (0.7, 0.65, 0.26));
+        let baby = crate::entity::combat::calculate_armadillo_dimensions(true, 0.7, 0.65, 0.26);
+        assert_eq!(baby, (0.42, 0.39, 0.21875));
     }
 }

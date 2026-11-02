@@ -11431,6 +11431,31 @@ pub const AXOLOTL_PLAYER_REGEN_DETECTION_RANGE: f64 = 20.0;
 /// Mirrors vanilla Axolotl.java:92.
 pub const AXOLOTL_REGEN_BUFF_MAX_DURATION: i32 = 2400;
 
+/// Axolotl baby dimension constants, mirroring vanilla `Axolotl.java:114-116`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.375F, 0.21F).withEyeHeight(0.09375F)`.
+pub const AXOLOTL_BABY_WIDTH: f32 = 0.375;
+pub const AXOLOTL_BABY_HEIGHT: f32 = 0.21;
+pub const AXOLOTL_BABY_EYE_HEIGHT: f32 = 0.09375;
+pub const AXOLOTL_BABY_SCALE: f32 = 0.5;
+
+/// Calculates axolotl dimensions based on baby status.
+///
+/// Mirrors vanilla `Axolotl.java:578-580`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_axolotl_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (AXOLOTL_BABY_WIDTH, AXOLOTL_BABY_HEIGHT, AXOLOTL_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Dolphin base max health (10.0 HP / 5 hearts).
 /// Mirrors vanilla Dolphin.java:177 (Attributes.MAX_HEALTH, 10.0).
 pub const DOLPHIN_MAX_HEALTH: f32 = 10.0;
@@ -11754,6 +11779,31 @@ pub fn is_armadillo_panic_environmental_damage(damage_type: &pumpkin_data::damag
     damage_type.has_tag(&pumpkin_data::tag::DamageType::MINECRAFT_PANIC_ENVIRONMENTAL_CAUSES)
 }
 
+/// Armadillo baby dimension constants, mirroring vanilla `Armadillo.java:64`.
+/// `BABY_DIMENSIONS = EntityTypes.ARMADILLO.getDimensions().scale(0.6F).withEyeHeight(0.21875F)`.
+pub const ARMADILLO_BABY_WIDTH: f32 = 0.42;
+pub const ARMADILLO_BABY_HEIGHT: f32 = 0.39;
+pub const ARMADILLO_BABY_EYE_HEIGHT: f32 = 0.21875;
+pub const ARMADILLO_BABY_SCALE: f32 = 0.6;
+
+/// Calculates armadillo dimensions based on baby status.
+///
+/// Mirrors vanilla `Armadillo.java:186-188`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_armadillo_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (ARMADILLO_BABY_WIDTH, ARMADILLO_BABY_HEIGHT, ARMADILLO_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
 /// Strider base max health (20.0 HP / 10 hearts).
 /// Mirrors vanilla Strider.java / Mob.java (Attributes.MAX_HEALTH, 20.0).
 pub const STRIDER_MAX_HEALTH: f32 = 20.0;
@@ -11769,6 +11819,38 @@ pub const STRIDER_XP_REWARD: u32 = 2;
 /// Strider suffocating speed modifier out of lava (-0.34).
 /// Mirrors vanilla Strider.java:82 (-0.34F).
 pub const STRIDER_SUFFOCATING_SPEED_MODIFIER: f64 = -0.34;
+
+/// Strider baby dimension constants, mirroring vanilla `Strider.java:88-90`.
+/// `BABY_DIMENSIONS = EntityDimensions.scalable(0.45F, 0.85F).withEyeHeight(0.4375F)`.
+pub const STRIDER_BABY_WIDTH: f32 = 0.45;
+pub const STRIDER_BABY_HEIGHT: f32 = 0.85;
+pub const STRIDER_BABY_EYE_HEIGHT: f32 = 0.4375;
+pub const STRIDER_BABY_SCALE: f32 = 0.5;
+
+/// Calculates strider dimensions based on baby status.
+///
+/// Mirrors vanilla `Strider.java:186-188`:
+/// `return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);`
+#[must_use]
+pub fn calculate_strider_dimensions(
+    is_baby: bool,
+    default_width: f32,
+    default_height: f32,
+    default_eye_height: f32,
+) -> (f32, f32, f32) {
+    if is_baby {
+        (STRIDER_BABY_WIDTH, STRIDER_BABY_HEIGHT, STRIDER_BABY_EYE_HEIGHT)
+    } else {
+        (default_width, default_height, default_eye_height)
+    }
+}
+
+/// Determines if a strider can be equipped with a saddle via dispenser.
+/// Mirrors vanilla `Strider.java:136-142`: `slot == EquipmentSlot.SADDLE && this.isAlive() && !this.isBaby()`.
+#[must_use]
+pub const fn can_strider_dispenser_equip_saddle(is_alive: bool, is_baby: bool, slot_is_saddle: bool) -> bool {
+    slot_is_saddle && is_alive && !is_baby
+}
 
 /// Allay base max health (20.0 HP / 10 hearts).
 /// Mirrors vanilla Allay.java:128 (Attributes.MAX_HEALTH, 20.0).
@@ -24634,6 +24716,47 @@ mod tests {
         assert!(!can_panda_dispenser_equip(true, false));
         assert!(!can_panda_dispenser_equip(false, true));
         assert!(!can_panda_dispenser_equip(false, false));
+    }
+
+    #[test]
+    fn test_axolotl_armadillo_strider_dimensions_and_parity_gap415() {
+        use super::*;
+
+        // 1. Axolotl adult & baby dimensions (Axolotl.java:114-116, EntityTypes.java: sized(0.75, 0.42), eyeHeight(0.2751))
+        let axolotl_adult = calculate_axolotl_dimensions(false, 0.75, 0.42, 0.2751);
+        assert_eq!(axolotl_adult, (0.75, 0.42, 0.2751));
+        let axolotl_baby = calculate_axolotl_dimensions(true, 0.75, 0.42, 0.2751);
+        assert_eq!(axolotl_baby, (0.375, 0.21, 0.09375));
+        assert_eq!(AXOLOTL_BABY_WIDTH, 0.375);
+        assert_eq!(AXOLOTL_BABY_HEIGHT, 0.21);
+        assert_eq!(AXOLOTL_BABY_EYE_HEIGHT, 0.09375);
+        assert_eq!(AXOLOTL_BABY_SCALE, 0.5);
+
+        // 2. Armadillo adult & baby dimensions (Armadillo.java:64, EntityTypes.java: sized(0.7, 0.65), eyeHeight(0.26))
+        let armadillo_adult = calculate_armadillo_dimensions(false, 0.7, 0.65, 0.26);
+        assert_eq!(armadillo_adult, (0.7, 0.65, 0.26));
+        let armadillo_baby = calculate_armadillo_dimensions(true, 0.7, 0.65, 0.26);
+        assert_eq!(armadillo_baby, (0.42, 0.39, 0.21875));
+        assert_eq!(ARMADILLO_BABY_WIDTH, 0.42);
+        assert_eq!(ARMADILLO_BABY_HEIGHT, 0.39);
+        assert_eq!(ARMADILLO_BABY_EYE_HEIGHT, 0.21875);
+        assert_eq!(ARMADILLO_BABY_SCALE, 0.6);
+
+        // 3. Strider adult & baby dimensions (Strider.java:88-90, EntityTypes.java: sized(0.9, 1.7), eyeHeight(1.445))
+        let strider_adult = calculate_strider_dimensions(false, 0.9, 1.7, 1.445);
+        assert_eq!(strider_adult, (0.9, 1.7, 1.445));
+        let strider_baby = calculate_strider_dimensions(true, 0.9, 1.7, 1.445);
+        assert_eq!(strider_baby, (0.45, 0.85, 0.4375));
+        assert_eq!(STRIDER_BABY_WIDTH, 0.45);
+        assert_eq!(STRIDER_BABY_HEIGHT, 0.85);
+        assert_eq!(STRIDER_BABY_EYE_HEIGHT, 0.4375);
+        assert_eq!(STRIDER_BABY_SCALE, 0.5);
+
+        // 4. Strider saddle dispenser equip parity (Strider.java:136-142)
+        assert!(can_strider_dispenser_equip_saddle(true, false, true));
+        assert!(!can_strider_dispenser_equip_saddle(true, true, true));
+        assert!(!can_strider_dispenser_equip_saddle(false, false, true));
+        assert!(!can_strider_dispenser_equip_saddle(true, false, false));
     }
 
 }

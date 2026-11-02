@@ -12,6 +12,7 @@ use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::tag::{self, Taggable};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_protocol::codec::var_int::VarInt;
+use pumpkin_util::math::boundingbox::{BoundingBox, EntityDimensions};
 use rand::RngExt;
 
 use crate::entity::{
@@ -222,7 +223,27 @@ impl AxolotlEntity {
             );
         };
 
+        mob_arc.refresh_dimensions();
         mob_arc
+    }
+
+    pub fn refresh_dimensions(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        let is_baby = self.is_baby();
+        let (w, h, eye) = combat::calculate_axolotl_dimensions(
+            is_baby,
+            entity.entity_type.dimension[0],
+            entity.entity_type.dimension[1],
+            entity.entity_type.eye_height,
+        );
+        let dimensions = EntityDimensions {
+            width: w,
+            height: h,
+            eye_height: eye,
+        };
+        let pos = entity.pos.load();
+        entity.bounding_box.store(BoundingBox::new_from_pos(pos.x, pos.y, pos.z, &dimensions));
+        entity.entity_dimension.store(dimensions);
     }
 
     #[must_use]
@@ -322,6 +343,17 @@ impl AgeableMob for AxolotlEntity {
     fn get_ageable_data(&self) -> &AgeableData {
         &self.ageable_data
     }
+
+    fn set_baby(&self, baby: bool) {
+        self.set_age(if baby { self.get_baby_start_age() } else { 0 });
+        self.refresh_dimensions();
+    }
+
+    fn age_boundary_reached(&self) {
+        let entity = &self.mob_entity.living_entity.entity;
+        self.refresh_dimensions();
+        crate::entity::ageable::handle_age_boundary_vehicle_dismount(self.is_baby(), entity);
+    }
 }
 
 impl Animal for AxolotlEntity {
@@ -374,11 +406,13 @@ impl Mob for AxolotlEntity {
     }
 
     fn mob_write_nbt(&self, nbt: &mut NbtCompound) {
+        self.write_ageable_nbt(nbt);
         nbt.put_int("Variant", self.get_variant().id());
         nbt.put_bool("FromBucket", self.is_from_bucket());
     }
 
     fn mob_read_nbt(&self, nbt: &NbtCompound) {
+        self.read_ageable_nbt(nbt);
         if let Some(variant) = nbt.get_int("Variant") {
             self.set_variant(AxolotlVariant::from_id(variant));
         }
@@ -576,5 +610,13 @@ mod tests {
         assert!(combat::should_axolotl_play_ambient_sound(false, false));
         assert!(!combat::should_axolotl_play_ambient_sound(true, false));
         assert!(!combat::should_axolotl_play_ambient_sound(false, true));
+    }
+
+    #[test]
+    fn test_axolotl_baby_dimensions_and_parity() {
+        let adult = combat::calculate_axolotl_dimensions(false, 0.75, 0.42, 0.2751);
+        assert_eq!(adult, (0.75, 0.42, 0.2751));
+        let baby = combat::calculate_axolotl_dimensions(true, 0.75, 0.42, 0.2751);
+        assert_eq!(baby, (0.375, 0.21, 0.09375));
     }
 }
