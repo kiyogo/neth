@@ -33,7 +33,6 @@ use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::GameMode;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
-use pumpkin_util::math::wrap_degrees;
 
 use crate::entity::vehicle::vehicle::VehicleEntity;
 use crate::entity::velocity;
@@ -490,26 +489,12 @@ impl MinecartEntity {
         let mut movement = entity.velocity.load();
 
         let slide = crate::entity::combat::calculate_minecart_slope_slide_speed(in_water);
-        match shape {
-            RailShape::AscendingEast => movement.x -= slide,
-            RailShape::AscendingWest => movement.x += slide,
-            RailShape::AscendingNorth => movement.z += slide,
-            RailShape::AscendingSouth => movement.z -= slide,
-            _ => {}
-        }
+        movement = crate::entity::combat::calculate_minecart_rail_slope_movement(shape, movement, slide);
         let y = f64::from(pos.0.y) + if shape.is_ascending() { 1.0 } else { 0.0 };
 
         // Redirect along the rail.
         let (exit0, exit1) = get_exits(shape);
-        let (mut xd, mut zd) = (exit1.x - exit0.x, exit1.z - exit0.z);
-        let length = xd.hypot(zd);
-        if movement.x * xd + movement.z * zd < 0.0 {
-            (xd, zd) = (-xd, -zd);
-        }
-        let pow = movement
-            .horizontal_length()
-            .min(crate::entity::combat::MINECART_MAX_HORIZONTAL_MOVEMENT);
-        movement = Vector3::new(pow * xd / length, movement.y, pow * zd / length);
+        movement = crate::entity::combat::calculate_minecart_track_redirection(movement, exit0, exit1);
 
         // A rider only nudges a (nearly) standing cart.
         let move_intent = self.rider_move_intent();
@@ -537,12 +522,11 @@ impl MinecartEntity {
         entity.set_pos(Vector3::new(x0 + xd * progress, y, z0 + zd * progress));
 
         // The step is capped, `deltaMovement` is not: an overspeed cart keeps its speed.
-        let scale = if entity.has_passengers() { 0.75 } else { 1.0 };
         let max_speed = self.max_speed();
-        let step = Vector3::new(
-            (scale * movement.x).clamp(-max_speed, max_speed),
-            0.0,
-            (scale * movement.z).clamp(-max_speed, max_speed),
+        let step = crate::entity::combat::calculate_minecart_track_step_vector(
+            movement,
+            entity.has_passengers(),
+            max_speed,
         );
         if step.length_squared() > 0.0 {
             self.move_entity(caller, step);
@@ -652,14 +636,11 @@ impl MinecartEntity {
             _ if let Some(inventory) = self.container() => {
                 container::velocity(entity, inventory, movement)
             }
-            _ => {
-                // Vanilla `getSlowdownFactor`
-                let mut factor = if entity.has_passengers() { 0.997 } else { 0.96 };
-                if entity.touching_water.load(Ordering::Relaxed) {
-                    factor *= f64::from(0.95f32);
-                }
-                movement.multiply(factor, 0.0, factor)
-            }
+            _ => crate::entity::combat::calculate_minecart_natural_slowdown(
+                movement,
+                entity.has_passengers(),
+                entity.touching_water.load(Ordering::Relaxed),
+            ),
         }
     }
 
@@ -675,20 +656,19 @@ impl MinecartEntity {
         let entity = &self.vehicle.entity;
         let pos = entity.pos.load();
         let (x_diff, z_diff) = (start.x - pos.x, start.z - pos.z);
-        let mut yaw = entity.yaw.load();
-        if x_diff * x_diff + z_diff * z_diff > 0.001 {
-            yaw = z_diff.atan2(x_diff).to_degrees() as f32;
-            if self.flipped.load(Ordering::Relaxed) {
-                yaw += 180.0;
-            }
+        let flipped = self.flipped.load(Ordering::Relaxed);
+        let (yaw, pitch, new_flipped) = crate::entity::combat::calculate_minecart_rotation_update(
+            x_diff,
+            z_diff,
+            entity.yaw.load(),
+            start_yaw,
+            flipped,
+        );
+        if new_flipped != flipped {
+            self.flipped.store(new_flipped, Ordering::Relaxed);
         }
-        let rot_diff = wrap_degrees(yaw - start_yaw);
-        if !(-170.0..170.0).contains(&rot_diff) {
-            yaw += 180.0;
-            self.flipped.fetch_xor(true, Ordering::Relaxed);
-        }
-        entity.pitch.store(0.0);
-        entity.yaw.store(yaw % 360.0);
+        entity.pitch.store(pitch);
+        entity.yaw.store(yaw);
     }
 
     /// Vanilla `OldMinecartBehavior.pushAndPickupEntities`.
@@ -809,16 +789,23 @@ impl MinecartEntity {
                             let vid = self.vehicle.entity.entity_id;
                             if let Some(v) = world.get_entity_by_id(vid) {
                                 for pid in p_ids {
-                                    v.get_entity().remove_passenger_sync(pid);
+                                    v.get_entity().remove_passenger(pid);
                                 }
                             }
                         }
                     }
-                    if self.vehicle.get_hurt_time() == 0 {
-                        self.vehicle.set_hurt_dir(-self.vehicle.get_hurt_dir());
-                        self.vehicle.set_hurt_time(10);
-                        self.vehicle.set_damage(50.0);
+                    if let Some((new_hurt_dir, hurt_time, damage)) =
+                        crate::entity::combat::calculate_activator_rail_minecart_wobble(
+                            powered,
+                            self.vehicle.get_hurt_time(),
+                            self.vehicle.get_hurt_dir(),
+                        )
+                    {
+                        self.vehicle.set_hurt_dir(new_hurt_dir);
+                        self.vehicle.set_hurt_time(hurt_time);
+                        self.vehicle.set_damage(damage);
                         self.vehicle.send_wobble_metadata();
+                        self.vehicle.entity.velocity_dirty.store(true, Ordering::SeqCst);
                     }
                 }
             }

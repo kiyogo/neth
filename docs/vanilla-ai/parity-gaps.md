@@ -11408,6 +11408,51 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung phát sinh sự kiện `GameEvent::EntityPlace` khi người chơi đặt thuyền xuống nước/khối.
   - **Unit Tests**: `test_boat_item_placement_and_dispense_parity_gap443`.
 
+### Gap 444: Minecart Rail Movement, Sloped Gravity Boost, Powered Rail Speed/Braking & Activator Rail Passenger Ejection Parity
+
+**Vanilla Reference**: `net.minecraft.world.entity.vehicle.minecart.AbstractMinecart.java:482-492`, `net.minecraft.world.entity.vehicle.minecart.Minecart.java:45-58`, `net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior.java:55-75, 96-263`, `net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer.java:101-113`
+
+- **Kích Hoạt Ray Kích Hoạt & Rung Lắc/Đẩy Hành Khách (Activator Rail Passenger Ejection & Wobble Parity)**:
+  - Vanilla `Minecart.java:45-58` (`activateMinecart`):
+    - Khi ray kích hoạt có điện (`state == true`):
+      - Đẩy tất cả hành khách ra khỏi xe: `this.ejectPassengers()`.
+      - Thay vì loại bỏ thô bạo ngắt kết nối (`remove_passenger_sync`), gọi hàm `remove_passenger` thực hiện tính toán vị trí xuống xe an toàn (`get_dismount_location_for_passenger`) và kích hoạt `EntityDismountEvent`.
+      - Nếu xe chưa trong trạng thái đau đớn (`this.getHurtTime() == 0`):
+        - Đảo chiều lắc: `this.setHurtDir(-this.getHurtDir())`.
+        - Đặt thời gian lắc: `this.setHurtTime(10)` (`ACTIVATOR_RAIL_HURT_TIME = 10`).
+        - Đặt sát thương lắc: `this.setDamage(50.0F)` (`ACTIVATOR_RAIL_DAMAGE = 50.0F`).
+        - Đánh dấu vận tốc bẩn: `this.markHurt()` (`velocity_dirty = true`) và gửi metadata lắc lư (`send_wobble_metadata()`).
+- **Tốc Độ Bước Xe Có Người Lái & Trọng Lực Dốc Ray (Ridden Speed Scaling & Rail Slope Movement)**:
+  - Vanilla `OldMinecartBehavior.java:119-135, 199-202`:
+    - Xe leo dốc chịu trượt theo trọng lực: `AscendingEast (-slideSpeed.x)`, `AscendingWest (+slideSpeed.x)`, `AscendingNorth (+slideSpeed.z)`, `AscendingSouth (-slideSpeed.z)`.
+    - Khi có hành khách (`isVehicle()`), tỷ lệ bước di chuyển giới hạn bị nhân tỷ lệ 0.75 (`MINECART_RIDDEN_SPEED_SCALE = 0.75`), xe trống nhân 1.0 (`MINECART_EMPTY_SPEED_SCALE = 1.0`).
+    - Vận tốc bước bị kẹp chặt trong khoảng `[-maxSpeed, maxSpeed]`, trong khi vận tốc tích lũy được bảo lưu qua các tick.
+- **Lực Cản Tự Nhiên & Xe Thùng Chứa Theo Độ Rỗng (Natural Slowdown & Container Cart Emptiness Drag)**:
+  - Vanilla `OldMinecartBehavior.java:404-406` & `AbstractMinecart.java:484-492`:
+    - Hệ số giữ quán tính tự nhiên: Xe có người lái là 0.997 (`MINECART_RIDDEN_SLOWDOWN_FACTOR = 0.997`), xe trống là 0.96 (`MINECART_UNRIDDEN_SLOWDOWN_FACTOR = 0.96`).
+    - Khi xe chạm nước trên ray: nhân thêm hệ số cản 0.95 (`MINECART_WATER_DRAG_ON_RAIL = 0.95`).
+  - Vanilla `AbstractMinecartContainer.java:101-113`:
+    - Hệ số giữ đà cơ bản là 0.98 (`MINECART_CONTAINER_BASE_DRAG = 0.98`).
+    - Nếu không có LootTable chờ mở: `emptiness = 15 - redstoneSignal`, mỗi cấp rỗng tăng thêm `0.001` đà (`MINECART_CONTAINER_EMPTINESS_DRAG_STEP = 0.001`), xe rỗng hoàn toàn đạt `0.995`.
+    - Khi trong nước: nhân thêm `0.95`.
+- **Cập Nhật Góc Quay Xe & Đảo Hướng (Rotation Update & Reversal)**:
+  - Vanilla `OldMinecartBehavior.java:67-84`:
+    - Khoảng cách di chuyển ngang tối thiểu để cập nhật yaw: `0.001` (`MINECART_ROTATION_MOVE_THRESHOLD_SQ = 0.001`).
+    - Khi góc lệch so với tick trước vượt quá `[-170.0, 170.0)`: Đảo ngược góc 180 độ và lật trạng thái `flipped`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số: `MINECART_RIDDEN_SPEED_SCALE`, `MINECART_EMPTY_SPEED_SCALE`, `MINECART_UNRIDDEN_SLOWDOWN_FACTOR`, `MINECART_RIDDEN_SLOWDOWN_FACTOR`, `MINECART_WATER_DRAG_ON_RAIL`, `MINECART_CONTAINER_BASE_DRAG`, `MINECART_CONTAINER_EMPTINESS_DRAG_STEP`, `ACTIVATOR_RAIL_HURT_TIME`, `ACTIVATOR_RAIL_DAMAGE`, `MINECART_ROTATION_MOVE_THRESHOLD_SQ`, `MINECART_ROTATION_REVERSAL_MIN_ANGLE`, `MINECART_ROTATION_REVERSAL_MAX_ANGLE`.
+    - Bổ sung các hàm: `calculate_minecart_rail_slope_movement`, `calculate_minecart_track_redirection`, `calculate_minecart_track_step_vector`, `calculate_minecart_natural_slowdown`, `calculate_minecart_container_drag`, `calculate_activator_rail_minecart_wobble`, `calculate_minecart_rotation_update`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart.rs`:
+    - `activate_minecart`: Sử dụng `remove_passenger(pid)` để kích hoạt tính toán vị trí dismount và sự kiện thay vì ngắt thô bạo. Gọi `calculate_activator_rail_minecart_wobble`, cập nhật wobble metadata và đánh dấu `velocity_dirty`.
+    - `move_along_track`: Sử dụng `calculate_minecart_rail_slope_movement`, `calculate_minecart_track_redirection`, và `calculate_minecart_track_step_vector`.
+    - `update_rotation`: Kết nối chuẩn xác với `calculate_minecart_rotation_update`.
+    - `apply_natural_slowdown`: Kết nối với `calculate_minecart_natural_slowdown`.
+  - Cập nhật `crates/pumpkin-core/src/entity/vehicle/minecart/container.rs`:
+    - Sử dụng `calculate_minecart_container_drag` chuẩn hóa cản tự nhiên dựa trên tín hiệu redstone và độ rỗng container.
+  - **Unit Tests**: `test_minecart_rail_movement_slope_and_activator_parity_gap444`.
+
+
 
 
 

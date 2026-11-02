@@ -253,17 +253,13 @@ pub(super) fn velocity(
         0
     };
     // Vanilla `AbstractMinecartContainer.applyNaturalSlowdown`, in `float`.
-    let mut keep = 0.98f32;
-    if !has_loot {
-        keep += f32::from(15 - signal) * 0.001;
-    }
-    if entity
-        .touching_water
-        .load(std::sync::atomic::Ordering::Relaxed)
-    {
-        keep *= 0.95;
-    }
-    let keep = f64::from(keep);
+    let keep = crate::entity::combat::calculate_minecart_container_drag(
+        signal,
+        has_loot,
+        entity
+            .touching_water
+            .load(std::sync::atomic::Ordering::Relaxed),
+    );
     velocity.multiply(keep, 0.0, keep)
 }
 

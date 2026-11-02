@@ -4390,6 +4390,189 @@ pub fn calculate_minecart_powered_rail_boost(
     }
 }
 
+/// Vanilla `OldMinecartBehavior.java:199`: ridden minecart step scaling factor (0.75).
+/// `double scale = this.minecart.isVehicle() ? 0.75 : 1.0;`
+pub const MINECART_RIDDEN_SPEED_SCALE: f64 = 0.75;
+
+/// Vanilla `OldMinecartBehavior.java:199`: empty minecart step scaling factor (1.0).
+pub const MINECART_EMPTY_SPEED_SCALE: f64 = 1.0;
+
+/// Vanilla `OldMinecartBehavior.java:405`: unridden minecart slowdown factor (0.96).
+/// `return this.minecart.isVehicle() ? 0.997 : 0.96;`
+pub const MINECART_UNRIDDEN_SLOWDOWN_FACTOR: f64 = 0.96;
+
+/// Vanilla `OldMinecartBehavior.java:405`: ridden minecart slowdown factor (0.997).
+pub const MINECART_RIDDEN_SLOWDOWN_FACTOR: f64 = 0.997;
+
+/// Vanilla `AbstractMinecart.java:488` & `AbstractMinecartContainer.java:109`:
+/// Minecart rail slowdown factor when submerged in water (0.95).
+pub const MINECART_WATER_DRAG_ON_RAIL: f64 = 0.95;
+
+/// Vanilla `AbstractMinecartContainer.java:102`: base container minecart drag factor (0.98).
+pub const MINECART_CONTAINER_BASE_DRAG: f32 = 0.98;
+
+/// Vanilla `AbstractMinecartContainer.java:105`: per-emptiness level container drag increase (0.001).
+/// `keep += emptiness * 0.001F;`
+pub const MINECART_CONTAINER_EMPTINESS_DRAG_STEP: f32 = 0.001;
+
+/// Vanilla `Minecart.java:53`: activator rail wobble hurt time (10 ticks).
+pub const ACTIVATOR_RAIL_HURT_TIME: i32 = 10;
+
+/// Vanilla `Minecart.java:54`: activator rail wobble damage (50.0).
+pub const ACTIVATOR_RAIL_DAMAGE: f32 = 50.0;
+
+/// Vanilla `OldMinecartBehavior.java:70`: minimum movement squared to update minecart yaw (0.001).
+pub const MINECART_ROTATION_MOVE_THRESHOLD_SQ: f64 = 0.001;
+
+/// Vanilla `OldMinecartBehavior.java:78`: minimum angle difference for rotation reversal (-170.0 degrees).
+pub const MINECART_ROTATION_REVERSAL_MIN_ANGLE: f32 = -170.0;
+
+/// Vanilla `OldMinecartBehavior.java:78`: maximum angle difference for rotation reversal (170.0 degrees).
+pub const MINECART_ROTATION_REVERSAL_MAX_ANGLE: f32 = 170.0;
+
+/// Adjusts minecart velocity along an ascending rail slope due to gravity slide.
+/// Mirrors vanilla `OldMinecartBehavior.java:119-135`.
+#[must_use]
+pub fn calculate_minecart_rail_slope_movement(
+    shape: pumpkin_data::block_properties::RailShape,
+    mut movement: Vector3<f64>,
+    slide_speed: f64,
+) -> Vector3<f64> {
+    use pumpkin_data::block_properties::RailShape;
+    match shape {
+        RailShape::AscendingEast => movement.x -= slide_speed,
+        RailShape::AscendingWest => movement.x += slide_speed,
+        RailShape::AscendingNorth => movement.z += slide_speed,
+        RailShape::AscendingSouth => movement.z -= slide_speed,
+        _ => {}
+    }
+    movement
+}
+
+/// Redirects minecart horizontal movement along rail exits.
+/// Mirrors vanilla `OldMinecartBehavior.java:138-152`.
+#[must_use]
+pub fn calculate_minecart_track_redirection(
+    movement: Vector3<f64>,
+    exit0: Vector3<f64>,
+    exit1: Vector3<f64>,
+) -> Vector3<f64> {
+    let mut xd = exit1.x - exit0.x;
+    let mut zd = exit1.z - exit0.z;
+    let length = xd.hypot(zd);
+    if length <= 0.0 {
+        return movement;
+    }
+    let flip = movement.x * xd + movement.z * zd;
+    if flip < 0.0 {
+        xd = -xd;
+        zd = -zd;
+    }
+    let pow = movement.horizontal_length().min(MINECART_MAX_HORIZONTAL_MOVEMENT);
+    Vector3::new(pow * xd / length, movement.y, pow * zd / length)
+}
+
+/// Computes clamped step movement for a minecart along track.
+/// Mirrors vanilla `OldMinecartBehavior.java:199-202`.
+#[must_use]
+pub fn calculate_minecart_track_step_vector(
+    movement: Vector3<f64>,
+    is_vehicle: bool,
+    max_speed: f64,
+) -> Vector3<f64> {
+    let scale = if is_vehicle {
+        MINECART_RIDDEN_SPEED_SCALE
+    } else {
+        MINECART_EMPTY_SPEED_SCALE
+    };
+    Vector3::new(
+        (scale * movement.x).clamp(-max_speed, max_speed),
+        0.0,
+        (scale * movement.z).clamp(-max_speed, max_speed),
+    )
+}
+
+/// Applies natural rail slowdown to minecart movement according to passenger presence and water immersion.
+/// Mirrors vanilla `AbstractMinecart.java:484-492` and `OldMinecartBehavior.java:404-406`.
+#[must_use]
+pub fn calculate_minecart_natural_slowdown(
+    movement: Vector3<f64>,
+    is_vehicle: bool,
+    in_water: bool,
+) -> Vector3<f64> {
+    let factor = if is_vehicle {
+        MINECART_RIDDEN_SLOWDOWN_FACTOR
+    } else {
+        MINECART_UNRIDDEN_SLOWDOWN_FACTOR
+    };
+    let mut new_movement = movement.multiply(factor, 0.0, factor);
+    if in_water {
+        new_movement = new_movement.multiply(
+            MINECART_WATER_DRAG_ON_RAIL,
+            MINECART_WATER_DRAG_ON_RAIL,
+            MINECART_WATER_DRAG_ON_RAIL,
+        );
+    }
+    new_movement
+}
+
+/// Calculates container minecart drag retention factor based on container fullness/emptiness, loot table state, and water immersion.
+/// Mirrors vanilla `AbstractMinecartContainer.java:101-113`.
+#[must_use]
+pub fn calculate_minecart_container_drag(redstone_signal: u8, has_loot: bool, in_water: bool) -> f64 {
+    let mut keep = MINECART_CONTAINER_BASE_DRAG;
+    if !has_loot {
+        let emptiness = 15u8.saturating_sub(redstone_signal);
+        keep += f32::from(emptiness) * MINECART_CONTAINER_EMPTINESS_DRAG_STEP;
+    }
+    if in_water {
+        keep *= MINECART_WATER_DRAG_ON_RAIL as f32;
+    }
+    f64::from(keep)
+}
+
+/// Evaluates activator rail wobble triggering on a rideable minecart.
+/// Returns (new_hurt_dir, hurt_time, damage) if cart should wobble.
+/// Mirrors vanilla `Minecart.java:51-56`.
+#[must_use]
+pub const fn calculate_activator_rail_minecart_wobble(
+    powered: bool,
+    current_hurt_time: i32,
+    current_hurt_dir: i32,
+) -> Option<(i32, i32, f32)> {
+    if powered && current_hurt_time == 0 {
+        Some((-current_hurt_dir, ACTIVATOR_RAIL_HURT_TIME, ACTIVATOR_RAIL_DAMAGE))
+    } else {
+        None
+    }
+}
+
+/// Computes minecart yaw and flipped status based on previous position and yaw difference.
+/// Mirrors vanilla `OldMinecartBehavior.java:67-84`.
+#[must_use]
+pub fn calculate_minecart_rotation_update(
+    x_diff: f64,
+    z_diff: f64,
+    current_yaw: f32,
+    prev_yaw: f32,
+    mut flipped: bool,
+) -> (f32, f32, bool) {
+    let mut yaw = current_yaw;
+    if x_diff * x_diff + z_diff * z_diff > MINECART_ROTATION_MOVE_THRESHOLD_SQ {
+        yaw = z_diff.atan2(x_diff).to_degrees() as f32;
+        if flipped {
+            yaw += 180.0;
+        }
+    }
+    let rot_diff = pumpkin_util::math::wrap_degrees(yaw - prev_yaw);
+    if rot_diff < MINECART_ROTATION_REVERSAL_MIN_ANGLE || rot_diff >= MINECART_ROTATION_REVERSAL_MAX_ANGLE {
+        yaw += 180.0;
+        flipped = !flipped;
+    }
+    let pitch = 0.0f32;
+    (yaw % 360.0, pitch, flipped)
+}
+
 /// Calculates vertical velocity change for entities on top of a bubble column.
 ///
 /// Mirrors vanilla `Entity.java:2945-2954` (`handleOnAboveBubbleColumn`):
@@ -29274,5 +29457,129 @@ mod tests {
         assert!(is_point_inside_entity_pick_box(Vector3::new(9.5, 65.0, 10.5), box_min, box_max, 1.0));
         // Outside inflated box
         assert!(!is_point_inside_entity_pick_box(Vector3::new(8.5, 65.0, 10.5), box_min, box_max, 1.0));
+    }
+
+    #[test]
+    fn test_minecart_rail_movement_slope_and_activator_parity_gap444() {
+        use pumpkin_data::block_properties::RailShape;
+
+        // 1. Constants parity (AbstractMinecart.java:488, Minecart.java:53-54, OldMinecartBehavior.java:70, 78, 199, 405, AbstractMinecartContainer.java:102, 105, 109)
+        assert_eq!(MINECART_RIDDEN_SPEED_SCALE, 0.75);
+        assert_eq!(MINECART_EMPTY_SPEED_SCALE, 1.0);
+        assert_eq!(MINECART_UNRIDDEN_SLOWDOWN_FACTOR, 0.96);
+        assert_eq!(MINECART_RIDDEN_SLOWDOWN_FACTOR, 0.997);
+        assert_eq!(MINECART_WATER_DRAG_ON_RAIL, 0.95);
+        assert_eq!(MINECART_CONTAINER_BASE_DRAG, 0.98f32);
+        assert_eq!(MINECART_CONTAINER_EMPTINESS_DRAG_STEP, 0.001f32);
+        assert_eq!(ACTIVATOR_RAIL_HURT_TIME, 10);
+        assert_eq!(ACTIVATOR_RAIL_DAMAGE, 50.0f32);
+        assert_eq!(MINECART_ROTATION_MOVE_THRESHOLD_SQ, 0.001);
+        assert_eq!(MINECART_ROTATION_REVERSAL_MIN_ANGLE, -170.0f32);
+        assert_eq!(MINECART_ROTATION_REVERSAL_MAX_ANGLE, 170.0f32);
+
+        // 2. Rail slope movement (OldMinecartBehavior.java:119-135)
+        let initial_movement = Vector3::new(0.0, 0.0, 0.0);
+        let slide_speed = 0.0078125;
+
+        let mv_east = calculate_minecart_rail_slope_movement(RailShape::AscendingEast, initial_movement, slide_speed);
+        assert!((mv_east.x - (-0.0078125)).abs() < 1e-9);
+
+        let mv_west = calculate_minecart_rail_slope_movement(RailShape::AscendingWest, initial_movement, slide_speed);
+        assert!((mv_west.x - 0.0078125).abs() < 1e-9);
+
+        let mv_north = calculate_minecart_rail_slope_movement(RailShape::AscendingNorth, initial_movement, slide_speed);
+        assert!((mv_north.z - 0.0078125).abs() < 1e-9);
+
+        let mv_south = calculate_minecart_rail_slope_movement(RailShape::AscendingSouth, initial_movement, slide_speed);
+        assert!((mv_south.z - (-0.0078125)).abs() < 1e-9);
+
+        let mv_flat = calculate_minecart_rail_slope_movement(RailShape::NorthSouth, initial_movement, slide_speed);
+        assert_eq!(mv_flat.x, 0.0);
+        assert_eq!(mv_flat.z, 0.0);
+
+        // 3. Track redirection along rail exits (OldMinecartBehavior.java:138-152)
+        let exit0 = Vector3::new(-1.0, 0.0, 0.0);
+        let exit1 = Vector3::new(1.0, 0.0, 0.0);
+        // Forward movement along +X
+        let redir_fwd = calculate_minecart_track_redirection(Vector3::new(0.5, 0.0, 0.0), exit0, exit1);
+        assert!((redir_fwd.x - 0.5).abs() < 1e-6);
+        assert_eq!(redir_fwd.z, 0.0);
+
+        // Backward movement flips exit direction to stay aligned
+        let redir_rev = calculate_minecart_track_redirection(Vector3::new(-0.5, 0.0, 0.0), exit0, exit1);
+        assert!((redir_rev.x - (-0.5)).abs() < 1e-6);
+        assert_eq!(redir_rev.z, 0.0);
+
+        // Over-speed movement clamped to MINECART_MAX_HORIZONTAL_MOVEMENT (2.0)
+        let redir_fast = calculate_minecart_track_redirection(Vector3::new(5.0, 0.0, 0.0), exit0, exit1);
+        assert!((redir_fast.x - 2.0).abs() < 1e-6);
+
+        // 4. Clamped step movement (OldMinecartBehavior.java:199-202)
+        let step_unridden = calculate_minecart_track_step_vector(Vector3::new(0.4, 0.0, 0.0), false, 0.4);
+        assert!((step_unridden.x - 0.4).abs() < 1e-6);
+
+        let step_ridden = calculate_minecart_track_step_vector(Vector3::new(0.4, 0.0, 0.0), true, 0.4);
+        assert!((step_ridden.x - 0.3).abs() < 1e-6); // 0.4 * 0.75 = 0.3
+
+        let step_clamped = calculate_minecart_track_step_vector(Vector3::new(1.0, 0.0, 0.0), false, 0.4);
+        assert!((step_clamped.x - 0.4).abs() < 1e-6);
+
+        // 5. Natural slowdown (AbstractMinecart.java:484-492 & OldMinecartBehavior.java:404-406)
+        let slow_empty_land = calculate_minecart_natural_slowdown(Vector3::new(1.0, 0.0, 1.0), false, false);
+        assert!((slow_empty_land.x - 0.96).abs() < 1e-6);
+        assert!((slow_empty_land.z - 0.96).abs() < 1e-6);
+
+        let slow_ridden_land = calculate_minecart_natural_slowdown(Vector3::new(1.0, 0.0, 1.0), true, false);
+        assert!((slow_ridden_land.x - 0.997).abs() < 1e-6);
+        assert!((slow_ridden_land.z - 0.997).abs() < 1e-6);
+
+        let slow_empty_water = calculate_minecart_natural_slowdown(Vector3::new(1.0, 0.0, 1.0), false, true);
+        assert!((slow_empty_water.x - 0.96 * 0.95).abs() < 1e-6);
+
+        let slow_ridden_water = calculate_minecart_natural_slowdown(Vector3::new(1.0, 0.0, 1.0), true, true);
+        assert!((slow_ridden_water.x - 0.997 * 0.95).abs() < 1e-6);
+
+        // 6. Container drag retention (AbstractMinecartContainer.java:101-113)
+        // Completely empty cart: signal = 0 -> keep = 0.98 + (15 - 0) * 0.001 = 0.995
+        let drag_empty = calculate_minecart_container_drag(0, false, false);
+        assert!((drag_empty - 0.995).abs() < 1e-6);
+
+        // Completely full cart: signal = 15 -> keep = 0.98 + (15 - 15) * 0.001 = 0.98
+        let drag_full = calculate_minecart_container_drag(15, false, false);
+        assert!((drag_full - 0.98).abs() < 1e-6);
+
+        // Half-full cart: signal = 8 -> keep = 0.98 + (15 - 8) * 0.001 = 0.987
+        let drag_half = calculate_minecart_container_drag(8, false, false);
+        assert!((drag_half - 0.987).abs() < 1e-6);
+
+        // Unopened loot table cart: keep = 0.98 regardless of signal
+        let drag_loot = calculate_minecart_container_drag(0, true, false);
+        assert!((drag_loot - 0.98).abs() < 1e-6);
+
+        // In water: multiplies by 0.95
+        let drag_water = calculate_minecart_container_drag(0, false, true);
+        assert!((drag_water - 0.995 * 0.95).abs() < 1e-5);
+
+        // 7. Activator rail wobble (Minecart.java:51-56)
+        assert_eq!(calculate_activator_rail_minecart_wobble(false, 0, 1), None);
+        assert_eq!(calculate_activator_rail_minecart_wobble(true, 5, 1), None); // Already hurt
+        assert_eq!(calculate_activator_rail_minecart_wobble(true, 0, 1), Some((-1, 10, 50.0f32)));
+        assert_eq!(calculate_activator_rail_minecart_wobble(true, 0, -1), Some((1, 10, 50.0f32)));
+
+        // 8. Rotation updates (OldMinecartBehavior.java:67-84)
+        // Small move: no change
+        let (yaw_small, _, _) = calculate_minecart_rotation_update(0.001, 0.001, 45.0, 45.0, false);
+        assert_eq!(yaw_small, 45.0);
+
+        // Moving South (+Z: x_diff=0, z_diff=1)
+        let (yaw_south, _, flipped_south) = calculate_minecart_rotation_update(0.0, 1.0, 0.0, 0.0, false);
+        assert!((yaw_south - 90.0).abs() < 1e-4);
+        assert!(!flipped_south);
+
+        // Rotation reversal (> 170.0 degrees) flips yaw by 180 and toggles flipped flag
+        let (yaw_rev, _, flipped_rev) = calculate_minecart_rotation_update(0.0, -1.0, 0.0, 90.0, false);
+        // z_diff = -1.0, x_diff = 0.0 -> atan2(-1, 0) = -90.0 -> rotDiff = -90 - 90 = -180 <= -170 -> yaw += 180 = 90
+        assert!((yaw_rev - 90.0).abs() < 1e-4);
+        assert!(flipped_rev);
     }
 }
