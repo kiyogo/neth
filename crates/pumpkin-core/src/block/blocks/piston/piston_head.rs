@@ -18,7 +18,10 @@ pub(crate) type MovingPistonProps = pumpkin_data::block_properties::MovingPiston
 pub struct PistonHeadBlock;
 
 impl PistonHeadBlock {
-    fn is_fitting_base(
+    pub const PLATFORM_THICKNESS: f64 = 4.0;
+
+    #[must_use]
+    pub fn is_fitting_base(
         head: PistonHeadProperties,
         base_block: &Block,
         base_state_id: BlockStateId,
@@ -65,23 +68,23 @@ impl BlockBehaviour for PistonHeadBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        if args.player.gamemode.load() == pumpkin_util::GameMode::Creative {
-            let props = PistonHeadProperties::from_state_id(args.state.id);
-            let pos = args
-                .position
-                .offset(props.facing.opposite().to_block_direction().to_offset());
-            let (new_block, new_state) = args.world.get_block_and_state_id(&pos);
-            if &Block::PISTON == new_block || &Block::STICKY_PISTON == new_block {
-                let base_props = PistonProps::from_state_id(new_state);
-                if base_props.extended && base_props.facing == props.facing {
-                    args.world.set_block_state(
-                        &pos,
-                        Block::AIR.default_state.id,
-                        BlockFlags::NOTIFY_ALL | BlockFlags::FORCE_STATE,
-                    );
-                }
-            }
+        let props = PistonHeadProperties::from_state_id(args.state.id);
+        let base_pos = args
+            .position
+            .offset(props.facing.opposite().to_block_direction().to_offset());
+        let (base_block, base_state) = args.world.get_block_and_state(&base_pos);
+
+        if Self::is_fitting_base(props, base_block, base_state.id) {
+            let is_creative = args.player.gamemode.load() == pumpkin_util::GameMode::Creative;
+            let flags = if is_creative {
+                BlockFlags::SKIP_DROPS | BlockFlags::NOTIFY_ALL
+            } else {
+                BlockFlags::NOTIFY_ALL
+            };
+            args.world.break_block(&base_pos, Some(args.player), flags);
         }
+
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

@@ -91,7 +91,8 @@ impl PistonBlock {
         !(block == &Block::OBSIDIAN
             || block == &Block::CRYING_OBSIDIAN
             || block == &Block::RESPAWN_ANCHOR
-            || block == &Block::REINFORCED_DEEPSLATE)
+            || block == &Block::REINFORCED_DEEPSLATE
+            || block == &Block::PISTON_HEAD)
     }
 
     #[must_use]
@@ -147,24 +148,39 @@ impl BlockBehaviour for PistonBlock {
 
     fn broken(&self, args: BrokenArgs<'_>) {
         let props = PistonProps::from_state_id(args.state.id);
-        let pos = args
-            .position
-            .offset(props.facing.to_block_direction().to_offset());
-        let (block_to_check, block_to_check_state_id) = args.world.get_block_and_state_id(&pos);
-        if &Block::PISTON_HEAD == block_to_check {
-            let head_props = PistonHeadProperties::from_state_id(block_to_check_state_id);
+        if props.extended {
+            let pos = args
+                .position
+                .offset(props.facing.to_block_direction().to_offset());
+            let (block_to_check, block_to_check_state_id) = args.world.get_block_and_state_id(&pos);
+            if &Block::PISTON_HEAD == block_to_check {
+                let head_props = PistonHeadProperties::from_state_id(block_to_check_state_id);
+                let expected_type = if args.block == &Block::STICKY_PISTON {
+                    PistonType::Sticky
+                } else {
+                    PistonType::Normal
+                };
 
-            if (head_props.facing.to_block_direction() != props.facing.to_block_direction())
-                && &Block::PISTON_HEAD == block_to_check
-            {
-                //Then this is a head of some other piston.
-                return;
+                if head_props.facing == props.facing && head_props.r#type == expected_type {
+                    args.world.break_block(
+                        &pos,
+                        None,
+                        BlockFlags::SKIP_DROPS | BlockFlags::NOTIFY_ALL,
+                    );
+                }
+            } else if &Block::MOVING_PISTON == block_to_check {
+                let moving_props =
+                    MovingPistonLikeProperties::from_state_id(block_to_check_state_id);
+                if moving_props.facing == props.facing {
+                    args.world.break_block(
+                        &pos,
+                        None,
+                        BlockFlags::SKIP_DROPS | BlockFlags::NOTIFY_ALL,
+                    );
+                }
             }
-
-            args.world.break_block(&pos, None, BlockFlags::SKIP_DROPS);
-        } else if &Block::MOVING_PISTON == block_to_check {
-            args.world.break_block(&pos, None, BlockFlags::SKIP_DROPS);
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {

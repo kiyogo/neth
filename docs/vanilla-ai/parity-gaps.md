@@ -12072,3 +12072,38 @@ et.minecraft.world.entity.AgeableMob.java:273-275
 
 
 
+
+### Gap 466: Piston, Sticky Piston & Piston Head Broken Destruction, Arm Extension & Redstone Update Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/piston/PistonBaseBlock.java
+  - 
+et/minecraft/world/level/block/piston/PistonHeadBlock.java
+  - 
+et/minecraft/world/level/block/piston/PistonMovingBlockEntity.java
+  - 
+et/minecraft/world/level/block/piston/PistonStructureResolver.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Piston Head Broken Base Destruction (PistonHeadBlock.java:63-80)**:
+    - Vanilla quy định: Khi đầu piston (PistonHeadBlock) bị người chơi phá hủy trong chế độ Sinh tồn (Survival), thân piston phía sau (basePos = pos.relative(facing.opposite())) phải bị phá hủy kèm theo thả rơi vật phẩm piston (destroyBlock(basePos, true)).
+    - Trong chế độ Sáng tạo (Creative), thân piston bị phá hủy mà không thả rơi vật phẩm (destroyBlock(basePos, false) / SKIP_DROPS).
+    - Neth trước đây trong broken chỉ xử lý cho Creative bằng cách gán AIR, còn trong Survival thì hoàn toàn bỏ quên không phá thân piston.
+    - Giờ đây cả hai trường hợp đều kiểm tra is_fitting_base chính xác theo vanilla (loại piston, trạng thái extended = true, hướng facing trùng khớp) và gọi break_block(&base_pos, Some(player), flags) kèm update_neighbors.
+  - **Piston Base Broken Head Destruction (PistonBaseBlock.java)**:
+    - Khi thân piston bị phá hủy, nếu piston đang mở/vươn dài (props.extended == true), khối đầu piston (PISTON_HEAD) hoặc MOVING_PISTON phía trước phải được phá hủy không thả rơi vật phẩm (SKIP_DROPS) và phát tín hiệu cập nhật khối lân cận (NOTIFY_ALL).
+    - Neth trước đây phá hủy khối phía trước mà không kiểm tra props.extended, dẫn đến có thể phá nhầm khối của cỗ máy khác, đồng thời không thông báo khối lân cận khi bị phá.
+  - **Piston Immovability & Sticky Parity (PistonStructureResolver.java:13, 64-74)**:
+    - MAX_PUSH_LIMIT = 12 blocks.
+    - Khối không thể đẩy (is_pushable_block_type): Obsidian, Crying Obsidian, Respawn Anchor, Reinforced Deepslate, và Piston Head (PISTON_HEAD).
+    - Quy tắc dính của khối Slime và Honey: Slime dính với khối thường và Slime; Honey dính với khối thường và Honey; nhưng Slime và Honey không bao giờ dính với nhau (can_stick_to_each_other).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/piston/piston_head.rs:
+    - Bổ sung PLATFORM_THICKNESS = 4.0.
+    - Chuẩn hóa broken xử lý cả Creative (SKIP_DROPS) và Survival (NOTIFY_ALL có thả rơi vật phẩm piston) qua break_block, đồng thời thông báo khối lân cận (update_neighbors).
+  - Cập nhật crates/pumpkin-core/src/block/blocks/piston/piston.rs:
+    - Trong broken: chỉ phá đầu piston khi props.extended == true, xác thực loại piston và hướng facing, thông báo khối lân cận.
+    - Trong is_pushable_block_type: thêm Block::PISTON_HEAD vào danh sách khối không thể đẩy.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test test_piston_and_piston_head_parity_gap466.
+  - **Unit Tests**: Vượt qua 100% test_piston_and_piston_head_parity_gap466.

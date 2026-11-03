@@ -31898,4 +31898,109 @@ mod tests {
         assert_eq!(CampfireBlock::cool_progress(1), 0);
         assert_eq!(CampfireBlock::cool_progress(0), 0);
     }
+
+    #[test]
+    fn test_piston_and_piston_head_parity_gap466() {
+        use crate::block::blocks::piston::piston::{PistonBlock, PistonProps};
+        use crate::block::blocks::piston::piston_head::{PistonHeadBlock, PistonHeadProperties};
+        use pumpkin_data::block_properties::{Facing, PistonType};
+        use pumpkin_data::block_state::PistonBehavior;
+        use pumpkin_data::{Block, BlockDirection};
+
+        // 1. Piston & Resolver Constants (PistonBaseBlock.java:45-48, PistonStructureResolver.java:13)
+        assert_eq!(PistonBlock::MAX_PUSH_LIMIT, 12);
+        assert_eq!(PistonBlock::TRIGGER_EXTEND, 0);
+        assert_eq!(PistonBlock::TRIGGER_CONTRACT, 1);
+        assert_eq!(PistonBlock::TRIGGER_DROP, 2);
+        assert_eq!(PistonBlock::PLATFORM_THICKNESS, 4.0);
+        assert_eq!(PistonHeadBlock::PLATFORM_THICKNESS, 4.0);
+
+        // 2. Sticky & Attachment Logic Parity (PistonStructureResolver.java:64-74)
+        assert!(PistonBlock::is_sticky_block(&Block::SLIME_BLOCK));
+        assert!(PistonBlock::is_sticky_block(&Block::HONEY_BLOCK));
+        assert!(!PistonBlock::is_sticky_block(&Block::STONE));
+        assert!(!PistonBlock::is_sticky_block(&Block::DIRT));
+
+        assert!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::SLIME_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::HONEY_BLOCK));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::HONEY_BLOCK));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::SLIME_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::STONE));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::STONE, &Block::SLIME_BLOCK));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::STONE));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::STONE, &Block::HONEY_BLOCK));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::STONE, &Block::DIRT));
+
+        // 3. Immovable Block Types Parity (Blocks.java pushReaction(IMMOVEABLE))
+        assert!(!PistonBlock::is_pushable_block_type(&Block::OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::CRYING_OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::RESPAWN_ANCHOR));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::REINFORCED_DEEPSLATE));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::PISTON_HEAD));
+        assert!(PistonBlock::is_pushable_block_type(&Block::STONE));
+        assert!(PistonBlock::is_pushable_block_type(&Block::DIRT));
+        assert!(PistonBlock::is_pushable_block_type(&Block::IRON_BLOCK));
+
+        // 4. Push Behavior Evaluation Parity (PistonBaseBlock.java:242-250)
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Destroy, true, BlockDirection::East, BlockDirection::East),
+            Some(true)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Destroy, false, BlockDirection::East, BlockDirection::East),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Block, true, BlockDirection::East, BlockDirection::East),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::PushOnly, false, BlockDirection::East, BlockDirection::East),
+            Some(true)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::PushOnly, false, BlockDirection::West, BlockDirection::East),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Ignore, false, BlockDirection::East, BlockDirection::East),
+            Some(false)
+        );
+        assert_eq!(
+            PistonBlock::evaluate_piston_behavior(PistonBehavior::Normal, false, BlockDirection::East, BlockDirection::East),
+            None
+        );
+
+        // 5. Piston Head Base Fitting Parity (PistonHeadBlock.java:57-60)
+        let mut head_props = PistonHeadProperties::default(&Block::PISTON_HEAD);
+        head_props.facing = Facing::East;
+        head_props.r#type = PistonType::Normal;
+
+        let mut base_props = PistonProps::default(&Block::PISTON);
+        base_props.facing = Facing::East;
+        base_props.extended = true;
+        let base_state_id = base_props.to_state_id(&Block::PISTON);
+
+        assert!(PistonHeadBlock::is_fitting_base(head_props, &Block::PISTON, base_state_id));
+
+        // Non-extended base: should NOT fit
+        base_props.extended = false;
+        let unextended_state_id = base_props.to_state_id(&Block::PISTON);
+        assert!(!PistonHeadBlock::is_fitting_base(head_props, &Block::PISTON, unextended_state_id));
+
+        // Mismatched facing: should NOT fit
+        base_props.extended = true;
+        base_props.facing = Facing::West;
+        let wrong_facing_state_id = base_props.to_state_id(&Block::PISTON);
+        assert!(!PistonHeadBlock::is_fitting_base(head_props, &Block::PISTON, wrong_facing_state_id));
+
+        // Normal head on sticky piston: should NOT fit
+        base_props.facing = Facing::East;
+        let sticky_state_id = base_props.to_state_id(&Block::STICKY_PISTON);
+        assert!(!PistonHeadBlock::is_fitting_base(head_props, &Block::STICKY_PISTON, sticky_state_id));
+
+        // Sticky head on sticky piston: should fit!
+        head_props.r#type = PistonType::Sticky;
+        assert!(PistonHeadBlock::is_fitting_base(head_props, &Block::STICKY_PISTON, sticky_state_id));
+    }
 }
