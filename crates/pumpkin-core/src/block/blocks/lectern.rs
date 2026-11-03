@@ -207,6 +207,7 @@ impl BlockBehaviour for LecternBlock {
         let block_entity = LecternBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {

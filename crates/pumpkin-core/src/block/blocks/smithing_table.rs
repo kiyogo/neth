@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs};
+use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, PlacedArgs};
 
 use pumpkin_data::translation;
 use pumpkin_inventory::player::player_inventory::PlayerInventory;
@@ -15,7 +15,19 @@ use std::sync::Mutex;
 #[pumpkin_block("minecraft:smithing_table")]
 pub struct SmithingTableBlock;
 
+impl SmithingTableBlock {
+    pub const INVENTORY_SIZE: usize = 4;
+    pub const TEMPLATE_SLOT: usize = 0;
+    pub const BASE_SLOT: usize = 1;
+    pub const ADDITION_SLOT: usize = 2;
+    pub const RESULT_SLOT: usize = 3;
+}
+
 impl BlockBehaviour for SmithingTableBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
             server: args.server,

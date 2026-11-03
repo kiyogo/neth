@@ -23,6 +23,10 @@ use std::sync::Mutex;
 pub struct AnvilBlock;
 
 impl AnvilBlock {
+    pub const FALL_DAMAGE_PER_DISTANCE: f32 = 2.0;
+    pub const FALL_DAMAGE_MAX: u32 = 40;
+    pub const EVENT_ANVIL_LAND: i32 = 1031;
+    pub const EVENT_ANVIL_DESTROY: i32 = 1029;
     #[must_use]
     pub fn damage(state_id: BlockStateId) -> Option<BlockStateId> {
         let block = Block::from_state_id(state_id);

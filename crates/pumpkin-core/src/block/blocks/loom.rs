@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs};
+use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs};
 use crate::entity::EntityBase;
 
 use pumpkin_data::block_properties::WallTorchLikeProperties;
@@ -18,7 +18,19 @@ use std::sync::Mutex;
 #[pumpkin_block("minecraft:loom")]
 pub struct LoomBlock;
 
+impl LoomBlock {
+    pub const INVENTORY_SIZE: usize = 4;
+    pub const BANNER_SLOT: usize = 0;
+    pub const DYE_SLOT: usize = 1;
+    pub const PATTERN_SLOT: usize = 2;
+    pub const RESULT_SLOT: usize = 3;
+}
+
 impl BlockBehaviour for LoomBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = WallTorchLikeProperties::default(args.block);
         if let Some(facing) = args

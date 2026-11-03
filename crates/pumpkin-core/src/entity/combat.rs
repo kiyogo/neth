@@ -34328,4 +34328,67 @@ mod tests {
         // 7. Ender Chest Parity (EnderChestBlock.java)
         assert_eq!(EnderChestBlock::LID_ANIMATION_EVENT_TYPE, 1);
     }
+
+    #[test]
+    fn test_workstations_lifecycle_and_parity_gap493() {
+        use crate::block::blocks::anvil::AnvilBlock;
+        use crate::block::blocks::cartography_table::CartographyTableBlock;
+        use crate::block::blocks::crafting_table::CraftingTableBlock;
+        use crate::block::blocks::grindstone::GrindstoneBlock;
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::blocks::loom::LoomBlock;
+        use crate::block::blocks::smithing_table::SmithingTableBlock;
+        use crate::block::blocks::stonecutter::StonecutterBlock;
+
+        // 1. Crafting Table Parity (CraftingTableBlock.java)
+        assert_eq!(CraftingTableBlock::CONTAINER_SIZE, 10);
+        assert_eq!(CraftingTableBlock::GRID_SIZE, 9);
+        assert_eq!(CraftingTableBlock::RESULT_SLOT, 0);
+
+        // 2. Cartography Table Parity (CartographyTableBlock.java)
+        assert_eq!(CartographyTableBlock::INVENTORY_SIZE, 3);
+        assert_eq!(CartographyTableBlock::MAP_SLOT, 0);
+        assert_eq!(CartographyTableBlock::ADDITIONAL_SLOT, 1);
+        assert_eq!(CartographyTableBlock::RESULT_SLOT, 2);
+
+        // 3. Smithing Table Parity (SmithingTableBlock.java)
+        assert_eq!(SmithingTableBlock::INVENTORY_SIZE, 4);
+        assert_eq!(SmithingTableBlock::TEMPLATE_SLOT, 0);
+        assert_eq!(SmithingTableBlock::BASE_SLOT, 1);
+        assert_eq!(SmithingTableBlock::ADDITION_SLOT, 2);
+        assert_eq!(SmithingTableBlock::RESULT_SLOT, 3);
+
+        // 4. Grindstone Parity (GrindstoneBlock.java)
+        assert_eq!(GrindstoneBlock::INVENTORY_SIZE, 3);
+        assert_eq!(GrindstoneBlock::INPUT_SLOT_1, 0);
+        assert_eq!(GrindstoneBlock::INPUT_SLOT_2, 1);
+        assert_eq!(GrindstoneBlock::RESULT_SLOT, 2);
+
+        // 5. Stonecutter Parity (StonecutterBlock.java)
+        assert_eq!(StonecutterBlock::INVENTORY_SIZE, 2);
+        assert_eq!(StonecutterBlock::INPUT_SLOT, 0);
+        assert_eq!(StonecutterBlock::RESULT_SLOT, 1);
+        assert_eq!(StonecutterBlock::SHAPE_HEIGHT, 9.0 / 16.0);
+        assert_eq!(StonecutterBlock::SHAPE_MIN_Y, 0.0);
+        assert_eq!(StonecutterBlock::SHAPE_MAX_Y, 9.0);
+
+        // 6. Loom Parity (LoomBlock.java)
+        assert_eq!(LoomBlock::INVENTORY_SIZE, 4);
+        assert_eq!(LoomBlock::BANNER_SLOT, 0);
+        assert_eq!(LoomBlock::DYE_SLOT, 1);
+        assert_eq!(LoomBlock::PATTERN_SLOT, 2);
+        assert_eq!(LoomBlock::RESULT_SLOT, 3);
+
+        // 7. Anvil Parity (AnvilBlock.java)
+        assert_eq!(AnvilBlock::FALL_DAMAGE_PER_DISTANCE, 2.0);
+        assert_eq!(AnvilBlock::FALL_DAMAGE_MAX, 40);
+        assert_eq!(AnvilBlock::EVENT_ANVIL_LAND, 1031);
+        assert_eq!(AnvilBlock::EVENT_ANVIL_DESTROY, 1029);
+
+        // 8. Lectern Parity (LecternBlock.java)
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LecternBlock::POWER_ON, 15);
+        assert_eq!(LecternBlock::POWER_OFF, 0);
+    }
 }

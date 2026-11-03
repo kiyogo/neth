@@ -20,7 +20,7 @@ use pumpkin_world::world::BlockAccessor;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, CanPlaceAtArgs, GetScreenHandlerFactoryArgs, GetStateForNeighborUpdateArgs,
-    NormalUseArgs, OnPlaceArgs, PathComputationType,
+    NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use pumpkin_data::BlockState;
 
@@ -29,7 +29,18 @@ use super::abstract_wall_mounting::WallMountedBlock;
 #[pumpkin_block("minecraft:grindstone")]
 pub struct GrindstoneBlock;
 
+impl GrindstoneBlock {
+    pub const INVENTORY_SIZE: usize = 3;
+    pub const INPUT_SLOT_1: usize = 0;
+    pub const INPUT_SLOT_2: usize = 1;
+    pub const RESULT_SLOT: usize = 2;
+}
+
 impl BlockBehaviour for GrindstoneBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
             server: args.server,

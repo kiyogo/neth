@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, NormalUseArgs};
+use crate::block::{BlockBehaviour, NormalUseArgs, PlacedArgs};
 
 use pumpkin_macros::pumpkin_block;
 
@@ -7,6 +7,10 @@ use pumpkin_macros::pumpkin_block;
 pub struct FletchingTableBlock;
 
 impl BlockBehaviour for FletchingTableBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn normal_use(&self, _args: NormalUseArgs<'_>) -> BlockActionResult {
         BlockActionResult::Pass
     }

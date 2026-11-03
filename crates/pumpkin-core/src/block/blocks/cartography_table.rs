@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs};
+use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, PlacedArgs};
 
 use pumpkin_data::translation;
 use pumpkin_inventory::cartography_table_screen_handler::CartographyTableScreenHandler;
@@ -15,7 +15,18 @@ use std::sync::Mutex;
 #[pumpkin_block("minecraft:cartography_table")]
 pub struct CartographyTableBlock;
 
+impl CartographyTableBlock {
+    pub const INVENTORY_SIZE: usize = 3;
+    pub const MAP_SLOT: usize = 0;
+    pub const ADDITIONAL_SLOT: usize = 1;
+    pub const RESULT_SLOT: usize = 2;
+}
+
 impl BlockBehaviour for CartographyTableBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
             server: args.server,

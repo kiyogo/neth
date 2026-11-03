@@ -13183,3 +13183,61 @@ et/minecraft/world/level/block/EnderChestBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_containers_and_cooking_workstations_parity_gap492.
   - **Unit Tests**: Vượt qua 100% 	est_containers_and_cooking_workstations_parity_gap492.
+
+### Gap 493: Workstations Lifecycle, Placed Neighbor Updates & Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/CraftingTableBlock.java
+  - 
+et/minecraft/world/level/block/CartographyTableBlock.java
+  - 
+et/minecraft/world/level/block/FletchingTableBlock.java
+  - 
+et/minecraft/world/level/block/SmithingTableBlock.java
+  - 
+et/minecraft/world/level/block/GrindstoneBlock.java
+  - 
+et/minecraft/world/level/block/StonecutterBlock.java
+  - 
+et/minecraft/world/level/block/LoomBlock.java
+  - 
+et/minecraft/world/level/block/AnvilBlock.java
+  - 
+et/minecraft/world/level/block/LecternBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Workstations Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed của CraftingTableBlock, CartographyTableBlock, FletchingTableBlock, SmithingTableBlock, GrindstoneBlock, StonecutterBlock, LoomBlock, và LecternBlock: đảm bảo tất cả khối bàn chế tạo, mài dao, cắt đá, khung dệt, bục đọc sách đều thông báo cập nhật vật lý cho các khối lân cận khi được đặt.
+  - **Crafting Table & Workstations Layouts**:
+    - Bàn chế tạo (CraftingTableBlock): CONTAINER_SIZE = 10, GRID_SIZE = 9, RESULT_SLOT = 0.
+    - Bàn làm bản đồ (CartographyTableBlock): INVENTORY_SIZE = 3, MAP_SLOT = 0, ADDITIONAL_SLOT = 1, RESULT_SLOT = 2.
+    - Bàn rèn (SmithingTableBlock): INVENTORY_SIZE = 4, TEMPLATE_SLOT = 0, BASE_SLOT = 1, ADDITION_SLOT = 2, RESULT_SLOT = 3.
+    - Bàn mài đe đá (GrindstoneBlock): INVENTORY_SIZE = 3, INPUT_SLOT_1 = 0, INPUT_SLOT_2 = 1, RESULT_SLOT = 2.
+    - Máy cắt đá (StonecutterBlock): INVENTORY_SIZE = 2, INPUT_SLOT = 0, RESULT_SLOT = 1, chiều cao khối 9/16 = 0.5625 (SHAPE_HEIGHT = 0.5625, SHAPE_MIN_Y = 0.0, SHAPE_MAX_Y = 9.0).
+    - Khung dệt (LoomBlock): INVENTORY_SIZE = 4, BANNER_SLOT = 0, DYE_SLOT = 1, PATTERN_SLOT = 2, RESULT_SLOT = 3.
+  - **Anvil Fall Damage & Events Parity (AnvilBlock.java:37-89)**:
+    - Sát thương rơi trên mỗi khối: FALL_DAMAGE_PER_DISTANCE = 2.0F, sát thương tối đa: FALL_DAMAGE_MAX = 40.
+    - Sự kiện âm thanh chạm đất và vỡ nát: EVENT_ANVIL_LAND = 1031, EVENT_ANVIL_DESTROY = 1029.
+  - **Lectern Impulse & Events Parity (LecternBlock.java)**:
+    - Xung lật trang sách phát tín hiệu: PAGE_CHANGE_IMPULSE_TICKS = 2, sự kiện lật trang: PAGE_CHANGE_EVENT = 1043, tín hiệu mạnh 15/0.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/crafting_table.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/cartography_table.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/fletching_table.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/smithing_table.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/grindstone.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/stonecutter.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/loom.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/anvil.rs:
+    - Bổ sung hằng số chuẩn sát thương rơi và mã sự kiện.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/lectern.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_workstations_lifecycle_and_parity_gap493.
+  - **Unit Tests**: Vượt qua 100% 	est_workstations_lifecycle_and_parity_gap493.

@@ -1,6 +1,6 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 
 use pumpkin_data::block_properties::WallTorchLikeProperties;
@@ -19,7 +19,20 @@ use pumpkin_inventory::stonecutter_screen_handler::StonecutterScreenHandler;
 #[pumpkin_block("minecraft:stonecutter")]
 pub struct StonecutterBlock;
 
+impl StonecutterBlock {
+    pub const INVENTORY_SIZE: usize = 2;
+    pub const INPUT_SLOT: usize = 0;
+    pub const RESULT_SLOT: usize = 1;
+    pub const SHAPE_HEIGHT: f64 = 9.0 / 16.0;
+    pub const SHAPE_MIN_Y: f64 = 0.0;
+    pub const SHAPE_MAX_Y: f64 = 9.0;
+}
+
 impl BlockBehaviour for StonecutterBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = WallTorchLikeProperties::default(args.block);
         props.facing = args
