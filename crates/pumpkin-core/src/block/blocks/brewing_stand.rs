@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::block::{
-    GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, PathComputationType, PlacedArgs,
+    BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, PathComputationType, PlacedArgs,
 };
 use crate::block::{
     registry::BlockActionResult,
@@ -117,6 +117,13 @@ impl BlockBehaviour for BrewingStandBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let be = BrewingStandBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(be));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {

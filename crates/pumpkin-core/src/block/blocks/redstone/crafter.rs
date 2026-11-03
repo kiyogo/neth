@@ -7,7 +7,7 @@ use crate::block::entities::crafter::CrafterBlockEntity;
 use crate::block::entities::hopper::HopperBlockEntity;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
+    BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
     OnNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
 };
 use crate::entity::Entity;
@@ -393,6 +393,13 @@ impl BlockBehaviour for CrafterBlock {
                 TickPriority::Normal,
             );
         }
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -411,7 +418,7 @@ impl BlockBehaviour for CrafterBlock {
             args.world.set_block_state(
                 args.position,
                 props.to_state_id(args.block),
-                BlockFlags::NOTIFY_LISTENERS,
+                BlockFlags::NOTIFY_ALL,
             );
             if let Some(be) = args.world.get_block_entity(args.position)
                 && let Some(crafter) = be.as_any().downcast_ref::<CrafterBlockEntity>()
@@ -424,7 +431,7 @@ impl BlockBehaviour for CrafterBlock {
             args.world.set_block_state(
                 args.position,
                 props.to_state_id(args.block),
-                BlockFlags::NOTIFY_LISTENERS,
+                BlockFlags::NOTIFY_ALL,
             );
             if let Some(be) = args.world.get_block_entity(args.position)
                 && let Some(crafter) = be.as_any().downcast_ref::<CrafterBlockEntity>()

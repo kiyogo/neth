@@ -11899,6 +11899,28 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_dispenser_and_dropper_parity_gap459`.
   - **Unit Tests**: Test kiểm tra hằng số dispenser/dropper, độ lệch Y phóng vật phẩm (0.125 dọc, 0.15625 ngang), và tính toán bộ so sánh 9 ô (0..15) đều vượt qua 100%.
 
+### Gap 460: Brewing Stand & Crafter Broken Destruction, Output Signal Updates & Triggered Observer Notification Parity
+- **Giàn Pha Thuốc & Bàn Chế Tạo Tự Động Khi Bị Phá Hủy & Cập Nhật Tín Hiệu Bộ So Sánh (Brewing Stand & Crafter Broken Parity)**:
+  - Vanilla `BrewingStandBlock.java:83-85`, `CrafterBlock.java:128-130` & `Containers.java:51-53`:
+    - Khi giàn pha thuốc (`BrewingStandBlock`) hoặc bàn chế tạo tự động (`CrafterBlock`) bị phá hủy (`broken`), Vanilla thực hiện `Containers.updateNeighboursAfterDestroy(state, level, pos)`, gọi `level.updateNeighbourForOutputSignal(pos, state.getBlock())` để xóa tín hiệu analog của bộ so sánh (comparator) đang cắm sau khối, đồng thời thông báo các khối lân cận (`update_neighbors`) và giải phóng block entity. Neth trước đây chưa có hàm `broken` cho cả `BrewingStandBlock` và `CrafterBlock`.
+    - Khi được đặt (`placed`), khối cũng kích hoạt `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay lập tức.
+- **Cập Nhật Trạng Thái Triggered Thông Báo Observer Cho Crafter (Crafter Triggered State NOTIFY_ALL Parity)**:
+  - Vanilla `CrafterBlock.java:70-80`:
+    - Khi redstone kích hoạt (`powered`) hoặc ngắt (`!powered`), trạng thái `props.triggered` của Crafter được cập nhật với `BlockFlags::NOTIFY_ALL` (thay vì chỉ `NOTIFY_LISTENERS`) để observer nhận biết ngay lập tức sự thay đổi trạng thái kích hoạt redstone.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/brewing_stand.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Gọi `update_neighbour_for_output_signal` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Gọi `update_neighbour_for_output_signal` trong `placed`.
+    - Dùng `BlockFlags::NOTIFY_ALL` khi đổi trạng thái `triggered` trong `on_neighbor_update`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `BREWING_STAND_INVENTORY_SIZE`, `BREWING_STAND_EVENT_BREW_COMPLETE`, `calculate_brewing_stand_bottle_bitmask`, `calculate_brewing_stand_comparator_signal`, `calculate_crafter_comparator_signal`, `evaluate_crafter_redstone_trigger`.
+    - Bổ sung unit test `test_brewing_stand_and_crafter_parity_gap460`.
+  - **Unit Tests**: Test kiểm tra hằng số giàn pha thuốc (thời gian nấu 400 ticks, 20 lượt dùng bột quỷ lửa), bitmask chai thuốc (0..7), bộ so sánh 5 ô của giàn pha thuốc (0..15), bộ so sánh crafter (0..9) và đánh giá sườn xung kích hoạt redstone crafter đều vượt qua 100%.
+
+
 
 
 

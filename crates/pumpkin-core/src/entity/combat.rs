@@ -10887,6 +10887,30 @@ pub fn get_dispenser_ejection_y_offset(facing: pumpkin_data::block_properties::F
     crate::block::blocks::redstone::dispenser::DispenserBlock::get_ejection_y_offset(facing)
 }
 
+/// Vanilla `BrewingStandBlock.java:33-35, 52-56, 83-95`:
+pub const BREWING_STAND_INVENTORY_SIZE: usize = 5;
+pub const BREWING_STAND_EVENT_BREW_COMPLETE: i32 = 1035;
+
+#[must_use]
+pub fn calculate_brewing_stand_bottle_bitmask(b0: bool, b1: bool, b2: bool) -> u8 {
+    crate::block::blocks::brewing_stand::BrewingStandBlock::calculate_bottle_bitmask(b0, b1, b2)
+}
+
+#[must_use]
+pub fn calculate_brewing_stand_comparator_signal(fill_fractions: &[f32; 5]) -> u8 {
+    crate::block::blocks::brewing_stand::BrewingStandBlock::calculate_comparator_signal(fill_fractions)
+}
+
+#[must_use]
+pub fn calculate_crafter_comparator_signal(occupied_count: usize, disabled_count: usize) -> u8 {
+    crate::block::blocks::redstone::crafter::CrafterBlock::calculate_comparator_signal(occupied_count, disabled_count)
+}
+
+#[must_use]
+pub const fn evaluate_crafter_redstone_trigger(powered: bool, is_triggered: bool) -> (bool, bool) {
+    crate::block::blocks::redstone::crafter::CrafterBlock::evaluate_redstone_trigger(powered, is_triggered)
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31382,5 +31406,62 @@ mod tests {
         // total = 9.0, percent = 1.0, floor(1 + 14) = 15
         assert_eq!(calculate_dispenser_comparator_signal(&[1.0; 9]), 15);
         assert_eq!(DropperBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
+    }
+
+    #[test]
+    fn test_brewing_stand_and_crafter_parity_gap460() {
+        use crate::block::blocks::brewing_stand::BrewingStandBlock;
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+
+        // 1. Brewing Stand Constants & Bitmask (BrewingStandBlock.java:33-35, 52-56)
+        assert_eq!(BREWING_STAND_TIME_TICKS, 400);
+        assert_eq!(BREWING_STAND_DEFAULT_FUEL_USES, 20);
+        assert_eq!(BREWING_STAND_INVENTORY_SIZE, 5);
+        assert_eq!(BREWING_STAND_EVENT_BREW_COMPLETE, 1035);
+        assert_eq!(BrewingStandBlock::BREWING_TIME_TICKS, 400);
+        assert_eq!(BrewingStandBlock::DEFAULT_FUEL_USES, 20);
+
+        // Bottle presence bitmask (b0: bit 0, b1: bit 1, b2: bit 2)
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(false, false, false), 0);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(true, false, false), 1);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(false, true, false), 2);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(true, true, false), 3);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(false, false, true), 4);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(true, false, true), 5);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(false, true, true), 6);
+        assert_eq!(calculate_brewing_stand_bottle_bitmask(true, true, true), 7);
+
+        // Brewing Stand 5-Slot Comparator Output (AbstractContainerMenu.java)
+        // Empty container -> 0
+        assert_eq!(calculate_brewing_stand_comparator_signal(&[0.0; 5]), 0);
+        // 1 bottle (fill fraction = 1.0 in slot 0): total = 1.0, percent = 1/5 = 0.2 -> floor(1 + 0.2*14) = 3
+        let mut one_bottle = [0.0; 5];
+        one_bottle[0] = 1.0;
+        assert_eq!(calculate_brewing_stand_comparator_signal(&one_bottle), 3);
+        // 3 bottles (fill fraction = 1.0 in 3 slots): total = 3.0, percent = 3/5 = 0.6 -> floor(1 + 0.6*14) = 9
+        let mut three_bottles = [0.0; 5];
+        three_bottles[0] = 1.0;
+        three_bottles[1] = 1.0;
+        three_bottles[2] = 1.0;
+        assert_eq!(calculate_brewing_stand_comparator_signal(&three_bottles), 9);
+        // All 5 slots full (3 bottles + 1 ingredient + 1 fuel): total = 5.0 -> 15
+        assert_eq!(calculate_brewing_stand_comparator_signal(&[1.0; 5]), 15);
+
+        // 2. Crafter Comparator Output (CrafterBlock.java:57-64, CrafterBlockEntity.java)
+        assert_eq!(calculate_crafter_comparator_signal(0, 0), 0);
+        assert_eq!(calculate_crafter_comparator_signal(3, 2), 5);
+        assert_eq!(calculate_crafter_comparator_signal(9, 0), 9);
+        assert_eq!(calculate_crafter_comparator_signal(5, 5), 9); // Capped at MAX_COMPARATOR_OUTPUT = 9
+        assert_eq!(CrafterBlock::calculate_comparator_signal(4, 3), 7);
+
+        // 3. Crafter Redstone Trigger Evaluation (CrafterBlock.java:70-80)
+        // Rising edge: powered=true, is_triggered=false -> triggers & schedules craft
+        assert_eq!(evaluate_crafter_redstone_trigger(true, false), (true, true));
+        // Falling edge: powered=false, is_triggered=true -> un-triggers
+        assert_eq!(evaluate_crafter_redstone_trigger(false, true), (false, false));
+        // High steady: powered=true, is_triggered=true -> remains triggered, no new craft
+        assert_eq!(evaluate_crafter_redstone_trigger(true, true), (true, false));
+        // Low steady: powered=false, is_triggered=false -> remains un-triggered
+        assert_eq!(evaluate_crafter_redstone_trigger(false, false), (false, false));
     }
 }
