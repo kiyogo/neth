@@ -34,6 +34,19 @@ impl TNTBlock {
     pub const INITIAL_VELOCITY_HORIZONTAL_SCALE: f64 = 0.02;
     pub const GRAVITY: f64 = 0.04;
     pub const AIR_DRAG: f32 = 0.98;
+    pub const GROUND_BOUNCE_HORIZONTAL: f64 = 0.7;
+    pub const GROUND_BOUNCE_VERTICAL: f64 = -0.5;
+    pub const PRIME_SOUND_VOLUME: f32 = 1.0;
+    pub const PRIME_SOUND_PITCH: f32 = 1.0;
+
+    #[must_use]
+    pub fn calculate_ground_bounce_velocity(velo: (f64, f64, f64)) -> (f64, f64, f64) {
+        (
+            velo.0 * Self::GROUND_BOUNCE_HORIZONTAL,
+            velo.1 * Self::GROUND_BOUNCE_VERTICAL,
+            velo.2 * Self::GROUND_BOUNCE_HORIZONTAL,
+        )
+    }
 
     #[must_use]
     pub fn calculate_initial_velocity(rotation_radians: f64) -> (f64, f64, f64) {

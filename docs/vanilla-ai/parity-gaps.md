@@ -12713,3 +12713,55 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_pistons_piston_head_and_extension_parity_gap482`.
   - **Unit Tests**: Vượt qua 100% `test_pistons_piston_head_and_extension_parity_gap482`.
+
+
+### Gap 483: TNT, Primed TNT & Explosives Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/TntBlock.java`
+  - `net/minecraft/world/entity/item/PrimedTnt.java`
+  - `net/minecraft/world/level/ServerExplosion.java`
+  - `net/minecraft/world/level/ExplosionDamageCalculator.java`
+  - `net/minecraft/world/entity/boss/enderdragon/EndCrystal.java`
+  - `net/minecraft/world/level/block/RespawnAnchorBlock.java`
+  - `net/minecraft/world/level/block/BedBlock.java`
+  - `net/minecraft/world/entity/monster/Creeper.java`
+  - `net/minecraft/world/entity/boss/wither/WitherBoss.java`
+  - `net/minecraft/world/entity/projectile/hurtingprojectile/WitherSkull.java`
+  - `net/minecraft/world/entity/projectile/hurtingprojectile/LargeFireball.java`
+  - `net/minecraft/world/entity/projectile/hurtingprojectile/windcharge/WindCharge.java`
+  - `net/minecraft/world/entity/projectile/hurtingprojectile/windcharge/BreezeWindCharge.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **TNT Block Lifecycle & Ignition Parity (TntBlock.java:35-158)**:
+    - Trạng thái mặc định: không bất ổn (`DEFAULT_UNSTABLE = false`).
+    - Thời gian ngòi nổ mặc định: 80 ticks = 4.0 giây (`DEFAULT_FUSE = 80`).
+    - Sức mạnh nổ mặc định: 4.0 (`DEFAULT_POWER = 4.0`).
+    - Vận tốc ban đầu: vận tốc dọc `INITIAL_VELOCITY_Y = 0.2`, tỉ lệ ngang `INITIAL_VELOCITY_HORIZONTAL_SCALE = 0.02` với góc ngẫu nhiên `rot` (`-sin(rot)*0.02, 0.2, -cos(rot)*0.02`).
+    - Trọng lực và lực cản: trọng lực `GRAVITY = 0.04`, cản không khí `AIR_DRAG = 0.98`.
+    - Va chạm và nảy mặt đất: tỉ lệ giảm chấn ngang `GROUND_BOUNCE_HORIZONTAL = 0.7`, dội ngược thẳng đứng `GROUND_BOUNCE_VERTICAL = -0.5` (`velo.multiply(0.7, -0.5, 0.7)`).
+    - Hằng số âm thanh ngòi nổ: âm lượng `PRIME_SOUND_VOLUME = 1.0`, cao độ `PRIME_SOUND_PITCH = 1.0`.
+    - Dải ngòi nổ ngắn khi phát nổ dây chuyền: `random.nextInt(Math.max(1, fuse / 4)) + fuse / 8` (với fuse 80: khoảng từ 10 đến 29 ticks).
+  - **Explosives & Explosion Damage Formula Parity (ServerExplosion.java, ExplosionDamageCalculator.java)**:
+    - Đồng bộ sức mạnh nổ chuẩn trên toàn bộ hệ thống Minecraft Java:
+      - End Crystal: `END_CRYSTAL_EXPLOSION_POWER = 6.0` (không tạo nổ dây chuyền nếu chết bởi sát thương nổ).
+      - Respawn Anchor (khi kích hoạt ngoài Nether): `RESPAWN_ANCHOR_EXPLOSION_POWER = 5.0`, lửa: `true`.
+      - Giường (Bed) (khi kích hoạt ở Nether/End): `BED_EXPLOSION_POWER = 5.0`, lửa: `true`.
+      - Creeper thông thường: `CREEPER_EXPLOSION_POWER = 3.0`.
+      - Creeper tích điện (Charged Creeper): `POWERED_CREEPER_EXPLOSION_POWER = 6.0` (hệ số x2).
+      - Wither xuất hiện: `WITHER_SPAWN_EXPLOSION_RADIUS = 7.0` (sau 220 ticks miễn nhiễm).
+      - Wither Skull: `WITHER_SKULL_EXPLOSION_POWER = 1.0`.
+      - Ghast Fireball: `GHAST_FIREBALL_EXPLOSION_POWER = 1.0`, sát thương trực diện: `LARGE_FIREBALL_DIRECT_DAMAGE = 6.0`.
+      - Wind Charge: `WIND_CHARGE_EXPLOSION_POWER = 1.2`.
+      - Breeze Wind Charge: `BREEZE_WIND_CHARGE_EXPLOSION_POWER = 3.0`.
+    - Công thức sát thương vụ nổ chuẩn vanilla:
+      `pow = (1.0 - dist) * exposure`
+      `damage = ((pow * pow + pow) / 2.0 * 7.0 * doubleRadius + 1.0)`
+      (Tại tâm nổ TNT sát thương tối đa là 57.0 HP; Creeper là 43.0 HP; Charged Creeper & End Crystal là 85.0 HP; tại biên nổ sát thương tối thiểu là 1.0 HP).
+    - Công thức lực đẩy lùi vụ nổ: `(1.0 - dist) * exposure * knockbackMultiplier * (1.0 - knockbackResistance)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/tnt.rs`:
+    - Bổ sung hằng số `GROUND_BOUNCE_HORIZONTAL`, `GROUND_BOUNCE_VERTICAL`, `PRIME_SOUND_VOLUME`, `PRIME_SOUND_PITCH` và phương thức `calculate_ground_bounce_velocity`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung các hằng số sức mạnh nổ, hàm `calculate_explosion_damage`.
+    - Bổ sung unit test `test_tnt_primed_tnt_and_explosives_parity_gap483`.
+  - **Unit Tests**: Vượt qua 100% `test_tnt_primed_tnt_and_explosives_parity_gap483`.

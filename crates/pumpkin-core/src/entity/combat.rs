@@ -3632,6 +3632,30 @@ pub const TNT_DEFAULT_EXPLOSION_POWER: f32 = 4.0;
 /// `protected double getDefaultGravity() { return 0.04; }`
 pub const TNT_DEFAULT_GRAVITY: f64 = 0.04;
 
+/// Vanilla explosion powers and parameters across Minecraft Java (RespawnAnchor, Bed, Creeper, Powered Creeper, Wither Skull, Ghast Fireball).
+pub const RESPAWN_ANCHOR_EXPLOSION_POWER: f32 = 5.0;
+pub const BED_EXPLOSION_POWER: f32 = 5.0;
+pub const CREEPER_EXPLOSION_POWER: f32 = 3.0;
+pub const POWERED_CREEPER_EXPLOSION_POWER: f32 = 6.0;
+pub const WITHER_SKULL_EXPLOSION_POWER: f32 = 1.0;
+pub const GHAST_FIREBALL_EXPLOSION_POWER: f32 = 1.0;
+
+/// Mirrors vanilla `ExplosionDamageCalculator.java:31-36`:
+/// `float doubleRadius = explosion.radius() * 2.0F;`
+/// `double dist = Math.sqrt(entity.distanceToSqr(center)) / doubleRadius;`
+/// `double pow = (1.0 - dist) * exposure;`
+/// `(float)((pow * pow + pow) / 2.0 * 7.0 * doubleRadius + 1.0)`
+#[must_use]
+pub fn calculate_explosion_damage(radius: f32, distance: f64, exposure: f64) -> f32 {
+    let double_radius = f64::from(radius) * 2.0;
+    if double_radius <= 0.0 {
+        return 0.0;
+    }
+    let dist_norm = (distance / double_radius).clamp(0.0, 1.0);
+    let pow = (1.0 - dist_norm) * exposure;
+    ((pow * pow + pow) / 2.0 * 7.0 * double_radius + 1.0) as f32
+}
+
 /// Default gravity acceleration for Falling Block entities (0.04).
 /// Mirrors vanilla `FallingBlockEntity.java:54`:
 /// `protected double getDefaultGravity() { return 0.04; }`
@@ -33519,5 +33543,88 @@ mod tests {
         // 2. Piston Head Parity (PistonHeadBlock.java:34-85)
         assert_eq!(PistonHeadBlock::PLATFORM_THICKNESS, 4.0);
         assert_eq!(PistonHeadBlock::DEFAULT_SHORT, false);
+    }
+    #[test]
+    fn test_tnt_primed_tnt_and_explosives_parity_gap483() {
+        use crate::block::blocks::tnt::TNTBlock;
+        use crate::entity::combat::*;
+
+        // 1. TNT Block Constants & Lifecycle (TntBlock.java:35-158)
+        assert_eq!(TNTBlock::DEFAULT_UNSTABLE, false);
+        assert_eq!(TNTBlock::DEFAULT_FUSE, 80);
+        assert_eq!(TNTBlock::DEFAULT_POWER, 4.0);
+        assert_eq!(TNTBlock::EXPLOSION_Y_OFFSET_SCALE, 0.0625);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_Y, 0.2);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_HORIZONTAL_SCALE, 0.02);
+        assert_eq!(TNTBlock::GRAVITY, 0.04);
+        assert_eq!(TNTBlock::AIR_DRAG, 0.98);
+        assert_eq!(TNTBlock::GROUND_BOUNCE_HORIZONTAL, 0.7);
+        assert_eq!(TNTBlock::GROUND_BOUNCE_VERTICAL, -0.5);
+        assert_eq!(TNTBlock::PRIME_SOUND_VOLUME, 1.0);
+        assert_eq!(TNTBlock::PRIME_SOUND_PITCH, 1.0);
+
+        // Ground bounce vector calculation
+        let bounce = TNTBlock::calculate_ground_bounce_velocity((1.0, 1.0, 1.0));
+        assert!((bounce.0 - 0.7).abs() < 1e-6);
+        assert!((bounce.1 - (-0.5)).abs() < 1e-6);
+        assert!((bounce.2 - 0.7).abs() < 1e-6);
+
+        // 2. Primed TNT Initial Velocity (PrimedTnt.java:69-70)
+        let vel0 = TNTBlock::calculate_initial_velocity(0.0);
+        assert!((vel0.0 - 0.0).abs() < 1e-6);
+        assert!((vel0.1 - 0.2).abs() < 1e-6);
+        assert!((vel0.2 - (-0.02)).abs() < 1e-6);
+
+        // 3. Short Fuse Range (PrimedTnt.java:183-185)
+        // random.nextInt(Math.max(1, fuse / 4)) + fuse / 8
+        // For fuse 80: bound = 20, min = 10, max = 29
+        assert_eq!(calculate_tnt_short_fuse(80, 0), 10);
+        assert_eq!(calculate_tnt_short_fuse(80, 19), 29);
+
+        // 4. Primed TNT invulnerability (PrimedTnt.java:210-212)
+        assert_eq!(should_tnt_take_damage(), false);
+
+        // 5. Explosion Powers across Vanilla Minecraft (EndCrystal, RespawnAnchor, Bed, Creeper, Wither, Ghast, WindCharge)
+        assert_eq!(END_CRYSTAL_EXPLOSION_POWER, 6.0);
+        assert_eq!(RESPAWN_ANCHOR_EXPLOSION_POWER, 5.0);
+        assert_eq!(BED_EXPLOSION_POWER, 5.0);
+        assert_eq!(CREEPER_EXPLOSION_POWER, 3.0);
+        assert_eq!(POWERED_CREEPER_EXPLOSION_POWER, 6.0);
+        assert_eq!(WITHER_SPAWN_EXPLOSION_RADIUS, 7.0);
+        assert_eq!(WITHER_SKULL_EXPLOSION_POWER, 1.0);
+        assert_eq!(GHAST_FIREBALL_EXPLOSION_POWER, 1.0);
+        assert_eq!(LARGE_FIREBALL_DIRECT_DAMAGE, 6.0);
+        assert_eq!(WIND_CHARGE_EXPLOSION_POWER, 1.2);
+        assert_eq!(BREEZE_WIND_CHARGE_EXPLOSION_POWER, 3.0);
+
+        // 6. Explosion Damage Formula (ExplosionDamageCalculator.java:31-36)
+        // At center (dist=0, exposure=1.0) with radius 4.0: double_radius=8.0, pow=1.0, damage = (2/2 * 7 * 8) + 1 = 57.0 HP
+        let tnt_max_dmg = calculate_explosion_damage(4.0, 0.0, 1.0);
+        assert!((tnt_max_dmg - 57.0).abs() < 1e-4);
+
+        // Creeper (radius 3.0): double_radius=6.0, max damage = (2/2 * 7 * 6) + 1 = 43.0 HP
+        let creeper_max_dmg = calculate_explosion_damage(3.0, 0.0, 1.0);
+        assert!((creeper_max_dmg - 43.0).abs() < 1e-4);
+
+        // Powered Creeper / End Crystal (radius 6.0): double_radius=12.0, max damage = (2/2 * 7 * 12) + 1 = 85.0 HP
+        let charged_creeper_dmg = calculate_explosion_damage(6.0, 0.0, 1.0);
+        assert!((charged_creeper_dmg - 85.0).abs() < 1e-4);
+
+        // At edge (dist = double_radius), pow=0, damage = 1.0 HP
+        let edge_dmg = calculate_explosion_damage(4.0, 8.0, 1.0);
+        assert!((edge_dmg - 1.0).abs() < 1e-4);
+
+        // 7. Explosion Knockback Power (ServerExplosion.java:198-200)
+        // dist_ratio = 0.0, exposure = 1.0, mult = 1.0, resist = 0.0 -> power = 1.0
+        let kb_center = calculate_explosion_knockback_power(0.0, 1.0, 1.0, 0.0);
+        assert!((kb_center - 1.0).abs() < 1e-6);
+
+        // Halfway (dist_ratio = 0.5): (1 - 0.5) * 1.0 = 0.5
+        let kb_half = calculate_explosion_knockback_power(0.5, 1.0, 1.0, 0.0);
+        assert!((kb_half - 0.5).abs() < 1e-6);
+
+        // With 50% knockback resistance: 0.5 * (1 - 0.5) = 0.25
+        let kb_resisted = calculate_explosion_knockback_power(0.5, 1.0, 1.0, 0.5);
+        assert!((kb_resisted - 0.25).abs() < 1e-6);
     }
 }
