@@ -10731,6 +10731,39 @@ pub fn get_crafting_remainder(item_id: u16) -> Option<&'static pumpkin_data::ite
     }
 }
 
+/// Calculates respawn anchor comparator output, mirroring vanilla `RespawnAnchorBlock.java:208`:
+/// `Mth.floor((charges - 0) / 4.0F * 15.0F)`.
+#[must_use]
+pub const fn calculate_respawn_anchor_comparator_output(charges: u8) -> u8 {
+    let clamped = if charges > 4 { 4 } else { charges };
+    ((clamped as u32 * 15) / 4) as u8
+}
+
+/// Evaluates if a composter can accept compostable items, mirroring vanilla `ComposterBlock.java:128-129`:
+/// Only accepts items if `fillLevel < 7` (level 7 is fermenting, level 8 is ready).
+#[must_use]
+pub const fn can_composter_accept_items(level: u8) -> bool {
+    level < 7
+}
+
+/// Evaluates if a composter is ready to yield bone meal, mirroring vanilla `ComposterBlock.java:49`:
+/// Ready at level 8.
+#[must_use]
+pub const fn is_composter_ready_to_harvest(level: u8) -> bool {
+    level == 8
+}
+
+/// Calculates composter comparator output, mirroring vanilla `ComposterBlock.java:232`:
+/// Returns level (0..8).
+#[must_use]
+pub const fn calculate_composter_comparator_output(level: u8) -> u8 {
+    if level > 8 {
+        8
+    } else {
+        level
+    }
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -30980,5 +31013,33 @@ mod tests {
         let mut disabled_slot_2 = [false; 9];
         disabled_slot_2[2] = true;
         assert!(!crafter_smaller_stack_exist(&slots_with_empty, &disabled_slot_2, 0));
+    }
+
+    #[test]
+    fn test_composter_levels_fermenting_protection_and_respawn_anchor_parity_gap455() {
+        // 1. Composter accepting and harvest rules (ComposterBlock.java:49, 128-129)
+        assert!(can_composter_accept_items(0));
+        assert!(can_composter_accept_items(6));
+        assert!(!can_composter_accept_items(7)); // Level 7 is fermenting, rejects items
+        assert!(!can_composter_accept_items(8)); // Level 8 is ready
+
+        assert!(!is_composter_ready_to_harvest(0));
+        assert!(!is_composter_ready_to_harvest(7));
+        assert!(is_composter_ready_to_harvest(8)); // Harvestable only at 8
+
+        // 2. Composter comparator signal parity (ComposterBlock.java:232: return state.getValue(LEVEL))
+        for level in 0..=8 {
+            assert_eq!(calculate_composter_comparator_output(level), level);
+        }
+        assert_eq!(calculate_composter_comparator_output(9), 8); // clamped to 8
+
+        // 3. Respawn anchor scaled comparator signal parity (RespawnAnchorBlock.java:208)
+        // Charges 0..4 produce [0, 3, 7, 11, 15]
+        assert_eq!(calculate_respawn_anchor_comparator_output(0), 0);
+        assert_eq!(calculate_respawn_anchor_comparator_output(1), 3);
+        assert_eq!(calculate_respawn_anchor_comparator_output(2), 7);
+        assert_eq!(calculate_respawn_anchor_comparator_output(3), 11);
+        assert_eq!(calculate_respawn_anchor_comparator_output(4), 15);
+        assert_eq!(calculate_respawn_anchor_comparator_output(5), 15); // clamped to 4 charges
     }
 }

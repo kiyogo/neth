@@ -47,8 +47,15 @@ impl BlockBehaviour for ComposterBlock {
 
         let item_stack = &mut *args.item_stack;
         let Some(compostable) = item_stack.get_data_component::<CompostableImpl>() else {
-            return BlockActionResult::Pass;
+            return BlockActionResult::PassToDefaultBlockAction;
         };
+
+        if !crate::entity::combat::can_composter_accept_items(level) {
+            // Level 7 is fermenting, awaiting scheduled tick to reach READY (8)
+            // Vanilla ComposterBlock.java:129: only addLayer if fillLevel < 7
+            return BlockActionResult::Success;
+        }
+
         let chance = compostable.chance;
 
         // Consume one item from the stack (if in survival mode)
@@ -118,7 +125,7 @@ impl BlockBehaviour for ComposterBlock {
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
         let props = ComposterLikeProperties::from_state_id(args.state.id);
-        Some(Self::calculate_comparator_output(props.level))
+        Some(crate::entity::combat::calculate_composter_comparator_output(props.level))
     }
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {
@@ -193,6 +200,10 @@ impl ComposterBlock {
         let mut props = ComposterLikeProperties::from_state_id(state_id);
         props.level = level;
         world.set_block_state(location, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
+        world.emit_game_event(
+            pumpkin_data::game_event::GameEvent::BlockChange.name(),
+            location.to_centered_f64(),
+        );
         if level == Self::MAX_LEVEL {
             world.schedule_block_tick(
                 block,

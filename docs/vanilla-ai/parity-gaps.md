@@ -11751,6 +11751,42 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_crafter_dispensing_delay_smaller_stack_and_remainders_parity_gap454`.
   - **Unit Tests**: 11 crafter tests passed.
 
+### Gap 455: Composter BlockChange GameEvent, Level 7 Fermenting Protection & Respawn Anchor Interaction Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.ComposterBlock.java:48-253`, `net.minecraft.world.level.block.RespawnAnchorBlock.java:45-241`
+
+- **Bảo Vệ Vật Phẩm Khi Thùng Ủ Đang Lên Men (Composter Level 7 Fermenting Protection Parity)**:
+  - Vanilla `ComposterBlock.java:128-136`:
+    - Khi cấp độ thùng ủ đạt 7 (`fillLevel == 7`), khối đang chờ lên men trong 20 tick (`FULL_COMPOSTING_TICKS`) trước khi chuyển sang cấp 8 (sẵn sàng thu hoạch bột xương).
+    - Trong giai đoạn cấp 7 này, việc người chơi click chuột phải bằng vật phẩm ủ phân (`compostable`) sẽ KHÔNG tiêu thụ vật phẩm (`fillLevel < 7` mới chạy `addLayer` và `consume`).
+    - Neth trước đây tiêu thụ vật phẩm của người chơi ngay cả khi cấp độ đã đạt 7, làm lãng phí vật phẩm mà không tăng thêm cấp. Đã thêm kiểm tra `can_composter_accept_items(level)` (`level < 7`).
+- **Sự Kiện GameEvent BlockChange Khi Cập Nhật Thùng Ủ & Nạp Neo Hồi Sinh (BlockChange GameEvent Parity)**:
+  - Vanilla `ComposterBlock.java:185, 206` & `RespawnAnchorBlock.java:178`:
+    - Khi thùng ủ tăng cấp độ hoặc được làm trống khi lấy bột xương, phát sinh sự kiện `GameEvent::BlockChange`.
+    - Khi nạp đá phát sáng (glowstone) vào Neo hồi sinh (`RespawnAnchorBlock`), phát sinh sự kiện `GameEvent::BlockChange`.
+    - Neth trước đây thiếu phát sinh `GameEvent::BlockChange` ở cả 2 khối này.
+- **Tương Tác Click Neo Hồi Sinh Với Vật Phẩm Khác Trong Overworld (Respawn Anchor Interaction Fallthrough Parity)**:
+  - Vanilla `RespawnAnchorBlock.java:86-88`:
+    - Khi người chơi click chuột phải vào Neo hồi sinh bằng bất kỳ vật phẩm nào không phải đá phát sáng (hoặc khi neo đã đầy 4 điện tích), trả về `TRY_WITH_EMPTY_HAND` (trong Neth là `PassToDefaultBlockAction`).
+    - Điều này cho phép sự kiện rơi vào `normal_use`, kích hoạt cơ chế phát nổ (`explode`) với sức công phá 5.0F trong các chiều không gian không hỗ trợ hồi sinh (Overworld / End).
+    - Neth trước đây trả về `BlockActionResult::Pass`, khiến việc click bằng kiếm hay công cụ vào neo đã nạp trong Overworld không gây nổ mà chỉ click tay không mới nổ. Đã sửa sang `PassToDefaultBlockAction` để đồng bộ 100% với vanilla.
+- **Tín Hiệu Comparator Thùng Ủ & Neo Hồi Sinh (Comparator Output Parity)**:
+  - Thùng ủ: trả về trực tiếp cấp độ `0..8` (`state.getValue(LEVEL)`).
+  - Neo hồi sinh: trả về cấp độ thang đo 15: `[0, 3, 7, 11, 15]` tương ứng 0..4 điện tích theo công thức `floor(charges / 4.0 * 15.0)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/composter.rs`:
+    - Thêm kiểm tra `can_composter_accept_items(level)` ngăn tiêu thụ vật phẩm khi composter đang ở cấp 7.
+    - Phát sinh `GameEvent::BlockChange` trong `update_level_composter`.
+    - Sử dụng `calculate_composter_comparator_output`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/respawn_anchor.rs`:
+    - Trả về `PassToDefaultBlockAction` khi vật phẩm không phải glowstone hoặc khi đã đầy 4 điện tích.
+    - Phát sinh `GameEvent::BlockChange` khi nạp điện tích.
+    - Sử dụng `calculate_respawn_anchor_comparator_output`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung các hàm: `calculate_respawn_anchor_comparator_output`, `can_composter_accept_items`, `is_composter_ready_to_harvest`, `calculate_composter_comparator_output`.
+    - Bổ sung unit test `test_composter_levels_fermenting_protection_and_respawn_anchor_parity_gap455`.
+  - **Unit Tests**: 5 composter tests và 5 respawn_anchor tests đều vượt qua 100%.
+
 
 
 

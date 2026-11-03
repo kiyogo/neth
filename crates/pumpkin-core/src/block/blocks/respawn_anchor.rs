@@ -101,14 +101,14 @@ impl BlockBehaviour for RespawnAnchorBlock {
     /// Charges the respawn anchor when the player uses glowstone and capacity remains.
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         if args.item_stack.item.id != Item::GLOWSTONE.id {
-            return BlockActionResult::Pass;
+            return BlockActionResult::PassToDefaultBlockAction;
         }
 
         let state_id = args.world.get_block_state_id(args.position);
         let mut props = RespawnAnchorLikeProperties::from_state_id(state_id);
 
         if props.charges >= Self::MAX_CHARGES {
-            return BlockActionResult::Pass;
+            return BlockActionResult::PassToDefaultBlockAction;
         }
 
         props.charges += 1;
@@ -116,6 +116,10 @@ impl BlockBehaviour for RespawnAnchorBlock {
             args.position,
             props.to_state_id(args.block),
             BlockFlags::NOTIFY_ALL,
+        );
+        args.world.emit_game_event(
+            pumpkin_data::game_event::GameEvent::BlockChange.name(),
+            args.position.to_centered_f64(),
         );
 
         args.item_stack
@@ -198,7 +202,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
     /// Charges scale over the full signal range, so each charge is worth 15 / 4.
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
         let props = RespawnAnchorLikeProperties::from_state_id(args.state.id);
-        Some(Self::get_scaled_charge_level(props.charges, Self::MAX_COMPARATOR_SIGNAL) as u8)
+        Some(crate::entity::combat::calculate_respawn_anchor_comparator_output(props.charges))
     }
 
     /// Respawn anchors are never considered passable for pathfinding.
