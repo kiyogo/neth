@@ -2,13 +2,17 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::block::{
-    GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnPlaceArgs, OnSyncedBlockEventArgs,
-    PlacedArgs,
+    BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnPlaceArgs,
+    OnSyncedBlockEventArgs, PlacedArgs,
 };
 use crate::block::{
     registry::BlockActionResult,
     {BlockBehaviour, NormalUseArgs},
 };
+use crate::world::World;
+use pumpkin_data::BlockDirection;
+use pumpkin_util::math::boundingbox::BoundingBox;
+use pumpkin_util::math::position::BlockPos;
 
 use crate::block::entities::shulker_box::ShulkerBoxBlockEntity;
 use pumpkin_data::FacingExt;
@@ -46,6 +50,59 @@ impl ScreenHandlerFactory for ShulkerBoxScreenFactory {
     }
 }
 
+/// Computes the bounding box of the opening shulker lid for collision testing.
+/// Matches vanilla `Shulker.getProgressDeltaAabb(1.0F, direction, 0.0F, 0.5F, Vec3.atBottomCenterOf(pos)).deflate(1.0E-6)`.
+#[must_use]
+pub fn shulker_box_lid_box(pos: &BlockPos, facing: BlockDirection) -> BoundingBox {
+    let x = pos.0.x as f64;
+    let y = pos.0.y as f64;
+    let z = pos.0.z as f64;
+    let eps = 1.0e-6;
+    let (min, max) = match facing {
+        BlockDirection::Up => (
+            [x + eps, y + 1.0 + eps, z + eps],
+            [x + 1.0 - eps, y + 1.5 - eps, z + 1.0 - eps],
+        ),
+        BlockDirection::Down => (
+            [x + eps, y - 0.5 + eps, z + eps],
+            [x + 1.0 - eps, y - eps, z + 1.0 - eps],
+        ),
+        BlockDirection::North => (
+            [x + eps, y + eps, z - 0.5 + eps],
+            [x + 1.0 - eps, y + 1.0 - eps, z - eps],
+        ),
+        BlockDirection::South => (
+            [x + eps, y + eps, z + 1.0 + eps],
+            [x + 1.0 - eps, y + 1.0 - eps, z + 1.5 - eps],
+        ),
+        BlockDirection::West => (
+            [x - 0.5 + eps, y + eps, z + eps],
+            [x - eps, y + 1.0 - eps, z + 1.0 - eps],
+        ),
+        BlockDirection::East => (
+            [x + 1.0 + eps, y + eps, z + eps],
+            [x + 1.5 - eps, y + 1.0 - eps, z + 1.0 - eps],
+        ),
+    };
+    BoundingBox::new_array(min, max)
+}
+
+/// Matches vanilla `ShulkerBoxBlock.canOpen(state, level, pos, blockEntity)`.
+#[must_use]
+pub fn can_open_shulker_box(world: &World, pos: &BlockPos, facing: BlockDirection) -> bool {
+    let open_pos = pos.offset(facing.to_offset());
+    let open_state = world.get_block_state(&open_pos);
+    if open_state.is_solid_block() {
+        return false;
+    }
+    let lid_box = shulker_box_lid_box(pos, facing);
+    let blocking = world
+        .get_entities_and_players_at_box(&lid_box)
+        .iter()
+        .any(|e| !e.is_spectator());
+    !blocking
+}
+
 #[pumpkin_block_from_tag("minecraft:shulker_boxes")]
 pub struct ShulkerBoxBlock;
 
@@ -65,19 +122,22 @@ impl BlockBehaviour for ShulkerBoxBlock {
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            let barrel_block_entity = ShulkerBoxBlockEntity::new(*args.position);
-            args.world.add_block_entity(Arc::new(barrel_block_entity));
-        }
+        let shulker_box_entity = ShulkerBoxBlockEntity::new(*args.position);
+        args.world.add_block_entity(Arc::new(shulker_box_entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         let state = args.world.get_block_state(args.position);
         let props = EndRodLikeProperties::from_state_id(state.id);
         let open_dir = props.facing.to_block_direction();
-        let open_pos = args.position.offset(open_dir.to_offset());
-        let open_state = args.world.get_block_state(&open_pos);
-        if open_state.is_solid_block() {
+        if !can_open_shulker_box(args.world, args.position, open_dir) {
             return BlockActionResult::Pass;
         }
 

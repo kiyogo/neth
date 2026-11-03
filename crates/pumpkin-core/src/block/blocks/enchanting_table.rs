@@ -4,7 +4,8 @@ use std::sync::Mutex;
 use crate::block::entities::enchanting_table::EnchantingTableBlockEntity;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, PathComputationType, PlacedArgs,
+    BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, PathComputationType,
+    PlacedArgs,
 };
 use pumpkin_data::{Block, BlockState, translation};
 use pumpkin_inventory::enchanting::enchanting_screen_handler::EnchantingTableScreenHandler;
@@ -93,6 +94,11 @@ impl BlockBehaviour for EnchantingTableBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = EnchantingTableBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(entity));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {

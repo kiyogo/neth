@@ -105,6 +105,7 @@ fn placed_chest_impl<E: BlockEntity + 'static>(
 ) {
     let chest = create_entity(*args.position);
     args.world.add_block_entity(Arc::new(chest));
+    args.world.update_neighbour_for_output_signal(args.position, args.block);
 
     let chest_props = ChestLikeProperties::from_state_id(args.state_id);
     let connected_towards = match chest_props.r#type {
@@ -122,12 +123,14 @@ fn placed_chest_impl<E: BlockEntity + 'static>(
         ChestType::Single,
     ) {
         neighbor_props.r#type = chest_props.r#type.opposite();
+        let neighbor_pos = args.position.offset(connected_towards.to_offset());
 
         args.world.set_block_state(
-            &args.position.offset(connected_towards.to_offset()),
+            &neighbor_pos,
             neighbor_props.to_state_id(args.block),
             BlockFlags::NOTIFY_LISTENERS,
         );
+        args.world.update_neighbour_for_output_signal(&neighbor_pos, args.block);
     }
 }
 
@@ -346,27 +349,35 @@ pub fn get_container(
 fn broken_chest_impl(args: &BrokenArgs<'_>) {
     let chest_props = ChestLikeProperties::from_state_id(args.state.id);
     let connected_towards = match chest_props.r#type {
-        ChestType::Single => return,
-        ChestType::Left => chest_props.facing.rotate_clockwise(),
-        ChestType::Right => chest_props.facing.rotate_counter_clockwise(),
+        ChestType::Single => None,
+        ChestType::Left => Some(chest_props.facing.rotate_clockwise()),
+        ChestType::Right => Some(chest_props.facing.rotate_counter_clockwise()),
     };
 
-    if let Some(mut neighbor_props) = get_chest_properties_if_can_connect(
-        args.world,
-        args.block,
-        args.position,
-        chest_props.facing,
-        connected_towards,
-        chest_props.r#type.opposite(),
-    ) {
-        neighbor_props.r#type = ChestType::Single;
+    if let Some(connected_towards) = connected_towards {
+        let neighbor_pos = args.position.offset(connected_towards.to_offset());
+        if let Some(mut neighbor_props) = get_chest_properties_if_can_connect(
+            args.world,
+            args.block,
+            args.position,
+            chest_props.facing,
+            connected_towards,
+            chest_props.r#type.opposite(),
+        ) {
+            neighbor_props.r#type = ChestType::Single;
 
-        args.world.set_block_state(
-            &args.position.offset(connected_towards.to_offset()),
-            neighbor_props.to_state_id(args.block),
-            BlockFlags::NOTIFY_LISTENERS,
-        );
+            args.world.set_block_state(
+                &neighbor_pos,
+                neighbor_props.to_state_id(args.block),
+                BlockFlags::NOTIFY_LISTENERS,
+            );
+            args.world.update_neighbour_for_output_signal(&neighbor_pos, args.block);
+        }
     }
+
+    args.world.remove_block_entity(args.position);
+    args.world.update_neighbour_for_output_signal(args.position, args.block);
+    args.world.update_neighbors(args.position, None);
 }
 
 #[pumpkin_block_from_tag("c:chests/wooden")]
@@ -587,6 +598,8 @@ impl BlockBehaviour for TrappedChestBlock {
 
     fn broken(&self, args: BrokenArgs<'_>) {
         broken_chest_impl(&args);
+        args.world
+            .update_neighbors(&args.position.offset(BlockDirection::Down.to_offset()), None);
     }
 
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {

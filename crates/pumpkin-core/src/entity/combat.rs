@@ -16680,6 +16680,59 @@ pub fn get_minecart_dismount_y_offsets(pose: pumpkin_data::entity::EntityPose) -
     }
 }
 
+/// Vanilla `ShulkerBoxBlock.java:83-84` & `Shulker.java:264-277`:
+/// Returns the expected min and max bounds for shulker box lid opening collision box.
+#[must_use]
+pub fn get_shulker_box_lid_bounds(
+    x: f64,
+    y: f64,
+    z: f64,
+    facing: pumpkin_data::BlockDirection,
+) -> ([f64; 3], [f64; 3]) {
+    let eps = 1.0e-6;
+    match facing {
+        pumpkin_data::BlockDirection::Up => (
+            [x + eps, y + 1.0 + eps, z + eps],
+            [x + 1.0 - eps, y + 1.5 - eps, z + 1.0 - eps],
+        ),
+        pumpkin_data::BlockDirection::Down => (
+            [x + eps, y - 0.5 + eps, z + eps],
+            [x + 1.0 - eps, y - eps, z + 1.0 - eps],
+        ),
+        pumpkin_data::BlockDirection::North => (
+            [x + eps, y + eps, z - 0.5 + eps],
+            [x + 1.0 - eps, y + 1.0 - eps, z - eps],
+        ),
+        pumpkin_data::BlockDirection::South => (
+            [x + eps, y + eps, z + 1.0 + eps],
+            [x + 1.0 - eps, y + 1.0 - eps, z + 1.5 - eps],
+        ),
+        pumpkin_data::BlockDirection::West => (
+            [x - 0.5 + eps, y + eps, z + eps],
+            [x - eps, y + 1.0 - eps, z + 1.0 - eps],
+        ),
+        pumpkin_data::BlockDirection::East => (
+            [x + 1.0 + eps, y + eps, z + eps],
+            [x + 1.5 - eps, y + 1.0 - eps, z + 1.0 - eps],
+        ),
+    }
+}
+
+/// Vanilla `ChestBlock.java:68-80` & `TrappedChestBlock.java:39-46`:
+pub const CHEST_CONTAINER_SIZE_SINGLE: usize = 27;
+pub const CHEST_CONTAINER_SIZE_DOUBLE: usize = 54;
+pub const TRAPPED_CHEST_MAX_POWER: u8 = 15;
+
+#[must_use]
+pub const fn calculate_trapped_chest_signal(viewer_count: usize) -> u8 {
+    crate::block::blocks::chests::TrappedChestBlock::calculate_signal(viewer_count)
+}
+
+#[must_use]
+pub const fn trapped_chest_emits_strong_power(direction: pumpkin_data::BlockDirection) -> bool {
+    crate::block::blocks::chests::TrappedChestBlock::emits_strong_power(direction)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31562,5 +31615,68 @@ mod tests {
         assert!(!is_player_in_bee_anger_range(8.1, 0.0, 0.0));
         assert!(!is_player_in_bee_anger_range(0.0, 6.1, 0.0));
         assert!(!is_player_in_bee_anger_range(0.0, 0.0, 8.1));
+    }
+
+    #[test]
+    fn test_shulker_box_and_trapped_chest_parity_gap462() {
+        use crate::block::blocks::chests::TrappedChestBlock;
+        use crate::block::blocks::shulker_box::shulker_box_lid_box;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Shulker Box Lid Opening Collision Bounds Parity (ShulkerBoxBlock.java:83-84, Shulker.java:264-277)
+        let pos = BlockPos::new(10, 64, -20);
+        let x = 10.0;
+        let y = 64.0;
+        let z = -20.0;
+        let eps = 1.0e-6;
+
+        for direction in [
+            BlockDirection::Up,
+            BlockDirection::Down,
+            BlockDirection::North,
+            BlockDirection::South,
+            BlockDirection::West,
+            BlockDirection::East,
+        ] {
+            let bb = shulker_box_lid_box(&pos, direction);
+            let (expected_min, expected_max) = get_shulker_box_lid_bounds(x, y, z, direction);
+            assert!((bb.min.x - expected_min[0]).abs() < 1e-9);
+            assert!((bb.min.y - expected_min[1]).abs() < 1e-9);
+            assert!((bb.min.z - expected_min[2]).abs() < 1e-9);
+            assert!((bb.max.x - expected_max[0]).abs() < 1e-9);
+            assert!((bb.max.y - expected_max[1]).abs() < 1e-9);
+            assert!((bb.max.z - expected_max[2]).abs() < 1e-9);
+        }
+
+        // Verify specific lid height for UP direction: 0.5 blocks above the top of the shulker box
+        let bb_up = shulker_box_lid_box(&pos, BlockDirection::Up);
+        assert!((bb_up.min.y - (y + 1.0 + eps)).abs() < 1e-9);
+        assert!((bb_up.max.y - (y + 1.5 - eps)).abs() < 1e-9);
+
+        // 2. Trapped Chest Redstone Power Emission (TrappedChestBlock.java:34-46)
+        assert_eq!(TRAPPED_CHEST_MAX_POWER, 15);
+        assert_eq!(CHEST_CONTAINER_SIZE_SINGLE, 27);
+        assert_eq!(CHEST_CONTAINER_SIZE_DOUBLE, 54);
+
+        // Viewer count directly translates to signal strength, clamped to [0, 15]
+        for viewers in 0..=15 {
+            assert_eq!(calculate_trapped_chest_signal(viewers), viewers as u8);
+            assert_eq!(TrappedChestBlock::calculate_signal(viewers), viewers as u8);
+        }
+        assert_eq!(calculate_trapped_chest_signal(16), 15);
+        assert_eq!(calculate_trapped_chest_signal(100), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(100), 15);
+
+        // Strong power emission: TrappedChestBlock.java:45:
+        // direction == Direction.UP ? state.getSignal(...) : 0
+        // Queries with direction Up (from below looking up) receive strong power
+        assert!(trapped_chest_emits_strong_power(BlockDirection::Up));
+        assert!(TrappedChestBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!trapped_chest_emits_strong_power(BlockDirection::Down));
+        assert!(!trapped_chest_emits_strong_power(BlockDirection::North));
+        assert!(!trapped_chest_emits_strong_power(BlockDirection::South));
+        assert!(!trapped_chest_emits_strong_power(BlockDirection::West));
+        assert!(!trapped_chest_emits_strong_power(BlockDirection::East));
     }
 }

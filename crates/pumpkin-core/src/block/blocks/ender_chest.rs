@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use crate::block::blocks::chests::is_chest_blocked;
 use crate::block::entities::ender_chest::EnderChestBlockEntity;
 use crate::block::{
-    BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs,
+    BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs,
     OnSyncedBlockEventArgs, PathComputationType, PlacedArgs, registry::BlockActionResult,
 };
 use pumpkin_data::block_properties::LadderLikeProperties;
@@ -127,6 +127,11 @@ impl BlockBehaviour for EnderChestBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = EnderChestBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {

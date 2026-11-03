@@ -11945,6 +11945,39 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_barrel_and_beehive_parity_gap461`.
   - **Unit Tests**: Test kiểm tra hằng số thùng gỗ (27 ô), bộ so sánh thùng gỗ (0..15), tổ ong (0..5 mức mật), kiểm tra khoảng cách khói lửa trại (1..=5) và phạm vi kích động ong AABB đều vượt qua 100%.
 
+### Gap 462: Shulker Box, Chest, Trapped Chest, Ender Chest & Enchanting Table Broken Destruction & Output Signal Parity
+- **Hộp Shulker & Rương Khi Bị Phá Hủy & Tín Hiệu Bộ So Sánh (Shulker Box & Chest Broken & Output Signal Parity)**:
+  - Vanilla `ShulkerBoxBlock.java:130-132, 154-156`, `ChestBlock.java:237-239, 341-343` & `Containers.java:51-53`:
+    - Khi hộp Shulker (`ShulkerBoxBlock`) hoặc rương gỗ/đồng (`ChestBlock`, `CopperChestBlock`) bị phá hủy (`broken`), Vanilla gọi `Containers.updateNeighboursAfterDestroy(state, level, pos)`, thông báo `updateNeighbourForOutputSignal` để bộ so sánh lập tức cập nhật/xóa tín hiệu, đồng thời thông báo khối lân cận `update_neighbors` và giải phóng block entity. Neth trước đây chưa cài đặt `broken` cho ShulkerBoxBlock, và `broken_chest_impl` bị return sớm khi là rương đơn mà không xóa block entity hay thông báo comparator!
+    - Khi được đặt (`placed`), khối cũng kích hoạt `update_neighbour_for_output_signal`. Đặc biệt khi hai rương ghép thành rương đôi hoặc một nửa bị phá hủy thành rương đơn, vị trí rương lân cận cũng được cập nhật tín hiệu bộ so sánh vì dung tích chuyển đổi giữa 27 và 54 ô.
+- **Rương Bẫy & Tín Hiệu Năng Lượng Đỏ (Trapped Chest Redstone Power Parity)**:
+  - Vanilla `TrappedChestBlock.java:34-46`:
+    - Rương bẫy phát tín hiệu năng lượng yếu cho các khối xung quanh tương ứng với số lượng người mở (0..15).
+    - Rương bẫy phát năng lượng mạnh (`getDirectSignal`) trực tiếp xuống khối bên dưới (`direction == Direction.UP`).
+    - Khi bị phá hủy, ngoài `broken_chest_impl`, rương bẫy gửi `update_neighbors` xuống khối bên dưới để ngắt các mạch/dây redstone bên dưới.
+- **Va Chạm Mở Nắp Hộp Shulker (Shulker Box Lid Collision Parity)**:
+  - Vanilla `ShulkerBoxBlock.java:78-85` & `Shulker.java:264-277`:
+    - Khi mở hộp Shulker, nắp trượt ra ngoài 0.5 khối theo hướng mở (`FACING`). Hộp Shulker kiểm tra va chạm với AABB nửa khối nắp `Shulker.getProgressDeltaAabb(1.0F, facing, 0.0F, 0.5F, Vec3.atBottomCenterOf(pos)).deflate(1.0E-6)`.
+    - Bổ sung `shulker_box_lid_box` và `can_open_shulker_box` kiểm tra cả khối rắn và thực thể chặn đường mở nắp.
+- **Rương Ender & Bàn Phù Phép Khi Bị Phá Hủy (Ender Chest & Enchanting Table Broken Parity)**:
+  - Vanilla `EnderChestBlock.java`, `EnchantingTableBlock.java`:
+    - Bổ sung `broken` cho `EnderChestBlock` và `EnchantingTableBlock` để xóa block entity và thông báo các khối lân cận.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/shulker_box.rs`:
+    - Bổ sung `broken` (xóa block entity, `update_neighbour_for_output_signal`, `update_neighbors`).
+    - Bổ sung `update_neighbour_for_output_signal` vào `placed`.
+    - Thêm `shulker_box_lid_box` và `can_open_shulker_box` kiểm tra va chạm nắp hộp.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/chests.rs`:
+    - Trong `placed_chest_impl`: gọi `update_neighbour_for_output_signal` cho cả vị trí đặt và vị trí rương ghép nối.
+    - Trong `broken_chest_impl`: gọi `remove_block_entity`, `update_neighbour_for_output_signal`, `update_neighbors` cho khối bị phá và rương lân cận khi tách rương đôi.
+    - Trong `TrappedChestBlock::broken`: bổ sung `update_neighbors` xuống khối bên dưới.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/ender_chest.rs` & `enchanting_table.rs`:
+    - Cài đặt `broken` xóa block entity và cập nhật khối lân cận.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `get_shulker_box_lid_bounds`, `CHEST_CONTAINER_SIZE_SINGLE`, `CHEST_CONTAINER_SIZE_DOUBLE`, `TRAPPED_CHEST_MAX_POWER`, `calculate_trapped_chest_signal`, `trapped_chest_emits_strong_power`.
+    - Bổ sung unit test `test_shulker_box_and_trapped_chest_parity_gap462`.
+  - **Unit Tests**: Test kiểm tra AABB mở nắp hộp Shulker cho cả 6 hướng (UP, DOWN, NORTH, SOUTH, WEST, EAST), hằng số dung tích rương (27/54 ô), tín hiệu rương bẫy (0..15) và phát năng lượng mạnh xuống khối dưới đều vượt qua 100%.
+
 
 
 
