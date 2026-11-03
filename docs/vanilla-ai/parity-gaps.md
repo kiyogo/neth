@@ -13593,3 +13593,41 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_masonry_copper_vaults_and_special_parity_gap503`.
   - **Unit Tests**: Vượt qua 100% `test_masonry_copper_vaults_and_special_parity_gap503`.
+
+
+### Gap 504: Marine Corals, Fires & Sculk Ecosystem Lifecycle Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/CoralBlock.java
+  - 
+et/minecraft/world/level/block/BaseCoralPlantTypeBlock.java
+  - 
+et/minecraft/world/level/block/BaseCoralPlantBlock.java
+  - 
+et/minecraft/world/level/block/BaseCoralFanBlock.java
+  - 
+et/minecraft/world/level/block/BaseCoralWallFanBlock.java
+  - 
+et/minecraft/world/level/block/FireBlock.java
+  - 
+et/minecraft/world/level/block/SoulFireBlock.java
+  - 
+et/minecraft/world/level/block/SculkBlock.java
+  - 
+et/minecraft/world/level/block/MultifaceBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Marine Corals Lifecycle & Neighbor Updates (CoralBlock.java, BaseCoralPlantTypeBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken của: CoralBlock, CoralFanBlock, và CoralPlantBlock.
+    - Thêm get_state_for_neighbor_update đồng bộ kiểm tra nước xung quanh và lên lịch chuyển sang khối san hô chết (	ry_schedule_die_tick: 60..=100 ticks, MIN_DECAY_TICKS = 60, MAX_DECAY_TICKS = 100) chuẩn vanilla.
+    - Định nghĩa hằng số số loại san hô CORAL_TYPES_COUNT = 5 (Brain, Bubble, Fire, Horn, Tube).
+  - **Fire & Soul Fire Mechanics (FireBlock.java, SoulFireBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken cho FireBlock và SoulFireBlock.
+    - Đồng bộ hằng số tuổi cháy tối đa MAX_AGE = 15 và sát thương lửa linh hồn DAMAGE = 2.0 (so với lửa thường 1.0).
+  - **Sculk Ecosystem & Multiface Lifecycle (SculkBlock.java, MultifaceBlock.java)**:
+    - Khối Sculk: Bổ sung update_neighbors(pos, None) trong placed và roken, đồng bộ kinh nghiệm rơi ra khi khai thác không phải Creative XP_AMOUNT = 1, bán kính ức chế sinh trưởng GROWTH_INHIBITOR_RANGE = 4.
+    - Khối Multiface (Sculk Vein, Glow Lichen, Resin Clump): Bổ sung placed và roken kích hoạt neighbor updates, độ dày bề mặt bám 1 pixel (1/16 = 0.0625), thời gian nung nhựa 200 ticks, tỷ lệ chế tạo 9 hạt nhựa -> 1 khối nhựa, 4 gạch nhựa -> 1 khối gạch nhựa.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật các tệp khối trong crates/pumpkin-core/src/block/blocks/coral/, ire/, sculk/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_marine_corals_fires_and_sculk_parity_gap504.
+  - **Unit Tests**: Vượt qua 100% 	est_marine_corals_fires_and_sculk_parity_gap504.

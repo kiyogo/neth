@@ -4,11 +4,13 @@ use pumpkin_data::{
 use pumpkin_world::world::BlockFlags;
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PlacedArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
+    OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
     blocks::coral::{is_dead_coral, scan_for_water, try_schedule_die_tick},
 };
+
 pub struct CoralPlantBlock;
+
 impl BlockMetadata for CoralPlantBlock {
     fn ids() -> Box<[BlockId]> {
         Box::new([
@@ -25,6 +27,7 @@ impl BlockMetadata for CoralPlantBlock {
         ])
     }
 }
+
 pub type CoralPlantLikeProperties = MangroveRootsLikeProperties;
 
 impl BlockBehaviour for CoralPlantBlock {
@@ -33,13 +36,18 @@ impl BlockBehaviour for CoralPlantBlock {
         props.waterlogged = args.replacing.water_source();
         props.to_state_id(args.block)
     }
+
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            if !scan_for_water(args.world, args.position) && !is_dead_coral(args.block) {
-                try_schedule_die_tick(args.block, args.world, args.position);
-            }
+        if !scan_for_water(args.world, args.position) && !is_dead_coral(args.block) {
+            try_schedule_die_tick(args.block, args.world, args.position);
         }
+        args.world.update_neighbors(args.position, None);
     }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
         if !scan_for_water(args.world, args.position) && !is_dead_coral(args.block) {
             let current_state = args.world.get_block_state(args.position);
@@ -51,6 +59,7 @@ impl BlockBehaviour for CoralPlantBlock {
                 .set_block_state(args.position, dead_block_state_id, BlockFlags::NOTIFY_ALL);
         }
     }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let support_block = args.block_accessor.get_block_state(&args.position.down());
         if support_block.is_center_solid(BlockDirection::Up) {
@@ -69,9 +78,13 @@ impl BlockBehaviour for CoralPlantBlock {
                 return BlockStateId::AIR;
             }
         }
+        if !scan_for_water(args.world, args.position) && !is_dead_coral(args.block) {
+            try_schedule_die_tick(args.block, args.world, args.position);
+        }
         args.state_id
     }
 }
+
 const fn get_dead_type(id: BlockId) -> Option<BlockId> {
     match id {
         BlockId::BRAIN_CORAL => Some(BlockId::DEAD_BRAIN_CORAL),

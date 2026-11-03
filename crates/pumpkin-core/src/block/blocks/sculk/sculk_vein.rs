@@ -1,6 +1,7 @@
 use crate::block::{
-    BlockActionResult, BlockBehaviour, BlockIsReplacing, BlockMetadata, BonemealArgs,
-    CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, UseWithItemArgs,
+    BlockActionResult, BlockBehaviour, BlockIsReplacing, BlockMetadata, BonemealArgs, BrokenArgs,
+    CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs,
+    UseWithItemArgs,
 };
 use pumpkin_data::block_properties::GlowLichenLikeProperties;
 use pumpkin_data::fluid::Fluid;
@@ -68,6 +69,14 @@ impl BlockMetadata for MultifaceBlock {
 }
 
 impl BlockBehaviour for MultifaceBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if let BlockIsReplacing::Itself(state_id) = args.replacing {
             let (Some(direction), _) = get_attach_direction(

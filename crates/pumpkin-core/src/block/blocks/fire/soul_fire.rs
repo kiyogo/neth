@@ -3,15 +3,19 @@ use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, tag};
 use pumpkin_macros::pumpkin_block;
 
-use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs};
+use crate::block::{
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs,
+    PlacedArgs,
+};
 
 use super::FireBlockBase;
-use crate::block::OnEntityCollisionArgs;
 
 #[pumpkin_block("minecraft:soul_fire")]
 pub struct SoulFireBlock;
 
 impl SoulFireBlock {
+    pub const DAMAGE: f32 = 2.0;
+
     #[must_use]
     pub fn is_soul_base(block: &Block) -> bool {
         block.has_tag(&tag::Block::MINECRAFT_SOUL_FIRE_BASE_BLOCKS)
@@ -19,6 +23,10 @@ impl SoulFireBlock {
 }
 
 impl BlockBehaviour for SoulFireBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
         FireBlockBase::apply_fire_collision(&args, true);
     }
@@ -39,8 +47,7 @@ impl BlockBehaviour for SoulFireBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        {
-            FireBlockBase::broken(args.world, *args.position);
-        }
+        FireBlockBase::broken(args.world, *args.position);
+        args.world.update_neighbors(args.position, None);
     }
 }

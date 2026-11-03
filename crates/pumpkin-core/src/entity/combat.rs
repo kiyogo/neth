@@ -34910,4 +34910,31 @@ mod tests {
         // 7. Copper Golem Statue Parity (CopperGolemStatueBlock.java)
         assert_eq!(CopperGolemStatueBlock::NUM_POSES, 4);
     }
+    #[test]
+    fn test_marine_corals_fires_and_sculk_parity_gap504() {
+        use crate::block::blocks::coral::coral_block::CoralBlock;
+        use crate::block::blocks::fire::fire::FireBlock;
+        use crate::block::blocks::fire::soul_fire::SoulFireBlock;
+        use crate::block::blocks::sculk::sculk_block::SculkBlock;
+        use crate::block::blocks::sculk::sculk_vein::MultifaceBlock;
+
+        // 1. Coral Parity (CoralBlock.java / BaseCoralPlantTypeBlock.java)
+        assert_eq!(CoralBlock::CORAL_TYPES_COUNT, 5);
+        assert_eq!(CoralBlock::MIN_DECAY_TICKS, 60);
+        assert_eq!(CoralBlock::MAX_DECAY_TICKS, 100);
+
+        // 2. Fire & Soul Fire Parity (FireBlock.java / SoulFireBlock.java)
+        assert_eq!(FireBlock::MAX_AGE, 15);
+        assert_eq!(SoulFireBlock::DAMAGE, 2.0);
+
+        // 3. Sculk Parity (SculkBlock.java)
+        assert_eq!(SculkBlock::XP_AMOUNT, 1);
+        assert_eq!(SculkBlock::GROWTH_INHIBITOR_RANGE, 4);
+
+        // 4. Multiface Parity (MultifaceBlock.java)
+        assert!((MultifaceBlock::THICKNESS - (1.0 / 16.0)).abs() < 1e-6);
+        assert_eq!(MultifaceBlock::COOKING_TIME, 200);
+        assert_eq!(MultifaceBlock::BLOCK_CRAFT_COUNT, 9);
+        assert_eq!(MultifaceBlock::BRICKS_CRAFT_COUNT, 4);
+    }
 }

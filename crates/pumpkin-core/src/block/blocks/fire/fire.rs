@@ -29,6 +29,8 @@ use super::FireBlockBase;
 pub struct FireBlock;
 
 impl FireBlock {
+    pub const MAX_AGE: u8 = 15;
+
     #[must_use]
     pub fn get_fire_tick_delay() -> i32 {
         30 + rand::rng().random_range(0..10)
@@ -202,6 +204,8 @@ impl BlockBehaviour for FireBlock {
             Self::get_fire_tick_delay() as u32,
             TickPriority::Normal,
         );
+
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
@@ -454,8 +458,7 @@ impl BlockBehaviour for FireBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        {
-            FireBlockBase::broken(args.world, *args.position);
-        }
+        FireBlockBase::broken(args.world, *args.position);
+        args.world.update_neighbors(args.position, None);
     }
 }

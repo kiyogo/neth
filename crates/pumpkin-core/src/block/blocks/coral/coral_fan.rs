@@ -1,7 +1,7 @@
 use crate::{
     block::{
         BlockBehaviour, BlockIsReplacing, BlockMetadata, CanPlaceAtArgs,
-        GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
+        BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
         blocks::coral::{is_dead_coral, scan_for_water, try_schedule_die_tick},
     },
     entity::EntityBase,
@@ -100,11 +100,14 @@ impl BlockBehaviour for CoralFanBlock {
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            if !scan_for_water(args.world, args.position) {
-                try_schedule_die_tick(args.block, args.world, args.position);
-            }
+        if !scan_for_water(args.world, args.position) {
+            try_schedule_die_tick(args.block, args.world, args.position);
         }
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
