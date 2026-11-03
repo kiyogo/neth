@@ -10819,6 +10819,24 @@ pub fn calculate_cauldron_comparator_output(block_type: &str, level: u8) -> u8 {
     }
 }
 
+/// Evaluates flower pot potting eligibility and plant name resolution,
+/// mirroring vanilla `FlowerPotBlock.java:31-39, 56-73, 76-91`:
+#[must_use]
+pub fn can_flower_pot_accept_item(item_id: u16, is_pot_empty: bool) -> bool {
+    let potted_block_id = pumpkin_data::flower_pot_transformations::get_potted_item(item_id);
+    is_pot_empty && potted_block_id != pumpkin_data::BlockId::AIR
+}
+
+#[must_use]
+pub fn get_plant_name_from_potted_name(potted_block_name: &str) -> Option<&str> {
+    let plant_name = potted_block_name.strip_prefix("potted_")?;
+    Some(match plant_name {
+        "azalea_bush" => "azalea",
+        "flowering_azalea_bush" => "flowering_azalea",
+        other => other,
+    })
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31153,5 +31171,40 @@ mod tests {
         assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 1), 1);
         assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 2), 2);
         assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 3), 3);
+    }
+
+    #[test]
+    fn test_flower_pot_potting_empty_and_plant_extraction_parity_gap457() {
+        use pumpkin_data::item::Item;
+        use pumpkin_data::Block;
+        use crate::block::blocks::flower_pots::get_plant_item_from_potted_block;
+
+        // 1. Pot acceptance rules (FlowerPotBlock.java:56-73)
+        // Dandelion (Item id 77) can be potted into an empty pot
+        assert!(can_flower_pot_accept_item(77, true));
+        // But rejected if pot is already occupied
+        assert!(!can_flower_pot_accept_item(77, false));
+        // Non-pottable item (e.g. stick or diamond) cannot be potted
+        assert!(!can_flower_pot_accept_item(Item::STICK.id, true));
+        assert!(!can_flower_pot_accept_item(Item::DIAMOND.id, true));
+
+        // 2. Plant name and item resolution from potted blocks (FlowerPotBlock.java:83-86)
+        assert_eq!(get_plant_name_from_potted_name("potted_poppy"), Some("poppy"));
+        assert_eq!(get_plant_name_from_potted_name("potted_cactus"), Some("cactus"));
+        assert_eq!(get_plant_name_from_potted_name("potted_bamboo"), Some("bamboo"));
+        assert_eq!(get_plant_name_from_potted_name("potted_azalea_bush"), Some("azalea"));
+        assert_eq!(get_plant_name_from_potted_name("potted_flowering_azalea_bush"), Some("flowering_azalea"));
+        assert_eq!(get_plant_name_from_potted_name("flower_pot"), None);
+
+        // Verify potted blocks resolve to valid static Item references
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_POPPY), Some(&Item::POPPY));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_DANDELION), Some(&Item::DANDELION));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_CACTUS), Some(&Item::CACTUS));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_BAMBOO), Some(&Item::BAMBOO));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_AZALEA_BUSH), Some(&Item::AZALEA));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_FLOWERING_AZALEA_BUSH), Some(&Item::FLOWERING_AZALEA));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_WARPED_FUNGUS), Some(&Item::WARPED_FUNGUS));
+        assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_CRIMSON_FUNGUS), Some(&Item::CRIMSON_FUNGUS));
+        assert_eq!(get_plant_item_from_potted_block(&Block::FLOWER_POT), None);
     }
 }

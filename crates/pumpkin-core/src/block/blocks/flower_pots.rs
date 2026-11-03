@@ -1,47 +1,102 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, PathComputationType, RandomTickArgs, UseWithItemArgs};
+use crate::block::{
+    BlockBehaviour, NormalUseArgs, PathComputationType, RandomTickArgs, UseWithItemArgs,
+};
 use pumpkin_data::flower_pot_transformations::get_potted_item;
+use pumpkin_data::game_event::GameEvent;
+use pumpkin_data::item::Item;
+use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::{Block, BlockId, BlockState};
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_world::world::BlockFlags;
 
+#[must_use]
+pub fn get_plant_item_from_potted_block(block: &Block) -> Option<&'static Item> {
+    let plant_name = block.name.strip_prefix("potted_")?;
+    let plant_name = match plant_name {
+        "azalea_bush" => "azalea",
+        "flowering_azalea_bush" => "flowering_azalea",
+        other => other,
+    };
+    let item_key = format!("minecraft:{plant_name}");
+    Item::from_registry_key(&item_key)
+}
+
 #[pumpkin_block_from_tag("minecraft:flower_pots")]
 pub struct FlowerPotBlock;
 
-impl BlockBehaviour for FlowerPotBlock {
-    fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
-        {
-            let item = args.item_stack.item;
-            //Place the flower inside the pot
-            let potted_block_id = get_potted_item(item.id);
-            if args.block.eq(&Block::FLOWER_POT) {
-                if potted_block_id != BlockId::AIR {
-                    args.world.set_block_state(
-                        args.position,
-                        Block::from_id(potted_block_id).default_state.id,
-                        BlockFlags::NOTIFY_ALL,
-                    );
-                    args.player.increment_stat(
-                        pumpkin_data::statistic::StatisticCategory::Custom,
-                        pumpkin_data::statistic::CustomStatistic::PotFlower as i32,
-                        1,
-                    );
-                }
-                return BlockActionResult::Success;
-            } else if potted_block_id != BlockId::AIR {
-                //if the player have an item that can be potted in his hand, nothing happens
-                return BlockActionResult::Consume;
-            }
+impl FlowerPotBlock {
+    #[must_use]
+    pub fn is_empty(block: &Block) -> bool {
+        block == &Block::FLOWER_POT
+    }
 
-            //get the flower + empty the pot
-            args.world.set_block_state(
-                args.position,
-                Block::FLOWER_POT.default_state.id,
-                BlockFlags::NOTIFY_ALL,
-            );
-            BlockActionResult::Success
+    #[must_use]
+    pub fn can_be_potted(item_id: u16) -> bool {
+        get_potted_item(item_id) != BlockId::AIR
+    }
+}
+
+impl BlockBehaviour for FlowerPotBlock {
+    fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
+        if args.block == &Block::FLOWER_POT {
+            return BlockActionResult::Consume;
         }
+
+        if let Some(plant_item) = get_plant_item_from_potted_block(args.block) {
+            let mut plant_stack = ItemStack::new(1, plant_item);
+            if !args.player.inventory.insert_stack_anywhere(&mut plant_stack)
+                && !plant_stack.is_empty()
+            {
+                args.world
+                    .drop_stack(&args.player.position().to_block_pos(), plant_stack);
+            }
+        }
+
+        args.world.set_block_state(
+            args.position,
+            Block::FLOWER_POT.default_state.id,
+            BlockFlags::NOTIFY_ALL,
+        );
+        args.world.emit_game_event(
+            GameEvent::BlockChange.name(),
+            args.position.to_centered_f64(),
+        );
+
+        BlockActionResult::Success
+    }
+
+    fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
+        let item = args.item_stack.item;
+        let potted_block_id = get_potted_item(item.id);
+
+        if potted_block_id == BlockId::AIR {
+            return BlockActionResult::PassToDefaultBlockAction;
+        }
+
+        if args.block != &Block::FLOWER_POT {
+            return BlockActionResult::Consume;
+        }
+
+        args.world.set_block_state(
+            args.position,
+            Block::from_id(potted_block_id).default_state.id,
+            BlockFlags::NOTIFY_ALL,
+        );
+        args.world.emit_game_event(
+            GameEvent::BlockChange.name(),
+            args.position.to_centered_f64(),
+        );
+        args.player.increment_stat(
+            pumpkin_data::statistic::StatisticCategory::Custom,
+            pumpkin_data::statistic::CustomStatistic::PotFlower as i32,
+            1,
+        );
+        args.item_stack
+            .decrement_unless_creative(args.player.gamemode.load(), 1);
+
+        BlockActionResult::Success
     }
 
     fn random_tick(&self, args: RandomTickArgs<'_>) {

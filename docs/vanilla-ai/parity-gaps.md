@@ -11817,6 +11817,37 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Thêm unit test `test_lectern_chiseled_bookshelf_and_cauldron_parity_gap456`.
   - **Unit Tests**: 4 lectern tests, 3 chiseled bookshelf tests, 2 cauldron tests đều passed 100%.
 
+### Gap 457: Flower Pot Empty Hand Extraction, Plant Item Recovery, Azalea Bush Special Case & Item Consumption Parity
+- **Cơ Chế Rút Cây Khỏi Chậu Hoa & Tiêu Hao Vật Phẩm Khi Trồng (Flower Pot Extraction & Item Consumption Parity)**:
+  - Vanilla `FlowerPotBlock.java:47-91`:
+    - Khi người chơi click chuột phải bằng tay không (hoặc vật phẩm không trồng được) vào chậu hoa đang chứa cây (`FlowerPotBlock.useWithoutItem`):
+      - Cây trồng bên trong được rút ra và hoàn trả vào túi đồ người chơi (`player.addItem(plant)`) hoặc rơi ra đất nếu túi đồ đầy (`player.drop(plant)`).
+      - Chậu hoa chuyển trạng thái về chậu rỗng `Blocks.FLOWER_POT`.
+      - Phát sinh sự kiện rung động âm thanh `GameEvent::BlockChange`.
+      - Trả về `InteractionResult.SUCCESS`.
+    - Khi người chơi click chuột phải vào chậu hoa rỗng bằng tay không (`useWithoutItem`), Vanilla trả về `InteractionResult.CONSUME` để ngăn không đặt block phụ.
+    - Khi người chơi click chuột phải bằng hoa/cây hợp lệ vào chậu hoa rỗng (`FlowerPotBlock.useItemOn`):
+      - Đặt cây vào chậu (`level.setBlockAndUpdate(pos, newContents)`).
+      - Phát sinh sự kiện `GameEvent::BlockChange`.
+      - Tăng thống kê `Stats.POT_FLOWER`.
+      - Tiêu hao 1 vật phẩm trên tay (`itemStack.consume(1, player)`). Neth trước đây không trừ stack dẫn đến bug nhân bản vật phẩm cây/hoa vô hạn!
+      - Nếu chậu đã có cây, click bằng hoa khác trả về `InteractionResult.CONSUME`.
+- **Ánh Xạ Tên Khối Chậu Đỗ Quyên Sang Item Đỗ Quyên (Azalea Bush Block-to-Item Mapping Parity)**:
+  - Vanilla `Blocks.java:5438-5440` & `Items.java:1250-1251`:
+    - Khối chậu đỗ quyên có tên là `potted_azalea_bush` và `potted_flowering_azalea_bush`, nhưng vật phẩm trong kho đồ là `minecraft:azalea` và `minecraft:flowering_azalea` (không có hậu tố `_bush`).
+    - Neth đã cài đặt hàm `get_plant_item_from_potted_block` và xử lý chuẩn xác ánh xạ ngoại lệ này, đảm bảo trả đúng item khi rút cây ra khỏi chậu đỗ quyên.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/flower_pots.rs`:
+    - Cài đặt `get_plant_item_from_potted_block` với xử lý trường hợp ngoại lệ đỗ quyên (`azalea_bush` -> `azalea`, `flowering_azalea_bush` -> `flowering_azalea`).
+    - Bổ sung `normal_use` cho `FlowerPotBlock`: hoàn trả cây vào inventory người chơi (hoặc drop stack nếu đầy), reset chậu về `FLOWER_POT`, phát sinh `GameEvent::BlockChange`.
+    - Sửa `use_with_item`: trừ 1 item khỏi stack khi trồng (`decrement_unless_creative`), phát sinh `GameEvent::BlockChange`, tăng thống kê `PotFlower`.
+    - Trả về `BlockActionResult::Consume` khi click vào chậu rỗng bằng tay không hoặc click vào chậu đã có cây.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hàm `can_flower_pot_accept_item`, `get_plant_name_from_potted_name`.
+    - Bổ sung unit test `test_flower_pot_potting_empty_and_plant_extraction_parity_gap457`.
+  - **Unit Tests**: Test kiểm tra quy tắc chấp nhận chậu hoa, trích xuất cây, và ánh xạ ngoại lệ azalea bush đều vượt qua 100%.
+
+
 
 
 
