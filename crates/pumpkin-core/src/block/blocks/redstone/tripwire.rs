@@ -116,6 +116,7 @@ impl BlockBehaviour for TripwireBlock {
             let state_id = props.to_state_id(args.block);
             Self::update(args.world, args.position, state_id);
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

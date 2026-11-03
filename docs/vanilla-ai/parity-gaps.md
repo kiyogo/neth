@@ -13683,3 +13683,55 @@ et/minecraft/world/level/block/VegetationBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_plants_crops_and_vegetation_parity_gap505.
   - **Unit Tests**: Vượt qua 100% 	est_plants_crops_and_vegetation_parity_gap505.
+
+
+### Gap 506: Redstone, Railway Network & Signal Devices Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/RailBlock.java
+  - 
+et/minecraft/world/level/block/PoweredRailBlock.java
+  - 
+et/minecraft/world/level/block/DetectorRailBlock.java
+  - 
+et/minecraft/world/level/block/ButtonBlock.java
+  - 
+et/minecraft/world/level/block/PressurePlateBlock.java
+  - 
+et/minecraft/world/level/block/WeightedPressurePlateBlock.java
+  - 
+et/minecraft/world/level/block/LeverBlock.java
+  - 
+et/minecraft/world/level/block/TargetBlock.java
+  - 
+et/minecraft/world/level/block/LightningRodBlock.java
+  - 
+et/minecraft/world/level/block/CrafterBlock.java
+  - 
+et/minecraft/world/level/block/CopperBulbBlock.java
+  - 
+et/minecraft/world/level/block/BellBlock.java
+  - 
+et/minecraft/world/level/block/TripWireBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Railway Network Devices Neighbor Updates (RailBlock.java, PoweredRailBlock.java)**:
+    - Bổ sung roken kích hoạt update_neighbors(pos, None) cho: RailBlock, PoweredRailBlock, và ActivatorRailBlock. Đảm bảo khi đường ray bị phá vỡ, các ray lân cận (flanking rails) và xe mỏ (minecarts) lập tức tái tính toán độ dốc, hình dạng rẽ và trạng thái cấp điện.
+    - Đồng bộ độ cao đường ray chuẩn vanilla: ray phẳng FLAT_HEIGHT = 0.125 (2/16), ray dốc SLOPE_HEIGHT = 0.5 (8/16).
+    - Đồng bộ khoảng cách truyền điện dọc ray dẫn động và kích hoạt SEARCH_DISTANCE = 8 khối.
+    - Ray cảm biến (Detector Rail): chu kỳ kiểm tra va chạm xe mỏ PRESSED_CHECK_PERIOD = 20 ticks, mức tín hiệu phát POWER_ON = 15, POWER_OFF = 0, hộp tìm kiếm thực thể SEARCH_BOX_INSET = 0.2, SEARCH_BOX_HEIGHT = 0.8.
+  - **Signal Triggers, Buttons & Plates Parity (ButtonBlock.java, PressurePlateBlock.java, LeverBlock.java)**:
+    - Nút bấm: thời gian duy trì nút đá STONE_BUTTON_TICKS = 20 ticks (1s), nút gỗ WOODEN_BUTTON_TICKS = 30 ticks (1.5s), mức năng lượng 15 / 0.
+    - Bàn dẫm có trọng số: bàn dẫm vàng nhẹ LIGHT_MAX_WEIGHT = 15 thực thể (1 thực thể = 1 mức tín hiệu), bàn dẫm sắt nặng HEAVY_MAX_WEIGHT = 150 thực thể, thời gian hồi PRESSED_TICKS = 10 ticks. Bàn dẫm thường PRESSED_TICKS = 20 ticks.
+    - Cần gạt: mức năng lượng POWER_ON = 15, POWER_OFF = 0.
+    - Chuông (Bell): bổ sung update_neighbors(pos, None) trong placed kích hoạt cập nhật các khối lân cận khi treo chuông.
+    - Dây bẫy (Tripwire): bổ sung update_neighbors(pos, None) trong roken đảm bảo móc bẫy và dây bẫy liền kề lập tức phát hiện dây bị cắt.
+  - **Target, Lightning Rod, Crafter & Copper Bulb Parity (TargetBlock.java, CrafterBlock.java, CopperBulbBlock.java)**:
+    - Bia bắn (Target): thời gian kích hoạt mũi tên ACTIVATION_TICKS_ARROWS = 20, vật thể khác ACTIVATION_TICKS_OTHER = 8, mức năng lượng tối đa 15, khoảng cách trúng tâm cự ly xa BULLSEYE_MIN_DISTANCE = 30.0 khối.
+    - Cột thu lôi: thời gian kích hoạt xung ACTIVATION_TICKS = 8, tầm thu sét RANGE = 128 khối, sự kiện sét đánh EVENT_LIGHTNING_STRIKE = 3002.
+    - Khối chế tạo (Crafter): độ trễ nhịp chế tạo CRAFTING_TICK_DELAY = 4 ticks, kích thước kho đồ 9 ô (CONTAINER_SIZE = 9), mức tín hiệu so sánh tối đa 9 (MAX_COMPARATOR_OUTPUT = 9).
+    - Bóng đèn đồng (Copper Bulb): tín hiệu comparator khi sáng 15 (COMPARATOR_SIGNAL_LIT = 15), khi tắt 0 (COMPARATOR_SIGNAL_UNLIT = 0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật các tệp khối trong crates/pumpkin-core/src/block/blocks/redstone/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_redstone_rails_and_signal_devices_parity_gap506.
+  - **Unit Tests**: Vượt qua 100% 	est_redstone_rails_and_signal_devices_parity_gap506.

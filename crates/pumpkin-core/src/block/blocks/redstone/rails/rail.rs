@@ -8,7 +8,7 @@ use crate::block::BlockBehaviour;
 use crate::block::CanPlaceAtArgs;
 use crate::block::OnNeighborUpdateArgs;
 use crate::block::OnPlaceArgs;
-use crate::block::PlacedArgs;
+use crate::block::{BrokenArgs, PlacedArgs};
 
 use super::StraightRailShapeExt;
 use super::common::{can_place_rail_at, rail_placement_is_valid, update_flanking_rails_shape};
@@ -98,6 +98,10 @@ impl BlockBehaviour for RailBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         update_flanking_rails_shape(args.world, args.block, args.state_id, args.position);
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

@@ -8,7 +8,7 @@ use crate::block::CanPlaceAtArgs;
 use crate::block::OnNeighborUpdateArgs;
 use crate::block::OnPlaceArgs;
 use crate::block::OnStateReplacedArgs;
-use crate::block::PlacedArgs;
+use crate::block::{BrokenArgs, PlacedArgs};
 use crate::entity::EntityBase;
 use crate::world::World;
 use pumpkin_data::Block;
@@ -24,7 +24,14 @@ use super::common::{
 #[pumpkin_block("minecraft:powered_rail")]
 pub struct PoweredRailBlock;
 
+impl PoweredRailBlock {
+    pub const SEARCH_DISTANCE: i32 = 8;
+}
+
 impl BlockBehaviour for PoweredRailBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut rail_props = RailProperties::default(args.block);
         let player_facing = args.player.get_entity().get_horizontal_facing();

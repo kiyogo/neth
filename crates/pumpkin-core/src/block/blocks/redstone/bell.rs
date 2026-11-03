@@ -173,6 +173,7 @@ impl BlockBehaviour for BellBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         args.world
             .add_block_entity(Arc::new(BellBlockEntity::new(*args.position)));
+        args.world.update_neighbors(args.position, None);
     }
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         let state = args.world.get_block_state(args.position);

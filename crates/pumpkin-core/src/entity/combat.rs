@@ -34989,4 +34989,56 @@ mod tests {
         assert_eq!(BigDripleafBlock::TILT_RESET_DELAY, 100);
         assert_eq!(SeaPickleBlock::MAX_PICKLES, 4);
     }
+    #[test]
+    fn test_redstone_rails_and_signal_devices_parity_gap506() {
+        use crate::block::blocks::redstone::rails::rail::RailBlock;
+        use crate::block::blocks::redstone::rails::powered_rail::PoweredRailBlock;
+        use crate::block::blocks::redstone::rails::activator_rail::ActivatorRailBlock;
+        use crate::block::blocks::redstone::rails::detector_rail::DetectorRailBlock;
+        use crate::block::blocks::redstone::buttons::ButtonBlock;
+        use crate::block::blocks::redstone::pressure_plate::plate::PressurePlateBlock;
+        use crate::block::blocks::redstone::pressure_plate::weighted::WeightedPressurePlateBlock;
+        use crate::block::blocks::redstone::lever::LeverBlock;
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+
+        // 1. Railway Network Devices Parity (RailBlock.java, PoweredRailBlock.java, DetectorRailBlock.java)
+        assert_eq!(RailBlock::FLAT_HEIGHT, 0.125);
+        assert_eq!(RailBlock::SLOPE_HEIGHT, 0.5);
+        assert_eq!(PoweredRailBlock::SEARCH_DISTANCE, 8);
+        assert_eq!(ActivatorRailBlock::SEARCH_DISTANCE, 8);
+        assert_eq!(DetectorRailBlock::PRESSED_CHECK_PERIOD, 20);
+        assert_eq!(DetectorRailBlock::POWER_ON, 15);
+        assert_eq!(DetectorRailBlock::POWER_OFF, 0);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_INSET, 0.2);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_HEIGHT, 0.8);
+
+        // 2. Redstone Actuators, Buttons & Weighted Plates Parity (ButtonBlock.java, PressurePlateBlock.java, LeverBlock.java)
+        assert_eq!(ButtonBlock::STONE_BUTTON_TICKS, 20);
+        assert_eq!(ButtonBlock::WOODEN_BUTTON_TICKS, 30);
+        assert_eq!(ButtonBlock::POWER_ON, 15);
+        assert_eq!(ButtonBlock::POWER_OFF, 0);
+        assert_eq!(PressurePlateBlock::PRESSED_TICKS, 20);
+        assert_eq!(WeightedPressurePlateBlock::LIGHT_MAX_WEIGHT, 15);
+        assert_eq!(WeightedPressurePlateBlock::HEAVY_MAX_WEIGHT, 150);
+        assert_eq!(WeightedPressurePlateBlock::PRESSED_TICKS, 10);
+        assert_eq!(LeverBlock::POWER_ON, 15);
+        assert_eq!(LeverBlock::POWER_OFF, 0);
+
+        // 3. Target, Lightning Rod, Crafter & Copper Bulb Parity (TargetBlock.java, LightningRodBlock.java, CrafterBlock.java, CopperBulbBlock.java)
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+    }
 }
