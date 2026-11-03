@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::block::entities::calibrated_sculk_sensor::CalibratedSculkSensorBlockEntity;
 use crate::block::entities::sculk_sensor::SculkSensorBlockEntity;
 use crate::block::{
-    BlockBehaviour, BlockMetadata, EmitsRedstonePowerArgs, GetComparatorOutputArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, EmitsRedstonePowerArgs, GetComparatorOutputArgs,
     GetRedstonePowerArgs, OnEntityStepArgs, OnPlaceArgs, OnScheduledTickArgs, PathComputationType,
     PlacedArgs,
 };
@@ -270,6 +270,17 @@ impl BlockBehaviour for SculkSensorBlock {
             let entity = SculkSensorBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let phase = sculk_sensor_phase(args.block, args.state.id);
+        args.world.remove_block_entity(args.position);
+        if phase == SculkSensorPhase::Active {
+            let below = args.position.down();
+            args.world.update_neighbors(&below, None);
+        }
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {

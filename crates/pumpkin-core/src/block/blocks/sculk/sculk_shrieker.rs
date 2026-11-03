@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 
 use crate::block::entities::sculk_shrieker::SculkShriekerBlockEntity;
 use crate::block::{
-    BlockBehaviour, BlockMetadata, OnEntityStepArgs, OnPlaceArgs, OnScheduledTickArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, OnEntityStepArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
 };
 use crate::entity::Entity;
 use crate::entity::mob::warden::WardenEntity;
@@ -188,6 +188,16 @@ impl SculkShriekerBlock {
 }
 
 impl BlockBehaviour for SculkShriekerBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        let be = crate::block::entities::sculk_shrieker::SculkShriekerBlockEntity::new(*args.position);
+        args.world.add_block_entity(Arc::new(be));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = SculkShriekerLikeProperties::default(args.block);
         props.shrieking = false;

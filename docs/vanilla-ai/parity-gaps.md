@@ -12178,3 +12178,38 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_observer_target_and_lightning_rod_parity_gap468.
   - **Unit Tests**: Vượt qua 100% 	est_observer_target_and_lightning_rod_parity_gap468.
+
+
+### Gap 469: Sculk Sensor, Calibrated Sculk Sensor, Sculk Catalyst & Sculk Shrieker Broken Destruction, Vibration Frequency & Listen Delay Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/SculkSensorBlock.java`
+  - `net/minecraft/world/level/block/CalibratedSculkSensorBlock.java`
+  - `net/minecraft/world/level/block/SculkCatalystBlock.java`
+  - `net/minecraft/world/level/block/SculkShriekerBlock.java`
+  - `net/minecraft/world/level/gameevent/vibrations/VibrationSystem.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Sculk Sensor & Calibrated Sculk Sensor Active Ticks & Listener Range (SculkSensorBlock.java, CalibratedSculkSensorBlock.java)**:
+    - Cảm biến thường (Sculk Sensor): `ACTIVE_TICKS_REGULAR = 30` (1.5 giây), bán kính lắng nghe `LISTENER_RANGE_REGULAR = 8` blocks.
+    - Cảm biến hiệu chuẩn (Calibrated Sculk Sensor): `ACTIVE_TICKS_CALIBRATED = 10` (0.5 giây), bán kính lắng nghe `LISTENER_RANGE_CALIBRATED = 16` blocks.
+    - Thời gian hồi chiêu `COOLDOWN_TICKS = 10` (0.5 giây).
+    - Công thức suy giảm cường độ tín hiệu theo khoảng cách: `15 - floor((15.0 / listenerRadius) * distance)`, giới hạn trong đoạn [1, 15].
+    - Tần số rung động 15 mức phân định chính xác theo `VibrationSystem.java:53-100`.
+    - Khi bị phá hủy (`broken`), dỡ bỏ block entity, ngắt điện xuống phía dưới/phía trước nếu đang phát điện và gọi `update_neighbour_for_output_signal` cùng `update_neighbors`.
+  - **Sculk Catalyst Pulse & Charge Parity (SculkCatalystBlock.java:23-28)**:
+    - `PULSE_TICKS = 8`, `LISTENER_RADIUS = 8`, `XP_REWARD = 5`, `MAX_GROWTH_RATE_RADIUS = 24`, `MAX_CHARGE = 1000`.
+    - Bổ sung `broken` dỡ bỏ block entity và thông báo khối lân cận `update_neighbors`.
+  - **Sculk Shrieker Shriek, Warning & Summoning Parity (SculkShriekerBlock.java:31-38, 142)**:
+    - `WARNING_SOUND_RADIUS = 10`, `WARDEN_SPAWN_ATTEMPTS = 20`, `WARDEN_SPAWN_RANGE_XZ = 5`, `WARDEN_SPAWN_RANGE_Y = 6`.
+    - `DARKNESS_RADIUS = 40.0`, `SHRIEKING_TICKS = 90`, `EVENT_SCULK_SHRIEK = 3007`.
+    - Bổ sung `placed` tạo `SculkShriekerBlockEntity`, và `broken` xóa block entity cùng `update_neighbors`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs`:
+    - Cập nhật `broken` xóa block entity, ngắt tín hiệu redstone và gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/sculk/sculk_catalyst.rs`:
+    - Cập nhật `broken` xóa block entity và gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/sculk/sculk_shrieker.rs`:
+    - Bổ sung `placed` tạo `SculkShriekerBlockEntity`, bổ sung `broken` xóa block entity và gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_sculk_sensor_catalyst_and_shrieker_parity_gap469`.
+  - **Unit Tests**: Vượt qua 100% `test_sculk_sensor_catalyst_and_shrieker_parity_gap469`.

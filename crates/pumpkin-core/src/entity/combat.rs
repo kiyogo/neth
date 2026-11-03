@@ -32225,4 +32225,132 @@ mod tests {
         assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::Up), 1);
         assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::South), 2);
     }
+
+    #[test]
+    fn test_sculk_sensor_catalyst_and_shrieker_parity_gap469() {
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use crate::block::blocks::sculk::sculk_catalyst::SculkCatalystBlock;
+        use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;
+        use pumpkin_data::block_properties::SculkSensorPhase;
+        use pumpkin_data::BlockId;
+
+        // 1. Sculk Sensor & Calibrated Sculk Sensor Parity (SculkSensorBlock.java, CalibratedSculkSensorBlock.java)
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+
+        assert_eq!(
+            SculkSensorBlock::get_active_ticks(BlockId::SCULK_SENSOR),
+            30
+        );
+        assert_eq!(
+            SculkSensorBlock::get_active_ticks(BlockId::CALIBRATED_SCULK_SENSOR),
+            10
+        );
+        assert_eq!(
+            SculkSensorBlock::get_listener_range(BlockId::SCULK_SENSOR),
+            8
+        );
+        assert_eq!(
+            SculkSensorBlock::get_listener_range(BlockId::CALIBRATED_SCULK_SENSOR),
+            16
+        );
+
+        // Distance attenuation: 15 - floor((15.0 / listenerRadius) * distance)
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 8), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(4.0, 8), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 8), 1);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 16), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 16), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(16.0, 16), 1);
+
+        // Vibration frequencies 1-15 (VibrationSystem.java:53-100)
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("step"), 1);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("flap"), 1);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("projectile_land"), 2);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("splash"), 2);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("item_interact_finish"), 3);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("projectile_shoot"), 3);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_action"), 4);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("elytra_glide"), 4);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_dismount"), 5);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("equip"), 5);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_interact"), 6);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("shear"), 6);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_damage"), 7);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("drink"), 8);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("eat"), 8);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("container_close"), 9);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_close"), 9);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("container_open"), 10);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_open"), 10);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_change"), 11);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_destroy"), 12);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("fluid_pickup"), 12);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("block_place"), 13);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("fluid_place"), 13);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_place"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("lightning_strike"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("teleport"), 14);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("entity_die"), 15);
+        assert_eq!(SculkSensorBlock::get_vibration_frequency_for_event("explode"), 15);
+
+        // Comparator signal calculation
+        assert_eq!(
+            SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Active, 10),
+            10
+        );
+        assert_eq!(
+            SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Active, 20),
+            15
+        );
+        assert_eq!(
+            SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Cooldown, 10),
+            0
+        );
+        assert_eq!(
+            SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Inactive, 10),
+            0
+        );
+
+        // Phase transitions
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Active),
+            (SculkSensorPhase::Cooldown, 0, Some(10))
+        );
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Cooldown),
+            (SculkSensorPhase::Inactive, 0, None)
+        );
+        assert_eq!(
+            SculkSensorBlock::get_phase_transition_on_tick(SculkSensorPhase::Inactive),
+            (SculkSensorPhase::Inactive, 0, None)
+        );
+
+        // 2. Sculk Catalyst Parity (SculkCatalystBlock.java:23-28)
+        assert_eq!(SculkCatalystBlock::PULSE_TICKS, 8);
+        assert_eq!(SculkCatalystBlock::LISTENER_RADIUS, 8);
+        assert_eq!(SculkCatalystBlock::XP_REWARD, 5);
+        assert_eq!(SculkCatalystBlock::MAX_GROWTH_RATE_RADIUS, 24);
+        assert_eq!(SculkCatalystBlock::MAX_CHARGE, 1000);
+        assert_eq!(SculkCatalystBlock::MAX_CURSORS, 32);
+        assert_eq!(SculkCatalystBlock::SHRIEKER_PLACEMENT_RATE, 11);
+        assert_eq!(SculkCatalystBlock::MAX_CURSOR_DISTANCE, 1024);
+        assert_eq!(SculkCatalystBlock::DEFAULT_BLOOM, false);
+
+        assert_eq!(SculkCatalystBlock::clamp_charge(-10), 0);
+        assert_eq!(SculkCatalystBlock::clamp_charge(500), 500);
+        assert_eq!(SculkCatalystBlock::clamp_charge(1500), 1000);
+
+        // 3. Sculk Shrieker Parity (SculkShriekerBlock.java:31-38, 142)
+        assert_eq!(SculkShriekerBlock::WARNING_SOUND_RADIUS, 10);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_ATTEMPTS, 20);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_XZ, 5);
+        assert_eq!(SculkShriekerBlock::WARDEN_SPAWN_RANGE_Y, 6);
+        assert_eq!(SculkShriekerBlock::DARKNESS_RADIUS, 40.0);
+        assert_eq!(SculkShriekerBlock::SHRIEKING_TICKS, 90);
+        assert_eq!(SculkShriekerBlock::EVENT_SCULK_SHRIEK, 3007);
+    }
 }

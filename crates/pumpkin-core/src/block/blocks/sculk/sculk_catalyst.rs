@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::block::{BlockBehaviour, BlockMetadata, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs};
 use pumpkin_data::{
     BlockId, BlockStateId, block_properties::SculkCatalystLikeProperties,
     sound::{Sound, SoundCategory},
@@ -79,6 +79,11 @@ impl BlockBehaviour for SculkCatalystBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let be = crate::block::entities::sculk_catalyst::SculkCatalystBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(be));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
