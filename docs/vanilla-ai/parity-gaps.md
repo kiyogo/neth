@@ -11787,6 +11787,36 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_composter_levels_fermenting_protection_and_respawn_anchor_parity_gap455`.
   - **Unit Tests**: 5 composter tests và 5 respawn_anchor tests đều vượt qua 100%.
 
+### Gap 456: Lectern BlockChange GameEvent, Drop Offset, Chiseled Bookshelf Broken Drops, Neighbor Updates & Cauldron BlockChange Parity
+- **Sự Kiện GameEvent BlockChange Khi Đặt/Lấy Sách Bục Giảng (Lectern BlockChange GameEvent & Empty Interact Parity)**:
+  - Vanilla `LecternBlock.java:141-146, 223-234`:
+    - Khi sách được đặt vào hoặc lấy ra khỏi bục giảng (`Lectern`), Vanilla thực hiện `resetBookState` và phát sinh `GameEvent::BlockChange`.
+    - Khi người chơi click vào bục giảng trống không có sách (`useWithoutItem`), Vanilla trả về `InteractionResult.CONSUME` (ngăn chặn hành động đặt block hoặc tương tác khối khác), thay vì `Pass`.
+    - Khi bục giảng bị phá hủy có sách, block entity phải được xoá khỏi thế giới (`remove_block_entity`) và sách rơi ra với độ lệch chính xác: `xo = 0.25 * stepX, zo = 0.25 * stepZ` (`LecternBlockEntity.java:222-224`).
+- **Kệ Sách Điêu Khắc Rơi Vật Phẩm Khi Phá Hủy & Cập Nhật Khối Lân Cận (Chiseled Bookshelf Drops & Neighbor Updates Parity)**:
+  - Vanilla `ChiseledBookShelfBlock.java:160` & `ChiseledBookShelfBlockEntity.java:46-47`:
+    - Khi kệ sách điêu khắc bị phá hủy, tất cả các cuốn sách lưu trữ bên trong (0..6 cuốn) phải rơi ra ngoài thế giới (`ItemEntity`) và block entity được xoá khỏi thế giới. Neth trước đây chưa có hàm `broken` cho `ChiseledBookshelfBlock`.
+    - Khi thêm hoặc rút sách, block state phải được gọi với `BlockFlags::NOTIFY_ALL` và cập nhật hàng xóm (`world.update_neighbors`) để bộ so sánh (comparator) và observer phía sau kệ sách nhận được tín hiệu ngay lập tức. Neth trước đây chỉ dùng `NOTIFY_LISTENERS`.
+- **Vạc Nước Phát Sinh BlockChange GameEvent (Cauldron BlockChange GameEvent Parity)**:
+  - Vanilla `LayeredCauldronBlock.java:96, 104, 123` & `CauldronBlock.java:39, 42, 57, 62`:
+    - Mỗi lần thay đổi mức nước/dung nham/tuyết bột trong vạc (đổ/múc xô, đổ/múc chai, giặt hộp shulker, tẩy màu cờ, tẩy màu giáp da, dập lửa cho thực thể bị cháy), Vanilla đều phát sinh `GameEvent::BlockChange`.
+    - Neth đã chuyển toàn bộ việc chuyển đổi trạng thái vạc sang `update_cauldron_state` với `BlockFlags::NOTIFY_ALL` và `GameEvent::BlockChange`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Phát sinh `GameEvent::BlockChange` trong `set_has_book`.
+    - Trả về `BlockActionResult::Consume` khi click vào lectern không có sách.
+    - Xoá block entity khi phá hủy trong `broken` và kiểm tra `has_book` trong `get_comparator_output`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Thêm `broken` rơi tất cả các cuốn sách đang chứa và xoá block entity.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`:
+    - Dùng `BlockFlags::NOTIFY_ALL` và `world.update_neighbors(&self.position, None)` trong `update_state`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/cauldron.rs`:
+    - Chuyển mọi thao tác đổi trạng thái sang `update_cauldron_state` phát sinh `GameEvent::BlockChange` với `BlockFlags::NOTIFY_ALL`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Thêm hàm `calculate_lectern_comparator_signal`, `calculate_lectern_drop_offset`, `calculate_chiseled_bookshelf_hit_slot`, `calculate_cauldron_comparator_output`.
+    - Thêm unit test `test_lectern_chiseled_bookshelf_and_cauldron_parity_gap456`.
+  - **Unit Tests**: 4 lectern tests, 3 chiseled bookshelf tests, 2 cauldron tests đều passed 100%.
+
 
 
 

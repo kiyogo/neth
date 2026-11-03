@@ -5,6 +5,7 @@ use crate::block::{
     BlockBehaviour, BlockMetadata, GetComparatorOutputArgs, PathComputationType, UseWithItemArgs,
 };
 use pumpkin_data::block_properties::WaterCauldronLikeProperties;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -68,6 +69,15 @@ fn give_stack_or_drop(
     }
 }
 
+fn update_cauldron_state(
+    world: &Arc<crate::world::World>,
+    position: &pumpkin_util::math::position::BlockPos,
+    new_state_id: BlockStateId,
+) {
+    world.set_block_state(position, new_state_id, BlockFlags::NOTIFY_ALL);
+    world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
+}
+
 impl BlockBehaviour for CauldronBlock {
     #[allow(clippy::too_many_lines)]
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
@@ -90,8 +100,7 @@ impl BlockBehaviour for CauldronBlock {
                 let state_id = Block::WATER_CAULDRON
                     .from_properties(&[("level", "3")])
                     .to_state_id(&Block::WATER_CAULDRON);
-                args.world
-                    .set_block_state(args.position, state_id, BlockFlags::NOTIFY_ALL);
+                update_cauldron_state(args.world, args.position, state_id);
                 args.world.play_sound(
                     Sound::ItemBucketEmpty,
                     SoundCategory::Blocks,
@@ -106,10 +115,10 @@ impl BlockBehaviour for CauldronBlock {
                 );
                 return BlockActionResult::Success;
             } else if item_id == Item::LAVA_BUCKET.id {
-                args.world.set_block_state(
+                update_cauldron_state(
+                    args.world,
                     args.position,
                     Block::LAVA_CAULDRON.default_state.id,
-                    BlockFlags::NOTIFY_ALL,
                 );
                 args.world.play_sound(
                     Sound::ItemBucketEmptyLava,
@@ -128,8 +137,7 @@ impl BlockBehaviour for CauldronBlock {
                 let state_id = Block::POWDER_SNOW_CAULDRON
                     .from_properties(&[("level", "3")])
                     .to_state_id(&Block::POWDER_SNOW_CAULDRON);
-                args.world
-                    .set_block_state(args.position, state_id, BlockFlags::NOTIFY_ALL);
+                update_cauldron_state(args.world, args.position, state_id);
                 args.world.play_sound(
                     Sound::ItemBucketEmptyPowderSnow,
                     SoundCategory::Blocks,
@@ -147,8 +155,7 @@ impl BlockBehaviour for CauldronBlock {
                 let state_id = Block::WATER_CAULDRON
                     .from_properties(&[("level", "1")])
                     .to_state_id(&Block::WATER_CAULDRON);
-                args.world
-                    .set_block_state(args.position, state_id, BlockFlags::NOTIFY_ALL);
+                update_cauldron_state(args.world, args.position, state_id);
                 args.world.play_sound(
                     Sound::ItemBottleEmpty,
                     SoundCategory::Blocks,
@@ -191,10 +198,10 @@ impl BlockBehaviour for CauldronBlock {
             };
 
             if let Some(result_item) = filled_item {
-                args.world.set_block_state(
+                update_cauldron_state(
+                    args.world,
                     args.position,
                     Block::CAULDRON.default_state.id,
-                    BlockFlags::NOTIFY_ALL,
                 );
                 args.world
                     .play_sound(sound, SoundCategory::Blocks, &args.position.to_f64());
@@ -221,8 +228,7 @@ impl BlockBehaviour for CauldronBlock {
                     let new_state_id = Block::WATER_CAULDRON
                         .from_properties(&[("level", next_level_str)])
                         .to_state_id(&Block::WATER_CAULDRON);
-                    args.world
-                        .set_block_state(args.position, new_state_id, BlockFlags::NOTIFY_ALL);
+                    update_cauldron_state(args.world, args.position, new_state_id);
                     args.world.play_sound(
                         Sound::ItemBottleEmpty,
                         SoundCategory::Blocks,
@@ -248,16 +254,16 @@ impl BlockBehaviour for CauldronBlock {
                         let new_state_id = Block::WATER_CAULDRON
                             .from_properties(&[("level", next_level_str)])
                             .to_state_id(&Block::WATER_CAULDRON);
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             new_state_id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     } else {
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             Block::CAULDRON.default_state.id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     }
                     args.world.play_sound(
@@ -294,16 +300,16 @@ impl BlockBehaviour for CauldronBlock {
                         let new_state_id = Block::WATER_CAULDRON
                             .from_properties(&[("level", next_level_str)])
                             .to_state_id(&Block::WATER_CAULDRON);
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             new_state_id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     } else {
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             Block::CAULDRON.default_state.id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     }
                     args.item_stack.item = &Item::SHULKER_BOX;
@@ -329,16 +335,16 @@ impl BlockBehaviour for CauldronBlock {
                         let new_state_id = Block::WATER_CAULDRON
                             .from_properties(&[("level", next_level_str)])
                             .to_state_id(&Block::WATER_CAULDRON);
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             new_state_id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     } else {
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             Block::CAULDRON.default_state.id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     }
                     args.item_stack.remove_data_component(
@@ -366,16 +372,16 @@ impl BlockBehaviour for CauldronBlock {
                         let new_state_id = Block::WATER_CAULDRON
                             .from_properties(&[("level", next_level_str)])
                             .to_state_id(&Block::WATER_CAULDRON);
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             new_state_id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     } else {
-                        args.world.set_block_state(
+                        update_cauldron_state(
+                            args.world,
                             args.position,
                             Block::CAULDRON.default_state.id,
-                            BlockFlags::NOTIFY_ALL,
                         );
                     }
                     args.item_stack.remove_data_component(
@@ -423,16 +429,16 @@ impl BlockBehaviour for CauldronBlock {
                             let new_state_id = Block::WATER_CAULDRON
                                 .from_properties(&[("level", next_level_str)])
                                 .to_state_id(&Block::WATER_CAULDRON);
-                            args.world.set_block_state(
+                            update_cauldron_state(
+                                args.world,
                                 args.position,
                                 new_state_id,
-                                BlockFlags::NOTIFY_ALL,
                             );
                         } else {
-                            args.world.set_block_state(
+                            update_cauldron_state(
+                                args.world,
                                 args.position,
                                 Block::CAULDRON.default_state.id,
-                                BlockFlags::NOTIFY_ALL,
                             );
                         }
                         args.world.play_sound(
@@ -458,16 +464,16 @@ impl BlockBehaviour for CauldronBlock {
                             let new_state_id = Block::WATER_CAULDRON
                                 .from_properties(&[("level", next_level_str)])
                                 .to_state_id(&Block::WATER_CAULDRON);
-                            args.world.set_block_state(
+                            update_cauldron_state(
+                                args.world,
                                 args.position,
                                 new_state_id,
-                                BlockFlags::NOTIFY_ALL,
                             );
                         } else {
-                            args.world.set_block_state(
+                            update_cauldron_state(
+                                args.world,
                                 args.position,
                                 Block::CAULDRON.default_state.id,
-                                BlockFlags::NOTIFY_ALL,
                             );
                         }
                         args.world.play_sound(

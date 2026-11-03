@@ -10764,6 +10764,61 @@ pub const fn calculate_composter_comparator_output(level: u8) -> u8 {
     }
 }
 
+/// Calculates lectern comparator output signal, mirroring vanilla `LecternBlockEntity.java:172-175`:
+/// `Mth.floor(pageProgress * 14.0F) + (this.hasBook() ? 1 : 0)`.
+#[must_use]
+pub fn calculate_lectern_comparator_signal(has_book: bool, page: usize, page_count: usize) -> u8 {
+    if !has_book || page_count == 0 {
+        return 0;
+    }
+    let progress = if page_count > 1 {
+        (page.min(page_count - 1)) as f32 / (page_count - 1) as f32
+    } else {
+        1.0
+    };
+    (progress * 14.0).floor() as u8 + 1
+}
+
+/// Calculates lectern book drop offset when destroyed, mirroring vanilla `LecternBlockEntity.java:222-224`:
+/// `xo = 0.25F * direction.getStepX()`, `zo = 0.25F * direction.getStepZ()`.
+#[must_use]
+pub const fn calculate_lectern_drop_offset(facing_step_x: f32, facing_step_z: f32) -> (f64, f64) {
+    (
+        0.25 * facing_step_x as f64,
+        0.25 * facing_step_z as f64,
+    )
+}
+
+/// Calculates chiseled bookshelf targeted slot (0..5) based on normalized hit face coordinates (x, y),
+/// mirroring vanilla `ChiseledBookShelfBlock.java:49-56, 122` & `SelectableSlotContainer.java`:
+/// 2 rows, 3 columns per row.
+#[must_use]
+pub fn calculate_chiseled_bookshelf_hit_slot(cursor_x: f32, cursor_y: f32) -> usize {
+    let row = ((1.0 - cursor_y) * 2.0).floor().clamp(0.0, 1.0) as usize;
+    let col = (cursor_x * 3.0).floor().clamp(0.0, 2.0) as usize;
+    col + row * 3
+}
+
+/// Calculates cauldron comparator output signal, mirroring vanilla `AbstractCauldronBlock.java:76-78`,
+/// `LayeredCauldronBlock.java:109-111` & `LavaCauldronBlock.java:49-51`:
+/// Empty cauldron = 0, lava cauldron = 3, water/powder snow = level (1..3).
+#[must_use]
+pub fn calculate_cauldron_comparator_output(block_type: &str, level: u8) -> u8 {
+    match block_type {
+        "water_cauldron" | "powder_snow_cauldron" => {
+            if level < 1 {
+                1
+            } else if level > 3 {
+                3
+            } else {
+                level
+            }
+        }
+        "lava_cauldron" => 3,
+        _ => 0,
+    }
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31041,5 +31096,62 @@ mod tests {
         assert_eq!(calculate_respawn_anchor_comparator_output(3), 11);
         assert_eq!(calculate_respawn_anchor_comparator_output(4), 15);
         assert_eq!(calculate_respawn_anchor_comparator_output(5), 15); // clamped to 4 charges
+    }
+
+    #[test]
+    fn test_lectern_chiseled_bookshelf_and_cauldron_parity_gap456() {
+        // 1. Lectern comparator signal output (LecternBlockEntity.java:172-175)
+        // No book or 0 pages -> signal 0
+        assert_eq!(calculate_lectern_comparator_signal(false, 0, 0), 0);
+        assert_eq!(calculate_lectern_comparator_signal(false, 5, 10), 0);
+        assert_eq!(calculate_lectern_comparator_signal(true, 0, 0), 0);
+
+        // Single page book: progress = 1.0 -> floor(1.0 * 14.0) + 1 = 15
+        assert_eq!(calculate_lectern_comparator_signal(true, 0, 1), 15);
+
+        // 2-page book: page 0 -> 1, page 1 -> 15
+        assert_eq!(calculate_lectern_comparator_signal(true, 0, 2), 1);
+        assert_eq!(calculate_lectern_comparator_signal(true, 1, 2), 15);
+
+        // 15-page book: pages 0..14 map linearly to 1..15
+        for page in 0..15 {
+            assert_eq!(calculate_lectern_comparator_signal(true, page, 15), (page + 1) as u8);
+        }
+
+        // Lectern drop offset: xo = 0.25 * stepX, zo = 0.25 * stepZ (LecternBlockEntity.java:222-224)
+        assert_eq!(calculate_lectern_drop_offset(0.0, -1.0), (0.0, -0.25)); // North
+        assert_eq!(calculate_lectern_drop_offset(0.0, 1.0), (0.0, 0.25));   // South
+        assert_eq!(calculate_lectern_drop_offset(-1.0, 0.0), (-0.25, 0.0)); // West
+        assert_eq!(calculate_lectern_drop_offset(1.0, 0.0), (0.25, 0.0));   // East
+
+        // 2. Chiseled Bookshelf comparator output: last_interacted_slot + 1 (ChiseledBookShelfBlock.java:189)
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(-1), 0);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(0), 1);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(1), 2);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(2), 3);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(3), 4);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(4), 5);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(5), 6);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(6), 0); // Invalid slot
+
+        // Chiseled Bookshelf hit slot calculation (2 rows x 3 columns)
+        // Top row: slot 0, 1, 2 (y > 0.5)
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.1, 0.8), 0);
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.5, 0.8), 1);
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.9, 0.8), 2);
+        // Bottom row: slot 3, 4, 5 (y < 0.5)
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.1, 0.2), 3);
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.5, 0.2), 4);
+        assert_eq!(calculate_chiseled_bookshelf_hit_slot(0.9, 0.2), 5);
+
+        // 3. Cauldron comparator output parity (LayeredCauldronBlock.java:109-111, LavaCauldronBlock.java:49-51)
+        assert_eq!(calculate_cauldron_comparator_output("cauldron", 0), 0);
+        assert_eq!(calculate_cauldron_comparator_output("lava_cauldron", 0), 3);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 1), 1);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 2), 2);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 3), 3);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 1), 1);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 2), 2);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 3), 3);
     }
 }

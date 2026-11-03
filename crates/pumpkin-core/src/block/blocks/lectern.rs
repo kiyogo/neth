@@ -12,6 +12,7 @@ use crate::entity::Entity;
 use crate::entity::item::ItemEntity;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::block_properties::HorizontalFacing;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_util::math::vector3::Vector3;
 use crate::world::World;
 use pumpkin_data::block_properties::LecternLikeProperties;
@@ -194,6 +195,7 @@ impl LecternBlock {
         props.powered = false;
         props.has_book = has_book;
         world.set_block_state(position, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
+        world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
         Self::update_neighbors_below(world, position);
     }
 }
@@ -223,7 +225,7 @@ impl BlockBehaviour for LecternBlock {
             position: args.position,
             player: args.player,
         })
-        .map_or(BlockActionResult::Pass, |factory| {
+        .map_or(BlockActionResult::Consume, |factory| {
             args.player.increment_stat(
                 pumpkin_data::statistic::StatisticCategory::Custom,
                 pumpkin_data::statistic::CustomStatistic::InteractWithLectern as i32,
@@ -307,6 +309,7 @@ impl BlockBehaviour for LecternBlock {
                 }
             }
         }
+        args.world.remove_block_entity(args.position);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
@@ -349,6 +352,10 @@ impl BlockBehaviour for LecternBlock {
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
+        let props = LecternLikeProperties::from_state_id(args.state.id);
+        if !props.has_book {
+            return Some(0);
+        }
         if let Some(block_entity) = args.world.get_block_entity(args.position)
             && let Some(lectern_entity) = block_entity.as_any().downcast_ref::<LecternBlockEntity>()
         {

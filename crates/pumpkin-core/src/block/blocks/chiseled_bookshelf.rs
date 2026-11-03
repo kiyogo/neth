@@ -5,12 +5,13 @@ use pumpkin_macros::pumpkin_block;
 use crate::block::entities::chiseled_bookshelf::ChiseledBookshelfBlockEntity;
 use crate::{
     block::{
-        BlockBehaviour, BlockHitResult, GetComparatorOutputArgs, NormalUseArgs, OnPlaceArgs,
+        BlockBehaviour, BlockHitResult, BrokenArgs, GetComparatorOutputArgs, NormalUseArgs, OnPlaceArgs,
         PlacedArgs, UseWithItemArgs, registry::BlockActionResult,
     },
-    entity::{EntityBase, player::Player},
+    entity::{Entity, EntityBase, item::ItemEntity, player::Player},
     world::World,
 };
+use pumpkin_data::entity::EntityType;
 use pumpkin_data::{
     BlockStateId,
     block_properties::{ChiseledBookshelfLikeProperties, HorizontalFacing},
@@ -104,6 +105,28 @@ impl BlockBehaviour for ChiseledBookshelfBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = ChiseledBookshelfBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(bookshelf) = block_entity
+                .as_any()
+                .downcast_ref::<ChiseledBookshelfBlockEntity>()
+        {
+            let items = bookshelf
+                .items
+                .read()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            for stack in items.iter() {
+                if !stack.is_empty() {
+                    let spawn_pos = args.position.to_centered_f64();
+                    let entity = Entity::new(args.world.clone(), spawn_pos, &EntityType::ITEM);
+                    let item_entity = Arc::new(ItemEntity::new(entity, stack.clone()));
+                    args.world.spawn_entity(item_entity);
+                }
+            }
+        }
+        args.world.remove_block_entity(args.position);
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
