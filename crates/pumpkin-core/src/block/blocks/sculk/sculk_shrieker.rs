@@ -191,6 +191,7 @@ impl BlockBehaviour for SculkShriekerBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let be = crate::block::entities::sculk_shrieker::SculkShriekerBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(be));
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

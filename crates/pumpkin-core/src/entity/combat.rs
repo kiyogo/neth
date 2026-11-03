@@ -33900,4 +33900,135 @@ mod tests {
         }
         assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 8), 1);
     }
+
+    #[test]
+    fn test_cauldron_composter_and_sculk_parity_gap487() {
+        use pumpkin_data::block_properties::SculkSensorPhase;
+        use pumpkin_data::{BlockDirection, BlockId};
+        use crate::block::blocks::cauldron::CauldronBlock;
+        use crate::block::blocks::composter::ComposterBlock;
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use crate::block::blocks::sculk::sculk_shrieker::SculkShriekerBlock;
+        use crate::block::blocks::sculk::sculk_catalyst::SculkCatalystBlock;
+
+        // 1. Cauldron Parity (AbstractCauldronBlock.java, LayeredCauldronBlock.java, LavaCauldronBlock.java)
+        assert_eq!(CauldronBlock::MIN_FILL_LEVEL, 1);
+        assert_eq!(CauldronBlock::MAX_FILL_LEVEL, 3);
+        assert_eq!(CauldronBlock::LAVA_SIGNAL, 3);
+        assert_eq!(CauldronBlock::EMPTY_SIGNAL, 0);
+        assert_eq!(CauldronBlock::FLOOR_LEVEL, 4);
+        assert_eq!(CauldronBlock::RAIN_FILL_CHANCE, 0.05);
+        assert_eq!(CauldronBlock::POWDER_SNOW_FILL_CHANCE, 0.1);
+        assert_eq!(CauldronBlock::DRIP_WATER_EVENT, 1047);
+        assert_eq!(CauldronBlock::DRIP_LAVA_EVENT, 1046);
+
+        // Water extinguish step down
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(3, false), (BlockId::WATER_CAULDRON, 2));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(2, false), (BlockId::WATER_CAULDRON, 1));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(1, false), (BlockId::CAULDRON, 0));
+
+        // Drip sound/particle event IDs
+        assert_eq!(CauldronBlock::get_drip_event(true), 1047);
+        assert_eq!(CauldronBlock::get_drip_event(false), 1046);
+
+        // Can receive drip
+        assert_eq!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, true, 0), true);
+        assert_eq!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 2), true);
+        assert_eq!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 3), false);
+
+        // Can extinguish fire
+        assert_eq!(CauldronBlock::can_extinguish_fire(BlockId::WATER_CAULDRON), true);
+        assert_eq!(CauldronBlock::can_extinguish_fire(BlockId::POWDER_SNOW_CAULDRON), true);
+        assert_eq!(CauldronBlock::can_extinguish_fire(BlockId::CAULDRON), false);
+        assert_eq!(CauldronBlock::can_extinguish_fire(BlockId::LAVA_CAULDRON), false);
+
+        // Weather fill chances
+        assert_eq!(CauldronBlock::should_rain_fill(0.04), true);
+        assert_eq!(CauldronBlock::should_rain_fill(0.06), false);
+        assert_eq!(CauldronBlock::should_snow_fill(0.09), true);
+        assert_eq!(CauldronBlock::should_snow_fill(0.11), false);
+
+        // 2. Composter Parity (ComposterBlock.java)
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+        assert_eq!(ComposterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ComposterBlock::MAX_COMPARATOR_OUTPUT, 8);
+        assert_eq!(ComposterBlock::BONE_MEAL_Y_OFFSET, 1.01);
+        assert_eq!(ComposterBlock::BONE_MEAL_HORIZONTAL_OFFSET_MAX, 0.7);
+        assert_eq!(ComposterBlock::BONE_MEAL_PICKUP_DELAY_TICKS, 10);
+
+        // Composter tiers
+        assert_eq!(ComposterBlock::CHANCE_TIER_1, 0.30);
+        assert_eq!(ComposterBlock::CHANCE_TIER_2, 0.50);
+        assert_eq!(ComposterBlock::CHANCE_TIER_3, 0.65);
+        assert_eq!(ComposterBlock::CHANCE_TIER_4, 0.85);
+        assert_eq!(ComposterBlock::CHANCE_TIER_5, 1.00);
+
+        // Hopper insertion / extraction permissions (InputContainer only when level < 7)
+        assert_eq!(ComposterBlock::can_hopper_insert(0, BlockDirection::Up), true);
+        assert_eq!(ComposterBlock::can_hopper_insert(6, BlockDirection::Up), true);
+        assert_eq!(ComposterBlock::can_hopper_insert(7, BlockDirection::Up), false);
+        assert_eq!(ComposterBlock::can_hopper_insert(8, BlockDirection::Up), false);
+        assert_eq!(ComposterBlock::can_hopper_insert(3, BlockDirection::Down), false);
+        assert_eq!(ComposterBlock::can_hopper_extract(8, BlockDirection::Down), true);
+        assert_eq!(ComposterBlock::can_hopper_extract(7, BlockDirection::Down), false);
+
+        // Comparator outputs matching level
+        for lvl in 0..=8 {
+            assert_eq!(ComposterBlock::calculate_comparator_output(lvl), lvl);
+        }
+
+        // Readiness and composting eligibility (level < 7 can compost more)
+        assert_eq!(ComposterBlock::is_ready(8), true);
+        assert_eq!(ComposterBlock::is_ready(7), false);
+        assert_eq!(ComposterBlock::can_compost_more(6), true);
+        assert_eq!(ComposterBlock::can_compost_more(7), false);
+        assert_eq!(ComposterBlock::can_compost_more(8), false);
+
+        // 3. Sculk Sensor Parity (SculkSensorBlock.java & CalibratedSculkSensorBlock.java)
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::SCULK_SENSOR), 30);
+        assert_eq!(SculkSensorBlock::get_active_ticks(BlockId::CALIBRATED_SCULK_SENSOR), 10);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::SCULK_SENSOR), 8);
+        assert_eq!(SculkSensorBlock::get_listener_range(BlockId::CALIBRATED_SCULK_SENSOR), 16);
+
+        // Redstone strength vs distance calculation: 15 - floor(15 / radius * distance)
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(0.0, 8), 15);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(4.0, 8), 8);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(7.9, 8), 1);
+        assert_eq!(SculkSensorBlock::get_redstone_strength_for_distance(8.0, 8), 1);
+
+        // Comparator signal: 0 if inactive/cooldown, frequency if active
+        assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Inactive, 12), 0);
+        assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Cooldown, 12), 0);
+        assert_eq!(SculkSensorBlock::calculate_comparator_signal(SculkSensorPhase::Active, 12), 12);
+
+        // Strong power emits ONLY upwards (SculkSensorBlock.java:176-177)
+        assert_eq!(SculkSensorBlock::emits_strong_power(BlockDirection::Up), true);
+        assert_eq!(SculkSensorBlock::emits_strong_power(BlockDirection::Down), false);
+        assert_eq!(SculkSensorBlock::emits_strong_power(BlockDirection::North), false);
+
+        // 4. Sculk Shrieker & Catalyst Parity (SculkShriekerBlock.java & SculkCatalystBlock.java)
+        assert_eq!(SculkShriekerBlock::SHRIEKING_TICKS, 90);
+        assert_eq!(SculkShriekerBlock::WARNING_SOUND_RADIUS, 10);
+        assert_eq!(SculkShriekerBlock::DARKNESS_RADIUS, 40.0);
+        assert_eq!(SculkShriekerBlock::EVENT_SCULK_SHRIEK, 3007);
+
+        assert_eq!(SculkCatalystBlock::PULSE_TICKS, 8);
+        assert_eq!(SculkCatalystBlock::LISTENER_RADIUS, 8);
+        assert_eq!(SculkCatalystBlock::XP_REWARD, 5);
+        assert_eq!(SculkCatalystBlock::MAX_CHARGE, 1000);
+        assert_eq!(SculkCatalystBlock::clamp_charge(1500), 1000);
+        assert_eq!(SculkCatalystBlock::clamp_charge(-50), 0);
+        assert_eq!(SculkCatalystBlock::clamp_charge(500), 500);
+    }
 }

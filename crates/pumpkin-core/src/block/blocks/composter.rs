@@ -93,6 +93,7 @@ impl BlockBehaviour for ComposterBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
         let props = ComposterLikeProperties::from_state_id(args.state_id);
         if props.level == Self::MAX_LEVEL {
             args.world.schedule_block_tick(

@@ -12883,3 +12883,65 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_observer_repeater_and_comparator_parity_gap486`.
   - **Unit Tests**: Vượt qua 100% `test_observer_repeater_and_comparator_parity_gap486`.
+
+
+### Gap 487: Cauldron, Composter & Sculk Blocks Lifecycle and Comparator Output Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/AbstractCauldronBlock.java
+  - 
+et/minecraft/world/level/block/LayeredCauldronBlock.java
+  - 
+et/minecraft/world/level/block/LavaCauldronBlock.java
+  - 
+et/minecraft/world/level/block/ComposterBlock.java
+  - 
+et/minecraft/world/level/block/SculkSensorBlock.java
+  - 
+et/minecraft/world/level/block/CalibratedSculkSensorBlock.java
+  - 
+et/minecraft/world/level/block/SculkShriekerBlock.java
+  - 
+et/minecraft/world/level/block/SculkCatalystBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Cauldron Lifecycle & Analog Signal Parity (AbstractCauldronBlock.java, LayeredCauldronBlock.java, LavaCauldronBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của CauldronBlock: thông báo cập nhật cho các khối lân cận khi vạc được đặt.
+    - Mức chứa chất lỏng: từ mức 1 đến mức 3 (MIN_FILL_LEVEL = 1, MAX_FILL_LEVEL = 3), vạc rỗng trả về tín hiệu comparator 0 (EMPTY_SIGNAL = 0), vạc nham thạch trả về tín hiệu comparator 3 (LAVA_SIGNAL = 3).
+    - Cơ chế giảm mức nước khi dập lửa (lower_fill_level_on_extinguish): vạc cấp 3 xuống cấp 2, cấp 2 xuống cấp 1, cấp 1 chuyển về vạc rỗng (BlockId::CAULDRON).
+    - Mã sự kiện âm thanh / hạt nhỏ giọt: nước nhỏ giọt là 1047 (DRIP_WATER_EVENT), nham thạch nhỏ giọt là 1046 (DRIP_LAVA_EVENT).
+    - Xác suất hứng mưa (RAIN_FILL_CHANCE = 0.05) và tuyết rơi (POWDER_SNOW_FILL_CHANCE = 0.1).
+  - **Composter Level, Hopper Integration & Bone Meal Drop Parity (ComposterBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của ComposterBlock.
+    - Các mức của thùng ủ: 0 đến 7 (chưa đầy), 8 là sẵn sàng thu hoạch (READY = 8). Tín hiệu comparator trả về bằng đúng giá trị level (0..=8).
+    - Độ trễ ủ đầy khi đạt mức 7: lên lịch tick trong 20 ticks (FULL_COMPOSTING_TICKS = 20) để chuyển sang mức 8 (Ready) và phát sự kiện sẵn sàng.
+    - Quy tắc tương tác với phễu (Hopper):
+      - Phễu nạp vật phẩm vào thùng ủ chỉ được phép từ phía trên (ace == BlockDirection::Up) khi level < 7 (can_hopper_insert). Khi level = 7 composter trả về EmptyContainer không nhận thêm.
+      - Phễu rút bột xương từ thùng ủ chỉ được phép từ phía dưới (ace == BlockDirection::Down) khi level == 8 (can_hopper_extract).
+    - Tọa độ sinh bột xương khi thu hoạch: y + 1.01 (BONE_MEAL_Y_OFFSET), độ trễ nhặt 10 ticks (BONE_MEAL_PICKUP_DELAY_TICKS = 10), thùng ủ trở về level 0.
+  - **Sculk Sensor Vibration Detection & Calibrated Frequency Parity (SculkSensorBlock.java, CalibratedSculkSensorBlock.java)**:
+    - Bổ sung update_neighbour_for_output_signal và update_neighbors(pos, None) trong placed của SculkSensorBlock.
+    - Thời gian kích hoạt phát tín hiệu: cảm biến thường là 30 ticks (ACTIVE_TICKS_REGULAR = 30), cảm biến hiệu chuẩn là 10 ticks (ACTIVE_TICKS_CALIBRATED = 10).
+    - Thời gian hồi chiêu: 10 ticks (COOLDOWN_TICKS = 10).
+    - Bán kính cảm nhận dao động: cảm biến thường là 8 khối (LISTENER_RANGE_REGULAR = 8), cảm biến hiệu chuẩn là 16 khối (LISTENER_RANGE_CALIBRATED = 16).
+    - Công thức tính cường độ đá đỏ theo khoảng cách: 15 - floor(15 / radius * distance), giới hạn trong khoảng 1..=15 (get_redstone_strength_for_distance).
+    - Tín hiệu comparator: bằng 0 khi ở trạng thái Inactive hoặc Cooldown; trả về đúng tần số dao động (1..=15) khi ở trạng thái Active.
+    - Tín hiệu trực tiếp (Strong power): chỉ phát theo hướng BlockDirection::Up theo chuẩn Vanilla Java (SculkSensorBlock.java:176-177).
+  - **Sculk Shrieker & Catalyst Parity (SculkShriekerBlock.java, SculkCatalystBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của SculkShriekerBlock và SculkCatalystBlock.
+    - Shrieker: thời gian hú là 90 ticks (SHRIEKING_TICKS = 90), bán kính phát âm thanh cảnh báo là 10 khối (WARNING_SOUND_RADIUS = 10), bán kính áp hiệu ứng Bóng Tối là 40.0 khối (DARKNESS_RADIUS = 40.0), sự kiện hú EVENT_SCULK_SHRIEK = 3007.
+    - Catalyst: thời gian phát xung là 8 ticks (PULSE_TICKS = 8), bán kính nhận diện cái chết là 8 khối (LISTENER_RADIUS = 8), điểm kinh nghiệm rơi khi bị phá hủy là 5 (XP_REWARD = 5), mức điện tích tối đa là 1000 (MAX_CHARGE = 1000).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/cauldron.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/composter.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs:
+    - Bổ sung update_neighbour_for_output_signal và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/sculk/sculk_shrieker.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/sculk/sculk_catalyst.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_cauldron_composter_and_sculk_parity_gap487.
+  - **Unit Tests**: Vượt qua 100% 	est_cauldron_composter_and_sculk_parity_gap487.
