@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::block::BlockIsReplacing;
+use crate::block::BrokenArgs;
 use crate::block::CanPlaceAtArgs;
 use crate::block::EmitsRedstonePowerArgs;
 use crate::block::GetRedstonePowerArgs;
@@ -274,6 +275,10 @@ impl BlockBehaviour for RedstoneTorchBlock {
                 update_neighbors(args.world, args.position);
             }
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        update_neighbors(args.world, args.position);
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {

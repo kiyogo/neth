@@ -32353,4 +32353,175 @@ mod tests {
         assert_eq!(SculkShriekerBlock::SHRIEKING_TICKS, 90);
         assert_eq!(SculkShriekerBlock::EVENT_SCULK_SHRIEK, 3007);
     }
+
+    #[test]
+    fn test_redstone_torch_lamp_lever_and_buttons_parity_gap470() {
+        use crate::block::blocks::redstone::buttons::ButtonBlock;
+        use crate::block::blocks::redstone::lever::LeverBlock;
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+        use crate::block::blocks::redstone::redstone_torch::RedstoneTorchBlock;
+        use pumpkin_data::block_properties::{AttachFace, HorizontalFacing};
+        use pumpkin_data::{Block, BlockDirection};
+
+        // 1. Redstone Torch Parity (RedstoneTorchBlock.java:23-30, 91-109, 126-143)
+        assert_eq!(RedstoneTorchBlock::RECENT_TOGGLE_TIMER, 60);
+        assert_eq!(RedstoneTorchBlock::MAX_RECENT_TOGGLES, 8);
+        assert_eq!(RedstoneTorchBlock::RESTART_DELAY, 160);
+        assert_eq!(RedstoneTorchBlock::TOGGLE_DELAY, 2);
+        assert_eq!(RedstoneTorchBlock::BURNOUT_EVENT, 1502);
+        assert_eq!(RedstoneTorchBlock::POWER_ON, 15);
+        assert_eq!(RedstoneTorchBlock::POWER_OFF, 0);
+
+        // Burnout threshold: 8 or more toggles within 60 ticks
+        assert!(!RedstoneTorchBlock::is_burnt_out(0));
+        assert!(!RedstoneTorchBlock::is_burnt_out(7));
+        assert!(RedstoneTorchBlock::is_burnt_out(8));
+        assert!(RedstoneTorchBlock::is_burnt_out(9));
+
+        // Normal torch power output (emits weak power to all except UP)
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Down));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::North));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::South));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::East));
+        assert!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::West));
+        assert!(!RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Up));
+
+        // Wall torch power output (emits weak power to all except facing wall direction)
+        assert!(!RedstoneTorchBlock::can_output_weak_power(
+            true,
+            Some(HorizontalFacing::North),
+            BlockDirection::North
+        ));
+        assert!(RedstoneTorchBlock::can_output_weak_power(
+            true,
+            Some(HorizontalFacing::North),
+            BlockDirection::South
+        ));
+        assert!(RedstoneTorchBlock::can_output_weak_power(
+            true,
+            Some(HorizontalFacing::North),
+            BlockDirection::Down
+        ));
+        assert!(RedstoneTorchBlock::can_output_weak_power(
+            true,
+            Some(HorizontalFacing::North),
+            BlockDirection::Up
+        ));
+
+        // Emits strong power ONLY downwards into block above
+        assert!(RedstoneTorchBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!RedstoneTorchBlock::emits_strong_power(BlockDirection::North));
+
+        // 2. Redstone Lamp Parity (RedstoneLampBlock.java:16-50)
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::DEACTIVATION_DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneLamp::DEFAULT_LIT, false);
+
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+        assert!(RedstoneLamp::calculate_lit_on_placement(true));
+        assert!(!RedstoneLamp::calculate_lit_on_placement(false));
+
+        // Immediate activation on signal
+        assert!(RedstoneLamp::should_turn_on(false, true));
+        assert!(!RedstoneLamp::should_turn_on(true, true));
+        assert!(!RedstoneLamp::should_turn_on(false, false));
+
+        // Scheduled deactivation on loss of signal
+        assert!(RedstoneLamp::should_schedule_turn_off(true, false));
+        assert!(!RedstoneLamp::should_schedule_turn_off(false, false));
+        assert!(!RedstoneLamp::should_schedule_turn_off(true, true));
+
+        // 3. Lever Parity (LeverBlock.java:36-43, 91-92, 119-122)
+        assert_eq!(LeverBlock::POWER_ON, 15);
+        assert_eq!(LeverBlock::POWER_OFF, 0);
+        assert_eq!(LeverBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(LeverBlock::CLICK_PITCH_ON, 0.6);
+        assert_eq!(LeverBlock::CLICK_PITCH_OFF, 0.5);
+        assert_eq!(LeverBlock::DUST_COLOR_RED, 16711680);
+
+        assert_eq!(LeverBlock::get_click_pitch(true), 0.6);
+        assert_eq!(LeverBlock::get_click_pitch(false), 0.5);
+
+        assert_eq!(
+            LeverBlock::get_connected_direction(AttachFace::Floor, HorizontalFacing::North),
+            BlockDirection::Up
+        );
+        assert_eq!(
+            LeverBlock::get_connected_direction(AttachFace::Ceiling, HorizontalFacing::North),
+            BlockDirection::Down
+        );
+        assert_eq!(
+            LeverBlock::get_connected_direction(AttachFace::Wall, HorizontalFacing::East),
+            BlockDirection::East
+        );
+
+        assert_eq!(
+            LeverBlock::get_front_direction(AttachFace::Floor, HorizontalFacing::North),
+            BlockDirection::Down
+        );
+        assert_eq!(
+            LeverBlock::get_front_direction(AttachFace::Ceiling, HorizontalFacing::North),
+            BlockDirection::Up
+        );
+        assert_eq!(
+            LeverBlock::get_front_direction(AttachFace::Wall, HorizontalFacing::East),
+            BlockDirection::West
+        );
+
+        // 4. Buttons Parity (ButtonBlock.java:40-50, 100-118, 146-160)
+        assert_eq!(ButtonBlock::STONE_BUTTON_TICKS, 20);
+        assert_eq!(ButtonBlock::WOODEN_BUTTON_TICKS, 30);
+        assert_eq!(ButtonBlock::POWER_ON, 15);
+        assert_eq!(ButtonBlock::POWER_OFF, 0);
+
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::STONE_BUTTON), 20);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::POLISHED_BLACKSTONE_BUTTON), 20);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::OAK_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::SPRUCE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::BIRCH_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::JUNGLE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::ACACIA_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::DARK_OAK_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::MANGROVE_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::CHERRY_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::BAMBOO_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::CRIMSON_BUTTON), 30);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::WARPED_BUTTON), 30);
+
+        // Arrow activation parity
+        assert!(!ButtonBlock::can_be_activated_by_arrows(&Block::STONE_BUTTON));
+        assert!(!ButtonBlock::can_be_activated_by_arrows(&Block::POLISHED_BLACKSTONE_BUTTON));
+        assert!(ButtonBlock::can_be_activated_by_arrows(&Block::OAK_BUTTON));
+        assert!(ButtonBlock::can_be_activated_by_arrows(&Block::SPRUCE_BUTTON));
+
+        assert_eq!(
+            ButtonBlock::get_connected_direction(AttachFace::Floor, HorizontalFacing::North),
+            BlockDirection::Up
+        );
+        assert_eq!(
+            ButtonBlock::get_connected_direction(AttachFace::Ceiling, HorizontalFacing::North),
+            BlockDirection::Down
+        );
+        assert_eq!(
+            ButtonBlock::get_connected_direction(AttachFace::Wall, HorizontalFacing::West),
+            BlockDirection::West
+        );
+
+        assert_eq!(
+            ButtonBlock::get_front_direction(AttachFace::Floor, HorizontalFacing::North),
+            BlockDirection::Down
+        );
+        assert_eq!(
+            ButtonBlock::get_front_direction(AttachFace::Ceiling, HorizontalFacing::North),
+            BlockDirection::Up
+        );
+        assert_eq!(
+            ButtonBlock::get_front_direction(AttachFace::Wall, HorizontalFacing::West),
+            BlockDirection::East
+        );
+    }
 }

@@ -12213,3 +12213,43 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_sculk_sensor_catalyst_and_shrieker_parity_gap469`.
   - **Unit Tests**: Vượt qua 100% `test_sculk_sensor_catalyst_and_shrieker_parity_gap469`.
+
+
+### Gap 470: Redstone Torch, Redstone Lamp, Lever & Buttons Broken Destruction, De-activation Ticks & Burnout Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/RedstoneTorchBlock.java`
+  - `net/minecraft/world/level/block/RedstoneWallTorchBlock.java`
+  - `net/minecraft/world/level/block/RedstoneLampBlock.java`
+  - `net/minecraft/world/level/block/LeverBlock.java`
+  - `net/minecraft/world/level/block/ButtonBlock.java`
+  - `net/minecraft/world/level/block/FaceAttachedHorizontalDirectionalBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Redstone Torch Broken & Burnout Parity (RedstoneTorchBlock.java:23-30, 50-54, 91-109)**:
+    - Bổ sung `broken` cho `RedstoneTorchBlock`, đảm bảo khi bị phá hủy gọi `update_neighbors` thông báo cho tất cả 6 hướng lân cận ngắt điện.
+    - Đồng bộ hằng số cháy đuốc `BURNOUT_EVENT = 1502`, `RECENT_TOGGLE_TIMER = 60`, `MAX_RECENT_TOGGLES = 8`, `RESTART_DELAY = 160`, `TOGGLE_DELAY = 2`.
+    - Đuốc đứng phát tín hiệu yếu cho tất cả các hướng ngoại trừ hướng lên (`direction != BlockDirection::Up`), phát tín hiệu mạnh duy nhất xuống khối phía dưới (`direction == BlockDirection::Down`). Đuốc gắn tường không phát tín hiệu yếu vào khối gắn nó (`direction != wall_facing`).
+  - **Redstone Lamp De-activation Delay & Broken Parity (RedstoneLampBlock.java:16-50)**:
+    - Đèn đỏ bật sáng ngay lập tức khi nhận tín hiệu nguồn redstone (delay 0 ticks).
+    - Đèn đỏ tắt sau độ trễ `DELAY = 4` ticks (2 redstone ticks = 0.2s) khi mất tín hiệu nguồn redstone.
+    - Bổ sung `broken` thông báo khối lân cận (`update_neighbors`) khi bị phá hủy.
+  - **Lever Broken Destruction & Connection Direction Parity (LeverBlock.java:36-43, 82-93, 112-122)**:
+    - Khi bị phá hủy (`broken`), nếu đang ở trạng thái cấp điện (`powered`), lập tức cập nhật ngắt điện cho khối nó đang đứng/gắn và khối tiếp nối phía sau (`update_neighbors`).
+    - Hướng kết nối: mặt sàn (`Floor -> Up`), mặt trần (`Ceiling -> Down`), mặt tường (`Wall -> Facing`).
+    - Pitch âm thanh bật cần gạt là `0.6F`, tắt là `0.5F`, âm lượng `0.3F`.
+  - **Button Ticks, Arrow Activation & Broken Destruction Parity (ButtonBlock.java:40-50, 92-118, 146-160)**:
+    - Nút đá (`STONE_BUTTON`, `POLISHED_BLACKSTONE_BUTTON`) có thời gian nhấn là `20` ticks (1.0s) và không thể kích hoạt bằng mũi tên (`can_be_activated_by_arrows = false`).
+    - Nút gỗ (các loại nút gỗ) có thời gian nhấn là `30` ticks (1.5s) và có thể kích hoạt bằng mũi tên.
+    - Bổ sung `broken` cho `ButtonBlock`, nếu bị phá hủy khi đang nhấn (`powered`), lập tức cập nhật ngắt điện khối lân cận và khối gắn kèm.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/redstone_torch.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/redstone_lamp.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/lever.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`, bổ sung `get_connected_direction` và `get_front_direction`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/buttons.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`, bổ sung `get_connected_direction` và `get_front_direction`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_redstone_torch_lamp_lever_and_buttons_parity_gap470`.
+  - **Unit Tests**: Vượt qua 100% `test_redstone_torch_lamp_lever_and_buttons_parity_gap470`.

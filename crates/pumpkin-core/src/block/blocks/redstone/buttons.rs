@@ -13,6 +13,7 @@ use pumpkin_world::world::BlockFlags;
 
 type ButtonLikeProperties = pumpkin_data::block_properties::LeverLikeProperties;
 
+use crate::block::BrokenArgs;
 use crate::block::CanPlaceAtArgs;
 use crate::block::EmitsRedstonePowerArgs;
 use crate::block::GetRedstonePowerArgs;
@@ -76,6 +77,16 @@ fn click_button(player: &Player, world: &Arc<World>, block_pos: &BlockPos) -> bo
 pub struct ButtonBlock;
 
 impl BlockBehaviour for ButtonBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let state = args.world.get_block_state(args.position);
+        let props = ButtonLikeProperties::from_state_id(state.id);
+        if props.powered {
+            Self::update_neighbors(args.world, args.position, props);
+        } else {
+            args.world.update_neighbors(args.position, None);
+        }
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if click_button(args.player, args.world, args.position) {
             BlockActionResult::Success
@@ -167,6 +178,25 @@ impl WallMountedBlock for ButtonBlock {
 }
 
 impl ButtonBlock {
+    #[must_use]
+    pub const fn get_connected_direction(face: AttachFace, facing: pumpkin_data::block_properties::HorizontalFacing) -> BlockDirection {
+        match face {
+            AttachFace::Ceiling => BlockDirection::Down,
+            AttachFace::Floor => BlockDirection::Up,
+            AttachFace::Wall => match facing {
+                pumpkin_data::block_properties::HorizontalFacing::North => BlockDirection::North,
+                pumpkin_data::block_properties::HorizontalFacing::South => BlockDirection::South,
+                pumpkin_data::block_properties::HorizontalFacing::West => BlockDirection::West,
+                pumpkin_data::block_properties::HorizontalFacing::East => BlockDirection::East,
+            },
+        }
+    }
+
+    #[must_use]
+    pub const fn get_front_direction(face: AttachFace, facing: pumpkin_data::block_properties::HorizontalFacing) -> BlockDirection {
+        Self::get_connected_direction(face, facing).opposite()
+    }
+
     pub const STONE_BUTTON_TICKS: u32 = 20;
     pub const WOODEN_BUTTON_TICKS: u32 = 30;
     pub const POWER_ON: u8 = 15;

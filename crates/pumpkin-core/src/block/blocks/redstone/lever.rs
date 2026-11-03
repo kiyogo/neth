@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::block::{
+    BrokenArgs,
     CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs, GetStateForNeighborUpdateArgs,
     OnPlaceArgs, OnStateReplacedArgs, blocks::abstract_wall_mounting::WallMountedBlock,
 };
@@ -59,6 +60,16 @@ fn play_lever_sound(world: &Arc<World>, block_pos: &BlockPos, powered: bool) {
 pub struct LeverBlock;
 
 impl BlockBehaviour for LeverBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let state = args.world.get_block_state(args.position);
+        let props = LeverLikeProperties::from_state_id(state.id);
+        if props.powered {
+            Self::update_neighbors(args.world, args.position, props);
+        } else {
+            args.world.update_neighbors(args.position, None);
+        }
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         toggle_lever(args.world, args.position);
         BlockActionResult::Success
@@ -128,6 +139,25 @@ impl WallMountedBlock for LeverBlock {
 }
 
 impl LeverBlock {
+    #[must_use]
+    pub const fn get_connected_direction(face: AttachFace, facing: pumpkin_data::block_properties::HorizontalFacing) -> BlockDirection {
+        match face {
+            AttachFace::Ceiling => BlockDirection::Down,
+            AttachFace::Floor => BlockDirection::Up,
+            AttachFace::Wall => match facing {
+                pumpkin_data::block_properties::HorizontalFacing::North => BlockDirection::North,
+                pumpkin_data::block_properties::HorizontalFacing::South => BlockDirection::South,
+                pumpkin_data::block_properties::HorizontalFacing::West => BlockDirection::West,
+                pumpkin_data::block_properties::HorizontalFacing::East => BlockDirection::East,
+            },
+        }
+    }
+
+    #[must_use]
+    pub const fn get_front_direction(face: AttachFace, facing: pumpkin_data::block_properties::HorizontalFacing) -> BlockDirection {
+        Self::get_connected_direction(face, facing).opposite()
+    }
+
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
     pub const CLICK_VOLUME: f32 = 0.3;
