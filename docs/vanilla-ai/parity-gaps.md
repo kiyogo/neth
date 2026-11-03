@@ -12319,3 +12319,40 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_doors_trapdoors_and_fence_gates_parity_gap472`.
   - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_and_fence_gates_parity_gap472`.
+
+
+### Gap 473: Dispenser, Dropper, Hopper & Crafter Broken Destruction, Redstone Triggering, Tick Delay & Comparator Output Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DispenserBlock.java`
+  - `net/minecraft/world/level/block/DropperBlock.java`
+  - `net/minecraft/world/level/block/HopperBlock.java`
+  - `net/minecraft/world/level/block/CrafterBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Dispenser & Dropper Redstone Triggering & Broken Destruction (DispenserBlock.java:48-67, 114-137, 149-172, DropperBlock.java)**:
+    - Khi bị phá hủy (`broken`), dỡ bỏ block entity, cập nhật tín hiệu đầu ra (`update_neighbour_for_output_signal`) và cập nhật toàn bộ khối lân cận (`update_neighbors`).
+    - Nhận tín hiệu nguồn redstone từ cả vị trí khối (`pos`) hoặc khối bên trên (`pos.above()`).
+    - Thời gian kích hoạt bắn vật phẩm: độ trễ `TRIGGER_DURATION = 4` ticks (2 redstone ticks = 0.2s).
+    - Sự kiện âm thanh/hiệu ứng: `FAIL_EVENT_ID = 1001`, `DISPENSE_EVENT_ID = 1000`, `LAUNCH_EVENT_ID = 1002`, `SMOKE_EVENT_ID = 2000`.
+    - Độ lệch vị trí bắn: trục đứng `0.125`, trục ngang `0.15625`. Tín hiệu so sánh (Comparator) tỷ lệ thuận theo dung lượng chứa từ 0 đến 15.
+  - **Hopper Redstone Lock & Transfer Cooldown Parity (HopperBlock.java:40-55, 77-80, 118-128)**:
+    - Cơ chế khóa phễu: khi nhận tín hiệu redstone (`has_neighbor_signal = true`), thuộc tính `enabled = false` khóa phễu không cho truyền/hút vật phẩm; khi mất tín hiệu thì `enabled = true`.
+    - Tốc độ chuyển vật phẩm (`MOVE_ITEM_SPEED = 8` ticks = 0.4s). Sức chứa 5 ô chứa (`CONTAINER_SIZE = 5`).
+    - Bổ sung `broken` dỡ bỏ block entity, ngắt cập nhật so sánh và cập nhật khối lân cận.
+  - **Crafter Crafting Delay, Advancement Range & Comparator Signal (CrafterBlock.java:42-55, 61-82, 106-125)**:
+    - Độ trễ chế tạo: `CRAFTING_TICK_DELAY = 4` ticks, tối đa số tick chế tạo `MAX_CRAFTING_TICKS = 6`.
+    - Tín hiệu so sánh: từ 0 đến 9 tương ứng số ô có vật phẩm cộng với số ô bị vô hiệu hóa (`occupied + disabled slots`).
+    - Bitmask serialization chuẩn hóa 9 ô bị khóa, phạm vi tính thành tựu người chơi `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`.
+    - Sự kiện âm thanh chế tạo: `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, thất bại `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, khói trắng `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Đồng bộ hằng số bắn, độ trễ và tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Đồng bộ hằng số thả, độ trễ và tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Đồng bộ logic khóa phễu, hướng kết nối và tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Đồng bộ độ trễ chế tạo, bitmask vô hiệu hóa ô và tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_dispenser_dropper_hopper_and_crafter_parity_gap473`.
+  - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_hopper_and_crafter_parity_gap473`.

@@ -32710,4 +32710,144 @@ mod tests {
             HorizontalFacing::South
         ));
     }
+
+    #[test]
+    fn test_dispenser_dropper_hopper_and_crafter_parity_gap473() {
+        use crate::block::blocks::hopper::HopperBlock;
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use pumpkin_data::block_properties::{Facing, FacingHopper};
+        use pumpkin_data::BlockDirection;
+
+        // 1. Dispenser Parity (DispenserBlock.java:48-67, 114-137, 165-172)
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DispenserBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DispenserBlock::DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DispenserBlock::LAUNCH_EVENT_ID, 1002);
+        assert_eq!(DispenserBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DispenserBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(DispenserBlock::DEFAULT_FACING, Facing::North);
+
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::North), 0.15625);
+        assert_eq!(DispenserBlock::get_ejection_y_offset(Facing::South), 0.15625);
+
+        // Comparator signal: 0 if empty, 1 to 15 based on fill level
+        let empty_fractions = [0.0; 9];
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&empty_fractions), 0);
+        let full_fractions = [1.0; 9];
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&full_fractions), 15);
+        let mut single_item_fraction = [0.0; 9];
+        single_item_fraction[0] = 1.0 / 64.0;
+        assert_eq!(DispenserBlock::calculate_container_comparator_signal(&single_item_fraction), 1);
+
+        // 2. Dropper Parity (DropperBlock.java:22-40, DispenserBlock.java)
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DropperBlock::DROP_EVENT_ID, 1000);
+        assert_eq!(DropperBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DropperBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(DropperBlock::DEFAULT_FACING, Facing::North);
+
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::East), 0.15625);
+
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&empty_fractions), 0);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&full_fractions), 15);
+
+        // 3. Hopper Parity (HopperBlock.java:40-55, 77-80, 118-123)
+        assert_eq!(HopperBlock::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlock::NO_COOLDOWN_TIME, -1);
+        assert_eq!(HopperBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(HopperBlock::MAX_COMPARATOR_OUTPUT, 15);
+
+        // Hopper lock logic: has_signal -> enabled = false
+        assert!(HopperBlock::is_enabled(false));
+        assert!(!HopperBlock::is_enabled(true));
+
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::Down),
+            FacingHopper::Down
+        );
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::Up),
+            FacingHopper::Down
+        );
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::North),
+            FacingHopper::North
+        );
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::South),
+            FacingHopper::South
+        );
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::West),
+            FacingHopper::West
+        );
+        assert_eq!(
+            HopperBlock::calculate_facing_from_direction(BlockDirection::East),
+            FacingHopper::East
+        );
+
+        // Hopper comparator signal
+        let hopper_empty_counts = [0u8; 5];
+        let hopper_max_stacks = [64u8; 5];
+        assert_eq!(
+            HopperBlock::calculate_container_comparator_output(&hopper_empty_counts, &hopper_max_stacks),
+            0
+        );
+        let hopper_full_counts = [64u8; 5];
+        assert_eq!(
+            HopperBlock::calculate_container_comparator_output(&hopper_full_counts, &hopper_max_stacks),
+            15
+        );
+        let mut hopper_one_item = [0u8; 5];
+        hopper_one_item[0] = 1;
+        assert_eq!(
+            HopperBlock::calculate_container_comparator_output(&hopper_one_item, &hopper_max_stacks),
+            1
+        );
+
+        // 4. Crafter Parity (CrafterBlock.java:42-55, 61-82, 106-125)
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(CrafterBlock::DEFAULT_CRAFTING, false);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+
+        // Crafter trigger evaluation: (new_triggered, should_schedule_craft)
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, false), (true, true));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, true), (false, false));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, true), (true, false));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, false), (false, false));
+
+        // Crafter comparator signal: 0 to 9 (occupied + disabled slots)
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(4, 2), 6);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(9, 0), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 5), 9); // capped at 9
+
+        // Crafter disabled slot bitmask serialization
+        let disabled_slots = [true, false, true, false, false, false, false, false, true];
+        let mask = CrafterBlock::disabled_slots_to_bitmask(&disabled_slots);
+        assert_eq!(mask, 1 | 4 | 256);
+        assert_eq!(CrafterBlock::bitmask_to_disabled_slots(mask), disabled_slots);
+
+        // Crafter advancement range
+        assert!(CrafterBlock::is_player_within_advancement_range(8.0, 8.0, 8.0));
+        assert!(!CrafterBlock::is_player_within_advancement_range(9.0, 0.0, 0.0));
+    }
 }
