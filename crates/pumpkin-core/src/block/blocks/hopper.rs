@@ -155,6 +155,7 @@ impl BlockBehaviour for HopperBlock {
             check_powered_state(args.world, args.position, args.state_id, args.block);
         }
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

@@ -33627,4 +33627,110 @@ mod tests {
         let kb_resisted = calculate_explosion_knockback_power(0.5, 1.0, 1.0, 0.5);
         assert!((kb_resisted - 0.25).abs() < 1e-6);
     }
+    #[test]
+    fn test_dispenser_dropper_and_hopper_parity_gap484() {
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use crate::block::blocks::hopper::HopperBlock;
+        use pumpkin_data::block_properties::{Facing, FacingHopper};
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Dispenser Parity (DispenserBlock.java:50-188, ProjectileItem.java:24-50)
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::DISPENSE_OFFSET_SCALE, 0.7);
+        assert_eq!(DispenserBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DispenserBlock::DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DispenserBlock::LAUNCH_EVENT_ID, 1002);
+        assert_eq!(DispenserBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DispenserBlock::ACCURACY_DEFAULT, 6.0);
+        assert_eq!(DispenserBlock::SPREAD_FACTOR, 0.017_227_5);
+        assert_eq!(DispenserBlock::Y_OFFSET_VERTICAL, 0.125);
+        assert_eq!(DispenserBlock::Y_OFFSET_HORIZONTAL, 0.15625);
+
+        // Projectile configs (ProjectileItem.java:37-39, ExperienceBottleItem.java:51-52, ThrowablePotionItem.java:46-47)
+        assert_eq!(DispenserBlock::DEFAULT_PROJECTILE_POWER, 1.1);
+        assert_eq!(DispenserBlock::DEFAULT_PROJECTILE_UNCERTAINTY, 6.0);
+        assert_eq!(DispenserBlock::POTION_PROJECTILE_POWER, 1.375);
+        assert_eq!(DispenserBlock::POTION_PROJECTILE_UNCERTAINTY, 3.0);
+        assert_eq!(DispenserBlock::FIREWORK_PROJECTILE_POWER, 0.5);
+        assert_eq!(DispenserBlock::FIREWORK_PROJECTILE_UNCERTAINTY, 1.0);
+        assert_eq!(DispenserBlock::FIRE_CHARGE_PROJECTILE_POWER, 1.0);
+        assert!((DispenserBlock::FIRE_CHARGE_PROJECTILE_UNCERTAINTY - 6.666_666_5).abs() < 1e-6);
+        assert_eq!(DispenserBlock::WIND_CHARGE_PROJECTILE_POWER, 1.0);
+        assert!((DispenserBlock::WIND_CHARGE_PROJECTILE_UNCERTAINTY - 6.666_666_5).abs() < 1e-6);
+        assert_eq!(DispenserBlock::EXP_BOTTLE_PROJECTILE_POWER, 1.375);
+        assert_eq!(DispenserBlock::EXP_BOTTLE_PROJECTILE_UNCERTAINTY, 3.0);
+
+        // Dispense position offset calculation: center + scale * direction
+        let pos = BlockPos::new(10, 64, 10);
+        let center = pos.to_centered_f64();
+        let disp_north = DispenserBlock::calculate_dispense_position(&pos, Facing::North, 0.7);
+        assert!((disp_north.x - center.x).abs() < 1e-6);
+        assert!((disp_north.y - center.y).abs() < 1e-6);
+        assert!((disp_north.z - (center.z - 0.7)).abs() < 1e-6);
+
+        let disp_up = DispenserBlock::calculate_dispense_position(&pos, Facing::Up, 0.7);
+        assert!((disp_up.y - (center.y + 0.7)).abs() < 1e-6);
+
+        // 2. Dropper Parity (DropperBlock.java:22-73, DefaultDispenseItemBehavior.java:12-49)
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DropperBlock::DROP_EVENT_ID, 1000);
+        assert_eq!(DropperBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DropperBlock::ACCURACY_DEFAULT, 6.0);
+        assert_eq!(DropperBlock::SPREAD_FACTOR, 0.017_227_5);
+        assert_eq!(DropperBlock::Y_OFFSET_VERTICAL, 0.125);
+        assert_eq!(DropperBlock::Y_OFFSET_HORIZONTAL, 0.15625);
+
+        // Ejection Y offsets
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::North), 0.15625);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::South), 0.15625);
+
+        // Comparator signal for 9 slots
+        let empty_9 = [0.0f32; 9];
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&empty_9), 0);
+        let full_9 = [1.0f32; 9];
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&full_9), 15);
+        let half_9 = [0.5f32; 9];
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&half_9), 8);
+
+        // 3. Hopper Parity (HopperBlock.java:40-168, HopperBlockEntity.java:32-56)
+        assert_eq!(HopperBlock::HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlock::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlock::NO_COOLDOWN_TIME, -1);
+        assert_eq!(HopperBlock::SUCK_AABB_Y_MIN, 11.0 / 16.0);
+        assert_eq!(HopperBlock::SUCK_AABB_Y_MAX, 2.0);
+
+        // Facing: Hopper cannot face UP, defaults to DOWN when placed on floor or ceiling
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::North), FacingHopper::North);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::East), FacingHopper::East);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::South), FacingHopper::South);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::West), FacingHopper::West);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Down), FacingHopper::Down);
+        assert_eq!(HopperBlock::calculate_facing_from_direction(BlockDirection::Up), FacingHopper::Down);
+
+        // Redstone lock: redstone power disables hopper
+        assert_eq!(HopperBlock::is_enabled(false), true);
+        assert_eq!(HopperBlock::is_enabled(true), false);
+
+        // Suction blocked check
+        assert_eq!(HopperBlock::is_suction_blocked(true, false), true);
+        assert_eq!(HopperBlock::is_suction_blocked(true, true), false);
+        assert_eq!(HopperBlock::is_suction_blocked(false, false), false);
+
+        // Comparator signal for 5 slots
+        let empty_counts = [0u8; 5];
+        let stack_64 = [64u8; 5];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&empty_counts, &stack_64), 0);
+        let full_counts = [64u8; 5];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&full_counts, &stack_64), 15);
+        let half_counts = [32u8; 5];
+        assert_eq!(HopperBlock::calculate_container_comparator_output(&half_counts, &stack_64), 8);
+    }
 }

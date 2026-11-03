@@ -12765,3 +12765,55 @@ et/minecraft/world/level/block/LightningRodBlock.java
     - Bổ sung các hằng số sức mạnh nổ, hàm `calculate_explosion_damage`.
     - Bổ sung unit test `test_tnt_primed_tnt_and_explosives_parity_gap483`.
   - **Unit Tests**: Vượt qua 100% `test_tnt_primed_tnt_and_explosives_parity_gap483`.
+
+
+### Gap 484: Dropper, Dispenser, Hopper Projectile Shooting & Item Eject Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DispenserBlock.java`
+  - `net/minecraft/world/level/block/DropperBlock.java`
+  - `net/minecraft/world/level/block/HopperBlock.java`
+  - `net/minecraft/world/level/block/entity/DispenserBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/DropperBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/HopperBlockEntity.java`
+  - `net/minecraft/core/dispenser/DefaultDispenseItemBehavior.java`
+  - `net/minecraft/core/dispenser/ProjectileDispenseBehavior.java`
+  - `net/minecraft/world/item/ProjectileItem.java`
+  - `net/minecraft/world/item/ExperienceBottleItem.java`
+  - `net/minecraft/world/item/ThrowablePotionItem.java`
+  - `net/minecraft/world/item/FireChargeItem.java`
+  - `net/minecraft/world/item/FireworkRocketItem.java`
+  - `net/minecraft/world/item/WindChargeItem.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Dispenser Block & Projectile Launch Parity (DispenserBlock.java:50-188, ProjectileItem.java:24-50)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed`: bảo đảm các bộ so sánh (comparator) và dây redstone kề cận phát hiện khối dispenser ngay khi được đặt vào thế giới.
+    - Hằng số kích hoạt và sự kiện: thời lượng tick kích hoạt 4 ticks (`TRIGGER_DURATION = 4`), dung lượng 9 ô (`CONTAINER_SIZE = 9`), độ dịch vị trí bắn `DISPENSE_OFFSET_SCALE = 0.7`.
+    - Mã sự kiện thế giới: thất bại (click) `FAIL_EVENT_ID = 1001`, phóng đồ vật `DISPENSE_EVENT_ID = 1000`, bắn đạn bay `LAUNCH_EVENT_ID = 1002`, hạt khói hướng mặt `SMOKE_EVENT_ID = 2000`.
+    - Hằng số sức mạnh và độ lệch projectile (ProjectileItem config):
+      - Đạn bay thông thường (Arrow, Spectral Arrow, Egg, Snowball): sức mạnh `DEFAULT_PROJECTILE_POWER = 1.1`, độ lệch `DEFAULT_PROJECTILE_UNCERTAINTY = 6.0`.
+      - Thuốc ném/thuốc kéo dài (Splash/Lingering Potion): sức mạnh `POTION_PROJECTILE_POWER = 1.375`, độ lệch `POTION_PROJECTILE_UNCERTAINTY = 3.0`.
+      - Pháo hoa (Firework Rocket): sức mạnh `FIREWORK_PROJECTILE_POWER = 0.5`, độ lệch `FIREWORK_PROJECTILE_UNCERTAINTY = 1.0`, sự kiện bắn 1004.
+      - Cầu lửa nhỏ (Fire Charge / Small Fireball): sức mạnh `FIRE_CHARGE_PROJECTILE_POWER = 1.0`, độ lệch `FIRE_CHARGE_PROJECTILE_UNCERTAINTY = 6.6666665`, sự kiện bắn 1018.
+      - Đạn gió (Wind Charge): sức mạnh `WIND_CHARGE_PROJECTILE_POWER = 1.0`, độ lệch `WIND_CHARGE_PROJECTILE_UNCERTAINTY = 6.6666665`, sự kiện bắn 1051.
+      - Bình kinh nghiệm (Experience Bottle): sức mạnh `EXP_BOTTLE_PROJECTILE_POWER = 1.375`, độ lệch `EXP_BOTTLE_PROJECTILE_UNCERTAINTY = 3.0`.
+  - **Dropper Block & Item Ejection Parity (DropperBlock.java:22-73, DefaultDispenseItemBehavior.java:12-49)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` của `DropperBlock`.
+    - Độ lệch trục Y khi nhả đồ: hướng dọc (Up/Down) `Y_OFFSET_VERTICAL = 0.125`, hướng ngang (North/South/East/West) `Y_OFFSET_HORIZONTAL = 0.15625`.
+    - Độ chính xác nhả mặc định `ACCURACY_DEFAULT = 6.0`, hệ số phân tán góc `SPREAD_FACTOR = 0.0172275`.
+    - Chuyển đồ sang vật chứa đối diện: nếu mặt trước đối diện một Container (rương, hopper, lò nung...), chuyển trực tiếp vào container thay vì nhả ra thế giới.
+  - **Hopper Block & Cooldown Parity (HopperBlock.java:40-168, HopperBlockEntity.java:32-56)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` của `HopperBlock`.
+    - Dung lượng: 5 ô vật phẩm (`HOPPER_CONTAINER_SIZE = 5`).
+    - Tốc độ truyền đồ: 8 ticks cho mỗi vật phẩm chuyển đi (`MOVE_ITEM_SPEED = 8`, tương đương 2.5 vật phẩm/giây).
+    - Hạn chế hướng mặt: phễu hopper không bao giờ hướng LÊN (`Up`), khi đặt ở sàn hoặc trần sẽ mặc định hướng XUỐNG (`Down`).
+    - Khóa redstone: tín hiệu redstone lân cận sẽ khóa phễu (`enabled = false`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Bổ sung `update_neighbors` trong `placed` và công khai các hằng số sức mạnh, độ lệch đạn bay.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_dispenser_dropper_and_hopper_parity_gap484`.
+  - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_and_hopper_parity_gap484`.

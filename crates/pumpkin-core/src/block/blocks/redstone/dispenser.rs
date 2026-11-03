@@ -323,6 +323,7 @@ impl BlockBehaviour for DispenserBlock {
             }
         }
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
@@ -392,12 +393,18 @@ impl BlockBehaviour for DispenserBlock {
 
 impl DispenserBlock {
     // Velocity values match the vanilla dispenser projectile settings.
-    const DEFAULT_PROJECTILE_POWER: f64 = 1.1;
-    const DEFAULT_PROJECTILE_UNCERTAINTY: f64 = 6.0;
-    const POTION_PROJECTILE_POWER: f64 = 1.375;
-    const POTION_PROJECTILE_UNCERTAINTY: f64 = 3.0;
-    const FIREWORK_PROJECTILE_POWER: f64 = 0.5;
-    const FIREWORK_PROJECTILE_UNCERTAINTY: f64 = 1.0;
+    pub const DEFAULT_PROJECTILE_POWER: f64 = 1.1;
+    pub const DEFAULT_PROJECTILE_UNCERTAINTY: f64 = 6.0;
+    pub const POTION_PROJECTILE_POWER: f64 = 1.375;
+    pub const POTION_PROJECTILE_UNCERTAINTY: f64 = 3.0;
+    pub const FIREWORK_PROJECTILE_POWER: f64 = 0.5;
+    pub const FIREWORK_PROJECTILE_UNCERTAINTY: f64 = 1.0;
+    pub const FIRE_CHARGE_PROJECTILE_POWER: f64 = 1.0;
+    pub const FIRE_CHARGE_PROJECTILE_UNCERTAINTY: f64 = 6.666_666_5;
+    pub const WIND_CHARGE_PROJECTILE_POWER: f64 = 1.0;
+    pub const WIND_CHARGE_PROJECTILE_UNCERTAINTY: f64 = 6.666_666_5;
+    pub const EXP_BOTTLE_PROJECTILE_POWER: f64 = 1.375;
+    pub const EXP_BOTTLE_PROJECTILE_UNCERTAINTY: f64 = 3.0;
 
     fn dispense(ctx: &DispenseContext<'_>, dispenser: &DispenserBlockEntity, item: &mut ItemStack) {
         let mut event = crate::plugin::api::events::block::block_dispense::BlockDispenseEvent::new(
