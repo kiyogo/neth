@@ -33071,4 +33071,91 @@ mod tests {
         assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::West));
         assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::East));
     }
+
+    #[test]
+    fn test_cake_candle_cakes_respawn_anchor_end_portal_frame_copper_bulb_and_pot_parity_gap476() {
+        use crate::block::blocks::cake::CakeBlock;
+        use crate::block::blocks::candle_cakes::CandleCakeBlock;
+        use crate::block::blocks::respawn_anchor::RespawnAnchorBlock;
+        use crate::block::blocks::end_portal_frame::{
+            EndPortalFrameBlock, calculate_end_portal_frame_comparator_signal,
+        };
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+        use crate::block::blocks::decorated_pot::DecoratedPotBlock;
+
+        // 1. Cake Parity (CakeBlock.java:60-75, 137-145)
+        assert_eq!(CakeBlock::MAX_BITES, 6);
+        assert_eq!(CakeBlock::BITES_TO_EAT, 7);
+        assert_eq!(CakeBlock::HUNGER_RESTORE, 2);
+        assert_eq!(CakeBlock::SATURATION_RESTORE, 0.4);
+        assert_eq!(CakeBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(CakeBlock::MAX_COMPARATOR_SIGNAL, 14);
+
+        // Comparator signal: (7 - bites) * 2
+        assert_eq!(CakeBlock::calculate_comparator_output(0), 14);
+        assert_eq!(CakeBlock::calculate_comparator_output(1), 12);
+        assert_eq!(CakeBlock::calculate_comparator_output(2), 10);
+        assert_eq!(CakeBlock::calculate_comparator_output(3), 8);
+        assert_eq!(CakeBlock::calculate_comparator_output(4), 6);
+        assert_eq!(CakeBlock::calculate_comparator_output(5), 4);
+        assert_eq!(CakeBlock::calculate_comparator_output(6), 2);
+        assert_eq!(CakeBlock::calculate_comparator_output(7), 0);
+        assert_eq!(CakeBlock::calculate_comparator_output(10), 0);
+
+        // 2. Candle Cake Parity (CandleCakeBlock.java:45-60, 126-133)
+        assert_eq!(CandleCakeBlock::COMPARATOR_SIGNAL, 14);
+
+        // 3. Respawn Anchor Parity (RespawnAnchorBlock.java:46-55, 175-180, 203-215)
+        assert_eq!(RespawnAnchorBlock::MIN_CHARGES, 0);
+        assert_eq!(RespawnAnchorBlock::MAX_CHARGES, 4);
+        assert_eq!(RespawnAnchorBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(RespawnAnchorBlock::MAX_COMPARATOR_SIGNAL, 15);
+        assert_eq!(RespawnAnchorBlock::NUM_RESPAWN_OFFSETS, 25);
+
+        // Comparator output scaled charge: floor(charge / 4.0 * 15)
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(0), 0);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(1), 3);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(2), 7);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(3), 11);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(4), 15);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(5), 15);
+
+        // 4. End Portal Frame Parity (EndPortalFrameBlock.java:43-60, EnderEyeItem.java:48-67)
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EMPTY, 0);
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EYE, 15);
+        assert_eq!(EndPortalFrameBlock::EVENT_FRAME_FILL, 1503);
+        assert_eq!(EndPortalFrameBlock::EVENT_PORTAL_SPAWN, 1038);
+        assert_eq!(EndPortalFrameBlock::PORTAL_FRAME_COUNT, 12);
+        assert_eq!(EndPortalFrameBlock::PORTAL_INNER_SIZE, 3);
+        assert_eq!(calculate_end_portal_frame_comparator_signal(false), 0);
+        assert_eq!(calculate_end_portal_frame_comparator_signal(true), 15);
+
+        // 5. Copper Bulb Parity (CopperBulbBlock.java:45-68)
+        assert_eq!(CopperBulbBlock::DEFAULT_POWERED, false);
+        assert_eq!(CopperBulbBlock::DEFAULT_LIT, false);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(false), 0);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(true), 15);
+
+        // T-flip-flop logic
+        let (lit, powered, play_sound) = CopperBulbBlock::evaluate_t_flip_flop(false, false, true);
+        assert_eq!(lit, true);
+        assert_eq!(powered, true);
+        assert_eq!(play_sound, Some(true));
+
+        let (lit, powered, play_sound) = CopperBulbBlock::evaluate_t_flip_flop(true, true, false);
+        assert_eq!(lit, true);
+        assert_eq!(powered, false);
+        assert_eq!(play_sound, None);
+
+        let (lit, powered, play_sound) = CopperBulbBlock::evaluate_t_flip_flop(true, false, true);
+        assert_eq!(lit, false);
+        assert_eq!(powered, true);
+        assert_eq!(play_sound, Some(false));
+
+        // 6. Decorated Pot Parity (DecoratedPotBlock.java:169, 229-236)
+        assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
+        assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
+    }
 }

@@ -4,7 +4,7 @@ use crate::block::blocks::weathering_copper::{
     get_first, get_next, get_previous, get_weather_state,
 };
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetComparatorOutputArgs, OnNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetComparatorOutputArgs, OnNeighborUpdateArgs, OnPlaceArgs, PlacedArgs,
     RandomTickArgs,
 };
 use pumpkin_data::BlockId;
@@ -103,6 +103,15 @@ impl BlockMetadata for CopperBulbBlock {
 }
 
 impl BlockBehaviour for CopperBulbBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = CopperBulbLikeProperties::default(args.block);
         let is_receiving_power = block_receives_redstone_power(args.world, args.position);
@@ -142,6 +151,7 @@ impl BlockBehaviour for CopperBulbBlock {
                     props.to_state_id(args.block),
                     BlockFlags::NOTIFY_ALL,
                 );
+                args.world.update_neighbour_for_output_signal(args.position, args.block);
             }
         }
     }

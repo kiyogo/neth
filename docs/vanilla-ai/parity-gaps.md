@@ -12432,3 +12432,49 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_lectern_chiseled_bookshelf_and_trapped_chest_parity_gap475`.
   - **Unit Tests**: Vượt qua 100% `test_lectern_chiseled_bookshelf_and_trapped_chest_parity_gap475`.
+
+### Gap 476: Cake, Candle Cake, Respawn Anchor, End Portal Frame, Copper Bulb & Decorated Pot Comparator & Broken/Placed Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/CakeBlock.java`
+  - `net/minecraft/world/level/block/CandleCakeBlock.java`
+  - `net/minecraft/world/level/block/RespawnAnchorBlock.java`
+  - `net/minecraft/world/level/block/EndPortalFrameBlock.java`
+  - `net/minecraft/world/item/EnderEyeItem.java`
+  - `net/minecraft/world/level/block/CopperBulbBlock.java`
+  - `net/minecraft/world/level/block/DecoratedPotBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Cake & Candle Cake Slices, Broken/Placed & Comparator Signal (CakeBlock.java:60-75, 137-145, CandleCakeBlock.java:45-60, 126-133)**:
+    - Bánh kem (`CakeBlock`) phát tín hiệu so sánh analog theo công thức `(7 - bites) * 2`, với `bites` từ 0 đến 6 tương ứng mức tín hiệu từ `14` xuống `2`. Khi ăn hết lát cuối cùng, khối bị phá hủy.
+    - Bổ sung `placed` và `broken` cho cả `CakeBlock` và `CandleCakeBlock`: tự động gọi `update_neighbour_for_output_signal` và `update_neighbors` khi đặt hoặc phá vỡ khối.
+    - Trong `consume_if_hungry`: gọi `update_neighbour_for_output_signal` ngay khi người chơi ăn một lát bánh để bộ so sánh cập nhật tín hiệu tức thì.
+    - Bánh cắm nến (`CandleCakeBlock`) luôn giữ nguyên trạng thái nguyên vẹn, phát tín hiệu so sánh cố định `14` (`FULL_CAKE_SIGNAL`).
+  - **Respawn Anchor Charges & Comparator Scale (RespawnAnchorBlock.java:46-55, 175-180, 203-215)**:
+    - Bổ sung `placed` và `broken` cho `RespawnAnchorBlock`: gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Khi nạp đá phát sáng (`charge` trong `use_with_item`): lập tức gọi `update_neighbour_for_output_signal` để các bộ so sánh gắn liền nhận được mức tín hiệu mới.
+    - Thang tín hiệu so sánh: `charges: 0 -> 0, 1 -> 3, 2 -> 7, 3 -> 11, 4 -> 15` theo công thức `floor(charges / 4.0 * 15)`.
+  - **End Portal Frame Eye Insertion & Placed/Broken Parity (EndPortalFrameBlock.java:43-60, EnderEyeItem.java:48-67)**:
+    - Bổ sung `placed` và `broken` cho khung cổng End: gửi tín hiệu cập nhật bộ so sánh và khối lân cận.
+    - Bổ sung `use_with_item` cho `EndPortalFrameBlock` khi người chơi cầm `Item::ENDER_EYE`: đặt mắt vào khung (`eye = true`), trừ vật phẩm trong chế độ sinh tồn, phát sự kiện `WorldEvent::EndPortalFrameFill` (`EVENT_FRAME_FILL = 1503`) và cập nhật tín hiệu bộ so sánh lên mức cực đại `15`.
+  - **Copper Bulb T-Flip-Flop & Comparator Signal (CopperBulbBlock.java:45-68)**:
+    - Bổ sung `placed` và `broken`: gửi tín hiệu cập nhật bộ so sánh và khối lân cận.
+    - Trong `on_neighbor_update`: khi bóng đèn đồng đổi trạng thái sáng/tắt (`lit`), cập nhật ngay tín hiệu bộ so sánh qua `update_neighbour_for_output_signal` (`lit ? 15 : 0`).
+  - **Decorated Pot Placed & Broken Notification (DecoratedPotBlock.java:169, 229-236)**:
+    - Trong `placed`: gửi tín hiệu `update_neighbour_for_output_signal` cho bộ so sánh.
+    - Trong `broken`: giải phóng block entity (`remove_block_entity`), cập nhật tín hiệu bộ so sánh và thông báo khối lân cận khi bình trang trí vỡ hoặc bị phá vỡ.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/cake.rs`:
+    - Bổ sung `placed`, `broken`, hằng số tín hiệu và cập nhật tín hiệu khi ăn từng lát bánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/candle_cakes.rs`:
+    - Bổ sung `placed`, `broken` và hằng số tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/respawn_anchor.rs`:
+    - Bổ sung `placed`, `broken` và cập nhật tín hiệu bộ so sánh khi nạp điểm hồi sinh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/end_portal_frame.rs`:
+    - Bổ sung `placed`, `broken` và tương tác cắm mắt Ender.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/copper_bulb.rs`:
+    - Bổ sung `placed`, `broken` và cập nhật tín hiệu bộ so sánh khi bật/tắt bóng đèn.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/decorated_pot.rs`:
+    - Bổ sung cập nhật tín hiệu khi đặt và dọn dẹp block entity khi phá vỡ.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_cake_candle_cakes_respawn_anchor_end_portal_frame_copper_bulb_and_pot_parity_gap476`.
+  - **Unit Tests**: Vượt qua 100% `test_cake_candle_cakes_respawn_anchor_end_portal_frame_copper_bulb_and_pot_parity_gap476`.

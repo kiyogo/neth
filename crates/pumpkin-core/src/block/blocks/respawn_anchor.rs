@@ -7,7 +7,7 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetComparatorOutputArgs, NormalUseArgs, PathComputationType, UseWithItemArgs,
+    BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, NormalUseArgs, PlacedArgs, PathComputationType, UseWithItemArgs,
 };
 use crate::entity::EntityBase;
 
@@ -98,6 +98,15 @@ impl RespawnAnchorBlock {
 }
 
 impl BlockBehaviour for RespawnAnchorBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
     /// Charges the respawn anchor when the player uses glowstone and capacity remains.
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         if args.item_stack.item.id != Item::GLOWSTONE.id {
@@ -121,6 +130,7 @@ impl BlockBehaviour for RespawnAnchorBlock {
             pumpkin_data::game_event::GameEvent::BlockChange.name(),
             args.position.to_centered_f64(),
         );
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
 
         args.item_stack
             .decrement_unless_creative(args.player.gamemode.load(), 1);

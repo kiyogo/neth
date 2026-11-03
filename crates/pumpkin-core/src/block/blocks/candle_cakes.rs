@@ -10,8 +10,8 @@ use pumpkin_world::{
 
 use crate::{
     block::{
-        BlockBehaviour, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs, NormalUseArgs,
-        OnScheduledTickArgs, PathComputationType, UseWithItemArgs,
+        BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs, NormalUseArgs,
+        OnScheduledTickArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
         blocks::cake::{CakeBlock, FULL_CAKE_SIGNAL},
         registry::BlockActionResult,
     },
@@ -57,6 +57,8 @@ pub fn candle_from_cake(block: &Block) -> &'static Item {
 pub struct CandleCakeBlock;
 
 impl CandleCakeBlock {
+    pub const COMPARATOR_SIGNAL: u8 = FULL_CAKE_SIGNAL;
+
     fn consume_and_drop_candle(
         block: &Block,
         player: &Player,
@@ -86,6 +88,15 @@ impl CandleCakeBlock {
 }
 
 impl BlockBehaviour for CandleCakeBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         let item_id = args.item_stack.item.id;
         match item_id {

@@ -1,8 +1,15 @@
+use pumpkin_data::item::Item;
+use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block;
+use pumpkin_world::world::BlockFlags;
 
+use crate::block::registry::BlockActionResult;
 use crate::{
-    block::{BlockBehaviour, GetComparatorOutputArgs, OnPlaceArgs, PathComputationType},
+    block::{
+        BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, OnPlaceArgs, PathComputationType,
+        PlacedArgs, UseWithItemArgs,
+    },
     entity::EntityBase,
 };
 
@@ -40,6 +47,37 @@ impl EndPortalFrameBlock {
 }
 
 impl BlockBehaviour for EndPortalFrameBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
+        if args.item_stack.item.id != Item::ENDER_EYE.id {
+            return BlockActionResult::PassToDefaultBlockAction;
+        }
+        let state_id = args.world.get_block_state_id(args.position);
+        let mut props = EndPortalFrameProperties::from_state_id(state_id);
+        if props.eye {
+            return BlockActionResult::PassToDefaultBlockAction;
+        }
+        props.eye = true;
+        args.world.set_block_state(
+            args.position,
+            props.to_state_id(args.block),
+            BlockFlags::NOTIFY_ALL,
+        );
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.sync_world_event(WorldEvent::EndPortalFrameFill, *args.position, 0);
+        args.item_stack
+            .decrement_unless_creative(args.player.gamemode.load(), 1);
+        BlockActionResult::Success
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut end_portal_frame_props = EndPortalFrameProperties::default(args.block);
         end_portal_frame_props.facing = args.player.get_entity().get_horizontal_facing().opposite();

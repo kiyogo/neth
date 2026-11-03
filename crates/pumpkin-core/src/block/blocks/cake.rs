@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     block::{
-        BlockBehaviour, CanPlaceAtArgs, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs,
-        NormalUseArgs, OnPlaceArgs, OnScheduledTickArgs, PathComputationType, UseWithItemArgs,
+        BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs,
+        NormalUseArgs, OnPlaceArgs, OnScheduledTickArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
         blocks::candle_cakes::cake_from_candle, registry::BlockActionResult,
     },
     entity::player::Player,
@@ -35,6 +35,18 @@ pub const FULL_CAKE_SIGNAL: u8 = cake_output_signal(0);
 pub struct CakeBlock;
 
 impl CakeBlock {
+    pub const MAX_BITES: u8 = 6;
+    pub const BITES_TO_EAT: u8 = 7;
+    pub const HUNGER_RESTORE: u32 = 2;
+    pub const SATURATION_RESTORE: f32 = 0.4;
+    pub const MIN_COMPARATOR_SIGNAL: u8 = 0;
+    pub const MAX_COMPARATOR_SIGNAL: u8 = 14;
+
+    #[must_use]
+    pub const fn calculate_comparator_output(bites: u8) -> u8 {
+        cake_output_signal(bites)
+    }
+
     pub fn consume_if_hungry(
         world: &Arc<World>,
         player: &Player,
@@ -61,6 +73,7 @@ impl CakeBlock {
                     properties.to_state_id(block),
                     BlockFlags::NOTIFY_ALL,
                 );
+                world.update_neighbour_for_output_signal(location, block);
                 BlockActionResult::Consume
             }
             6 => {
@@ -74,6 +87,8 @@ impl CakeBlock {
                     Block::AIR.default_state.id,
                     BlockFlags::NOTIFY_ALL,
                 );
+                world.update_neighbour_for_output_signal(location, block);
+                world.update_neighbors(location, None);
                 BlockActionResult::Consume
             }
             _ => BlockActionResult::Pass,
@@ -82,6 +97,15 @@ impl CakeBlock {
 }
 
 impl BlockBehaviour for CakeBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if !can_place_at(args.world, args.position) {
             return Block::AIR.default_state.id;
