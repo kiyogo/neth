@@ -66,6 +66,7 @@ impl BlockBehaviour for SnifferEggBlock {
         let delay = Self::get_hatch_delay(boosted, random_offset);
         args.world
             .schedule_block_tick(args.block, *args.position, delay, TickPriority::Normal);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {

@@ -1,7 +1,7 @@
 use crate::block::blocks::falling::FallingBlock;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    AttackArgs, BlockBehaviour, GetStateForNeighborUpdateArgs, NormalUseArgs, OnScheduledTickArgs,
+    AttackArgs, BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnScheduledTickArgs,
     PathComputationType, PlacedArgs,
 };
 use crate::world::World;
@@ -75,6 +75,11 @@ impl DragonEggBlock {
 impl BlockBehaviour for DragonEggBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         FallingBlock::placed_with_delay(&args, Self::DELAY_AFTER_PLACE);
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

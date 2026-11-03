@@ -34664,4 +34664,81 @@ mod tests {
         // 8. End Rod Parity (EndRodBlock.java)
         assert_eq!(EndRodBlock::LIGHT_LEVEL, 14);
     }
+
+    #[test]
+    fn test_eggs_spawners_and_portals_parity_gap499() {
+        use crate::block::blocks::dragon_egg::DragonEggBlock;
+        use crate::block::blocks::sniffer_egg::SnifferEggBlock;
+        use crate::block::blocks::turtle_egg::TurtleEggBlock;
+        use crate::block::blocks::frogspawn::FrogspawnBlock;
+        use crate::block::blocks::spawner::SpawnerBlock;
+        use crate::block::blocks::creaking_heart::CreakingHeartBlock;
+        use crate::block::blocks::end_portal_frame::EndPortalFrameBlock;
+        use crate::block::blocks::end_portal::EndPortalBlock;
+
+        // 1. Dragon Egg Parity (DragonEggBlock.java)
+        assert_eq!(DragonEggBlock::DELAY_AFTER_PLACE, 5);
+        assert_eq!(DragonEggBlock::HORIZONTAL_TELEPORT_RADIUS, 16);
+        assert_eq!(DragonEggBlock::VERTICAL_TELEPORT_RADIUS, 8);
+        assert_eq!(DragonEggBlock::TELEPORT_ATTEMPTS, 1000);
+        assert_eq!(DragonEggBlock::EVENT_DRAGON_EGG_TELEPORT, 2015);
+
+        // 2. Sniffer Egg Parity (SnifferEggBlock.java)
+        assert_eq!(SnifferEggBlock::MAX_HATCH_LEVEL, 2);
+        assert_eq!(SnifferEggBlock::REGULAR_HATCH_TIME_TICKS, 24000);
+        assert_eq!(SnifferEggBlock::BOOSTED_HATCH_TIME_TICKS, 12000);
+        assert_eq!(SnifferEggBlock::RANDOM_HATCH_OFFSET_TICKS, 300);
+        assert_eq!(SnifferEggBlock::EVENT_SNIFFER_EGG_BOOST, 3009);
+        assert_eq!(SnifferEggBlock::BABY_SNIFFER_AGE, -24000);
+
+        // 3. Turtle Egg Parity (TurtleEggBlock.java)
+        assert_eq!(TurtleEggBlock::MAX_HATCH_LEVEL, 2);
+        assert_eq!(TurtleEggBlock::MIN_EGGS, 1);
+        assert_eq!(TurtleEggBlock::MAX_EGGS, 4);
+        assert_eq!(TurtleEggBlock::STEP_DESTROY_RANDOMNESS, 100);
+        assert_eq!(TurtleEggBlock::FALL_DESTROY_RANDOMNESS, 3);
+        assert_eq!(TurtleEggBlock::BABY_TURTLE_AGE, -24000);
+        assert_eq!(TurtleEggBlock::EVENT_TURTLE_EGG_PLACED, 2012);
+
+        // 4. Frogspawn Parity (FrogspawnBlock.java)
+        assert_eq!(FrogspawnBlock::MIN_TADPOLES_SPAWN, 2);
+        assert_eq!(FrogspawnBlock::MAX_TADPOLES_SPAWN, 5);
+        assert_eq!(FrogspawnBlock::MIN_HATCH_TICK_DELAY, 3600);
+        assert_eq!(FrogspawnBlock::MAX_HATCH_TICK_DELAY, 12000);
+        assert_eq!(FrogspawnBlock::HEIGHT, 1.5 / 16.0);
+
+        // 5. Spawner Parity (SpawnerBlock.java)
+        assert_eq!(SpawnerBlock::MIN_SPAWN_XP, 15);
+        assert_eq!(SpawnerBlock::MAX_SPAWN_XP, 43);
+        assert_eq!(SpawnerBlock::MAGIC_BASE_XP, 15);
+        assert_eq!(SpawnerBlock::MAGIC_RANDOM_XP_ROLL, 15);
+
+        // 6. Creaking Heart Parity (CreakingHeartBlock.java)
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MIN_XP, 20);
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MAX_XP, 24);
+        assert_eq!(CreakingHeartBlock::COMPARATOR_MAX_DISTANCE, 32.0);
+        assert_eq!(CreakingHeartBlock::COMPARATOR_MAX_SIGNAL, 15);
+        assert_eq!(CreakingHeartBlock::RESIN_CLUMPS_MIN, 2);
+        assert_eq!(CreakingHeartBlock::RESIN_CLUMPS_MAX, 3);
+        assert_eq!(CreakingHeartBlock::HURT_CALL_TOTAL_TICKS, 100);
+        assert_eq!(CreakingHeartBlock::HURT_CALL_INTERVAL, 10);
+        assert_eq!(CreakingHeartBlock::DISTANCE_CREAKING_TOO_FAR, 34.0);
+        assert_eq!(CreakingHeartBlock::PLAYER_DETECTION_RANGE, 32.0);
+
+        // 7. End Portal Frame Parity (EndPortalFrameBlock.java)
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EYE, 15);
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EMPTY, 0);
+        assert_eq!(EndPortalFrameBlock::EVENT_FRAME_FILL, 1503);
+        assert_eq!(EndPortalFrameBlock::EVENT_PORTAL_SPAWN, 1038);
+        assert_eq!(EndPortalFrameBlock::PORTAL_FRAME_COUNT, 12);
+        assert_eq!(EndPortalFrameBlock::PORTAL_INNER_SIZE, 3);
+
+        // 8. End Portal Parity (EndPortalBlock.java)
+        assert_eq!(EndPortalBlock::END_SPAWN_X, 100);
+        assert_eq!(EndPortalBlock::END_SPAWN_Y, 49);
+        assert_eq!(EndPortalBlock::END_SPAWN_Z, 0);
+        assert_eq!(EndPortalBlock::PORTAL_MIN_Y, 6.0 / 16.0);
+        assert_eq!(EndPortalBlock::PORTAL_MAX_Y, 12.0 / 16.0);
+        assert_eq!(EndPortalBlock::PORTAL_THICKNESS, 6.0 / 16.0);
+    }
 }

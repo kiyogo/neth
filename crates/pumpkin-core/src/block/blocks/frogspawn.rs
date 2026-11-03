@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, PlacedArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, PathComputationType,
 };
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -10,6 +10,14 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
 pub struct FrogspawnBlock;
+
+impl FrogspawnBlock {
+    pub const MIN_TADPOLES_SPAWN: u32 = 2;
+    pub const MAX_TADPOLES_SPAWN: u32 = 5;
+    pub const MIN_HATCH_TICK_DELAY: u32 = 3600;
+    pub const MAX_HATCH_TICK_DELAY: u32 = 12000;
+    pub const HEIGHT: f64 = 1.5 / 16.0;
+}
 
 impl BlockMetadata for FrogspawnBlock {
     fn ids() -> Box<[BlockId]> {
@@ -27,6 +35,13 @@ fn can_survive(world: &dyn BlockAccessor, pos: &BlockPos) -> bool {
 }
 
 impl BlockBehaviour for FrogspawnBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if can_survive(args.world, args.position) {
             let delay = rand::rng().random_range(3600..=12000);

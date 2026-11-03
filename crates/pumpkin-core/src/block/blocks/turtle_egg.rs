@@ -13,7 +13,7 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use uuid::Uuid;
 
 use crate::block::{
-    BlockBehaviour, BlockIsReplacing, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs,
+    BlockBehaviour, BlockIsReplacing, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, PlacedArgs,
     GetStateForNeighborUpdateArgs, OnEntityStepArgs, OnLandedUponArgs, OnPlaceArgs,
     OnScheduledTickArgs, RandomTickArgs,
 };
@@ -102,6 +102,9 @@ impl TurtleEggBlock {
 }
 
 impl BlockBehaviour for TurtleEggBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if args.player.get_entity().pose.load() != EntityPose::Crouching
             && let BlockIsReplacing::Itself(state_id) = args.replacing
@@ -240,6 +243,7 @@ impl BlockBehaviour for TurtleEggBlock {
             0.7,
             pitch,
         );
+        args.world.update_neighbors(args.position, None);
     }
 }
 

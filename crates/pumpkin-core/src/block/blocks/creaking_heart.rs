@@ -107,6 +107,7 @@ impl BlockBehaviour for CreakingHeartBlock {
             let entity = CreakingHeartBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
             args.world.update_neighbour_for_output_signal(args.position, args.block);
+            args.world.update_neighbors(args.position, None);
 
             let state_id = args.world.get_block_state_id(args.position);
             let mut props = CreakingHeartLikeProperties::from_state_id(state_id);

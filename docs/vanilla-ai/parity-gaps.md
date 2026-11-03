@@ -13442,3 +13442,33 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_utilities_explosives_and_climbing_parity_gap498`.
   - **Unit Tests**: Vượt qua 100% `test_utilities_explosives_and_climbing_parity_gap498`.
+
+
+### Gap 499: Eggs, Spawners, End Portals & Creaking Heart Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/DragonEggBlock.java`
+  - `net/minecraft/world/level/block/SnifferEggBlock.java`
+  - `net/minecraft/world/level/block/TurtleEggBlock.java`
+  - `net/minecraft/world/level/block/FrogspawnBlock.java`
+  - `net/minecraft/world/level/block/SpawnerBlock.java`
+  - `net/minecraft/world/level/block/CreakingHeartBlock.java`
+  - `net/minecraft/world/level/block/EndPortalFrameBlock.java`
+  - `net/minecraft/world/level/block/EndPortalBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Eggs & Portals Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `DragonEggBlock`, `SnifferEggBlock`, `TurtleEggBlock`, `FrogspawnBlock`, `SpawnerBlock`, `CreakingHeartBlock`, `EndPortalFrameBlock`, và `EndPortalBlock`. Đảm bảo các khối lân cận nhận được tín hiệu cập nhật trạng thái khi các khối sinh sản đặc biệt hoặc cấu trúc cổng được đặt hoặc phá hủy.
+  - **Dragon Egg & Sniffer Egg Parity (DragonEggBlock.java, SnifferEggBlock.java)**:
+    - Trứng rồng: độ trễ rơi `DELAY_AFTER_PLACE = 5`, bán kính dịch chuyển ngang `HORIZONTAL_TELEPORT_RADIUS = 16`, dọc `VERTICAL_TELEPORT_RADIUS = 8`, số lần thử dịch chuyển `TELEPORT_ATTEMPTS = 1000`, mã sự kiện hạt `EVENT_DRAGON_EGG_TELEPORT = 2015`.
+    - Trứng Sniffer: cấp độ nở tối đa `MAX_HATCH_LEVEL = 2`, thời gian nở tiêu chuẩn `REGULAR_HATCH_TIME_TICKS = 24000`, ấp nhanh trên rêu `BOOSTED_HATCH_TIME_TICKS = 12000`, độ lệch ngẫu nhiên `RANDOM_HATCH_OFFSET_TICKS = 300`, tuổi Sniffer con `BABY_SNIFFER_AGE = -24000`.
+  - **Turtle Egg & Frogspawn Parity (TurtleEggBlock.java, FrogspawnBlock.java)**:
+    - Trứng rùa: cấp độ nở `MAX_HATCH_LEVEL = 2`, số trứng tối thiểu 1 tối đa 4 (`MIN_EGGS = 1`, `MAX_EGGS = 4`), xác suất dẫm vỡ 1/100 (`STEP_DESTROY_RANDOMNESS = 100`), rơi đè vỡ 1/3 (`FALL_DESTROY_RANDOMNESS = 3`), tuổi rùa con `BABY_TURTLE_AGE = -24000`.
+    - Trứng ếch (Frogspawn): số nòng nọc nở `MIN_TADPOLES_SPAWN = 2`, `MAX_TADPOLES_SPAWN = 5`, độ trễ tick nở `MIN_HATCH_TICK_DELAY = 3600`, `MAX_HATCH_TICK_DELAY = 12000`, độ cao khối `HEIGHT = 1.5 / 16.0`.
+  - **Spawner, Creaking Heart & End Portal Structure Parity (SpawnerBlock.java, CreakingHeartBlock.java, EndPortalFrameBlock.java, EndPortalBlock.java)**:
+    - Spawner: kinh nghiệm rơi `MIN_SPAWN_XP = 15`, `MAX_SPAWN_XP = 43` (`15 + rand(15) + rand(15)`).
+    - Trái tim Creaking: kinh nghiệm tự nhiên 20..=24 XP, khoảng cách phát hiện 32 khối, ngưỡng quá xa 34 khối.
+    - Cổng kết thúc (End Portal Frame & Portal): tín hiệu comparator có mắt là 15, không có là 0; số lượng khung 12, kích thước lõi 3x3; độ dày cổng 6/16 = 0.375 (Y: 0.375..=0.75).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_eggs_spawners_and_portals_parity_gap499`.
+  - **Unit Tests**: Vượt qua 100% `test_eggs_spawners_and_portals_parity_gap499`.

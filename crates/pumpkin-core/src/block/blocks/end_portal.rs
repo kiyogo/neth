@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::block::BlockBehaviour;
 use crate::block::OnEntityCollisionArgs;
-use crate::block::PlacedArgs;
+use crate::block::{BrokenArgs, PlacedArgs};
 use crate::block::entities::end_portal::EndPortalBlockEntity;
 use pumpkin_data::dimension::Dimension;
 use pumpkin_macros::pumpkin_block;
@@ -41,5 +41,11 @@ impl BlockBehaviour for EndPortalBlock {
 
         args.world
             .add_block_entity(Arc::new(EndPortalBlockEntity::new(*args.position)));
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 }
