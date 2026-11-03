@@ -11,7 +11,7 @@ use pumpkin_world::world::BlockFlags;
 use rand::RngExt;
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs, RandomTickArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs, RandomTickArgs,
 };
 use crate::world::World;
 
@@ -167,6 +167,14 @@ impl BlockMetadata for PodzolBlock {
 }
 
 impl BlockBehaviour for PodzolBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         SnowyBlock::on_place(args.block, args.world, args.position)
     }
@@ -189,6 +197,14 @@ impl BlockMetadata for MyceliumBlock {
 }
 
 impl BlockBehaviour for MyceliumBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         SnowyBlock::on_place(args.block, args.world, args.position)
     }

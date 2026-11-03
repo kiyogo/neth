@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::block::entities::jigsaw_block::JigsawBlockEntity;
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, NormalUseArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs};
 use crate::entity::EntityBase;
 use pumpkin_data::block_properties::{HorizontalFacing, JigsawLikeProperties, Orientation};
 use pumpkin_data::block_rotation::{Mirror, Rotation};
@@ -128,10 +128,14 @@ impl BlockBehaviour for JigsawBlock {
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
-        {
-            let entity = JigsawBlockEntity::new(*args.position);
-            args.world.add_block_entity(Arc::new(entity));
-        }
+        let entity = JigsawBlockEntity::new(*args.position);
+        args.world.add_block_entity(Arc::new(entity));
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn mirror(

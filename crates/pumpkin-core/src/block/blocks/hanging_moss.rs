@@ -1,6 +1,6 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    OnPlaceArgs, OnScheduledTickArgs, RandomTickArgs,
+    BlockBehaviour, BlockMetadata, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
+    OnPlaceArgs, OnScheduledTickArgs, PlacedArgs, RandomTickArgs,
 };
 use pumpkin_data::block_properties::PaleHangingMossLikeProperties;
 use pumpkin_data::sound::{Sound, SoundCategory};
@@ -74,6 +74,14 @@ pub fn should_play_idle_sound(above_block: &Block, roll: u32) -> bool {
 }
 
 impl BlockBehaviour for HangingMossBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if can_survive(args.world, args.position) {
             let below = args.position.down();

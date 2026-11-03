@@ -14,7 +14,7 @@ use crate::{
         BlockIsReplacing,
         registry::BlockActionResult,
         {
-            BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs,
+            BlockBehaviour, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs,
             UseWithItemArgs,
         },
     },
@@ -42,6 +42,10 @@ impl CandleBlock {
 
 impl BlockBehaviour for CandleBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

@@ -1,7 +1,7 @@
 use crate::block::blocks::falling::FallingBlock;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetScreenHandlerFactoryArgs, GetStateForNeighborUpdateArgs, NormalUseArgs,
+    BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, GetStateForNeighborUpdateArgs, NormalUseArgs,
     OnPlaceArgs, OnScheduledTickArgs, PathComputationType, PlacedArgs,
 };
 
@@ -72,6 +72,10 @@ impl BlockBehaviour for AnvilBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         FallingBlock::placed(&FallingBlock, args);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {

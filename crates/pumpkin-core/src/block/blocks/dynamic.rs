@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 use crate::entity::EntityBase;
 use pumpkin_data::block_registry::PlacementContext;
 use pumpkin_data::{Block, BlockStateId, FacingExt, HorizontalFacingExt};
@@ -14,6 +14,14 @@ fn state_id(block: &Block, state_index: u16) -> BlockStateId {
 }
 
 impl BlockBehaviour for DynamicBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let Some(info) = args.block.dynamic_info() else {
             return args.block.default_state.id;

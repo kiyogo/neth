@@ -13735,3 +13735,63 @@ et/minecraft/world/level/block/TripWireBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_redstone_rails_and_signal_devices_parity_gap506.
   - **Unit Tests**: Vượt qua 100% 	est_redstone_rails_and_signal_devices_parity_gap506.
+
+
+### Gap 507: Workstations, Anvil, Candles & Structural Utilities Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/CraftingTableBlock.java
+  - 
+et/minecraft/world/level/block/CartographyTableBlock.java
+  - 
+et/minecraft/world/level/block/GrindstoneBlock.java
+  - 
+et/minecraft/world/level/block/LoomBlock.java
+  - 
+et/minecraft/world/level/block/SmithingTableBlock.java
+  - 
+et/minecraft/world/level/block/StonecutterBlock.java
+  - 
+et/minecraft/world/level/block/AnvilBlock.java
+  - 
+et/minecraft/world/level/block/FallingBlock.java
+  - 
+et/minecraft/world/level/block/CandleBlock.java
+  - 
+et/minecraft/world/level/block/ChainBlock.java
+  - 
+et/minecraft/world/level/block/HangingMossBlock.java
+  - 
+et/minecraft/world/level/block/TintedGlassBlock.java
+  - 
+et/minecraft/world/level/block/JigsawBlock.java
+  - 
+et/minecraft/world/level/block/StructureBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Workstations Placement & Broken Neighbor Updates**:
+    - Bổ sung roken (và placed) kích hoạt update_neighbors(pos, None) cho 19 khối chức năng và tiện ích:
+      - Bàn chế tác & tương tác nghề nghiệp: CraftingTableBlock, CartographyTableBlock, FletchingTableBlock, GrindstoneBlock, LoomBlock, SmithingTableBlock, StonecutterBlock.
+      - Khối đe & khối rơi: AnvilBlock (kích hoạt update_neighbors khi rơi/đặt và phá vỡ), FallingBlock.
+      - Nến & xích treo: CandleBlock, ChainBlock.
+      - Môi trường & tuyết: HangingMossBlock, PodzolBlock, MyceliumBlock, TintedGlassBlock, PotentSulfurBlock.
+      - Khối kỹ thuật: JigsawBlock, StructureBlock, TestBlock, DynamicBlock.
+    - Đảm bảo các khối xung quanh (khối đỡ, đèn lồng treo, cơ chế so sánh comparator, villagers tương tác nghề) lập tức nhận thông báo cập nhật chuẩn vanilla khi các khối này xuất hiện hoặc biến mất.
+  - **Workstations Inventory Specifications**:
+    - Bàn chế tạo: kích thước thùng chứa 10 ô (CONTAINER_SIZE = 10), lưới 3x3 (GRID_SIZE = 9), ô kết quả (RESULT_SLOT = 0).
+    - Bàn bản đồ: kích thước kho 3 ô (INVENTORY_SIZE = 3), ô bản đồ 0, ô bổ sung 1, ô kết quả 2.
+    - Bàn đá mài: kích thước kho 3 ô (INVENTORY_SIZE = 3), ô đầu vào 1 & 2, ô kết quả 2.
+    - Khung dệt (Loom): kích thước kho 4 ô (INVENTORY_SIZE = 4), cờ 0, thuốc nhuộm 1, hoa văn 2, kết quả 3.
+    - Bàn rèn (Smithing Table): kích thước kho 4 ô (INVENTORY_SIZE = 4), khuôn rèn 0, vật phẩm gốc 1, nguyên liệu thêm 2, kết quả 3.
+    - Máy cắt đá (Stonecutter): kích thước kho 2 ô (INVENTORY_SIZE = 2), chiều cao hộp va chạm 9/16 (SHAPE_HEIGHT = 0.5625).
+  - **Anvil Falling & Repair Parity (AnvilBlock.java, FallingBlock.java)**:
+    - Đe: sát thương rơi mỗi khối FALL_DAMAGE_PER_DISTANCE = 2.0, sát thương rơi tối đa FALL_DAMAGE_MAX = 40, âm thanh tiếp đất EVENT_ANVIL_LAND = 1031, âm thanh đe vỡ EVENT_ANVIL_DESTROY = 1029.
+    - Khối rơi: độ trễ rơi mặc định sau khi đặt DELAY_AFTER_PLACE = 2 ticks.
+  - **Candles, Chains & Structural Parity (CandleBlock.java, ChainBlock.java, HangingMossBlock.java)**:
+    - Nến: ánh sáng mỗi cây nến LIGHT_PER_CANDLE = 3, tối đa MAX_CANDLES = 4 cây (sáng 12 khi thắp 4 nến, 0 khi tắt), sự kiện thổi tắt EVENT_EXTINGUISH_CANDLE = 1009.
+    - Xích sắt/đồng: độ dày hộp va chạm 3/16 (THICKNESS = 0.1875).
+    - Rêu rủ (Hanging Moss): xác suất phát âm thanh tĩnh 1/500 ticks (IDLE_SOUND_CHANCE = 500).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 19 tệp khối trong crates/pumpkin-core/src/block/blocks/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_workstations_anvil_candles_and_utilities_parity_gap507.
+  - **Unit Tests**: Vượt qua 100% 	est_workstations_anvil_candles_and_utilities_parity_gap507.

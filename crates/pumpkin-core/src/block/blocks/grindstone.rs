@@ -19,7 +19,7 @@ use pumpkin_world::world::BlockAccessor;
 
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetScreenHandlerFactoryArgs, GetStateForNeighborUpdateArgs,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetScreenHandlerFactoryArgs, GetStateForNeighborUpdateArgs,
     NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use pumpkin_data::BlockState;
@@ -38,6 +38,10 @@ impl GrindstoneBlock {
 
 impl BlockBehaviour for GrindstoneBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

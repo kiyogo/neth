@@ -1,6 +1,6 @@
 use crate::{
     block::{
-        BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+        BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
         OnScheduledTickArgs, PlacedArgs,
     },
     entity::falling::FallingEntity,
@@ -18,7 +18,7 @@ pub struct FallingBlock;
 
 impl FallingBlock {
     // FallingBlock.getDelayAfterPlace
-    const DELAY_AFTER_PLACE: u32 = 2;
+    pub const DELAY_AFTER_PLACE: u32 = 2;
 
     /// `FallingBlock.onPlace`, for subclasses that override `getDelayAfterPlace` in vanilla (`DragonEggBlock`).
     pub fn placed_with_delay(args: &PlacedArgs<'_>, delay: u32) {
@@ -116,6 +116,11 @@ impl BlockBehaviour for FallingBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         Self::placed_with_delay(&args, Self::DELAY_AFTER_PLACE);
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

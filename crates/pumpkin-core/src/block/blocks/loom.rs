@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs};
 use crate::entity::EntityBase;
 
 use pumpkin_data::block_properties::WallTorchLikeProperties;
@@ -28,6 +28,10 @@ impl LoomBlock {
 
 impl BlockBehaviour for LoomBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

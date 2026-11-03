@@ -9,7 +9,7 @@ use crate::block::entities::test_block::{TestBlockBlockEntity, TestBlockMode};
 use crate::block::entities::test_instance_block::TestInstanceBlockBlockEntity;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, EmitsRedstonePowerArgs, GetRedstonePowerArgs, NormalUseArgs,
+    BlockBehaviour, BrokenArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs, NormalUseArgs,
     OnNeighborUpdateArgs, OnScheduledTickArgs, PlacedArgs,
 };
 
@@ -35,6 +35,12 @@ impl BlockBehaviour for TestBlock {
         let mode = TestBlockMode::from_block_state(args.state_id).unwrap_or(TestBlockMode::Start);
         let entity = TestBlockBlockEntity::new_with_mode(*args.position, mode);
         args.world.add_block_entity(Arc::new(entity));
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

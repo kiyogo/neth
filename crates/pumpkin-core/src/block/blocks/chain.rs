@@ -1,8 +1,12 @@
-use crate::block::{BlockBehaviour, BlockMetadata, OnPlaceArgs, PathComputationType};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, OnPlaceArgs, PathComputationType, PlacedArgs};
 use pumpkin_data::block_properties::Axis;
 use pumpkin_data::{BlockDirection, BlockId, BlockState, BlockStateId};
 
 pub struct ChainBlock;
+
+impl ChainBlock {
+    pub const THICKNESS: f64 = 3.0 / 16.0;
+}
 
 impl BlockMetadata for ChainBlock {
     fn ids() -> Box<[BlockId]> {
@@ -18,6 +22,14 @@ impl BlockMetadata for ChainBlock {
 }
 
 impl BlockBehaviour for ChainBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props =
             pumpkin_data::block_properties::IronChainLikeProperties::default(args.block);

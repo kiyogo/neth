@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, PlacedArgs};
 
 use pumpkin_data::translation;
 use pumpkin_inventory::cartography_table_screen_handler::CartographyTableScreenHandler;
@@ -24,6 +24,10 @@ impl CartographyTableBlock {
 
 impl BlockBehaviour for CartographyTableBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

@@ -1,5 +1,5 @@
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, NormalUseArgs, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs};
 
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::StructureBlockLikeProperties;
@@ -10,6 +10,14 @@ use pumpkin_util::PermissionLvl;
 pub struct StructureBlock;
 
 impl BlockBehaviour for StructureBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let props = StructureBlockLikeProperties::default(args.block);
         props.to_state_id(args.block)

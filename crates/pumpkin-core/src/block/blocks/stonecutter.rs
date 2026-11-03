@@ -1,6 +1,6 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
+    BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 
 use pumpkin_data::block_properties::WallTorchLikeProperties;
@@ -30,6 +30,10 @@ impl StonecutterBlock {
 
 impl BlockBehaviour for StonecutterBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
 

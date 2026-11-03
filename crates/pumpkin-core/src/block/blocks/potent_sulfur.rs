@@ -5,7 +5,7 @@ use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{BlockBehaviour, OnNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 
 #[pumpkin_block("minecraft:potent_sulfur")]
 pub struct PotentSulfurBlock;
@@ -67,6 +67,11 @@ impl BlockBehaviour for PotentSulfurBlock {
             args.world
                 .play_sound(sound, SoundCategory::Blocks, &args.position.to_centered_f64());
         }
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

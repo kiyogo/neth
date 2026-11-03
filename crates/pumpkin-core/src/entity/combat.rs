@@ -35041,4 +35041,44 @@ mod tests {
         assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
         assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
     }
+    #[test]
+    fn test_workstations_anvil_candles_and_utilities_parity_gap507() {
+        use crate::block::blocks::crafting_table::CraftingTableBlock;
+        use crate::block::blocks::cartography_table::CartographyTableBlock;
+        use crate::block::blocks::grindstone::GrindstoneBlock;
+        use crate::block::blocks::loom::LoomBlock;
+        use crate::block::blocks::smithing_table::SmithingTableBlock;
+        use crate::block::blocks::stonecutter::StonecutterBlock;
+        use crate::block::blocks::anvil::AnvilBlock;
+        use crate::block::blocks::falling::FallingBlock;
+        use crate::block::blocks::candles::CandleBlock;
+        use crate::block::blocks::chain::ChainBlock;
+        use crate::block::blocks::hanging_moss::HangingMossBlock;
+
+        // 1. Workstations Inventory Specifications (CraftingTableBlock.java, StonecutterBlock.java, etc.)
+        assert_eq!(CraftingTableBlock::CONTAINER_SIZE, 10);
+        assert_eq!(CraftingTableBlock::GRID_SIZE, 9);
+        assert_eq!(CartographyTableBlock::INVENTORY_SIZE, 3);
+        assert_eq!(GrindstoneBlock::INVENTORY_SIZE, 3);
+        assert_eq!(LoomBlock::INVENTORY_SIZE, 4);
+        assert_eq!(SmithingTableBlock::INVENTORY_SIZE, 4);
+        assert_eq!(StonecutterBlock::INVENTORY_SIZE, 2);
+        assert!((StonecutterBlock::SHAPE_HEIGHT - (9.0 / 16.0)).abs() < 1e-6);
+
+        // 2. Anvil Falling & Repair Parity (AnvilBlock.java, FallingBlock.java)
+        assert_eq!(AnvilBlock::FALL_DAMAGE_PER_DISTANCE, 2.0);
+        assert_eq!(AnvilBlock::FALL_DAMAGE_MAX, 40);
+        assert_eq!(AnvilBlock::EVENT_ANVIL_LAND, 1031);
+        assert_eq!(AnvilBlock::EVENT_ANVIL_DESTROY, 1029);
+        assert_eq!(FallingBlock::DELAY_AFTER_PLACE, 2);
+
+        // 3. Candles, Chains & Moss Parity (CandleBlock.java, ChainBlock.java, HangingMossBlock.java)
+        assert_eq!(CandleBlock::LIGHT_PER_CANDLE, 3);
+        assert_eq!(CandleBlock::MAX_CANDLES, 4);
+        assert_eq!(CandleBlock::MIN_CANDLES, 1);
+        assert_eq!(CandleBlock::get_light_level(4, true), 12);
+        assert_eq!(CandleBlock::get_light_level(4, false), 0);
+        assert!((ChainBlock::THICKNESS - (3.0 / 16.0)).abs() < 1e-6);
+        assert_eq!(HangingMossBlock::IDLE_SOUND_CHANCE, 500);
+    }
 }
