@@ -42,6 +42,8 @@ impl RedstoneTorchBlock {
     pub const BURNOUT_EVENT: i32 = 1502;
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
+    pub const WALL_TORCH_HORIZONTAL_OFFSET: f64 = 0.27;
+    pub const WALL_TORCH_VERTICAL_OFFSET: f64 = 0.22;
 
     #[must_use]
     pub const fn is_burnt_out(recent_toggles: usize) -> bool {
@@ -283,6 +285,7 @@ impl BlockBehaviour for RedstoneTorchBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         update_neighbors(args.world, args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {

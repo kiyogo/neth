@@ -1,6 +1,6 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, BrokenArgs, OnEntityCollisionArgs, OnEntityStepArgs, RandomTickArgs,
-    UseWithItemArgs, registry::BlockActionResult,
+    BlockBehaviour, BlockMetadata, BrokenArgs, OnEntityCollisionArgs, OnEntityStepArgs, PlacedArgs,
+    RandomTickArgs, UseWithItemArgs, registry::BlockActionResult,
 };
 use crate::entity::experience_orb::ExperienceOrbEntity;
 use crate::world::World;
@@ -49,6 +49,9 @@ impl RedstoneOreBlock {
 }
 
 impl BlockBehaviour for RedstoneOreBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn broken(&self, args: BrokenArgs<'_>) {
         if args.player.gamemode.load() != GameMode::Creative {
             let xp_count = rand::random_range(Self::MIN_XP..=Self::MAX_XP);

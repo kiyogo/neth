@@ -34122,4 +34122,64 @@ mod tests {
         assert_eq!(DetectorRailBlock::SEARCH_BOX_INSET, 0.2);
         assert_eq!(DetectorRailBlock::SEARCH_BOX_HEIGHT, 0.8);
     }
+
+    #[test]
+    fn test_redstone_torch_lamp_and_ore_parity_gap490() {
+        use crate::block::blocks::redstone::redstone_block::RedstoneBlock;
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+        use crate::block::blocks::redstone::redstone_ore::RedstoneOreBlock;
+        use crate::block::blocks::redstone::redstone_torch::RedstoneTorchBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::BlockDirection;
+
+        // 1. Redstone Torch & Wall Torch Parity (RedstoneTorchBlock.java & RedstoneWallTorchBlock.java)
+        assert_eq!(RedstoneTorchBlock::RECENT_TOGGLE_TIMER, 60);
+        assert_eq!(RedstoneTorchBlock::MAX_RECENT_TOGGLES, 8);
+        assert_eq!(RedstoneTorchBlock::RESTART_DELAY, 160);
+        assert_eq!(RedstoneTorchBlock::TOGGLE_DELAY, 2);
+        assert_eq!(RedstoneTorchBlock::BURNOUT_EVENT, 1502);
+        assert_eq!(RedstoneTorchBlock::POWER_ON, 15);
+        assert_eq!(RedstoneTorchBlock::POWER_OFF, 0);
+        assert_eq!(RedstoneTorchBlock::WALL_TORCH_HORIZONTAL_OFFSET, 0.27);
+        assert_eq!(RedstoneTorchBlock::WALL_TORCH_VERTICAL_OFFSET, 0.22);
+
+        assert_eq!(RedstoneTorchBlock::is_burnt_out(8), true);
+        assert_eq!(RedstoneTorchBlock::is_burnt_out(7), false);
+
+        // Weak power: regular torch does not power UP (direction != UP)
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Down), true);
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::Up), false);
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(false, None, BlockDirection::North), true);
+
+        // Wall torch does not power the attached wall block (facing != direction)
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::North), false);
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::South), true);
+        assert_eq!(RedstoneTorchBlock::can_output_weak_power(true, Some(HorizontalFacing::North), BlockDirection::Up), true);
+
+        // Strong power: only downwards (Direction.DOWN in Java)
+        assert_eq!(RedstoneTorchBlock::emits_strong_power(BlockDirection::Down), true);
+        assert_eq!(RedstoneTorchBlock::emits_strong_power(BlockDirection::Up), false);
+        assert_eq!(RedstoneTorchBlock::emits_strong_power(BlockDirection::North), false);
+
+        // 2. Redstone Lamp Parity (RedstoneLampBlock.java)
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::DEACTIVATION_DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneLamp::DEFAULT_LIT, false);
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+
+        // 3. Redstone Block Parity (PoweredBlock.java)
+        assert_eq!(RedstoneBlock::POWER, 15);
+        assert_eq!(RedstoneBlock::emits_weak_power(), 15);
+        assert_eq!(RedstoneBlock::emits_strong_power(), 0);
+
+        // 4. Redstone Ore Parity (RedStoneOreBlock.java)
+        assert_eq!(RedstoneOreBlock::MIN_XP, 1);
+        assert_eq!(RedstoneOreBlock::MAX_XP, 5);
+        assert_eq!(RedstoneOreBlock::LIGHT_LEVEL_LIT, 9);
+        assert_eq!(RedstoneOreBlock::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneOreBlock::DEFAULT_LIT, false);
+    }
 }

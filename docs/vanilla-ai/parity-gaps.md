@@ -13030,3 +13030,50 @@ et/minecraft/world/level/block/DetectorRailBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_rail_system_parity_gap489.
   - **Unit Tests**: Vượt qua 100% 	est_rail_system_parity_gap489.
+
+
+### Gap 490: Redstone Torch, Lamp, Block & Ore Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/RedstoneTorchBlock.java
+  - 
+et/minecraft/world/level/block/RedstoneWallTorchBlock.java
+  - 
+et/minecraft/world/level/block/RedstoneLampBlock.java
+  - 
+et/minecraft/world/level/block/PoweredBlock.java
+  - 
+et/minecraft/world/level/block/RedStoneOreBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Redstone Torch & Wall Torch Parity (RedstoneTorchBlock.java:26-109, RedstoneWallTorchBlock.java:63-84)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của RedstoneTorchBlock.
+    - Cơ chế cháy tim đuốc (Burnout):
+      - Cửa sổ thời gian đếm số lần đảo trạng thái: 60 ticks (RECENT_TOGGLE_TIMER = 60).
+      - Ngưỡng tối đa dẫn đến cháy đuốc: 8 lần (MAX_RECENT_TOGGLES = 8).
+      - Thời gian hồi phục sau khi cháy: 160 ticks (RESTART_DELAY = 160).
+      - Độ trễ đảo trạng thái bật/tắt thông thường: 2 ticks (TOGGLE_DELAY = 2).
+      - Mã sự kiện âm thanh / khói cháy tim đuốc: 1502 (BURNOUT_EVENT = 1502).
+    - Tọa độ lệch hạt bụi đá đỏ đuốc ốp tường (RedstoneWallTorchBlock.java:67-69):
+      - Độ lệch ngang: 0.27 (WALL_TORCH_HORIZONTAL_OFFSET = 0.27).
+      - Độ lệch dọc: 0.22 (WALL_TORCH_VERTICAL_OFFSET = 0.22).
+    - Quy tắc phát tín hiệu yếu & mạnh:
+      - Đuốc cắm sàn: phát tín hiệu yếu ra 5 hướng trừ hướng Lên (direction != BlockDirection::Up); phát tín hiệu mạnh duy nhất xuống dưới (direction == BlockDirection::Down), cấp nguồn mạnh cho khối bên trên nó.
+      - Đuốc ốp tường: phát tín hiệu yếu ra 5 hướng trừ khối tường gắn nó (direction != facing); phát tín hiệu mạnh xuống dưới (direction == BlockDirection::Down).
+  - **Redstone Lamp Parity (RedstoneLampBlock.java)**:
+    - Độ trễ tắt đèn sau khi mất nguồn: 4 ticks (DELAY = 4, DEACTIVATION_DELAY = 4).
+    - Mức phát quang: 15 khi sáng (LIGHT_LEVEL_LIT = 15), 0 khi tắt (LIGHT_LEVEL_UNLIT = 0).
+  - **Redstone Block Parity (PoweredBlock.java)**:
+    - Cường độ tín hiệu yếu: 15 (POWER = 15, emits_weak_power = 15), tín hiệu mạnh: 0 (emits_strong_power = 0).
+  - **Redstone Ore Parity (RedStoneOreBlock.java)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của RedstoneOreBlock.
+    - Điểm kinh nghiệm rơi ngẫu nhiên: 1 đến 5 điểm (MIN_XP = 1, MAX_XP = 5).
+    - Mức phát quang khi phát sáng: 9 (LIGHT_LEVEL_LIT = 9), 0 khi tắt (LIGHT_LEVEL_UNLIT = 0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/redstone_torch.rs:
+    - Bổ sung update_neighbors trong placed và hằng số lệch hạt đuốc tường WALL_TORCH_HORIZONTAL_OFFSET, WALL_TORCH_VERTICAL_OFFSET.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/redstone_ore.rs:
+    - Bổ sung placed gọi update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_redstone_torch_lamp_and_ore_parity_gap490.
+  - **Unit Tests**: Vượt qua 100% 	est_redstone_torch_lamp_and_ore_parity_gap490.
