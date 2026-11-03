@@ -10870,6 +10870,23 @@ pub fn calculate_daylight_detector_comparator_signal(power: u8) -> u8 {
     crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock::calculate_comparator_signal(power)
 }
 
+/// Vanilla `DispenserBlock.java:50-55, 87-91, 120-132, 150-162` & `DropperBlock.java:47-50`:
+pub const DISPENSER_TRIGGER_DURATION: u32 = 4;
+pub const DISPENSER_OFFSET_SCALE: f64 = 0.7;
+pub const DISPENSER_FAIL_EVENT_ID: i32 = 1001;
+pub const DISPENSER_DISPENSE_EVENT_ID: i32 = 1000;
+pub const DISPENSER_SMOKE_EVENT_ID: i32 = 2000;
+
+#[must_use]
+pub fn calculate_dispenser_comparator_signal(fill_fractions: &[f32; 9]) -> u8 {
+    crate::block::blocks::redstone::dispenser::DispenserBlock::calculate_container_comparator_signal(fill_fractions)
+}
+
+#[must_use]
+pub fn get_dispenser_ejection_y_offset(facing: pumpkin_data::block_properties::Facing) -> f64 {
+    crate::block::blocks::redstone::dispenser::DispenserBlock::get_ejection_y_offset(facing)
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31314,5 +31331,56 @@ mod tests {
             DaylightDetectorBlock::calculate_signal_strength(0, 0.0, true),
             15
         );
+    }
+
+    #[test]
+    fn test_dispenser_and_dropper_parity_gap459() {
+        use pumpkin_data::block_properties::Facing;
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+
+        // 1. Dispenser & Dropper Constants (DispenserBlock.java:50-55, DropperBlock.java:47-50)
+        assert_eq!(DISPENSER_TRIGGER_DURATION, 4);
+        assert_eq!(DISPENSER_CONTAINER_SIZE, 9);
+        assert_eq!(DISPENSER_OFFSET_SCALE, 0.7);
+        assert_eq!(DISPENSER_FAIL_EVENT_ID, 1001);
+        assert_eq!(DISPENSER_DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DISPENSER_SMOKE_EVENT_ID, 2000);
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+
+        // 2. Ejection Y Offset Parity (DefaultDispenseItemBehavior.java:34-38)
+        // Up & Down face: 0.125
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::Down), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Up), 0.125);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::Down), 0.125);
+        // Horizontal faces: 0.15625
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::North), 0.15625);
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::South), 0.15625);
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::East), 0.15625);
+        assert_eq!(get_dispenser_ejection_y_offset(Facing::West), 0.15625);
+        assert_eq!(DropperBlock::get_ejection_y_offset(Facing::North), 0.15625);
+
+        // 3. Dispenser/Dropper 9-Slot Comparator Output (AbstractContainerMenu.java)
+        // Empty container -> 0 signal
+        assert_eq!(calculate_dispenser_comparator_signal(&[0.0; 9]), 0);
+        // 1 single item in a 64-stack slot: fill fraction = 1/64 = 0.015625 -> floor(1 + (0.015625/9)*14) = 1
+        let mut single_item_fractions = [0.0; 9];
+        single_item_fractions[0] = 1.0 / 64.0;
+        assert_eq!(calculate_dispenser_comparator_signal(&single_item_fractions), 1);
+
+        // 1 non-stackable item (fill fraction = 1.0) in slot 0:
+        // total = 1.0, percent = 1/9, floor(1 + (1/9)*14) = floor(1 + 1.555) = 2
+        let mut non_stackable_fractions = [0.0; 9];
+        non_stackable_fractions[0] = 1.0;
+        assert_eq!(calculate_dispenser_comparator_signal(&non_stackable_fractions), 2);
+
+        // All 9 slots fully filled (fill fraction = 1.0 each):
+        // total = 9.0, percent = 1.0, floor(1 + 14) = 15
+        assert_eq!(calculate_dispenser_comparator_signal(&[1.0; 9]), 15);
+        assert_eq!(DropperBlock::calculate_container_comparator_signal(&[1.0; 9]), 15);
     }
 }

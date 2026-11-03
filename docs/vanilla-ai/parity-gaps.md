@@ -11872,6 +11872,34 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_daylight_detector_and_hopper_parity_gap458`.
   - **Unit Tests**: Test kiểm tra quy tắc phễu (comparator 0..15, suction bounds, suction blocking tags, enabled signal toggle) và daylight detector (clamp, inverted noon/night signals) đều vượt qua 100%.
 
+### Gap 459: Dispenser & Dropper Broken Destruction, Output Signal Updates, Triggered State Observer & BlockActivate Fail Parity
+- **Máy Phân Phát & Máy Thả Khi Bị Phá Hủy & Cập Nhật Tín Hiệu Bộ So Sánh (Dispenser & Dropper Broken Parity)**:
+  - Vanilla `DispenserBlock.java:150-152` & `Containers.java:51-53`:
+    - Khi máy phân phát (`Dispenser`) hoặc máy thả (`Dropper`) bị phá hủy (`broken`), Vanilla gọi `Containers.updateNeighboursAfterDestroy(state, level, pos)`, kích hoạt `level.updateNeighbourForOutputSignal(pos, state.getBlock())` để xóa tín hiệu analog của bộ so sánh (comparator) đang cắm sau khối, đồng thời thông báo các khối lân cận (`update_neighbors`) và giải phóng block entity. Neth trước đây chưa có hàm `broken` cho cả `DispenserBlock` và `DropperBlock`.
+    - Khi được đặt (`placed`), khối cũng kích hoạt `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay lập tức.
+- **Sự Kiện GameEvent BlockActivate Khi Bắn Hụt / Rỗng (Fail Dispense GameEvent Parity)**:
+  - Vanilla `DispenserBlock.java:88-91` & `DropperBlock.java:48-50`:
+    - Khi máy phân phát hoặc máy thả được kích hoạt nhưng bên trong rỗng không có vật phẩm (`slot < 0`), Vanilla phát âm thanh click hụt (`level.levelEvent(1001, pos, 0)`) và phát sinh sự kiện rung động âm thanh `GameEvent::BLOCK_ACTIVATE`.
+    - Neth trước đây chỉ phát âm thanh `WorldEvent::SoundDispenserFail` mà quên phát `GameEvent::BLOCK_ACTIVATE`, khiến sculk sensor và warden gần đó không cảm nhận được rung động kích hoạt này.
+- **Cập Nhật Trạng Thái Triggered Thông Báo Observer (Triggered State NOTIFY_ALL Parity)**:
+  - Khi redstone kích hoạt (`powered`) hoặc ngắt (`!powered`), trạng thái `props.triggered` được cập nhật với `BlockFlags::NOTIFY_ALL` (thay vì chỉ `NOTIFY_LISTENERS`) để observer hướng mặt vào máy phân phát/máy thả có thể phát hiện được sự thay đổi trạng thái kích hoạt redstone chuẩn xác theo vanilla.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Gọi `update_neighbour_for_output_signal` trong `placed`.
+    - Dùng `BlockFlags::NOTIFY_ALL` khi đổi trạng thái `triggered` trong `placed` và `on_neighbor_update`.
+    - Phát sinh `GameEvent::BlockActivate` khi phân phát rỗng trong `on_scheduled_tick`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Gọi `update_neighbour_for_output_signal` trong `placed`.
+    - Dùng `BlockFlags::NOTIFY_ALL` khi đổi trạng thái `triggered`.
+    - Phát sinh `GameEvent::BlockActivate` khi thả rỗng trong `on_scheduled_tick`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `DISPENSER_TRIGGER_DURATION`, `DISPENSER_OFFSET_SCALE`, `DISPENSER_FAIL_EVENT_ID`, `DISPENSER_DISPENSE_EVENT_ID`, `DISPENSER_SMOKE_EVENT_ID`, `calculate_dispenser_comparator_signal`, `get_dispenser_ejection_y_offset`.
+    - Bổ sung unit test `test_dispenser_and_dropper_parity_gap459`.
+  - **Unit Tests**: Test kiểm tra hằng số dispenser/dropper, độ lệch Y phóng vật phẩm (0.125 dọc, 0.15625 ngang), và tính toán bộ so sánh 9 ô (0..15) đều vượt qua 100%.
+
+
 
 
 

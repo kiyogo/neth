@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
+    BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, NormalUseArgs,
     OnNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs,
 };
 use crate::entity::item::ItemEntity;
@@ -16,6 +16,7 @@ use crate::block::entities::hopper::HopperBlockEntity;
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::Facing;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{FacingExt, translation};
 use pumpkin_inventory::Inventory;
@@ -212,10 +213,17 @@ impl BlockBehaviour for DropperBlock {
                 args.world.set_block_state(
                     args.position,
                     props.to_state_id(args.block),
-                    BlockFlags::NOTIFY_LISTENERS,
+                    BlockFlags::NOTIFY_ALL,
                 );
             }
         }
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -232,14 +240,14 @@ impl BlockBehaviour for DropperBlock {
             args.world.set_block_state(
                 args.position,
                 props.to_state_id(args.block),
-                BlockFlags::NOTIFY_LISTENERS,
+                BlockFlags::NOTIFY_ALL,
             );
         } else if !powered && props.triggered {
             props.triggered = false;
             args.world.set_block_state(
                 args.position,
                 props.to_state_id(args.block),
-                BlockFlags::NOTIFY_LISTENERS,
+                BlockFlags::NOTIFY_ALL,
             );
         }
     }
@@ -309,6 +317,10 @@ impl BlockBehaviour for DropperBlock {
             } else {
                 args.world
                     .sync_world_event(WorldEvent::SoundDispenserFail, *args.position, 0);
+                args.world.emit_game_event(
+                    GameEvent::BlockActivate.name(),
+                    args.position.to_centered_f64(),
+                );
             }
         }
     }
