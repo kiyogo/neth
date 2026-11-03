@@ -8,7 +8,7 @@ use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
-use crate::block::{BlockBehaviour, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType};
+use crate::block::{BlockBehaviour, BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs};
 use crate::world::World;
 
 type StairsProperties = pumpkin_data::block_properties::WhiteWoolStairsLikeProperties;
@@ -16,7 +16,20 @@ type StairsProperties = pumpkin_data::block_properties::WhiteWoolStairsLikePrope
 #[pumpkin_block_from_tag("minecraft:stairs")]
 pub struct StairBlock;
 
+impl StairBlock {
+    pub const HALF_HEIGHT: f64 = 0.5;
+    pub const FULL_HEIGHT: f64 = 1.0;
+}
+
 impl BlockBehaviour for StairBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut stair_props = StairsProperties::default(args.block);
         stair_props.waterlogged = args.replacing.water_source();

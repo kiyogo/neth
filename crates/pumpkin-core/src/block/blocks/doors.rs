@@ -154,6 +154,7 @@ fn get_hinge(
 pub struct DoorBlock;
 
 impl DoorBlock {
+    pub const DOOR_THICKNESS: f32 = 0.1875;
     pub const SOUND_VOLUME: f32 = 1.0;
     pub const SOUND_PITCH_BASE: f32 = 0.9;
     pub const SOUND_PITCH_RANGE: f32 = 0.1;

@@ -66,6 +66,7 @@ fn get_sound(block: &Block, open: bool) -> Sound {
 pub struct TrapDoorBlock;
 
 impl TrapDoorBlock {
+    pub const TRAPDOOR_THICKNESS: f32 = 0.1875;
     pub const SOUND_VOLUME: f32 = 1.0;
     pub const SOUND_PITCH_BASE: f32 = 0.9;
     pub const SOUND_PITCH_RANGE: f32 = 0.1;

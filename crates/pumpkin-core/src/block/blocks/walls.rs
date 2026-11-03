@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use crate::world::World;
 use pumpkin_data::block_properties::EastWall;
@@ -19,7 +19,20 @@ type WallProperties = pumpkin_data::block_properties::ResinBrickWallLikeProperti
 #[pumpkin_block_from_tag("minecraft:walls")]
 pub struct WallBlock;
 
+impl WallBlock {
+    pub const COLLISION_HEIGHT: f64 = 1.5;
+    pub const BOUNDING_HEIGHT: f64 = 1.0;
+}
+
 impl BlockBehaviour for WallBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut wall_props = WallProperties::default(args.block);
         wall_props.waterlogged = args.replacing.water_source();

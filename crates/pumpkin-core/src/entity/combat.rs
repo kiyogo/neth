@@ -34527,4 +34527,48 @@ mod tests {
         assert_eq!(ShelfBlock::calculate_comparator_output(true, true, true), 7);
         assert_eq!(ShelfBlock::calculate_comparator_output(true, false, true), 5);
     }
+
+    #[test]
+    fn test_barriers_connectors_and_stairs_parity_gap496() {
+        use crate::block::blocks::doors::DoorBlock;
+        use crate::block::blocks::fences::FenceBlock;
+        use crate::block::blocks::glass_panes::GlassPaneBlock;
+        use crate::block::blocks::iron_bars::IronBarsBlock;
+        use crate::block::blocks::slabs::SlabBlock;
+        use crate::block::blocks::stairs::StairBlock;
+        use crate::block::blocks::trapdoor::TrapDoorBlock;
+        use crate::block::blocks::walls::WallBlock;
+
+        // 1. Fence Parity (FenceBlock.java)
+        assert_eq!(FenceBlock::COLLISION_HEIGHT, 1.5);
+        assert_eq!(FenceBlock::BOUNDING_HEIGHT, 1.0);
+
+        // 2. Wall Parity (WallBlock.java)
+        assert_eq!(WallBlock::COLLISION_HEIGHT, 1.5);
+        assert_eq!(WallBlock::BOUNDING_HEIGHT, 1.0);
+
+        // 3. Iron Bars Parity (IronBarsBlock.java)
+        assert_eq!(IronBarsBlock::THICKNESS, 2.0 / 16.0);
+
+        // 4. Glass Pane Parity (GlassPaneBlock.java)
+        assert_eq!(GlassPaneBlock::THICKNESS, 2.0 / 16.0);
+
+        // 5. Slab Parity (SlabBlock.java)
+        assert_eq!(SlabBlock::SLAB_HEIGHT, 0.5);
+        assert_eq!(SlabBlock::FULL_HEIGHT, 1.0);
+
+        // 6. Stair Parity (StairBlock.java)
+        assert_eq!(StairBlock::HALF_HEIGHT, 0.5);
+        assert_eq!(StairBlock::FULL_HEIGHT, 1.0);
+
+        // 7. Door Parity (DoorBlock.java)
+        assert_eq!(DoorBlock::DOOR_THICKNESS, 0.1875);
+        assert_eq!(DoorBlock::SOUND_VOLUME, 1.0);
+        assert_eq!(DoorBlock::SOUND_PITCH_BASE, 0.9);
+
+        // 8. Trapdoor Parity (TrapDoorBlock.java)
+        assert_eq!(TrapDoorBlock::TRAPDOOR_THICKNESS, 0.1875);
+        assert_eq!(TrapDoorBlock::SOUND_VOLUME, 1.0);
+        assert_eq!(TrapDoorBlock::SOUND_PITCH_BASE, 0.9);
+    }
 }

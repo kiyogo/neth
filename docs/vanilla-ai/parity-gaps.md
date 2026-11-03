@@ -13330,3 +13330,41 @@ et/minecraft/world/level/block/ShelfBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_furniture_and_decorative_parity_gap495.
   - **Unit Tests**: Vượt qua 100% 	est_furniture_and_decorative_parity_gap495.
+
+### Gap 496: Barriers, Walls, Connectors, Slabs, Stairs & Doors Shape Recalculation and Lifecycle Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/FenceBlock.java
+  - 
+et/minecraft/world/level/block/WallBlock.java
+  - 
+et/minecraft/world/level/block/IronBarsBlock.java
+  - 
+et/minecraft/world/level/block/CrossCollisionBlock.java
+  - 
+et/minecraft/world/level/block/SlabBlock.java
+  - 
+et/minecraft/world/level/block/StairBlock.java
+  - 
+et/minecraft/world/level/block/DoorBlock.java
+  - 
+et/minecraft/world/level/block/TrapDoorBlock.java
+  - 
+et/minecraft/world/level/block/FenceGateBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Barriers & Shape Connectors Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken của: FenceBlock, WallBlock, IronBarsBlock, GlassPaneBlock, SlabBlock, và StairBlock. Đảm bảo các hàng rào, tường đá, chấn song sắt, tấm kính và cầu thang lân cận kích hoạt hàm get_state_for_neighbor_update và on_neighbor_update để tái tính toán các kết nối nhánh và góc xoay hình học.
+  - **Fence & Wall Heights Parity (FenceBlock.java, WallBlock.java)**:
+    - Chiều cao va chạm thực thể: 1.5 khối (COLLISION_HEIGHT = 1.5), ngăn người chơi và mob nhảy qua thông thường; chiều cao khối đồ họa: 1.0 (BOUNDING_HEIGHT = 1.0).
+  - **Iron Bars & Glass Panes Thickness**:
+    - Độ dày tiêu chuẩn 2/16 = 0.125 (THICKNESS = 0.125).
+  - **Slab & Stair Dimensions (SlabBlock.java, StairBlock.java)**:
+    - Nửa khối phiến: chiều cao 0.5 (SLAB_HEIGHT = 0.5, FULL_HEIGHT = 1.0).
+    - Nửa khối cầu thang: chiều cao bước 0.5 (HALF_HEIGHT = 0.5, FULL_HEIGHT = 1.0).
+  - **Doors & Trapdoors Dimensions & Acoustics**:
+    - Cửa ra vào & cửa sập: độ dày 3/16 = 0.1875 (DOOR_THICKNESS = 0.1875, TRAPDOOR_THICKNESS = 0.1875), âm lượng 1.0, cao độ cơ bản 0.9.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong crates/pumpkin-core/src/block/blocks/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_barriers_connectors_and_stairs_parity_gap496.
+  - **Unit Tests**: Vượt qua 100% 	est_barriers_connectors_and_stairs_parity_gap496.

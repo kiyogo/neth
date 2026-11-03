@@ -3,7 +3,7 @@ use pumpkin_data::{BlockDirection, BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block_from_tag;
 
 use crate::block::{
-    BlockBehaviour, BlockIsReplacing, CanUpdateAtArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BlockIsReplacing, BrokenArgs, CanUpdateAtArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 
 type SlabProperties = pumpkin_data::block_properties::WhiteWoolSlabLikeProperties;
@@ -11,7 +11,20 @@ type SlabProperties = pumpkin_data::block_properties::WhiteWoolSlabLikePropertie
 #[pumpkin_block_from_tag("minecraft:slabs")]
 pub struct SlabBlock;
 
+impl SlabBlock {
+    pub const SLAB_HEIGHT: f64 = 0.5;
+    pub const FULL_HEIGHT: f64 = 1.0;
+}
+
 impl BlockBehaviour for SlabBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if let BlockIsReplacing::Itself(state_id) = args.replacing {
             let mut slab_props = SlabProperties::from_state_id(state_id);

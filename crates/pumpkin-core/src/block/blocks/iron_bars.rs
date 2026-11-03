@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use crate::world::World;
 use pumpkin_data::block_properties::HorizontalFacing;
@@ -13,7 +13,19 @@ type IronBarsProperties = pumpkin_data::block_properties::OakFenceLikeProperties
 #[pumpkin_block("minecraft:iron_bars")]
 pub struct IronBarsBlock;
 
+impl IronBarsBlock {
+    pub const THICKNESS: f64 = 2.0 / 16.0;
+}
+
 impl BlockBehaviour for IronBarsBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut bars_props = IronBarsProperties::default(args.block);
         bars_props.waterlogged = args.replacing.water_source();

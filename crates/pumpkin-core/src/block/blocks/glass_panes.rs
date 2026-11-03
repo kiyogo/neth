@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use crate::world::World;
 use pumpkin_data::block_properties::HorizontalFacing;
@@ -13,7 +13,19 @@ type GlassPaneProperties = pumpkin_data::block_properties::OakFenceLikePropertie
 #[pumpkin_block_from_tag("c:glass_panes")]
 pub struct GlassPaneBlock;
 
+impl GlassPaneBlock {
+    pub const THICKNESS: f64 = 2.0 / 16.0;
+}
+
 impl BlockBehaviour for GlassPaneBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut pane_props = GlassPaneProperties::default(args.block);
         pane_props.waterlogged = args.replacing.water_source();
