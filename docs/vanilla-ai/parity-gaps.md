@@ -11920,6 +11920,32 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_brewing_stand_and_crafter_parity_gap460`.
   - **Unit Tests**: Test kiểm tra hằng số giàn pha thuốc (thời gian nấu 400 ticks, 20 lượt dùng bột quỷ lửa), bitmask chai thuốc (0..7), bộ so sánh 5 ô của giàn pha thuốc (0..15), bộ so sánh crafter (0..9) và đánh giá sườn xung kích hoạt redstone crafter đều vượt qua 100%.
 
+### Gap 461: Barrel & Beehive Broken Destruction, Output Signal Updates & GameEvent Harvesting Parity
+- **Thùng Gỗ & Tổ Ong Khi Bị Phá Hủy & Cập Nhật Tín Hiệu Bộ So Sánh (Barrel & Beehive Broken Parity)**:
+  - Vanilla `BarrelBlock.java:49-51`, `BeehiveBlock.java:97` & `Containers.java:51-53`:
+    - Khi thùng gỗ (`BarrelBlock`) hoặc tổ ong/tổ ong nhân tạo (`BeehiveBlock`) bị phá hủy (`broken`), Vanilla thực hiện `Containers.updateNeighboursAfterDestroy(state, level, pos)`, gọi `level.updateNeighbourForOutputSignal(pos, state.getBlock())` để xóa tín hiệu analog của bộ so sánh (comparator) đang cắm sau khối, đồng thời thông báo các khối lân cận (`update_neighbors`) và giải phóng block entity. Neth trước đây chưa có hàm `broken` cho cả `BarrelBlock` và `BeehiveBlock`.
+    - Khi được đặt (`placed`), khối cũng kích hoạt `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay lập tức.
+- **Sự Kiện GameEvent Shear & FluidPickup Khi Thu Hoạch Tổ Ong (Beehive Harvesting GameEvents Parity)**:
+  - Vanilla `BeehiveBlock.java:163, 174`:
+    - Khi người chơi dùng kéo tỉa thu hoạch sáp ong (`HONEYCOMB`), Vanilla phát âm thanh tỉa sáp và phát sinh sự kiện `GameEvent::SHEAR`.
+    - Khi người chơi dùng chai thủy tinh thu hoạch mật ong (`HONEY_BOTTLE`), Vanilla phát âm thanh rót chai và phát sinh sự kiện `GameEvent::FLUID_PICKUP`.
+    - Khi mức mật ong reset về 0, khối kích hoạt `update_neighbour_for_output_signal` để bộ so sánh cập nhật tín hiệu ngay tức thì.
+    - Xóa khối mã kiểm tra `is_smokey` bị duplicate thừa trong `beehive.rs`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/barrel.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Gọi `update_neighbour_for_output_signal` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/beehive.rs`:
+    - Bổ sung hàm `broken` xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Bổ sung `placed` gọi `update_neighbour_for_output_signal`.
+    - Phát sinh `GameEvent::Shear` và gọi `update_neighbour_for_output_signal` khi tỉa sáp ong bằng kéo.
+    - Phát sinh `GameEvent::FluidPickup` và gọi `update_neighbour_for_output_signal` khi múc mật bằng chai thủy tinh.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `BARREL_CONTAINER_SIZE`, `calculate_barrel_comparator_signal`, `BEEHIVE_MAX_HONEY_LEVEL`, `BEEHIVE_HONEYCOMB_HARVEST_AMOUNT`, `BEE_ANGER_RANGE_HORIZONTAL`, `BEE_ANGER_RANGE_VERTICAL`, `calculate_beehive_comparator_output`, `is_beehive_full`, `is_campfire_within_smoke_distance`, `is_player_in_bee_anger_range`.
+    - Bổ sung unit test `test_barrel_and_beehive_parity_gap461`.
+  - **Unit Tests**: Test kiểm tra hằng số thùng gỗ (27 ô), bộ so sánh thùng gỗ (0..15), tổ ong (0..5 mức mật), kiểm tra khoảng cách khói lửa trại (1..=5) và phạm vi kích động ong AABB đều vượt qua 100%.
+
+
 
 
 

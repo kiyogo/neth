@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, BlockMetadata, GetComparatorOutputArgs, UseWithItemArgs};
+use crate::block::{
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetComparatorOutputArgs, PlacedArgs, UseWithItemArgs,
+};
 use crate::entity::Entity;
 use crate::entity::item::ItemEntity;
 use pumpkin_data::block_properties::BeeNestLikeProperties;
 use pumpkin_data::entity::EntityType;
+use pumpkin_data::game_event::GameEvent;
 use pumpkin_data::item::Item;
 use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::{Block, BlockId};
@@ -77,6 +80,16 @@ pub fn is_smokey_pos(world: &Arc<crate::world::World>, pos: BlockPos) -> bool {
 }
 
 impl BlockBehaviour for BeehiveBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {
         let state_id = args.world.get_block_state_id(args.position);
         let props = BeeNestLikeProperties::from_state_id(state_id);
@@ -108,6 +121,10 @@ impl BlockBehaviour for BeehiveBlock {
                 pumpkin_data::sound::SoundCategory::Blocks,
                 *args.position,
             );
+            args.world.emit_game_event(
+                GameEvent::Shear.name(),
+                args.position.to_centered_f64(),
+            );
             args.player.damage_item_in_slot(args.equipment_slot, 1);
             args.player.increment_stat(
                 pumpkin_data::statistic::StatisticCategory::Used,
@@ -130,6 +147,7 @@ impl BlockBehaviour for BeehiveBlock {
                 new_props.to_state_id(block),
                 BlockFlags::NOTIFY_ALL,
             );
+            args.world.update_neighbour_for_output_signal(args.position, block);
 
             return BlockActionResult::Success;
         } else if item == &Item::GLASS_BOTTLE {
@@ -151,18 +169,15 @@ impl BlockBehaviour for BeehiveBlock {
                 pumpkin_data::sound::SoundCategory::Blocks,
                 *args.position,
             );
+            args.world.emit_game_event(
+                GameEvent::FluidPickup.name(),
+                args.position.to_centered_f64(),
+            );
             args.player.increment_stat(
                 pumpkin_data::statistic::StatisticCategory::Used,
                 Item::GLASS_BOTTLE.id as i32,
                 1,
             );
-
-            let is_smokey = is_smokey_pos(args.world, *args.position);
-            if is_smokey {
-                args.player.trigger_advancement(
-                    crate::entity::player::advancement::trigger::AdvancementTrigger::SafelyHarvestHoney,
-                );
-            }
 
             let is_smokey = is_smokey_pos(args.world, *args.position);
             if is_smokey {
@@ -179,6 +194,7 @@ impl BlockBehaviour for BeehiveBlock {
                 new_props.to_state_id(block),
                 BlockFlags::NOTIFY_ALL,
             );
+            args.world.update_neighbour_for_output_signal(args.position, block);
 
             return BlockActionResult::Success;
         }

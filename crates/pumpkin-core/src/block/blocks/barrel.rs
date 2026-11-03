@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::block::{GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{
+    BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnPlaceArgs, PlacedArgs,
+};
 use crate::block::{
     registry::BlockActionResult,
     {BlockBehaviour, NormalUseArgs},
@@ -107,6 +109,13 @@ impl BlockBehaviour for BarrelBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let barrel_block_entity = BarrelBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(barrel_block_entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {

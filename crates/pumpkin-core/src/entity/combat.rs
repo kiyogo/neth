@@ -10911,6 +10911,52 @@ pub const fn evaluate_crafter_redstone_trigger(powered: bool, is_triggered: bool
     crate::block::blocks::redstone::crafter::CrafterBlock::evaluate_redstone_trigger(powered, is_triggered)
 }
 
+/// Vanilla `BarrelBlock.java:30-34, 48-51, 66-73`:
+pub const BARREL_CONTAINER_SIZE: usize = 27;
+
+#[must_use]
+pub fn calculate_barrel_comparator_signal(fill_fractions: &[f32; 27]) -> u8 {
+    let mut total = 0.0;
+    let mut has_items = false;
+    for &f in fill_fractions {
+        if f > 0.0 {
+            has_items = true;
+            total += f.clamp(0.0, 1.0);
+        }
+    }
+    if !has_items {
+        return 0;
+    }
+    let percent = total / 27.0;
+    (1.0 + percent * 14.0).floor() as u8
+}
+
+/// Vanilla `BeehiveBlock.java:66-68, 75-82, 113-129, 153-176`:
+pub const BEEHIVE_MAX_HONEY_LEVEL: u8 = 5;
+pub const BEEHIVE_HONEYCOMB_HARVEST_AMOUNT: u8 = 3;
+pub const BEE_ANGER_RANGE_HORIZONTAL: f64 = 8.0;
+pub const BEE_ANGER_RANGE_VERTICAL: f64 = 6.0;
+
+#[must_use]
+pub const fn calculate_beehive_comparator_output(honey_level: u8) -> u8 {
+    crate::block::blocks::beehive::BeehiveBlock::calculate_comparator_output(honey_level)
+}
+
+#[must_use]
+pub const fn is_beehive_full(honey_level: u8) -> bool {
+    crate::block::blocks::beehive::BeehiveBlock::is_honey_full(honey_level)
+}
+
+#[must_use]
+pub const fn is_campfire_within_smoke_distance(vertical_distance: i32) -> bool {
+    crate::block::blocks::beehive::BeehiveBlock::is_within_smoke_distance(vertical_distance)
+}
+
+#[must_use]
+pub fn is_player_in_bee_anger_range(dx: f64, dy: f64, dz: f64) -> bool {
+    crate::block::blocks::beehive::BeehiveBlock::is_player_in_bee_anger_range(dx, dy, dz)
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31463,5 +31509,58 @@ mod tests {
         assert_eq!(evaluate_crafter_redstone_trigger(true, true), (true, false));
         // Low steady: powered=false, is_triggered=false -> remains un-triggered
         assert_eq!(evaluate_crafter_redstone_trigger(false, false), (false, false));
+    }
+
+    #[test]
+    fn test_barrel_and_beehive_parity_gap461() {
+        use crate::block::blocks::beehive::BeehiveBlock;
+
+        // 1. Barrel Constants & Comparator Output (BarrelBlock.java:30-34, 66-73)
+        assert_eq!(BARREL_CONTAINER_SIZE, 27);
+        // Empty container -> 0
+        assert_eq!(calculate_barrel_comparator_signal(&[0.0; 27]), 0);
+        // 1 single item in a 64-stack slot: fill fraction = 1/64 = 0.015625 -> floor(1 + (0.015625/27)*14) = 1
+        let mut single_item_barrel = [0.0; 27];
+        single_item_barrel[0] = 1.0 / 64.0;
+        assert_eq!(calculate_barrel_comparator_signal(&single_item_barrel), 1);
+        // 27 non-stackable items (1 in each slot, fill fraction = 1.0 each): max 15
+        assert_eq!(calculate_barrel_comparator_signal(&[1.0; 27]), 15);
+
+        // 2. Beehive Constants & Comparator Parity (BeehiveBlock.java:66-68, 75-82)
+        assert_eq!(BEEHIVE_MAX_HONEY_LEVEL, 5);
+        assert_eq!(BEEHIVE_HONEYCOMB_HARVEST_AMOUNT, 3);
+        assert_eq!(BeehiveBlock::MAX_HONEY_LEVEL, 5);
+        assert_eq!(BeehiveBlock::HONEYCOMB_HARVEST_AMOUNT, 3);
+        assert_eq!(BEE_ANGER_RANGE_HORIZONTAL, 8.0);
+        assert_eq!(BEE_ANGER_RANGE_VERTICAL, 6.0);
+
+        // Comparator signal equals honey level (0..5)
+        for level in 0..=5 {
+            assert_eq!(calculate_beehive_comparator_output(level), level);
+            assert_eq!(BeehiveBlock::calculate_comparator_output(level), level);
+        }
+        assert_eq!(calculate_beehive_comparator_output(6), 5); // Capped at MAX_HONEY_LEVEL = 5
+
+        // Honey full checks
+        assert!(!is_beehive_full(0));
+        assert!(!is_beehive_full(4));
+        assert!(is_beehive_full(5));
+        assert!(is_beehive_full(6));
+        assert!(BeehiveBlock::is_honey_full(5));
+
+        // 3. Campfire Smoke Distance (CampfireBlock.java:258, BeehiveBlock.java:183)
+        assert!(!is_campfire_within_smoke_distance(0));
+        assert!(is_campfire_within_smoke_distance(1));
+        assert!(is_campfire_within_smoke_distance(3));
+        assert!(is_campfire_within_smoke_distance(5));
+        assert!(!is_campfire_within_smoke_distance(6));
+
+        // 4. Bee Anger Range AABB Check (BeehiveBlock.java:114: inflate(8.0, 6.0, 8.0))
+        assert!(is_player_in_bee_anger_range(0.0, 0.0, 0.0));
+        assert!(is_player_in_bee_anger_range(8.0, 6.0, 8.0));
+        assert!(is_player_in_bee_anger_range(-8.0, -6.0, -8.0));
+        assert!(!is_player_in_bee_anger_range(8.1, 0.0, 0.0));
+        assert!(!is_player_in_bee_anger_range(0.0, 6.1, 0.0));
+        assert!(!is_player_in_bee_anger_range(0.0, 0.0, 8.1));
     }
 }
