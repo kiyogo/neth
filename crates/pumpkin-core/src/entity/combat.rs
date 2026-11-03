@@ -31773,4 +31773,84 @@ mod tests {
         assert!(JukeboxBlock::can_allay_hear_jukebox(100.0)); // 10^2
         assert!(!JukeboxBlock::can_allay_hear_jukebox(100.1));
     }
+
+    #[test]
+    fn test_composter_and_cauldron_parity_gap464() {
+        use crate::block::blocks::cauldron::CauldronBlock;
+        use crate::block::blocks::composter::ComposterBlock;
+        use pumpkin_data::BlockId;
+
+        // 1. Composter Constants & Level Parity (ComposterBlock.java:49-52, 226-233)
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+
+        // Composter comparator signal equals level (0..8)
+        for level in 0..=8 {
+            assert_eq!(calculate_composter_comparator_output(level), level);
+            assert_eq!(ComposterBlock::calculate_comparator_output(level), level);
+        }
+        assert_eq!(calculate_composter_comparator_output(9), 8); // Clamped at 8
+
+        // Acceptance of items: only levels 0..6
+        for level in 0..=6 {
+            assert!(can_composter_accept_items(level));
+            assert!(ComposterBlock::can_compost_more(level));
+        }
+        assert!(!can_composter_accept_items(7)); // Fermenting
+        assert!(!can_composter_accept_items(8)); // Ready
+        assert!(!ComposterBlock::can_compost_more(7));
+        assert!(!ComposterBlock::can_compost_more(8));
+
+        // Ready check: only level 8
+        assert!(!is_composter_ready_to_harvest(7));
+        assert!(is_composter_ready_to_harvest(8));
+        assert!(ComposterBlock::is_ready(8));
+
+        // Hopper insertion / extraction permissions (ComposterBlock.java:246-270)
+        assert!(ComposterBlock::can_hopper_insert(0, pumpkin_data::BlockDirection::Up));
+        assert!(ComposterBlock::can_hopper_insert(6, pumpkin_data::BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(7, pumpkin_data::BlockDirection::Up));
+        assert!(!ComposterBlock::can_hopper_insert(0, pumpkin_data::BlockDirection::Down));
+        assert!(ComposterBlock::can_hopper_extract(8, pumpkin_data::BlockDirection::Down));
+        assert!(!ComposterBlock::can_hopper_extract(7, pumpkin_data::BlockDirection::Down));
+
+        // 2. Cauldron Constants & Comparator Output (AbstractCauldronBlock.java:76-78, LayeredCauldronBlock.java:109-111, LavaCauldronBlock.java:49-51)
+        assert_eq!(CauldronBlock::MIN_FILL_LEVEL, 1);
+        assert_eq!(CauldronBlock::MAX_FILL_LEVEL, 3);
+        assert_eq!(CauldronBlock::LAVA_SIGNAL, 3);
+        assert_eq!(CauldronBlock::EMPTY_SIGNAL, 0);
+        assert_eq!(CauldronBlock::RAIN_FILL_CHANCE, 0.05);
+        assert_eq!(CauldronBlock::POWDER_SNOW_FILL_CHANCE, 0.1);
+        assert_eq!(CauldronBlock::DRIP_WATER_EVENT, 1047);
+        assert_eq!(CauldronBlock::DRIP_LAVA_EVENT, 1046);
+
+        // Comparator outputs:
+        assert_eq!(calculate_cauldron_comparator_output("cauldron", 0), 0);
+        assert_eq!(calculate_cauldron_comparator_output("lava_cauldron", 0), 3);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 1), 1);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 2), 2);
+        assert_eq!(calculate_cauldron_comparator_output("water_cauldron", 3), 3);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 1), 1);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 2), 2);
+        assert_eq!(calculate_cauldron_comparator_output("powder_snow_cauldron", 3), 3);
+
+        // Extinguish behavior (LayeredCauldronBlock.java:92-97)
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(3, false), (BlockId::WATER_CAULDRON, 2));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(2, false), (BlockId::WATER_CAULDRON, 1));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(1, false), (BlockId::CAULDRON, 0));
+
+        // Drip reception eligibility (CauldronBlock.java:48-51, LayeredCauldronBlock.java:50-52)
+        assert!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, true, 0));
+        assert!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, false, 0));
+        assert!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 1));
+        assert!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 2));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 3)); // Full
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, false, 1)); // Lava into water cauldron
+        assert!(!CauldronBlock::can_receive_drip(BlockId::LAVA_CAULDRON, true, 0));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::POWDER_SNOW_CAULDRON, true, 1));
+    }
 }

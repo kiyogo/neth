@@ -12008,6 +12008,31 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_lectern_chiseled_bookshelf_and_jukebox_parity_gap463`.
   - **Unit Tests**: Test kiểm tra hằng số xung bục đọc sách (2 ticks), truyền năng lượng mạnh xuống khối dưới, tín hiệu bộ so sánh trang sách (1..15), tín hiệu kệ sách đục lỗ (1..6) và các hằng số máy hát đều vượt qua 100%.
 
+### Gap 464: Composter & Cauldron Broken Destruction, Output Signal Updates & Liquid State Parity
+- **Thùng Ủ Phân Khi Phá Hủy & Cập Nhật Tín Hiệu Bộ So Sánh (Composter Broken & Output Signal Parity)**:
+  - Vanilla `ComposterBlock.java:48-52, 189-215, 226-233`:
+    - Thùng ủ phân (`ComposterBlock`) là khối cung cấp tín hiệu bộ so sánh analog (`hasAnalogOutputSignal = true`) bằng với mức ủ phân hiện tại (`state.getValue(LEVEL)`, 0..8).
+    - Khi thùng ủ phân được đặt (`placed`) hoặc khi bị phá hủy (`broken`), Vanilla gửi cập nhật tín hiệu bộ so sánh `update_neighbour_for_output_signal` và cập nhật các khối lân cận `update_neighbors`. Neth trước đây chưa cài đặt `broken` cho ComposterBlock.
+    - Khi mức ủ phân thay đổi (người chơi bón phân tăng lớp, fermenting tick hoàn thành lên mức 8, hoặc người chơi thu hoạch bột xương đưa mức về 0), `update_level_composter` lập tức gọi `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay mức phân mới.
+- **Vạc & Các Loại Vạc Chất Lỏng Khi Phá Hủy & Cập Nhật Tín Hiệu (Cauldron Broken & Liquid Output Signal Parity)**:
+  - Vanilla `AbstractCauldronBlock.java:76-78`, `CauldronBlock.java:48-60`, `LayeredCauldronBlock.java:92-111` & `LavaCauldronBlock.java:49-51`:
+    - Tất cả các loại vạc (`Cauldron`, `WaterCauldron`, `LavaCauldron`, `PowderSnowCauldron`) đều có tín hiệu bộ so sánh analog (`hasAnalogOutputSignal = true`):
+      - Vạc rỗng: mức 0.
+      - Vạc nước / tuyết mịn: bằng mức chất lỏng (1..3).
+      - Vạc nham thạch: luôn mức 3.
+    - Neth trước đây chưa có `placed` và `broken` cho `CauldronBlock`, dẫn đến việc đặt hoặc phá vạc không cập nhật tín hiệu bộ so sánh hay thông báo khối lân cận.
+    - Mọi tương tác làm thay đổi trạng thái vạc trong `update_cauldron_state` (múc/rót xô nước, xô nham thạch, xô tuyết mịn, chai nước, dập lửa cho thực thể...) giờ đây đều kích hoạt `update_neighbour_for_output_signal` để bộ so sánh lập tức phản ánh lượng chất lỏng mới.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/composter.rs`:
+    - Bổ sung `broken` (gọi `update_neighbour_for_output_signal` và `update_neighbors`).
+    - Bổ sung `update_neighbour_for_output_signal` trong `update_level_composter`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/cauldron.rs`:
+    - Bổ sung `placed` và `broken` cho `CauldronBlock`.
+    - Bổ sung `update_neighbour_for_output_signal` trong `update_cauldron_state`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_composter_and_cauldron_parity_gap464`.
+  - **Unit Tests**: Test kiểm tra hằng số mức thùng ủ phân (0..8), bộ so sánh thùng ủ phân (0..8), điều kiện tiếp nhận phân (mức < 7), điều kiện thu hoạch bột xương (mức 8), tín hiệu bộ so sánh các loại vạc (0, 1..3, 3), logic dập lửa giảm mức vạc nước và điều kiện nhận nước nhỏ giọt từ nhũ đá đều vượt qua 100%.
+
 
 
 

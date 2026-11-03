@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     block::{
-        BlockBehaviour, GetComparatorOutputArgs, NormalUseArgs, OnScheduledTickArgs,
+        BlockBehaviour, BrokenArgs, GetComparatorOutputArgs, NormalUseArgs, OnScheduledTickArgs,
         PathComputationType, PlacedArgs, UseWithItemArgs, registry::BlockActionResult,
     },
     entity::{Entity, item::ItemEntity},
@@ -92,6 +92,7 @@ impl BlockBehaviour for ComposterBlock {
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
         let props = ComposterLikeProperties::from_state_id(args.state_id);
         if props.level == Self::MAX_LEVEL {
             args.world.schedule_block_tick(
@@ -101,6 +102,11 @@ impl BlockBehaviour for ComposterBlock {
                 TickPriority::Normal,
             );
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
@@ -204,6 +210,7 @@ impl ComposterBlock {
             pumpkin_data::game_event::GameEvent::BlockChange.name(),
             location.to_centered_f64(),
         );
+        world.update_neighbour_for_output_signal(location, block);
         if level == Self::MAX_LEVEL {
             world.schedule_block_tick(
                 block,

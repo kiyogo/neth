@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetComparatorOutputArgs, PathComputationType, UseWithItemArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetComparatorOutputArgs, PathComputationType,
+    PlacedArgs, UseWithItemArgs,
 };
 use pumpkin_data::block_properties::WaterCauldronLikeProperties;
 use pumpkin_data::game_event::GameEvent;
@@ -76,6 +77,8 @@ fn update_cauldron_state(
 ) {
     world.set_block_state(position, new_state_id, BlockFlags::NOTIFY_ALL);
     world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
+    let new_block = Block::from_state_id(new_state_id);
+    world.update_neighbour_for_output_signal(position, new_block);
 }
 
 impl BlockBehaviour for CauldronBlock {
@@ -486,6 +489,15 @@ impl BlockBehaviour for CauldronBlock {
             }
             _ => {}
         }
+    }
+
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {
