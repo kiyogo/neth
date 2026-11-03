@@ -7,15 +7,25 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnScheduledTickArgs,
-    RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnScheduledTickArgs, PlacedArgs, RandomTickArgs};
 
 #[pumpkin_block("minecraft:sugar_cane")]
 pub struct SugarCaneBlock;
 
+impl SugarCaneBlock {
+    pub const MAX_AGE: u8 = 15;
+    pub const MAX_HEIGHT: i32 = 3;
+}
+
 impl BlockBehaviour for SugarCaneBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
         if !can_place_at(args.world.as_ref(), args.position) {
             args.world

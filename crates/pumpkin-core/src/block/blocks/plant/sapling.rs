@@ -11,9 +11,7 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::blocks::plant::tree_grower::TreeGrower;
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, RandomTickArgs};
 use crate::plugin::api::events::world::structure_grow::{StructureGrowEvent, TreeType};
 use crate::world::World;
 
@@ -71,6 +69,14 @@ impl SaplingBlock {
 }
 
 impl BlockBehaviour for SaplingBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

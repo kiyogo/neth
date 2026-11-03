@@ -2,10 +2,7 @@ use pumpkin_data::block_properties::{DoubleBlockHalf, TallSeagrassLikeProperties
 use pumpkin_data::{Block, BlockId, BlockStateId};
 use pumpkin_world::world::BlockFlags;
 
-use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    blocks::plant::PlantBlockBase,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, blocks::plant::PlantBlockBase};
 
 pub struct ShortPlantBlock;
 
@@ -16,6 +13,14 @@ impl BlockMetadata for ShortPlantBlock {
 }
 
 impl BlockBehaviour for ShortPlantBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         let above = args.position.up();
         args.world.is_in_height_limit(above.0.y)

@@ -8,15 +8,26 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs,
-    OnScheduledTickArgs, PathComputationType, RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs, OnScheduledTickArgs, PathComputationType, PlacedArgs, RandomTickArgs};
 
 #[pumpkin_block("minecraft:cactus")]
 pub struct CactusBlock;
 
+impl CactusBlock {
+    pub const MAX_AGE: u8 = 15;
+    pub const MAX_HEIGHT: i32 = 3;
+    pub const DAMAGE_AMOUNT: f32 = 1.0;
+}
+
 impl BlockBehaviour for CactusBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
         if !can_place_at(args.world.as_ref(), args.position) {
             args.world

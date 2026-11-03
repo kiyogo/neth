@@ -1,4 +1,4 @@
-use crate::block::{GetStateForNeighborUpdateArgs, blocks::plant::PlantBlockBase};
+use crate::block::{BrokenArgs, GetStateForNeighborUpdateArgs, PlacedArgs, blocks::plant::PlantBlockBase};
 use pumpkin_data::BlockStateId;
 use pumpkin_data::{
     effect::StatusEffect,
@@ -12,7 +12,20 @@ use crate::block::{BlockBehaviour, CanPlaceAtArgs, OnEntityCollisionArgs};
 #[pumpkin_block("minecraft:wither_rose")]
 pub struct WitherRoseBlock;
 
+impl WitherRoseBlock {
+    pub const WITHER_DURATION: u32 = 40;
+    pub const WITHER_AMPLIFIER: u8 = 0;
+}
+
 impl BlockBehaviour for WitherRoseBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
         if let Some(living_entity) = args.entity.get_living_entity() {
             if args.world.level_info.load().difficulty == Difficulty::Peaceful {

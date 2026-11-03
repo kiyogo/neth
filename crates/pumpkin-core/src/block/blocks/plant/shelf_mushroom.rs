@@ -8,11 +8,7 @@ use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnLandedUponArgs,
-    OnPlaceArgs, PathComputationType, UpdateEntityMovementAfterFallOnArgs,
-    bounce_entity_after_fall,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnLandedUponArgs, OnPlaceArgs, PathComputationType, PlacedArgs, UpdateEntityMovementAfterFallOnArgs, bounce_entity_after_fall};
 use crate::entity::EntityBase;
 
 const MAX_AGE: u8 = 1;
@@ -32,6 +28,14 @@ impl ShelfMushroomBlock {
 }
 
 impl BlockBehaviour for ShelfMushroomBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         if args.player.is_none() {
             let props = ShelfMushroomProperties::from_state_id(args.state.id);

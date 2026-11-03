@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use crate::block::{
     BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, RandomTickArgs,
     blocks::plant::{
@@ -29,6 +30,8 @@ impl BlockMetadata for StemBlock {
 }
 
 impl StemBlock {
+    pub const MAX_AGE: i32 = 7;
+
     fn state_with_age(block: &Block, state: BlockStateId, age: i32) -> BlockStateId {
         let mut props = StemProperties::from_state_id(state);
         props.age = age as u8;
@@ -56,6 +59,14 @@ impl StemBlock {
 }
 
 impl BlockBehaviour for StemBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         <Self as CropBlockBase>::is_valid_bonemeal_target(self, args.world, args.position)
     }

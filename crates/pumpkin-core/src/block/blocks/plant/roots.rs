@@ -1,7 +1,7 @@
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, BlockId, BlockStateId, tag};
 
-use crate::block::{BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs};
 
 pub struct RootsBlock;
 
@@ -12,6 +12,14 @@ impl BlockMetadata for RootsBlock {
 }
 
 impl BlockBehaviour for RootsBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let block_below = args.block_accessor.get_block(&args.position.down());
         if args.block == &Block::WARPED_ROOTS {

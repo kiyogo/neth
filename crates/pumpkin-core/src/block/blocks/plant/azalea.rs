@@ -5,10 +5,7 @@ use pumpkin_world::world::BlockAccessor;
 
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::blocks::plant::sapling::SaplingBlock;
-use crate::block::{
-    BlockBehaviour, BlockMetadata, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    PathComputationType,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PathComputationType, PlacedArgs};
 
 pub struct AzaleaBlock;
 
@@ -19,6 +16,14 @@ impl BlockMetadata for AzaleaBlock {
 }
 
 impl BlockBehaviour for AzaleaBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

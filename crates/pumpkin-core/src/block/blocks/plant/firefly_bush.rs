@@ -5,10 +5,7 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
 use crate::block::blocks::plant::PlantBlockBase;
-use crate::block::{
-    BlockBehaviour, BlockMetadata, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, RandomTickArgs};
 
 /// Per-tick probability that a firefly particle is spawned when conditions are met,
 /// mirroring vanilla `FireflyBushBlock.java:17`: `FIREFLY_CHANCE_PER_TICK = 0.7`.
@@ -116,6 +113,14 @@ impl FireflyBushBlock {
 }
 
 impl BlockBehaviour for FireflyBushBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

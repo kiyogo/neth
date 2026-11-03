@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use std::sync::Arc;
 
 use pumpkin_data::{
@@ -21,7 +22,20 @@ use crate::{
 #[pumpkin_block("minecraft:nether_wart")]
 pub struct NetherWartBlock;
 
+impl NetherWartBlock {
+    pub const MAX_AGE: i32 = 3;
+    pub const GROWTH_CHANCE: i32 = 10;
+}
+
 impl BlockBehaviour for NetherWartBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::blocks::plant::big_dripleaf::can_plant_dripleaf_on_top;
-use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs};
 use crate::world::World;
 use pumpkin_data::Block;
 use pumpkin_data::BlockStateId;
@@ -17,6 +17,10 @@ pub struct BigDripleafStemBlock;
 pub type BigDripleafStemLikeProperties = LadderLikeProperties;
 
 impl BlockBehaviour for BigDripleafStemBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }
@@ -33,7 +37,7 @@ impl BlockBehaviour for BigDripleafStemBlock {
         )
     }
     fn broken(&self, args: BrokenArgs<'_>) {
-        handle_big_dripleaf_breaking(args.world, args.position);
+        handle_big_dripleaf_breaking(args.world, args.position);        args.world.update_neighbors(args.position, None);
     }
 }
 impl PlantBlockBase for BigDripleafStemBlock {

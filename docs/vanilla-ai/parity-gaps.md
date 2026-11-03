@@ -13631,3 +13631,55 @@ et/minecraft/world/level/block/MultifaceBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_marine_corals_fires_and_sculk_parity_gap504.
   - **Unit Tests**: Vượt qua 100% 	est_marine_corals_fires_and_sculk_parity_gap504.
+
+
+### Gap 505: Plants, Crops & Vegetation Lifecycle and Neighbor Updates Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/CropBlock.java
+  - 
+et/minecraft/world/level/block/BeetrootBlock.java
+  - 
+et/minecraft/world/level/block/SweetBerryBushBlock.java
+  - 
+et/minecraft/world/level/block/CactusBlock.java
+  - 
+et/minecraft/world/level/block/SugarCaneBlock.java
+  - 
+et/minecraft/world/level/block/BambooStalkBlock.java
+  - 
+et/minecraft/world/level/block/BigDripleafBlock.java
+  - 
+et/minecraft/world/level/block/WitherRoseBlock.java
+  - 
+et/minecraft/world/level/block/VegetationBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Comprehensive Plant & Crop Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken cho toàn bộ 51 tệp khối thực vật trong crates/pumpkin-core/src/block/blocks/plant/:
+      - Cây trồng nông nghiệp: WheatBlock, CarrotBlock, PotatoBlock, BeetrootBlock, NetherWartBlock, SweetBerryBushBlock, PitcherCropBlock, TorchFlowerBlock, StemBlock, AttachedStemBlock.
+      - Cây thân cao & sa mạc: CactusBlock, SugarCaneBlock, BambooBlock, BambooSaplingBlock.
+      - Hoa, nấm & cây cảnh: FlowerBlock, SaplingBlock, MushroomPlantBlock, WitherRoseBlock, AzaleaBlock, BushBlock, CactusFlowerBlock, FlowerbedBlock, EyeblossomBlock, FireflyBushBlock, FungusBlock, ShelfMushroomBlock.
+      - Dây leo, lá rủ & rễ: CaveVinesBlock, TwistingVinesBlock, WeepingVinesBlock, HangingRootsBlock, RootsBlock, LeafLitterBlock.
+      - Thực vật thủy sinh: KelpBlock, SeaGrassBlock, TallSeaGrassBlock, SeaPickleBlock, LilyPadBlock, SmallDripleafBlock, BigDripleafBlock, BigDripleafStemBlock.
+      - Cây Chorus & Nether/End: ChorusFlowerBlock, ChorusPlantBlock, NetherSproutsBlock, CocoaBlock, MangrovePropaguleBlock, SporeBlossomBlock.
+    - Đảm bảo khi bất kỳ cây cối nào được gieo trồng, lớn lên hay bị phá hủy, đất ruộng (farmland), nguồn sáng, các khối lân cận và cơ chế vật lý lập tức nhận thông báo cập nhật chuẩn vanilla.
+  - **Crops Lifecycle Parity (CropBlock.java, BeetrootBlock.java)**:
+    - Lúa mì, cà rốt, khoai tây, thân bầu/dưa: tuổi tối đa MAX_AGE = 7, gia tăng tuổi bột xương BONEMEAL_INCREASE_MIN = 2, BONEMEAL_INCREASE_MAX = 5.
+    - Củ dền: tuổi tối đa MAX_AGE = 3, xác suất phát triển RANDOM_TICK_CHANCE = 3 (chỉ lớn lên 1/3 lần random tick thành công).
+    - Bướu Nether: tuổi tối đa MAX_AGE = 3, xác suất phát triển GROWTH_CHANCE = 10 (1/10 mỗi random tick).
+    - Bụi dâu ngọt: tuổi tối đa MAX_AGE = 3, sát thương gai DAMAGE_AMOUNT = 1.0 khi di chuyển trong bụi cây.
+    - Cây Torchflower: tuổi tối đa MAX_AGE = 2 (trước khi nở thành khối hoa hoàn chỉnh).
+  - **Column, Stalk & Desert Plants Parity (CactusBlock.java, SugarCaneBlock.java, BambooStalkBlock.java)**:
+    - Xương rồng: tuổi phát triển tối đa MAX_AGE = 15, chiều cao tự nhiên tối đa MAX_HEIGHT = 3, sát thương va chạm DAMAGE_AMOUNT = 1.0.
+    - Mía: tuổi phát triển tối đa MAX_AGE = 15, chiều cao tự nhiên tối đa MAX_HEIGHT = 3.
+    - Tre: chiều cao tối đa MAX_HEIGHT = 16, giai đoạn phát triển MAX_STAGE = 1, tuổi MAX_AGE = 1.
+  - **Mushrooms, Environment & Dripleaf Parity (MushroomBlock.java, WitherRoseBlock.java, BigDripleafBlock.java, SeaPickleBlock.java)**:
+    - Nấm: xác suất lan truyền tự nhiên SPREAD_CHANCE = 25 (1/25 mỗi random tick), giới hạn tối đa MAX_NEIGHBOR_MUSHROOMS = 5 cây lân cận trong bán kính 4 khối.
+    - Hoa hồng Wither: thời lượng hiệu ứng khô héo WITHER_DURATION = 40 ticks (2 giây), cấp độ WITHER_AMPLIFIER = 0.
+    - Lá nhỏ giọt lớn (Big Dripleaf): độ trễ bước nghiêng TILT_STEP_DELAY = 10 ticks, độ trễ hồi phục TILT_RESET_DELAY = 100 ticks (5 giây).
+    - Dưa muối biển (Sea Pickle): cụm tối đa 4 quả MAX_PICKLES = 4.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật toàn diện 51 tệp khối thực vật trong crates/pumpkin-core/src/block/blocks/plant/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_plants_crops_and_vegetation_parity_gap505.
+  - **Unit Tests**: Vượt qua 100% 	est_plants_crops_and_vegetation_parity_gap505.

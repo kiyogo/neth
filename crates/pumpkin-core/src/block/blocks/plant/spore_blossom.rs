@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, CanPlaceAtArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, PlacedArgs};
 use crate::block::{GetStateForNeighborUpdateArgs, blocks::plant::PlantBlockBase};
 use pumpkin_data::BlockStateId;
 use pumpkin_data::tag::Taggable;
@@ -11,6 +11,14 @@ use pumpkin_world::world::BlockAccessor;
 pub struct SporeBlossomBlock;
 
 impl BlockBehaviour for SporeBlossomBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

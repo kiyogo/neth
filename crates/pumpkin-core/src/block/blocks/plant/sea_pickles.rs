@@ -1,9 +1,6 @@
 use crate::block::BlockIsReplacing;
 use crate::block::blocks::plant::PlantBlockBase;
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
-    OnPlaceArgs, PathComputationType,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs};
 use crate::entity::EntityBase;
 use pumpkin_data::entity::EntityPose;
 use pumpkin_data::tag::Taggable;
@@ -21,10 +18,18 @@ type SeaPickleProperties = pumpkin_data::block_properties::SeaPickleLikeProperti
 pub struct SeaPickleBlock;
 
 impl SeaPickleBlock {
-    const MAX_PICKLES: u8 = 4;
+    pub const MAX_PICKLES: u8 = 4;
 }
 
 impl BlockBehaviour for SeaPickleBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: BonemealArgs<'_>) -> bool {
         SeaPickleProperties::from_state_id(args.state_id).waterlogged
             && args

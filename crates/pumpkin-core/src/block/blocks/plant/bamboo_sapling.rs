@@ -8,15 +8,20 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnNeighborUpdateArgs,
-    blocks::plant::PlantBlockBase,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnNeighborUpdateArgs, PlacedArgs, blocks::plant::PlantBlockBase};
 
 #[pumpkin_block("minecraft:bamboo_sapling")]
 pub struct BambooSaplingBlock;
 
 impl BlockBehaviour for BambooSaplingBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         let above = args.position.up();
         args.world.is_in_height_limit(above.0.y)

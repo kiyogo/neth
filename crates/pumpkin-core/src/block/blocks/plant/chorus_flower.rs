@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use std::sync::Arc;
 
 use pumpkin_data::{
@@ -36,6 +37,14 @@ const HORIZONTAL_DIRECTIONS: [BlockDirection; 4] = [
 pub struct ChorusFlowerBlock;
 
 impl BlockBehaviour for ChorusFlowerBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         can_survive(args.block_accessor, args.position)
     }

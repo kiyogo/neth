@@ -10,15 +10,20 @@ use pumpkin_world::{
     world::{BlockAccessor, BlockFlags},
 };
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PathComputationType,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PathComputationType, PlacedArgs};
 
 #[pumpkin_block("minecraft:chorus_plant")]
 pub struct ChorusPlantBlock;
 
 impl BlockBehaviour for ChorusPlantBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         // Compute all 6 face connections immediately so the placed block visually connects to its neighbors.
         get_state_with_connections(args.world, args.block, args.position)

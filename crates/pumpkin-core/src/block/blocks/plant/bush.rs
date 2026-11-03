@@ -1,10 +1,7 @@
 use pumpkin_data::BlockId;
 use pumpkin_data::BlockStateId;
 
-use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    blocks::plant::PlantBlockBase,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, blocks::plant::PlantBlockBase};
 
 pub struct BushBlock;
 
@@ -15,6 +12,14 @@ impl BlockMetadata for BushBlock {
 }
 
 impl BlockBehaviour for BushBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

@@ -7,10 +7,7 @@ use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    PathComputationType, RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs, RandomTickArgs};
 use crate::entity::EntityBase;
 
 pub const MAX_AGE: u8 = 2;
@@ -34,6 +31,14 @@ impl CocoaBlock {
 }
 
 impl BlockBehaviour for CocoaBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let state_id = args.block_accessor.get_block_state_id(args.position);
         if state_id != Block::AIR.default_state.id {

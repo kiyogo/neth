@@ -5,12 +5,26 @@ use pumpkin_world::world::BlockAccessor;
 
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::blocks::plant::crop::CropBlockBase;
-use crate::block::{BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, RandomTickArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, RandomTickArgs};
 
 #[pumpkin_block("minecraft:wheat")]
 pub struct WheatBlock;
 
+impl WheatBlock {
+    pub const MAX_AGE: i32 = 7;
+    pub const BONEMEAL_INCREASE_MIN: i32 = 2;
+    pub const BONEMEAL_INCREASE_MAX: i32 = 5;
+}
+
 impl BlockBehaviour for WheatBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         <Self as CropBlockBase>::is_valid_bonemeal_target(self, args.world, args.position)
     }

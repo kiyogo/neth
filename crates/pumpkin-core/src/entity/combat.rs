@@ -34937,4 +34937,56 @@ mod tests {
         assert_eq!(MultifaceBlock::BLOCK_CRAFT_COUNT, 9);
         assert_eq!(MultifaceBlock::BRICKS_CRAFT_COUNT, 4);
     }
+    #[test]
+    fn test_plants_crops_and_vegetation_parity_gap505() {
+        use crate::block::blocks::plant::crop::wheat::WheatBlock;
+        use crate::block::blocks::plant::crop::carrot::CarrotBlock;
+        use crate::block::blocks::plant::crop::potatoes::PotatoBlock;
+        use crate::block::blocks::plant::crop::beetroot::BeetrootBlock;
+        use crate::block::blocks::plant::crop::nether_wart::NetherWartBlock;
+        use crate::block::blocks::plant::crop::sweet_berry_bush::SweetBerryBushBlock;
+        use crate::block::blocks::plant::crop::torch_flower::TorchFlowerBlock;
+        use crate::block::blocks::plant::crop::gourds::stem::StemBlock;
+        use crate::block::blocks::plant::cactus::CactusBlock;
+        use crate::block::blocks::plant::sugar_cane::SugarCaneBlock;
+        use crate::block::blocks::plant::bamboo::BambooBlock;
+        use crate::block::blocks::plant::mushroom_plant::MushroomPlantBlock;
+        use crate::block::blocks::plant::wither_rose::WitherRoseBlock;
+        use crate::block::blocks::plant::big_dripleaf::BigDripleafBlock;
+        use crate::block::blocks::plant::sea_pickles::SeaPickleBlock;
+
+        // 1. Crops Lifecycle Parity (CropBlock.java, BeetrootBlock.java)
+        assert_eq!(WheatBlock::MAX_AGE, 7);
+        assert_eq!(WheatBlock::BONEMEAL_INCREASE_MIN, 2);
+        assert_eq!(WheatBlock::BONEMEAL_INCREASE_MAX, 5);
+        assert_eq!(CarrotBlock::MAX_AGE, 7);
+        assert_eq!(PotatoBlock::MAX_AGE, 7);
+        assert_eq!(BeetrootBlock::MAX_AGE, 3);
+        assert_eq!(BeetrootBlock::RANDOM_TICK_CHANCE, 3);
+        assert_eq!(NetherWartBlock::MAX_AGE, 3);
+        assert_eq!(NetherWartBlock::GROWTH_CHANCE, 10);
+        assert_eq!(SweetBerryBushBlock::MAX_AGE, 3);
+        assert_eq!(SweetBerryBushBlock::DAMAGE_AMOUNT, 1.0);
+        assert_eq!(TorchFlowerBlock::MAX_AGE, 2);
+        assert_eq!(StemBlock::MAX_AGE, 7);
+
+        // 2. Column, Stalk & Desert Plants Parity (CactusBlock.java, SugarCaneBlock.java, BambooStalkBlock.java)
+        assert_eq!(CactusBlock::MAX_AGE, 15);
+        assert_eq!(CactusBlock::MAX_HEIGHT, 3);
+        assert_eq!(CactusBlock::DAMAGE_AMOUNT, 1.0);
+        assert_eq!(SugarCaneBlock::MAX_AGE, 15);
+        assert_eq!(SugarCaneBlock::MAX_HEIGHT, 3);
+        assert_eq!(BambooBlock::MAX_HEIGHT, 16);
+        assert_eq!(BambooBlock::MAX_STAGE, 1);
+        assert_eq!(BambooBlock::MAX_AGE, 1);
+
+        // 3. Mushrooms, Environment & Dripleaf Parity (MushroomBlock.java, WitherRoseBlock.java, BigDripleafBlock.java, SeaPickleBlock.java)
+        assert_eq!(MushroomPlantBlock::SPREAD_CHANCE, 25);
+        assert_eq!(MushroomPlantBlock::MAX_NEIGHBOR_MUSHROOMS, 5);
+        assert_eq!(WitherRoseBlock::WITHER_DURATION, 40);
+        assert_eq!(WitherRoseBlock::WITHER_AMPLIFIER, 0);
+        assert_eq!(BigDripleafBlock::TILT_STEP_DELAY, 10);
+        assert_eq!(BigDripleafBlock::TILT_RESET_DELAY, 100);
+        assert_eq!(SeaPickleBlock::MAX_PICKLES, 4);
+    }
 }

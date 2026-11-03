@@ -9,10 +9,7 @@ use pumpkin_util::random::{RandomGenerator, xoroshiro128::Xoroshiro};
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 use crate::block::blocks::plant::tree_grower::TreeGrower;
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs, RandomTickArgs};
 use crate::world::World;
 
 pub const MAX_AGE: u8 = 4;
@@ -88,6 +85,14 @@ impl MangrovePropaguleBlock {
 }
 
 impl BlockBehaviour for MangrovePropaguleBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let props = MangrovePropaguleLikeProperties::from_state_id(args.state.id);
         Self::can_survive(args.block_accessor, args.position, &props)

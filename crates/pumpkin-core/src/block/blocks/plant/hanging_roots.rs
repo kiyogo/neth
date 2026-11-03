@@ -6,7 +6,7 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::BlockAccessor;
 
-use crate::block::{BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 
 #[pumpkin_block("minecraft:hanging_roots")]
 pub struct HangingRootsBlock;
@@ -21,6 +21,14 @@ impl HangingRootsBlock {
 }
 
 impl BlockBehaviour for HangingRootsBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         Self::can_survive(args.block_accessor, args.position)
     }

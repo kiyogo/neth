@@ -41,7 +41,7 @@ impl BlockBehaviour for TwistingVinesBlock {
                     BlockFlags::empty(),
                 );
             }
-        }
+        }        args.world.update_neighbors(args.position, None);
     }
     fn broken(&self, args: BrokenArgs<'_>) {
         {
@@ -54,7 +54,7 @@ impl BlockBehaviour for TwistingVinesBlock {
                     BlockFlags::empty(),
                 );
             }
-        }
+        }        args.world.update_neighbors(args.position, None);
     }
 }
 

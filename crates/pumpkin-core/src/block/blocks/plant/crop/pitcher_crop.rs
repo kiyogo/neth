@@ -3,10 +3,7 @@ use pumpkin_data::{Block, BlockStateId, tag, tag::Taggable};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    RandomTickArgs,
-};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs, RandomTickArgs};
 
 pub const MAX_AGE: u8 = 4;
 
@@ -30,6 +27,14 @@ impl PitcherCropBlock {
 }
 
 impl BlockBehaviour for PitcherCropBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let props = PitcherCropLikeProperties::from_state_id(args.state.id);
         Self::can_survive(args.block_accessor, args.position, &props)

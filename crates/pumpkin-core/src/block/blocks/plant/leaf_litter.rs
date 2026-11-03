@@ -2,9 +2,7 @@ use pumpkin_data::BlockStateId;
 use pumpkin_data::{Block, BlockDirection};
 use pumpkin_macros::pumpkin_block;
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 
 use super::segmented::Segmented;
 
@@ -14,6 +12,14 @@ type LeafLitterProperties = pumpkin_data::block_properties::LeafLitterLikeProper
 pub struct LeafLitterBlock;
 
 impl BlockBehaviour for LeafLitterBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let block_below = args.block_accessor.get_block_state(&args.position.down());
         block_below.is_side_solid(BlockDirection::Up)

@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use std::sync::Arc;
 
 use pumpkin_data::{
@@ -94,6 +95,14 @@ impl BlockMetadata for EyeblossomBlock {
 }
 
 impl BlockBehaviour for EyeblossomBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

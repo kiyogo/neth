@@ -7,10 +7,7 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
-use crate::block::{
-    BlockBehaviour, BlockMetadata, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    RandomTickArgs, blocks::plant::PlantBlockBase,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, RandomTickArgs, blocks::plant::PlantBlockBase};
 use crate::plugin::api::events::world::structure_grow::{StructureGrowEvent, TreeType};
 use crate::world::World;
 
@@ -31,6 +28,9 @@ fn mushroom_tree_height(rng: &mut impl rand::Rng) -> i32 {
 }
 
 impl MushroomPlantBlock {
+    pub const SPREAD_CHANCE: i32 = 25;
+    pub const MAX_NEIGHBOR_MUSHROOMS: i32 = 5;
+
     #[must_use]
     pub const fn may_place_on(state: &BlockState) -> bool {
         state.is_solid_render()
@@ -222,6 +222,14 @@ fn place_huge_red_mushroom(world: &Arc<World>, pos: &BlockPos, tree_height: i32)
 }
 
 impl BlockBehaviour for MushroomPlantBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         Self::can_survive(args.block_accessor, args.world, args.position)
     }

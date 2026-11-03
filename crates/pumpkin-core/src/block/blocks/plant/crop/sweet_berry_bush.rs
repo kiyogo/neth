@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use std::sync::Arc;
 
 use crate::{
@@ -22,7 +23,20 @@ use rand::RngExt;
 #[pumpkin_block("minecraft:sweet_berry_bush")]
 pub struct SweetBerryBushBlock;
 
+impl SweetBerryBushBlock {
+    pub const MAX_AGE: i32 = 3;
+    pub const DAMAGE_AMOUNT: f32 = 1.0;
+}
+
 impl BlockBehaviour for SweetBerryBushBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         <Self as CropBlockBase>::is_valid_bonemeal_target(self, args.world, args.position)
     }

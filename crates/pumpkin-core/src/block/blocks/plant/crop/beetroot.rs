@@ -8,14 +8,27 @@ use rand::RngExt;
 
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::blocks::plant::crop::CropBlockBase;
-use crate::block::{BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, RandomTickArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, PlacedArgs, RandomTickArgs};
 
 type BeetrootProperties = NetherWartLikeProperties;
 
 #[pumpkin_block("minecraft:beetroots")]
 pub struct BeetrootBlock;
 
+impl BeetrootBlock {
+    pub const MAX_AGE: i32 = 3;
+    pub const RANDOM_TICK_CHANCE: i32 = 3;
+}
+
 impl BlockBehaviour for BeetrootBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         <Self as CropBlockBase>::is_valid_bonemeal_target(self, args.world, args.position)
     }

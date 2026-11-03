@@ -5,7 +5,7 @@ use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
-use crate::block::{GetStateForNeighborUpdateArgs, blocks::plant::PlantBlockBase};
+use crate::block::{BrokenArgs, GetStateForNeighborUpdateArgs, PlacedArgs, blocks::plant::PlantBlockBase};
 
 use crate::block::{BlockBehaviour, CanPlaceAtArgs, OnEntityCollisionArgs};
 use crate::entity::vehicle::boat::BoatEntity;
@@ -14,6 +14,14 @@ use crate::entity::vehicle::boat::BoatEntity;
 pub struct LilyPadBlock;
 
 impl BlockBehaviour for LilyPadBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
         let name = args.entity.get_entity().entity_type.resource_name;
         if name.ends_with("_boat") || name.ends_with("_raft") || args.entity.cast_any().is::<BoatEntity>() {

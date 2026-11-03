@@ -1,6 +1,6 @@
 use crate::block::blocks::plant::PlantBlockBase;
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs,
 };
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::{DoubleBlockHalf, SmallDripleafLikeProperties};
@@ -14,6 +14,10 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 pub struct SmallDripleafBlock;
 
 impl BlockBehaviour for SmallDripleafBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }
@@ -65,7 +69,7 @@ impl BlockBehaviour for SmallDripleafBlock {
                 upper_small_dripleaf_props.to_state_id(&Block::SMALL_DRIPLEAF),
                 BlockFlags::NOTIFY_ALL | BlockFlags::SKIP_BLOCK_ADDED_CALLBACK,
             );
-        }
+        }        args.world.update_neighbors(args.position, None);
     }
 }
 fn is_small_dripleaf_waterlogged(state_id: BlockStateId) -> bool {

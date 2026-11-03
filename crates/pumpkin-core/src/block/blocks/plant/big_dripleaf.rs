@@ -27,6 +27,11 @@ use rand::RngExt;
 #[pumpkin_block("minecraft:big_dripleaf")]
 pub struct BigDripleafBlock;
 
+impl BigDripleafBlock {
+    pub const TILT_STEP_DELAY: i32 = 10;
+    pub const TILT_RESET_DELAY: i32 = 100;
+}
+
 impl BlockBehaviour for BigDripleafBlock {
     fn on_entity_step(&self, args: OnEntityStepArgs<'_>) {
         {
@@ -141,11 +146,11 @@ impl BlockBehaviour for BigDripleafBlock {
                     BlockFlags::empty(),
                 );
             }
-        }
+        }        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
-        handle_big_dripleaf_breaking(args.world, args.position);
+        handle_big_dripleaf_breaking(args.world, args.position);        args.world.update_neighbors(args.position, None);
     }
 }
 fn set_tilt_and_schedule_tick(

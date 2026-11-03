@@ -1,3 +1,4 @@
+use crate::block::{BrokenArgs, PlacedArgs};
 use pumpkin_data::{Block, BlockStateId};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
@@ -10,6 +11,14 @@ use crate::block::{
 #[pumpkin_block("minecraft:tall_seagrass")]
 pub struct TallSeaGrassBlock;
 impl BlockBehaviour for TallSeaGrassBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         <Self as PlantBlockBase>::can_place_at(self, args.block_accessor, args.position)
     }

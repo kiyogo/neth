@@ -8,7 +8,7 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, BlockMetadata, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    NormalUseArgs, PlacedArgs,
+    BrokenArgs, NormalUseArgs, PlacedArgs,
 };
 
 pub struct CaveVinesBlock;
@@ -32,6 +32,10 @@ impl CaveVinesBlock {
 }
 
 impl BlockBehaviour for CaveVinesBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         Self::can_survive(args.block_accessor, args.position)
     }
@@ -59,7 +63,7 @@ impl BlockBehaviour for CaveVinesBlock {
                 plant_props.to_state_id(&Block::CAVE_VINES_PLANT),
                 BlockFlags::empty(),
             );
-        }
+        }        args.world.update_neighbors(args.position, None);
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {

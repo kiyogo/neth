@@ -11,16 +11,27 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 use rand::RngExt;
 
-use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PathComputationType, RandomTickArgs, blocks::plant::PlantBlockBase,
-};
+use crate::block::{BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PathComputationType, PlacedArgs, RandomTickArgs, blocks::plant::PlantBlockBase};
 use crate::world::World;
 
 #[pumpkin_block("minecraft:bamboo")]
 pub struct BambooBlock;
 
+impl BambooBlock {
+    pub const MAX_HEIGHT: i32 = 16;
+    pub const MAX_STAGE: i32 = 1;
+    pub const MAX_AGE: i32 = 1;
+}
+
 impl BlockBehaviour for BambooBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         let above = count_bamboo_above(args.world, args.position);
         let below = count_bamboo_below(args.world, args.position);

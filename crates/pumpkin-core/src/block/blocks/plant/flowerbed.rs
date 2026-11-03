@@ -4,10 +4,7 @@ use pumpkin_data::{Block, BlockId, tag};
 
 use crate::block::blocks::plant::PlantBlockBase;
 
-use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
-    OnPlaceArgs,
-};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 
 use super::segmented::Segmented;
 
@@ -22,6 +19,14 @@ impl BlockMetadata for FlowerbedBlock {
 }
 
 impl BlockBehaviour for FlowerbedBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         let block_below = args.block_accessor.get_block(&args.position.down());
         block_below.has_tag(&tag::Block::MINECRAFT_DIRT) || block_below == &Block::FARMLAND
