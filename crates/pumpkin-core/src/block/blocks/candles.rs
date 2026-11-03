@@ -14,7 +14,7 @@ use crate::{
         BlockIsReplacing,
         registry::BlockActionResult,
         {
-            BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, NormalUseArgs, OnPlaceArgs,
+            BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs,
             UseWithItemArgs,
         },
     },
@@ -24,7 +24,27 @@ use crate::{
 #[pumpkin_block_from_tag("minecraft:candles")]
 pub struct CandleBlock;
 
+impl CandleBlock {
+    pub const LIGHT_PER_CANDLE: u8 = 3;
+    pub const MAX_CANDLES: u8 = 4;
+    pub const MIN_CANDLES: u8 = 1;
+    pub const EVENT_EXTINGUISH_CANDLE: i32 = 1009;
+
+    #[must_use]
+    pub const fn get_light_level(candles: u8, lit: bool) -> u8 {
+        if lit {
+            candles * Self::LIGHT_PER_CANDLE
+        } else {
+            0
+        }
+    }
+}
+
 impl BlockBehaviour for CandleBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if args.player.get_entity().pose.load() != EntityPose::Crouching
             && let BlockIsReplacing::Itself(state_id) = args.replacing

@@ -1,7 +1,7 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     AttackArgs, BrokenArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs,
-    UseWithItemArgs,
+    PlacedArgs, UseWithItemArgs,
 };
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::{Axis, NoteblockInstrument};
@@ -93,6 +93,10 @@ impl NoteBlock {
 }
 
 impl BlockBehaviour for NoteBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }

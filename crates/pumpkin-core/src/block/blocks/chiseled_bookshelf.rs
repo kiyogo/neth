@@ -106,6 +106,7 @@ impl BlockBehaviour for ChiseledBookshelfBlock {
         let block_entity = ChiseledBookshelfBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

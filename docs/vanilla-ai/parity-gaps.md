@@ -13241,3 +13241,53 @@ et/minecraft/world/level/block/LecternBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_workstations_lifecycle_and_parity_gap493.
   - **Unit Tests**: Vượt qua 100% 	est_workstations_lifecycle_and_parity_gap493.
+
+### Gap 494: Specialized Interactive & Audio/Aesthetic Blocks Lifecycle & Neighbor Updates Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/CampfireBlock.java
+  - 
+et/minecraft/world/level/block/RespawnAnchorBlock.java
+  - 
+et/minecraft/world/level/block/EnchantingTableBlock.java
+  - 
+et/minecraft/world/level/block/ChiseledBookshelfBlock.java
+  - 
+et/minecraft/world/level/block/JukeboxBlock.java
+  - 
+et/minecraft/world/level/block/NoteBlock.java
+  - 
+et/minecraft/world/level/block/BeehiveBlock.java
+  - 
+et/minecraft/world/level/block/CakeBlock.java
+  - 
+et/minecraft/world/level/block/CandleCakeBlock.java
+  - 
+et/minecraft/world/level/block/CandleBlock.java
+  - 
+et/minecraft/world/level/block/DecoratedPotBlock.java
+  - 
+et/minecraft/world/level/block/BrushableBlock.java
+  - 
+et/minecraft/world/level/block/TrialSpawnerBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Specialized Blocks Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken của 13 khối tương tác/âm thanh/trang trí: CampfireBlock, RespawnAnchorBlock, EnchantingTableBlock, ChiseledBookshelfBlock, JukeboxBlock, NoteBlock, BeehiveBlock, CakeBlock, CandleCakeBlock, CandleBlock, DecoratedPotBlock, BrushableBlock, và TrialSpawnerBlock. Đảm bảo các khối lân cận nhận được sự kiện cập nhật khối khi các khối này xuất hiện hoặc biến mất khỏi thế giới.
+  - **Campfire & Respawn Anchor Parity (CampfireBlock.java & RespawnAnchorBlock.java)**:
+    - Lửa trại: thời gian nấu tiêu chuẩn 600 ticks (DEFAULT_COOKING_TIME = 600), chiều cao cột khói thường 10 (SMOKE_HEIGHT_REGULAR = 10), khói rơm tín hiệu 24 (SMOKE_HEIGHT_SIGNAL = 24), sát thương lửa thường 1.0, lửa linh hồn 2.0, sự kiện dập lửa 1009.
+    - Mỏ neo hồi sinh: tích điện 0..=4 (MIN_CHARGES = 0, MAX_CHARGES = 4), sức nổ 5.0 khi kích hoạt ngoài Nether, tín hiệu comparator theo mức điện tích (0..=15).
+  - **Candles & Cake Lifecycle & Signals**:
+    - Nến: 1..=4 cây (MIN_CANDLES = 1, MAX_CANDLES = 4), mức phát sáng theo số nến: candles * 3 (3, 6, 9, 12 khi lit; 0 khi unlit), sự kiện dập tắt nến: 1009.
+    - Bánh kem: 0..=6 miếng cắn (MAX_BITES = 6), 7 miếng để ăn hết, hồi 2 hunger và 0.4 saturation mỗi miếng, tín hiệu comparator chuẩn vanilla: (7 - bites) * 2 (14 khi nguyên vẹn, giảm 2 mỗi lần cắn).
+  - **Audio & Storage Blocks (Jukebox, NoteBlock, ChiseledBookshelf, Beehive, TrialSpawner)**:
+    - Jukebox: sự kiện phát đĩa 1010, dừng đĩa 1011, tín hiệu redstone 15 khi phát / 0 khi dừng, bán kính Allay nghe thấy 10.0 khối.
+    - Khối nốt nhạc: 25 nốt (0..=24), âm lượng 3.0, chu kỳ nốt (note + 1) % 25.
+    - Kệ sách đục: 6 ngăn chứa (MAX_BOOKS_IN_STORAGE = 6), tín hiệu comparator 0..=6 theo ngăn tương tác cuối cùng.
+    - Tổ ong: mức mật 0..=5 (MAX_HONEY_LEVEL = 5), thu hoạch 3 sáp ong, tín hiệu comparator bằng đúng mức mật ong.
+    - Bình gốm trang trí & khối chải khảo cổ: 4 mặt mảnh gốm, độ lắc 7 và 10 ticks; 10 lần chải để vỡ (REQUIRED_BRUSHES_TO_BREAK = 10), hồi chiêu 10 ticks.
+    - Trial Spawner: tầm quét người chơi 14 khối, thời gian hồi chiêu 36000 ticks (30 phút).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 13 tệp khối trong crates/pumpkin-core/src/block/blocks/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_interactive_blocks_lifecycle_and_parity_gap494.
+  - **Unit Tests**: Vượt qua 100% 	est_interactive_blocks_lifecycle_and_parity_gap494.

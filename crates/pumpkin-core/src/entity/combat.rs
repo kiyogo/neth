@@ -34391,4 +34391,96 @@ mod tests {
         assert_eq!(LecternBlock::POWER_ON, 15);
         assert_eq!(LecternBlock::POWER_OFF, 0);
     }
+
+    #[test]
+    fn test_interactive_blocks_lifecycle_and_parity_gap494() {
+        use crate::block::blocks::beehive::BeehiveBlock;
+        use crate::block::blocks::brushable_block::BrushableBlock;
+        use crate::block::blocks::cake::CakeBlock;
+        use crate::block::blocks::campfire::CampfireBlock;
+        use crate::block::blocks::candles::CandleBlock;
+        use crate::block::blocks::chiseled_bookshelf::ChiseledBookshelfBlock;
+        use crate::block::blocks::decorated_pot::DecoratedPotBlock;
+        use crate::block::blocks::enchanting_table::EnchantingTableBlock;
+        use crate::block::blocks::jukebox::JukeboxBlock;
+        use crate::block::blocks::note::NoteBlock;
+        use crate::block::blocks::respawn_anchor::RespawnAnchorBlock;
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+
+        // 1. Campfire Parity (CampfireBlock.java)
+        assert_eq!(CampfireBlock::DEFAULT_COOKING_TIME, 600);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_REGULAR, 10);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_SIGNAL, 24);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_REGULAR, 1.0);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_SOUL, 2.0);
+        assert_eq!(CampfireBlock::EVENT_EXTINGUISH_FIRE, 1009);
+
+        // 2. Respawn Anchor Parity (RespawnAnchorBlock.java)
+        assert_eq!(RespawnAnchorBlock::MIN_CHARGES, 0);
+        assert_eq!(RespawnAnchorBlock::MAX_CHARGES, 4);
+        assert_eq!(RespawnAnchorBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(0), 0);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(4), 15);
+
+        // 3. Candle Parity (CandleBlock.java)
+        assert_eq!(CandleBlock::LIGHT_PER_CANDLE, 3);
+        assert_eq!(CandleBlock::MAX_CANDLES, 4);
+        assert_eq!(CandleBlock::MIN_CANDLES, 1);
+        assert_eq!(CandleBlock::EVENT_EXTINGUISH_CANDLE, 1009);
+        assert_eq!(CandleBlock::get_light_level(1, true), 3);
+        assert_eq!(CandleBlock::get_light_level(4, true), 12);
+        assert_eq!(CandleBlock::get_light_level(4, false), 0);
+
+        // 4. Cake Parity (CakeBlock.java)
+        assert_eq!(CakeBlock::MAX_BITES, 6);
+        assert_eq!(CakeBlock::BITES_TO_EAT, 7);
+        assert_eq!(CakeBlock::HUNGER_RESTORE, 2);
+        assert_eq!(CakeBlock::SATURATION_RESTORE, 0.4);
+        assert_eq!(CakeBlock::calculate_comparator_output(0), 14);
+        assert_eq!(CakeBlock::calculate_comparator_output(6), 2);
+
+        // 5. Chiseled Bookshelf Parity (ChiseledBookshelfBlock.java)
+        assert_eq!(ChiseledBookshelfBlock::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ChiseledBookshelfBlock::MAX_COMPARATOR_OUTPUT, 6);
+
+        // 6. Jukebox Parity (JukeboxBlock.java)
+        assert_eq!(JukeboxBlock::EVENT_PLAY_RECORD, 1010);
+        assert_eq!(JukeboxBlock::EVENT_STOP_RECORD, 1011);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_PLAYING, 15);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_STOPPED, 0);
+        assert_eq!(JukeboxBlock::ALLAY_HEARING_RANGE, 10.0);
+
+        // 7. Note Block Parity (NoteBlock.java)
+        assert_eq!(NoteBlock::MIN_NOTE, 0);
+        assert_eq!(NoteBlock::MAX_NOTE, 24);
+        assert_eq!(NoteBlock::NUM_NOTES, 25);
+        assert_eq!(NoteBlock::NOTE_VOLUME, 3.0);
+        assert_eq!(NoteBlock::cycle_note(24), 0);
+
+        // 8. Beehive Parity (BeehiveBlock.java)
+        assert_eq!(BeehiveBlock::MAX_HONEY_LEVEL, 5);
+        assert_eq!(BeehiveBlock::MIN_HONEY_LEVEL, 0);
+        assert_eq!(BeehiveBlock::HONEYCOMB_HARVEST_AMOUNT, 3);
+        assert_eq!(BeehiveBlock::calculate_comparator_output(5), 5);
+        assert_eq!(BeehiveBlock::is_honey_full(5), true);
+
+        // 9. Decorated Pot Parity (DecoratedPotBlock.java)
+        assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
+        assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
+        assert_eq!(DecoratedPotBlock::WOBBLE_POSITIVE_TICKS, 7);
+        assert_eq!(DecoratedPotBlock::WOBBLE_NEGATIVE_TICKS, 10);
+
+        // 10. Brushable Block Parity (BrushableBlock.java)
+        assert_eq!(BrushableBlock::REQUIRED_BRUSHES_TO_BREAK, 10);
+        assert_eq!(BrushableBlock::BRUSH_COOLDOWN_TICKS, 10);
+
+        // 11. Trial Spawner Parity (TrialSpawnerBlock.java)
+        assert_eq!(TrialSpawnerBlock::DEFAULT_PLAYER_SCAN_RANGE, 14);
+        assert_eq!(TrialSpawnerBlock::DEFAULT_COOLDOWN_TICKS, 36000);
+
+        // 12. Enchanting Table Parity (EnchantingTableBlock.java)
+        assert_eq!(EnchantingTableBlock::MAX_BOOKSHELVES, 15);
+        assert_eq!(EnchantingTableBlock::TOTAL_BOOKSHELF_POSITIONS, 32);
+    }
 }

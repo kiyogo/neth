@@ -141,6 +141,7 @@ impl BlockBehaviour for BrushableBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = BrushableBlockBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(entity));
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

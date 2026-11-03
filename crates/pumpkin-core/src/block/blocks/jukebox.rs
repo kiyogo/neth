@@ -121,6 +121,7 @@ impl BlockBehaviour for JukeboxBlock {
         let block_entity = JukeboxBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     /// Called when player right-clicks with empty hand or non-disc item

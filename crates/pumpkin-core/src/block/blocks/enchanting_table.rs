@@ -94,6 +94,7 @@ impl BlockBehaviour for EnchantingTableBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = EnchantingTableBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(entity));
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

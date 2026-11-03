@@ -90,6 +90,7 @@ impl CandleCakeBlock {
 impl BlockBehaviour for CandleCakeBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

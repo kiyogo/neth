@@ -82,6 +82,7 @@ pub fn is_smokey_pos(world: &Arc<crate::world::World>, pos: BlockPos) -> bool {
 impl BlockBehaviour for BeehiveBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
