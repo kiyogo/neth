@@ -12521,3 +12521,52 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_detector_rail_command_block_shelf_and_creaking_heart_parity_gap477`.
   - **Unit Tests**: Vượt qua 100% `test_detector_rail_command_block_shelf_and_creaking_heart_parity_gap477`.
+
+
+### Gap 478: Daylight Detector, Brewing Stand, Spawner, Vault, Beacon & Conduit Lifecycle & Redstone Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DaylightDetectorBlock.java`
+  - `net/minecraft/world/level/block/BrewingStandBlock.java`
+  - `net/minecraft/world/level/block/SpawnerBlock.java`
+  - `net/minecraft/world/level/block/TrialSpawnerBlock.java`
+  - `net/minecraft/world/level/block/VaultBlock.java`
+  - `net/minecraft/world/level/block/BeaconBlock.java`
+  - `net/minecraft/world/level/block/ConduitBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Daylight Detector Redstone & Comparator Parity (DaylightDetectorBlock.java:33-109)**:
+    - Khi thay đổi công suất (`POWER`), gọi cả `update_neighbors` và `update_neighbour_for_output_signal` để các dây dẫn redstone và bộ so sánh nhận cập nhật tức thời theo chu kỳ ngày/đêm.
+    - Bổ sung `placed` và `broken`: gửi tín hiệu cập nhật bộ so sánh (`update_neighbour_for_output_signal`) và lân cận (`update_neighbors`) khi đặt hoặc phá khối.
+    - Hằng số: chu kỳ 20 ticks (`UPDATE_INTERVAL_TICKS = 20`), `MIN_POWER = 0`, `MAX_POWER = 15`, `SHAPE_HEIGHT = 6.0`.
+  - **Brewing Stand Inventory Drops & Comparator Parity (BrewingStandBlock.java:23-95)**:
+    - Trong `broken`: tự động thả rơi toàn bộ vật phẩm từ 5 ô đồ (3 ô bình độc dược, 1 ô nguyên liệu, 1 ô nhiên liệu) ra thế giới trước khi giải phóng block entity.
+    - Gửi tín hiệu ngắt `update_neighbour_for_output_signal` và cập nhật khối lân cận `update_neighbors`.
+    - Hằng số: `BREWING_TIME_TICKS = 400`, `DEFAULT_FUEL_USES = 20`, `INVENTORY_SIZE = 5`, `EVENT_BREW_COMPLETE = 1035`.
+  - **Spawner XP Drops & Entity Lifecycle Parity (SpawnerBlock.java:33-40)**:
+    - Hằng số rơi kinh nghiệm: `MIN_SPAWN_XP = 15`, `MAX_SPAWN_XP = 43` (`15 + random(15) + random(15)`).
+    - Trong `broken`: giải phóng mob spawner entity (`remove_block_entity`) và cập nhật khối lân cận ở cả chế độ sinh tồn và sáng tạo.
+    - Trong `placed`: cập nhật khối lân cận.
+  - **Trial Spawner & Vault Lifecycle Parity (TrialSpawnerBlock.java:18-80, VaultBlock.java:19-75)**:
+    - Trial Spawner và Vault: Bổ sung `broken` giải phóng block entity và cập nhật lân cận.
+    - Vault bổ sung `placed` cập nhật lân cận.
+  - **Beacon & Conduit Lifecycle Parity (BeaconBlock.java:59-70, ConduitBlock.java:24-35)**:
+    - Bổ sung `broken` giải phóng block entity và thông báo lân cận.
+    - Bổ sung cập nhật lân cận trong `placed`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Bổ sung `update_neighbour_for_output_signal` trong `placed`, `broken` và khi thay đổi công suất `power`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/brewing_stand.rs`:
+    - Bổ sung thả rơi 5 ô vật phẩm khi bị phá vỡ và cập nhật tín hiệu bộ so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/spawner.rs`:
+    - Bổ sung hằng số rơi XP và dọn dẹp block entity trong `broken`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/trial_spawner.rs`:
+    - Bổ sung cập nhật lân cận trong `broken`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/vault.rs`:
+    - Bổ sung `placed` và `broken` quản lý vòng đời block entity và thông báo khối lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/beacon.rs`:
+    - Bổ sung `broken` và cập nhật khối lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/conduit.rs`:
+    - Bổ sung `broken` và cập nhật khối lân cận.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_daylight_detector_brewing_stand_spawner_vault_beacon_and_conduit_parity_gap478`.
+  - **Unit Tests**: Vượt qua 100% `test_daylight_detector_brewing_stand_spawner_vault_beacon_and_conduit_parity_gap478`.

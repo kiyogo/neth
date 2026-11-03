@@ -33205,4 +33205,82 @@ mod tests {
         assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(32.0)), 0);
         assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(40.0)), 0);
     }
+
+    #[test]
+    fn test_daylight_detector_brewing_stand_spawner_vault_beacon_and_conduit_parity_gap478() {
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+        use crate::block::blocks::brewing_stand::BrewingStandBlock;
+        use crate::block::blocks::spawner::SpawnerBlock;
+        use crate::block::blocks::trial_spawner::TrialSpawnerBlock;
+        use crate::block::blocks::vault::VaultBlock;
+
+        // 1. Daylight Detector Parity (DaylightDetectorBlock.java:33-109)
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_INVERTED, false);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert_eq!(DaylightDetectorBlock::SHAPE_HEIGHT, 6.0);
+        assert_eq!(DaylightDetectorBlock::SUN_ANGLE_LERP_FACTOR, 0.2);
+        assert_eq!(DaylightDetectorBlock::RAIN_SKY_DARKEN_REDUCTION, 5);
+        assert_eq!(DaylightDetectorBlock::THUNDER_SKY_DARKEN_REDUCTION, 5);
+        assert_eq!(DaylightDetectorBlock::emits_strong_power(), false);
+        assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(0), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(15), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_comparator_signal(20), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, false), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, true), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(4, true, false), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(15), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(0), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(10), 5);
+
+        // 2. Brewing Stand Parity (BrewingStandBlock.java:23-95)
+        assert_eq!(BrewingStandBlock::BREWING_TIME_TICKS, 400);
+        assert_eq!(BrewingStandBlock::DEFAULT_FUEL_USES, 20);
+        assert_eq!(BrewingStandBlock::INVENTORY_SIZE, 5);
+        assert_eq!(BrewingStandBlock::EVENT_BREW_COMPLETE, 1035);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_0, 0);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_1, 1);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_2, 2);
+        assert_eq!(BrewingStandBlock::SLOT_INGREDIENT, 3);
+        assert_eq!(BrewingStandBlock::SLOT_FUEL, 4);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, false, false), 0);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, false, true), 5);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, true, true), 7);
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[0.0; 5]), 0);
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0; 5]), 15);
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0, 0.0, 0.0, 0.0, 0.0]), 3);
+
+        // 3. Spawner XP Parity (SpawnerBlock.java:33-40)
+        assert_eq!(SpawnerBlock::MIN_SPAWN_XP, 15);
+        assert_eq!(SpawnerBlock::MAX_SPAWN_XP, 43);
+        assert_eq!(SpawnerBlock::MAGIC_BASE_XP, 15);
+        assert_eq!(SpawnerBlock::MAGIC_RANDOM_XP_ROLL, 15);
+
+        // 4. Trial Spawner Parity (TrialSpawnerBlock.java:18-80)
+        assert_eq!(TrialSpawnerBlock::DEFAULT_PLAYER_SCAN_RANGE, 14);
+        assert_eq!(TrialSpawnerBlock::DEFAULT_COOLDOWN_TICKS, 36000);
+        assert_eq!(TrialSpawnerBlock::DETECT_PLAYER_SPAWN_BUFFER_TICKS, 40);
+        assert_eq!(TrialSpawnerBlock::MAX_MOB_TRACKING_DISTANCE, 47.0);
+        assert_eq!(TrialSpawnerBlock::DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB, 40);
+        assert_eq!(TrialSpawnerBlock::TIME_BETWEEN_EACH_EJECTION, 30);
+        assert_eq!(TrialSpawnerBlock::PLAYER_DETECTION_INTERVAL, 20);
+        assert_eq!(TrialSpawnerBlock::TRIAL_OMEN_PER_BAD_OMEN_LEVEL, 18000);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_SPAWN_PARTICLES, 3011);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_SPAWN_MOB_AT, 3012);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_DETECT_PLAYER, 3013);
+        assert_eq!(TrialSpawnerBlock::EVENT_TRIAL_SPAWNER_EJECT_ITEM, 3014);
+
+        // 5. Vault Parity (VaultBlock.java:19-75)
+        assert_eq!(VaultBlock::ACTIVATION_RANGE, 4.0);
+        assert_eq!(VaultBlock::DEACTIVATION_RANGE, 4.5);
+        assert_eq!(VaultBlock::INSERT_FAIL_SOUND_COOLDOWN_TICKS, 15);
+        assert_eq!(VaultBlock::DISPLAY_ITEM_CYCLE_TICK_RATE, 20);
+        assert_eq!(VaultBlock::UNLOCKING_DELAY_TICKS, 14);
+        assert_eq!(VaultBlock::EVENT_VAULT_ACTIVATE, 3015);
+        assert_eq!(VaultBlock::EVENT_VAULT_DEACTIVATE, 3016);
+        assert_eq!(VaultBlock::EVENT_VAULT_EJECT_ITEM, 3017);
+    }
 }

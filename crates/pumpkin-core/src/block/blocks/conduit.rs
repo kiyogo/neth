@@ -1,6 +1,6 @@
 use crate::block::entities::conduit::ConduitBlockEntity;
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
+    BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use pumpkin_data::fluid::Fluid;
 use pumpkin_data::{BlockState, BlockStateId};
@@ -24,7 +24,13 @@ impl BlockBehaviour for ConduitBlock {
         {
             let entity = ConduitBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn is_pathfindable(&self, _state: &BlockState, _computation_type: PathComputationType) -> bool {

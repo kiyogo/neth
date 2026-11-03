@@ -22,10 +22,12 @@ impl BlockBehaviour for DaylightDetectorBlock {
         args.world
             .add_block_entity(Arc::new(DaylightDetectorBlockEntity::new(*args.position)));
         Self::update_signal_strength(args.world, args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
         args.world.update_neighbors(args.position, None);
     }
 
@@ -178,6 +180,8 @@ impl DaylightDetectorBlock {
             props.power = target;
             let new_state = props.to_state_id(block);
             world.set_block_state(block_pos, new_state, BlockFlags::NOTIFY_ALL);
+            world.update_neighbors(block_pos, None);
+            world.update_neighbour_for_output_signal(block_pos, block);
         }
     }
 }

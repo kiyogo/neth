@@ -121,6 +121,18 @@ impl BlockBehaviour for BrewingStandBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(brewing_entity) = block_entity
+                .as_any()
+                .downcast_ref::<BrewingStandBlockEntity>()
+        {
+            for i in 0..Self::INVENTORY_SIZE {
+                let stack = brewing_entity.remove_stack(i);
+                if !stack.is_empty() {
+                    args.world.drop_stack(args.position, stack);
+                }
+            }
+        }
         args.world.remove_block_entity(args.position);
         args.world.update_neighbour_for_output_signal(args.position, args.block);
         args.world.update_neighbors(args.position, None);

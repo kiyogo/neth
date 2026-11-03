@@ -12,7 +12,7 @@ use pumpkin_util::text::TextComponent;
 
 use crate::block::entities::PropertyDelegate;
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, GetScreenHandlerFactoryArgs, NormalUseArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetScreenHandlerFactoryArgs, NormalUseArgs, PlacedArgs};
 
 struct BeaconScreenFactory(Arc<dyn PropertyDelegate>);
 
@@ -59,9 +59,15 @@ impl BlockBehaviour for BeaconBlock {
         })
     }
 
-    fn placed(&self, args: crate::block::PlacedArgs<'_>) {
+    fn placed(&self, args: PlacedArgs<'_>) {
         let be = crate::block::entities::beacon::BeaconBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(be));
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_screen_handler_factory(

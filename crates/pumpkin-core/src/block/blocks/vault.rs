@@ -11,7 +11,7 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::block::entities::vault::VaultBlockEntity;
 use crate::block::registry::BlockActionResult;
-use crate::block::{BlockBehaviour, NormalUseArgs, OnPlaceArgs, PlacedArgs, UseWithItemArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, NormalUseArgs, OnPlaceArgs, PlacedArgs, UseWithItemArgs};
 
 #[pumpkin_block("minecraft:vault")]
 pub struct VaultBlock;
@@ -145,7 +145,13 @@ impl BlockBehaviour for VaultBlock {
         {
             let entity = VaultBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {

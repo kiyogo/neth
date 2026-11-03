@@ -127,5 +127,6 @@ impl BlockBehaviour for TrialSpawnerBlock {
 
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 }
