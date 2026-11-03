@@ -34099,4 +34099,27 @@ mod tests {
         let pz = RedstoneWireBlock::calculate_particle_pos(20.0, -1, 1, 0.25);
         assert!((pz - (20.0 + 0.5 - 0.4375 + 0.25)).abs() < 1e-6);
     }
+
+    #[test]
+    fn test_rail_system_parity_gap489() {
+        use crate::block::blocks::redstone::rails::activator_rail::ActivatorRailBlock;
+        use crate::block::blocks::redstone::rails::detector_rail::DetectorRailBlock;
+        use crate::block::blocks::redstone::rails::powered_rail::PoweredRailBlock;
+        use crate::block::blocks::redstone::rails::rail::RailBlock;
+
+        // 1. Regular Rail Parity (BaseRailBlock.java:28-29)
+        assert_eq!(RailBlock::FLAT_HEIGHT, 0.125);
+        assert_eq!(RailBlock::SLOPE_HEIGHT, 0.5);
+
+        // 2. Powered Rail & Activator Rail Propagation Limit (PoweredRailBlock.java:24)
+        assert_eq!(PoweredRailBlock::MAX_PROPAGATION_DISTANCE, 8);
+        assert_eq!(ActivatorRailBlock::MAX_PROPAGATION_DISTANCE, 8);
+
+        // 3. Detector Rail Constants Parity (DetectorRailBlock.java:31-73)
+        assert_eq!(DetectorRailBlock::PRESSED_CHECK_PERIOD, 20);
+        assert_eq!(DetectorRailBlock::POWER_ON, 15);
+        assert_eq!(DetectorRailBlock::POWER_OFF, 0);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_INSET, 0.2);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_HEIGHT, 0.8);
+    }
 }

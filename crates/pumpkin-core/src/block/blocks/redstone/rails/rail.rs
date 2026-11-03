@@ -17,6 +17,11 @@ use super::{HorizontalFacingRailExt, Rail, RailElevation, RailProperties};
 #[pumpkin_block("minecraft:rail")]
 pub struct RailBlock;
 
+impl RailBlock {
+    pub const FLAT_HEIGHT: f64 = 0.125; // 2.0 / 16.0
+    pub const SLOPE_HEIGHT: f64 = 0.5; // 8.0 / 16.0
+}
+
 impl BlockBehaviour for RailBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let world = args.world;
@@ -93,6 +98,7 @@ impl BlockBehaviour for RailBlock {
 
     fn placed(&self, args: PlacedArgs<'_>) {
         update_flanking_rails_shape(args.world, args.block, args.state_id, args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

@@ -133,6 +133,7 @@ impl BlockBehaviour for DetectorRailBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         update_flanking_rails_shape(args.world, args.block, args.state_id, args.position);
         self.check_pressed(args.world, args.position, args.block, args.state_id);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

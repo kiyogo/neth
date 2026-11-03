@@ -12992,3 +12992,41 @@ et/minecraft/world/level/redstone/DefaultRedstoneWireEvaluator.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_redstone_wire_parity_gap488.
   - **Unit Tests**: Vượt qua 100% 	est_redstone_wire_parity_gap488.
+
+
+### Gap 489: Rail System Lifecycle & Power Propagation Parity (Rail, Powered Rail, Detector Rail, Activator Rail)
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/BaseRailBlock.java
+  - 
+et/minecraft/world/level/block/RailBlock.java
+  - 
+et/minecraft/world/level/block/PoweredRailBlock.java
+  - 
+et/minecraft/world/level/block/DetectorRailBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Rail Lifecycle & Neighbor Updates (BaseRailBlock.java:59-73)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của RailBlock, PoweredRailBlock, ActivatorRailBlock, và DetectorRailBlock: đảm bảo các khối lân cận nhận được thông báo cập nhật khi bất kỳ loại đường ray nào được đặt.
+  - **Base Rail Dimensions Parity (BaseRailBlock.java:28-29)**:
+    - Chiều cao đường ray phẳng: FLAT_HEIGHT = 0.125 (2.0 / 16.0 pixel).
+    - Chiều cao đường ray dốc: SLOPE_HEIGHT = 0.5 (8.0 / 16.0 pixel).
+  - **Powered Rail & Activator Rail Propagation Distance (PoweredRailBlock.java:23-26)**:
+    - Giới hạn khoảng cách truyền tín hiệu đá đỏ liên tục qua các ray tăng tốc / kích hoạt liền kề: MAX_PROPAGATION_DISTANCE = 8 (tối đa 8 khối tìm kiếm sâu hoặc 9 ray trong chuỗi).
+  - **Detector Rail Detection Box & Signal Parameters (DetectorRailBlock.java:31-73)**:
+    - Chu kỳ kiểm tra định kỳ: PRESSED_CHECK_PERIOD = 20 ticks.
+    - Cường độ tín hiệu phát: POWER_ON = 15, POWER_OFF = 0.
+    - Hộp tìm kiếm xe mỏ: thụt lề biên SEARCH_BOX_INSET = 0.2, chiều cao SEARCH_BOX_HEIGHT = 0.8 (tọa độ AABB [0.2, 0.0, 0.2] đến [0.8, 0.8, 0.8]).
+    - Tín hiệu trực tiếp (Strong power): phát lên trên direction == Direction.UP ? 15 : 0.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/rails/rail.rs:
+    - Bổ sung update_neighbors trong placed và hằng số FLAT_HEIGHT, SLOPE_HEIGHT.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/rails/powered_rail.rs:
+    - Bổ sung update_neighbors trong placed và hằng số MAX_PROPAGATION_DISTANCE.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/rails/activator_rail.rs:
+    - Bổ sung update_neighbors trong placed và hằng số MAX_PROPAGATION_DISTANCE.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/rails/detector_rail.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_rail_system_parity_gap489.
+  - **Unit Tests**: Vượt qua 100% 	est_rail_system_parity_gap489.

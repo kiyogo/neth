@@ -78,6 +78,7 @@ impl BlockBehaviour for ActivatorRailBlock {
                 self.update_connected_rails(args.world, &down_pos, &neighbor_rail.1, false, 0);
             }
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -139,6 +140,7 @@ impl BlockBehaviour for ActivatorRailBlock {
 }
 
 impl ActivatorRailBlock {
+    pub const MAX_PROPAGATION_DISTANCE: u8 = 8;
     fn is_powered_by_other_rails(
         &self,
         world: &World,
