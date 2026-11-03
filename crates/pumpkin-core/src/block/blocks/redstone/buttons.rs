@@ -21,6 +21,7 @@ use crate::block::GetStateForNeighborUpdateArgs;
 use crate::block::OnPlaceArgs;
 use crate::block::OnScheduledTickArgs;
 use crate::block::OnStateReplacedArgs;
+use crate::block::PlacedArgs;
 use crate::block::blocks::abstract_wall_mounting::WallMountedBlock;
 use crate::block::blocks::redstone::lever::LeverLikePropertiesExt;
 use crate::block::registry::BlockActionResult;
@@ -77,6 +78,10 @@ fn click_button(player: &Player, world: &Arc<World>, block_pos: &BlockPos) -> bo
 pub struct ButtonBlock;
 
 impl BlockBehaviour for ButtonBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         let state = args.world.get_block_state(args.position);
         let props = ButtonLikeProperties::from_state_id(state.id);

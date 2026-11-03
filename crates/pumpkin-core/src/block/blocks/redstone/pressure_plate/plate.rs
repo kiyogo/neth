@@ -8,7 +8,7 @@ use crate::{
     block::{
         BlockBehaviour, BrokenArgs, BlockMetadata, CanPlaceAtArgs, EmitsRedstonePowerArgs,
         GetRedstonePowerArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs,
-        OnScheduledTickArgs, OnStateReplacedArgs,
+        OnScheduledTickArgs, OnStateReplacedArgs, PlacedArgs,
     },
     world::World,
 };
@@ -36,6 +36,11 @@ impl BlockMetadata for PressurePlateBlock {
 }
 
 impl BlockBehaviour for PressurePlateBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+        args.world.update_neighbors(&args.position.down(), None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         self.broken_pp(args);
     }
@@ -49,7 +54,7 @@ impl BlockBehaviour for PressurePlateBlock {
         let output = self.get_redstone_output(args.block, state.id);
         if output > 0 {
             let (block, state) = args.world.get_block_and_state(args.position);
-            Self.update_plate_state(args.world, args.position, block, state, output);
+            self.update_plate_state(args.world, args.position, block, state, output);
         }
     }
 

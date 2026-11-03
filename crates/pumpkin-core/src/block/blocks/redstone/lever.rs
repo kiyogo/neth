@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::block::{
     BrokenArgs,
     CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs, GetStateForNeighborUpdateArgs,
-    OnPlaceArgs, OnStateReplacedArgs, blocks::abstract_wall_mounting::WallMountedBlock,
+    OnPlaceArgs, OnStateReplacedArgs, PlacedArgs, blocks::abstract_wall_mounting::WallMountedBlock,
 };
 use pumpkin_data::{
     Block, BlockDirection, BlockStateId, HorizontalFacingExt,
@@ -60,6 +60,10 @@ fn play_lever_sound(world: &Arc<World>, block_pos: &BlockPos, powered: bool) {
 pub struct LeverBlock;
 
 impl BlockBehaviour for LeverBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         let state = args.world.get_block_state(args.position);
         let props = LeverLikeProperties::from_state_id(state.id);

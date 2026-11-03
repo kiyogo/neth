@@ -33347,4 +33347,68 @@ mod tests {
         assert_eq!(LightningRodBlock::get_weak_power(true), 15);
         assert_eq!(LightningRodBlock::get_weak_power(false), 0);
     }
+
+    #[test]
+    fn test_buttons_lever_pressure_plates_and_tripwire_hook_parity_gap480() {
+        use pumpkin_data::Block;
+        use crate::block::blocks::redstone::buttons::ButtonBlock;
+        use crate::block::blocks::redstone::lever::LeverBlock;
+        use crate::block::blocks::redstone::pressure_plate::plate::PressurePlateBlock;
+        use crate::block::blocks::redstone::pressure_plate::weighted::WeightedPressurePlateBlock;
+        use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
+
+        // 1. Button Parity (ButtonBlock.java:41-155, Blocks.java:2055, 2837)
+        assert_eq!(ButtonBlock::STONE_BUTTON_TICKS, 20);
+        assert_eq!(ButtonBlock::WOODEN_BUTTON_TICKS, 30);
+        assert_eq!(ButtonBlock::POWER_ON, 15);
+        assert_eq!(ButtonBlock::POWER_OFF, 0);
+        assert_eq!(ButtonBlock::can_be_activated_by_arrows(&Block::OAK_BUTTON), true);
+        assert_eq!(ButtonBlock::can_be_activated_by_arrows(&Block::STONE_BUTTON), false);
+        assert_eq!(ButtonBlock::can_be_activated_by_arrows(&Block::POLISHED_BLACKSTONE_BUTTON), false);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::STONE_BUTTON), 20);
+        assert_eq!(ButtonBlock::get_press_ticks(&Block::OAK_BUTTON), 30);
+
+        // 2. Lever Parity (LeverBlock.java:37-125)
+        assert_eq!(LeverBlock::POWER_ON, 15);
+        assert_eq!(LeverBlock::POWER_OFF, 0);
+        assert_eq!(LeverBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(LeverBlock::CLICK_PITCH_ON, 0.6);
+        assert_eq!(LeverBlock::CLICK_PITCH_OFF, 0.5);
+        assert_eq!(LeverBlock::DUST_COLOR_RED, 16711680);
+        assert_eq!(LeverBlock::get_click_pitch(true), 0.6);
+        assert_eq!(LeverBlock::get_click_pitch(false), 0.5);
+
+        // 3. Normal Pressure Plate Parity (BasePressurePlateBlock.java:26-118)
+        assert_eq!(PressurePlateBlock::POWER_ON, 15);
+        assert_eq!(PressurePlateBlock::POWER_OFF, 0);
+        assert_eq!(PressurePlateBlock::PRESSED_TICKS, 20);
+
+        // 4. Weighted Pressure Plate Parity (WeightedPressurePlateBlock.java:22-52)
+        assert_eq!(WeightedPressurePlateBlock::LIGHT_MAX_WEIGHT, 15);
+        assert_eq!(WeightedPressurePlateBlock::HEAVY_MAX_WEIGHT, 150);
+        assert_eq!(WeightedPressurePlateBlock::MAX_POWER, 15);
+        assert_eq!(WeightedPressurePlateBlock::PRESSED_TICKS, 10);
+        assert_eq!(WeightedPressurePlateBlock::get_max_weight(&Block::LIGHT_WEIGHTED_PRESSURE_PLATE), 15);
+        assert_eq!(WeightedPressurePlateBlock::get_max_weight(&Block::HEAVY_WEIGHTED_PRESSURE_PLATE), 150);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 15), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 15), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(15, 15), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 150), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(10, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(150, 150), 15);
+
+        // 5. Tripwire Hook Parity (TripWireHookBlock.java:31-180)
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MIN, 1);
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MAX, 42);
+        assert_eq!(TripwireHookBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireHookBlock::POWER_ON, 15);
+        assert_eq!(TripwireHookBlock::POWER_OFF, 0);
+        assert_eq!(TripwireHookBlock::emits_weak_power(true), 15);
+        assert_eq!(TripwireHookBlock::emits_weak_power(false), 0);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(1), true);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(41), true);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(42), false);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(0), false);
+    }
 }

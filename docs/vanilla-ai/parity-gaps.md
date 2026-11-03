@@ -12608,3 +12608,43 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_redstone_block_ore_lamp_target_and_lightning_rod_parity_gap479`.
   - **Unit Tests**: Vượt qua 100% `test_redstone_block_ore_lamp_target_and_lightning_rod_parity_gap479`.
+
+
+### Gap 480: Buttons, Lever, Pressure Plates & Tripwire Hook Lifecycle & Redstone Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/ButtonBlock.java`
+  - `net/minecraft/world/level/block/LeverBlock.java`
+  - `net/minecraft/world/level/block/BasePressurePlateBlock.java`
+  - `net/minecraft/world/level/block/WeightedPressurePlateBlock.java`
+  - `net/minecraft/world/level/block/TripWireHookBlock.java`
+  - `net/minecraft/world/level/block/TripWireBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Button Lifecycle & Arrow Activation Parity (ButtonBlock.java:41-155, Blocks.java:2055, 2837)**:
+    - Bổ sung `placed` cho `ButtonBlock`: thông báo cập nhật khối lân cận khi nút bấm được đặt vào thế giới.
+    - Hằng số chuẩn vanilla: Nút đá giữ 20 ticks (`STONE_BUTTON_TICKS = 20`), nút gỗ giữ 30 ticks (`WOODEN_BUTTON_TICKS = 30`), `POWER_ON = 15`, `POWER_OFF = 0`.
+    - Phân biệt loại nút kích hoạt bởi cung tên: nút gỗ cho phép kích hoạt bởi mũi tên, nút đá và nút blackstone không thể bị kích hoạt bởi mũi tên (`can_be_activated_by_arrows`).
+  - **Lever Placed Lifecycle & Audio/Signal Parity (LeverBlock.java:37-125)**:
+    - Bổ sung `placed` cho `LeverBlock`: thông báo cập nhật khối lân cận khi cần gạt được đặt.
+    - Hằng số: `POWER_ON = 15`, `POWER_OFF = 0`, âm lượng click `CLICK_VOLUME = 0.3`, cao độ bật `CLICK_PITCH_ON = 0.6`, cao độ tắt `CLICK_PITCH_OFF = 0.5`, màu hạt redstone `DUST_COLOR_RED = 16711680`.
+  - **Normal & Weighted Pressure Plates Placed Lifecycle Parity (BasePressurePlateBlock.java:26-118, WeightedPressurePlateBlock.java:22-52)**:
+    - Bổ sung `placed` cho cả `PressurePlateBlock` và `WeightedPressurePlateBlock`: cập nhật khối tại vị trí tấm áp lực và khối nâng đỡ bên dưới (`pos.down()`).
+    - Hằng số tấm áp lực thường: chu kỳ kiểm tra và giữ nhấn 20 ticks (`PRESSED_TICKS = 20`).
+    - Hằng số tấm áp lực trọng lượng: Tấm vàng (Light) tối đa 15 thực thể (`LIGHT_MAX_WEIGHT = 15`), tấm sắt (Heavy) tối đa 150 thực thể (`HEAVY_MAX_WEIGHT = 150`), chu kỳ 10 ticks (`PRESSED_TICKS = 10`), công thức tính công suất: `ceil(min(count, max_weight) / max_weight * 15)`.
+  - **Tripwire Hook Placed Lifecycle & Line Distance Parity (TripWireHookBlock.java:31-180)**:
+    - Bổ sung `placed` cho `TripwireHookBlock`: gọi hàm `update` kiểm tra liên kết đường dây bẫy ngay khi đặt khối.
+    - Hằng số: cự ly đường dây từ 1 đến 41 blocks (`WIRE_DIST_MIN = 1`, `WIRE_DIST_MAX = 42`, `1 <= distance < 42`), chu kỳ tái kiểm tra 10 ticks (`RECHECK_PERIOD_TICKS = 10`), `POWER_ON = 15`, `POWER_OFF = 0`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/buttons.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/lever.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/plate.rs`:
+    - Bổ sung `placed` thông báo khối lân cận và khối bên dưới; sửa gọi `update_plate_state` trên instance.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/weighted.rs`:
+    - Bổ sung `placed` thông báo khối lân cận và khối bên dưới; sửa gọi `update_plate_state` trên instance.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs`:
+    - Bổ sung `placed` cập nhật liên kết bẫy.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_buttons_lever_pressure_plates_and_tripwire_hook_parity_gap480`.
+  - **Unit Tests**: Vượt qua 100% `test_buttons_lever_pressure_plates_and_tripwire_hook_parity_gap480`.

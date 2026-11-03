@@ -17,7 +17,7 @@ use crate::{
     block::{
         BlockBehaviour, BrokenArgs, CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
         GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, OnStateReplacedArgs,
-        PlayerPlacedArgs,
+        PlacedArgs, PlayerPlacedArgs,
     },
     world::World,
 };
@@ -70,6 +70,18 @@ impl BlockBehaviour for TripwireHookBlock {
             args.position,
             props.facing.to_block_direction(),
         )
+    }
+
+    fn placed(&self, args: PlacedArgs<'_>) {
+        Self::update(
+            args.world,
+            *args.position,
+            args.state_id,
+            false,
+            false,
+            -1,
+            None,
+        );
     }
 
     fn player_placed(&self, args: PlayerPlacedArgs<'_>) {
