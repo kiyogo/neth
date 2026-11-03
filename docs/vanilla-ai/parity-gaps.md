@@ -12478,3 +12478,46 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_cake_candle_cakes_respawn_anchor_end_portal_frame_copper_bulb_and_pot_parity_gap476`.
   - **Unit Tests**: Vượt qua 100% `test_cake_candle_cakes_respawn_anchor_end_portal_frame_copper_bulb_and_pot_parity_gap476`.
+
+### Gap 477: Detector Rail, Command Block, Shelf & Creaking Heart Comparator Signal, Broken & Placed Lifecycle Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DetectorRailBlock.java`
+  - `net/minecraft/world/level/block/CommandBlock.java`
+  - `net/minecraft/world/level/block/ShelfBlock.java`
+  - `net/minecraft/world/level/block/entity/ShelfBlockEntity.java`
+  - `net/minecraft/world/level/block/CreakingHeartBlock.java`
+  - `net/minecraft/world/level/block/entity/CreakingHeartBlockEntity.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Detector Rail Comparator Output & Placed/Broken Updates (DetectorRailBlock.java:28-47, 75-108, 133-152)**:
+    - Đường ray cảm biến (`DetectorRailBlock`) phát tín hiệu redstone khi có xe mỏ (`POWER_ON = 15`, `POWER_OFF = 0`).
+    - Hằng số chu kỳ kiểm tra: `PRESSED_CHECK_PERIOD = 20` ticks. Hộp tìm kiếm xe mỏ thu nhỏ theo biên dạng vanilla: `SEARCH_BOX_INSET = 0.2`, `SEARCH_BOX_HEIGHT = 0.8`.
+    - Trong `check_pressed`: luôn gọi `update_neighbour_for_output_signal` khi trạng thái thay đổi hoặc khi có xe mỏ di chuyển qua, đảm bảo các bộ so sánh gắn liền nhận được cập nhật tức thì.
+    - Bổ sung `broken`: cập nhật tín hiệu bộ so sánh và thông báo cả khối tại vị trí ray lẫn khối bên dưới đáy ray (`pos.down()`).
+  - **Command Block Placed & Broken Signal Parity (CommandBlock.java:128-136)**:
+    - Bổ sung `placed` và `broken` cho `CommandBlock`:
+      - Khi đặt (`placed`): gọi `update_neighbour_for_output_signal`.
+      - Khi phá vỡ (`broken`): giải phóng block entity (`remove_block_entity`), cập nhật tín hiệu bộ so sánh và thông báo khối lân cận.
+    - Hằng số tín hiệu: `MIN_COMPARATOR_SIGNAL = 0`, `MAX_COMPARATOR_SIGNAL = 15`.
+  - **Shelf 3-Slot Broken Item Drops & Bitwise Comparator Signal (ShelfBlock.java:95-98, 307-325)**:
+    - Giá sách/kệ gỗ (`ShelfBlock`) chứa 3 ô đồ (`SLOT_COUNT = 3`), chỉ cho phép bộ so sánh đọc tín hiệu từ mặt sau (`direction == facing.opposite()`).
+    - Tín hiệu so sánh bitwise: `slot0 | (slot1 << 1) | (slot2 << 2)` cho dải tín hiệu từ `0` đến `7` (`MAX_COMPARATOR_SIGNAL = 7`).
+    - Khi phá vỡ (`broken`): tự động thả rơi toàn bộ vật phẩm trong cả 3 ô ra thế giới, dọn dẹp block entity, ngắt tín hiệu bộ so sánh và cập nhật khối lân cận.
+    - Trong `placed`: gửi tín hiệu `update_neighbour_for_output_signal`.
+  - **Creaking Heart Natural Break Drops, Neighbor & Placed Parity (CreakingHeartBlock.java:177-195, CreakingHeartBlockEntity.java:338-345)**:
+    - Trong `placed`: gửi tín hiệu `update_neighbour_for_output_signal`.
+    - Trong `broken`: giải phóng block entity (`remove_block_entity`), cập nhật tín hiệu bộ so sánh và thông báo khối lân cận.
+    - Trong `on_neighbor_update`: khi trạng thái lõi Creaking chuyển đổi giữa `Uprooted` và `Dormant`, gửi tín hiệu cập nhật bộ so sánh ngay lập tức.
+    - Công thức tín hiệu bộ so sánh theo khoảng cách: `15 - floor(clamp(distance, 0, 32) / 32 * 15)`, cực đại `15` khi cự ly 0, giảm dần về `0` khi khoảng cách đạt `32` blocks.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/rails/detector_rail.rs`:
+    - Bổ sung `broken`, hằng số chu kỳ và cập nhật tín hiệu bộ so sánh trong `check_pressed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/command.rs`:
+    - Bổ sung `placed`, `broken` và hằng số tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/shelf.rs`:
+    - Bổ sung `placed`, `broken` thả rơi 3 ô vật phẩm và công thức bitwise tín hiệu so sánh.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/creaking_heart.rs`:
+    - Bổ sung cập nhật tín hiệu khi đặt, chuyển trạng thái và phá vỡ khối.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_detector_rail_command_block_shelf_and_creaking_heart_parity_gap477`.
+  - **Unit Tests**: Vượt qua 100% `test_detector_rail_command_block_shelf_and_creaking_heart_parity_gap477`.

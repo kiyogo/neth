@@ -10,6 +10,7 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::BlockFlags;
 
 use crate::block::BlockBehaviour;
+use crate::block::BrokenArgs;
 use crate::block::CanPlaceAtArgs;
 use crate::block::EmitsRedstonePowerArgs;
 use crate::block::GetComparatorOutputArgs;
@@ -57,6 +58,12 @@ fn update_power_to_connected(world: &Arc<World>, pos: &BlockPos, shape: RailShap
 }
 
 impl DetectorRailBlock {
+    pub const PRESSED_CHECK_PERIOD: u32 = 20;
+    pub const POWER_ON: u8 = 15;
+    pub const POWER_OFF: u8 = 0;
+    pub const SEARCH_BOX_INSET: f64 = 0.2;
+    pub const SEARCH_BOX_HEIGHT: f64 = 0.8;
+
     pub fn check_pressed(
         &self,
         world: &Arc<World>,
@@ -96,12 +103,19 @@ impl DetectorRailBlock {
         }
 
         if has_minecart {
-            world.schedule_block_tick(block, *pos, 20, TickPriority::Normal);
+            world.schedule_block_tick(block, *pos, Self::PRESSED_CHECK_PERIOD, TickPriority::Normal);
         }
+        world.update_neighbour_for_output_signal(pos, block);
     }
 }
 
 impl BlockBehaviour for DetectorRailBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
+        args.world.update_neighbors(&args.position.down(), None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut rail_props = RailProperties::default(args.block);
         let player_facing = args.player.get_entity().get_horizontal_facing();

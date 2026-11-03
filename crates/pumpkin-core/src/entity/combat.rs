@@ -33158,4 +33158,51 @@ mod tests {
         assert_eq!(DecoratedPotBlock::TOTAL_SHERD_FACES, 4);
         assert_eq!(DecoratedPotBlock::INSERT_DUST_PLUME_PARTICLES, 7);
     }
+
+    #[test]
+    fn test_detector_rail_command_block_shelf_and_creaking_heart_parity_gap477() {
+        use crate::block::blocks::redstone::rails::detector_rail::DetectorRailBlock;
+        use crate::block::blocks::command::CommandBlock;
+        use crate::block::blocks::shelf::ShelfBlock;
+        use crate::block::blocks::creaking_heart::CreakingHeartBlock;
+
+        // 1. Detector Rail Parity (DetectorRailBlock.java:28-47, 75-108, 133-152)
+        assert_eq!(DetectorRailBlock::PRESSED_CHECK_PERIOD, 20);
+        assert_eq!(DetectorRailBlock::POWER_ON, 15);
+        assert_eq!(DetectorRailBlock::POWER_OFF, 0);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_INSET, 0.2);
+        assert_eq!(DetectorRailBlock::SEARCH_BOX_HEIGHT, 0.8);
+
+        // 2. Command Block Parity (CommandBlock.java:128-136)
+        assert_eq!(CommandBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(CommandBlock::MAX_COMPARATOR_SIGNAL, 15);
+
+        // 3. Shelf Parity (ShelfBlock.java:95-98, 307-325)
+        assert_eq!(ShelfBlock::SLOT_COUNT, 3);
+        assert_eq!(ShelfBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(ShelfBlock::MAX_COMPARATOR_SIGNAL, 7);
+
+        // Bitwise output: slot0 | (slot1 << 1) | (slot2 << 2)
+        assert_eq!(ShelfBlock::calculate_comparator_output(false, false, false), 0);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, false, false), 1);
+        assert_eq!(ShelfBlock::calculate_comparator_output(false, true, false), 2);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, true, false), 3);
+        assert_eq!(ShelfBlock::calculate_comparator_output(false, false, true), 4);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, false, true), 5);
+        assert_eq!(ShelfBlock::calculate_comparator_output(false, true, true), 6);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, true, true), 7);
+
+        // 4. Creaking Heart Parity (CreakingHeartBlock.java:177-195, CreakingHeartBlockEntity.java:338-345)
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MIN_XP, 20);
+        assert_eq!(CreakingHeartBlock::NATURAL_BREAK_MAX_XP, 24);
+        assert_eq!(CreakingHeartBlock::COMPARATOR_MAX_DISTANCE, 32.0);
+        assert_eq!(CreakingHeartBlock::COMPARATOR_MAX_SIGNAL, 15);
+
+        // Output formula: 15 - floor(clamp(distance, 0, 32) / 32 * 15)
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(None), 0);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(0.0)), 15);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(16.0)), 8);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(32.0)), 0);
+        assert_eq!(CreakingHeartBlock::calculate_analog_output_signal(Some(40.0)), 0);
+    }
 }

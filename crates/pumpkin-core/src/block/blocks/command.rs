@@ -6,7 +6,7 @@ use crate::command::CommandSender;
 use crate::entity::EntityBase;
 use crate::{
     block::{
-        BlockBehaviour, BlockMetadata, CanPlaceAtArgs, NormalUseArgs, OnNeighborUpdateArgs,
+        BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, NormalUseArgs, OnNeighborUpdateArgs,
         OnPlaceArgs, OnScheduledTickArgs, PlacedArgs, PlayerPlacedArgs,
         registry::BlockActionResult,
     },
@@ -25,6 +25,9 @@ use tracing::warn;
 pub struct CommandBlock;
 
 impl CommandBlock {
+    pub const MIN_COMPARATOR_SIGNAL: u8 = 0;
+    pub const MAX_COMPARATOR_SIGNAL: u8 = 15;
+
     fn get_relative_facing(
         world: &World,
         pos: &BlockPos,
@@ -378,6 +381,13 @@ impl BlockBehaviour for CommandBlock {
             args.block.id == Block::CHAIN_COMMAND_BLOCK.id,
         );
         args.world.add_block_entity(Arc::new(entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_comparator_output(&self, args: crate::block::GetComparatorOutputArgs<'_>) -> Option<u8> {
