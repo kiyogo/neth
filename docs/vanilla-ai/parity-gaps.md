@@ -12843,3 +12843,43 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_crafter_block_and_entity_parity_gap485`.
   - **Unit Tests**: Vượt qua 100% `test_crafter_block_and_entity_parity_gap485`.
+
+
+### Gap 486: Observer, Repeater & Comparator Redstone Diode Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/ObserverBlock.java`
+  - `net/minecraft/world/level/block/RepeaterBlock.java`
+  - `net/minecraft/world/level/block/ComparatorBlock.java`
+  - `net/minecraft/world/level/block/DiodeBlock.java`
+  - `net/minecraft/world/level/block/entity/ComparatorBlockEntity.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Observer Lifecycle & Pulse Signal Parity (ObserverBlock.java:21-135)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed`: thông báo cho các khối lân cận ngay khi khối quan sát (observer) được đặt vào thế giới.
+    - Thời lượng xung và độ trễ phát hiện: 2 ticks (`PULSE_DURATION = 2`, `DETECTION_DELAY = 2`).
+    - Cường độ tín hiệu: 15 khi phát xung, 0 khi tắt (`POWER_ON = 15`, `POWER_OFF = 0`).
+    - Trạng thái mặc định: không phát tín hiệu (`DEFAULT_POWERED = false`), hướng Nam (`DEFAULT_FACING = Facing::South`).
+    - Hướng quan sát là mặt trước (`get_observed_direction`), hướng phát tín hiệu là mặt sau (`get_output_direction = facing.opposite()`).
+  - **Repeater Delay, Locking & Output Parity (RepeaterBlock.java:23-110)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` của `RepeaterBlock`.
+    - Dải độ trễ: từ mức 1 đến mức 4 (`MIN_DELAY = 1`, `MAX_DELAY = 4`), hệ số nhân 2 ticks cho mỗi mức (`DELAY_MULTIPLIER = 2`):
+      - Mức 1 = 2 ticks; Mức 2 = 4 ticks; Mức 3 = 6 ticks; Mức 4 = 8 ticks.
+    - Chu kỳ chuyển đổi độ trễ khi chuột phải: `1 -> 2 -> 3 -> 4 -> 1` (`cycle_delay`).
+    - Cơ chế khóa (Locking): chỉ có khối Repeater hoặc Comparator chĩa vào 2 cạnh bên mới có thể khóa Repeater (`can_be_locked_by_block`, `is_locking_side`).
+  - **Comparator Compare/Subtract Modes & Item Frame Signal (ComparatorBlock.java:30-194)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` của `ComparatorBlock`.
+    - Độ trễ phản hồi: 2 ticks (`DELAY = 2`).
+    - Âm thanh khi chuyển chế độ: âm lượng 0.3, cao độ chế độ So Sánh `0.5`, chế độ Trừ `0.55`.
+    - Chế độ So Sánh (`Compare`): tín hiệu ngõ ra bằng tín hiệu ngõ vào nếu ngõ vào >= ngõ bên hông, ngược lại bằng 0.
+    - Chế độ Trừ (`Subtract`): tín hiệu ngõ ra bằng hiệu số `input - side` nếu `input > side`, ngược lại bằng 0.
+    - Tín hiệu đọc từ Item Frame: khung rỗng trả về 0; khung có vật phẩm trả về giá trị từ 1 đến 8 tương ứng với 8 góc quay (`1 + (rotation % 8)`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/observer.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/repeater.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/comparator.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_observer_repeater_and_comparator_parity_gap486`.
+  - **Unit Tests**: Vượt qua 100% `test_observer_repeater_and_comparator_parity_gap486`.

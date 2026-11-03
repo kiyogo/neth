@@ -42,6 +42,7 @@ impl BlockBehaviour for ObserverBlock {
             );
             Self::update_neighbors(args.world, args.block, args.position, props);
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {

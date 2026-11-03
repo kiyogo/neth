@@ -145,6 +145,7 @@ impl BlockBehaviour for RepeaterBlock {
             args.state_id,
             args.block,
         );
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

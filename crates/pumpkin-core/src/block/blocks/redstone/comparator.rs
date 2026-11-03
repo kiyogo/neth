@@ -91,6 +91,7 @@ impl BlockBehaviour for ComparatorBlock {
             args.state_id,
             args.block,
         );
+        args.world.update_neighbors(args.position, None);
     }
 
     fn player_placed(&self, args: PlayerPlacedArgs<'_>) {

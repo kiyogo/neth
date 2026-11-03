@@ -33802,4 +33802,102 @@ mod tests {
         assert_eq!(CrafterBlock::is_slot_valid_for_craft(true, true), false);
         assert_eq!(CrafterBlock::is_slot_valid_for_craft(false, true), false);
     }
+    #[test]
+    fn test_observer_repeater_and_comparator_parity_gap486() {
+        use crate::block::blocks::redstone::observer::ObserverBlock;
+        use crate::block::blocks::redstone::repeater::RepeaterBlock;
+        use crate::block::blocks::redstone::comparator::ComparatorBlock;
+        use pumpkin_data::block_properties::{Facing, HorizontalFacing};
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // 1. Observer Parity (ObserverBlock.java:21-135)
+        assert_eq!(ObserverBlock::PULSE_DURATION, 2);
+        assert_eq!(ObserverBlock::DETECTION_DELAY, 2);
+        assert_eq!(ObserverBlock::POWER_ON, 15);
+        assert_eq!(ObserverBlock::POWER_OFF, 0);
+        assert_eq!(ObserverBlock::DEFAULT_POWERED, false);
+        assert_eq!(ObserverBlock::DEFAULT_FACING, Facing::South);
+
+        assert_eq!(ObserverBlock::get_power_signal(true), 15);
+        assert_eq!(ObserverBlock::get_power_signal(false), 0);
+        assert_eq!(ObserverBlock::emits_power_in_direction(BlockDirection::North, BlockDirection::North), true);
+        assert_eq!(ObserverBlock::emits_power_in_direction(BlockDirection::North, BlockDirection::South), false);
+        assert_eq!(ObserverBlock::get_output_direction(BlockDirection::North), BlockDirection::South);
+        assert_eq!(ObserverBlock::get_observed_direction(BlockDirection::North), BlockDirection::North);
+
+        // 2. Repeater Parity (RepeaterBlock.java:23-110)
+        assert_eq!(RepeaterBlock::MIN_DELAY, 1);
+        assert_eq!(RepeaterBlock::MAX_DELAY, 4);
+        assert_eq!(RepeaterBlock::DELAY_MULTIPLIER, 2);
+        assert_eq!(RepeaterBlock::POWER_ON, 15);
+        assert_eq!(RepeaterBlock::POWER_OFF, 0);
+        assert_eq!(RepeaterBlock::DEFAULT_DELAY, 1);
+        assert_eq!(RepeaterBlock::DEFAULT_LOCKED, false);
+        assert_eq!(RepeaterBlock::DEFAULT_POWERED, false);
+
+        // Delay in ticks
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(1), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(2), 4);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(3), 6);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
+
+        // Delay cycling
+        assert_eq!(RepeaterBlock::cycle_delay(1), 2);
+        assert_eq!(RepeaterBlock::cycle_delay(2), 3);
+        assert_eq!(RepeaterBlock::cycle_delay(3), 4);
+        assert_eq!(RepeaterBlock::cycle_delay(4), 1);
+
+        // Power emission
+        assert_eq!(RepeaterBlock::get_output_power(true), 15);
+        assert_eq!(RepeaterBlock::get_output_power(false), 0);
+        assert_eq!(RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::North), true);
+        assert_eq!(RepeaterBlock::emits_power_in_direction(HorizontalFacing::North, BlockDirection::South), false);
+
+        // Locking diodes and sides (sideInputDiodesOnly = true)
+        assert_eq!(RepeaterBlock::can_be_locked_by_block(BlockId::REPEATER), true);
+        assert_eq!(RepeaterBlock::can_be_locked_by_block(BlockId::COMPARATOR), true);
+        assert_eq!(RepeaterBlock::can_be_locked_by_block(BlockId::REDSTONE_WIRE), false);
+
+        assert_eq!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::East), true);
+        assert_eq!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::West), true);
+        assert_eq!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::North), false);
+        assert_eq!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::South), false);
+
+        // 3. Comparator Parity (ComparatorBlock.java:30-194)
+        assert_eq!(ComparatorBlock::DELAY, 2);
+        assert_eq!(ComparatorBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_COMPARE, 0.5);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_SUBTRACT, 0.55);
+        assert_eq!(ComparatorBlock::POWER_ON, 15);
+        assert_eq!(ComparatorBlock::POWER_OFF, 0);
+        assert_eq!(ComparatorBlock::DEFAULT_OUTPUT, 0);
+
+        // Compare Mode calculations (is_subtract = false)
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 5, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, false), 10);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 12, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 0, false), 0);
+
+        assert_eq!(ComparatorBlock::should_turn_on(10, 5, false), true);
+        assert_eq!(ComparatorBlock::should_turn_on(10, 10, false), true);
+        assert_eq!(ComparatorBlock::should_turn_on(10, 12, false), false);
+        assert_eq!(ComparatorBlock::should_turn_on(0, 0, false), false);
+
+        // Subtract Mode calculations (is_subtract = true)
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 4, true), 6);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 10, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 12, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 0, true), 0);
+
+        assert_eq!(ComparatorBlock::should_turn_on(10, 4, true), true);
+        assert_eq!(ComparatorBlock::should_turn_on(10, 10, true), false);
+        assert_eq!(ComparatorBlock::should_turn_on(10, 12, true), false);
+
+        // Item Frame rotation output (1..=8)
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(false, 0), 0);
+        for rot in 0..8 {
+            assert_eq!(ComparatorBlock::calculate_item_frame_output(true, rot), 1 + rot);
+        }
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 8), 1);
+    }
 }
