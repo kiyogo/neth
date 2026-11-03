@@ -34617,4 +34617,51 @@ mod tests {
         assert_eq!(crop::BONEMEAL_INCREASE_MIN, 2);
         assert_eq!(crop::BONEMEAL_INCREASE_MAX, 5);
     }
+
+    #[test]
+    fn test_utilities_explosives_and_climbing_parity_gap498() {
+        use crate::block::blocks::tnt::TNTBlock;
+        use crate::block::blocks::sponge::{SpongeBlock, WetSpongeBlock};
+        use crate::block::blocks::scaffolding::ScaffoldingBlock;
+        use crate::block::blocks::ladder::LadderBlock;
+        use crate::block::blocks::vine::VineBlock;
+        use crate::block::blocks::torches::TorchBlock;
+        use crate::block::blocks::lanterns::LanternBlock;
+        use crate::block::blocks::end_rod::EndRodBlock;
+
+        // 1. TNT Parity (TntBlock.java / PrimedTnt.java)
+        assert_eq!(TNTBlock::DEFAULT_UNSTABLE, false);
+        assert_eq!(TNTBlock::DEFAULT_FUSE, 80);
+        assert_eq!(TNTBlock::DEFAULT_POWER, 4.0);
+        assert_eq!(TNTBlock::PRIME_SOUND_VOLUME, 1.0);
+        assert_eq!(TNTBlock::PRIME_SOUND_PITCH, 1.0);
+
+        // 2. Sponge Parity (SpongeBlock.java / WetSpongeBlock.java)
+        assert_eq!(SpongeBlock::MAX_DEPTH, 6);
+        assert_eq!(SpongeBlock::MAX_COUNT, 64);
+        assert_eq!(WetSpongeBlock::EVENT_WATER_EVAPORATE, 2009);
+
+        // 3. Scaffolding Parity (ScaffoldingBlock.java)
+        assert_eq!(ScaffoldingBlock::STABILITY_MAX_DISTANCE, 7);
+        assert_eq!(ScaffoldingBlock::TICK_DELAY, 1);
+
+        // 4. Ladder Parity (LadderBlock.java)
+        assert_eq!(LadderBlock::LADDER_THICKNESS, 0.1875);
+
+        // 5. Vine Parity (VineBlock.java)
+        assert_eq!(VineBlock::VINE_THICKNESS, 0.0625);
+        assert_eq!(VineBlock::SEARCH_RADIUS, 4);
+        assert_eq!(VineBlock::MAX_NEIGHBORS_TO_GROW, 4);
+
+        // 6. Torches Parity (TorchBlock.java)
+        assert_eq!(TorchBlock::LIGHT_LEVEL_NORMAL, 14);
+        assert_eq!(TorchBlock::LIGHT_LEVEL_SOUL, 10);
+
+        // 7. Lanterns Parity (LanternBlock.java)
+        assert_eq!(LanternBlock::LIGHT_LEVEL_NORMAL, 15);
+        assert_eq!(LanternBlock::LIGHT_LEVEL_SOUL, 10);
+
+        // 8. End Rod Parity (EndRodBlock.java)
+        assert_eq!(EndRodBlock::LIGHT_LEVEL, 14);
+    }
 }

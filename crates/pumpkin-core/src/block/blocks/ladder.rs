@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, PlacedArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs,
 };
 use crate::entity::EntityBase;
 use crate::world::World;
@@ -14,7 +14,19 @@ use pumpkin_world::tick::TickPriority;
 #[pumpkin_block("minecraft:ladder")]
 pub struct LadderBlock;
 
+impl LadderBlock {
+    pub const LADDER_THICKNESS: f64 = 0.1875;
+}
+
 impl BlockBehaviour for LadderBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let clicked_pos = args.use_item_on.position;
         let (clicked_block, clicked_block_state_id) =

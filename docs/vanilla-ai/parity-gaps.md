@@ -13410,3 +13410,35 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_agriculture_soils_and_physics_parity_gap497.
   - **Unit Tests**: Vượt qua 100% 	est_agriculture_soils_and_physics_parity_gap497.
+
+
+### Gap 498: Utilities, Explosives, Climbing & Illuminative Blocks Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/TntBlock.java`
+  - `net/minecraft/world/level/block/SpongeBlock.java`
+  - `net/minecraft/world/level/block/WetSpongeBlock.java`
+  - `net/minecraft/world/level/block/ScaffoldingBlock.java`
+  - `net/minecraft/world/level/block/LadderBlock.java`
+  - `net/minecraft/world/level/block/VineBlock.java`
+  - `net/minecraft/world/level/block/TorchBlock.java`
+  - `net/minecraft/world/level/block/LanternBlock.java`
+  - `net/minecraft/world/level/block/EndRodBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Utilities & Explosives Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `TNTBlock`, `SpongeBlock`, `WetSpongeBlock`, `ScaffoldingBlock`, `LadderBlock`, `VineBlock`, `TorchBlock`, `LanternBlock`, và `EndRodBlock`. Đảm bảo các khối liền kề (redstone, nước, giàn giáo, dây leo, đuốc gắn tường, đèn lồng) lập tức phản ứng và kiểm tra tính hợp lệ về mặt liên kết/chỗ dựa.
+  - **TNT & Sponge Parity (TntBlock.java, SpongeBlock.java, WetSpongeBlock.java)**:
+    - TNT: `DEFAULT_UNSTABLE = false`, `DEFAULT_FUSE = 80`, `DEFAULT_POWER = 4.0`, âm lượng mồi 1.0, cao độ 1.0.
+    - Sponge: Hút nước tối đa `MAX_DEPTH = 6`, `MAX_COUNT = 64`. Khối bọt biển ướt khô khi đặt trong môi trường nước bốc hơi (Nether), kích hoạt event `EVENT_WATER_EVAPORATE = 2009`.
+  - **Scaffolding, Ladder & Vine Parity (ScaffoldingBlock.java, LadderBlock.java, VineBlock.java)**:
+    - Giàn giáo: khoảng cách ổn định tối đa `STABILITY_MAX_DISTANCE = 7`, độ trễ tick `TICK_DELAY = 1`.
+    - Thang leo: độ dày khối thang 3/16 = 0.1875 (`LADDER_THICKNESS = 0.1875`).
+    - Dây leo: độ dày khối lá leo 1/16 = 0.0625 (`VINE_THICKNESS = 0.0625`), bán kính lan tỏa `SEARCH_RADIUS = 4`, số lượng lân cận tối đa `MAX_NEIGHBORS_TO_GROW = 4`.
+  - **Illumination Parity (TorchBlock.java, LanternBlock.java, EndRodBlock.java)**:
+    - Đuốc thông thường phát sáng mức 14 (`LIGHT_LEVEL_NORMAL = 14`), đuốc linh hồn mức 10 (`LIGHT_LEVEL_SOUL = 10`).
+    - Đèn lồng thông thường phát sáng mức 15 (`LIGHT_LEVEL_NORMAL = 15`), đèn lồng linh hồn mức 10 (`LIGHT_LEVEL_SOUL = 10`).
+    - Thanh lôi/End Rod phát sáng mức 14 (`LIGHT_LEVEL = 14`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_utilities_explosives_and_climbing_parity_gap498`.
+  - **Unit Tests**: Vượt qua 100% `test_utilities_explosives_and_climbing_parity_gap498`.

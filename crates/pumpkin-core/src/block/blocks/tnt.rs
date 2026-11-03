@@ -187,6 +187,8 @@ impl BlockBehaviour for TNTBlock {
             && block_receives_redstone_power(args.world, args.position)
         {
             Self::prime(args.world, args.position);
+        } else {
+            args.world.update_neighbors(args.position, None);
         }
     }
 
@@ -197,6 +199,7 @@ impl BlockBehaviour for TNTBlock {
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
         if args.player.gamemode.load() != GameMode::Creative {
             let props = TntLikeProperties::from_state_id(args.state.id);
             if props.r#unstable {

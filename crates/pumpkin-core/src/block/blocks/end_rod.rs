@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, OnPlaceArgs, PathComputationType};
+use crate::block::{BlockBehaviour, BrokenArgs, OnPlaceArgs, PathComputationType, PlacedArgs};
 use pumpkin_data::block_properties::EndRodLikeProperties;
 use pumpkin_data::{Block, BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block;
@@ -6,7 +6,19 @@ use pumpkin_macros::pumpkin_block;
 #[pumpkin_block("minecraft:end_rod")]
 pub struct EndRodBlock;
 
+impl EndRodBlock {
+    pub const LIGHT_LEVEL: u8 = 14;
+}
+
 impl BlockBehaviour for EndRodBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = EndRodLikeProperties::default(args.block);
 

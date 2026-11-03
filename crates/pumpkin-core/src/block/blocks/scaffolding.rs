@@ -8,7 +8,7 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, PlacedArgs,
 };
 use crate::entity::EntityBase;
@@ -47,6 +47,8 @@ pub(crate) fn collision_shapes_for_entity<'a>(
 pub struct ScaffoldingBlock;
 
 impl ScaffoldingBlock {
+    pub const TICK_DELAY: u32 = 1;
+    pub const STABILITY_MAX_DISTANCE: u8 = 7;
     #[must_use]
     pub fn get_distance(world: &dyn BlockAccessor, pos: &BlockPos) -> u8 {
         let below_pos = pos.down();
@@ -104,6 +106,11 @@ impl BlockBehaviour for ScaffoldingBlock {
             TICK_DELAY,
             TickPriority::Normal,
         );
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

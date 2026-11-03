@@ -11,10 +11,15 @@ type WallTorchProps = pumpkin_data::block_properties::WallTorchLikeProperties;
 // Normal tourches don't have properties
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, PlacedArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
 };
 
 pub struct TorchBlock;
+
+impl TorchBlock {
+    pub const LIGHT_LEVEL_NORMAL: u8 = 14;
+    pub const LIGHT_LEVEL_SOUL: u8 = 10;
+}
 
 impl BlockMetadata for TorchBlock {
     fn ids() -> Box<[BlockId]> {
@@ -31,6 +36,14 @@ impl BlockMetadata for TorchBlock {
 }
 
 impl BlockBehaviour for TorchBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         if args.direction == BlockDirection::Down {
             let support_block = args.world.get_block_state(&args.position.down());

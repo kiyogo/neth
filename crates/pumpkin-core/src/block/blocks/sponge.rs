@@ -2,7 +2,7 @@ use pumpkin_macros::pumpkin_block;
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::block::{BlockBehaviour, OnNeighborUpdateArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, OnNeighborUpdateArgs, PlacedArgs};
 use pumpkin_data::sound::{Sound, SoundCategory};
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{Block, BlockStateId};
@@ -96,6 +96,11 @@ impl BlockBehaviour for SpongeBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         // Attempt to absorb water on placement
         Self::absorb_water(args.world, args.position);
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -137,6 +142,12 @@ impl BlockBehaviour for WetSpongeBlock {
                 1.0,
                 pitch,
             );
+        } else {
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 }

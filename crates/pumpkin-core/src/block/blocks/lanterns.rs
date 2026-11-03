@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, PlacedArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, PathComputationType,
 };
 use crate::world::World;
@@ -13,7 +13,20 @@ use pumpkin_world::world::BlockFlags;
 #[pumpkin_block_from_tag("minecraft:lanterns")]
 pub struct LanternBlock;
 
+impl LanternBlock {
+    pub const LIGHT_LEVEL_NORMAL: u8 = 15;
+    pub const LIGHT_LEVEL_SOUL: u8 = 10;
+}
+
 impl BlockBehaviour for LanternBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = pumpkin_data::block_properties::LanternLikeProperties::default(args.block);
         props.r#waterlogged = args.replacing.water_source();

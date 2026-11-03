@@ -1,6 +1,6 @@
 use crate::{
     block::{
-        BlockBehaviour, CanPlaceAtArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
+        BlockBehaviour, BrokenArgs, CanPlaceAtArgs, PlacedArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
         OnPlaceArgs, RandomTickArgs, UseWithItemArgs, registry::BlockActionResult,
     },
     entity::{EntityBase, player::Player},
@@ -21,6 +21,12 @@ use rand::RngExt;
 
 #[pumpkin_block("minecraft:vine")]
 pub struct VineBlock;
+
+impl VineBlock {
+    pub const VINE_THICKNESS: f64 = 0.0625;
+    pub const SEARCH_RADIUS: i32 = 4;
+    pub const MAX_NEIGHBORS_TO_GROW: i32 = 4;
+}
 
 /// Checks if a neighboring block can support a vine attached to the face towards it.
 ///
@@ -253,6 +259,14 @@ impl BlockBehaviour for VineBlock {
         } else {
             Block::AIR.default_state.id
         }
+    }
+
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
