@@ -33464,4 +33464,60 @@ mod tests {
         assert_eq!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::West), true);
         assert_eq!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::South), false);
     }
+
+    #[test]
+    fn test_pistons_piston_head_and_extension_parity_gap482() {
+        use pumpkin_data::Block;
+        use pumpkin_data::block_properties::Facing;
+        use crate::block::blocks::piston::piston::PistonBlock;
+        use crate::block::blocks::piston::piston_head::PistonHeadBlock;
+
+        // 1. Piston & Structure Resolver Parity (PistonBaseBlock.java:45-250, PistonStructureResolver.java:13-75)
+        assert_eq!(PistonBlock::MAX_PUSH_LIMIT, 12);
+        assert_eq!(PistonBlock::TRIGGER_EXTEND, 0);
+        assert_eq!(PistonBlock::TRIGGER_CONTRACT, 1);
+        assert_eq!(PistonBlock::TRIGGER_DROP, 2);
+        assert_eq!(PistonBlock::PLATFORM_THICKNESS, 4.0);
+        assert_eq!(PistonBlock::DEFAULT_EXTENDED, false);
+        assert_eq!(PistonBlock::DEFAULT_FACING, Facing::North);
+
+        // Sound Parity
+        assert_eq!(PistonBlock::EXTEND_SOUND_VOLUME, 0.5);
+        assert_eq!(PistonBlock::EXTEND_SOUND_PITCH_BASE, 0.6);
+        assert_eq!(PistonBlock::EXTEND_SOUND_PITCH_RANGE, 0.25);
+        assert_eq!(PistonBlock::CONTRACT_SOUND_VOLUME, 0.5);
+        assert_eq!(PistonBlock::CONTRACT_SOUND_PITCH_BASE, 0.6);
+        assert_eq!(PistonBlock::CONTRACT_SOUND_PITCH_RANGE, 0.15);
+
+        assert!((PistonBlock::calculate_extend_pitch(0.0) - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::calculate_extend_pitch(1.0) - 0.85).abs() < 1e-6);
+        assert!((PistonBlock::calculate_contract_pitch(0.0) - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::calculate_contract_pitch(1.0) - 0.75).abs() < 1e-6);
+
+        // Sticky & Honey Block Parity (PistonStructureResolver.java:64-74)
+        assert_eq!(PistonBlock::is_sticky_block(&Block::SLIME_BLOCK), true);
+        assert_eq!(PistonBlock::is_sticky_block(&Block::HONEY_BLOCK), true);
+        assert_eq!(PistonBlock::is_sticky_block(&Block::STONE), false);
+
+        // Slime and Honey do NOT stick to each other
+        assert_eq!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::HONEY_BLOCK), false);
+        assert_eq!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::SLIME_BLOCK), false);
+        // Slime sticks to regular blocks
+        assert_eq!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::STONE), true);
+        // Honey sticks to regular blocks
+        assert_eq!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::STONE), true);
+        // Regular blocks do not stick to each other
+        assert_eq!(PistonBlock::can_stick_to_each_other(&Block::STONE, &Block::DIRT), false);
+
+        // Immovable Blocks
+        assert_eq!(PistonBlock::is_pushable_block_type(&Block::OBSIDIAN), false);
+        assert_eq!(PistonBlock::is_pushable_block_type(&Block::CRYING_OBSIDIAN), false);
+        assert_eq!(PistonBlock::is_pushable_block_type(&Block::RESPAWN_ANCHOR), false);
+        assert_eq!(PistonBlock::is_pushable_block_type(&Block::REINFORCED_DEEPSLATE), false);
+        assert_eq!(PistonBlock::is_pushable_block_type(&Block::STONE), true);
+
+        // 2. Piston Head Parity (PistonHeadBlock.java:34-85)
+        assert_eq!(PistonHeadBlock::PLATFORM_THICKNESS, 4.0);
+        assert_eq!(PistonHeadBlock::DEFAULT_SHORT, false);
+    }
 }

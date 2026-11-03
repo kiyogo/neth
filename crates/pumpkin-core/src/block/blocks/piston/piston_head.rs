@@ -6,7 +6,7 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 use crate::block::{
     BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs,
-    OnNeighborUpdateArgs, PathComputationType,
+    OnNeighborUpdateArgs, PathComputationType, PlacedArgs,
 };
 
 use super::piston::PistonProps;
@@ -19,6 +19,7 @@ pub struct PistonHeadBlock;
 
 impl PistonHeadBlock {
     pub const PLATFORM_THICKNESS: f64 = 4.0;
+    pub const DEFAULT_SHORT: bool = false;
 
     #[must_use]
     pub fn is_fitting_base(
@@ -65,6 +66,10 @@ impl BlockBehaviour for PistonHeadBlock {
             return Block::AIR.default_state.id;
         }
         args.state_id
+    }
+
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

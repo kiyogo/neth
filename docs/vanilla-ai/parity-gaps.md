@@ -12680,3 +12680,36 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_doors_trapdoors_and_fence_gates_parity_gap481`.
   - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_and_fence_gates_parity_gap481`.
+
+
+### Gap 482: Piston, Sticky Piston, Piston Head & Extension Lifecycle & Sound Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/piston/PistonBaseBlock.java`
+  - `net/minecraft/world/level/block/piston/PistonHeadBlock.java`
+  - `net/minecraft/world/level/block/piston/MovingPistonBlock.java`
+  - `net/minecraft/world/level/block/piston/PistonStructureResolver.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Piston Lifecycle & Quasi-Connectivity Updates (PistonBaseBlock.java:45-250)**:
+    - Bổ sung `update_neighbors` trong `placed` của `PistonBlock`: bảo đảm các khối kề bên nhận thông báo cập nhật khi piston được đặt vào thế giới.
+    - Hằng số giới hạn đẩy chuẩn vanilla: tối đa 12 khối (`MAX_PUSH_LIMIT = 12`).
+    - Hằng số sự kiện: mở rộng `TRIGGER_EXTEND = 0`, co lại `TRIGGER_CONTRACT = 1`, làm rơi `TRIGGER_DROP = 2`, độ dày bệ đẩy `PLATFORM_THICKNESS = 4.0`.
+    - Hằng số âm thanh piston:
+      - Âm thanh mở rộng (`PISTON_EXTEND`): âm lượng `0.5`, cao độ cơ sở `0.6`, dải biến thiên `0.25` (`rand * 0.25 + 0.6`).
+      - Âm thanh co lại (`PISTON_CONTRACT`): âm lượng `0.5`, cao độ cơ sở `0.6`, dải biến thiên `0.15` (`rand * 0.15 + 0.6`).
+    - Quy tắc dính khối Slime & Honey: Slime và Honey không dính lẫn nhau (`can_stick_to_each_other(slime, honey) == false`), nhưng mỗi loại đều dính với các khối thông thường khác.
+    - Danh sách khối không thể đẩy: Obsidian, Crying Obsidian, Respawn Anchor, Reinforced Deepslate, Piston Head.
+  - **Piston Head & Moving Piston Lifecycle Parity (PistonHeadBlock.java:34-85, MovingPistonBlock.java:60-120)**:
+    - Bổ sung `placed` cho `PistonHeadBlock` cập nhật khối lân cận; hằng số `DEFAULT_SHORT = false`.
+    - Bổ sung `broken` cho `PistonExtensionBlock` (`moving_piston`): phá hủy khối đế piston kề cạnh nếu đế đang mở rộng khi khối đang di chuyển bị phá vỡ, dọn dẹp sạch sẽ và cập nhật lân cận.
+    - Bổ sung `placed` cho `PistonExtensionBlock`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/piston/piston.rs`:
+    - Bổ sung hằng số âm lượng, cao độ và thông báo lân cận trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/piston/piston_head.rs`:
+    - Bổ sung `placed` và hằng số `DEFAULT_SHORT`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/piston/piston_extension.rs`:
+    - Bổ sung `placed` và `broken` tự động dọn dẹp đế piston khi khối mở rộng di chuyển bị phá vỡ.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_pistons_piston_head_and_extension_parity_gap482`.
+  - **Unit Tests**: Vượt qua 100% `test_pistons_piston_head_and_extension_parity_gap482`.

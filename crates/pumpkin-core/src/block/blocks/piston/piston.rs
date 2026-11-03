@@ -48,6 +48,23 @@ impl PistonBlock {
     pub const PLATFORM_THICKNESS: f64 = 4.0;
     pub const DEFAULT_EXTENDED: bool = false;
     pub const DEFAULT_FACING: Facing = Facing::North;
+    pub const EXTEND_SOUND_VOLUME: f32 = 0.5;
+    pub const EXTEND_SOUND_PITCH_BASE: f32 = 0.6;
+    pub const EXTEND_SOUND_PITCH_RANGE: f32 = 0.25;
+
+    pub const CONTRACT_SOUND_VOLUME: f32 = 0.5;
+    pub const CONTRACT_SOUND_PITCH_BASE: f32 = 0.6;
+    pub const CONTRACT_SOUND_PITCH_RANGE: f32 = 0.15;
+
+    #[must_use]
+    pub const fn calculate_extend_pitch(rand_float: f32) -> f32 {
+        rand_float * Self::EXTEND_SOUND_PITCH_RANGE + Self::EXTEND_SOUND_PITCH_BASE
+    }
+
+    #[must_use]
+    pub const fn calculate_contract_pitch(rand_float: f32) -> f32 {
+        rand_float * Self::CONTRACT_SOUND_PITCH_RANGE + Self::CONTRACT_SOUND_PITCH_BASE
+    }
 
     #[must_use]
     pub const fn calculate_facing_from_player(facing_order: &[Facing; 6]) -> Facing {
@@ -184,6 +201,7 @@ impl BlockBehaviour for PistonBlock {
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
         if args.old_state_id == args.state_id {
             return;
         }
