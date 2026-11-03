@@ -10,11 +10,16 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use pumpkin_world::world::BlockFlags;
 
-use crate::block::{BlockBehaviour, OnEntityCollisionArgs, OnLandedUponArgs, PathComputationType};
+use crate::block::{BlockBehaviour, BrokenArgs, OnEntityCollisionArgs, OnLandedUponArgs, PathComputationType, PlacedArgs};
 use crate::entity::EntityBase;
 
 #[pumpkin_block("minecraft:powder_snow")]
 pub struct PowderSnowBlock;
+
+impl PowderSnowBlock {
+    pub const SLOW_MULTIPLIER: (f64, f64, f64) = (0.9, 1.5, 0.9);
+    pub const FALLING_COLLISION_HEIGHT: f64 = 0.9;
+}
 
 const FALLING_COLLISION_SHAPE: BoundingBox =
     BoundingBox::new_array([0.0, 0.0, 0.0], [1.0, 0.9, 1.0]);
@@ -92,6 +97,13 @@ pub(crate) fn inside_collision_shape_for_entity(
 }
 
 impl BlockBehaviour for PowderSnowBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_landed_upon(&self, args: OnLandedUponArgs<'_>) {
         if let Some(living) = args.entity.get_living_entity()
             && args.fall_distance >= 4.0

@@ -34789,4 +34789,58 @@ mod tests {
         assert_eq!(LightBlock::MIN_LIGHT_LEVEL, 0);
         assert_eq!(LightBlock::MAX_LIGHT_LEVEL, 15);
     }
+
+    #[test]
+    fn test_cryo_thermal_fluid_and_minerals_parity_gap501() {
+        use crate::block::blocks::snow::LayeredSnowBlock;
+        use crate::block::blocks::powder_snow::PowderSnowBlock;
+        use crate::block::blocks::ice::FrostedIceBlock;
+        use crate::block::blocks::magma::MagmaBlock;
+        use crate::block::blocks::soul_sand::SoulSandBlock;
+        use crate::block::blocks::bubble_column::BubbleColumnBlock;
+        use crate::block::blocks::dripstone::DripstoneBlock;
+        use crate::block::blocks::amethyst::AmethystClusterBlock;
+
+        // 1. Snow Layers Parity (SnowLayerBlock.java)
+        assert_eq!(LayeredSnowBlock::MAX_LAYERS, 8);
+        assert_eq!(LayeredSnowBlock::MELT_LIGHT_LEVEL, 11);
+        assert_eq!(LayeredSnowBlock::HEIGHT_IMPASSABLE, 5);
+
+        // 2. Powder Snow Parity (PowderSnowBlock.java)
+        assert_eq!(PowderSnowBlock::SLOW_MULTIPLIER, (0.9, 1.5, 0.9));
+        assert_eq!(PowderSnowBlock::FALLING_COLLISION_HEIGHT, 0.9);
+
+        // 3. Frosted Ice Parity (FrostedIceBlock.java)
+        assert_eq!(FrostedIceBlock::MAX_AGE, 3);
+        assert_eq!(FrostedIceBlock::MIN_MELT_DELAY, 20);
+        assert_eq!(FrostedIceBlock::MAX_MELT_DELAY, 40);
+
+        // 4. Magma Block Parity (MagmaBlock.java)
+        assert_eq!(MagmaBlock::DAMAGE_AMOUNT, 1.0);
+
+        // 5. Soul Sand Parity (SoulSandBlock.java)
+        assert_eq!(SoulSandBlock::SLOW_SPEED_MULTIPLIER, 0.4);
+
+        // 6. Bubble Column Parity (BubbleColumnBlock.java / Entity.java)
+        assert_eq!(BubbleColumnBlock::CREATE_DELAY_TICKS, 20);
+        assert_eq!(BubbleColumnBlock::REMOVE_DELAY_TICKS, 5);
+        assert_eq!(BubbleColumnBlock::UPWARD_ACCELERATION, 0.06);
+        assert_eq!(BubbleColumnBlock::UPWARD_MAX_SPEED, 0.7);
+        assert_eq!(BubbleColumnBlock::SURFACE_UPWARD_ACCELERATION, 0.1);
+        assert_eq!(BubbleColumnBlock::SURFACE_UPWARD_MAX_SPEED, 1.8);
+        assert_eq!(BubbleColumnBlock::DOWNWARD_ACCELERATION, -0.03);
+        assert_eq!(BubbleColumnBlock::DOWNWARD_MIN_SPEED, -0.3);
+        assert_eq!(BubbleColumnBlock::SURFACE_DOWNWARD_ACCELERATION, -0.03);
+        assert_eq!(BubbleColumnBlock::SURFACE_DOWNWARD_MIN_SPEED, -0.9);
+
+        // 7. Dripstone Parity (PointedDripstoneBlock.java)
+        assert_eq!(DripstoneBlock::STALAGMITE_FALL_DISTANCE_OFFSET, 2.5);
+        assert_eq!(DripstoneBlock::STALAGMITE_DAMAGE_MULTIPLIER, 2.0);
+
+        // 8. Amethyst Cluster Parity (Blocks.java)
+        assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_SMALL, 1);
+        assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_MEDIUM, 2);
+        assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_LARGE, 4);
+        assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_CLUSTER, 5);
+    }
 }

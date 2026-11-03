@@ -10,7 +10,7 @@ use pumpkin_world::tick::TickPriority;
 use pumpkin_world::world::BlockFlags;
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, OnEntityCollisionArgs, OnNeighborUpdateArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, OnEntityCollisionArgs, OnNeighborUpdateArgs,
     OnScheduledTickArgs, PlacedArgs,
 };
 use crate::world::World;
@@ -29,6 +29,19 @@ const SURFACE_DOWNWARD_ACCELERATION: f64 = -0.03;
 const SURFACE_DOWNWARD_MIN_SPEED: f64 = -0.9;
 
 pub struct BubbleColumnBlock;
+
+impl BubbleColumnBlock {
+    pub const CREATE_DELAY_TICKS: u32 = 20;
+    pub const REMOVE_DELAY_TICKS: u32 = 5;
+    pub const UPWARD_ACCELERATION: f64 = 0.06;
+    pub const UPWARD_MAX_SPEED: f64 = 0.7;
+    pub const SURFACE_UPWARD_ACCELERATION: f64 = 0.1;
+    pub const SURFACE_UPWARD_MAX_SPEED: f64 = 1.8;
+    pub const DOWNWARD_ACCELERATION: f64 = -0.03;
+    pub const DOWNWARD_MIN_SPEED: f64 = -0.3;
+    pub const SURFACE_DOWNWARD_ACCELERATION: f64 = -0.03;
+    pub const SURFACE_DOWNWARD_MIN_SPEED: f64 = -0.9;
+}
 
 impl BlockMetadata for BubbleColumnBlock {
     fn ids() -> Box<[BlockId]> {
@@ -208,6 +221,11 @@ impl BlockBehaviour for BubbleColumnBlock {
         if args.block == &Block::WATER && is_source_water(args.world, *args.position) {
             schedule_reconcile(args.world, *args.position, CREATE_DELAY_TICKS);
         }
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

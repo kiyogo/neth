@@ -8,8 +8,8 @@ use pumpkin_world::world::BlockFlags;
 use rand::RngExt;
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnProjectileHitArgs, RandomTickArgs, blocks::abstract_wall_mounting::WallMountedBlock,
+    BlockBehaviour, BlockMetadata, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    OnProjectileHitArgs, PlacedArgs, RandomTickArgs, blocks::abstract_wall_mounting::WallMountedBlock,
 };
 
 const ALL_DIRECTIONS: [BlockDirection; 6] = [
@@ -25,6 +25,14 @@ const ALL_DIRECTIONS: [BlockDirection; 6] = [
 pub struct AmethystBlock;
 
 impl BlockBehaviour for AmethystBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
         let pitch = 0.5 + rand::rng().random::<f32>() * 1.2;
         args.world.play_sound_fine(
@@ -39,6 +47,13 @@ impl BlockBehaviour for AmethystBlock {
 
 pub struct AmethystClusterBlock;
 
+impl AmethystClusterBlock {
+    pub const LIGHT_EMISSION_SMALL: u8 = 1;
+    pub const LIGHT_EMISSION_MEDIUM: u8 = 2;
+    pub const LIGHT_EMISSION_LARGE: u8 = 4;
+    pub const LIGHT_EMISSION_CLUSTER: u8 = 5;
+}
+
 impl BlockMetadata for AmethystClusterBlock {
     fn ids() -> Box<[BlockId]> {
         [
@@ -52,6 +67,14 @@ impl BlockMetadata for AmethystClusterBlock {
 }
 
 impl BlockBehaviour for AmethystClusterBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_projectile_hit(&self, args: OnProjectileHitArgs<'_>) {
         let pitch = 0.5 + rand::rng().random::<f32>() * 1.2;
         args.world.play_sound_fine(
@@ -98,6 +121,14 @@ impl WallMountedBlock for AmethystClusterBlock {
 pub struct BuddingAmethystBlock;
 
 impl BlockBehaviour for BuddingAmethystBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn random_tick(&self, args: RandomTickArgs<'_>) {
         if rand::rng().random_range(0..5) == 0 {
             let grow_direction = {

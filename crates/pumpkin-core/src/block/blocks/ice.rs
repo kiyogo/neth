@@ -63,7 +63,12 @@ impl BlockMetadata for IceBlock {
 }
 
 impl BlockBehaviour for IceBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
         // Vanilla only calls `playerDestroy` when the player doesn't prevent block drops.
         if args.player.is_creative() {
             return;
@@ -108,6 +113,12 @@ impl BlockBehaviour for IceBlock {
 }
 
 pub struct FrostedIceBlock;
+
+impl FrostedIceBlock {
+    pub const MAX_AGE: u8 = 3;
+    pub const MIN_MELT_DELAY: u32 = 20;
+    pub const MAX_MELT_DELAY: u32 = 40;
+}
 
 impl BlockMetadata for FrostedIceBlock {
     fn ids() -> Box<[BlockId]> {

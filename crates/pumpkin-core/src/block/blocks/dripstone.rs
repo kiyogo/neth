@@ -20,6 +20,11 @@ use pumpkin_world::world::{BlockAccessor, BlockFlags};
 #[pumpkin_block("minecraft:pointed_dripstone")]
 pub struct DripstoneBlock;
 
+impl DripstoneBlock {
+    pub const STALAGMITE_FALL_DISTANCE_OFFSET: f32 = 2.5;
+    pub const STALAGMITE_DAMAGE_MULTIPLIER: f32 = 2.0;
+}
+
 impl BlockBehaviour for DripstoneBlock {
     fn on_landed_upon(&self, args: OnLandedUponArgs<'_>) {
         let Some(living) = args.entity.get_living_entity() else {
@@ -82,6 +87,7 @@ impl BlockBehaviour for DripstoneBlock {
                     update_stalactite(args.world, len, args.position);
                 }
             }
+            args.world.update_neighbors(args.position, None);
         }
     }
     fn broken(&self, args: BrokenArgs<'_>) {
@@ -106,6 +112,7 @@ impl BlockBehaviour for DripstoneBlock {
                     update_stalactite(args.world, len, &new_tip_pos);
                 }
             }
+            args.world.update_neighbors(args.position, None);
         }
     }
     fn get_state_for_neighbor_update(

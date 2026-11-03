@@ -8,14 +8,27 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
-    RandomTickArgs, UseWithItemArgs, registry::BlockActionResult,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    PlacedArgs, RandomTickArgs, UseWithItemArgs, registry::BlockActionResult,
 };
 
 #[pumpkin_block("minecraft:snow")]
 pub struct LayeredSnowBlock;
 
+impl LayeredSnowBlock {
+    pub const MAX_LAYERS: u8 = 8;
+    pub const MELT_LIGHT_LEVEL: u8 = 11;
+    pub const HEIGHT_IMPASSABLE: u8 = 5;
+}
+
 impl BlockBehaviour for LayeredSnowBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         can_place_at(args.block_accessor, args.position)
     }

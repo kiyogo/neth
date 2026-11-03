@@ -13503,3 +13503,35 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_special_transports_portals_and_environment_parity_gap500`.
   - **Unit Tests**: Vượt qua 100% `test_special_transports_portals_and_environment_parity_gap500`.
+
+
+### Gap 501: Cryo, Thermal, Fluid Columns & Mineral Geodes Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/SnowLayerBlock.java`
+  - `net/minecraft/world/level/block/PowderSnowBlock.java`
+  - `net/minecraft/world/level/block/IceBlock.java`
+  - `net/minecraft/world/level/block/FrostedIceBlock.java`
+  - `net/minecraft/world/level/block/MagmaBlock.java`
+  - `net/minecraft/world/level/block/SoulSandBlock.java`
+  - `net/minecraft/world/level/block/BubbleColumnBlock.java`
+  - `net/minecraft/world/level/block/PointedDripstoneBlock.java`
+  - `net/minecraft/world/level/block/AmethystClusterBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Cryo, Thermal & Geode Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `LayeredSnowBlock`, `PowderSnowBlock`, `IceBlock`, `FrostedIceBlock`, `MagmaBlock`, `SoulSandBlock`, `BubbleColumnBlock`, `DripstoneBlock`, `AmethystBlock`, `AmethystClusterBlock`, và `BuddingAmethystBlock`. Đảm bảo các khối lân cận (cột bọt nước, nguồn nước, tinh thể thạch anh bám tường, băng tan) phản ứng chính xác ngay khi các khối môi trường được đặt hoặc gãy.
+  - **Snow & Powder Snow Parity (SnowLayerBlock.java, PowderSnowBlock.java)**:
+    - Lớp tuyết: tối đa 8 lớp (`MAX_LAYERS = 8`), tan chảy khi mức sáng khối trên 11 (`MELT_LIGHT_LEVEL = 11`), không thể đi xuyên qua khi từ 5 lớp trở lên (`HEIGHT_IMPASSABLE = 5`).
+    - Tuyết bột: hệ số làm chậm chuyển động (0.9, 1.5, 0.9), chiều cao va chạm rơi lún `FALLING_COLLISION_HEIGHT = 0.9`.
+  - **Ice, Magma & Soul Sand Parity (FrostedIceBlock.java, MagmaBlock.java, SoulSandBlock.java)**:
+    - Băng đóng băng tự nhiên (Frosted Ice): tuổi tối đa 3 (`MAX_AGE = 3`), khoảng trễ tan chảy ngẫu nhiên 20..=40 ticks.
+    - Khối dung nham nguội (Magma Block): gây 1.0 sát thương sàn nóng (`DAMAGE_AMOUNT = 1.0`) cho thực thể không lén lút và không kháng lửa.
+    - Cát linh hồn (Soul Sand): hệ số tốc độ chậm khi di chuyển trên cát `SLOW_SPEED_MULTIPLIER = 0.4`.
+  - **Bubble Column & Geode Minerals Parity (BubbleColumnBlock.java, PointedDripstoneBlock.java, Blocks.java)**:
+    - Cột bọt nước (Bubble Column): độ trễ tạo bọt 20 ticks, xóa bọt 5 ticks; gia tốc đẩy lên 0.06 (tối đa 0.7), gia tốc bề mặt đẩy lên 0.1 (tối đa 1.8); gia tốc hút xuống -0.03 (tối thiểu -0.3), gia tốc bề mặt hút xuống -0.03 (tối thiểu -0.9).
+    - Thạch nhũ (Dripstone): rơi đè lên đầu nhọn thạch nhũ gây sát thương stalagmite với độ cao rơi cộng thêm 2.5 (`STALAGMITE_FALL_DISTANCE_OFFSET = 2.5`) và nhân đôi sát thương (`STALAGMITE_DAMAGE_MULTIPLIER = 2.0`).
+    - Cụm thạch anh tím (Amethyst Buds & Cluster): mức độ phát quang nụ nhỏ mức 1, nụ vừa mức 2, nụ lớn mức 4, cụm thạch anh hoàn chỉnh mức 5 (`LIGHT_EMISSION_SMALL = 1`, `MEDIUM = 2`, `LARGE = 4`, `CLUSTER = 5`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_cryo_thermal_fluid_and_minerals_parity_gap501`.
+  - **Unit Tests**: Vượt qua 100% `test_cryo_thermal_fluid_and_minerals_parity_gap501`.

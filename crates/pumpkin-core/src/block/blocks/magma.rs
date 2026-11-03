@@ -3,12 +3,23 @@ use pumpkin_data::{
 };
 use pumpkin_macros::pumpkin_block;
 
-use crate::block::{BlockBehaviour, OnEntityStepArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, OnEntityStepArgs, PlacedArgs};
 
 #[pumpkin_block("minecraft:magma_block")]
 pub struct MagmaBlock;
 
+impl MagmaBlock {
+    pub const DAMAGE_AMOUNT: f32 = 1.0;
+}
+
 impl BlockBehaviour for MagmaBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_entity_step(&self, args: OnEntityStepArgs<'_>) {
         {
             // Only living entities take damage
