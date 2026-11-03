@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::{
-    GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnNeighborUpdateArgs, OnPlaceArgs,
+    BrokenArgs, GetComparatorOutputArgs, GetScreenHandlerFactoryArgs, OnNeighborUpdateArgs, OnPlaceArgs,
     PathComputationType, PlacedArgs,
 };
 use crate::block::{
@@ -154,6 +154,13 @@ impl BlockBehaviour for HopperBlock {
         if Block::from_state_id(args.old_state_id) != Block::from_state_id(args.state_id) {
             check_powered_state(args.world, args.position, args.state_id, args.block);
         }
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
@@ -184,6 +191,6 @@ fn check_powered_state(world: &Arc<World>, pos: &BlockPos, state_id: BlockStateI
     let mut state = HopperLikeProperties::from_state_id(state_id);
     if signal != state.enabled {
         state.enabled = signal;
-        world.set_block_state(pos, state.to_state_id(block), BlockFlags::NOTIFY_LISTENERS);
+        world.set_block_state(pos, state.to_state_id(block), BlockFlags::NOTIFY_ALL);
     }
 }

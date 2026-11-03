@@ -10837,6 +10837,39 @@ pub fn get_plant_name_from_potted_name(potted_block_name: &str) -> Option<&str> 
     })
 }
 
+/// Vanilla `HopperBlock.java:56-64, 80-82, 118-123, 131-138` & `Hopper.java:8`:
+pub const HOPPER_CONTAINER_SIZE: usize = 5;
+pub const HOPPER_MOVE_ITEM_SPEED: i32 = 8;
+pub const HOPPER_SUCK_AABB_Y_MIN: f64 = 11.0 / 16.0;
+pub const HOPPER_SUCK_AABB_Y_MAX: f64 = 2.0;
+
+#[must_use]
+pub fn calculate_hopper_comparator_output(slot_counts: &[u8], max_stack_sizes: &[u8]) -> u8 {
+    crate::block::blocks::hopper::HopperBlock::calculate_container_comparator_output(
+        slot_counts,
+        max_stack_sizes,
+    )
+}
+
+#[must_use]
+pub fn is_hopper_suction_blocked(is_full_cube: bool, has_does_not_block_tag: bool) -> bool {
+    crate::block::blocks::hopper::HopperBlock::is_suction_blocked(
+        is_full_cube,
+        has_does_not_block_tag,
+    )
+}
+
+#[must_use]
+pub fn is_hopper_enabled(has_neighbor_signal: bool) -> bool {
+    crate::block::blocks::hopper::HopperBlock::is_enabled(has_neighbor_signal)
+}
+
+/// Vanilla `DaylightDetectorBlock.java:28-30, 47-63, 88-91`:
+#[must_use]
+pub fn calculate_daylight_detector_comparator_signal(power: u8) -> u8 {
+    crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock::calculate_comparator_signal(power)
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -31206,5 +31239,80 @@ mod tests {
         assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_WARPED_FUNGUS), Some(&Item::WARPED_FUNGUS));
         assert_eq!(get_plant_item_from_potted_block(&Block::POTTED_CRIMSON_FUNGUS), Some(&Item::CRIMSON_FUNGUS));
         assert_eq!(get_plant_item_from_potted_block(&Block::FLOWER_POT), None);
+    }
+
+    #[test]
+    fn test_daylight_detector_and_hopper_parity_gap458() {
+        use crate::block::blocks::hopper::HopperBlock;
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+
+        // 1. Hopper Constants & Geometry (HopperBlock.java:56-64, Hopper.java:8)
+        assert_eq!(HOPPER_CONTAINER_SIZE, 5);
+        assert_eq!(HOPPER_MOVE_ITEM_SPEED, 8);
+        assert_eq!(HOPPER_SUCK_AABB_Y_MIN, 11.0 / 16.0);
+        assert_eq!(HOPPER_SUCK_AABB_Y_MAX, 2.0);
+
+        // 2. Hopper Redstone & Enabled logic (HopperBlock.java:118-123)
+        assert!(is_hopper_enabled(false));
+        assert!(!is_hopper_enabled(true));
+        assert_eq!(HopperBlock::is_enabled(false), true);
+        assert_eq!(HopperBlock::is_enabled(true), false);
+
+        // 3. Hopper Suction Blocking rules (HopperBlockEntity.java:233-235)
+        assert!(is_hopper_suction_blocked(true, false));
+        assert!(!is_hopper_suction_blocked(true, true));
+        assert!(!is_hopper_suction_blocked(false, false));
+
+        // 4. Hopper Comparator Output (HopperBlock.java:136-138 & AbstractContainerMenu.java)
+        // Empty hopper: 0 signal
+        assert_eq!(
+            calculate_hopper_comparator_output(&[0, 0, 0, 0, 0], &[64, 64, 64, 64, 64]),
+            0
+        );
+        // Single item in 64-stack slot: 1 signal
+        assert_eq!(
+            calculate_hopper_comparator_output(&[1, 0, 0, 0, 0], &[64, 64, 64, 64, 64]),
+            1
+        );
+        // Single non-stackable item (e.g. totem/sword): fullness = 1/5 = 0.2 -> floor(0.2 * 14) + 1 = 3 signal
+        assert_eq!(
+            calculate_hopper_comparator_output(&[1, 0, 0, 0, 0], &[1, 64, 64, 64, 64]),
+            3
+        );
+        // 5 fully stacked slots (64 each): max 15 signal
+        assert_eq!(
+            calculate_hopper_comparator_output(&[64, 64, 64, 64, 64], &[64, 64, 64, 64, 64]),
+            15
+        );
+        // 5 non-stackable items (1 each in 1-max slots): max 15 signal
+        assert_eq!(
+            calculate_hopper_comparator_output(&[1, 1, 1, 1, 1], &[1, 1, 1, 1, 1]),
+            15
+        );
+
+        // 5. Daylight Detector Signal & Comparator Parity (DaylightDetectorBlock.java:47-63, 88-91)
+        assert_eq!(calculate_daylight_detector_comparator_signal(0), 0);
+        assert_eq!(calculate_daylight_detector_comparator_signal(7), 7);
+        assert_eq!(calculate_daylight_detector_comparator_signal(15), 15);
+        assert_eq!(calculate_daylight_detector_comparator_signal(20), 15);
+
+        // Signal strength calculations (effective sky brightness 15 at noon angle 0)
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, false),
+            15
+        );
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(15, 0.0, true),
+            0
+        );
+        // At night with 0 sky brightness
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(0, 0.0, false),
+            0
+        );
+        assert_eq!(
+            DaylightDetectorBlock::calculate_signal_strength(0, 0.0, true),
+            15
+        );
     }
 }

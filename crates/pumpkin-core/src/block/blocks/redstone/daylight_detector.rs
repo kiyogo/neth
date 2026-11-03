@@ -21,10 +21,12 @@ impl BlockBehaviour for DaylightDetectorBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         args.world
             .add_block_entity(Arc::new(DaylightDetectorBlockEntity::new(*args.position)));
+        Self::update_signal_strength(args.world, args.position);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
@@ -43,7 +45,7 @@ impl BlockBehaviour for DaylightDetectorBlock {
 
         let new_state = props.to_state_id(args.block);
         args.world
-            .set_block_state(args.position, new_state, BlockFlags::NOTIFY_LISTENERS);
+            .set_block_state(args.position, new_state, BlockFlags::NOTIFY_ALL);
         args.world.emit_game_event(
             GameEvent::BlockChange.name(),
             args.position.to_centered_f64(),

@@ -11847,6 +11847,32 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_flower_pot_potting_empty_and_plant_extraction_parity_gap457`.
   - **Unit Tests**: Test kiểm tra quy tắc chấp nhận chậu hoa, trích xuất cây, và ánh xạ ngoại lệ azalea bush đều vượt qua 100%.
 
+### Gap 458: Daylight Detector Placement Power & Invert Observer Updates, Hopper Broken Destruction, Output Signal & Enabled State Parity
+- **Cảm Biến Ánh Sáng Cập Nhật Tức Thì Khi Đặt & Observer Phát Hiện Đảo Chiều (Daylight Detector Placement & State Updates Parity)**:
+  - Vanilla `DaylightDetectorBlock.java:47-81, 88-91` & `DaylightDetectorBlockEntity.java:100-109`:
+    - Khi đặt cảm biến ánh sáng (`placed`), Vanilla tính toán và cập nhật cường độ phát tín hiệu tức thì thay vì để mặc định `power = 0` đợi chu kỳ 20 ticks tiếp theo.
+    - Khi người chơi click chuột phải để đảo chiều (`inverted`), trạng thái khối phải cập nhật đầy đủ (`BlockFlags::NOTIFY_ALL`) để observer hướng vào cảm biến hoặc các đường dây redstone liền kề nhận được tín hiệu cập nhật tức thì.
+    - Khi bị phá hủy (`broken`), block entity được giải phóng và hàng xóm liền kề được thông báo (`update_neighbors`) để ngắt mạch điện kịp thời.
+- **Phễu Hút Khi Bị Phá Hủy & Cập Nhật Tín hiệu Bộ So Sánh (Hopper Broken & Comparator Signal Parity)**:
+  - Vanilla `HopperBlock.java:118-138` & `Containers.java:51-53`:
+    - Khi phễu bị phá hủy (`broken`), Vanilla thực hiện `Containers.updateNeighboursAfterDestroy(state, level, pos)`, gọi `level.updateNeighbourForOutputSignal(pos, state.getBlock())` để xóa tín hiệu analog của bộ so sánh (comparator) đang cắm sau phễu, đồng thời thông báo các khối lân cận (`update_neighbors`). Neth trước đây chưa có hàm `broken` cho `HopperBlock`.
+    - Khi được đặt (`placed`), phễu cũng kích hoạt `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay lập tức.
+    - Khi chuyển trạng thái bị khóa bởi redstone (`enabled`), phễu sử dụng `BlockFlags::NOTIFY_ALL` để observer quan sát được sự thay đổi trạng thái bật/tắt của phễu.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`:
+    - Gọi `Self::update_signal_strength` ngay trong `placed`.
+    - Thêm `args.world.update_neighbors(args.position, None)` trong `broken`.
+    - Dùng `BlockFlags::NOTIFY_ALL` trong `normal_use`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/hopper.rs`:
+    - Bổ sung hàm `broken` xóa block entity, cập nhật comparator signal (`update_neighbour_for_output_signal`) và cập nhật hàng xóm (`update_neighbors`).
+    - Bổ sung `update_neighbour_for_output_signal` trong `placed`.
+    - Dùng `BlockFlags::NOTIFY_ALL` khi chuyển đổi `enabled` trong `check_powered_state`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `HOPPER_CONTAINER_SIZE`, `HOPPER_MOVE_ITEM_SPEED`, `HOPPER_SUCK_AABB_Y_MIN`, `HOPPER_SUCK_AABB_Y_MAX`, `calculate_hopper_comparator_output`, `is_hopper_suction_blocked`, `is_hopper_enabled`, `calculate_daylight_detector_comparator_signal`.
+    - Bổ sung unit test `test_daylight_detector_and_hopper_parity_gap458`.
+  - **Unit Tests**: Test kiểm tra quy tắc phễu (comparator 0..15, suction bounds, suction blocking tags, enabled signal toggle) và daylight detector (clamp, inverted noon/night signals) đều vượt qua 100%.
+
+
 
 
 
