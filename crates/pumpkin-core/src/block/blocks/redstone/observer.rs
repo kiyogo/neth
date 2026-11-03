@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::block::{
-    EmitsRedstonePowerArgs, GetRedstonePowerArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BrokenArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, OnStateReplacedArgs, PlacedArgs,
 };
 use crate::entity::EntityBase;
@@ -101,6 +101,14 @@ impl BlockBehaviour for ObserverBlock {
 
     fn get_strong_redstone_power(&self, args: GetRedstonePowerArgs<'_>) -> u8 {
         self.get_weak_redstone_power(args)
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let props = ObserverLikeProperties::from_state_id(args.state.id);
+        if props.powered {
+            Self::update_neighbors(args.world, args.block, args.position, props);
+        }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {

@@ -12143,3 +12143,38 @@ et/minecraft/world/level/block/RedStoneWireBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_repeater_comparator_and_redstone_wire_parity_gap467.
   - **Unit Tests**: Vượt qua 100% 	est_repeater_comparator_and_redstone_wire_parity_gap467.
+
+### Gap 468: Observer, Target Block & Lightning Rod Broken Signal Updates, Pulse Delay & Detection Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/ObserverBlock.java
+  - 
+et/minecraft/world/level/block/TargetBlock.java
+  - 
+et/minecraft/world/level/block/LightningRodBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Observer Broken Unpowering & Pulse Timing (ObserverBlock.java:45-54, 125-129)**:
+    - Vanilla quy định: thời lượng xung phát ra của khối quan sát (ObserverBlock) là 2 game ticks (1 redstone tick), độ trễ phát hiện là 2 ticks (PULSE_DURATION = 2, DETECTION_DELAY = 2).
+    - Nếu khối quan sát bị dỡ bỏ hoặc phá hủy khi đang phát xung điện (state.getValue(POWERED)), khối phải ngay lập tức thông báo ngắt điện cho khối phía sau (updateNeighborsInFront(level, pos, state.setValue(POWERED, false))).
+    - Neth trước đây chưa có hàm roken cho ObserverBlock. Giờ đây đã bổ sung roken cập nhật khối phía sau nếu đang phát điện và thông báo khối lân cận (update_neighbors).
+  - **Target Block Projectile Hit Power & Duration Parity (TargetBlock.java:26-70)**:
+    - ACTIVATION_TICKS_ARROWS = 20 ticks (1 giây đối với tên, tên quang phổ, đinh ba).
+    - ACTIVATION_TICKS_OTHER = 8 ticks (0.4 giây đối với bóng tuyết, trứng, ngọc Ender, v.v.).
+    - Cường độ tín hiệu: 1 đến 15. Tring tâm (Bullseye, khoảng cách từ tâm mặt = 0.0) cho ra 15 tín hiệu; rìa ngoài (khoảng cách = 0.5) cho ra 1 tín hiệu.
+    - Bổ sung roken thông báo khối lân cận khi bị phá hủy.
+  - **Lightning Rod Directional Power & Lightning Strike Parity (LightningRodBlock.java:26-30, 68-75, 105-109)**:
+    - ACTIVATION_TICKS = 8 ticks (0.4 giây khi sét đánh trúng).
+    - Bán kính thu lôi: 128 blocks (RANGE = 128).
+    - Khi sét đánh trúng, khối chỉ phát tín hiệu mạnh (Strong power 15) theo hướng ngọn thanh thu lôi (acing), và phát tín hiệu yếu (Weak power 15) cho tất cả các hướng khác.
+    - Bổ sung roken ngắt điện và cập nhật khối lân cận khi thanh thu lôi bị phá hủy.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/observer.rs:
+    - Bổ sung roken ngắt xung điện và gọi update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/target_block.rs:
+    - Bổ sung roken gọi update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/lightning_rod.rs:
+    - Bổ sung roken ngắt tín hiệu sấm sét và gọi update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_observer_target_and_lightning_rod_parity_gap468.
+  - **Unit Tests**: Vượt qua 100% 	est_observer_target_and_lightning_rod_parity_gap468.

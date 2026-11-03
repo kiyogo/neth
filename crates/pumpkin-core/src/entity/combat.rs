@@ -32099,4 +32099,130 @@ mod tests {
         assert_eq!(RedstoneWireBlock::calculate_target_strength(5, 8), 7);
         assert_eq!(RedstoneWireBlock::calculate_target_strength(8, 5), 8);
     }
+
+    #[test]
+    fn test_observer_target_and_lightning_rod_parity_gap468() {
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use crate::block::blocks::redstone::observer::ObserverBlock;
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use pumpkin_data::block_properties::{Axis, Facing};
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::BlockDirection;
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Observer Constants & Directions (ObserverBlock.java:21-27, 45-54)
+        assert_eq!(ObserverBlock::PULSE_DURATION, 2);
+        assert_eq!(ObserverBlock::DETECTION_DELAY, 2);
+        assert_eq!(ObserverBlock::POWER_ON, 15);
+        assert_eq!(ObserverBlock::POWER_OFF, 0);
+        assert_eq!(ObserverBlock::DEFAULT_POWERED, false);
+        assert_eq!(ObserverBlock::DEFAULT_FACING, Facing::South);
+
+        assert_eq!(ObserverBlock::get_power_signal(true), 15);
+        assert_eq!(ObserverBlock::get_power_signal(false), 0);
+        assert_eq!(
+            ObserverBlock::get_observed_direction(BlockDirection::North),
+            BlockDirection::North
+        );
+        assert_eq!(
+            ObserverBlock::get_output_direction(BlockDirection::North),
+            BlockDirection::South
+        );
+        assert!(ObserverBlock::emits_power_in_direction(
+            BlockDirection::North,
+            BlockDirection::North
+        ));
+        assert!(!ObserverBlock::emits_power_in_direction(
+            BlockDirection::North,
+            BlockDirection::South
+        ));
+
+        // 2. Target Block Constants & Formula Parity (TargetBlock.java:26-28, 44-70)
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::DEFAULT_POWER, 0);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert!(!TargetBlock::emits_strong_power());
+
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::TRIDENT));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::SNOWBALL));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::EGG));
+
+        assert_eq!(
+            TargetBlock::get_activation_ticks(&EntityType::ARROW),
+            20
+        );
+        assert_eq!(
+            TargetBlock::get_activation_ticks(&EntityType::SNOWBALL),
+            8
+        );
+
+        // Bullseye hit (distance = 0.0) -> power 15
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+        // Outer boundary hit (distance = 0.5) -> power 1
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.5), 1);
+        // Mid-ring hit (distance = 0.25) -> power 8
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        // Out of bounds hit (clamped to min 1)
+        assert_eq!(TargetBlock::calculate_power_from_distance(1.0), 1);
+
+        // Power on axis calculation
+        assert_eq!(
+            TargetBlock::calculate_hit_power_on_axis(0.0, 0.0, 0.0, Axis::Y),
+            15
+        );
+        assert_eq!(
+            TargetBlock::calculate_hit_power_on_axis(0.5, 0.0, 0.0, Axis::Y),
+            1
+        );
+
+        assert_eq!(TargetBlock::calculate_comparator_signal(15), 15);
+        assert_eq!(TargetBlock::calculate_comparator_signal(0), 0);
+
+        // 3. Lightning Rod Constants & Power Direction Parity (LightningRodBlock.java:26-30, 68-75)
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::SPARK_CYCLE, 200);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+        assert_eq!(LightningRodBlock::DEFAULT_FACING, Facing::Up);
+        assert_eq!(LightningRodBlock::DEFAULT_POWERED, false);
+        assert_eq!(LightningRodBlock::DEFAULT_WATERLOGGED, false);
+
+        assert_eq!(LightningRodBlock::get_weak_power(true), 15);
+        assert_eq!(LightningRodBlock::get_weak_power(false), 0);
+
+        // Emits strong power ONLY in facing direction
+        assert_eq!(
+            LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Up),
+            15
+        );
+        assert_eq!(
+            LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Down),
+            0
+        );
+        assert_eq!(
+            LightningRodBlock::get_strong_power(false, Facing::Up, BlockDirection::Up),
+            0
+        );
+
+        let rod_pos = BlockPos::new(10, 64, 10);
+        assert_eq!(
+            LightningRodBlock::get_attached_position(&rod_pos, Facing::Up),
+            rod_pos.down()
+        );
+        assert_eq!(
+            LightningRodBlock::get_attached_position(&rod_pos, Facing::Down),
+            rod_pos.up()
+        );
+
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::East), 0);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::Up), 1);
+        assert_eq!(LightningRodBlock::get_axis_ordinal(Facing::South), 2);
+    }
 }
