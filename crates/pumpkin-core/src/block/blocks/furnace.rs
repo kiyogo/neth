@@ -72,6 +72,14 @@ impl ScreenHandlerFactory for FurnaceScreenFactory {
 #[pumpkin_block("minecraft:furnace")]
 pub struct FurnaceBlock;
 
+impl FurnaceBlock {
+    pub const COOK_TIME: u32 = 200;
+    pub const LIGHT_LEVEL_LIT: u8 = 13;
+    pub const LIGHT_LEVEL_UNLIT: u8 = 0;
+    pub const DEFAULT_LIT: bool = false;
+    pub const INVENTORY_SIZE: usize = 3;
+}
+
 impl BlockBehaviour for FurnaceBlock {
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
@@ -123,6 +131,7 @@ impl BlockBehaviour for FurnaceBlock {
         let furnace_block_entity = FurnaceBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(furnace_block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

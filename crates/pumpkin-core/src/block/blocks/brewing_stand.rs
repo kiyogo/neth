@@ -118,6 +118,7 @@ impl BlockBehaviour for BrewingStandBlock {
         let be = BrewingStandBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(be));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

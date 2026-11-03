@@ -13128,3 +13128,58 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_redstone_sensors_tripwire_target_and_bulb_parity_gap491.
   - **Unit Tests**: Vượt qua 100% 	est_redstone_sensors_tripwire_target_and_bulb_parity_gap491.
+
+### Gap 492: Containers & Cooking Workstations Lifecycle, Comparator & Block Updates Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/AbstractFurnaceBlock.java
+  - 
+et/minecraft/world/level/block/FurnaceBlock.java
+  - 
+et/minecraft/world/level/block/BlastFurnaceBlock.java
+  - 
+et/minecraft/world/level/block/SmokerBlock.java
+  - 
+et/minecraft/world/level/block/BrewingStandBlock.java
+  - 
+et/minecraft/world/level/block/BarrelBlock.java
+  - 
+et/minecraft/world/level/block/ChestBlock.java
+  - 
+et/minecraft/world/level/block/TrappedChestBlock.java
+  - 
+et/minecraft/world/level/block/EnderChestBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Containers Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed của FurnaceBlock, BlastFurnaceBlock, SmokerBlock, BrewingStandBlock, BarrelBlock, ChestBlock, TrappedChestBlock, và EnderChestBlock: đảm bảo các khối lân cận nhận được thông báo cập nhật vật lý khi khối container hoặc lò luyện được đặt xuống.
+  - **Furnace, Blast Furnace & Smoker Parity (AbstractFurnaceBlock.java)**:
+    - Thời gian nấu nướng tiêu chuẩn: Lò nung thông thường 200 ticks (COOK_TIME = 200), Lò cao & Lò hun khói 100 ticks (COOK_TIME = 100).
+    - Cường độ ánh sáng khi đốt cháy: 13 khi lit (LIGHT_LEVEL_LIT = 13), 0 khi unlit (LIGHT_LEVEL_UNLIT = 0). Trạng thái mặc định không sáng (DEFAULT_LIT = false).
+    - Kích thước kho chứa lò nung: 3 ô (INVENTORY_SIZE = 3: Input, Fuel, Output).
+  - **Brewing Stand Mechanics & Signals (BrewingStandBlock.java)**:
+    - Thời gian pha chế: 400 ticks (BREWING_TIME_TICKS = 400), số lần sử dụng nhiên liệu bột quỷ lửa: 20 (DEFAULT_FUEL_USES = 20).
+    - Kích thước kho chứa: 5 ô (INVENTORY_SIZE = 5: 3 chai thuốc, 1 nguyên liệu, 1 bột quỷ lửa).
+    - Mã sự kiện hoàn thành pha chế: 1035 (EVENT_BREW_COMPLETE = 1035).
+    - Tính toán bitmask hiển thị chai thuốc và công thức tín hiệu comparator chuẩn xác: loor(1.0 + (total / 5.0) * 14.0).
+  - **Barrel & Chests Parameters (BarrelBlock.java, TrappedChestBlock.java)**:
+    - Thùng gỗ chứa đồ (Barrel): kích thước 27 ô (INVENTORY_SIZE = 27), âm lượng/cao độ mở đóng rương chuẩn vanilla 0.5 vol, 1.0 pitch.
+    - Rương bẫy (Trapped Chest): tính toán tín hiệu redstone theo số lượng người xem min(15, open_count) từ 0 đến 15; chỉ phát nguồn mạnh (strong power) duy nhất xuống phía dưới theo hướng Direction.UP (truy vấn từ khối bên dưới nhìn lên).
+    - Rương Ender (Ender Chest): mã sự kiện hoạt ảnh mở nắp rương LID_ANIMATION_EVENT_TYPE = 1.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/furnace.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/blast_furnace.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/smoker.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/brewing_stand.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/barrel.rs:
+    - Bổ sung hằng số chuẩn và update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/chests.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/ender_chest.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_containers_and_cooking_workstations_parity_gap492.
+  - **Unit Tests**: Vượt qua 100% 	est_containers_and_cooking_workstations_parity_gap492.

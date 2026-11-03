@@ -106,6 +106,7 @@ fn placed_chest_impl<E: BlockEntity + 'static>(
     let chest = create_entity(*args.position);
     args.world.add_block_entity(Arc::new(chest));
     args.world.update_neighbour_for_output_signal(args.position, args.block);
+    args.world.update_neighbors(args.position, None);
 
     let chest_props = ChestLikeProperties::from_state_id(args.state_id);
     let connected_towards = match chest_props.r#type {

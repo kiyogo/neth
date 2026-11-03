@@ -127,6 +127,7 @@ impl BlockBehaviour for EnderChestBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = EnderChestBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

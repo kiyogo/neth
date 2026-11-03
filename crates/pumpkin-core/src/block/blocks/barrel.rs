@@ -49,6 +49,12 @@ impl ScreenHandlerFactory for BarrelScreenFactory {
 #[pumpkin_block("minecraft:barrel")]
 pub struct BarrelBlock;
 
+impl BarrelBlock {
+    pub const INVENTORY_SIZE: usize = 27;
+    pub const OPEN_CLOSE_VOLUME: f32 = 0.5;
+    pub const OPEN_CLOSE_PITCH: f32 = 1.0;
+}
+
 impl BlockBehaviour for BarrelBlock {
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = BarrelLikeProperties::default(args.block);
@@ -110,6 +116,7 @@ impl BlockBehaviour for BarrelBlock {
         let barrel_block_entity = BarrelBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(barrel_block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

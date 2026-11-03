@@ -71,6 +71,14 @@ impl ScreenHandlerFactory for SmokerScreenFactory {
 #[pumpkin_block("minecraft:smoker")]
 pub struct SmokerBlock;
 
+impl SmokerBlock {
+    pub const COOK_TIME: u32 = 100;
+    pub const LIGHT_LEVEL_LIT: u8 = 13;
+    pub const LIGHT_LEVEL_UNLIT: u8 = 0;
+    pub const DEFAULT_LIT: bool = false;
+    pub const INVENTORY_SIZE: usize = 3;
+}
+
 impl BlockBehaviour for SmokerBlock {
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if let Some(factory) = self.get_screen_handler_factory(GetScreenHandlerFactoryArgs {
@@ -122,6 +130,7 @@ impl BlockBehaviour for SmokerBlock {
         let smoker_block_entity = SmokerBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(smoker_block_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

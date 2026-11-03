@@ -34259,4 +34259,73 @@ mod tests {
         assert_eq!(LightningRodBlock::POWER_ON, 15);
         assert_eq!(LightningRodBlock::POWER_OFF, 0);
     }
+
+    #[test]
+    fn test_containers_and_cooking_workstations_parity_gap492() {
+        use crate::block::blocks::barrel::BarrelBlock;
+        use crate::block::blocks::blast_furnace::BlastFurnaceBlock;
+        use crate::block::blocks::brewing_stand::BrewingStandBlock;
+        use crate::block::blocks::chests::TrappedChestBlock;
+        use crate::block::blocks::ender_chest::EnderChestBlock;
+        use crate::block::blocks::furnace::FurnaceBlock;
+        use crate::block::blocks::smoker::SmokerBlock;
+        use pumpkin_data::BlockDirection;
+
+        // 1. Furnace Parity (FurnaceBlock.java, AbstractFurnaceBlock.java)
+        assert_eq!(FurnaceBlock::COOK_TIME, 200);
+        assert_eq!(FurnaceBlock::LIGHT_LEVEL_LIT, 13);
+        assert_eq!(FurnaceBlock::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(FurnaceBlock::DEFAULT_LIT, false);
+        assert_eq!(FurnaceBlock::INVENTORY_SIZE, 3);
+
+        // 2. Blast Furnace Parity (BlastFurnaceBlock.java)
+        assert_eq!(BlastFurnaceBlock::COOK_TIME, 100);
+        assert_eq!(BlastFurnaceBlock::LIGHT_LEVEL_LIT, 13);
+        assert_eq!(BlastFurnaceBlock::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(BlastFurnaceBlock::DEFAULT_LIT, false);
+        assert_eq!(BlastFurnaceBlock::INVENTORY_SIZE, 3);
+
+        // 3. Smoker Parity (SmokerBlock.java)
+        assert_eq!(SmokerBlock::COOK_TIME, 100);
+        assert_eq!(SmokerBlock::LIGHT_LEVEL_LIT, 13);
+        assert_eq!(SmokerBlock::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(SmokerBlock::DEFAULT_LIT, false);
+        assert_eq!(SmokerBlock::INVENTORY_SIZE, 3);
+
+        // 4. Brewing Stand Parity (BrewingStandBlock.java)
+        assert_eq!(BrewingStandBlock::BREWING_TIME_TICKS, 400);
+        assert_eq!(BrewingStandBlock::DEFAULT_FUEL_USES, 20);
+        assert_eq!(BrewingStandBlock::INVENTORY_SIZE, 5);
+        assert_eq!(BrewingStandBlock::EVENT_BREW_COMPLETE, 1035);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_0, 0);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_1, 1);
+        assert_eq!(BrewingStandBlock::SLOT_POTION_2, 2);
+        assert_eq!(BrewingStandBlock::SLOT_INGREDIENT, 3);
+        assert_eq!(BrewingStandBlock::SLOT_FUEL, 4);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, false, true), 5);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(true, true, true), 7);
+        assert_eq!(BrewingStandBlock::calculate_bottle_bitmask(false, false, false), 0);
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[0.0; 5]), 0);
+        assert_eq!(BrewingStandBlock::calculate_comparator_signal(&[1.0; 5]), 15);
+
+        // 5. Barrel Parity (BarrelBlock.java)
+        assert_eq!(BarrelBlock::INVENTORY_SIZE, 27);
+        assert_eq!(BarrelBlock::OPEN_CLOSE_VOLUME, 0.5);
+        assert_eq!(BarrelBlock::OPEN_CLOSE_PITCH, 1.0);
+
+        // 6. Trapped Chest Parity (TrappedChestBlock.java)
+        assert_eq!(TrappedChestBlock::MIN_POWER, 0);
+        assert_eq!(TrappedChestBlock::MAX_POWER, 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(0), 0);
+        assert_eq!(TrappedChestBlock::calculate_signal(1), 1);
+        assert_eq!(TrappedChestBlock::calculate_signal(10), 10);
+        assert_eq!(TrappedChestBlock::calculate_signal(15), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(25), 15);
+        assert_eq!(TrappedChestBlock::emits_strong_power(BlockDirection::Up), true);
+        assert_eq!(TrappedChestBlock::emits_strong_power(BlockDirection::Down), false);
+        assert_eq!(TrappedChestBlock::emits_strong_power(BlockDirection::North), false);
+
+        // 7. Ender Chest Parity (EnderChestBlock.java)
+        assert_eq!(EnderChestBlock::LID_ANIMATION_EVENT_TYPE, 1);
+    }
 }
