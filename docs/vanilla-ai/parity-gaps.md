@@ -13077,3 +13077,54 @@ et/minecraft/world/level/block/RedStoneOreBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_redstone_torch_lamp_and_ore_parity_gap490.
   - **Unit Tests**: Vượt qua 100% 	est_redstone_torch_lamp_and_ore_parity_gap490.
+
+
+### Gap 491: Redstone Sensors, Tripwire, Target & Copper Bulb Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/TripWireHookBlock.java
+  - 
+et/minecraft/world/level/block/TripWireBlock.java
+  - 
+et/minecraft/world/level/block/TargetBlock.java
+  - 
+et/minecraft/world/level/block/CopperBulbBlock.java
+  - 
+et/minecraft/world/level/block/DaylightDetectorBlock.java
+  - 
+et/minecraft/world/level/block/LightningRodBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Sensors & Wiring Lifecycle & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed của DaylightDetectorBlock, CopperBulbBlock, TripwireBlock, và TripwireHookBlock: đảm bảo khối lân cận nhận được thông báo cập nhật trạng thái khi các khối cảm biến và dây bẫy được đặt.
+  - **Tripwire & Tripwire Hook Mechanics (TripWireHookBlock.java:37-210 & TripWireBlock.java:28-38)**:
+    - Khoảng cách nối dây bẫy tối thiểu và tối đa: WIRE_DIST_MIN = 1, WIRE_DIST_MAX = 42 (chuỗi dây nối từ 1 đến 41 khối, móc bẫy đối diện cách tối đa 42 khối).
+    - Chu kỳ kiểm tra định kỳ: 10 ticks (RECHECK_PERIOD_TICKS = 10).
+    - Hằng số âm lượng / cao độ: Click On (0.4 vol, 0.6 pitch), Click Off (0.4 vol, 0.5 pitch), Attach (0.4 vol, 0.7 pitch), Detach (0.4 vol, 1.2 pitch).
+    - Khả năng phát nguồn đá đỏ: phát yếu 15 khi kích hoạt, phát mạnh 15 duy nhất vào khối tường gắn móc bẫy (direction == facing).
+  - **Target Block Power & Hit Distance Parity (TargetBlock.java:26-70)**:
+    - Thời gian xung kích hoạt: mũi tên cắm trúng là 20 ticks (ACTIVATION_TICKS_ARROWS = 20), các vật thể khác (pháo hoa, bóng tuyết, bình thuốc...) là 8 ticks (ACTIVATION_TICKS_OTHER = 8).
+    - Công thức tín hiệu đá đỏ theo khoảng cách tâm: max(1, ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0))):
+      - Trúng hồng tâm (distance = 0.0): 15.
+      - Trúng nửa đường (distance = 0.25): 8.
+      - Trúng viền rìa (distance >= 0.5): 1.
+    - Cự ly bắn hồng tâm để đạt thành tựu: tối thiểu 30.0 khối (BULLSEYE_MIN_DISTANCE = 30.0).
+  - **Copper Bulb Flip-Flop & Light Emission (CopperBulbBlock.java)**:
+    - Tín hiệu comparator: 15 khi bóng đèn sáng, 0 khi tắt (COMPARATOR_SIGNAL_LIT = 15, COMPARATOR_SIGNAL_UNLIT = 0).
+    - Mức độ phát sáng theo 4 cấp độ oxy hóa: Nguyên bản 15, Phơi sáng 12, Phong hóa 8, Oxy hóa 4; 0 khi tắt.
+    - Mạch lật T-flip-flop: sườn lên (rising edge) chuyển đổi trạng thái sáng/tắt và kích hoạt âm thanh; sườn xuống (falling edge) chỉ hạ cờ nguồn không đổi trạng thái sáng.
+  - **Lightning Rod Strike & Spark Parameters (LightningRodBlock.java)**:
+    - Thời lượng kích hoạt: 8 ticks (ACTIVATION_TICKS = 8).
+    - Bán kính hút sét: 128 khối (RANGE = 128), sự kiện tia sét: 3002 (EVENT_LIGHTNING_STRIKE = 3002), chu kỳ phát tia lửa: 200 ticks (SPARK_CYCLE = 200).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/copper_bulb.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/tripwire.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs:
+    - Bổ sung update_neighbors trong placed.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_redstone_sensors_tripwire_target_and_bulb_parity_gap491.
+  - **Unit Tests**: Vượt qua 100% 	est_redstone_sensors_tripwire_target_and_bulb_parity_gap491.

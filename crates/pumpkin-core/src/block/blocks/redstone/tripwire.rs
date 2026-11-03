@@ -91,6 +91,7 @@ impl BlockBehaviour for TripwireBlock {
         }
 
         Self::update(args.world, args.position, args.state_id);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

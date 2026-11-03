@@ -34182,4 +34182,81 @@ mod tests {
         assert_eq!(RedstoneOreBlock::LIGHT_LEVEL_UNLIT, 0);
         assert_eq!(RedstoneOreBlock::DEFAULT_LIT, false);
     }
+
+    #[test]
+    fn test_redstone_sensors_tripwire_target_and_bulb_parity_gap491() {
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use crate::block::blocks::redstone::tripwire::TripwireBlock;
+        use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
+        // 1. Tripwire Hook Parity (TripWireHookBlock.java:37-210)
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MIN, 1);
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MAX, 42);
+        assert_eq!(TripwireHookBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireHookBlock::POWER_ON, 15);
+        assert_eq!(TripwireHookBlock::POWER_OFF, 0);
+
+        assert_eq!(TripwireHookBlock::CLICK_ON_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::CLICK_ON_PITCH, 0.6);
+        assert_eq!(TripwireHookBlock::CLICK_OFF_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::CLICK_OFF_PITCH, 0.5);
+        assert_eq!(TripwireHookBlock::ATTACH_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::ATTACH_PITCH, 0.7);
+        assert_eq!(TripwireHookBlock::DETACH_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::DETACH_PITCH, 1.2);
+
+        assert_eq!(TripwireHookBlock::emits_weak_power(true), 15);
+        assert_eq!(TripwireHookBlock::emits_weak_power(false), 0);
+        assert_eq!(TripwireHookBlock::can_form_line(1), false);
+        assert_eq!(TripwireHookBlock::can_form_line(2), true);
+        assert_eq!(TripwireHookBlock::can_form_line(42), true);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(0), false);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(1), true);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(41), true);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(42), false);
+        assert_eq!(TripwireHookBlock::is_in_wire_range(43), false);
+
+        // 2. Tripwire Parity (TripWireBlock.java:28-38)
+        assert_eq!(TripwireBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireBlock::calculate_hook_power(true, true), true);
+        assert_eq!(TripwireBlock::calculate_hook_power(false, true), false);
+        assert_eq!(TripwireBlock::calculate_hook_power(true, false), false);
+
+        // 3. Target Block Parity (TargetBlock.java:26-70)
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.5), 1);
+        assert_eq!(TargetBlock::calculate_power_from_distance(1.0), 1);
+
+        // 4. Copper Bulb Parity (CopperBulbBlock.java)
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(true), 15);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(false), 0);
+
+        assert_eq!(CopperBulbBlock::get_light_level(pumpkin_data::BlockId::COPPER_BULB, true), 15);
+        assert_eq!(CopperBulbBlock::get_light_level(pumpkin_data::BlockId::EXPOSED_COPPER_BULB, true), 12);
+        assert_eq!(CopperBulbBlock::get_light_level(pumpkin_data::BlockId::WEATHERED_COPPER_BULB, true), 8);
+        assert_eq!(CopperBulbBlock::get_light_level(pumpkin_data::BlockId::OXIDIZED_COPPER_BULB, true), 4);
+        assert_eq!(CopperBulbBlock::get_light_level(pumpkin_data::BlockId::COPPER_BULB, false), 0);
+
+        // T-flip-flop rising / falling edge behavior
+        assert_eq!(CopperBulbBlock::evaluate_t_flip_flop(false, false, true), (true, true, Some(true)));
+        assert_eq!(CopperBulbBlock::evaluate_t_flip_flop(true, true, false), (true, false, None));
+
+        // 5. Lightning Rod Parity (LightningRodBlock.java)
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::SPARK_CYCLE, 200);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+    }
 }

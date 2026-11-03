@@ -82,6 +82,7 @@ impl BlockBehaviour for TripwireHookBlock {
             -1,
             None,
         );
+        args.world.update_neighbors(args.position, None);
     }
 
     fn player_placed(&self, args: PlayerPlacedArgs<'_>) {
