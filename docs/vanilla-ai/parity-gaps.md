@@ -12396,3 +12396,39 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_noteblock_jukebox_bell_and_tnt_parity_gap474`.
   - **Unit Tests**: Vượt qua 100% `test_noteblock_jukebox_bell_and_tnt_parity_gap474`.
+
+### Gap 475: Lectern, Chiseled Bookshelf & Trapped Chest Redstone, Comparator & Broken Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/LecternBlock.java`
+  - `net/minecraft/world/level/block/entity/LecternBlockEntity.java`
+  - `net/minecraft/world/level/block/ChiseledBookShelfBlock.java`
+  - `net/minecraft/world/level/block/entity/ChiseledBookShelfBlockEntity.java`
+  - `net/minecraft/world/level/block/TrappedChestBlock.java`
+  - `net/minecraft/world/level/block/entity/TrappedChestBlockEntity.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Lectern Page Pulse, Direct Power Downwards & Comparator (LecternBlock.java:44-56, 148-189)**:
+    - Hằng số xung đổi trang: `PAGE_CHANGE_IMPULSE_TICKS = 2` (1 redstone tick), mã sự kiện âm thanh lật trang `PAGE_CHANGE_EVENT = 1043`.
+    - Tín hiệu redstone yếu: phát 15 khi `powered = true` ở mọi hướng.
+    - Tín hiệu redstone mạnh: chỉ phát hướng xuống dưới (`Direction.UP`, giá trị 15 khi `powered = true`) vào khối bên dưới giá để sách.
+    - Khi bị phá hủy hoặc gỡ bỏ (`broken` / `on_state_replaced`): nếu đang phát xung (`powered = true`), tự động cập nhật khối bên dưới (`update_neighbors_below`), cập nhật tín hiệu so sánh (`update_neighbour_for_output_signal`), rơi sách với độ trễ nhặt `10` ticks và cập nhật khối lân cận.
+    - Công thức tín hiệu so sánh: `has_book ? (page_count <= 1 ? 15 : floor((page / (page_count - 1)) * 14) + 1) : 0`.
+  - **Chiseled Bookshelf Hit Slot, Comparator & Broken Drops (ChiseledBookShelfBlock.java:35-57, 180-191)**:
+    - Hằng số sức chứa: `MAX_BOOKS_IN_STORAGE = 6`, `ROWS = 2`, `COLUMNS = 3`.
+    - Phân chia tọa độ chạm `(hit_x, hit_y)` chuẩn xác cho 6 ô sách (3 ô hàng trên, 3 ô hàng dưới).
+    - Tín hiệu so sánh: vanilla không trả về tỷ lệ lấp đầy mà trả về `lastInteractedSlot + 1` (giá trị từ 1 đến 6), hoặc 0 nếu chưa tương tác.
+    - Khi bị phá hủy (`broken`): thả toàn bộ sách trong tủ ra thế giới, xóa block entity và gửi tín hiệu cập nhật so sánh và khối lân cận.
+  - **Trapped Chest Signal Strength & Directional Power (TrappedChestBlock.java:18-47)**:
+    - Tín hiệu redstone yếu: tỉ lệ thuận theo số người chơi đang mở rương kẹp (`Mth.clamp(viewer_count, 0, 15)`), phạm vi `0..=15`.
+    - Tín hiệu redstone mạnh: chỉ phát xuống khối bên dưới đáy rương (`direction == Direction.UP`).
+    - Nguồn tín hiệu redstone `isSignalSource = true`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Đồng bộ hằng số xung trang, hướng truyền tín hiệu mạnh và sự kiện phá hủy.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Đồng bộ tính toán ô tương tác, tín hiệu so sánh theo ô cuối cùng và cơ chế rơi vật phẩm khi gỡ bỏ.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/chests.rs`:
+    - Đồng bộ hằng số tín hiệu rương kẹp, công thức kẹp tín hiệu và hướng phát tín hiệu mạnh xuống dưới.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_lectern_chiseled_bookshelf_and_trapped_chest_parity_gap475`.
+  - **Unit Tests**: Vượt qua 100% `test_lectern_chiseled_bookshelf_and_trapped_chest_parity_gap475`.

@@ -32986,4 +32986,89 @@ mod tests {
         assert!(!TNTBlock::should_prime_on_placement(&Block::TNT, true));
         assert!(!TNTBlock::should_prime_on_placement(&Block::STONE, false));
     }
+
+    #[test]
+    fn test_lectern_chiseled_bookshelf_and_trapped_chest_parity_gap475() {
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::blocks::chiseled_bookshelf::ChiseledBookshelfBlock;
+        use crate::block::blocks::chests::TrappedChestBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::BlockDirection;
+
+        // 1. Lectern Parity (LecternBlock.java:44-56, 148-189, LecternBlockEntity.java:172-175)
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_TURN_PULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LecternBlock::POWER_ON, 15);
+        assert_eq!(LecternBlock::POWER_OFF, 0);
+        assert_eq!(LecternBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(LecternBlock::DEFAULT_POWERED, false);
+        assert_eq!(LecternBlock::DEFAULT_HAS_BOOK, false);
+        assert_eq!(LecternBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(LecternBlock::MAX_COMPARATOR_SIGNAL, 15);
+        assert_eq!(LecternBlock::BOOK_DROP_PICKUP_DELAY_TICKS, 10);
+
+        assert_eq!(LecternBlock::get_weak_power(true), 15);
+        assert_eq!(LecternBlock::get_weak_power(false), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::Up), 15);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::Down), 0);
+        assert_eq!(LecternBlock::get_strong_power(true, BlockDirection::North), 0);
+        assert_eq!(LecternBlock::get_strong_power(false, BlockDirection::Up), 0);
+
+        // Comparator output formula: has_book ? (page_count <= 1 ? 15 : floor((page / (page_count - 1)) * 14) + 1) : 0
+        assert_eq!(LecternBlock::calculate_comparator_output(false, 0, 10), 0);
+        assert_eq!(LecternBlock::calculate_comparator_output(true, 0, 0), 0);
+        assert_eq!(LecternBlock::calculate_comparator_output(true, 0, 1), 15);
+        assert_eq!(LecternBlock::calculate_comparator_output(true, 0, 15), 1);
+        assert_eq!(LecternBlock::calculate_comparator_output(true, 7, 15), 8);
+        assert_eq!(LecternBlock::calculate_comparator_output(true, 14, 15), 15);
+
+        // 2. Chiseled Bookshelf Parity (ChiseledBookShelfBlock.java:35-57, 180-191)
+        assert_eq!(ChiseledBookshelfBlock::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlock::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlock::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlock::COLUMNS, 3);
+        assert_eq!(ChiseledBookshelfBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ChiseledBookshelfBlock::MAX_COMPARATOR_OUTPUT, 6);
+        assert_eq!(ChiseledBookshelfBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(ChiseledBookshelfBlock::DEFAULT_SLOT_OCCUPIED, false);
+
+        // Comparator output: last_interacted_slot + 1 (1..=6), or 0 if none
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(-1), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(0), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(1), 2);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(2), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(3), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(4), 5);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(5), 6);
+        assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(6), 0);
+
+        // Hit slot calculation (2 rows x 3 columns)
+        // Hit top row (y > 0.5): row = 0 -> slots 0, 1, 2
+        // Hit bottom row (y <= 0.5): row = 1 -> slots 3, 4, 5
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.9), 0);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.9), 1);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.9), 2);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.1, 0.1), 3);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.5, 0.1), 4);
+        assert_eq!(ChiseledBookshelfBlock::calculate_hit_slot(0.9, 0.1), 5);
+
+        // 3. Trapped Chest Parity (TrappedChestBlock.java:18-47)
+        assert_eq!(TrappedChestBlock::MIN_POWER, 0);
+        assert_eq!(TrappedChestBlock::MAX_POWER, 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(0), 0);
+        assert_eq!(TrappedChestBlock::calculate_signal(1), 1);
+        assert_eq!(TrappedChestBlock::calculate_signal(7), 7);
+        assert_eq!(TrappedChestBlock::calculate_signal(15), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(20), 15);
+        assert_eq!(TrappedChestBlock::calculate_signal(100), 15);
+
+        // Strong power emitted ONLY downwards (block beneath queries with Up)
+        assert!(TrappedChestBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::Down));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::North));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::South));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::West));
+        assert!(!TrappedChestBlock::emits_strong_power(BlockDirection::East));
+    }
 }
