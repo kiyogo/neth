@@ -7,14 +7,26 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, BlockIsReplacing, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
-    NormalUseArgs, OnPlaceArgs,
+    BlockBehaviour, BlockIsReplacing, BrokenArgs, CanUpdateAtArgs, GetStateForNeighborUpdateArgs,
+    NormalUseArgs, OnPlaceArgs, PlacedArgs,
 };
 
 #[pumpkin_block("minecraft:light")]
 pub struct LightBlock;
 
+impl LightBlock {
+    pub const MIN_LIGHT_LEVEL: u8 = 0;
+    pub const MAX_LIGHT_LEVEL: u8 = 15;
+}
+
 impl BlockBehaviour for LightBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = if let BlockIsReplacing::Itself(state_id) = args.replacing {
             let mut p = LightLikeProperties::from_state_id(state_id);

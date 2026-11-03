@@ -34741,4 +34741,52 @@ mod tests {
         assert_eq!(EndPortalBlock::PORTAL_MAX_Y, 12.0 / 16.0);
         assert_eq!(EndPortalBlock::PORTAL_THICKNESS, 6.0 / 16.0);
     }
+
+    #[test]
+    fn test_special_transports_portals_and_environment_parity_gap500() {
+        use crate::block::blocks::end_gateway::EndGatewayBlock;
+        use crate::block::blocks::nether_portal::NetherPortalBlock;
+        use crate::block::blocks::flower_pots::FlowerPotBlock;
+        use crate::block::blocks::carpet::{CarpetBlock, MossCarpetBlock, PaleMossCarpetBlock};
+        use crate::block::blocks::cobweb::CobwebBlock;
+        use crate::block::blocks::structure_void::StructureVoidBlock;
+        use crate::block::blocks::light::LightBlock;
+
+        // 1. End Gateway Parity (TheEndGatewayBlockEntity.java)
+        assert_eq!(EndGatewayBlock::COOLDOWN_TICKS, 200);
+        assert_eq!(EndGatewayBlock::EVENT_COOLDOWN, 1);
+
+        // 2. Nether Portal Parity (NetherPortalBlock.java)
+        assert_eq!(NetherPortalBlock::MIN_WIDTH, 2);
+        assert_eq!(NetherPortalBlock::MAX_WIDTH, 21);
+        assert_eq!(NetherPortalBlock::MIN_HEIGHT, 3);
+        assert_eq!(NetherPortalBlock::MAX_HEIGHT, 21);
+        assert_eq!(NetherPortalBlock::DEFAULT_PORTAL_COOLDOWN, 300);
+        assert_eq!(NetherPortalBlock::DEFAULT_SURVIVAL_DELAY, 80);
+        assert_eq!(NetherPortalBlock::DEFAULT_CREATIVE_DELAY, 1);
+        assert_eq!(NetherPortalBlock::NON_PLAYER_DELAY, 0);
+
+        // 3. Flower Pot Parity (FlowerPotBlock.java)
+        assert_eq!(FlowerPotBlock::FLOWER_POT_HEIGHT, 6.0 / 16.0);
+
+        // 4. Carpet Parity (CarpetBlock.java, MossCarpetBlock.java, PaleMossCarpetBlock.java)
+        assert_eq!(CarpetBlock::HEIGHT, 1.0 / 16.0);
+        assert_eq!(MossCarpetBlock::HEIGHT, 1.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::BASE_HEIGHT, 1.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::LOW_SIDE_HEIGHT, 10.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::TALL_SIDE_HEIGHT, 1.0);
+        assert_eq!(PaleMossCarpetBlock::SIDE_THICKNESS, 1.0 / 16.0);
+        assert_eq!(PaleMossCarpetBlock::TOPPER_SIDE_CHANCE, 0.5);
+
+        // 5. Cobweb Parity (WebBlock.java)
+        assert_eq!(CobwebBlock::SLOW_MULTIPLIER_NORMAL, (0.25, 0.05, 0.25));
+        assert_eq!(CobwebBlock::SLOW_MULTIPLIER_WEAVING, (0.5, 0.25, 0.5));
+
+        // 6. Structure Void Parity (StructureVoidBlock.java)
+        assert_eq!(StructureVoidBlock::SHAPE_SIZE, 6.0 / 16.0);
+
+        // 7. Light Block Parity (LightBlock.java)
+        assert_eq!(LightBlock::MIN_LIGHT_LEVEL, 0);
+        assert_eq!(LightBlock::MAX_LIGHT_LEVEL, 15);
+    }
 }

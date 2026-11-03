@@ -1,6 +1,6 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, NormalUseArgs, PathComputationType, RandomTickArgs, UseWithItemArgs,
+    BlockBehaviour, BrokenArgs, NormalUseArgs, PathComputationType, PlacedArgs, RandomTickArgs, UseWithItemArgs,
 };
 use pumpkin_data::flower_pot_transformations::get_potted_item;
 use pumpkin_data::game_event::GameEvent;
@@ -27,6 +27,8 @@ pub fn get_plant_item_from_potted_block(block: &Block) -> Option<&'static Item> 
 pub struct FlowerPotBlock;
 
 impl FlowerPotBlock {
+    pub const FLOWER_POT_HEIGHT: f64 = 6.0 / 16.0;
+
     #[must_use]
     pub fn is_empty(block: &Block) -> bool {
         block == &Block::FLOWER_POT
@@ -39,6 +41,13 @@ impl FlowerPotBlock {
 }
 
 impl BlockBehaviour for FlowerPotBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         if args.block == &Block::FLOWER_POT {
             return BlockActionResult::Consume;

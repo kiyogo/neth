@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, BonemealArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BonemealArgs, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
     OnScheduledTickArgs, PlacedArgs,
 };
 use pumpkin_data::block_properties::is_air;
@@ -14,7 +14,18 @@ use rand::RngExt;
 #[pumpkin_block_from_tag("minecraft:wool_carpets")]
 pub struct CarpetBlock;
 
+impl CarpetBlock {
+    pub const HEIGHT: f64 = 1.0 / 16.0;
+}
+
 impl BlockBehaviour for CarpetBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         can_place_at(args.block_accessor, args.position)
     }
@@ -41,7 +52,18 @@ impl BlockBehaviour for CarpetBlock {
 #[pumpkin_block("minecraft:moss_carpet")]
 pub struct MossCarpetBlock;
 
+impl MossCarpetBlock {
+    pub const HEIGHT: f64 = 1.0 / 16.0;
+}
+
 impl BlockBehaviour for MossCarpetBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn can_place_at(&self, args: CanPlaceAtArgs<'_>) -> bool {
         can_place_at(args.block_accessor, args.position)
     }

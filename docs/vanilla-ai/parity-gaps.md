@@ -13472,3 +13472,34 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_eggs_spawners_and_portals_parity_gap499`.
   - **Unit Tests**: Vượt qua 100% `test_eggs_spawners_and_portals_parity_gap499`.
+
+
+### Gap 500: Special Transports, Portals, Pots & Environment Blocks Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/entity/TheEndGatewayBlockEntity.java`
+  - `net/minecraft/world/level/block/EndGatewayBlock.java`
+  - `net/minecraft/world/level/block/NetherPortalBlock.java`
+  - `net/minecraft/world/level/block/FlowerPotBlock.java`
+  - `net/minecraft/world/level/block/CarpetBlock.java`
+  - `net/minecraft/world/level/block/WebBlock.java`
+  - `net/minecraft/world/level/block/BarrierBlock.java`
+  - `net/minecraft/world/level/block/StructureVoidBlock.java`
+  - `net/minecraft/world/level/block/LightBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Special Transports & Environment Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `EndGatewayBlock`, `NetherPortalBlock`, `FlowerPotBlock`, `CarpetBlock`, `MossCarpetBlock`, `CobwebBlock`, `BarrierBlock`, `StructureVoidBlock`, và `LightBlock`. Đảm bảo các khối liền kề và khối phụ thuộc nhận được thông báo cập nhật ngay lập tức khi các khối dịch chuyển, chướng ngại vật hay khối điều khiển ánh sáng thay đổi.
+  - **End Gateway & Nether Portal Parity (TheEndGatewayBlockEntity.java, NetherPortalBlock.java)**:
+    - End Gateway: thời gian hồi chiêu `COOLDOWN_TICKS = 200`, mã sự kiện cooldown `EVENT_COOLDOWN = 1`.
+    - Nether Portal: kích thước hợp lệ chiều rộng 2..=21 (`MIN_WIDTH = 2`, `MAX_WIDTH = 21`), chiều cao 3..=21 (`MIN_HEIGHT = 3`, `MAX_HEIGHT = 21`), hồi chiêu 300 ticks, độ trễ sinh tồn 80 ticks, sáng tạo 1 tick, thực thể phi người chơi 0 tick.
+  - **Flower Pot & Carpets Parity (FlowerPotBlock.java, CarpetBlock.java)**:
+    - Chậu hoa: chiều cao chậu hoa `FLOWER_POT_HEIGHT = 6.0 / 16.0 = 0.375`.
+    - Thảm len & thảm rêu: độ dày chuẩn 1/16 = 0.0625 (`HEIGHT = 1.0 / 16.0`). Thảm rêu nhạt (Pale Moss Carpet): chiều cao cơ bản 1/16, vách thấp 10/16, vách cao 1.0, độ dày vách 1/16, xác suất sinh nhánh rìa 50%.
+  - **Cobweb, Structure Void & Light Parity (WebBlock.java, StructureVoidBlock.java, LightBlock.java)**:
+    - Mạng nhện: hệ số làm chậm thông thường (0.25, 0.05, 0.25), khi có hiệu ứng Weaving (0.5, 0.25, 0.5).
+    - Khối khoảng trống cấu trúc (Structure Void): kích thước khối 6/16 = 0.375 (`SHAPE_SIZE = 6.0 / 16.0`).
+    - Khối ánh sáng (Light Block): cấp độ sáng 0..=15 (`MIN_LIGHT_LEVEL = 0`, `MAX_LIGHT_LEVEL = 15`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_special_transports_portals_and_environment_parity_gap500`.
+  - **Unit Tests**: Vượt qua 100% `test_special_transports_portals_and_environment_parity_gap500`.

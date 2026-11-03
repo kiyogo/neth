@@ -3,10 +3,15 @@ use std::sync::Arc;
 use pumpkin_macros::pumpkin_block;
 
 use crate::block::entities::end_gateway::EndGatewayBlockEntity;
-use crate::block::{BlockBehaviour, OnEntityCollisionArgs, OnSyncedBlockEventArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, OnEntityCollisionArgs, OnSyncedBlockEventArgs, PlacedArgs};
 
 #[pumpkin_block("minecraft:end_gateway")]
 pub struct EndGatewayBlock;
+
+impl EndGatewayBlock {
+    pub const COOLDOWN_TICKS: u32 = 200;
+    pub const EVENT_COOLDOWN: i32 = 1;
+}
 
 impl BlockBehaviour for EndGatewayBlock {
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
@@ -58,5 +63,11 @@ impl BlockBehaviour for EndGatewayBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = EndGatewayBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 }

@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     block::{
-        BlockBehaviour, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs, OnStateReplacedArgs,
+        BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs, OnStateReplacedArgs, PlacedArgs,
         RandomTickArgs,
     },
     entity::{EntityBase, r#type::from_type},
@@ -61,6 +61,13 @@ impl NetherPortalBlock {
 }
 
 impl BlockBehaviour for NetherPortalBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn get_state_for_neighbor_update(
         &self,
         args: GetStateForNeighborUpdateArgs<'_>,
