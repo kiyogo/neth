@@ -12356,3 +12356,43 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_dispenser_dropper_hopper_and_crafter_parity_gap473`.
   - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_hopper_and_crafter_parity_gap473`.
+
+
+### Gap 474: Note Block, Jukebox, Bell & TNT Broken Destruction, Sound Pitch & Redstone Signal Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/NoteBlock.java`
+  - `net/minecraft/world/level/block/JukeboxBlock.java`
+  - `net/minecraft/world/level/block/BellBlock.java`
+  - `net/minecraft/world/level/block/TntBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Note Block Pitch, Particle Color & Broken Notification (NoteBlock.java:36-45, 136-138)**:
+    - Bổ sung `broken` cho `NoteBlock`: thông báo cập nhật khối lân cận (`update_neighbors`) khi bị phá hủy.
+    - Hằng số nốt nhạc: `NOTE_VOLUME = 3.0`, 25 nốt (`0` đến `24`), nốt mặc định `0`, nốt nhạc cụ mặc định `NoteblockInstrument::Harp`.
+    - Công thức cao độ âm thanh chuẩn: `pitch = 2^((note - 12) / 12)`.
+    - Phân định rõ nhạc cụ điều chỉnh được nốt (`is_tunable_instrument`) và đầu quái vật phát âm thanh đặc thù.
+  - **Jukebox Playback Duration, Redstone Signal & Pop-out Record (JukeboxBlock.java:30-45, 89-106)**:
+    - Thời gian đệm kết thúc bài nhạc `SONG_END_PADDING_TICKS = 20` ticks.
+    - Phát tín hiệu redstone mạnh `15` khi đang phát đĩa nhạc, `0` khi dừng.
+    - Bán kính Allay nghe thấy và nhảy múa `ALLAY_HEARING_RANGE = 10.0` blocks.
+    - Khi dỡ bỏ hoặc bị phá hủy (`broken`), tự động nhả đĩa ra ngoài thế giới (`drop_record`) với độ trễ nhặt `10` ticks và ngắt tín hiệu âm thanh/redstone.
+  - **Bell Proper Hit Angles, Sound & Broken Parity (BellBlock.java:44-62, 91-123)**:
+    - Bổ sung `broken` xóa block entity và cập nhật khối lân cận (`update_neighbors`).
+    - Quy tắc đánh chuông (`is_proper_hit`): điểm va chạm phải dưới ngưỡng chiều cao `0.8124`, không cho phép gõ từ mặt trên hoặc mặt đáy; chuông gắn sàn yêu cầu góc gõ cùng trục hướng quay, chuông gắn tường yêu cầu góc gõ vuông góc với trục hướng quay.
+    - Âm lượng `2.0`, cao độ `1.0`, kích hoạt rung chuông khi nhận xung redstone.
+  - **TNT Priming, Velocity & Explosion Fuse Parity (TntBlock.java:29-50, 71-97)**:
+    - Tự động kích hoạt (`prime`) khi nhận tín hiệu redstone, châm lửa bằng đá đánh lửa / cầu lửa, hoặc trúng tên đang cháy (`isOnFire`).
+    - Thời gian cháy mặc định `80` ticks, nổ lan khi bị kích nổ bởi vụ nổ khác với ngòi nổ ngắn ngẫu nhiên (`calculate_short_fuse`).
+    - Phá hủy ở chế độ sinh tồn khi thuộc tính `unstable = true` sẽ tự động kích nổ TNT.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/note.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/bell.rs`:
+    - Cập nhật `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/jukebox.rs`:
+    - Hoàn thiện parity cơ chế nhả đĩa và phát tín hiệu redstone.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/tnt.rs`:
+    - Đồng bộ cơ chế kích nổ và ngòi nổ.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_noteblock_jukebox_bell_and_tnt_parity_gap474`.
+  - **Unit Tests**: Vượt qua 100% `test_noteblock_jukebox_bell_and_tnt_parity_gap474`.

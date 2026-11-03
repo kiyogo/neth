@@ -32850,4 +32850,140 @@ mod tests {
         assert!(CrafterBlock::is_player_within_advancement_range(8.0, 8.0, 8.0));
         assert!(!CrafterBlock::is_player_within_advancement_range(9.0, 0.0, 0.0));
     }
+
+    #[test]
+    fn test_noteblock_jukebox_bell_and_tnt_parity_gap474() {
+        use crate::block::blocks::jukebox::JukeboxBlock;
+        use crate::block::blocks::note::NoteBlock;
+        use crate::block::blocks::redstone::bell::BellBlock;
+        use crate::block::blocks::tnt::TNTBlock;
+        use pumpkin_data::block_properties::{BellAttachment, HorizontalFacing, NoteblockInstrument};
+        use pumpkin_data::{Block, BlockDirection};
+
+        // 1. Note Block Parity (NoteBlock.java:36-45, 136-138)
+        assert_eq!(NoteBlock::NOTE_VOLUME, 3.0);
+        assert_eq!(NoteBlock::MIN_NOTE, 0);
+        assert_eq!(NoteBlock::MAX_NOTE, 24);
+        assert_eq!(NoteBlock::NUM_NOTES, 25);
+        assert_eq!(NoteBlock::DEFAULT_NOTE, 0);
+        assert_eq!(NoteBlock::DEFAULT_POWERED, false);
+        assert_eq!(NoteBlock::DEFAULT_INSTRUMENT, NoteblockInstrument::Harp);
+
+        // Pitch formula: 2^((note - 12) / 12)
+        assert!((NoteBlock::get_pitch_from_note(0) - 0.5).abs() < 1e-5);
+        assert!((NoteBlock::get_pitch_from_note(12) - 1.0).abs() < 1e-5);
+        assert!((NoteBlock::get_pitch_from_note(24) - 2.0).abs() < 1e-5);
+
+        assert_eq!(NoteBlock::cycle_note(0), 1);
+        assert_eq!(NoteBlock::cycle_note(23), 24);
+        assert_eq!(NoteBlock::cycle_note(24), 0);
+
+        assert_eq!(NoteBlock::get_particle_color_x(0), 0.0);
+        assert!((NoteBlock::get_particle_color_x(24) - 1.0).abs() < 1e-5);
+
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Harp));
+        assert!(NoteBlock::is_tunable_instrument(NoteblockInstrument::Bass));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Zombie));
+        assert!(!NoteBlock::is_tunable_instrument(NoteblockInstrument::Skeleton));
+
+        // 2. Jukebox Parity (JukeboxBlock.java:30-45, 89-106)
+        assert_eq!(JukeboxBlock::SONG_END_PADDING_TICKS, 20);
+        assert_eq!(JukeboxBlock::PLAY_EVENT_INTERVAL_TICKS, 20);
+        assert_eq!(JukeboxBlock::ALLAY_HEARING_RANGE, 10.0);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_PLAYING, 15);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_STOPPED, 0);
+        assert_eq!(JukeboxBlock::POP_OUT_HORIZONTAL_OFFSET_MAX, 0.7);
+        assert_eq!(JukeboxBlock::POP_OUT_Y_OFFSET, 1.01);
+        assert_eq!(JukeboxBlock::POP_OUT_PICKUP_DELAY_TICKS, 10);
+        assert_eq!(JukeboxBlock::EVENT_PLAY_RECORD, 1010);
+        assert_eq!(JukeboxBlock::EVENT_STOP_RECORD, 1011);
+
+        assert_eq!(JukeboxBlock::calculate_total_playback_ticks(100), 120);
+        assert!(!JukeboxBlock::has_song_finished(119, 100));
+        assert!(JukeboxBlock::has_song_finished(120, 100));
+
+        assert!(JukeboxBlock::can_allay_hear_jukebox(100.0)); // 10.0^2
+        assert!(!JukeboxBlock::can_allay_hear_jukebox(101.0));
+
+        // 3. Bell Parity (BellBlock.java:44-62, 91-123)
+        assert_eq!(BellBlock::EVENT_BELL_RING, 1);
+        assert_eq!(BellBlock::SOUND_VOLUME, 2.0);
+        assert_eq!(BellBlock::SOUND_PITCH, 1.0);
+        assert_eq!(BellBlock::MAX_HIT_HEIGHT, 0.8124);
+        assert_eq!(BellBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(BellBlock::DEFAULT_ATTACHMENT, BellAttachment::Floor);
+        assert_eq!(BellBlock::DEFAULT_POWERED, false);
+
+        // Floor attachment: hit face must be on the same axis as facing
+        assert!(BellBlock::is_proper_hit(
+            BellAttachment::Floor,
+            HorizontalFacing::North,
+            BlockDirection::North,
+            0.5
+        ));
+        assert!(BellBlock::is_proper_hit(
+            BellAttachment::Floor,
+            HorizontalFacing::North,
+            BlockDirection::South,
+            0.5
+        ));
+        assert!(!BellBlock::is_proper_hit(
+            BellAttachment::Floor,
+            HorizontalFacing::North,
+            BlockDirection::East,
+            0.5
+        ));
+
+        // Single wall / double wall: hit face must NOT be on the same axis as facing
+        assert!(BellBlock::is_proper_hit(
+            BellAttachment::SingleWall,
+            HorizontalFacing::North,
+            BlockDirection::East,
+            0.5
+        ));
+        assert!(!BellBlock::is_proper_hit(
+            BellAttachment::SingleWall,
+            HorizontalFacing::North,
+            BlockDirection::North,
+            0.5
+        ));
+
+        // Ceiling attachment: any horizontal face
+        assert!(BellBlock::is_proper_hit(
+            BellAttachment::Ceiling,
+            HorizontalFacing::North,
+            BlockDirection::East,
+            0.5
+        ));
+
+        // Top or bottom hit cannot ring bell
+        assert!(!BellBlock::is_proper_hit(
+            BellAttachment::Floor,
+            HorizontalFacing::North,
+            BlockDirection::Up,
+            0.5
+        ));
+
+        assert_eq!(
+            BellBlock::evaluate_neighbor_signal_change(false, true),
+            (true, true)
+        );
+        assert_eq!(
+            BellBlock::evaluate_neighbor_signal_change(true, false),
+            (false, false)
+        );
+
+        // 4. TNT Parity (TntBlock.java:29-50, 71-97)
+        assert_eq!(TNTBlock::DEFAULT_UNSTABLE, false);
+        assert_eq!(TNTBlock::DEFAULT_FUSE, 80);
+        assert_eq!(TNTBlock::DEFAULT_POWER, 4.0);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_Y, 0.2);
+        assert_eq!(TNTBlock::INITIAL_VELOCITY_HORIZONTAL_SCALE, 0.02);
+        assert_eq!(TNTBlock::GRAVITY, 0.04);
+        assert_eq!(TNTBlock::AIR_DRAG, 0.98);
+
+        assert!(TNTBlock::should_prime_on_placement(&Block::STONE, true));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::TNT, true));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::STONE, false));
+    }
 }

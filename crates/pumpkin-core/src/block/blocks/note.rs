@@ -1,6 +1,6 @@
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    AttackArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs,
+    AttackArgs, BrokenArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs,
     UseWithItemArgs,
 };
 use pumpkin_data::BlockStateId;
@@ -93,6 +93,10 @@ impl NoteBlock {
 }
 
 impl BlockBehaviour for NoteBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {
         let block_state = args.world.get_block_state(args.position);
         let mut note_props = NoteBlockLikeProperties::from_state_id(block_state.id);

@@ -166,8 +166,8 @@ impl BlockBehaviour for BellBlock {
         }
     }
     fn broken(&self, args: BrokenArgs<'_>) {
-        let world: &World = args.world;
-        world.remove_block_entity(args.position);
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {
