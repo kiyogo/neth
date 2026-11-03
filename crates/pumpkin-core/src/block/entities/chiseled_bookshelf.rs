@@ -165,6 +165,7 @@ impl ChiseledBookshelfBlockEntity {
                 BlockFlags::NOTIFY_ALL,
             );
             world.update_neighbors(&self.position, None);
+            world.update_neighbour_for_output_signal(&self.position, &Block::CHISELED_BOOKSHELF);
         } else {
             warn!(
                 "Invalid interacted slot: {} for chiseled bookshelf at position {:?}",

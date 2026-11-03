@@ -176,6 +176,7 @@ impl LecternBlock {
         props.powered = true;
         world.set_block_state(position, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
         Self::update_neighbors_below(world, position);
+        world.update_neighbour_for_output_signal(position, block);
         world.schedule_block_tick(
             block,
             *position,
@@ -197,6 +198,7 @@ impl LecternBlock {
         world.set_block_state(position, props.to_state_id(block), BlockFlags::NOTIFY_ALL);
         world.emit_game_event(GameEvent::BlockChange.name(), position.to_centered_f64());
         Self::update_neighbors_below(world, position);
+        world.update_neighbour_for_output_signal(position, block);
     }
 }
 
@@ -204,6 +206,7 @@ impl BlockBehaviour for LecternBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = LecternBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
@@ -309,7 +312,12 @@ impl BlockBehaviour for LecternBlock {
                 }
             }
         }
+        if props.powered {
+            Self::update_neighbors_below(args.world, args.position);
+        }
         args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
@@ -322,6 +330,7 @@ impl BlockBehaviour for LecternBlock {
             BlockFlags::NOTIFY_ALL,
         );
         Self::update_neighbors_below(args.world, args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
     }
 
     fn emits_redstone_power(&self, _args: EmitsRedstonePowerArgs<'_>) -> bool {

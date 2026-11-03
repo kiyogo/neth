@@ -16733,6 +16733,16 @@ pub const fn trapped_chest_emits_strong_power(direction: pumpkin_data::BlockDire
     crate::block::blocks::chests::TrappedChestBlock::emits_strong_power(direction)
 }
 
+/// Vanilla `LecternBlock.java:44-56, 177-189` & `LecternBlockEntity.java:172-175`:
+pub const LECTERN_PAGE_CHANGE_IMPULSE_TICKS: u32 = 2;
+pub const LECTERN_POWER_ON: u8 = 15;
+pub const LECTERN_POWER_OFF: u8 = 0;
+
+#[must_use]
+pub const fn lectern_emits_strong_power(direction: pumpkin_data::BlockDirection) -> bool {
+    crate::block::blocks::lectern::LecternBlock::emits_strong_power(direction)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31678,5 +31688,89 @@ mod tests {
         assert!(!trapped_chest_emits_strong_power(BlockDirection::South));
         assert!(!trapped_chest_emits_strong_power(BlockDirection::West));
         assert!(!trapped_chest_emits_strong_power(BlockDirection::East));
+    }
+
+    #[test]
+    fn test_lectern_chiseled_bookshelf_and_jukebox_parity_gap463() {
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::blocks::chiseled_bookshelf::ChiseledBookshelfBlock;
+        use crate::block::blocks::jukebox::JukeboxBlock;
+        use pumpkin_data::BlockDirection;
+
+        // 1. Lectern Constants & Redstone Signals (LecternBlock.java:44-56, 177-189, LecternBlockEntity.java:172-175)
+        assert_eq!(LECTERN_PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_TURN_PULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LECTERN_POWER_ON, 15);
+        assert_eq!(LECTERN_POWER_OFF, 0);
+
+        // Weak & strong redstone power:
+        assert_eq!(LecternBlock::get_weak_power(true), 15);
+        assert_eq!(LecternBlock::get_weak_power(false), 0);
+        // Only queries from below (direction Up) receive strong power
+        assert!(lectern_emits_strong_power(BlockDirection::Up));
+        assert!(LecternBlock::emits_strong_power(BlockDirection::Up));
+        assert!(!lectern_emits_strong_power(BlockDirection::Down));
+        assert!(!lectern_emits_strong_power(BlockDirection::North));
+        assert!(!lectern_emits_strong_power(BlockDirection::South));
+        assert!(!lectern_emits_strong_power(BlockDirection::West));
+        assert!(!lectern_emits_strong_power(BlockDirection::East));
+
+        // Lectern comparator output:
+        // No book: always 0
+        assert_eq!(calculate_lectern_comparator_signal(false, 0, 0), 0);
+        assert_eq!(calculate_lectern_comparator_signal(false, 3, 10), 0);
+        // 1 page total (page 0 of 1): pageProgress = 1.0 -> floor(1.0*14) + 1 = 15
+        assert_eq!(calculate_lectern_comparator_signal(true, 0, 1), 15);
+        // 5 pages total (pages 0..4):
+        // Page 0 of 5: 0/4 * 14 + 1 = 1
+        assert_eq!(calculate_lectern_comparator_signal(true, 0, 5), 1);
+        // Page 1 of 5: 1/4 * 14 + 1 = 3 + 1 = 4
+        assert_eq!(calculate_lectern_comparator_signal(true, 1, 5), 4);
+        // Page 2 of 5: 2/4 * 14 + 1 = 7 + 1 = 8
+        assert_eq!(calculate_lectern_comparator_signal(true, 2, 5), 8);
+        // Page 3 of 5: 3/4 * 14 + 1 = 10 + 1 = 11
+        assert_eq!(calculate_lectern_comparator_signal(true, 3, 5), 11);
+        // Page 4 of 5: 4/4 * 14 + 1 = 14 + 1 = 15
+        assert_eq!(calculate_lectern_comparator_signal(true, 4, 5), 15);
+
+        // 2. Chiseled Bookshelf Comparator Output Parity (ChiseledBookShelfBlock.java:180-191)
+        assert_eq!(CHISELED_BOOKSHELF_MAX_BOOKS, 6);
+        assert_eq!(ChiseledBookshelfBlock::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlock::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlock::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlock::COLUMNS, 3);
+
+        // No interaction or invalid slot: 0
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(-1), 0);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(6), 0);
+        assert_eq!(calculate_chiseled_bookshelf_comparator_output(-5), 0);
+
+        // Interacted slot index 0..5 -> output 1..6
+        for slot in 0..6 {
+            assert_eq!(calculate_chiseled_bookshelf_comparator_output(slot), (slot + 1) as u8);
+            assert_eq!(ChiseledBookshelfBlock::calculate_comparator_output(slot), (slot + 1) as u8);
+        }
+
+        // 3. Jukebox Redstone & Playback Constants (JukeboxBlock.java:29-45, 89-107)
+        assert_eq!(JukeboxBlock::SONG_END_PADDING_TICKS, 20);
+        assert_eq!(JukeboxBlock::PLAY_EVENT_INTERVAL_TICKS, 20);
+        assert_eq!(JukeboxBlock::ALLAY_HEARING_RANGE, 10.0);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_PLAYING, 15);
+        assert_eq!(JukeboxBlock::REDSTONE_SIGNAL_STOPPED, 0);
+        assert_eq!(JukeboxBlock::EVENT_PLAY_RECORD, 1010);
+        assert_eq!(JukeboxBlock::EVENT_STOP_RECORD, 1011);
+
+        // Total playback ticks includes 20 padding ticks
+        assert_eq!(JukeboxBlock::calculate_total_playback_ticks(100), 120);
+        assert!(!JukeboxBlock::has_song_finished(119, 100));
+        assert!(JukeboxBlock::has_song_finished(120, 100));
+        assert!(JukeboxBlock::has_song_finished(150, 100));
+
+        // Allay hearing distance check
+        assert!(JukeboxBlock::can_allay_hear_jukebox(0.0));
+        assert!(JukeboxBlock::can_allay_hear_jukebox(100.0)); // 10^2
+        assert!(!JukeboxBlock::can_allay_hear_jukebox(100.1));
     }
 }

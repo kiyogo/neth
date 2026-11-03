@@ -73,6 +73,7 @@ impl JukeboxBlock {
             BlockFlags::NOTIFY_ALL,
         );
         world.update_neighbors(position, None);
+        world.update_neighbour_for_output_signal(position, block);
     }
 
     /// Drops the record from the jukebox - matches vanilla's `JukeboxBlockEntity.dropRecord()`
@@ -119,6 +120,7 @@ impl BlockBehaviour for JukeboxBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let block_entity = JukeboxBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(block_entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
     }
 
     /// Called when player right-clicks with empty hand or non-disc item
@@ -218,6 +220,9 @@ impl BlockBehaviour for JukeboxBlock {
         Self::drop_record(args.position, args.world);
         // Stop the music and notify
         Self::stop_playing(args.block, args.position, args.world);
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     /// Vanilla: `JukeboxBlock.onStateReplaced()` -> `ItemScatterer.onStateReplaced()`

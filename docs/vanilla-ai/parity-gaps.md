@@ -11978,6 +11978,36 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_shulker_box_and_trapped_chest_parity_gap462`.
   - **Unit Tests**: Test kiểm tra AABB mở nắp hộp Shulker cho cả 6 hướng (UP, DOWN, NORTH, SOUTH, WEST, EAST), hằng số dung tích rương (27/54 ô), tín hiệu rương bẫy (0..15) và phát năng lượng mạnh xuống khối dưới đều vượt qua 100%.
 
+### Gap 463: Lectern, Chiseled Bookshelf & Jukebox Broken Destruction, Output Signal Updates & Redstone Pulse Parity
+- **Bục Đọc Sách Khi Phá Hủy, Phát Xung Redstone & Cập Nhật Tín Hiệu (Lectern Broken & Output Signal Parity)**:
+  - Vanilla `LecternBlock.java:141-174, 180-200` & `LecternBlockEntity.java:172-175`:
+    - Khi bục đọc sách (`LecternBlock`) bị phá hủy (`broken`), Vanilla giải phóng block entity, thả rơi sách ở vị trí phía trước nắp bục `(x + 0.5 + 0.25*dx, y + 1.0, z + 0.5 + 0.25*dz)`. Nếu bục đang phát xung redstone (`powered = true`), Vanilla lập tức gửi `updateBelow(pos)` xuống khối bên dưới. Đồng thời, do là khối phát tín hiệu so sánh (`hasAnalogOutputSignal = true`), phải gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Khi đặt (`placed`) hoặc khi sách được đặt/lấy ra (`set_has_book`) hoặc lật trang phát xung (`pulse`), bục lập tức gọi `update_neighbour_for_output_signal` để bộ so sánh nhận diện ngay tín hiệu `progress * 14 + 1` (1..15).
+- **Kệ Sách Đục Lỗ Khi Phá Hủy & Cập Nhật Bộ So Sánh (Chiseled Bookshelf Broken & Output Signal Parity)**:
+  - Vanilla `ChiseledBookShelfBlock.java:180-191` & `ChiseledBookShelfBlockEntity.java:35-50`:
+    - Khi kệ sách đục lỗ (`ChiseledBookshelfBlock`) bị phá hủy, bên cạnh việc thả rơi các cuốn sách, Vanilla gọi `Containers.updateNeighboursAfterDestroy(state, level, pos)` để xóa tín hiệu bộ so sánh và cập nhật các khối lân cận.
+    - Khi đặt (`placed`), khối gọi `update_neighbour_for_output_signal`.
+    - Khi người chơi cất hoặc lấy sách (`update_state`), ngoài `update_neighbors`, khối gọi `update_neighbour_for_output_signal` để bộ so sánh cập nhật tín hiệu tương ứng với vị trí ô sách thao tác gần nhất: `lastInteractedSlot + 1` (1..6).
+- **Máy Hát Khi Phá Hủy & Tín Hiệu Bộ So Sánh Đĩa Hát (Jukebox Broken & Output Signal Parity)**:
+  - Vanilla `JukeboxBlock.java:78-87, 89-107` & `JukeboxBlockEntity.java:54`:
+    - Khi máy hát (`JukeboxBlock`) bị phá hủy, Vanilla thả rơi đĩa nhạc, dừng bài hát, giải phóng block entity, đồng thời cập nhật bộ so sánh (`update_neighbour_for_output_signal`) và các khối lân cận (`update_neighbors`).
+    - Khi đặt (`placed`), khối gọi `update_neighbour_for_output_signal`.
+    - Khi đĩa nhạc được đưa vào hoặc lấy ra (`set_record_state`), khối cập nhật `update_neighbour_for_output_signal` để bộ so sánh nhận diện mức tín hiệu của đĩa nhạc đang phát (1..15) hoặc trở về 0 khi không có đĩa.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/lectern.rs`:
+    - Trong `broken`: bổ sung kiểm tra `powered` để cập nhật khối bên dưới, xóa block entity, gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+    - Trong `placed`, `pulse`, `set_has_book`, `on_scheduled_tick`: gọi `update_neighbour_for_output_signal`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/chiseled_bookshelf.rs`:
+    - Trong `placed` và `broken`: gọi `update_neighbour_for_output_signal` và `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`:
+    - Trong `update_state`: gọi `update_neighbour_for_output_signal`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/jukebox.rs`:
+    - Trong `placed`, `broken`, `set_record_state`: gọi `update_neighbour_for_output_signal`, giải phóng block entity khi bị phá hủy.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số và hàm: `LECTERN_PAGE_CHANGE_IMPULSE_TICKS`, `LECTERN_POWER_ON`, `LECTERN_POWER_OFF`, `lectern_emits_strong_power`.
+    - Bổ sung unit test `test_lectern_chiseled_bookshelf_and_jukebox_parity_gap463`.
+  - **Unit Tests**: Test kiểm tra hằng số xung bục đọc sách (2 ticks), truyền năng lượng mạnh xuống khối dưới, tín hiệu bộ so sánh trang sách (1..15), tín hiệu kệ sách đục lỗ (1..6) và các hằng số máy hát đều vượt qua 100%.
+
 
 
 
