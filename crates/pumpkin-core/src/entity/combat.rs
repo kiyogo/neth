@@ -10695,6 +10695,42 @@ pub fn calculate_jukebox_pop_out_position(pos: pumpkin_util::math::position::Blo
     )
 }
 
+/// Returns the item remaining after crafting, mirroring vanilla `Item.java:433-438`
+/// & `CraftingRecipe.java:26-36`.
+#[must_use]
+pub fn get_crafting_remainder(item_id: u16) -> Option<&'static pumpkin_data::item::Item> {
+    use pumpkin_data::item::Item;
+    if item_id == Item::WATER_BUCKET.id
+        || item_id == Item::LAVA_BUCKET.id
+        || item_id == Item::MILK_BUCKET.id
+        || item_id == Item::POWDER_SNOW_BUCKET.id
+        || item_id == Item::AXOLOTL_BUCKET.id
+        || item_id == Item::COD_BUCKET.id
+        || item_id == Item::SALMON_BUCKET.id
+        || item_id == Item::PUFFERFISH_BUCKET.id
+        || item_id == Item::TROPICAL_FISH_BUCKET.id
+        || item_id == Item::TADPOLE_BUCKET.id
+    {
+        Some(&Item::BUCKET)
+    } else if item_id == Item::HONEY_BOTTLE.id
+        || item_id == Item::POTION.id
+        || item_id == Item::SPLASH_POTION.id
+        || item_id == Item::LINGERING_POTION.id
+        || item_id == Item::OMINOUS_BOTTLE.id
+        || item_id == Item::DRAGON_BREATH.id
+    {
+        Some(&Item::GLASS_BOTTLE)
+    } else if item_id == Item::MUSHROOM_STEW.id
+        || item_id == Item::RABBIT_STEW.id
+        || item_id == Item::BEETROOT_SOUP.id
+        || item_id == Item::SUSPICIOUS_STEW.id
+    {
+        Some(&Item::BOWL)
+    } else {
+        None
+    }
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -30905,5 +30941,44 @@ mod tests {
         assert!(!is_jukebox_song_finished(2979, pigstep_base_ticks));
         assert!(is_jukebox_song_finished(2980, pigstep_base_ticks));
         assert!(is_jukebox_song_finished(3000, pigstep_base_ticks));
+    }
+
+    #[test]
+    fn test_crafter_dispensing_delay_smaller_stack_and_remainders_parity_gap454() {
+        use pumpkin_data::item::Item;
+
+        // 1. Crafting remainder mapping parity (Item.java:433-438 & CraftingRecipe.java:26-36)
+        assert_eq!(get_crafting_remainder(Item::WATER_BUCKET.id), Some(&Item::BUCKET));
+        assert_eq!(get_crafting_remainder(Item::LAVA_BUCKET.id), Some(&Item::BUCKET));
+        assert_eq!(get_crafting_remainder(Item::MILK_BUCKET.id), Some(&Item::BUCKET));
+        assert_eq!(get_crafting_remainder(Item::HONEY_BOTTLE.id), Some(&Item::GLASS_BOTTLE));
+        assert_eq!(get_crafting_remainder(Item::POTION.id), Some(&Item::GLASS_BOTTLE));
+        assert_eq!(get_crafting_remainder(Item::MUSHROOM_STEW.id), Some(&Item::BOWL));
+        assert_eq!(get_crafting_remainder(Item::DIAMOND.id), None);
+        assert_eq!(get_crafting_remainder(Item::IRON_INGOT.id), None);
+
+        // 2. smallerStackExist parity (CrafterBlockEntity.java:102-113)
+        // Scenario A: slot 0 has 5 items (id 1), slot 1 has 2 items (id 1) -> smaller stack exists in slot 1
+        let slots = [
+            Some((1, 5)),
+            Some((1, 2)),
+            None, None, None, None, None, None, None,
+        ];
+        let disabled = [false; 9];
+        assert!(crafter_smaller_stack_exist(&slots, &disabled, 0));
+
+        // Scenario B: all slots have 5 items of id 1, no empty slots -> false
+        let full_slots = [Some((1, 5)); 9];
+        assert!(!crafter_smaller_stack_exist(&full_slots, &disabled, 0));
+
+        // Scenario C: slot 0 has 5 items, slot 1 has 5 items, slot 2 is empty (None) -> true
+        let mut slots_with_empty = [Some((1, 5)); 9];
+        slots_with_empty[2] = None;
+        assert!(crafter_smaller_stack_exist(&slots_with_empty, &disabled, 0));
+
+        // Scenario D: empty slot 2 is disabled -> does NOT count as smaller stack
+        let mut disabled_slot_2 = [false; 9];
+        disabled_slot_2[2] = true;
+        assert!(!crafter_smaller_stack_exist(&slots_with_empty, &disabled_slot_2, 0));
     }
 }

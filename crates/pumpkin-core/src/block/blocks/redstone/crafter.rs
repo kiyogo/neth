@@ -230,21 +230,28 @@ impl CrafterBlock {
 
             for i in 0..CrafterBlockEntity::INVENTORY_SIZE {
                 let stack = crafter.get_stack(i);
-                if !stack.is_empty()
-                    && let Some(remainder) = stack.get_data_component::<UseRemainderImpl>()
-                    && let Some(remainder_item) = remainder
-                        .remainder
-                        .as_deref()
-                        .and_then(Item::from_registry_key)
-                {
-                    let mut remainder_stack = ItemStack::new(1, remainder_item);
-                    Self::dispense_item(
-                        world,
-                        pos,
-                        crafter,
-                        &mut remainder_stack,
-                        props.orientation,
-                    );
+                if !stack.is_empty() {
+                    let remainder_item = if let Some(remainder) = stack.get_data_component::<UseRemainderImpl>()
+                        && let Some(remainder_item) = remainder
+                            .remainder
+                            .as_deref()
+                            .and_then(Item::from_registry_key)
+                    {
+                        Some(remainder_item)
+                    } else {
+                        crate::entity::combat::get_crafting_remainder(stack.item.id)
+                    };
+
+                    if let Some(remainder_item) = remainder_item {
+                        let mut remainder_stack = ItemStack::new(1, remainder_item);
+                        Self::dispense_item(
+                            world,
+                            pos,
+                            crafter,
+                            &mut remainder_stack,
+                            props.orientation,
+                        );
+                    }
                 }
             }
 

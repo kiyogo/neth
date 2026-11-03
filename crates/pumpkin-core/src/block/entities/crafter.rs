@@ -314,7 +314,7 @@ impl CrafterBlockEntity {
                 let slot_stack = &items[i];
                 if slot_stack.is_empty()
                     || (slot_stack.item_count < base_size
-                        && slot_stack.item.id == base_item.item.id)
+                        && slot_stack.are_items_and_components_equal(base_item))
                 {
                     return true;
                 }
@@ -391,7 +391,7 @@ impl Inventory for CrafterBlockEntity {
         self.mark_dirty();
     }
 
-    fn is_valid_slot_for(&self, slot: usize, _stack: &ItemStack) -> bool {
+    fn is_valid_slot_for(&self, slot: usize, stack: &ItemStack) -> bool {
         if self.is_slot_disabled(slot) || slot >= Self::INVENTORY_SIZE {
             return false;
         }
@@ -405,6 +405,9 @@ impl Inventory for CrafterBlockEntity {
         }
         if slot_stack.is_empty() {
             return true;
+        }
+        if !slot_stack.are_items_and_components_equal(stack) {
+            return false;
         }
         !self.smaller_stack_exist(&items, slot_stack.item_count, slot_stack, slot)
     }

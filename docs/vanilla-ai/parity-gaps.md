@@ -11719,6 +11719,38 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Sửa `ZOMBIE_HORSE_MOVEMENT_SPEED` từ 0.2 sang 0.225 khớp 100% với vanilla `ZombieHorse.java:53-55` & `AbstractHorse.java:383`.
   - **Unit Tests**: `test_jukebox_pop_out_comparator_and_playback_parity_gap453` (295 tests passed).
 
+### Gap 454: Crafter Dispensing Delay, Smaller Stack Exist Distribution, Remaining Items & Comparator Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.CrafterBlock.java:42-240`, `net.minecraft.world.level.block.entity.CrafterBlockEntity.java:25-267`, `net.minecraft.world.item.crafting.CraftingRecipe.java:22-36`, `net.minecraft.world.item.Item.java:433-438`
+
+- **Độ Trễ Phun Đồ & Thời Gian Hiệu Ứng Chế Tạo (Crafter Delay & Crafting Animation Ticks)**:
+  - Vanilla `CrafterBlock.java:46-47, 74, 155`:
+    - `CRAFTING_TICK_DELAY = 4`: khi nhận tín hiệu redstone (`shouldTrigger && !isTriggered`), lên lịch tick chế tạo sau đúng 4 tick (`level.scheduleTick(pos, this, 4)`).
+    - `MAX_CRAFTING_TICKS = 6`: khi bắt đầu chế tạo, thiết lập `crafting_ticks_remaining = 6` và trạng thái khối `CRAFTING = true`. Trạng thái này duy trì trong 6 tick máy chủ cho hiệu ứng mặt chế tạo sáng lên rồi tắt về `false`.
+- **Thuật Toán Phân Phối Đều Vật Phẩm (Smaller Stack Exist Parity)**:
+  - Vanilla `CrafterBlockEntity.java:88-113`:
+    - Khi phễu (Hopper) hoặc máy thả (Dropper) đẩy vật phẩm vào Crafter, phương thức `canPlaceItem(slot, itemStack)` kiểm tra:
+      - Ô có bị khóa (`SLOT_DISABLED`) không.
+      - Nếu ô đã có vật phẩm: kiểm tra xem ở các ô sau (`baseSlot + 1 .. 9`) có tồn tại ô nào đang trống (`isEmpty()`) hoặc có cùng loại vật phẩm và components (`isSameItemSameComponents`) với số lượng nhỏ hơn (`getCount() < baseSize`) hay không (`smallerStackExist`).
+      - Nếu tồn tại ô trống hoặc ô có số lượng nhỏ hơn ở phía sau, từ chối nạp vào ô hiện tại (`return false`), buộc phễu phải chia đều vật phẩm sang các ô phía sau.
+    - Neth trước đây so sánh chỉ theo `item.id`, chưa so khớp đầy đủ cả components (`are_items_and_components_equal`). Đã chuẩn hóa việc so sánh linh hoạt và chính xác 100% với vanilla.
+- **Phun Lại Vật Phẩm Thừa Khi Chế Tạo (Crafting Remaining Items Ejection Parity)**:
+  - Vanilla `CrafterBlock.java:160-165` & `CraftingRecipe.java:26-36`:
+    - Sau khi phun sản phẩm chế tạo chính, Crafter tự động duyệt các ô nguyên liệu và phun toàn bộ vật phẩm thừa (`getRemainingItems`), ví dụ:
+      - Bánh ngọt (Cake) làm từ 3 xô sữa (`MILK_BUCKET`) -> phun ra 3 xô rỗng (`BUCKET`).
+      - Khối mật ong (Honey Block) làm từ 4 chai mật (`HONEY_BOTTLE`) -> phun ra 4 chai thủy tinh (`GLASS_BOTTLE`).
+      - Súp nấm / súp thỏ / súp củ dền -> phun ra bát rỗng (`BOWL`).
+    - Bổ sung hàm tiện ích `get_crafting_remainder` trong `combat.rs` và tích hợp vào chu trình phun đồ của Crafter trong `crafter.rs`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/entities/crafter.rs`:
+    - Cập nhật `smaller_stack_exist` và `is_valid_slot_for` sử dụng `are_items_and_components_equal`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Tích hợp `get_crafting_remainder` để phun đầy đủ các vật phẩm phụ còn lại sau khi chế tạo (xô rỗng, chai thủy tinh, bát rỗng...).
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hàm `get_crafting_remainder`.
+    - Bổ sung unit test `test_crafter_dispensing_delay_smaller_stack_and_remainders_parity_gap454`.
+  - **Unit Tests**: 11 crafter tests passed.
+
 
 
 
