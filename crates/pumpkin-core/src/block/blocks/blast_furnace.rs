@@ -124,6 +124,7 @@ impl BlockBehaviour for BlastFurnaceBlock {
         let blasting_furnace_block_entity = BlastingFurnaceBlockEntity::new(*args.position);
         args.world
             .add_block_entity(Arc::new(blasting_furnace_block_entity));
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
@@ -139,6 +140,9 @@ impl BlockBehaviour for BlastFurnaceBlock {
                 );
             }
         }
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_comparator_output(&self, args: GetComparatorOutputArgs<'_>) -> Option<u8> {

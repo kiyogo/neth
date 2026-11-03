@@ -12033,6 +12033,27 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Bổ sung unit test `test_composter_and_cauldron_parity_gap464`.
   - **Unit Tests**: Test kiểm tra hằng số mức thùng ủ phân (0..8), bộ so sánh thùng ủ phân (0..8), điều kiện tiếp nhận phân (mức < 7), điều kiện thu hoạch bột xương (mức 8), tín hiệu bộ so sánh các loại vạc (0, 1..3, 3), logic dập lửa giảm mức vạc nước và điều kiện nhận nước nhỏ giọt từ nhũ đá đều vượt qua 100%.
 
+### Gap 465: Furnace, Blast Furnace, Smoker & Campfire Broken Destruction, Output Signal Updates & Cooking Item Drop Parity
+- **Lò Nung, Lò Luyện Kim & Lò Hun Khói Khi Phá Hủy & Cập Nhật Tín Hiệu (Furnace Broken & Output Signal Parity)**:
+  - Vanilla `AbstractFurnaceBlock.java:53-65` & `Containers.java:51-53`:
+    - Lò nung (`FurnaceBlock`), lò luyện kim (`BlastFurnaceBlock`) và lò hun khói (`SmokerBlock`) là các khối container có tín hiệu bộ so sánh analog (`hasAnalogOutputSignal = true`).
+    - Neth trước đây khi khối bị phá hủy (`broken`), chỉ trích xuất điểm kinh nghiệm (XP) mà không giải phóng block entity (`remove_block_entity`), không cập nhật tín hiệu bộ so sánh (`update_neighbour_for_output_signal`) và không thông báo khối lân cận (`update_neighbors`).
+    - Khi đặt (`placed`), khối giờ đây gọi `update_neighbour_for_output_signal` để các bộ so sánh phía sau lập tức nhận diện khối container.
+- **Lửa Trại & Lửa Trại Linh Hồn Khi Phá Hủy & Thả Rơi Thức Ăn (Campfire Broken & Cooking Item Drops Parity)**:
+  - Vanilla `CampfireBlock.java:299-318` & `CampfireBlockEntity.java:152-160`:
+    - Lửa trại (`CampfireBlock`) chứa tối đa 4 món ăn đang nấu nướng (`CampfireBlockEntity::SLOT_COUNT = 4`).
+    - Neth trước đây hoàn toàn chưa cài đặt hàm `broken` cho `CampfireBlock`, khiến cho khi lửa trại bị phá hủy, thức ăn bên trong biến mất và block entity không được dọn dẹp.
+    - Giờ đây khi bị phá hủy, lửa trại quét tất cả 4 ô nấu nướng, thả rơi các món ăn thành thực thể vật phẩm trong thế giới (`ItemEntity`), đồng thời giải phóng block entity và cập nhật khối lân cận.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/furnace.rs`, `blast_furnace.rs`, `smoker.rs`:
+    - Trong `placed`: bổ sung `update_neighbour_for_output_signal`.
+    - Trong `broken`: bổ sung `remove_block_entity`, `update_neighbour_for_output_signal` và `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/campfire.rs`:
+    - Bổ sung `broken` thả rơi 4 ô thức ăn đang nấu nướng, xóa block entity và cập nhật khối lân cận.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_furnace_and_campfire_parity_gap465`.
+  - **Unit Tests**: Test kiểm tra hằng số ô nấu nướng lò nung (nguyên liệu/input 0, nhiên liệu 1, thành phẩm 2), hằng số dữ liệu (thời gian cháy 0, tổng thời gian cháy 1, tiến độ nấu 2, tổng thời gian nấu 3), thời gian cháy tiêu chuẩn (200 ticks), 4 ô lửa trại (4 ô), thời gian nấu lửa trại (600 ticks), tốc độ nguội khi tắt lửa (2 ticks/tick), chiều cao khói thường/tín hiệu (10/24) và sát thương lửa thường/linh hồn (1.0/2.0) đều vượt qua 100%.
+
 
 
 

@@ -18,11 +18,11 @@ use pumpkin_world::world::BlockFlags;
 use crate::block::entities::campfire::CampfireBlockEntity;
 use crate::{
     block::{
-        BlockBehaviour, BlockIsReplacing, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs,
-        OnPlaceArgs, OnProjectileHitArgs, PathComputationType, PlacedArgs, UseWithItemArgs,
-        registry::BlockActionResult,
+        BlockBehaviour, BlockIsReplacing, BrokenArgs, GetStateForNeighborUpdateArgs,
+        OnEntityCollisionArgs, OnPlaceArgs, OnProjectileHitArgs, PathComputationType, PlacedArgs,
+        UseWithItemArgs, registry::BlockActionResult,
     },
-    entity::EntityBase,
+    entity::{Entity, EntityBase, item::ItemEntity},
 };
 use std::sync::Arc;
 
@@ -73,6 +73,27 @@ impl BlockBehaviour for CampfireBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         let entity = CampfireBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(entity));
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        if let Some(block_entity) = args.world.get_block_entity(args.position)
+            && let Some(campfire) = block_entity.as_any().downcast_ref::<CampfireBlockEntity>()
+        {
+            for slot in 0..CampfireBlockEntity::SLOT_COUNT {
+                let mut stored = campfire.items[slot]
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                if !stored.is_empty() {
+                    let stack = std::mem::replace(&mut *stored, pumpkin_data::item_stack::ItemStack::EMPTY.clone());
+                    let spawn_pos = args.position.to_centered_f64();
+                    let entity = Entity::new(args.world.clone(), spawn_pos, &pumpkin_data::entity::EntityType::ITEM);
+                    let item_entity = Arc::new(ItemEntity::new(entity, stack));
+                    args.world.spawn_entity(item_entity);
+                }
+            }
+        }
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {

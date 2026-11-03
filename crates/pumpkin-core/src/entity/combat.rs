@@ -31853,4 +31853,49 @@ mod tests {
         assert!(!CauldronBlock::can_receive_drip(BlockId::LAVA_CAULDRON, true, 0));
         assert!(!CauldronBlock::can_receive_drip(BlockId::POWDER_SNOW_CAULDRON, true, 1));
     }
+
+    #[test]
+    fn test_furnace_and_campfire_parity_gap465() {
+        use crate::block::blocks::campfire::CampfireBlock;
+        use crate::block::entities::campfire::CampfireBlockEntity;
+        use crate::block::entities::furnace_like_block_entity::{
+            FURNACE_SLOT_INPUT, FURNACE_SLOT_FUEL, FURNACE_SLOT_RESULT,
+            FURNACE_DATA_LIT_TIME, FURNACE_DATA_LIT_DURATION, FURNACE_DATA_COOKING_PROGRESS,
+            FURNACE_DATA_COOKING_TOTAL_TIME, FURNACE_NUM_DATA_VALUES, FURNACE_BURN_TIME_STANDARD,
+        };
+
+        // 1. Furnace Constants & Slots (AbstractFurnaceBlockEntity.java:31-38)
+        assert_eq!(FURNACE_SLOT_INPUT, 0);
+        assert_eq!(FURNACE_SLOT_FUEL, 1);
+        assert_eq!(FURNACE_SLOT_RESULT, 2);
+        assert_eq!(FURNACE_DATA_LIT_TIME, 0);
+        assert_eq!(FURNACE_DATA_LIT_DURATION, 1);
+        assert_eq!(FURNACE_DATA_COOKING_PROGRESS, 2);
+        assert_eq!(FURNACE_DATA_COOKING_TOTAL_TIME, 3);
+        assert_eq!(FURNACE_NUM_DATA_VALUES, 4);
+        assert_eq!(FURNACE_BURN_TIME_STANDARD, 200);
+
+        // 2. Campfire Constants & Cooking Slots (CampfireBlock.java:56-62, CampfireBlockEntity.java:32-35)
+        assert_eq!(CampfireBlockEntity::SLOT_COUNT, 4);
+        assert_eq!(CampfireBlock::DEFAULT_COOKING_TIME, 600);
+        assert_eq!(CampfireBlock::BURN_COOL_SPEED, 2);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_REGULAR, 10);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_SIGNAL, 24);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_REGULAR, 1.0);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_SOUL, 2.0);
+        assert_eq!(CampfireBlock::EVENT_EXTINGUISH_FIRE, 1009);
+
+        // Smoke height logic
+        assert_eq!(CampfireBlock::get_smoke_height(false), 10);
+        assert_eq!(CampfireBlock::get_smoke_height(true), 24);
+
+        // Fire damage logic
+        assert_eq!(CampfireBlock::get_fire_damage(false), 1.0);
+        assert_eq!(CampfireBlock::get_fire_damage(true), 2.0);
+
+        // Cool-down progress speed (2 per tick, clamped to >= 0)
+        assert_eq!(CampfireBlock::cool_progress(10), 8);
+        assert_eq!(CampfireBlock::cool_progress(1), 0);
+        assert_eq!(CampfireBlock::cool_progress(0), 0);
+    }
 }
