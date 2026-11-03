@@ -1,13 +1,15 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, OnEntityCollisionArgs, OnEntityStepArgs, RandomTickArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, OnEntityCollisionArgs, OnEntityStepArgs, RandomTickArgs,
     UseWithItemArgs, registry::BlockActionResult,
 };
+use crate::entity::experience_orb::ExperienceOrbEntity;
 use crate::world::World;
 use pumpkin_data::block_properties::RedstoneOreLikeProperties;
 use pumpkin_data::data_component_impl::EquipmentSlot;
 use pumpkin_data::{Block, BlockId, BlockState};
 use pumpkin_protocol::codec::var_int::VarInt;
 use pumpkin_protocol::java::server::play::SUseItemOn;
+use pumpkin_util::GameMode;
 use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
@@ -21,6 +23,22 @@ impl BlockMetadata for RedstoneOreBlock {
 }
 
 impl RedstoneOreBlock {
+    pub const MIN_XP: u32 = 1;
+    pub const MAX_XP: u32 = 5;
+    pub const LIGHT_LEVEL_LIT: u8 = 9;
+    pub const LIGHT_LEVEL_UNLIT: u8 = 0;
+    pub const DEFAULT_LIT: bool = false;
+    pub const PARTICLE_OFFSET: f64 = 0.5625;
+
+    #[must_use]
+    pub const fn get_light_emission(lit: bool) -> u8 {
+        if lit {
+            Self::LIGHT_LEVEL_LIT
+        } else {
+            Self::LIGHT_LEVEL_UNLIT
+        }
+    }
+
     fn light_up(world: &Arc<World>, pos: &BlockPos, block: &Block, state: &BlockState) {
         let mut props = RedstoneOreLikeProperties::from_state_id(state.id);
         if !props.lit {
@@ -31,6 +49,14 @@ impl RedstoneOreBlock {
 }
 
 impl BlockBehaviour for RedstoneOreBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        if args.player.gamemode.load() != GameMode::Creative {
+            let xp_count = rand::random_range(Self::MIN_XP..=Self::MAX_XP);
+            ExperienceOrbEntity::spawn(args.world, args.position.to_centered_f64(), xp_count);
+        }
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         let state = args.world.get_block_state(args.position);
         Self::light_up(args.world, args.position, args.block, state);

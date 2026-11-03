@@ -1,4 +1,4 @@
-use crate::block::{BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs};
+use crate::block::{BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, PlacedArgs};
 use pumpkin_data::BlockStateId;
 use pumpkin_macros::pumpkin_block;
 use pumpkin_world::{tick::TickPriority, world::BlockFlags};
@@ -50,6 +50,10 @@ impl RedstoneLamp {
 }
 
 impl BlockBehaviour for RedstoneLamp {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }

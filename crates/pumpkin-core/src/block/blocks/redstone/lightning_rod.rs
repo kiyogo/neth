@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::block::{
     BlockBehaviour, BrokenArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs, OnPlaceArgs, OnScheduledTickArgs,
-    OnStateReplacedArgs, PathComputationType,
+    OnStateReplacedArgs, PathComputationType, PlacedArgs,
 };
 use crate::world::World;
 use pumpkin_data::block_properties::LightningRodLikeProperties;
@@ -132,6 +132,10 @@ impl BlockBehaviour for LightningRodBlock {
             );
             Self::update_neighbors(args.world, args.position, props);
         }
+    }
+
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

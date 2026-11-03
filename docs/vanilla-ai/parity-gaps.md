@@ -12570,3 +12570,41 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_daylight_detector_brewing_stand_spawner_vault_beacon_and_conduit_parity_gap478`.
   - **Unit Tests**: Vượt qua 100% `test_daylight_detector_brewing_stand_spawner_vault_beacon_and_conduit_parity_gap478`.
+
+
+### Gap 479: Redstone Block, Redstone Ore, Redstone Lamp, Target & Lightning Rod Lifecycle & Redstone Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/PoweredBlock.java`
+  - `net/minecraft/world/level/block/RedStoneOreBlock.java`
+  - `net/minecraft/world/level/block/RedstoneLampBlock.java`
+  - `net/minecraft/world/level/block/TargetBlock.java`
+  - `net/minecraft/world/level/block/LightningRodBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Redstone Block Placed & Broken Lifecycle (PoweredBlock.java:15-23)**:
+    - Bổ sung `placed` và `broken` cho `RedstoneBlock` gọi `update_neighbors`, giải quyết triệt để lỗi các khối kề cận (dây redstone, piston, đèn redstone...) không nhận được thông báo cập nhật tín hiệu khi đặt hoặc phá vỡ khối redstone.
+    - Hằng số chuẩn vanilla: `POWER = 15`, `emits_weak_power = 15`, `emits_strong_power = 0` (khối redstone chỉ phát tín hiệu yếu 15, không phát tín hiệu mạnh qua khối).
+  - **Redstone Ore Broken XP Drop & Light Parity (RedStoneOreBlock.java:23-112)**:
+    - Bổ sung `broken` cho `RedstoneOreBlock`: thả rơi từ 1 đến 5 điểm kinh nghiệm (`1..=5` XP) ở chế độ sinh tồn khi khai thác và cập nhật khối lân cận khi bị phá hủy.
+    - Hằng số: `MIN_XP = 1`, `MAX_XP = 5`, mức phát sáng khi sáng `LIGHT_LEVEL_LIT = 9`, `LIGHT_LEVEL_UNLIT = 0`, độ lệch hạt `PARTICLE_OFFSET = 0.5625`.
+  - **Redstone Lamp Placed Lifecycle Parity (RedstoneLampBlock.java:20-56)**:
+    - Bổ sung `placed` gọi `update_neighbors` cho đèn redstone khi được đặt vào thế giới.
+    - Hằng số: độ trễ tắt 4 ticks (`DELAY = 4`), mức phát sáng `LIGHT_LEVEL_LIT = 15`.
+  - **Target Block & Lightning Rod Lifecycle Parity (TargetBlock.java:21-72, LightningRodBlock.java:24-95)**:
+    - Bổ sung `placed` cho `TargetBlock` và `LightningRodBlock` đồng bộ cập nhật lân cận.
+    - Hằng số Target: kích hoạt khi trúng cung tên 20 ticks (`ACTIVATION_TICKS_ARROWS = 20`), vật thể khác 8 ticks (`ACTIVATION_TICKS_OTHER = 8`), cự ly trúng hồng tâm kích hoạt tiến trình 30 blocks (`BULLSEYE_MIN_DISTANCE = 30.0`).
+    - Hằng số Lightning Rod: kích hoạt xung sét 8 ticks (`ACTIVATION_TICKS = 8`), cự ly dẫn sét 128 blocks (`RANGE = 128`), chu kỳ tia lửa `SPARK_CYCLE = 200`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/redstone_block.rs`:
+    - Bổ sung `placed`, `broken` và các hằng số công suất redstone.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/redstone_ore.rs`:
+    - Bổ sung `broken` rơi XP 1..=5 và thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/redstone_lamp.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/lightning_rod.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_redstone_block_ore_lamp_target_and_lightning_rod_parity_gap479`.
+  - **Unit Tests**: Vượt qua 100% `test_redstone_block_ore_lamp_target_and_lightning_rod_parity_gap479`.

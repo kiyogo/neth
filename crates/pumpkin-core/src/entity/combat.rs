@@ -33283,4 +33283,68 @@ mod tests {
         assert_eq!(VaultBlock::EVENT_VAULT_DEACTIVATE, 3016);
         assert_eq!(VaultBlock::EVENT_VAULT_EJECT_ITEM, 3017);
     }
+
+    #[test]
+    fn test_redstone_block_ore_lamp_target_and_lightning_rod_parity_gap479() {
+        use crate::block::blocks::redstone::redstone_block::RedstoneBlock;
+        use crate::block::blocks::redstone::redstone_ore::RedstoneOreBlock;
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+
+        // 1. Redstone Block Parity (PoweredBlock.java:15-23)
+        assert_eq!(RedstoneBlock::POWER, 15);
+        assert_eq!(RedstoneBlock::emits_weak_power(), 15);
+        assert_eq!(RedstoneBlock::emits_strong_power(), 0);
+
+        // 2. Redstone Ore Parity (RedStoneOreBlock.java:23-112)
+        assert_eq!(RedstoneOreBlock::MIN_XP, 1);
+        assert_eq!(RedstoneOreBlock::MAX_XP, 5);
+        assert_eq!(RedstoneOreBlock::LIGHT_LEVEL_LIT, 9);
+        assert_eq!(RedstoneOreBlock::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneOreBlock::DEFAULT_LIT, false);
+        assert_eq!(RedstoneOreBlock::PARTICLE_OFFSET, 0.5625);
+        assert_eq!(RedstoneOreBlock::get_light_emission(true), 9);
+        assert_eq!(RedstoneOreBlock::get_light_emission(false), 0);
+
+        // 3. Redstone Lamp Parity (RedstoneLampBlock.java:20-56)
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::DEACTIVATION_DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneLamp::DEFAULT_LIT, false);
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+        assert_eq!(RedstoneLamp::calculate_lit_on_placement(true), true);
+        assert_eq!(RedstoneLamp::calculate_lit_on_placement(false), false);
+        assert_eq!(RedstoneLamp::should_turn_on(false, true), true);
+        assert_eq!(RedstoneLamp::should_turn_on(true, true), false);
+        assert_eq!(RedstoneLamp::should_schedule_turn_off(true, false), true);
+        assert_eq!(RedstoneLamp::should_schedule_turn_off(false, false), false);
+
+        // 4. Target Block Parity (TargetBlock.java:21-72)
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::DEFAULT_POWER, 0);
+        assert_eq!(TargetBlock::BULLSEYE_MIN_DISTANCE, 30.0);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.5), 1);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        assert_eq!(TargetBlock::calculate_comparator_signal(15), 15);
+        assert_eq!(TargetBlock::emits_strong_power(), false);
+
+        // 5. Lightning Rod Parity (LightningRodBlock.java:24-95)
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::SPARK_CYCLE, 200);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+        assert_eq!(LightningRodBlock::DEFAULT_POWERED, false);
+        assert_eq!(LightningRodBlock::DEFAULT_WATERLOGGED, false);
+        assert_eq!(LightningRodBlock::get_weak_power(true), 15);
+        assert_eq!(LightningRodBlock::get_weak_power(false), 0);
+    }
 }
