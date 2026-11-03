@@ -33733,4 +33733,73 @@ mod tests {
         let half_counts = [32u8; 5];
         assert_eq!(HopperBlock::calculate_container_comparator_output(&half_counts, &stack_64), 8);
     }
+    #[test]
+    fn test_crafter_block_and_entity_parity_gap485() {
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use pumpkin_data::block_properties::Orientation;
+
+        // 1. Crafter Block Constants (CrafterBlock.java:42-54, 217)
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert_eq!(CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER, 17.0);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::DEFAULT_ORIENTATION, Orientation::NorthUp);
+        assert_eq!(CrafterBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(CrafterBlock::DEFAULT_CRAFTING, false);
+
+        // Sound & Particle Event IDs (CrafterBlock.java:148, 221-222)
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+
+        // 2. Redstone Trigger Logic (CrafterBlock.java:70-80)
+        // Rising edge triggers craft
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, false), (true, true));
+        // High steady state does not re-trigger
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, true), (true, false));
+        // Falling edge un-triggers
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, true), (false, false));
+        // Low steady state remains un-triggered
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, false), (false, false));
+
+        // 3. Crafter Comparator Signal Calculation (CrafterBlockEntity.java:251-262)
+        // Signal equals count of non-empty OR disabled slots, capped at 9
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 0), 0);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(3, 2), 5);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(9, 0), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(0, 9), 9);
+        assert_eq!(CrafterBlock::calculate_comparator_signal(5, 5), 9);
+
+        // Signal from slot states
+        let mut occupied = [false; 9];
+        let mut disabled = [false; 9];
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 0);
+        occupied[0] = true;
+        occupied[4] = true;
+        disabled[8] = true;
+        assert_eq!(CrafterBlock::calculate_signal_from_states(&occupied, &disabled), 3);
+
+        // 4. Disabled Slots Bitmask (CrafterBlockEntity.java:128-134, 212-221)
+        let mask = CrafterBlock::disabled_slots_to_bitmask(&disabled);
+        assert_eq!(mask, 1 << 8);
+        let restored = CrafterBlock::bitmask_to_disabled_slots(mask);
+        assert_eq!(restored, disabled);
+
+        // 5. Advancement Trigger Diameter (CrafterBlock.java:217)
+        // Half diameter = 8.5 blocks
+        assert_eq!(CrafterBlock::is_player_within_advancement_range(8.5, 8.5, 8.5), true);
+        assert_eq!(CrafterBlock::is_player_within_advancement_range(8.6, 0.0, 0.0), false);
+        assert_eq!(CrafterBlock::is_player_within_advancement_range(0.0, 8.6, 0.0), false);
+        assert_eq!(CrafterBlock::is_player_within_advancement_range(0.0, 0.0, 8.6), false);
+
+        // 6. Slot Valid for Craft
+        assert_eq!(CrafterBlock::is_slot_valid_for_craft(true, false), true);
+        assert_eq!(CrafterBlock::is_slot_valid_for_craft(false, false), false);
+        assert_eq!(CrafterBlock::is_slot_valid_for_craft(true, true), false);
+        assert_eq!(CrafterBlock::is_slot_valid_for_craft(false, true), false);
+    }
 }

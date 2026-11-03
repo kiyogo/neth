@@ -12817,3 +12817,29 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_dispenser_dropper_and_hopper_parity_gap484`.
   - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_and_hopper_parity_gap484`.
+
+
+### Gap 485: Crafter Block, Crafter Block Entity & Autocrafting Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/CrafterBlock.java`
+  - `net/minecraft/world/level/block/entity/CrafterBlockEntity.java`
+  - `net/minecraft/world/inventory/CrafterMenu.java`
+  - `net/minecraft/world/inventory/CrafterSlot.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Crafter Block Lifecycle & Orientation Parity (CrafterBlock.java:42-140)**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` của `CrafterBlock`: cập nhật các khối lân cận khi máy chế tạo tự động (crafter) được đặt vào thế giới.
+    - Hằng số kích hoạt và thời gian chế tạo chuẩn: độ trễ tick khi kích hoạt `CRAFTING_TICK_DELAY = 4`, số tick hoạt ảnh chế tạo còn lại `MAX_CRAFTING_TICKS = 6`.
+    - Hướng đặt và thuộc tính mặc định: `DEFAULT_ORIENTATION = Orientation::NorthUp`, `DEFAULT_TRIGGERED = false`, `DEFAULT_CRAFTING = false`.
+    - Đường kính phát hiện tiến trình thành tựu (advancement trigger): hình hộp lập phương cạnh 17 khối (`CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, nửa bán kính 8.5 khối).
+    - Sự kiện âm thanh và hạt: thành công `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, thất bại `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, khói trắng định hướng `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010`.
+  - **Crafter Comparator Signal & Disabled Slots Parity (CrafterBlockEntity.java:100-267)**:
+    - Cơ chế tín hiệu Comparator độc thù của Crafter: tín hiệu đầu ra bằng **tổng số ô có vật phẩm cộng với số ô bị vô hiệu hóa (disabled slots)**, dao động từ 0 đến 9 (`MIN_COMPARATOR_OUTPUT = 0`, `MAX_COMPARATOR_OUTPUT = 9`). Không phụ thuộc vào số lượng xếp chồng (stack size) của vật phẩm.
+    - Logic kích hoạt Redstone: phát hiện cạnh lên (rising edge) chuyển trạng thái `triggered = true` và lên lịch tick sau 4 ticks; cạnh xuống (falling edge) chuyển `triggered = false` và không lên lịch lại; trạng thái ổn định không kích hoạt lặp lại.
+    - Chuyển đổi mặt nạ bit ô vô hiệu hóa (disabled slots bitmask) lưu trữ chuẩn NBT `disabled_slots` kiểu mảng số nguyên (`int[]`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`:
+    - Bổ sung `update_neighbors` trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_crafter_block_and_entity_parity_gap485`.
+  - **Unit Tests**: Vượt qua 100% `test_crafter_block_and_entity_parity_gap485`.
