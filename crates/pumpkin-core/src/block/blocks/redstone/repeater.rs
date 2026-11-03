@@ -11,7 +11,7 @@ use pumpkin_world::world::BlockFlags;
 
 use crate::{
     block::{
-        BlockBehaviour, CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
+        BlockBehaviour, BrokenArgs, CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
         GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs,
         OnScheduledTickArgs, OnStateReplacedArgs, PlacedArgs, PlayerPlacedArgs,
         registry::BlockActionResult,
@@ -171,6 +171,17 @@ impl BlockBehaviour for RepeaterBlock {
 
     fn player_placed(&self, args: PlayerPlacedArgs<'_>) {
         RedstoneGateBlock::player_placed(self, args);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        RedstoneGateBlock::update_target(
+            self,
+            args.world,
+            *args.position,
+            args.state.id,
+            args.block,
+        );
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {

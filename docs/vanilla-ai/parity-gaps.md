@@ -12107,3 +12107,39 @@ et/minecraft/world/level/block/piston/PistonStructureResolver.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test test_piston_and_piston_head_parity_gap466.
   - **Unit Tests**: Vượt qua 100% test_piston_and_piston_head_parity_gap466.
+
+### Gap 467: Redstone Wire, Repeater & Comparator Broken Target Updates, Delay & Lock State Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/RepeaterBlock.java
+  - 
+et/minecraft/world/level/block/ComparatorBlock.java
+  - 
+et/minecraft/world/level/block/DiodeBlock.java
+  - 
+et/minecraft/world/level/block/RedStoneWireBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Repeater & Comparator Broken Target Notification (DiodeBlock.java:170-182)**:
+    - Vanilla DiodeBlock quy định: khi một khối Diode (Repeater hoặc Comparator) bị phá hủy hoặc dỡ bỏ (ffectNeighborsAfterRemoval), khối bắt buộc phải thông báo cập nhật cho khối mục tiêu phía trước nó (updateNeighborsInFront(level, pos, state)).
+    - Neth trước đây hoàn toàn chưa cài đặt hàm roken cho RepeaterBlock, và trong ComparatorBlock::broken chỉ xóa block entity mà không gọi RedstoneGateBlock::update_target hay update_neighbors.
+    - Do đó, khi người chơi phá hủy một bộ lặp hoặc bộ so sánh đang cấp điện, khối dây đá đỏ hoặc cửa phía trước không hề nhận được tín hiệu ngắt điện tức thì.
+    - Giờ đây, cả RepeaterBlock và ComparatorBlock đều gọi update_target và update_neighbors khi bị phá hủy (roken), đảm bảo tín hiệu phía trước lập tức bị ngắt đồng bộ 100% với vanilla.
+  - **Repeater Lock & Delay Parity (RepeaterBlock.java:24-55)**:
+    - MIN_DELAY = 1, MAX_DELAY = 4, DELAY_MULTIPLIER = 2 (tương đương 2, 4, 6, 8 game ticks tức 1, 2, 3, 4 redstone ticks).
+    - Bộ lặp chỉ có thể bị khóa (isLocked) bởi các khối Diode khác (REPEATER hoặc COMPARATOR) chiếu thẳng vào hai bên cạnh sườn vuông góc (sideInputDiodesOnly = true), dây đá đỏ thông thường hay khối đá đỏ cạnh sườn không thể khóa bộ lặp.
+  - **Comparator Mode & Analog Output Parity (ComparatorBlock.java:30-87)**:
+    - Độ trễ phản hồi: 2 ticks (1 redstone tick).
+    - Chế độ so sánh (Compare): nếu tín hiệu vào từ sau >= tín hiệu hai bên sườn, giữ nguyên tín hiệu vào; nếu tín hiệu sườn > tín hiệu sau, ngắt điện (0).
+    - Chế độ trừ (Subtract): tín hiệu ra = max(0, tín_hiệu_sau - tín_hiệu_sườn).
+    - Tính toán tín hiệu khung vật phẩm (ItemFrame): 0 nếu rỗng, 1 + (rotation % 8) nếu có vật phẩm (từ 1 đến 8).
+  - **Redstone Wire Dropoff Parity (RedStoneWireBlock.java)**:
+    - Cường độ tín hiệu: 0 đến 15, suy hao 1 đơn vị mỗi khối (saturating_sub(1)).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/repeater.rs:
+    - Bổ sung roken gọi RedstoneGateBlock::update_target và world.update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/comparator.rs:
+    - Cập nhật roken xóa block entity đồng thời gọi update_target và update_neighbors.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_repeater_comparator_and_redstone_wire_parity_gap467.
+  - **Unit Tests**: Vượt qua 100% 	est_repeater_comparator_and_redstone_wire_parity_gap467.

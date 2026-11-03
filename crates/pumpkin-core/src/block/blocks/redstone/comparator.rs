@@ -99,6 +99,14 @@ impl BlockBehaviour for ComparatorBlock {
 
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.remove_block_entity(args.position);
+        RedstoneGateBlock::update_target(
+            self,
+            args.world,
+            *args.position,
+            args.state.id,
+            args.block,
+        );
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

@@ -32003,4 +32003,100 @@ mod tests {
         head_props.r#type = PistonType::Sticky;
         assert!(PistonHeadBlock::is_fitting_base(head_props, &Block::STICKY_PISTON, sticky_state_id));
     }
+
+    #[test]
+    fn test_repeater_comparator_and_redstone_wire_parity_gap467() {
+        use crate::block::blocks::redstone::comparator::ComparatorBlock;
+        use crate::block::blocks::redstone::redstone_wire::RedstoneWireBlock;
+        use crate::block::blocks::redstone::repeater::RepeaterBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::{BlockDirection, BlockId};
+
+        // 1. Repeater Constants & Delay Calculation (RepeaterBlock.java:24-30, 47-49)
+        assert_eq!(RepeaterBlock::MIN_DELAY, 1);
+        assert_eq!(RepeaterBlock::MAX_DELAY, 4);
+        assert_eq!(RepeaterBlock::DELAY_MULTIPLIER, 2);
+        assert_eq!(RepeaterBlock::DEFAULT_DELAY, 1);
+        assert_eq!(RepeaterBlock::DEFAULT_LOCKED, false);
+        assert_eq!(RepeaterBlock::DEFAULT_POWERED, false);
+        assert_eq!(RepeaterBlock::POWER_ON, 15);
+        assert_eq!(RepeaterBlock::POWER_OFF, 0);
+
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(1), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(2), 4);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(3), 6);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(0), 2); // clamped
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(5), 8); // clamped
+
+        assert_eq!(RepeaterBlock::cycle_delay(1), 2);
+        assert_eq!(RepeaterBlock::cycle_delay(2), 3);
+        assert_eq!(RepeaterBlock::cycle_delay(3), 4);
+        assert_eq!(RepeaterBlock::cycle_delay(4), 1);
+
+        assert_eq!(RepeaterBlock::get_output_power(true), 15);
+        assert_eq!(RepeaterBlock::get_output_power(false), 0);
+
+        // Repeater lock source verification (sideInputDiodesOnly = true)
+        assert!(RepeaterBlock::can_be_locked_by_block(BlockId::REPEATER));
+        assert!(RepeaterBlock::can_be_locked_by_block(BlockId::COMPARATOR));
+        assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::STONE));
+        assert!(!RepeaterBlock::can_be_locked_by_block(BlockId::REDSTONE_WIRE));
+
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::East));
+        assert!(RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::West));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::South));
+        assert!(!RepeaterBlock::is_locking_side(HorizontalFacing::North, BlockDirection::North));
+
+        // 2. Comparator Constants & Mode Calculations (ComparatorBlock.java:30-41, 64-87)
+        assert_eq!(ComparatorBlock::DELAY, 2);
+        assert_eq!(ComparatorBlock::CLICK_VOLUME, 0.3);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_COMPARE, 0.5);
+        assert_eq!(ComparatorBlock::CLICK_PITCH_SUBTRACT, 0.55);
+        assert_eq!(ComparatorBlock::POWER_ON, 15);
+        assert_eq!(ComparatorBlock::POWER_OFF, 0);
+        assert_eq!(ComparatorBlock::DEFAULT_OUTPUT, 0);
+
+        // Compare mode signal calculation
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 10, false), 15);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 15, false), 15);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 15, false), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 0, false), 0);
+
+        // Subtract mode signal calculation
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 10, true), 5);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(15, 15, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(10, 15, true), 0);
+        assert_eq!(ComparatorBlock::calculate_comparator_signal(0, 5, true), 0);
+
+        // Turn on condition parity
+        assert!(ComparatorBlock::should_turn_on(15, 10, false));
+        assert!(ComparatorBlock::should_turn_on(15, 15, false));
+        assert!(!ComparatorBlock::should_turn_on(10, 15, false));
+        assert!(!ComparatorBlock::should_turn_on(0, 0, false));
+
+        assert!(ComparatorBlock::should_turn_on(15, 10, true));
+        assert!(!ComparatorBlock::should_turn_on(15, 15, true));
+        assert!(!ComparatorBlock::should_turn_on(10, 15, true));
+        assert!(!ComparatorBlock::should_turn_on(0, 5, true));
+
+        // Item frame output parity (1 + rotation % 8, or 0 if empty)
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(false, 0), 0);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 0), 1);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 1), 2);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 7), 8);
+        assert_eq!(ComparatorBlock::calculate_item_frame_output(true, 8), 1);
+
+        // 3. Redstone Wire Constants & Dropoff Calculation (RedStoneWireBlock.java)
+        assert_eq!(RedstoneWireBlock::MIN_POWER, 0);
+        assert_eq!(RedstoneWireBlock::MAX_POWER, 15);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(1), 0);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(0), 0);
+
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(15, 10), 15);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(0, 15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(5, 8), 7);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(8, 5), 8);
+    }
 }
