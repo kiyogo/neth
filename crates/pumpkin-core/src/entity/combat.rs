@@ -33411,4 +33411,57 @@ mod tests {
         assert_eq!(TripwireHookBlock::is_in_wire_range(42), false);
         assert_eq!(TripwireHookBlock::is_in_wire_range(0), false);
     }
+
+    #[test]
+    fn test_doors_trapdoors_and_fence_gates_parity_gap481() {
+        use pumpkin_data::Block;
+        use pumpkin_data::block_properties::{Half, HorizontalFacing};
+        use crate::block::blocks::doors::DoorBlock;
+        use crate::block::blocks::trapdoor::TrapDoorBlock;
+        use crate::block::blocks::fence_gates::FenceGateBlock;
+
+        // 1. Door Parity (DoorBlock.java:43-150)
+        assert_eq!(DoorBlock::SOUND_VOLUME, 1.0);
+        assert_eq!(DoorBlock::SOUND_PITCH_BASE, 0.9);
+        assert_eq!(DoorBlock::SOUND_PITCH_RANGE, 0.1);
+        assert_eq!(DoorBlock::DEFAULT_OPEN, false);
+        assert_eq!(DoorBlock::DEFAULT_POWERED, false);
+        assert!((DoorBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((DoorBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(DoorBlock::can_open_by_hand(&Block::IRON_DOOR), false);
+        assert_eq!(DoorBlock::can_open_by_hand(&Block::OAK_DOOR), true);
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(false, false, true), (true, true, true));
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(true, true, false), (false, false, true));
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(true, false, false), (false, true, false));
+
+        // 2. Trapdoor Parity (TrapDoorBlock.java:39-160)
+        assert_eq!(TrapDoorBlock::SOUND_VOLUME, 1.0);
+        assert_eq!(TrapDoorBlock::SOUND_PITCH_BASE, 0.9);
+        assert_eq!(TrapDoorBlock::SOUND_PITCH_RANGE, 0.1);
+        assert_eq!(TrapDoorBlock::DEFAULT_OPEN, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_POWERED, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_WATERLOGGED, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_HALF, Half::Bottom);
+        assert!((TrapDoorBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((TrapDoorBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(TrapDoorBlock::can_open_by_hand(&Block::IRON_TRAPDOOR), false);
+        assert_eq!(TrapDoorBlock::can_open_by_hand(&Block::OAK_TRAPDOOR), true);
+        assert_eq!(TrapDoorBlock::evaluate_redstone_interaction(false, false, true), (true, true, true));
+        assert_eq!(TrapDoorBlock::evaluate_redstone_interaction(true, true, false), (false, false, true));
+
+        // 3. Fence Gate Parity (FenceGateBlock.java:41-150)
+        assert_eq!(FenceGateBlock::SOUND_VOLUME, 1.0);
+        assert_eq!(FenceGateBlock::SOUND_PITCH_BASE, 0.9);
+        assert_eq!(FenceGateBlock::SOUND_PITCH_RANGE, 0.1);
+        assert_eq!(FenceGateBlock::DEFAULT_OPEN, false);
+        assert_eq!(FenceGateBlock::DEFAULT_POWERED, false);
+        assert_eq!(FenceGateBlock::DEFAULT_IN_WALL, false);
+        assert!((FenceGateBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((FenceGateBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(FenceGateBlock::evaluate_redstone_interaction(false, false, true), (true, true, true));
+        assert_eq!(FenceGateBlock::evaluate_redstone_interaction(true, true, false), (false, false, true));
+        assert_eq!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::East), true);
+        assert_eq!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::West), true);
+        assert_eq!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::South), false);
+    }
 }

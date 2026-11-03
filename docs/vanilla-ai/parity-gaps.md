@@ -12648,3 +12648,35 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_buttons_lever_pressure_plates_and_tripwire_hook_parity_gap480`.
   - **Unit Tests**: Vượt qua 100% `test_buttons_lever_pressure_plates_and_tripwire_hook_parity_gap480`.
+
+
+### Gap 481: Doors, Trapdoors & Fence Gates Lifecycle & Redstone Signal Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DoorBlock.java`
+  - `net/minecraft/world/level/block/TrapDoorBlock.java`
+  - `net/minecraft/world/level/block/FenceGateBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Door Placed Lifecycle & Neighbor Notification Parity (DoorBlock.java:43-150)**:
+    - Trong `placed` của `DoorBlock`: bổ sung gọi `update_neighbors` cho cả khối cửa dưới (`args.position`) và khối cửa trên (`args.position.up()`), đồng bộ tương tác redstone và cập nhật trạng thái với các khối kề cạnh ngay khi đặt cửa.
+    - Hằng số: âm lượng 1.0 (`SOUND_VOLUME = 1.0`), cao độ cơ sở 0.9 (`SOUND_PITCH_BASE = 0.9`), dải biến thiên cao độ 0.1 (`SOUND_PITCH_RANGE = 0.1`), trạng thái mặc định đóng và không cấp điện (`DEFAULT_OPEN = false`, `DEFAULT_POWERED = false`).
+    - Quy tắc mở tay: Cửa sắt (`IRON_DOOR`) không thể mở bằng tay (`can_open_by_hand = false`), chỉ mở được qua nguồn tín hiệu redstone.
+    - Đánh giá tương tác tín hiệu redstone: khi `powered != has_signal`, cửa chuyển trạng thái mở/đóng đồng bộ với tín hiệu và phát âm thanh tương ứng.
+  - **Trapdoor Placed Lifecycle & Orientation Parity (TrapDoorBlock.java:39-160)**:
+    - Bổ sung `placed` cho `TrapDoorBlock`: thông báo cập nhật khối lân cận khi cửa sập được đặt.
+    - Hằng số: `SOUND_VOLUME = 1.0`, `SOUND_PITCH_BASE = 0.9`, `SOUND_PITCH_RANGE = 0.1`, trạng thái nửa mặc định ở đáy (`DEFAULT_HALF = Half::Bottom`), mặc định không ngập nước (`DEFAULT_WATERLOGGED = false`).
+    - Cửa sập sắt (`IRON_TRAPDOOR`) không thể mở bằng tay (`can_open_by_hand = false`).
+  - **Fence Gate Placed Lifecycle & Connection Axis Parity (FenceGateBlock.java:41-150)**:
+    - Bổ sung `placed` cho `FenceGateBlock`: thông báo cập nhật khối lân cận khi cổng rào được đặt.
+    - Hằng số: `DEFAULT_OPEN = false`, `DEFAULT_POWERED = false`, `DEFAULT_IN_WALL = false`.
+    - Kiểm tra liên kết hướng (`connects_to_direction`): cổng rào liên kết vuông góc với hướng mặt quay của cổng (`gate_facing.to_axis() == query_dir.rotate_clockwise().to_axis()`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/doors.rs`:
+    - Bổ sung thông báo lân cận cho cả 2 nửa cửa trong `placed`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/trapdoor.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/fence_gates.rs`:
+    - Bổ sung `placed` thông báo lân cận.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_doors_trapdoors_and_fence_gates_parity_gap481`.
+  - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_and_fence_gates_parity_gap481`.

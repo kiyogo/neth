@@ -4,7 +4,7 @@ use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
     BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs,
-    OnPlaceArgs, PathComputationType,
+    OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use crate::entity::EntityBase;
 use crate::entity::player::Player;
@@ -114,6 +114,10 @@ impl FenceGateBlock {
 }
 
 impl BlockBehaviour for FenceGateBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
         args.world.update_neighbors(args.position, None);
     }
