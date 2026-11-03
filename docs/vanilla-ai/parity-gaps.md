@@ -12945,3 +12945,50 @@ et/minecraft/world/level/block/SculkCatalystBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_cauldron_composter_and_sculk_parity_gap487.
   - **Unit Tests**: Vượt qua 100% 	est_cauldron_composter_and_sculk_parity_gap487.
+
+
+### Gap 488: Redstone Wire & Power Propagation Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - 
+et/minecraft/world/level/block/RedStoneWireBlock.java
+  - 
+et/minecraft/world/level/redstone/RedstoneWireEvaluator.java
+  - 
+et/minecraft/world/level/redstone/DefaultRedstoneWireEvaluator.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Redstone Wire Lifecycle & Neighbor Updates (RedStoneWireBlock.java:296-306)**:
+    - Bổ sung update_neighbors(pos, None) trong placed của RedstoneWireBlock: đảm bảo các khối lân cận nhận được thông báo cập nhật trạng thái khi dây đá đỏ được đặt.
+  - **Power Dropoff & Target Strength (RedstoneWireEvaluator.java:29-47 & DefaultRedstoneWireEvaluator.java:40-44)**:
+    - Mức suy giảm tín hiệu qua mỗi khối dây: incoming_wire_signal.saturating_sub(1) (calculate_wire_dropoff).
+    - Tính toán cường độ mục tiêu: lock_signal == 15 ? 15 : max(block_signal, incoming_wire_signal - 1) (calculate_target_strength).
+    - Khoảng công suất: từ 0 đến 15 (MIN_POWER = 0, MAX_POWER = 15).
+  - **16-level ARGB Colors Parity (RedStoneWireBlock.java:52-60 & ARGB.java:313-343)**:
+    - Đồng bộ bảng màu 16 mức công suất theo công thức tính toán sàn (floor) của Java ARGB.colorFromFloat(1.0F, red, green, blue):
+      - Mức 0: -11796480 (0xFF4C0000)
+      - Mức 1: -9437184 (0xFF700000)
+      - Mức 2: -8781824 (0xFF7A0000)
+      - Mức 3: -8126464 (0xFF840000)
+      - Mức 4: -7471104 (0xFF8E0000)
+      - Mức 5: -6750208 (0xFF990000)
+      - Mức 6: -6094848 (0xFFA30000)
+      - Mức 7: -5439488 (0xFFAD0000)
+      - Mức 8: -4784128 (0xFFB70000)
+      - Mức 9: -4128768 (0xFFC10000)
+      - Mức 10: -3407872 (0xFFCC0000)
+      - Mức 11: -2752512 (0xFFD60000)
+      - Mức 12: -2097152 (0xFFE00000)
+      - Mức 13: -1440256 (0xFFEA0600)
+      - Mức 14: -779520 (0xFFF41B00)
+      - Mức 15: -52736 (0xFFFF3200)
+  - **Particle Span Constants & Shape Logic (RedStoneWireBlock.java:414-441, 189-201)**:
+    - Bổ sung hằng số dải hạt: PARTICLE_DENSITY = 0.2, SIDE_OF_BLOCK = 0.4375.
+    - Dải hạt: Hướng Up (-0.5 đến 0.5), hướng Side (0.0 đến 0.5), hướng None (0.0 đến 0.3).
+    - Logic nhận diện trạng thái Cross (chữ thập) và Dot (điểm) theo 4 hướng liên kết (is_cross_props, is_dot_props).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/redstone/redstone_wire.rs:
+    - Bổ sung update_neighbors trong placed.
+    - Thêm các hằng số dải hạt và hàm phụ trợ is_cross_props, is_dot_props, calculate_particle_pos.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_redstone_wire_parity_gap488.
+  - **Unit Tests**: Vượt qua 100% 	est_redstone_wire_parity_gap488.

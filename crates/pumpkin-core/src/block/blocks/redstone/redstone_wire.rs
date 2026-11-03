@@ -76,6 +76,33 @@ impl RedstoneWireBlock {
             }
         }
     }
+
+    pub const PARTICLE_SPAN_UP_MIN: f32 = -0.5;
+    pub const PARTICLE_SPAN_UP_MAX: f32 = 0.5;
+    pub const PARTICLE_SPAN_SIDE_MIN: f32 = 0.0;
+    pub const PARTICLE_SPAN_SIDE_MAX: f32 = 0.5;
+    pub const PARTICLE_SPAN_NONE_MIN: f32 = 0.0;
+    pub const PARTICLE_SPAN_NONE_MAX: f32 = 0.3;
+
+    #[must_use]
+    pub const fn is_cross_props(north: bool, south: bool, east: bool, west: bool) -> bool {
+        north && south && east && west
+    }
+
+    #[must_use]
+    pub const fn is_dot_props(north: bool, south: bool, east: bool, west: bool) -> bool {
+        !north && !south && !east && !west
+    }
+
+    #[must_use]
+    pub fn calculate_particle_pos(
+        pos_coord: f64,
+        side_step: i32,
+        along_step: i32,
+        position_on_line: f32,
+    ) -> f64 {
+        pos_coord + 0.5 + (0.4375 * side_step as f64) + (position_on_line as f64 * along_step as f64)
+    }
 }
 
 impl BlockBehaviour for RedstoneWireBlock {
@@ -98,6 +125,7 @@ impl BlockBehaviour for RedstoneWireBlock {
         }
 
         update_neighbors_of_neighboring_wires(args.world, args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {

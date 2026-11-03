@@ -34031,4 +34031,72 @@ mod tests {
         assert_eq!(SculkCatalystBlock::clamp_charge(-50), 0);
         assert_eq!(SculkCatalystBlock::clamp_charge(500), 500);
     }
+
+    #[test]
+    fn test_redstone_wire_parity_gap488() {
+        use crate::block::blocks::redstone::redstone_wire::RedstoneWireBlock;
+
+        // 1. Redstone Wire Basic Constants Parity (RedStoneWireBlock.java:44-65)
+        assert_eq!(RedstoneWireBlock::MIN_POWER, 0);
+        assert_eq!(RedstoneWireBlock::MAX_POWER, 15);
+        assert_eq!(RedstoneWireBlock::PARTICLE_DENSITY, 0.2);
+        assert_eq!(RedstoneWireBlock::SIDE_OF_BLOCK, 0.4375);
+
+        // 2. Particle Line Spans (RedStoneWireBlock.java:433-439)
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_UP_MIN, -0.5);
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_UP_MAX, 0.5);
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_SIDE_MIN, 0.0);
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_SIDE_MAX, 0.5);
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_NONE_MIN, 0.0);
+        assert_eq!(RedstoneWireBlock::PARTICLE_SPAN_NONE_MAX, 0.3);
+
+        // 3. Redstone Wire 16-level ARGB Colors Parity (RedStoneWireBlock.java:52-60)
+        let expected_colors: [i32; 16] = [
+            -11796480, // 0: 0xFF4C0000
+            -9437184,  // 1: 0xFF700000
+            -8781824,  // 2: 0xFF7A0000
+            -8126464,  // 3: 0xFF840000
+            -7471104,  // 4: 0xFF8E0000
+            -6750208,  // 5: 0xFF990000
+            -6094848,  // 6: 0xFFA30000
+            -5439488,  // 7: 0xFFAD0000
+            -4784128,  // 8: 0xFFB70000
+            -4128768,  // 9: 0xFFC10000
+            -3407872,  // 10: 0xFFCC0000
+            -2752512,  // 11: 0xFFD60000
+            -2097152,  // 12: 0xFFE00000
+            -1440256,  // 13: 0xFFEA0600
+            -779520,   // 14: 0xFFF41B00
+            -52736,    // 15: 0xFFFF3200
+        ];
+        assert_eq!(RedstoneWireBlock::COLORS, expected_colors);
+        for power in 0..=15 {
+            assert_eq!(RedstoneWireBlock::get_color_for_power(power), expected_colors[power as usize]);
+        }
+        assert_eq!(RedstoneWireBlock::get_color_for_power(20), expected_colors[15]);
+
+        // 4. Wire Dropoff & Propagation Strength (RedstoneWireEvaluator.java:46 & DefaultRedstoneWireEvaluator.java:41-42)
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(14), 13);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(1), 0);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(0), 0);
+
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(15, 0), 15);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(10, 15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(12, 8), 12);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(0, 1), 0);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(0, 5), 4);
+
+        // 5. Cross & Dot state evaluations (RedStoneWireBlock.java:189-201)
+        assert_eq!(RedstoneWireBlock::is_cross_props(true, true, true, true), true);
+        assert_eq!(RedstoneWireBlock::is_cross_props(true, false, true, true), false);
+        assert_eq!(RedstoneWireBlock::is_dot_props(false, false, false, false), true);
+        assert_eq!(RedstoneWireBlock::is_dot_props(true, false, false, false), false);
+
+        // 6. Particle coordinate calculation along line (RedStoneWireBlock.java:416-420)
+        let px = RedstoneWireBlock::calculate_particle_pos(10.0, 1, 0, 0.0);
+        assert!((px - 10.9375).abs() < 1e-6);
+        let pz = RedstoneWireBlock::calculate_particle_pos(20.0, -1, 1, 0.25);
+        assert!((pz - (20.0 + 0.5 - 0.4375 + 0.25)).abs() < 1e-6);
+    }
 }
