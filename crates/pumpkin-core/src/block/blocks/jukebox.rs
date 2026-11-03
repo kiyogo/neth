@@ -9,18 +9,14 @@ use crate::block::{
 use crate::entity::Entity;
 use crate::entity::item::ItemEntity;
 use crate::world::World;
-use pumpkin_data::data_component_impl::{EquipmentSlot, JukeboxPlayableImpl};
+use pumpkin_data::data_component_impl::JukeboxPlayableImpl;
 use pumpkin_data::entity::EntityType;
 use pumpkin_data::game_event::GameEvent;
-use pumpkin_data::item::Item;
-use pumpkin_data::item_stack::ItemStack;
 use pumpkin_data::jukebox_song::JukeboxSong;
 use pumpkin_data::world::WorldEvent;
 use pumpkin_data::{Block, BlockStateId, block_properties::JukeboxLikeProperties};
 use pumpkin_macros::pumpkin_block;
 use pumpkin_util::math::position::BlockPos;
-use pumpkin_util::math::vector3::Vector3;
-use pumpkin_util::{GameMode, Hand};
 use pumpkin_world::world::BlockFlags;
 use rand::{RngExt, rng};
 
@@ -31,9 +27,9 @@ pub struct JukeboxBlock;
 
 impl JukeboxBlock {
     /// Vanilla JukeboxSong.java:44: SONG_END_PADDING_TICKS = 20
-    pub const SONG_END_PADDING_TICKS: u64 = 20;
+    pub const SONG_END_PADDING_TICKS: u64 = crate::entity::combat::JUKEBOX_SONG_END_PADDING_TICKS;
     /// Vanilla JukeboxSongPlayer.java:15: PLAY_EVENT_INTERVAL_TICKS = 20
-    pub const PLAY_EVENT_INTERVAL_TICKS: u64 = 20;
+    pub const PLAY_EVENT_INTERVAL_TICKS: u64 = crate::entity::combat::JUKEBOX_PLAY_EVENT_INTERVAL_TICKS;
     /// Vanilla GameEvent.java:47: JUKEBOX_PLAY notification radius = 10 blocks
     pub const ALLAY_HEARING_RANGE: f64 = 10.0;
     /// Vanilla JukeboxBlock.java:95: emits 15 when playing, 0 when stopped
@@ -88,11 +84,10 @@ impl JukeboxBlock {
             let record = jukebox_entity.clear_record();
             if !record.is_empty() {
                 // Vanilla: Vec3d.add(pos, 0.5, 1.01, 0.5).addHorizontalRandom(random, 0.7F)
-                // addHorizontalRandom adds random in range [-0.35, 0.35] to x and z
-                let spawn_pos = Vector3::new(
-                    f64::from(position.0.x) + 0.5 + rng().random_range(-0.35..0.35),
-                    f64::from(position.0.y) + 1.01,
-                    f64::from(position.0.z) + 0.5 + rng().random_range(-0.35..0.35),
+                let spawn_pos = crate::entity::combat::calculate_jukebox_pop_out_position(
+                    *position,
+                    rng().random::<f64>(),
+                    rng().random::<f64>(),
                 );
 
                 let entity = Entity::new(world.clone(), spawn_pos, &EntityType::ITEM);
@@ -107,6 +102,10 @@ impl JukeboxBlock {
     fn stop_playing(block: &Block, position: &BlockPos, world: &Arc<World>) {
         Self::set_record_state(false, block, position, world);
         world.sync_world_event(WorldEvent::SoundStopJukeboxSong, *position, 0);
+        world.emit_game_event(
+            GameEvent::JukeboxStopPlay.name(),
+            position.to_centered_f64(),
+        );
     }
 
     /// Starts playing music
@@ -161,24 +160,12 @@ impl BlockBehaviour for JukeboxBlock {
             .get_data_component::<JukeboxPlayableImpl>()
             .map(|i| i.song);
 
-        if args.player.gamemode.load() != GameMode::Creative {
-            let hand = if matches!(args.equipment_slot, EquipmentSlot::MainHand(_)) {
-                Hand::Right
-            } else {
-                Hand::Left
-            };
-
-            args.player
-                .inventory
-                .set_stack_in_hand(hand, ItemStack::new(0, &Item::AIR));
-        }
-
         // Vanilla: if (lv == null) return PASS_TO_DEFAULT_BLOCK_ACTION
         let Some(jukebox_playable) = jukebox_playable else {
             return BlockActionResult::PassToDefaultBlockAction;
         };
 
-        let Some(song_name) = jukebox_playable.split(':').nth(1) else {
+        let Some(song_name) = jukebox_playable.rsplit(':').next() else {
             return BlockActionResult::PassToDefaultBlockAction;
         };
 
@@ -229,9 +216,8 @@ impl BlockBehaviour for JukeboxBlock {
     fn broken(&self, args: BrokenArgs<'_>) {
         // Drop the record if there is one
         Self::drop_record(args.position, args.world);
-        // Stop the music
-        args.world
-            .sync_world_event(WorldEvent::SoundStopJukeboxSong, *args.position, 0);
+        // Stop the music and notify
+        Self::stop_playing(args.block, args.position, args.world);
     }
 
     /// Vanilla: `JukeboxBlock.onStateReplaced()` -> `ItemScatterer.onStateReplaced()`
@@ -250,9 +236,8 @@ impl BlockBehaviour for JukeboxBlock {
         // Vanilla: return world.getBlockEntity(pos) instanceof JukeboxBlockEntity lv && lv.getManager().isPlaying() ? 15 : 0
         if let Some(block_entity) = args.world.get_block_entity(args.position)
             && let Some(jukebox_entity) = block_entity.as_any().downcast_ref::<JukeboxBlockEntity>()
-            && jukebox_entity.is_playing()
         {
-            15
+            crate::entity::combat::calculate_jukebox_redstone_power(jukebox_entity.is_playing())
         } else {
             0
         }
@@ -270,7 +255,10 @@ impl BlockBehaviour for JukeboxBlock {
                 && let Some(song_name) = playable.song.rsplit(':').next()
                 && let Some(song) = JukeboxSong::from_name(song_name)
             {
-                return Some(song.comparator_output());
+                return Some(crate::entity::combat::calculate_jukebox_comparator_output(
+                    true,
+                    song.comparator_output(),
+                ));
             }
         }
         Some(0)

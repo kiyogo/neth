@@ -378,7 +378,7 @@ mod tests {
     fn test_zombie_horse_parity_constants() {
         assert_eq!(ZombieHorseEntity::XP_REWARD, 2);
         assert_eq!(combat::ZOMBIE_HORSE_MAX_HEALTH, 25.0);
-        assert_eq!(combat::ZOMBIE_HORSE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(combat::ZOMBIE_HORSE_MOVEMENT_SPEED, 0.225);
         assert_eq!(combat::ZOMBIE_HORSE_JUMP_STRENGTH, 0.7);
     }
 }

@@ -10639,6 +10639,62 @@ pub fn is_campfire_smoke_source(block_id: pumpkin_data::BlockId) -> bool {
     block_id == pumpkin_data::Block::HAY_BLOCK.id
 }
 
+/// Vanilla `JukeboxSong.java:44`:
+pub const JUKEBOX_SONG_END_PADDING_TICKS: u64 = 20;
+
+/// Vanilla `JukeboxSongPlayer.java:15`:
+pub const JUKEBOX_PLAY_EVENT_INTERVAL_TICKS: u64 = 20;
+
+/// Calculates total playback duration in ticks including the 20-tick song end padding.
+/// Mirrors vanilla `JukeboxSong.java:44`: `lengthInTicks + 20`.
+#[must_use]
+pub const fn calculate_jukebox_total_playback_ticks(length_in_ticks: u64) -> u64 {
+    length_in_ticks + JUKEBOX_SONG_END_PADDING_TICKS
+}
+
+/// Determines if a jukebox song has finished given elapsed ticks and song base length.
+/// Mirrors vanilla `JukeboxSongPlayer.java:65` & `JukeboxSong.java:43-45`.
+#[must_use]
+pub const fn is_jukebox_song_finished(elapsed_ticks: u64, length_in_ticks: u64) -> bool {
+    elapsed_ticks >= calculate_jukebox_total_playback_ticks(length_in_ticks)
+}
+
+/// Calculates jukebox redstone power output.
+/// Mirrors vanilla `JukeboxBlock.java:95`: `isPlaying() ? 15 : 0`.
+#[must_use]
+pub const fn calculate_jukebox_redstone_power(is_playing: bool) -> u8 {
+    if is_playing {
+        15
+    } else {
+        0
+    }
+}
+
+/// Calculates jukebox comparator output.
+/// Mirrors vanilla `JukeboxBlock.java:105` & `JukeboxBlockEntity.java:69`:
+/// Song's comparator output (1..15) if has record, else 0.
+#[must_use]
+pub const fn calculate_jukebox_comparator_output(has_record: bool, song_comparator_output: u8) -> u8 {
+    if has_record {
+        song_comparator_output
+    } else {
+        0
+    }
+}
+
+/// Calculates pop out position when record is ejected from a jukebox.
+/// Mirrors vanilla `JukeboxBlockEntity.java:54` & `Vec3.java:181`:
+/// `Vec3.atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random, 0.7F)`
+/// where `rx` and `rz` are random floats in `[0.0, 1.0]`.
+#[must_use]
+pub fn calculate_jukebox_pop_out_position(pos: pumpkin_util::math::position::BlockPos, rx: f64, rz: f64) -> pumpkin_util::math::vector3::Vector3<f64> {
+    pumpkin_util::math::vector3::Vector3::new(
+        f64::from(pos.0.x) + 0.5 + (rx - 0.5) * 0.7,
+        f64::from(pos.0.y) + 1.01,
+        f64::from(pos.0.z) + 0.5 + (rz - 0.5) * 0.7,
+    )
+}
+
 /// Vanilla `BeaconBlockEntity.java:53-66`:
 pub const BEACON_MAX_PYRAMID_LEVELS: i32 = 4;
 pub const BEACON_SECONDARY_POWER_REQUIRED_LEVELS: i32 = 4;
@@ -12902,9 +12958,9 @@ pub const SKELETON_HORSE_MOVEMENT_SPEED: f64 = 0.2;
 pub const SKELETON_HORSE_JUMP_STRENGTH: f64 = 0.7;
 pub const SKELETON_HORSE_TRAP_CHANCE: f64 = 0.2;
 
-/// Zombie Horse constants, mirroring vanilla `ZombieHorse.java:35-40`.
+/// Zombie Horse constants, mirroring vanilla `ZombieHorse.java:53-55` & `AbstractHorse.java:383`.
 pub const ZOMBIE_HORSE_MAX_HEALTH: f64 = 25.0;
-pub const ZOMBIE_HORSE_MOVEMENT_SPEED: f64 = 0.2;
+pub const ZOMBIE_HORSE_MOVEMENT_SPEED: f64 = 0.225;
 pub const ZOMBIE_HORSE_JUMP_STRENGTH: f64 = 0.7;
 
 /// Camel constants, mirroring vanilla `Camel.java:55-80, 110-140`.
@@ -20859,7 +20915,7 @@ mod tests {
         assert_eq!(CHESTED_HORSE_BASE_MOVEMENT_SPEED, 0.175);
         assert_eq!(CHESTED_HORSE_JUMP_STRENGTH, 0.5);
         assert_eq!(SKELETON_HORSE_MOVEMENT_SPEED, 0.2);
-        assert_eq!(ZOMBIE_HORSE_MOVEMENT_SPEED, 0.2);
+        assert_eq!(ZOMBIE_HORSE_MOVEMENT_SPEED, 0.225);
         assert_eq!(FOX_MAX_HEALTH, 10.0);
         assert_eq!(FOX_BASE_MOVEMENT_SPEED, 0.3);
         assert_eq!(FOX_SAFE_FALL_DISTANCE, 5.0);
@@ -30810,5 +30866,44 @@ mod tests {
         assert!(is_campfire_smoke_source(Block::HAY_BLOCK.id));
         assert!(!is_campfire_smoke_source(Block::DIRT.id));
         assert!(!is_campfire_smoke_source(Block::OAK_PLANKS.id));
+    }
+
+    #[test]
+    fn test_jukebox_pop_out_comparator_and_playback_parity_gap453() {
+        use pumpkin_util::math::position::BlockPos;
+
+        // 1. Pop out position calculation parity (JukeboxBlockEntity.java:54 & Vec3.java:181)
+        // pos = (10, 64, -20)
+        let pos = BlockPos::new(10, 64, -20);
+        // rx = 0.5, rz = 0.5 (exact center offset)
+        let center_spawn = calculate_jukebox_pop_out_position(pos, 0.5, 0.5);
+        assert!((center_spawn.x - 10.5).abs() < 1e-6);
+        assert!((center_spawn.y - 65.01).abs() < 1e-6);
+        assert!((center_spawn.z - (-19.5)).abs() < 1e-6);
+
+        // rx = 0.0, rz = 1.0 (min x, max z offset: -0.35, +0.35)
+        let corner_spawn = calculate_jukebox_pop_out_position(pos, 0.0, 1.0);
+        assert!((corner_spawn.x - (10.5 - 0.35)).abs() < 1e-6);
+        assert!((corner_spawn.y - 65.01).abs() < 1e-6);
+        assert!((corner_spawn.z - (-19.5 + 0.35)).abs() < 1e-6);
+
+        // 2. Redstone power parity (JukeboxBlock.java:95: isPlaying() ? 15 : 0)
+        assert_eq!(calculate_jukebox_redstone_power(true), 15);
+        assert_eq!(calculate_jukebox_redstone_power(false), 0);
+
+        // 3. Comparator output parity (JukeboxBlock.java:105, JukeboxBlockEntity.java:69)
+        assert_eq!(calculate_jukebox_comparator_output(true, 11), 11); // e.g. Pigstep
+        assert_eq!(calculate_jukebox_comparator_output(true, 13), 13); // e.g. 13
+        assert_eq!(calculate_jukebox_comparator_output(false, 11), 0);  // No record inside
+        assert_eq!(calculate_jukebox_comparator_output(false, 0), 0);
+
+        // 4. Song duration & completion parity (JukeboxSong.java:44 & JukeboxSongPlayer.java:65)
+        let pigstep_base_ticks: u64 = 2960;
+        let total_ticks = calculate_jukebox_total_playback_ticks(pigstep_base_ticks);
+        assert_eq!(total_ticks, pigstep_base_ticks + 20); // 20-tick song end padding
+        assert!(!is_jukebox_song_finished(2959, pigstep_base_ticks));
+        assert!(!is_jukebox_song_finished(2979, pigstep_base_ticks));
+        assert!(is_jukebox_song_finished(2980, pigstep_base_ticks));
+        assert!(is_jukebox_song_finished(3000, pigstep_base_ticks));
     }
 }

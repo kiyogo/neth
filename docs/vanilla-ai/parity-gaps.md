@@ -11685,6 +11685,40 @@ et.minecraft.world.entity.AgeableMob.java:273-275
     - Phát sinh sự kiện game `GameEvent::BlockChange` khi đặt thức ăn và khi hoàn tất nấu rơi vật phẩm.
   - **Unit Tests**: `test_brewing_stand_bottle_bits_and_campfire_lighting_parity_gap452` (294 tests passed).
 
+### Gap 453: Jukebox Item Deletion Bug Fix, Pop-Out Random Offset, JukeboxStopPlay Event & Comparator Parity
+
+**Vanilla Reference**: `net.minecraft.world.level.block.JukeboxBlock.java:60-117`, `net.minecraft.world.level.block.entity.JukeboxBlockEntity.java:22-169`, `net.minecraft.world.item.JukeboxPlayable.java:37-60`, `net.minecraft.world.item.JukeboxSongPlayer.java:15-88`
+
+- **Sửa Lỗi Xóa Mất Vật Phẩm Khi Chuột Phải Vào Hộp Nhạc (Item Deletion Bug Fix)**:
+  - Vanilla `JukeboxPlayable.java:37-60`:
+    - Khi người chơi tương tác với Jukebox, trước tiên kiểm tra vật phẩm cầm trên tay có component `DataComponents.JUKEBOX_PLAYABLE` hay không. Nếu không phải đĩa nhạc hoặc Jukebox đã có đĩa, trả về `TRY_WITH_EMPTY_HAND` mà KHÔNG thay đổi hay xóa vật phẩm cầm trên tay.
+    - Chỉ khi vật phẩm hợp lệ và Jukebox chưa có đĩa, mới thực hiện `toInsert.consumeAndReturn(1, player)`.
+    - Neth trước đây trong `crates/pumpkin-core/src/block/blocks/jukebox.rs` có đoạn mã xóa vật phẩm trên tay người chơi thành `Item::AIR` (`args.player.inventory.set_stack_in_hand(...)`) TRƯỚC KHI kiểm tra `jukebox_playable`. Điều này làm mất vĩnh viễn bất kỳ vật phẩm nào (kiếm kim cương, công cụ, khối...) khi người chơi vô tình click chuột phải vào Hộp Nhạc!
+    - Đã loại bỏ hoàn toàn đoạn mã xóa sai lệch này, chỉ sử dụng `item_stack.split_unless_creative(..., 1)` sau khi kiểm tra đĩa nhạc hợp lệ.
+- **Tính Toán Tọa Độ Rơi Đĩa Nhạc (Pop Out Random Offset Parity)**:
+  - Vanilla `JukeboxBlockEntity.java:54` & `Vec3.java:181`:
+    - `Vec3.atLowerCornerWithOffset(pos, 0.5, 1.01, 0.5).offsetRandomXZ(random, 0.7F)`
+    - Tọa độ nhả đĩa: `x = pos.x + 0.5 + (random - 0.5) * 0.7`, `y = pos.y + 1.01`, `z = pos.z + 0.5 + (random - 0.5) * 0.7`.
+    - Bổ sung hàm tiện ích `calculate_jukebox_pop_out_position` trong `combat.rs`.
+- **Tín Hiệu Redstone & Comparator Hộp Nhạc (Redstone Signal & Comparator Parity)**:
+  - Vanilla `JukeboxBlock.java:88-96, 98-106`:
+    - Tín hiệu redstone thường (`isSignalSource`, `ownSignal`): phát tín hiệu cấp 15 khi đang phát nhạc (`isPlaying() ? 15 : 0`), và về 0 khi bài hát kết thúc hoặc đĩa bị lấy ra.
+    - Tín hiệu so sánh comparator (`hasAnalogOutputSignal`, `getAnalogOutputSignal`): trả về giá trị comparator riêng của bài hát đĩa nhạc đang chứa bên trong (`JukeboxSong::comparatorOutput`), dao động từ 1 đến 15 (hoặc 0 nếu không có đĩa). Ngay cả khi bài hát đã phát xong, miễn là đĩa chưa bị nhả ra khỏi Hộp Nhạc, tín hiệu comparator vẫn được duy trì.
+- **Sự Kiện GameEvent JukeboxStopPlay Khi Nhạc Dừng / Khối Bị Phá Hủy (Stop Play Event Parity)**:
+  - Vanilla `JukeboxSongPlayer.java:57-58` & `JukeboxBlockEntity.java:128-129`:
+    - Khi đĩa nhạc được lấy ra, phát hết nhạc, hoặc khi Hộp Nhạc bị phá vỡ (`broken`), phát sinh sự kiện game `GameEvent::JukeboxStopPlay` và world event `SoundStopJukeboxSong (1011)`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/jukebox.rs`:
+    - Xóa bỏ việc ghi đè tay cầm của người chơi trước khi kiểm tra đĩa nhạc; sửa logic `rsplit(':').next()`.
+    - Sử dụng `calculate_jukebox_pop_out_position` với offset chuẩn vanilla 0.7F.
+    - Bổ sung phát sinh sự kiện `GameEvent::JukeboxStopPlay` trong `stop_playing` và `broken`.
+    - Sử dụng `calculate_jukebox_redstone_power` và `calculate_jukebox_comparator_output`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung hằng số `JUKEBOX_SONG_END_PADDING_TICKS`, `JUKEBOX_PLAY_EVENT_INTERVAL_TICKS`.
+    - Bổ sung hàm `calculate_jukebox_total_playback_ticks`, `is_jukebox_song_finished`, `calculate_jukebox_redstone_power`, `calculate_jukebox_comparator_output`, `calculate_jukebox_pop_out_position`.
+    - Sửa `ZOMBIE_HORSE_MOVEMENT_SPEED` từ 0.2 sang 0.225 khớp 100% với vanilla `ZombieHorse.java:53-55` & `AbstractHorse.java:383`.
+  - **Unit Tests**: `test_jukebox_pop_out_comparator_and_playback_parity_gap453` (295 tests passed).
+
 
 
 
