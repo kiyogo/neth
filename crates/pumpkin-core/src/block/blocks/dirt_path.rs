@@ -1,6 +1,6 @@
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PathComputationType, push_entities_up,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    OnScheduledTickArgs, PathComputationType, PlacedArgs, push_entities_up,
 };
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, BlockDirection, BlockState, BlockStateId, tag};
@@ -13,7 +13,19 @@ use pumpkin_world::world::BlockFlags;
 #[pumpkin_block("minecraft:dirt_path")]
 pub struct DirtPathBlock;
 
+impl DirtPathBlock {
+    pub const HEIGHT: f64 = 15.0 / 16.0;
+}
+
 impl BlockBehaviour for DirtPathBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
         push_entities_up(args.world, args.position);
         args.world.set_block_state(

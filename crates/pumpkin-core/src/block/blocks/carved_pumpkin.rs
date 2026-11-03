@@ -8,7 +8,7 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_world::world::BlockFlags;
 
 use crate::{
-    block::{BlockBehaviour, BlockMetadata, OnPlaceArgs, PlacedArgs},
+    block::{BlockBehaviour, BlockMetadata, BrokenArgs, OnPlaceArgs, PlacedArgs},
     entity::{
         Entity, EntityBase,
         passive::{iron_golem::IronGolemEntity, snow_golem::SnowGolemEntity},
@@ -91,6 +91,11 @@ fn spawn_golem(world: &Arc<World>, pattern: GolemPattern) {
 
 pub struct CarvedPumpkinBlock;
 
+impl CarvedPumpkinBlock {
+    pub const SNOW_GOLEM_BLOCKS_COUNT: usize = 3;
+    pub const IRON_GOLEM_BLOCKS_COUNT: usize = 5;
+}
+
 impl BlockMetadata for CarvedPumpkinBlock {
     fn ids() -> Box<[BlockId]> {
         [BlockId::JACK_O_LANTERN, BlockId::CARVED_PUMPKIN].into()
@@ -112,6 +117,12 @@ impl BlockBehaviour for CarvedPumpkinBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         if let Some(pattern) = find_golem_pattern(args.world, args.position) {
             spawn_golem(args.world, pattern);
+        } else {
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
     }
 }

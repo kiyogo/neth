@@ -34571,4 +34571,50 @@ mod tests {
         assert_eq!(TrapDoorBlock::SOUND_VOLUME, 1.0);
         assert_eq!(TrapDoorBlock::SOUND_PITCH_BASE, 0.9);
     }
+
+    #[test]
+    fn test_agriculture_soils_and_physics_parity_gap497() {
+        use crate::block::blocks::carved_pumpkin::CarvedPumpkinBlock;
+        use crate::block::blocks::dirt_path::DirtPathBlock;
+        use crate::block::blocks::farmland::FarmlandBlock;
+        use crate::block::blocks::hay::HayBlock;
+        use crate::block::blocks::honey::HoneyBlock;
+        use crate::block::blocks::plant::crop;
+        use crate::block::blocks::pumpkin::PumpkinBlock;
+        use crate::block::blocks::slime::SlimeBlock;
+
+        // 1. Farmland Parity (FarmBlock.java)
+        assert_eq!(FarmlandBlock::MAX_MOISTURE, 7);
+        assert_eq!(FarmlandBlock::MIN_MOISTURE, 0);
+        assert_eq!(FarmlandBlock::HEIGHT, 15.0 / 16.0);
+        assert_eq!(FarmlandBlock::WATER_CHECK_DISTANCE, 4);
+
+        // 2. Dirt Path Parity (DirtPathBlock.java)
+        assert_eq!(DirtPathBlock::HEIGHT, 15.0 / 16.0);
+
+        // 3. Hay Block Parity (HayBlock.java)
+        assert_eq!(HayBlock::FALL_DAMAGE_MULTIPLIER, 0.2);
+
+        // 4. Honey Block Parity (HoneyBlock.java)
+        assert_eq!(HoneyBlock::FALL_DAMAGE_MULTIPLIER, 0.2);
+        assert_eq!(HoneyBlock::JUMP_VELOCITY_FACTOR, 0.5);
+
+        // 5. Slime Block Parity (SlimeBlock.java)
+        assert_eq!(SlimeBlock::BOUNCE_FACTOR, 1.0);
+        assert_eq!(SlimeBlock::DAMAGE_MULTIPLIER_NORMAL, 0.0);
+        assert_eq!(SlimeBlock::DAMAGE_MULTIPLIER_SNEAKING, 1.0);
+
+        // 6. Pumpkin Parity (PumpkinBlock.java)
+        assert_eq!(PumpkinBlock::PUMPKIN_SEEDS_DROP_AMOUNT, 4);
+
+        // 7. Carved Pumpkin Parity (CarvedPumpkinBlock.java)
+        assert_eq!(CarvedPumpkinBlock::SNOW_GOLEM_BLOCKS_COUNT, 3);
+        assert_eq!(CarvedPumpkinBlock::IRON_GOLEM_BLOCKS_COUNT, 5);
+
+        // 8. Crop Mechanics Parity (CropBlock.java)
+        assert_eq!(crop::DEFAULT_MAX_AGE, 7);
+        assert_eq!(crop::BEETROOT_MAX_AGE, 3);
+        assert_eq!(crop::BONEMEAL_INCREASE_MIN, 2);
+        assert_eq!(crop::BONEMEAL_INCREASE_MAX, 5);
+    }
 }

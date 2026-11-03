@@ -13368,3 +13368,45 @@ et/minecraft/world/level/block/FenceGateBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_barriers_connectors_and_stairs_parity_gap496.
   - **Unit Tests**: Vượt qua 100% 	est_barriers_connectors_and_stairs_parity_gap496.
+
+### Gap 497: Agriculture, Soils, Slime/Honey Physics & Crop Mechanics Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/FarmBlock.java
+  - 
+et/minecraft/world/level/block/DirtPathBlock.java
+  - 
+et/minecraft/world/level/block/HayBlock.java
+  - 
+et/minecraft/world/level/block/HoneyBlock.java
+  - 
+et/minecraft/world/level/block/SlimeBlock.java
+  - 
+et/minecraft/world/level/block/PumpkinBlock.java
+  - 
+et/minecraft/world/level/block/CarvedPumpkinBlock.java
+  - 
+et/minecraft/world/level/block/CropBlock.java
+  - 
+et/minecraft/world/level/block/BeetrootBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Agriculture & Soil Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken của: FarmlandBlock, DirtPathBlock, HayBlock, HoneyBlock, SlimeBlock, PumpkinBlock, và CarvedPumpkinBlock. Đảm bảo các khối xung quanh (nhất là cây trồng trên đất và các khối bám lân cận) nhận được thông báo cập nhật khi đất, đường đất, hay khối dính thay đổi.
+  - **Farmland & Dirt Path Dimensions (FarmBlock.java, DirtPathBlock.java)**:
+    - Chiều cao khối đất trồng trọt và đường đất: 15/16 = 0.9375 (HEIGHT = 15.0 / 16.0).
+    - Độ ẩm đất canh tác: MAX_MOISTURE = 7, MIN_MOISTURE = 0, phạm vi tìm kiếm nguồn nước dưỡng ẩm: 4 khối (WATER_CHECK_DISTANCE = 4).
+  - **Slime, Honey & Hay Physics Parity**:
+    - Khối rơm (Hay Block): giảm 80% sát thương rơi (FALL_DAMAGE_MULTIPLIER = 0.2).
+    - Khối mật ong (Honey Block): giảm 80% sát thương rơi (FALL_DAMAGE_MULTIPLIER = 0.2), hệ số vận tốc nhảy giảm còn một nửa (JUMP_VELOCITY_FACTOR = 0.5).
+    - Khối chất nhờn (Slime Block): hệ số bật nảy 1.0 (BOUNCE_FACTOR = 1.0), triệt tiêu 100% sát thương khi nảy bình thường (DAMAGE_MULTIPLIER_NORMAL = 0.0), nhưng nhận đủ 100% sát thương khi đang lén lút (sneaking) (DAMAGE_MULTIPLIER_SNEAKING = 1.0).
+  - **Pumpkin Shearing & Golem Assembly (PumpkinBlock.java, CarvedPumpkinBlock.java)**:
+    - Cắt bí ngô: rơi 4 hạt bí ngô (PUMPKIN_SEEDS_DROP_AMOUNT = 4), biến đổi thành bí ngô chạm khắc.
+    - Tạo người tuyết / người sắt: số khối cấu tạo người tuyết là 3 (SNOW_GOLEM_BLOCKS_COUNT = 3), người sắt là 5 (IRON_GOLEM_BLOCKS_COUNT = 5).
+  - **Crop Age & Bonemeal Mechanics (CropBlock.java, BeetrootBlock.java)**:
+    - Tuổi cây trồng tiêu chuẩn: 0..=7 (DEFAULT_MAX_AGE = 7), củ dền và nấm Nether: 0..=3 (BEETROOT_MAX_AGE = 3).
+    - Mức tăng tuổi ngẫu nhiên từ bột xương: 2..=5 (BONEMEAL_INCREASE_MIN = 2, BONEMEAL_INCREASE_MAX = 5).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong crates/pumpkin-core/src/block/blocks/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_agriculture_soils_and_physics_parity_gap497.
+  - **Unit Tests**: Vượt qua 100% 	est_agriculture_soils_and_physics_parity_gap497.

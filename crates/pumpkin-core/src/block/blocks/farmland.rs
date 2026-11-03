@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::block::{
-    BlockBehaviour, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnLandedUponArgs, OnPlaceArgs,
-    OnScheduledTickArgs, PathComputationType, RandomTickArgs, push_entities_up,
+    BlockBehaviour, BrokenArgs, CanPlaceAtArgs, GetStateForNeighborUpdateArgs, OnLandedUponArgs, OnPlaceArgs,
+    OnScheduledTickArgs, PathComputationType, PlacedArgs, RandomTickArgs, push_entities_up,
 };
 use rand::RngExt;
 use crate::world::World;
@@ -23,7 +23,22 @@ type FarmlandProperties = FarmlandLikeProperties;
 #[pumpkin_block("minecraft:farmland")]
 pub struct FarmlandBlock;
 
+impl FarmlandBlock {
+    pub const MAX_MOISTURE: u8 = 7;
+    pub const MIN_MOISTURE: u8 = 0;
+    pub const HEIGHT: f64 = 15.0 / 16.0;
+    pub const WATER_CHECK_DISTANCE: i32 = 4;
+}
+
 impl BlockBehaviour for FarmlandBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_scheduled_tick(&self, args: OnScheduledTickArgs<'_>) {
         push_entities_up(args.world, args.position);
         args.world.set_block_state(

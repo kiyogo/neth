@@ -26,6 +26,11 @@ pub mod sweet_berry_bush;
 pub mod torch_flower;
 pub mod wheat;
 
+pub const DEFAULT_MAX_AGE: i32 = 7;
+pub const BEETROOT_MAX_AGE: i32 = 3;
+pub const BONEMEAL_INCREASE_MIN: i32 = 2;
+pub const BONEMEAL_INCREASE_MAX: i32 = 5;
+
 trait CropBlockBase: PlantBlockBase {
     // Deliberately NOT named `can_plant_on_top`: that would collide with the
     // `PlantBlockBase` method of the same name without overriding it, and

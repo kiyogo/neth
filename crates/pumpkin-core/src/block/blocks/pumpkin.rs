@@ -1,4 +1,4 @@
-use crate::block::UseWithItemArgs;
+use crate::block::{BrokenArgs, PlacedArgs, UseWithItemArgs};
 use crate::block::registry::BlockActionResult;
 use crate::entity::Entity;
 use crate::entity::item::ItemEntity;
@@ -14,7 +14,19 @@ use std::sync::Arc;
 #[pumpkin_block("minecraft:pumpkin")]
 pub struct PumpkinBlock;
 
+impl PumpkinBlock {
+    pub const PUMPKIN_SEEDS_DROP_AMOUNT: u8 = 4;
+}
+
 impl crate::block::BlockBehaviour for PumpkinBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn use_with_item(&self, args: UseWithItemArgs<'_>) -> BlockActionResult {
         if args.item_stack.item != &Item::SHEARS {
             return BlockActionResult::Pass;

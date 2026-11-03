@@ -1,14 +1,27 @@
 use pumpkin_macros::pumpkin_block;
 
 use crate::block::{
-    BlockBehaviour, OnLandedUponArgs, PathComputationType, UpdateEntityMovementAfterFallOnArgs,
+    BlockBehaviour, BrokenArgs, OnLandedUponArgs, PathComputationType, PlacedArgs, UpdateEntityMovementAfterFallOnArgs,
     stop_vertical_movement_after_fall,
 };
 
 #[pumpkin_block("minecraft:honey_block")]
 pub struct HoneyBlock;
 
+impl HoneyBlock {
+    pub const FALL_DAMAGE_MULTIPLIER: f32 = 0.2;
+    pub const JUMP_VELOCITY_FACTOR: f32 = 0.5;
+}
+
 impl BlockBehaviour for HoneyBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_landed_upon(&self, args: OnLandedUponArgs<'_>) {
         let entity = args.entity.get_entity();
         let entity_pos = entity.pos.load();
