@@ -34483,4 +34483,48 @@ mod tests {
         assert_eq!(EnchantingTableBlock::MAX_BOOKSHELVES, 15);
         assert_eq!(EnchantingTableBlock::TOTAL_BOOKSHELF_POSITIONS, 32);
     }
+
+    #[test]
+    fn test_furniture_and_decorative_parity_gap495() {
+        use crate::block::blocks::banners::BannerBlock;
+        use crate::block::blocks::bed::BedBlock;
+        use crate::block::blocks::shelf::ShelfBlock;
+        use crate::block::blocks::shulker_box::ShulkerBoxBlock;
+        use crate::block::blocks::signs::SignBlock;
+        use crate::block::blocks::skull_block::SkullBlock;
+        use crate::block::blocks::straw_bed::StrawBedBlock;
+
+        // 1. Shulker Box Parity (ShulkerBoxBlock.java)
+        assert_eq!(ShulkerBoxBlock::INVENTORY_SIZE, 27);
+        assert_eq!(ShulkerBoxBlock::OPEN_ANIMATION_EVENT_TYPE, 1);
+
+        // 2. Banner Parity (BannerBlock.java)
+        assert_eq!(BannerBlock::MAX_ROTATIONS, 16);
+        assert_eq!(BannerBlock::ROTATION_STEP_DEGREES, 22.5);
+        assert_eq!(BannerBlock::MAX_PATTERNS, 6);
+
+        // 3. Bed Parity (BedBlock.java)
+        assert_eq!(BedBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(BedBlock::BOUNCE_FACTOR, 0.66);
+
+        // 4. Straw Bed Parity
+        assert_eq!(StrawBedBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(StrawBedBlock::BOUNCE_FACTOR, 0.66);
+
+        // 5. Sign Parity (SignBlock.java)
+        assert_eq!(SignBlock::MAX_LINES, 4);
+        assert_eq!(SignBlock::MAX_CHARACTERS_PER_LINE, 15);
+
+        // 6. Skull Block Parity (SkullBlock.java)
+        assert_eq!(SkullBlock::MAX_ROTATIONS, 16);
+        assert_eq!(SkullBlock::ROTATION_STEP_DEGREES, 22.5);
+
+        // 7. Shelf Parity (ShelfBlock.java)
+        assert_eq!(ShelfBlock::SLOT_COUNT, 3);
+        assert_eq!(ShelfBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(ShelfBlock::MAX_COMPARATOR_SIGNAL, 7);
+        assert_eq!(ShelfBlock::calculate_comparator_output(false, false, false), 0);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, true, true), 7);
+        assert_eq!(ShelfBlock::calculate_comparator_output(true, false, true), 5);
+    }
 }

@@ -115,6 +115,8 @@ impl BlockBehaviour for StrawBedBlock {
 
         let bed_head_entity = BedBlockEntity::new(bed_head_pos);
         args.world.add_block_entity(Arc::new(bed_head_entity));
+        args.world.update_neighbors(args.position, None);
+        args.world.update_neighbors(&bed_head_pos, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
@@ -140,6 +142,7 @@ impl BlockBehaviour for StrawBedBlock {
 
         args.world
             .break_block(&other_half_pos, Some(args.player), flags);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {
@@ -178,6 +181,9 @@ impl BlockBehaviour for StrawBedBlock {
 }
 
 impl StrawBedBlock {
+    pub const EXPLOSION_POWER: f32 = 5.0;
+    pub const BOUNCE_FACTOR: f32 = 0.66;
+
     pub fn destroy_after_use(world: &Arc<World>, bed_head_pos: BlockPos) {
         let (block, state) = world.get_block_and_state_id(&bed_head_pos);
         if block != &Block::STRAW_BED {

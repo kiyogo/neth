@@ -22,7 +22,7 @@ use pumpkin_util::text::click::ClickEvent;
 use pumpkin_world::tick::TickPriority;
 use uuid::Uuid;
 
-use crate::block::BlockBehaviour;
+use crate::block::{BlockBehaviour, BrokenArgs};
 use crate::block::CanPlaceAtArgs;
 use crate::block::GetStateForNeighborUpdateArgs;
 use crate::block::NormalUseArgs;
@@ -60,6 +60,9 @@ struct SignPlacement {
 }
 
 impl SignBlock {
+    pub const MAX_LINES: usize = 4;
+    pub const MAX_CHARACTERS_PER_LINE: usize = 15;
+
     /// Checks if a block can provide support for a sign.
     fn is_valid_support(
         world: &World,
@@ -345,6 +348,12 @@ impl BlockBehaviour for SignBlock {
             args.world
                 .add_block_entity(Arc::new(SignBlockEntity::empty(*args.position)));
         }
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn player_placed(&self, args: PlayerPlacedArgs<'_>) {

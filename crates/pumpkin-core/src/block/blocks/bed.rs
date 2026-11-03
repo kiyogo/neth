@@ -118,6 +118,8 @@ impl BlockBehaviour for BedBlock {
 
             let bed_head_entity = BedBlockEntity::new(bed_head_pos);
             args.world.add_block_entity(Arc::new(bed_head_entity));
+            args.world.update_neighbors(args.position, None);
+            args.world.update_neighbors(&bed_head_pos, None);
         }
     }
 
@@ -146,6 +148,7 @@ impl BlockBehaviour for BedBlock {
 
         args.world
             .break_block(&other_half_pos, Some(args.player), flags);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_state_replaced(&self, args: OnStateReplacedArgs<'_>) {
@@ -184,6 +187,9 @@ impl BlockBehaviour for BedBlock {
 }
 
 impl BedBlock {
+    pub const EXPLOSION_POWER: f32 = 5.0;
+    pub const BOUNCE_FACTOR: f32 = 0.66;
+
     #[expect(clippy::too_many_lines)]
     fn use_bed(
         world: &Arc<World>,

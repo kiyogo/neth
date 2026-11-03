@@ -13291,3 +13291,42 @@ et/minecraft/world/level/block/TrialSpawnerBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_interactive_blocks_lifecycle_and_parity_gap494.
   - **Unit Tests**: Vượt qua 100% 	est_interactive_blocks_lifecycle_and_parity_gap494.
+
+### Gap 495: Portable Containers, Furniture, Banners, Signs & Decorative Block Entities Lifecycle Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - 
+et/minecraft/world/level/block/ShulkerBoxBlock.java
+  - 
+et/minecraft/world/level/block/BannerBlock.java
+  - 
+et/minecraft/world/level/block/WallBannerBlock.java
+  - 
+et/minecraft/world/level/block/BedBlock.java
+  - 
+et/minecraft/world/level/block/SignBlock.java
+  - 
+et/minecraft/world/level/block/WallSignBlock.java
+  - 
+et/minecraft/world/level/block/HangingSignBlock.java
+  - 
+et/minecraft/world/level/block/SkullBlock.java
+  - 
+et/minecraft/world/level/block/ShelfBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Furniture & Decorative Placement & Neighbor Updates**:
+    - Bổ sung update_neighbors(pos, None) trong placed và roken của: ShulkerBoxBlock, BannerBlock, BedBlock, StrawBedBlock, SignBlock, SkullBlock, và ShelfBlock. Đảm bảo các khối lân cận và cả nửa khối liên kết (như đầu giường ed_head_pos) nhận được thông báo cập nhật vật lý.
+  - **Shulker Box Parity (ShulkerBoxBlock.java)**:
+    - Kích thước kho chứa đồ di động: 27 ô (INVENTORY_SIZE = 27), sự kiện hoạt ảnh mở nắp OPEN_ANIMATION_EVENT_TYPE = 1.
+  - **Banner & Skull Rotations (BannerBlock.java, SkullBlock.java)**:
+    - 16 góc xoay (MAX_ROTATIONS = 16), mỗi bước 22.5 độ (ROTATION_STEP_DEGREES = 22.5F), số họa tiết cờ tối đa 6 (MAX_PATTERNS = 6).
+  - **Beds Bounce & Explosion Parity (BedBlock.java)**:
+    - Sức nổ 5.0 khi cố gắng ngủ trong Nether hoặc End (EXPLOSION_POWER = 5.0F).
+    - Hệ số nảy khi thực thể rơi lên giường: BOUNCE_FACTOR = 0.66F.
+  - **Signs & Shelf Layouts (SignBlock.java, ShelfBlock.java)**:
+    - Biển hiệu: 4 dòng văn bản (MAX_LINES = 4), tối đa 15 ký tự mỗi dòng (MAX_CHARACTERS_PER_LINE = 15).
+    - Kệ sách nhỏ: 3 ngăn (SLOT_COUNT = 3), tín hiệu comparator nhị phân 0..=7 theo công thức bitmask: (slot0 ? 1 : 0) | (slot1 ? 2 : 0) | (slot2 ? 4 : 0).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 7 tệp khối trong crates/pumpkin-core/src/block/blocks/.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_furniture_and_decorative_parity_gap495.
+  - **Unit Tests**: Vượt qua 100% 	est_furniture_and_decorative_parity_gap495.

@@ -125,6 +125,7 @@ impl BlockBehaviour for ShulkerBoxBlock {
         let shulker_box_entity = ShulkerBoxBlockEntity::new(*args.position);
         args.world.add_block_entity(Arc::new(shulker_box_entity));
         args.world.update_neighbour_for_output_signal(args.position, args.block);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn broken(&self, args: BrokenArgs<'_>) {
@@ -180,5 +181,6 @@ impl BlockBehaviour for ShulkerBoxBlock {
 }
 
 impl ShulkerBoxBlock {
+    pub const INVENTORY_SIZE: usize = 27;
     pub const OPEN_ANIMATION_EVENT_TYPE: u8 = 1;
 }

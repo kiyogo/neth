@@ -1,7 +1,7 @@
 use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::entities::skull::SkullBlockEntity;
 use crate::block::{
-    BlockBehaviour, BlockMetadata, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BlockMetadata, BrokenArgs, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
     PlacedArgs,
 };
 use crate::entity::EntityBase;
@@ -13,6 +13,11 @@ use pumpkin_world::world::BlockFlags;
 use std::sync::Arc;
 
 pub struct SkullBlock;
+
+impl SkullBlock {
+    pub const MAX_ROTATIONS: u8 = 16;
+    pub const ROTATION_STEP_DEGREES: f32 = 22.5;
+}
 
 pub fn is_wall_skull(block_id: BlockId) -> bool {
     matches!(
@@ -67,7 +72,13 @@ impl BlockBehaviour for SkullBlock {
         {
             let entity = SkullBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {

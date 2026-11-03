@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 use crate::entity::EntityBase;
 use pumpkin_data::block_properties::{WhiteBannerLikeProperties, WhiteWallBannerProperties};
 use pumpkin_data::{
@@ -14,12 +14,24 @@ use std::sync::Arc;
 #[pumpkin_block_from_tag("minecraft:banners")]
 pub struct BannerBlock;
 
+impl BannerBlock {
+    pub const MAX_ROTATIONS: u8 = 16;
+    pub const ROTATION_STEP_DEGREES: f32 = 22.5;
+    pub const MAX_PATTERNS: usize = 6;
+}
+
 impl BlockBehaviour for BannerBlock {
     fn placed(&self, args: PlacedArgs<'_>) {
         {
             let entity = BannerBlockEntity::new(*args.position);
             args.world.add_block_entity(Arc::new(entity));
+            args.world.update_neighbors(args.position, None);
         }
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
