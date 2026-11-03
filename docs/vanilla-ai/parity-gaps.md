@@ -12287,3 +12287,35 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_tripwire_and_pressure_plates_parity_gap471`.
   - **Unit Tests**: Vượt qua 100% `test_tripwire_and_pressure_plates_parity_gap471`.
+
+
+### Gap 472: Doors, Trapdoors & Fence Gates Broken Destruction, Redstone Evaluation & Hand Interaction Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/DoorBlock.java`
+  - `net/minecraft/world/level/block/TrapDoorBlock.java`
+  - `net/minecraft/world/level/block/FenceGateBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Doors Upper/Lower Half Break & Creative Drops Parity (DoorBlock.java:41-61, 101-118, 190-228)**:
+    - Khi phá nửa trên cửa ở chế độ Sinh tồn (Survival), nửa dưới tự động rớt vật phẩm cửa (`flags = NOTIFY_ALL`). Khi phá ở chế độ Sáng tạo (Creative) hoặc phá nửa dưới trước, vật phẩm không bị rớt lặp lại (`SKIP_DROPS`).
+    - Cửa sắt (`IRON_DOOR`) không thể mở bằng tay (`can_open_by_hand = false`), các loại cửa gỗ và cửa đồng đều có thể mở bằng tay.
+    - Công thức âm thanh: âm lượng `1.0`, cao độ âm thanh `pitch = rand * 0.1 + 0.9`.
+    - Trạng thái redstone: khi tín hiệu nguồn thay đổi (`current_powered != has_signal`), cửa cập nhật cả `powered` và `open`, đồng thời chỉ phát âm thanh nếu trạng thái mở thực tế thay đổi (`current_open != has_signal`).
+  - **Trapdoor Broken & Redstone/Waterlogged Parity (TrapDoorBlock.java:38-58, 88-133)**:
+    - Bổ sung `broken` cho `TrapDoorBlock`: cập nhật thông báo cho khối lân cận (`update_neighbors`) khi bị phá hủy.
+    - Cửa sập sắt (`IRON_TRAPDOOR`) không thể mở bằng tay (`can_open_by_hand = false`), chỉ mở được bằng tín hiệu redstone.
+    - Khi ở trong nước (`waterlogged`), trạng thái đóng mở được đồng bộ và cập nhật lân cận chính xác.
+  - **Fence Gate In-Wall & Connection Axis Parity (FenceGateBlock.java:38-60, 117-170)**:
+    - Bổ sung `broken` cho `FenceGateBlock`: cập nhật thông báo khối lân cận khi bị phá hủy.
+    - Hướng mở cổng rào tự động xoay theo hướng người chơi đối diện khi mở bằng tay.
+    - Thuộc tính `in_wall`: hạ thấp mô hình và hình dạng va chạm khi nối với tường đá lân cận (`MINECRAFT_WALLS`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/doors.rs`:
+    - Hoàn thiện parity hàm phá hủy, âm thanh và đánh giá tín hiệu redstone.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/trapdoor.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/fence_gates.rs`:
+    - Bổ sung `broken` gọi `update_neighbors`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_doors_trapdoors_and_fence_gates_parity_gap472`.
+  - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_and_fence_gates_parity_gap472`.

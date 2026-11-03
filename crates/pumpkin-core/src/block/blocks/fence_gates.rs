@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs,
+    BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, NormalUseArgs, OnNeighborUpdateArgs,
     OnPlaceArgs, PathComputationType,
 };
 use crate::entity::EntityBase;
@@ -114,6 +114,10 @@ impl FenceGateBlock {
 }
 
 impl BlockBehaviour for FenceGateBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut fence_gate_props = FenceGateProperties::default(args.block);
         fence_gate_props.facing = args.player.get_entity().get_horizontal_facing();

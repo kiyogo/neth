@@ -1,7 +1,7 @@
 use crate::block::blocks::redstone::block_receives_redstone_power;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BrokenArgs, NormalUseArgs, OnNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
 };
 use crate::entity::EntityBase;
 use crate::entity::player::Player;
@@ -100,6 +100,10 @@ impl TrapDoorBlock {
 }
 
 impl BlockBehaviour for TrapDoorBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {
         {
             if !can_open_trapdoor(args.block) {
