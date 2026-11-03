@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::block::entities::skull::SkullBlockEntity;
 use crate::{
     block::{
-        BlockBehaviour, OnPlaceArgs, PathComputationType, PlacedArgs,
+        BlockBehaviour, BrokenArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
         blocks::skull_block::SkullBlock,
     },
     entity::{Entity, boss::wither::WitherEntity},
@@ -118,6 +118,12 @@ impl BlockBehaviour for WitherSkeletonSkullBlock {
         if let Some(pattern) = find_wither_pattern(args.world, args.position) {
             spawn_wither(args.world, &pattern);
         }
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.remove_block_entity(args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: crate::block::OnNeighborUpdateArgs<'_>) {

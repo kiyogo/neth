@@ -13565,3 +13565,31 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_forest_soils_fungi_and_organic_parity_gap502`.
   - **Unit Tests**: Vượt qua 100% `test_forest_soils_fungi_and_organic_parity_gap502`.
+
+
+### Gap 503: Masonry, Copper Weathering, Vaults & Special Structural Blocks Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/Blocks.java`
+  - `net/minecraft/world/level/block/WeatheringCopper.java`
+  - `net/minecraft/world/level/block/GlazedTerracottaBlock.java`
+  - `net/minecraft/world/level/block/HeavyCoreBlock.java`
+  - `net/minecraft/world/level/block/WitherSkullBlock.java`
+  - `net/minecraft/world/level/block/InfestedBlock.java`
+  - `net/minecraft/world/level/block/VaultBlock.java`
+  - `net/minecraft/world/level/block/entity/VaultBlockEntity.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Masonry, Copper & Special Blocks Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `TuffBlock`, `WeatheringCopperBlock`, `GlazedTerracottaBlock`, `HeavyCoreBlock`, `WitherSkeletonSkullBlock`, `InfestedBlock`, `DriedGhastBlock`, và `CopperGolemStatueBlock`. Đảm bảo các khối liền kề lập tức phát hiện các thay đổi cấu trúc đá tro núi lửa, khối đồng bị oxy hóa, khối lõi nặng hoặc đầu lâu khô héo.
+  - **Tuff Family & Weathering Copper Parity (Blocks.java, WeatheringCopper.java)**:
+    - Họ đá Tuff (14 khối): độ cứng 1.5 (`HARDNESS = 1.5`), kháng nổ 6.0 (`BLAST_RESISTANCE = 6.0`), âm thanh và nhạc cụ Basedrum.
+    - Khối đồng phong hóa: khoảng cách quét Manhattan 4 khối (`SCAN_DISTANCE = 4`), xác suất suy biến cơ bản ~5.69% (`BASE_DEGRADATION_CHANCE = 0.05688889`).
+  - **Heavy Core, Infested & Special Structural Parity (HeavyCoreBlock.java, InfestedBlock.java)**:
+    - Lõi nặng (Heavy Core): độ cứng 10.0, kháng nổ 1200.0, hình hộp va chạm trụ 8x8x8 căn giữa (0.25..=0.75 trên X/Z, 0.0..=0.5 trên Y).
+    - Khối bị nhiễm (Infested Blocks): 7 loại khối vật chủ (đá, đá cuội, gạch đá, gạch đá rêu, gạch đá nứt, gạch đá chạm khắc, deepslate).
+    - Tượng người đồng (Copper Golem Statue): 4 tư thế tượng (`NUM_POSES = 4`), tín hiệu comparator từ 1 đến 4.
+    - Ghast khô (Dried Ghast): cấp độ ngậm nước tối đa 3 (`MAX_HYDRATION = 3`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 8 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_masonry_copper_vaults_and_special_parity_gap503`.
+  - **Unit Tests**: Vượt qua 100% `test_masonry_copper_vaults_and_special_parity_gap503`.

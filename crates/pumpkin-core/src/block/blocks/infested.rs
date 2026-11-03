@@ -9,8 +9,7 @@ use pumpkin_util::math::position::BlockPos;
 use pumpkin_util::math::vector3::Vector3;
 use uuid::Uuid;
 
-use crate::block::BlockBehaviour;
-use crate::block::BrokenArgs;
+use crate::block::{BlockBehaviour, BrokenArgs, PlacedArgs};
 use crate::entity::r#type::from_type;
 use crate::world::World;
 
@@ -38,6 +37,7 @@ const HOST_TO_INFESTED: &[(&Block, &Block)] = &[
 ];
 
 impl InfestedBlock {
+    pub const HOST_COUNT: usize = 7;
     fn infested_by_host(host: &Block) -> Option<&'static Block> {
         HOST_TO_INFESTED
             .iter()
@@ -98,7 +98,12 @@ fn copy_properties(from: &BlockState, to: &'static Block) -> BlockStateId {
 }
 
 impl BlockBehaviour for InfestedBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
     fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
         if args.player.gamemode.load() == GameMode::Creative {
             return;
         }

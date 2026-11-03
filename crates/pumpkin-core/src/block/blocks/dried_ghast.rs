@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
     RandomTickArgs,
 };
 use crate::entity::EntityBase;
@@ -12,6 +12,10 @@ use pumpkin_world::world::BlockFlags;
 
 pub struct DriedGhastBlock;
 
+impl DriedGhastBlock {
+    pub const MAX_HYDRATION: u8 = 3;
+}
+
 impl BlockMetadata for DriedGhastBlock {
     fn ids() -> Box<[BlockId]> {
         [BlockId::DRIED_GHAST].into()
@@ -19,6 +23,13 @@ impl BlockMetadata for DriedGhastBlock {
 }
 
 impl BlockBehaviour for DriedGhastBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = DriedGhastLikeProperties::default(args.block);
         props.facing = args

@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, OnPlaceArgs, PlacedArgs};
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::WallTorchLikeProperties;
 use pumpkin_macros::pumpkin_block_from_tag;
@@ -7,6 +7,13 @@ use pumpkin_macros::pumpkin_block_from_tag;
 pub struct GlazedTerracottaBlock;
 
 impl BlockBehaviour for GlazedTerracottaBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut prop = WallTorchLikeProperties::default(args.block);
         prop.facing = args

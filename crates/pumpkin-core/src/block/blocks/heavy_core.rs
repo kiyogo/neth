@@ -1,5 +1,5 @@
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PathComputationType, PlacedArgs,
 };
 use pumpkin_data::block_properties::MangroveRootsLikeProperties;
 use pumpkin_data::fluid::Fluid;
@@ -64,6 +64,13 @@ impl BlockMetadata for HeavyCoreBlock {
 }
 
 impl BlockBehaviour for HeavyCoreBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = MangroveRootsLikeProperties::default(args.block);
         props.waterlogged = args.replacing.water_source();

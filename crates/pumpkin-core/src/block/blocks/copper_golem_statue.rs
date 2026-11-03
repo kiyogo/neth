@@ -11,12 +11,16 @@ use pumpkin_world::world::BlockFlags;
 use crate::block::blocks::weathering_copper::change_over_time;
 use crate::block::registry::BlockActionResult;
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs,
-    NormalUseArgs, OnPlaceArgs, PathComputationType, RandomTickArgs, UseWithItemArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetComparatorOutputArgs, GetStateForNeighborUpdateArgs,
+    NormalUseArgs, OnPlaceArgs, PathComputationType, PlacedArgs, RandomTickArgs, UseWithItemArgs,
 };
 use crate::entity::EntityBase;
 
 pub struct CopperGolemStatueBlock;
+
+impl CopperGolemStatueBlock {
+    pub const NUM_POSES: u8 = 4;
+}
 
 impl BlockMetadata for CopperGolemStatueBlock {
     fn ids() -> Box<[BlockId]> {
@@ -45,6 +49,13 @@ const fn is_waxed(id: BlockId) -> bool {
 }
 
 impl BlockBehaviour for CopperGolemStatueBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = CopperGolemStatueLikeProperties::default(args.block);
         props.facing = args

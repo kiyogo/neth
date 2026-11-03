@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, BlockMetadata};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, PlacedArgs};
 use pumpkin_data::block_properties::NoteblockInstrument;
 use pumpkin_data::sound::Sound;
 use pumpkin_data::BlockId;
@@ -192,7 +192,15 @@ impl BlockMetadata for TuffBlock {
     }
 }
 
-impl BlockBehaviour for TuffBlock {}
+impl BlockBehaviour for TuffBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -34869,4 +34869,45 @@ mod tests {
         assert_eq!(NyliumBlock::BONEMEAL_VEGETATION_COUNT, 9);
         assert_eq!(NyliumBlock::TWISTING_VINES_CHANCE, 8);
     }
+
+    #[test]
+    fn test_masonry_copper_vaults_and_special_parity_gap503() {
+        use crate::block::blocks::tuff::TuffBlock;
+        use crate::block::blocks::heavy_core::HeavyCoreBlock;
+        use crate::block::blocks::vault::VaultBlock;
+        use crate::block::blocks::infested::InfestedBlock;
+        use crate::block::blocks::dried_ghast::DriedGhastBlock;
+        use crate::block::blocks::copper_golem_statue::CopperGolemStatueBlock;
+
+        // 1. Tuff Family Parity (Blocks.java)
+        assert_eq!(TuffBlock::HARDNESS, 1.5);
+        assert_eq!(TuffBlock::BLAST_RESISTANCE, 6.0);
+        assert_eq!(TuffBlock::TUFF_FAMILY.len(), 14);
+
+        // 2. Weathering Copper Parity (WeatheringCopper.java)
+        assert_eq!(crate::block::blocks::weathering_copper::SCAN_DISTANCE, 4);
+
+        // 3. Heavy Core Parity (Blocks.java / HeavyCoreBlock.java)
+        assert_eq!(HeavyCoreBlock::HARDNESS, 10.0);
+        assert_eq!(HeavyCoreBlock::BLAST_RESISTANCE, 1200.0);
+        assert_eq!(HeavyCoreBlock::SHAPE_MIN_X, 0.25);
+        assert_eq!(HeavyCoreBlock::SHAPE_MAX_X, 0.75);
+        assert_eq!(HeavyCoreBlock::SHAPE_MIN_Y, 0.0);
+        assert_eq!(HeavyCoreBlock::SHAPE_MAX_Y, 0.5);
+
+        // 4. Vault Parity (VaultBlock.java)
+        assert_eq!(VaultBlock::ACTIVATION_RANGE, 4.0);
+        assert_eq!(VaultBlock::DEACTIVATION_RANGE, 4.5);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_HALF_LIT, 6);
+        assert_eq!(VaultBlock::LIGHT_LEVEL_LIT, 12);
+
+        // 5. Infested Host Blocks Parity (InfestedBlock.java)
+        assert_eq!(InfestedBlock::HOST_COUNT, 7);
+
+        // 6. Dried Ghast Parity (DriedGhastBlock.java)
+        assert_eq!(DriedGhastBlock::MAX_HYDRATION, 3);
+
+        // 7. Copper Golem Statue Parity (CopperGolemStatueBlock.java)
+        assert_eq!(CopperGolemStatueBlock::NUM_POSES, 4);
+    }
 }
