@@ -8,13 +8,15 @@ use pumpkin_world::lighting::LightEngine;
 use pumpkin_world::world::BlockFlags;
 use rand::RngExt;
 
-use crate::block::{BlockBehaviour, BonemealArgs, RandomTickArgs};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, PlacedArgs, RandomTickArgs};
 use crate::world::World;
 
 #[pumpkin_block_from_tag("minecraft:nylium")]
 pub struct NyliumBlock;
 
 impl NyliumBlock {
+    pub const BONEMEAL_VEGETATION_COUNT: u32 = 9;
+    pub const TWISTING_VINES_CHANCE: i32 = 8;
     #[must_use]
     pub(crate) const fn can_be_nylium_with_above(
         state: &BlockState,
@@ -40,6 +42,13 @@ impl NyliumBlock {
 }
 
 impl BlockBehaviour for NyliumBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn random_tick(&self, args: RandomTickArgs<'_>) {
         let state = args.world.get_block_state(args.position);
         if !Self::can_be_nylium(state, args.world, args.position) {

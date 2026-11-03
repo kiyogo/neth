@@ -11,8 +11,8 @@ use pumpkin_world::{
 
 use crate::block::blocks::plant::mangrove_propagule::MangrovePropaguleBlock;
 use crate::block::{
-    BlockBehaviour, BonemealArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs,
-    RandomTickArgs, drop_loot,
+    BlockBehaviour, BonemealArgs, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs,
+    PlacedArgs, RandomTickArgs, drop_loot,
 };
 use crate::world::loot::LootContextParameters;
 
@@ -20,6 +20,10 @@ pub const DECAY_DISTANCE: u8 = 7;
 
 #[pumpkin_block_from_tag("minecraft:leaves")]
 pub struct LeavesBlock;
+
+impl LeavesBlock {
+    pub const DECAY_DISTANCE: u8 = DECAY_DISTANCE;
+}
 
 #[must_use]
 pub fn get_distance_at(block: &Block, state_id: BlockStateId) -> u8 {
@@ -53,6 +57,13 @@ pub fn update_distance(
 }
 
 impl BlockBehaviour for LeavesBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = OakLeavesLikeProperties::from_state_id(args.block.default_state.id);
         props.persistent = true;

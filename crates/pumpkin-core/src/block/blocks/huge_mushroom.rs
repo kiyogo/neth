@@ -2,7 +2,7 @@ use pumpkin_data::block_properties::BrownMushroomBlockLikeProperties;
 use pumpkin_data::{BlockDirection, BlockId, BlockStateId};
 
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs,
 };
 
 type MushroomProperties = BrownMushroomBlockLikeProperties;
@@ -21,6 +21,13 @@ impl BlockMetadata for HugeMushroomBlock {
 }
 
 impl BlockBehaviour for HugeMushroomBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = MushroomProperties::default(args.block);
         props.down = args.world.get_block(&args.position.down()) != args.block;

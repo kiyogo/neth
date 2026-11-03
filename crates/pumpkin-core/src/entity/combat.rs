@@ -34843,4 +34843,30 @@ mod tests {
         assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_LARGE, 4);
         assert_eq!(AmethystClusterBlock::LIGHT_EMISSION_CLUSTER, 5);
     }
+
+    #[test]
+    fn test_forest_soils_fungi_and_organic_parity_gap502() {
+        use crate::block::blocks::leaves::LeavesBlock;
+        use crate::block::blocks::moss::MossBlock;
+        use crate::block::blocks::grass_block::GrassBlock;
+        use crate::block::blocks::nylium::NyliumBlock;
+
+        // 1. Leaves Parity (LeavesBlock.java)
+        assert_eq!(LeavesBlock::DECAY_DISTANCE, 7);
+
+        // 2. Moss Patch Parity (CaveFeatures.java / VegetationPatchFeature.java)
+        assert_eq!(MossBlock::BONEMEAL_DEPTH, 1);
+        assert_eq!(MossBlock::BONEMEAL_VERTICAL_RANGE, 5);
+        assert!((MossBlock::BONEMEAL_VEGETATION_CHANCE - 0.60).abs() < 1e-6);
+        assert!((MossBlock::BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE - 0.75).abs() < 1e-6);
+
+        // 3. Grass Block Parity (GrassBlock.java)
+        assert_eq!(GrassBlock::BONEMEAL_SPREAD_ATTEMPTS, 128);
+        assert_eq!(GrassBlock::BONEMEAL_ATTEMPTS_PER_STEP, 16);
+        assert_eq!(GrassBlock::BONEMEAL_FLOWER_CHANCE, 8);
+
+        // 4. Nylium Parity (NyliumBlock.java)
+        assert_eq!(NyliumBlock::BONEMEAL_VEGETATION_COUNT, 9);
+        assert_eq!(NyliumBlock::TWISTING_VINES_CHANCE, 8);
+    }
 }

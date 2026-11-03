@@ -13535,3 +13535,33 @@ et/minecraft/world/level/block/BeetrootBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_cryo_thermal_fluid_and_minerals_parity_gap501`.
   - **Unit Tests**: Vượt qua 100% `test_cryo_thermal_fluid_and_minerals_parity_gap501`.
+
+
+### Gap 502: Forest, Soils, Fungi & Organic Lifecycle Blocks Parity
+- **Mã nguồn đối chiếu JVMC**:
+  - `net/minecraft/world/level/block/LeavesBlock.java`
+  - `net/minecraft/world/level/block/RotatedPillarBlock.java`
+  - `net/minecraft/world/level/block/MangroveRootsBlock.java`
+  - `net/minecraft/world/level/block/HugeMushroomBlock.java`
+  - `net/minecraft/world/level/levelgen/feature/CaveFeatures.java`
+  - `net/minecraft/world/level/levelgen/feature/VegetationPatchFeature.java`
+  - `net/minecraft/world/level/block/MudBlock.java`
+  - `net/minecraft/world/level/block/RootedDirtBlock.java`
+  - `net/minecraft/world/level/block/GrassBlock.java`
+  - `net/minecraft/world/level/block/NyliumBlock.java`
+  - `net/minecraft/world/level/block/NetherrackBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Forest, Soils & Fungi Placement & Neighbor Updates**:
+    - Bổ sung `update_neighbors(pos, None)` trong `placed` và `broken` của: `LeavesBlock`, `LogBlock`, `MangroveRootsBlock`, `HugeMushroomBlock`, `MossBlock`, `MudBlock`, `RootedDirtBlock`, `GrassBlock`, `NyliumBlock`, và `NetherrackBlock`. Đảm bảo các khối lân cận (khoảng cách mục nát của lá cây, rễ cây đước ngập nước, nấm khổng lồ, thảm thực vật rêu và khối nylium) lập tức tái tính toán hình dạng hoặc kiểm tra liên kết khi có khối mới được đặt hoặc phá vỡ.
+  - **Leaves Decay & Logs Parity (LeavesBlock.java, RotatedPillarBlock.java)**:
+    - Khoảng cách rụng lá tối đa `DECAY_DISTANCE = 7`, kiểm tra khối gỗ lân cận có tag `MINECRAFT_PREVENTS_NEARBY_LEAF_DECAY`.
+  - **Moss Patch & Vegetation Parity (CaveFeatures.java, VegetationPatchFeature.java)**:
+    - Rêu: độ sâu thay thế bột xương `BONEMEAL_DEPTH = 1`, khoảng quét dọc `BONEMEAL_VERTICAL_RANGE = 5`, xác suất phủ thực vật `BONEMEAL_VEGETATION_CHANCE = 0.60`, xác suất thêm cột rìa `BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE = 0.75`.
+  - **Grass Block & Nylium Bonemeal Mechanics (GrassBlock.java, NyliumBlock.java)**:
+    - Khối cỏ: số lần thử lan truyền bột xương `BONEMEAL_SPREAD_ATTEMPTS = 128`, bước thử `BONEMEAL_ATTEMPTS_PER_STEP = 16`, xác suất sinh hoa `BONEMEAL_FLOWER_CHANCE = 8`.
+    - Khối Nylium: số cụm thực vật Nether sinh ra từ bột xương `BONEMEAL_VEGETATION_COUNT = 9`, xác suất sinh dây leo xoắn `TWISTING_VINES_CHANCE = 8`.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật 10 tệp khối trong `crates/pumpkin-core/src/block/blocks/`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_forest_soils_fungi_and_organic_parity_gap502`.
+  - **Unit Tests**: Vượt qua 100% `test_forest_soils_fungi_and_organic_parity_gap502`.

@@ -12,10 +12,16 @@ use rand::RngExt;
 
 use super::spreading_snowy_block::{SnowyBlock, SpreadingSnowyBlock};
 use crate::block::{
-    BlockBehaviour, BlockMetadata, GetStateForNeighborUpdateArgs, OnPlaceArgs, RandomTickArgs,
+    BlockBehaviour, BlockMetadata, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs, RandomTickArgs,
 };
 
 pub struct GrassBlock;
+
+impl GrassBlock {
+    pub const BONEMEAL_SPREAD_ATTEMPTS: i32 = 128;
+    pub const BONEMEAL_ATTEMPTS_PER_STEP: i32 = 16;
+    pub const BONEMEAL_FLOWER_CHANCE: i32 = 8;
+}
 
 impl BlockMetadata for GrassBlock {
     fn ids() -> Box<[BlockId]> {
@@ -24,6 +30,13 @@ impl BlockMetadata for GrassBlock {
 }
 
 impl BlockBehaviour for GrassBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         SnowyBlock::on_place(args.block, args.world, args.position)
     }

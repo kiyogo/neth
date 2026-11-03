@@ -2,12 +2,19 @@ use pumpkin_data::Block;
 use pumpkin_macros::pumpkin_block;
 use pumpkin_world::world::BlockFlags;
 
-use crate::block::{BlockBehaviour, BonemealArgs};
+use crate::block::{BlockBehaviour, BonemealArgs, BrokenArgs, PlacedArgs};
 
 #[pumpkin_block("minecraft:rooted_dirt")]
 pub struct RootedDirtBlock;
 
 impl BlockBehaviour for RootedDirtBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn is_valid_bonemeal_target(&self, args: BonemealArgs<'_>) -> bool {
         let below = args.position.down();
         args.world.is_in_height_limit(below.0.y)

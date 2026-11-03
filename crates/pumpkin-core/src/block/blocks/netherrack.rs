@@ -1,4 +1,4 @@
-use crate::block::BlockBehaviour;
+use crate::block::{BlockBehaviour, BrokenArgs, PlacedArgs};
 use pumpkin_data::block_state::BlockStateId;
 use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, tag};
@@ -10,6 +10,13 @@ use rand::random;
 pub struct NetherrackBlock;
 
 impl BlockBehaviour for NetherrackBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn is_valid_bonemeal_target(&self, args: crate::block::BonemealArgs<'_>) -> bool {
         let above_block = args.world.get_block_state(&args.position.up());
 

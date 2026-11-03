@@ -1,4 +1,4 @@
-use crate::block::{BlockBehaviour, GetStateForNeighborUpdateArgs, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BrokenArgs, GetStateForNeighborUpdateArgs, OnPlaceArgs, PlacedArgs};
 use pumpkin_data::BlockStateId;
 use pumpkin_data::block_properties::MangroveRootsLikeProperties;
 use pumpkin_data::fluid::Fluid;
@@ -9,6 +9,13 @@ use pumpkin_world::tick::TickPriority;
 pub struct MangroveRootsBlock;
 
 impl BlockBehaviour for MangroveRootsBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = MangroveRootsLikeProperties::default(args.block);
         props.waterlogged = args.replacing.water_source();

@@ -12,7 +12,7 @@ use crate::block::blocks::carpet::{
     create_topper_with_side_chance, update_pale_moss_carpet_state,
     PALE_MOSS_CARPET_TOPPER_SIDE_CHANCE,
 };
-use crate::block::{BlockBehaviour, BlockMetadata, BonemealArgs};
+use crate::block::{BlockBehaviour, BlockMetadata, BonemealArgs, BrokenArgs, PlacedArgs};
 use crate::world::World;
 
 /// Depth of the moss patch replacement layer, mirroring vanilla `ConstantInt.of(1)`
@@ -52,6 +52,13 @@ pub const PALE_MOSS_VEG_WEIGHT_TALL_GRASS: u32 = 10;
 pub const PALE_MOSS_VEG_TOTAL_WEIGHT: u32 = 60;
 
 pub struct MossBlock;
+
+impl MossBlock {
+    pub const BONEMEAL_DEPTH: i32 = MOSS_PATCH_BONEMEAL_DEPTH;
+    pub const BONEMEAL_VERTICAL_RANGE: i32 = MOSS_PATCH_BONEMEAL_VERTICAL_RANGE;
+    pub const BONEMEAL_VEGETATION_CHANCE: f32 = MOSS_PATCH_BONEMEAL_VEGETATION_CHANCE;
+    pub const BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE: f32 = MOSS_PATCH_BONEMEAL_EXTRA_EDGE_COLUMN_CHANCE;
+}
 
 impl BlockMetadata for MossBlock {
     fn ids() -> Box<[BlockId]> {
@@ -137,6 +144,13 @@ pub fn pick_pale_moss_vegetation(roll: u32) -> &'static Block {
 }
 
 impl BlockBehaviour for MossBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn is_valid_bonemeal_target(&self, args: BonemealArgs<'_>) -> bool {
         // Vanilla BonemealableFeaturePlacerBlock.java:24:
         // level.getBlockState(pos.above()).isAir()

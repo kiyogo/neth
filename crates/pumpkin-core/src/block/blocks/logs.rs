@@ -1,6 +1,6 @@
 use pumpkin_data::{BlockId, BlockStateId};
 
-use crate::block::{BlockBehaviour, BlockMetadata, OnPlaceArgs};
+use crate::block::{BlockBehaviour, BlockMetadata, BrokenArgs, OnPlaceArgs, PlacedArgs};
 
 type LogProperties = pumpkin_data::block_properties::PaleOakWoodLikeProperties;
 
@@ -38,6 +38,13 @@ impl BlockMetadata for LogBlock {
 }
 
 impl BlockBehaviour for LogBlock {
+    fn placed(&self, args: PlacedArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
+
+    fn broken(&self, args: BrokenArgs<'_>) {
+        args.world.update_neighbors(args.position, None);
+    }
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut log_props = LogProperties::default(args.block);
         log_props.axis = args.direction.to_axis();
