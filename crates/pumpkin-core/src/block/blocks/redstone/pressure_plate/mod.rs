@@ -5,7 +5,7 @@ use pumpkin_util::math::{boundingbox::BoundingBox, position::BlockPos};
 use pumpkin_world::{tick::TickPriority, world::BlockFlags};
 
 use crate::{
-    block::{GetStateForNeighborUpdateArgs, OnEntityCollisionArgs, OnStateReplacedArgs},
+    block::{BrokenArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs, OnStateReplacedArgs},
     world::World,
 };
 
@@ -42,6 +42,15 @@ pub(crate) trait PressurePlate {
         let output = self.get_redstone_output(args.block, args.state.id);
         if output == 0 {
             self.update_plate_state(args.world, args.position, args.block, args.state, output);
+        }
+    }
+
+    fn broken_pp(&self, args: BrokenArgs<'_>) {
+        if self.get_redstone_output(args.block, args.state.id) > 0 {
+            args.world.update_neighbors(args.position, None);
+            args.world.update_neighbors(&args.position.down(), None);
+        } else {
+            args.world.update_neighbors(args.position, None);
         }
     }
 

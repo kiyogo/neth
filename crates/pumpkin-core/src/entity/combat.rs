@@ -32524,4 +32524,85 @@ mod tests {
             BlockDirection::East
         );
     }
+
+    #[test]
+    fn test_tripwire_and_pressure_plates_parity_gap471() {
+        use crate::block::blocks::redstone::pressure_plate::plate::PressurePlateBlock;
+        use crate::block::blocks::redstone::pressure_plate::weighted::WeightedPressurePlateBlock;
+        use crate::block::blocks::redstone::tripwire::TripwireBlock;
+        use crate::block::blocks::redstone::tripwire_hook::TripwireHookBlock;
+        use pumpkin_data::entity::EntityType;
+        use pumpkin_data::item::Item;
+        use pumpkin_data::Block;
+
+        // 1. Tripwire Parity (TripWireBlock.java:27-40, 104-111, 138-146)
+        assert_eq!(TripwireBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireBlock::DEFAULT_POWERED, false);
+        assert_eq!(TripwireBlock::DEFAULT_ATTACHED, false);
+        assert_eq!(TripwireBlock::DEFAULT_DISARMED, false);
+
+        assert!(TripwireBlock::is_entity_trigger_ignored(&EntityType::BAT));
+        assert!(!TripwireBlock::is_entity_trigger_ignored(&EntityType::ZOMBIE));
+        assert!(!TripwireBlock::is_entity_trigger_ignored(&EntityType::PLAYER));
+
+        assert!(TripwireBlock::can_disarm_with_shears(&Item::SHEARS));
+        assert!(!TripwireBlock::can_disarm_with_shears(&Item::DIAMOND_SWORD));
+
+        assert!(TripwireBlock::calculate_hook_power(true, true));
+        assert!(!TripwireBlock::calculate_hook_power(false, true)); // disarmed
+        assert!(!TripwireBlock::calculate_hook_power(true, false)); // not stepped on
+
+        // 2. Tripwire Hook Parity (TripWireHookBlock.java:34-45, 145-150, 240-250)
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MIN, 1);
+        assert_eq!(TripwireHookBlock::WIRE_DIST_MAX, 42);
+        assert_eq!(TripwireHookBlock::RECHECK_PERIOD_TICKS, 10);
+        assert_eq!(TripwireHookBlock::POWER_ON, 15);
+        assert_eq!(TripwireHookBlock::POWER_OFF, 0);
+        assert_eq!(TripwireHookBlock::DEFAULT_POWERED, false);
+        assert_eq!(TripwireHookBlock::DEFAULT_ATTACHED, false);
+
+        assert_eq!(TripwireHookBlock::CLICK_ON_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::CLICK_ON_PITCH, 0.6);
+        assert_eq!(TripwireHookBlock::CLICK_OFF_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::CLICK_OFF_PITCH, 0.5);
+        assert_eq!(TripwireHookBlock::ATTACH_VOLUME, 0.4);
+        assert_eq!(TripwireHookBlock::ATTACH_PITCH, 0.7);
+
+        // 3. Normal Pressure Plate Parity (PressurePlateBlock.java:21-25, BasePressurePlateBlock.java)
+        assert_eq!(PressurePlateBlock::POWER_ON, 15);
+        assert_eq!(PressurePlateBlock::POWER_OFF, 0);
+        assert_eq!(PressurePlateBlock::PRESSED_TICKS, 20);
+
+        // 4. Weighted Pressure Plate Parity (WeightedPressurePlateBlock.java:18-48)
+        assert_eq!(WeightedPressurePlateBlock::LIGHT_MAX_WEIGHT, 15);
+        assert_eq!(WeightedPressurePlateBlock::HEAVY_MAX_WEIGHT, 150);
+        assert_eq!(WeightedPressurePlateBlock::MAX_POWER, 15);
+        assert_eq!(WeightedPressurePlateBlock::PRESSED_TICKS, 10);
+
+        assert_eq!(
+            WeightedPressurePlateBlock::get_max_weight(&Block::LIGHT_WEIGHTED_PRESSURE_PLATE),
+            15
+        );
+        assert_eq!(
+            WeightedPressurePlateBlock::get_max_weight(&Block::HEAVY_WEIGHTED_PRESSURE_PLATE),
+            150
+        );
+
+        // Signal strength formula: ceil(min(weight, count) / max_weight * 15.0)
+        // Light (Gold - 15)
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 15), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 15), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(7, 15), 7);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(15, 15), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(25, 15), 15);
+
+        // Heavy (Iron - 150)
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 150), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(10, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(11, 150), 2);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(75, 150), 8);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(150, 150), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(250, 150), 15);
+    }
 }

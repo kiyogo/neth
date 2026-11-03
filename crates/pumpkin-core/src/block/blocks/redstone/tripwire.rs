@@ -103,8 +103,17 @@ impl BlockBehaviour for TripwireBlock {
                 props.to_state_id(args.block),
                 BlockFlags::empty(),
             );
+            args.world.emit_game_event(
+                pumpkin_data::game_event::GameEvent::Shear.name(),
+                args.position.to_centered_f64(),
+            );
 
             args.player.damage_held_item(1);
+        } else {
+            let mut props = TripwireProperties::from_state_id(args.state.id);
+            props.powered = true;
+            let state_id = props.to_state_id(args.block);
+            Self::update(args.world, args.position, state_id);
         }
     }
 

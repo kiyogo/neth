@@ -6,7 +6,7 @@ use pumpkin_util::math::position::BlockPos;
 
 use crate::{
     block::{
-        BlockBehaviour, BlockMetadata, CanPlaceAtArgs, EmitsRedstonePowerArgs,
+        BlockBehaviour, BrokenArgs, BlockMetadata, CanPlaceAtArgs, EmitsRedstonePowerArgs,
         GetRedstonePowerArgs, GetStateForNeighborUpdateArgs, OnEntityCollisionArgs,
         OnScheduledTickArgs, OnStateReplacedArgs,
     },
@@ -36,6 +36,10 @@ impl BlockMetadata for PressurePlateBlock {
 }
 
 impl BlockBehaviour for PressurePlateBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        self.broken_pp(args);
+    }
+
     fn on_entity_collision(&self, args: OnEntityCollisionArgs<'_>) {
         self.on_entity_collision_pp(args);
     }

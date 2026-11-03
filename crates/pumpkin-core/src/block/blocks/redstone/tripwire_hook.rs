@@ -15,7 +15,7 @@ use rand::{RngExt, rng};
 
 use crate::{
     block::{
-        BlockBehaviour, CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
+        BlockBehaviour, BrokenArgs, CanPlaceAtArgs, EmitsRedstonePowerArgs, GetRedstonePowerArgs,
         GetStateForNeighborUpdateArgs, OnPlaceArgs, OnScheduledTickArgs, OnStateReplacedArgs,
         PlayerPlacedArgs,
     },
@@ -29,6 +29,28 @@ type TripwireHookProperties = pumpkin_data::block_properties::TripwireHookLikePr
 pub struct TripwireHookBlock;
 
 impl BlockBehaviour for TripwireHookBlock {
+    fn broken(&self, args: BrokenArgs<'_>) {
+        let props = TripwireHookProperties::from_state_id(args.state.id);
+        if props.powered || props.attached {
+            Self::update(
+                args.world,
+                *args.position,
+                args.state.id,
+                true,
+                false,
+                -1,
+                None,
+            );
+        }
+        if props.powered {
+            args.world.update_neighbor(args.position, args.block);
+            args.world.update_neighbor(
+                &args.position.offset(props.facing.opposite().to_offset()),
+                args.block,
+            );
+        }
+    }
+
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {
         let mut props = TripwireHookProperties::default(args.block);
         props.powered = false;

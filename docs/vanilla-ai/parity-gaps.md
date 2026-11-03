@@ -12253,3 +12253,37 @@ et/minecraft/world/level/block/LightningRodBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_redstone_torch_lamp_lever_and_buttons_parity_gap470`.
   - **Unit Tests**: Vượt qua 100% `test_redstone_torch_lamp_lever_and_buttons_parity_gap470`.
+
+
+### Gap 471: Tripwire, Tripwire Hook & Pressure Plates Broken Destruction, Shears Disarm & Weight Signal Parity
+
+- **Mã nguồn Vanilla Java đối chiếu**:
+  - `net/minecraft/world/level/block/TripWireBlock.java`
+  - `net/minecraft/world/level/block/TripWireHookBlock.java`
+  - `net/minecraft/world/level/block/PressurePlateBlock.java`
+  - `net/minecraft/world/level/block/WeightedPressurePlateBlock.java`
+  - `net/minecraft/world/level/block/BasePressurePlateBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Tripwire Broken Destruction & Shears Disarm Parity (TripWireBlock.java:27-40, 96-111)**:
+    - Nếu người chơi phá hủy dây bẫy bằng kéo cắt (`Item::SHEARS`), dây chuyển trạng thái `disarmed = true`, phát ra `GameEvent::Shear` và làm giảm độ bền của kéo đi 1 điểm mà không kích hoạt móc bẫy.
+    - Nếu người chơi phá hủy dây bẫy không dùng kéo (tay không hoặc công cụ khác), dây bẫy kích hoạt cập nhật nguồn điện `POWERED = true` (`this.updateSource(level, pos, state.setValue(POWERED, true))`) gửi tín hiệu kích hoạt móc bẫy nối với nó.
+    - Bỏ qua kích hoạt với dơi (`EntityType::BAT`) và người chơi chế độ khán giả (`Spectator`).
+  - **Tripwire Hook Broken & Sound/Distance Parity (TripWireHookBlock.java:34-45, 145-150, 220-236)**:
+    - Bổ sung `broken` cho `TripwireHookBlock`: khi móc bẫy bị dỡ bỏ hoặc phá hủy, nếu đang ở trạng thái gắn dây (`attached`) hoặc cấp điện (`powered`), lập tức tính toán cập nhật lại toàn bộ chuỗi dây kết nối (`WIRE_DIST_MAX = 42`) và ngắt tín hiệu nguồn lân cận.
+    - Đồng bộ âm thanh kích hoạt/ngắt móc bẫy: `CLICK_ON_VOLUME = 0.4`, `CLICK_ON_PITCH = 0.6`, `CLICK_OFF_VOLUME = 0.4`, `CLICK_OFF_PITCH = 0.5`, `ATTACH_VOLUME = 0.4`, `ATTACH_PITCH = 0.7`.
+  - **Normal & Weighted Pressure Plates Broken & Timing Parity (BasePressurePlateBlock.java:18-48, WeightedPressurePlateBlock.java)**:
+    - Bổ sung `broken` cho cả `PressurePlateBlock` và `WeightedPressurePlateBlock` (`broken_pp`), nếu bị phá hủy khi đang có lực ép (`output > 0`), lập tức cập nhật ngắt điện khối lân cận tại vị trí và khối phía dưới sàn (`pos.down()`).
+    - Thời gian giữ tín hiệu: đĩa áp lực thường là `20` ticks (1.0s), đĩa áp lực trọng lượng (`WeightedPressurePlateBlock`) là `10` ticks (0.5s).
+    - Công thức tín hiệu trọng lượng:
+      - Đĩa vàng nhẹ (`LIGHT_MAX_WEIGHT = 15`): mỗi thực thể tăng 1 mức tín hiệu, tối đa 15 thực thể = 15 power.
+      - Đĩa sắt nặng (`HEAVY_MAX_WEIGHT = 150`): `ceil(min(150, count) / 150.0 * 15.0)`, tối đa 150 thực thể = 15 power.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/tripwire.rs`:
+    - Cập nhật `broken` xử lý phá hủy có kéo (`GameEvent::Shear`) và không có kéo (`powered = true` kích hoạt móc bẫy).
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs`:
+    - Bổ sung `broken` cập nhật chuỗi móc bẫy và ngắt điện khối gắn kèm.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/mod.rs`, `plate.rs`, `weighted.rs`:
+    - Bổ sung `broken_pp` và hàm `broken` cho đĩa áp lực thường và đĩa áp lực trọng lượng.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_tripwire_and_pressure_plates_parity_gap471`.
+  - **Unit Tests**: Vượt qua 100% `test_tripwire_and_pressure_plates_parity_gap471`.
