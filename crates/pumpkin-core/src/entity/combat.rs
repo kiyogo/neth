@@ -35793,4 +35793,79 @@ mod tests {
         assert_eq!(LecternBlock::BOOK_DROP_PICKUP_DELAY_TICKS, 10);
     }
 
+
+    #[test]
+    fn test_portals_dimensions_sponge_and_falling_parity_gap513() {
+        use crate::block::blocks::dragon_egg::DragonEggBlock;
+        use crate::block::blocks::end_gateway::EndGatewayBlock;
+        use crate::block::blocks::end_portal::EndPortalBlock;
+        use crate::block::blocks::end_portal_frame::{EndPortalFrameBlock, calculate_end_portal_frame_comparator_signal};
+        use crate::block::blocks::falling::FallingBlock;
+        use crate::block::blocks::nether_portal::NetherPortalBlock;
+        use crate::block::blocks::powder_snow::PowderSnowBlock;
+        use crate::block::blocks::sponge::{SpongeBlock, WetSpongeBlock};
+
+        // 1. Nether Portal Dimensions & Delays (NetherPortalBlock.java)
+        assert_eq!(NetherPortalBlock::MIN_WIDTH, 2);
+        assert_eq!(NetherPortalBlock::MAX_WIDTH, 21);
+        assert_eq!(NetherPortalBlock::MIN_HEIGHT, 3);
+        assert_eq!(NetherPortalBlock::MAX_HEIGHT, 21);
+        assert_eq!(NetherPortalBlock::DEFAULT_PORTAL_COOLDOWN, 300);
+        assert_eq!(NetherPortalBlock::DEFAULT_SURVIVAL_DELAY, 80);
+        assert_eq!(NetherPortalBlock::DEFAULT_CREATIVE_DELAY, 1);
+        assert_eq!(NetherPortalBlock::NON_PLAYER_DELAY, 0);
+
+        assert!(NetherPortalBlock::is_valid_portal_dimension(2, 3));
+        assert!(NetherPortalBlock::is_valid_portal_dimension(21, 21));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(1, 3));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(2, 2));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(22, 21));
+        assert!(!NetherPortalBlock::is_valid_portal_dimension(21, 22));
+
+        // 2. End Portal & End Portal Frame (EndPortalBlock.java, EndPortalFrameBlock.java)
+        assert_eq!(EndPortalBlock::END_SPAWN_X, 100);
+        assert_eq!(EndPortalBlock::END_SPAWN_Y, 49);
+        assert_eq!(EndPortalBlock::END_SPAWN_Z, 0);
+        assert!((EndPortalBlock::PORTAL_MIN_Y - 0.375).abs() < 1e-6);
+        assert!((EndPortalBlock::PORTAL_MAX_Y - 0.75).abs() < 1e-6);
+        assert!((EndPortalBlock::PORTAL_THICKNESS - 0.375).abs() < 1e-6);
+
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EYE, 15);
+        assert_eq!(EndPortalFrameBlock::COMPARATOR_SIGNAL_EMPTY, 0);
+        assert_eq!(EndPortalFrameBlock::EVENT_FRAME_FILL, 1503);
+        assert_eq!(EndPortalFrameBlock::EVENT_PORTAL_SPAWN, 1038);
+        assert_eq!(EndPortalFrameBlock::PORTAL_FRAME_COUNT, 12);
+        assert_eq!(EndPortalFrameBlock::PORTAL_INNER_SIZE, 3);
+        assert!(EndPortalFrameBlock::is_valid_frame_count(12));
+        assert!(!EndPortalFrameBlock::is_valid_frame_count(11));
+        assert_eq!(calculate_end_portal_frame_comparator_signal(true), 15);
+        assert_eq!(calculate_end_portal_frame_comparator_signal(false), 0);
+
+        // 3. End Gateway Cooldown (EndGatewayBlock.java)
+        assert_eq!(EndGatewayBlock::COOLDOWN_TICKS, 200);
+        assert_eq!(EndGatewayBlock::EVENT_COOLDOWN, 1);
+
+        // 4. Dragon Egg Physics & Teleport Radius (DragonEggBlock.java)
+        assert_eq!(DragonEggBlock::DELAY_AFTER_PLACE, 5);
+        assert_eq!(DragonEggBlock::HORIZONTAL_TELEPORT_RADIUS, 16);
+        assert_eq!(DragonEggBlock::VERTICAL_TELEPORT_RADIUS, 8);
+        assert_eq!(DragonEggBlock::TELEPORT_ATTEMPTS, 1000);
+        assert_eq!(DragonEggBlock::EVENT_DRAGON_EGG_TELEPORT, 2015);
+        assert_eq!(DragonEggBlock::DUST_COLOR, -16777216);
+
+        // 5. Sponge Absorption & Wet Sponge Evaporation (SpongeBlock.java, WetSpongeBlock.java)
+        assert_eq!(SpongeBlock::MAX_DEPTH, 6);
+        assert_eq!(SpongeBlock::MAX_COUNT, 64);
+        assert_eq!(WetSpongeBlock::EVENT_WATER_EVAPORATE, 2009);
+
+        // 6. Powder Snow Movement & Fall Heights (PowderSnowBlock.java)
+        assert!((PowderSnowBlock::SLOW_MULTIPLIER.0 - 0.9).abs() < 1e-6);
+        assert!((PowderSnowBlock::SLOW_MULTIPLIER.1 - 1.5).abs() < 1e-6);
+        assert!((PowderSnowBlock::SLOW_MULTIPLIER.2 - 0.9).abs() < 1e-6);
+        assert!((PowderSnowBlock::FALLING_COLLISION_HEIGHT - 0.9).abs() < 1e-6);
+
+        // 7. Falling Blocks Standard Delay (FallingBlock.java)
+        assert_eq!(FallingBlock::DELAY_AFTER_PLACE, 2);
+    }
+
 }

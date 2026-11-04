@@ -142,6 +142,7 @@ impl BlockBehaviour for WetSpongeBlock {
                 1.0,
                 pitch,
             );
+            args.world.update_neighbors(args.position, None);
         } else {
             args.world.update_neighbors(args.position, None);
         }

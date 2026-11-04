@@ -14057,3 +14057,51 @@ et/minecraft/world/level/block/TripWireHookBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_utility_interactive_blocks_parity_gap512`.
   - **Unit Tests**: Vượt qua 100% `test_utility_interactive_blocks_parity_gap512`.
+
+### Gap 513: Portals, Dimensions, Sponge, Powder Snow & Falling Blocks Parity
+- **Mã nguồn Minecraft Java gốc đối chiếu**:
+  - 
+et/minecraft/world/level/block/NetherPortalBlock.java
+  - 
+et/minecraft/world/level/block/EndPortalBlock.java
+  - 
+et/minecraft/world/level/block/EndPortalFrameBlock.java
+  - 
+et/minecraft/world/level/block/EndGatewayBlock.java
+  - 
+et/minecraft/world/level/block/DragonEggBlock.java
+  - 
+et/minecraft/world/level/block/SpongeBlock.java
+  - 
+et/minecraft/world/level/block/WetSpongeBlock.java
+  - 
+et/minecraft/world/level/block/PowderSnowBlock.java
+  - 
+et/minecraft/world/level/block/FallingBlock.java
+  - 
+et/minecraft/world/level/block/ConcretePowderBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Wet Sponge Nether Evaporation Neighbor Updates (WetSpongeBlock.java, SpongeBlock.java)**:
+    - Sửa lỗi trong WetSpongeBlock::placed: khi bọt biển ướt được đặt trong môi trường làm bốc hơi nước (Nether / water_evaporates), khối tự động biến đổi thành bọt biển khô (Block::SPONGE). Bổ sung rgs.world.update_neighbors(args.position, None); để thông báo cho các khối lân cận cập nhật trạng thái ngay lập tức.
+    - Cơ chế hút nước của Sponge: thuật toán lan truyền BFS tối đa 64 khối nước (MAX_TOUCHED = 64), bán kính tối đa 6 khối (MAX_DEPTH = 6), mã sự kiện bốc hơi 2009.
+  - **Nether Portal Mechanics & Frame Dimensions (NetherPortalBlock.java)**:
+    - Kích thước khung cổng Nether hợp lệ: chiều rộng  \le \text{width} \le 21$, chiều cao  \le \text{height} \le 21$.
+    - Thời gian trễ dịch chuyển cổng Nether: Non-player/Entities = 0 ticks (tức thời), Creative mode = 1 tick, Survival/Adventure mode = 80 ticks (4.0s). Cooldown sau khi dịch chuyển = 300 ticks (15.0s).
+    - Tỷ lệ sinh Zombified Piglin từ cổng Nether: 
+andom.nextInt(2000) < difficulty.id.
+  - **The End Portals, Gateway & Dragon Egg (EndPortalBlock.java, EndPortalFrameBlock.java, EndGatewayBlock.java, DragonEggBlock.java)**:
+    - Khung cổng The End: Cần đủ 12 khối khung EndPortalFrameBlock gắn mắt Ender (has_eye = true), phát tín hiệu comparator 15 (0 khi không có mắt), mã sự kiện đặt mắt 1503, mở cổng 1038.
+    - Khối cổng The End: Bounding box .375 \le y \le 0.75$, độ dày .375$, tọa độ điểm xuất hiện chuẩn tại The End 100 49 0$.
+    - Cổng không gian phụ The End Gateway: Thời gian hồi chiêu sau khi dịch chuyển COOLDOWN_TICKS = 200 ticks (10.0s), mã sự kiện dịch chuyển EVENT_COOLDOWN = 1.
+    - Trứng rồng Dragon Egg: Độ trễ rơi DELAY_AFTER_PLACE = 5 ticks (khác với khối rơi thông thường là 2 ticks). Bán kính dịch chuyển ngẫu nhiên: 16 khối ngang ($\pm 16$), 8 khối dọc ($\pm 8$), tối đa 1000 lần thử tìm vị trí hợp lệ, mã sự kiện hạt 2015.
+  - **Powder Snow & Freezing Lifecycle (PowderSnowBlock.java)**:
+    - Hệ số làm chậm chuyển động 0.9 1.5 0.9$. Cho phép đi bộ bình thường khi mang ủng da (leather_boots) hoặc thực thể thuộc tag #minecraft:powder_snow_walkable_mobs.
+    - Tan chảy thành nước/không khí khi tiếp xúc với thực thể đang bốc cháy (is_on_fire).
+  - **Falling Blocks & Concrete Powder Solidification (FallingBlock.java, ConcretePowderBlock.java)**:
+    - Độ trễ rơi tiêu chuẩn DELAY_AFTER_PLACE = 2 ticks.
+    - Bột bê tông tự động đông đặc thành bê tông cứng khi tiếp xúc với nước ở 5 mặt xung quanh (Đông, Tây, Nam, Bắc, Trên) hoặc bản thân nằm trong nước (không hóa cứng khi nước chỉ nằm ở mặt dưới).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/sponge.rs.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_portals_dimensions_sponge_and_falling_parity_gap513.
+  - **Unit Tests**: Vượt qua 100% 	est_portals_dimensions_sponge_and_falling_parity_gap513.
