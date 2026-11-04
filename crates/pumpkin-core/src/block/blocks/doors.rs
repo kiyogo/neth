@@ -298,11 +298,13 @@ impl BlockBehaviour for DoorBlock {
         let (other_block, other_state) = args.world.get_block_and_state(&other_half_pos);
         if other_block.id != args.block.id {
             args.world.update_neighbors(&other_half_pos, None);
+            args.world.update_neighbors(args.position, None);
             return; // Neighbor is already gone or is a different block
         }
 
         let other_props = DoorProperties::from_state_id(other_state.id);
         if other_props.half == door_props.half {
+            args.world.update_neighbors(args.position, None);
             return;
         }
 
@@ -315,6 +317,7 @@ impl BlockBehaviour for DoorBlock {
 
         args.world
             .break_block(&other_half_pos, Some(args.player), flags);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_neighbor_update(&self, args: OnNeighborUpdateArgs<'_>) {

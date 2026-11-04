@@ -15,7 +15,7 @@ use pumpkin_data::tag::Taggable;
 use pumpkin_data::{Block, BlockState, BlockStateId};
 use pumpkin_macros::pumpkin_block_from_tag;
 use pumpkin_util::math::position::BlockPos;
-use pumpkin_world::world::BlockFlags;
+use pumpkin_world::world::{BlockAccessor, BlockFlags};
 
 type FenceGateProperties = pumpkin_data::block_properties::OakFenceGateLikeProperties;
 
@@ -111,6 +111,20 @@ impl FenceGateBlock {
     ) -> bool {
         gate_facing.to_axis() == query_dir.rotate_clockwise().to_axis()
     }
+
+    #[must_use]
+    pub fn check_in_wall(
+        world: &dyn BlockAccessor,
+        pos: &BlockPos,
+        facing: pumpkin_data::block_properties::HorizontalFacing,
+    ) -> bool {
+        let side_offset_left = pos.offset(facing.rotate_clockwise().to_offset());
+        let side_offset_right = pos.offset(facing.rotate_counter_clockwise().to_offset());
+        let neighbor_left = world.get_block(&side_offset_left);
+        let neighbor_right = world.get_block(&side_offset_right);
+        neighbor_left.has_tag(&tag::Block::MINECRAFT_WALLS)
+            || neighbor_right.has_tag(&tag::Block::MINECRAFT_WALLS)
+    }
 }
 
 impl BlockBehaviour for FenceGateBlock {
@@ -129,6 +143,7 @@ impl BlockBehaviour for FenceGateBlock {
         let powered = block_receives_redstone_power(args.world, args.position);
         fence_gate_props.powered = powered;
         fence_gate_props.open = powered;
+        fence_gate_props.in_wall = Self::check_in_wall(args.world, args.position, fence_gate_props.facing);
 
         fence_gate_props.to_state_id(args.block)
     }
@@ -204,11 +219,7 @@ fn is_in_wall(args: &GetStateForNeighborUpdateArgs<'_>) -> FenceGateProperties {
         args.neighbor_position == &side_offset_left || args.neighbor_position == &side_offset_right;
 
     if neighbor_on_side {
-        let neighbor_right = args.world.get_block(&side_offset_right);
-        let neighbor_left = args.world.get_block(&side_offset_left);
-
-        fence_props.in_wall = neighbor_left.has_tag(&tag::Block::MINECRAFT_WALLS)
-            || neighbor_right.has_tag(&tag::Block::MINECRAFT_WALLS);
+        fence_props.in_wall = FenceGateBlock::check_in_wall(args.world, args.position, fence_props.facing);
     }
 
     fence_props

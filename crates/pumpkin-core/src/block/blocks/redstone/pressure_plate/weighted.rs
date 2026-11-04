@@ -20,6 +20,7 @@ impl WeightedPressurePlateBlock {
     pub const HEAVY_MAX_WEIGHT: usize = 150;
     pub const MAX_POWER: u8 = 15;
     pub const PRESSED_TICKS: u32 = 10;
+    pub const DEFAULT_POWER: u8 = 0;
 
     #[must_use]
     pub fn signal_strength(entity_count: usize, max_weight: usize) -> u8 {

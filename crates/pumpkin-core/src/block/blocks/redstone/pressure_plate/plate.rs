@@ -22,6 +22,7 @@ impl PressurePlateBlock {
     pub const POWER_ON: u8 = 15;
     pub const POWER_OFF: u8 = 0;
     pub const PRESSED_TICKS: u32 = 20;
+    pub const DEFAULT_POWERED: bool = false;
 }
 
 type PressurePlateProps = pumpkin_data::block_properties::StonePressurePlateLikeProperties;

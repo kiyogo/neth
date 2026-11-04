@@ -98,6 +98,29 @@ impl TrapDoorBlock {
             (current_powered, current_open, false)
         }
     }
+
+    #[must_use]
+    pub fn get_placement_facing_and_half(
+        clicked_face: BlockDirection,
+        cursor_y: f32,
+        player_facing: pumpkin_data::block_properties::HorizontalFacing,
+    ) -> (pumpkin_data::block_properties::HorizontalFacing, Half) {
+        if let Some(horizontal_face) = clicked_face.to_horizontal_facing() {
+            let half = if cursor_y > 0.5 {
+                Half::Top
+            } else {
+                Half::Bottom
+            };
+            (horizontal_face, half)
+        } else {
+            let half = if clicked_face == BlockDirection::Up {
+                Half::Bottom
+            } else {
+                Half::Top
+            };
+            (player_facing.opposite(), half)
+        }
+    }
 }
 
 impl BlockBehaviour for TrapDoorBlock {
@@ -126,26 +149,16 @@ impl BlockBehaviour for TrapDoorBlock {
         trapdoor_props.waterlogged = args.replacing.water_source();
 
         let powered = block_receives_redstone_power(args.world, args.position);
-
         let player_facing = args.player.get_entity().get_horizontal_facing();
 
-        // Correct facing logic using Option unwrap
-        let facing = args
-            .direction
-            .to_horizontal_facing()
-            .unwrap_or(player_facing);
+        let (facing, half) = Self::get_placement_facing_and_half(
+            args.direction,
+            args.use_item_on.cursor_pos.y,
+            player_facing,
+        );
 
         trapdoor_props.facing = facing;
-
-        trapdoor_props.half = match args.direction {
-            BlockDirection::Up => Half::Top,
-            BlockDirection::Down => Half::Bottom,
-            _ => match args.use_item_on.cursor_pos.y {
-                0.0..0.5 => Half::Bottom,
-                _ => Half::Top,
-            },
-        };
-
+        trapdoor_props.half = half;
         trapdoor_props.powered = powered;
         trapdoor_props.open = powered;
 

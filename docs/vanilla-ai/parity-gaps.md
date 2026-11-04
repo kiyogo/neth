@@ -13899,3 +13899,53 @@ et/minecraft/world/level/block/TripWireHookBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_redstone_transmission_diodes_and_propagation_parity_gap509.
   - **Unit Tests**: Vượt qua 100% 	est_redstone_transmission_diodes_and_propagation_parity_gap509.
+
+### Gap 510: Doors, Trapdoors, Fence Gates, Pistons & Pressure Plates Parity
+- **Mức độ nghiêm trọng**: Trung bình (Ảnh hưởng đến logic đặt cửa sập theo hướng người chơi và mặt tiếp xúc, hạ cổng hàng rào lọt giữa tường đá khi đặt, cập nhật khối lân cận khi phá hủy cửa, thông số piston và đĩa áp lực)
+- **Tập tin liên quan trong Neth**:
+  - `crates/pumpkin-core/src/block/blocks/doors.rs`
+  - `crates/pumpkin-core/src/block/blocks/trapdoor.rs`
+  - `crates/pumpkin-core/src/block/blocks/fence_gates.rs`
+  - `crates/pumpkin-core/src/block/blocks/piston/piston.rs`
+  - `crates/pumpkin-core/src/block/blocks/piston/piston_head.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/plate.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/weighted.rs`
+  - `crates/pumpkin-core/src/entity/combat.rs`
+- **Tập tin tham chiếu trong JVMC**:
+  - `net/minecraft/world/level/block/DoorBlock.java`
+  - `net/minecraft/world/level/block/TrapDoorBlock.java`
+  - `net/minecraft/world/level/block/FenceGateBlock.java`
+  - `net/minecraft/world/level/block/piston/PistonBaseBlock.java`
+  - `net/minecraft/world/level/block/piston/PistonHeadBlock.java`
+  - `net/minecraft/world/level/block/PressurePlateBlock.java`
+  - `net/minecraft/world/level/block/WeightedPressurePlateBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Doors Neighbor Updates on Broken (DoorBlock.java)**:
+    - Bổ sung `args.world.update_neighbors(args.position, None);` trong `broken` của `DoorBlock`. Trước đó khi một nửa cánh cửa bị phá vỡ, các khối lân cận vị trí phá hủy không nhận được cập nhật khối, gây lỗi tín hiệu redstone/observer/comparator/piston lân cận.
+  - **Trapdoor Placement Facing & Half Calculation Parity (TrapDoorBlock.java:125-131)**:
+    - Triển khai `TrapDoorBlock::get_placement_facing_and_half`:
+      - Khi đặt trên mặt ngang: hướng bản lề quay theo mặt được bấm (`facing = clicked_face`), nửa trên/dưới xác định bởi tọa độ click `cursor_pos.y > 0.5 ? Half::Top : Half::Bottom`.
+      - Khi đặt trên mặt trên (sàn `Direction::Up`): hướng quay ngược hướng nhìn người chơi `player_facing.opposite()`, nửa khối luôn là nửa dưới `Half::Bottom`.
+      - Khi đặt trên mặt dưới (trần `Direction::Down`): hướng quay ngược hướng nhìn người chơi `player_facing.opposite()`, nửa khối luôn là nửa trên `Half::Top`.
+      - Sửa lỗi trước đó gán nhầm `Half::Top` cho sàn và `player_facing` thay vì `player_facing.opposite()`.
+  - **Fence Gate Placement In-Wall Parity (FenceGateBlock.java:101-107)**:
+    - Triển khai `FenceGateBlock::check_in_wall`: kiểm tra hai bên tiếp xúc của cổng rào (`rotate_clockwise` và `rotate_counter_clockwise`) xem có tiếp giáp với tường đá (`#minecraft:walls`) hay không.
+    - Cập nhật `on_place` tự động gán `in_wall = true` ngay khi đặt cổng hàng rào giữa hai bức tường, loại bỏ hiện tượng cổng rào bị lệch độ cao/nổi lơ lửng cho đến khi có neighbor update. Đồng bộ dùng chung logic với `get_state_for_neighbor_update`.
+  - **Pistons, Piston Heads & Mechanism Constants Parity (PistonBaseBlock.java, PistonHeadBlock.java)**:
+    - Piston: giới hạn đẩy tối đa `MAX_PUSH_LIMIT = 12` khối, các mã kích hoạt sự kiện `TRIGGER_EXTEND = 0`, `TRIGGER_CONTRACT = 1`, `TRIGGER_DROP = 2`, độ dày bệ đẩy `PLATFORM_THICKNESS = 4.0`, mặc định `extended = false`, hướng mặc định `Facing::North`.
+    - Âm thanh đẩy piston: âm lượng 0.5, cao độ `0.6 + rand * 0.25` (0.6..0.85); âm thanh thụt piston: âm lượng 0.5, cao độ `0.6 + rand * 0.15` (0.6..0.75).
+    - Khối dính & Khối không thể đẩy: khối chất nhờn (`SLIME_BLOCK`) và khối mật ong (`HONEY_BLOCK`) dính vào các khối thông thường nhưng không dính vào nhau (`can_stick_to_each_other` trả về false giữa slime và honey); hắc diện thạch, hắc diện thạch khóc, mỏ neo hồi sinh, đá sâu gia cố và đầu piston là các khối không thể bị đẩy (`is_pushable_block_type` trả về false).
+    - Đầu piston (`PistonHeadBlock`): độ dày bệ `PLATFORM_THICKNESS = 4.0`, mặc định `short = false`.
+  - **Pressure Plates Timings, Weights & Signal Parity (PressurePlateBlock.java, WeightedPressurePlateBlock.java)**:
+    - Đĩa áp lực thường: thời gian nhấn `PRESSED_TICKS = 20` ticks (1.0s), tín hiệu bật 15, tắt 0, mặc định `powered = false`.
+    - Đĩa áp lực có trọng số: đĩa vàng nhẹ `LIGHT_MAX_WEIGHT = 15` thực thể, đĩa sắt nặng `HEAVY_MAX_WEIGHT = 150` thực thể, chu kỳ nhấn `PRESSED_TICKS = 10` ticks (0.5s), tín hiệu tối đa 15, mặc định tín hiệu 0.
+    - Công thức tín hiệu rời rạc chuẩn vanilla: `ceil((entity_count / max_weight) * 15.0)` (tối thiểu 1 khi có ít nhất 1 thực thể, đạt 15 khi số lượng thực thể đạt hoặc vượt `max_weight`).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/doors.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/trapdoor.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/fence_gates.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/plate.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/pressure_plate/weighted.rs`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_doors_trapdoors_pistons_and_mechanisms_parity_gap510`.
+  - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_pistons_and_mechanisms_parity_gap510`.

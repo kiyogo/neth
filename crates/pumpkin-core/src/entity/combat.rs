@@ -35323,4 +35323,153 @@ mod tests {
         assert!(RedstoneTorchBlock::is_burnt_out(8));
         assert!(!RedstoneTorchBlock::is_burnt_out(7));
     }
+
+    #[test]
+    fn test_doors_trapdoors_pistons_and_mechanisms_parity_gap510() {
+        use crate::block::blocks::doors::DoorBlock;
+        use crate::block::blocks::fence_gates::FenceGateBlock;
+        use crate::block::blocks::piston::piston::PistonBlock;
+        use crate::block::blocks::piston::piston_head::PistonHeadBlock;
+        use crate::block::blocks::redstone::pressure_plate::plate::PressurePlateBlock;
+        use crate::block::blocks::redstone::pressure_plate::weighted::WeightedPressurePlateBlock;
+        use crate::block::blocks::trapdoor::TrapDoorBlock;
+        use pumpkin_data::block_properties::{Facing, Half, HorizontalFacing};
+        use pumpkin_data::{Block, BlockDirection};
+
+        // 1. Doors Parity (DoorBlock.java)
+        assert!((DoorBlock::DOOR_THICKNESS - 0.1875).abs() < 1e-6);
+        assert!((DoorBlock::SOUND_VOLUME - 1.0).abs() < 1e-6);
+        assert!((DoorBlock::SOUND_PITCH_BASE - 0.9).abs() < 1e-6);
+        assert!((DoorBlock::SOUND_PITCH_RANGE - 0.1).abs() < 1e-6);
+        assert_eq!(DoorBlock::DEFAULT_OPEN, false);
+        assert_eq!(DoorBlock::DEFAULT_POWERED, false);
+        assert!((DoorBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((DoorBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(DoorBlock::can_open_by_hand(&Block::IRON_DOOR), false);
+        assert_eq!(DoorBlock::can_open_by_hand(&Block::OAK_DOOR), true);
+
+        // Door redstone interaction: (current_open, current_powered, has_signal) -> (new_powered, new_open, should_play_sound)
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(false, false, true), (true, true, true));
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(true, true, false), (false, false, true));
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(false, false, false), (false, false, false));
+        assert_eq!(DoorBlock::evaluate_redstone_interaction(true, true, true), (true, true, false));
+
+        // 2. Trapdoors Parity (TrapDoorBlock.java)
+        assert!((TrapDoorBlock::TRAPDOOR_THICKNESS - 0.1875).abs() < 1e-6);
+        assert!((TrapDoorBlock::SOUND_VOLUME - 1.0).abs() < 1e-6);
+        assert!((TrapDoorBlock::SOUND_PITCH_BASE - 0.9).abs() < 1e-6);
+        assert!((TrapDoorBlock::SOUND_PITCH_RANGE - 0.1).abs() < 1e-6);
+        assert_eq!(TrapDoorBlock::DEFAULT_OPEN, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_POWERED, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_WATERLOGGED, false);
+        assert_eq!(TrapDoorBlock::DEFAULT_HALF, Half::Bottom);
+        assert!((TrapDoorBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((TrapDoorBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert_eq!(TrapDoorBlock::can_open_by_hand(&Block::IRON_TRAPDOOR), false);
+        assert_eq!(TrapDoorBlock::can_open_by_hand(&Block::OAK_TRAPDOOR), true);
+
+        // Trapdoor placement facing and half calculation (TrapDoorBlock.java:125-131)
+        // Horizontal click: face = clicked_face, half based on cursor Y > 0.5
+        assert_eq!(
+            TrapDoorBlock::get_placement_facing_and_half(BlockDirection::North, 0.75, HorizontalFacing::South),
+            (HorizontalFacing::North, Half::Top)
+        );
+        assert_eq!(
+            TrapDoorBlock::get_placement_facing_and_half(BlockDirection::South, 0.25, HorizontalFacing::North),
+            (HorizontalFacing::South, Half::Bottom)
+        );
+        // Floor click (Direction::Up): facing = player_facing.opposite(), half = Half::Bottom
+        assert_eq!(
+            TrapDoorBlock::get_placement_facing_and_half(BlockDirection::Up, 0.5, HorizontalFacing::North),
+            (HorizontalFacing::South, Half::Bottom)
+        );
+        // Ceiling click (Direction::Down): facing = player_facing.opposite(), half = Half::Top
+        assert_eq!(
+            TrapDoorBlock::get_placement_facing_and_half(BlockDirection::Down, 0.5, HorizontalFacing::East),
+            (HorizontalFacing::West, Half::Top)
+        );
+
+        // 3. Fence Gates Parity (FenceGateBlock.java)
+        assert!((FenceGateBlock::SOUND_VOLUME - 1.0).abs() < 1e-6);
+        assert!((FenceGateBlock::SOUND_PITCH_BASE - 0.9).abs() < 1e-6);
+        assert!((FenceGateBlock::SOUND_PITCH_RANGE - 0.1).abs() < 1e-6);
+        assert_eq!(FenceGateBlock::DEFAULT_OPEN, false);
+        assert_eq!(FenceGateBlock::DEFAULT_POWERED, false);
+        assert_eq!(FenceGateBlock::DEFAULT_IN_WALL, false);
+        assert!((FenceGateBlock::calculate_sound_pitch(0.0) - 0.9).abs() < 1e-6);
+        assert!((FenceGateBlock::calculate_sound_pitch(1.0) - 1.0).abs() < 1e-6);
+        assert!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::East));
+        assert!(FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::West));
+        assert!(!FenceGateBlock::connects_to_direction(HorizontalFacing::North, HorizontalFacing::North));
+        assert_eq!(FenceGateBlock::evaluate_redstone_interaction(false, false, true), (true, true, true));
+        assert_eq!(FenceGateBlock::evaluate_redstone_interaction(true, true, false), (false, false, true));
+
+        // 4. Pistons Parity (PistonBaseBlock.java, PistonHeadBlock.java)
+        assert_eq!(PistonBlock::MAX_PUSH_LIMIT, 12);
+        assert_eq!(PistonBlock::TRIGGER_EXTEND, 0);
+        assert_eq!(PistonBlock::TRIGGER_CONTRACT, 1);
+        assert_eq!(PistonBlock::TRIGGER_DROP, 2);
+        assert!((PistonBlock::PLATFORM_THICKNESS - 4.0).abs() < 1e-6);
+        assert_eq!(PistonBlock::DEFAULT_EXTENDED, false);
+        assert_eq!(PistonBlock::DEFAULT_FACING, Facing::North);
+        assert!((PistonBlock::EXTEND_SOUND_VOLUME - 0.5).abs() < 1e-6);
+        assert!((PistonBlock::EXTEND_SOUND_PITCH_BASE - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::EXTEND_SOUND_PITCH_RANGE - 0.25).abs() < 1e-6);
+        assert!((PistonBlock::CONTRACT_SOUND_VOLUME - 0.5).abs() < 1e-6);
+        assert!((PistonBlock::CONTRACT_SOUND_PITCH_BASE - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::CONTRACT_SOUND_PITCH_RANGE - 0.15).abs() < 1e-6);
+        assert!((PistonBlock::calculate_extend_pitch(0.0) - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::calculate_extend_pitch(1.0) - 0.85).abs() < 1e-6);
+        assert!((PistonBlock::calculate_contract_pitch(0.0) - 0.6).abs() < 1e-6);
+        assert!((PistonBlock::calculate_contract_pitch(1.0) - 0.75).abs() < 1e-6);
+
+        // Sticky blocks adhesion logic
+        assert!(PistonBlock::is_sticky_block(&Block::SLIME_BLOCK));
+        assert!(PistonBlock::is_sticky_block(&Block::HONEY_BLOCK));
+        assert!(!PistonBlock::is_sticky_block(&Block::STONE));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::STONE));
+        assert!(PistonBlock::can_stick_to_each_other(&Block::HONEY_BLOCK, &Block::STONE));
+        assert!(!PistonBlock::can_stick_to_each_other(&Block::SLIME_BLOCK, &Block::HONEY_BLOCK));
+
+        // Pushable block types
+        assert!(!PistonBlock::is_pushable_block_type(&Block::OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::CRYING_OBSIDIAN));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::RESPAWN_ANCHOR));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::REINFORCED_DEEPSLATE));
+        assert!(!PistonBlock::is_pushable_block_type(&Block::PISTON_HEAD));
+        assert!(PistonBlock::is_pushable_block_type(&Block::STONE));
+
+        assert!((PistonHeadBlock::PLATFORM_THICKNESS - 4.0).abs() < 1e-6);
+        assert_eq!(PistonHeadBlock::DEFAULT_SHORT, false);
+
+        // 5. Pressure Plates Parity (PressurePlateBlock.java, WeightedPressurePlateBlock.java)
+        assert_eq!(PressurePlateBlock::POWER_ON, 15);
+        assert_eq!(PressurePlateBlock::POWER_OFF, 0);
+        assert_eq!(PressurePlateBlock::PRESSED_TICKS, 20);
+        assert_eq!(PressurePlateBlock::DEFAULT_POWERED, false);
+
+        assert_eq!(WeightedPressurePlateBlock::LIGHT_MAX_WEIGHT, 15);
+        assert_eq!(WeightedPressurePlateBlock::HEAVY_MAX_WEIGHT, 150);
+        assert_eq!(WeightedPressurePlateBlock::MAX_POWER, 15);
+        assert_eq!(WeightedPressurePlateBlock::PRESSED_TICKS, 10);
+        assert_eq!(WeightedPressurePlateBlock::DEFAULT_POWER, 0);
+        assert_eq!(WeightedPressurePlateBlock::get_max_weight(&Block::LIGHT_WEIGHTED_PRESSURE_PLATE), 15);
+        assert_eq!(WeightedPressurePlateBlock::get_max_weight(&Block::HEAVY_WEIGHTED_PRESSURE_PLATE), 150);
+
+        // Weighted signal strength formula: (count / max_weight * 15.0).ceil()
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 15), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 15), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(8, 15), 8);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(15, 15), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(20, 15), 15);
+
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(0, 150), 0);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(1, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(10, 150), 1);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(11, 150), 2);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(75, 150), 8);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(150, 150), 15);
+        assert_eq!(WeightedPressurePlateBlock::signal_strength(200, 150), 15);
+    }
+
 }
