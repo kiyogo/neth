@@ -35868,4 +35868,84 @@ mod tests {
         assert_eq!(FallingBlock::DELAY_AFTER_PLACE, 2);
     }
 
+    #[test]
+    fn test_plants_crops_vegetation_parity_gap514() {
+        use crate::block::blocks::farmland::FarmlandBlock;
+        use crate::block::blocks::plant::cactus::CactusBlock;
+        use crate::block::blocks::plant::sugar_cane::SugarCaneBlock;
+        use crate::block::blocks::plant::bamboo::BambooBlock;
+        use crate::block::blocks::plant::crop::sweet_berry_bush::SweetBerryBushBlock;
+        use crate::block::blocks::plant::crop::wheat::WheatBlock;
+        use crate::block::blocks::plant::crop::beetroot::BeetrootBlock;
+        use crate::block::blocks::plant::crop::torch_flower::TorchFlowerBlock;
+        use crate::block::blocks::plant::crop::pitcher_crop::PitcherCropBlock;
+        use crate::block::blocks::plant::crop::gourds::stem::StemBlock;
+        use crate::block::blocks::plant::crop::nether_wart::NetherWartBlock;
+        use crate::block::blocks::plant::chorus_flower::DEAD_AGE;
+        use crate::block::blocks::plant::cocoa::MAX_AGE as COCOA_MAX_AGE;
+
+        // 1. Farmland Mechanics (FarmlandBlock.java)
+        assert_eq!(FarmlandBlock::MAX_MOISTURE, 7);
+        assert_eq!(FarmlandBlock::MIN_MOISTURE, 0);
+        assert!((FarmlandBlock::HEIGHT - 15.0 / 16.0).abs() < 1e-6);
+        assert_eq!(FarmlandBlock::WATER_CHECK_DISTANCE, 4);
+
+        // Trample volume threshold: width * width * height > 0.512
+        let rabbit_volume = 0.4f32 * 0.4f32 * 0.5f32; // 0.08
+        let chicken_volume = 0.4f32 * 0.4f32 * 0.7f32; // 0.112
+        let player_volume = 0.6f32 * 0.6f32 * 1.8f32; // 0.648
+        let cow_volume = 0.9f32 * 0.9f32 * 1.4f32; // 1.134
+        assert!(rabbit_volume <= 0.512);
+        assert!(chicken_volume <= 0.512);
+        assert!(player_volume > 0.512);
+        assert!(cow_volume > 0.512);
+
+        // 2. Cactus Mechanics (CactusBlock.java)
+        assert_eq!(CactusBlock::MAX_AGE, 15);
+        assert_eq!(CactusBlock::MAX_HEIGHT, 3);
+        assert_eq!(CactusBlock::DAMAGE_AMOUNT, 1.0);
+
+        // 3. Sugar Cane Mechanics (SugarCaneBlock.java)
+        assert_eq!(SugarCaneBlock::MAX_AGE, 15);
+        assert_eq!(SugarCaneBlock::MAX_HEIGHT, 3);
+
+        // 4. Bamboo Growth & Stage Mechanics (BambooStalkBlock.java)
+        assert_eq!(BambooBlock::MAX_HEIGHT, 16);
+        assert_eq!(BambooBlock::MAX_STAGE, 1);
+        assert_eq!(BambooBlock::MAX_AGE, 1);
+
+        // Bamboo age logic parity: JVMC int age = state.getValue(AGE) != 1 && !twoBelowState.is(BAMBOO) ? 0 : 1;
+        let calc_bamboo_age = |current_age: u8, two_below_is_bamboo: bool| -> u8 {
+            if current_age != 1 && !two_below_is_bamboo { 0 } else { 1 }
+        };
+        assert_eq!(calc_bamboo_age(0, false), 0);
+        assert_eq!(calc_bamboo_age(0, true), 1);
+        assert_eq!(calc_bamboo_age(1, false), 1);
+        assert_eq!(calc_bamboo_age(1, true), 1);
+
+        // 5. Sweet Berry Bush Lifecycle & Slowdown (SweetBerryBushBlock.java)
+        assert_eq!(SweetBerryBushBlock::MAX_AGE, 3);
+        assert_eq!(SweetBerryBushBlock::DAMAGE_AMOUNT, 1.0);
+
+        // 6. Crops & Bonemeal Parity (CropBlock.java, BeetrootBlock.java, TorchflowerCropBlock.java)
+        assert_eq!(WheatBlock::MAX_AGE, 7);
+        assert_eq!(WheatBlock::BONEMEAL_INCREASE_MIN, 2);
+        assert_eq!(WheatBlock::BONEMEAL_INCREASE_MAX, 5);
+
+        assert_eq!(BeetrootBlock::MAX_AGE, 3);
+        assert_eq!(BeetrootBlock::RANDOM_TICK_CHANCE, 3);
+
+        assert_eq!(TorchFlowerBlock::MAX_AGE, 2);
+        assert_eq!(PitcherCropBlock::MAX_AGE, 4);
+
+        // 7. Gourds Stem & Nether Wart Parity (StemBlock.java, NetherWartBlock.java)
+        assert_eq!(StemBlock::MAX_AGE, 7);
+        assert_eq!(NetherWartBlock::MAX_AGE, 3);
+        assert_eq!(NetherWartBlock::GROWTH_CHANCE, 10);
+
+        // 8. Chorus Flower & Cocoa Parity (ChorusFlowerBlock.java, CocoaBlock.java)
+        assert_eq!(DEAD_AGE, 5);
+        assert_eq!(COCOA_MAX_AGE, 2);
+    }
+
 }

@@ -44,7 +44,7 @@ impl BlockBehaviour for CactusBlock {
             let mut i = 1;
             while args.world.get_block(&args.position.down_height(i)) == &Block::CACTUS {
                 i += 1;
-                if 1 == 3 && age == 15 {
+                if i == 3 && age == 15 {
                     return;
                 }
             }

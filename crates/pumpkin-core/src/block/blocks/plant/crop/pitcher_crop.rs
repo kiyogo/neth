@@ -11,6 +11,8 @@ pub const MAX_AGE: u8 = 4;
 pub struct PitcherCropBlock;
 
 impl PitcherCropBlock {
+    pub const MAX_AGE: u8 = 4;
+
     #[must_use]
     pub fn can_survive(
         world: &dyn BlockAccessor,

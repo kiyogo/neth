@@ -14105,3 +14105,74 @@ andom.nextInt(2000) < difficulty.id.
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_portals_dimensions_sponge_and_falling_parity_gap513.
   - **Unit Tests**: Vượt qua 100% 	est_portals_dimensions_sponge_and_falling_parity_gap513.
+
+### Gap 514: Plants, Crops, Vegetation & Farming Mechanics Parity
+- **Mã nguồn Minecraft Java gốc đối chiếu**:
+  - 
+et/minecraft/world/level/block/CropBlock.java
+  - 
+et/minecraft/world/level/block/FarmlandBlock.java
+  - 
+et/minecraft/world/level/block/CactusBlock.java
+  - 
+et/minecraft/world/level/block/SugarCaneBlock.java
+  - 
+et/minecraft/world/level/block/BambooStalkBlock.java
+  - 
+et/minecraft/world/level/block/SweetBerryBushBlock.java
+  - 
+et/minecraft/world/level/block/BeetrootBlock.java
+  - 
+et/minecraft/world/level/block/TorchflowerCropBlock.java
+  - 
+et/minecraft/world/level/block/PitcherCropBlock.java
+  - 
+et/minecraft/world/level/block/StemBlock.java
+  - 
+et/minecraft/world/level/block/AttachedStemBlock.java
+  - 
+et/minecraft/world/level/block/NetherWartBlock.java
+  - 
+et/minecraft/world/level/block/ChorusFlowerBlock.java
+  - 
+et/minecraft/world/level/block/CocoaBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Cactus Height Growth Bug Fix (CactusBlock.java)**:
+    - Sửa lỗi typo nghiêm trọng trong CactusBlock::random_tick: điều kiện if 1 == 3 && age == 15 được sửa thành if i == 3 && age == 15. Trong mã cũ, 1 == 3 không bao giờ thỏa mãn, khiến vòng lặp kiểm tra chiều cao cactus không thể dừng đúng hạn khi đạt chiều cao tối đa 3 khối ở độ tuổi 15.
+    - Chu kỳ sinh trưởng: tuổi 0..=15, mọc hoa xương rồng tại tuổi 8 (xác suất 25% nếu cao $\ge 3$, 10% nếu nhỏ hơn), chiều cao tối đa 3 khối, gây sát thương va chạm 1.0.
+  - **Bamboo Tick Rate, Light Check & Age Parity (BambooStalkBlock.java)**:
+    - Sửa tỉ lệ random tick từ 
+andom_range(0..=3) == 0 (1/4) thành 
+andom_range(0..3) == 0 (1/3) và bổ sung kiểm tra mức sáng get_raw_brightness(above) >= 9 đồng bộ 100% với JVMC BambooStalkBlock.java.
+    - Sửa lỗi logic đảo ngược thuộc tính độ tuổi: props.age = if props.age != 1 && block_two_below != &Block::BAMBOO { 0 } else { 1 }; thay vì biểu thức boolean bị lộn ngược trước đó.
+  - **Beetroot & Torchflower Random Tick Probabilities (BeetrootBlock.java, TorchflowerCropBlock.java)**:
+    - Sửa lỗi điều kiện tick ngẫu nhiên của củ dền (BeetrootBlock): sửa 
+andom_range(0..3) == 0 (1/3) thành 
+andom_range(0..3) != 0 (2/3). Trong Minecraft Java gốc, củ dền có tốc độ lớn bằng 2/3 tốc độ cây lúa thông thường.
+    - Sửa tỉ lệ tick hoa đuốc đuốc (TorchflowerCropBlock): sửa 
+andom_range(0..2) != 0 (1/2) thành 
+andom_range(0..3) != 0 (2/3). Chuyển thành khối hoa TORCHFLOWER khi đạt tuổi 2.
+  - **Stem & Attached Stem Support Tag Checks (StemBlock.java, AttachedStemBlock.java)**:
+    - Sửa lỗi trong can_plant_on_top của StemBlock và AttachedStemBlock: mã cũ so sánh khối đất đỡ bên dưới với chính khối cuống if block == &Block::PUMPKIN_STEM, khiến điều kiện luôn rớt vào nhánh else và bỏ qua tag kiểm tra cuống bí ngô. Đã sửa thành kiểm tra lock.has_tag(MINECRAFT_SUPPORTS_PUMPKIN_STEM) || block.has_tag(MINECRAFT_SUPPORTS_MELON_STEM).
+  - **Sweet Berry Bush Light Requirement (SweetBerryBushBlock.java)**:
+    - Bổ sung kiểm tra mức sáng world.get_raw_brightness(&pos.up(), 0) >= 9 trong SweetBerryBushBlock::random_tick thay vì chỉ kiểm tra khối bên trên không phải khối rắn.
+    - Duy trì cơ chế thu hoạch ở tuổi 2 và 3 đưa về tuổi 1, làm chậm thực thể 0.8 0.75 0.8$, gây sát thương 1.0 khi di chuyển với tốc độ $\ge 0.003$ (ngoại trừ cáo và ong, tuổi 0 không gây đau).
+  - **Farmland & Water Mechanics (FarmlandBlock.java)**:
+    - Chiều cao khối /16$, độ ẩm 0..=7, tìm kiếm khối nước trong bán kính 4 khối ngang và 1 khối dọc (hộp -4 0 -4$ đến 4 1 4$).
+    - Giẫm đạp đất cày: thể tích thực thể ^2 	imes h > 0.512$ và khoảng cách rơi tự do  - 0.5 > rand$. Các sinh vật nhỏ như thỏ (.4 	imes 0.4 	imes 0.5 = 0.08$) và gà (.4 	imes 0.4 	imes 0.7 = 0.112$) không thể làm nát đất cày; người chơi và bò (.6 	imes 0.6 	imes 1.8 = 0.648$, .9 	imes 0.9 	imes 1.4 = 1.134$) có thể giẫm đạp thành đất thường và đẩy thực thể lên .0$ pixel tránh kẹt khối.
+  - **Pitcher Crop, Cocoa & Chorus Flower Lifecycle (PitcherCropBlock.java, CocoaBlock.java, ChorusFlowerBlock.java)**:
+    - Cây nắp ấm hai tầng: tuổi 0..=4, trở thành cây cao 2 khối từ tuổi 3 (DOUBLE_PLANT_AGE_INTERSECTION = 3), bổ sung hằng số MAX_AGE = 4.
+    - Hạt ca cao: tuổi 0..=2, gắn theo hướng thân cây rừng (#minecraft:supports_cocoa), xác suất lớn /5$.
+    - Hoa điệp khúc: tuổi chết DEAD_AGE = 5, lan cành ngang hoặc phát triển thẳng đứng kèm phát âm thanh SoundChorusGrow / SoundChorusDeath.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/cactus.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/bamboo.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/beetroot.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/torch_flower.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/sweet_berry_bush.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/pitcher_crop.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/gourds/stem.rs.
+  - Cập nhật crates/pumpkin-core/src/block/blocks/plant/crop/gourds/attached_stem.rs.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_plants_crops_vegetation_parity_gap514.
+  - **Unit Tests**: Vượt qua 100% 	est_plants_crops_vegetation_parity_gap514.

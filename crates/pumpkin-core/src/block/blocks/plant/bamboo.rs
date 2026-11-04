@@ -117,7 +117,9 @@ impl BlockBehaviour for BambooBlock {
     }
 
     fn random_tick(&self, args: RandomTickArgs<'_>) {
-        if rand::rng().random_range(0..=3) == 0 {
+        if rand::rng().random_range(0..3) == 0
+            && args.world.get_raw_brightness(&args.position.up(), 0) >= 9
+        {
             update_leaves_and_grow(args.world, args.position);
         }
     }
@@ -182,7 +184,7 @@ fn update_leaves_and_grow(world: &Arc<World>, position: &BlockPos) {
         }
     }
 
-    props.age = u8::from(!(props.age != 1 && block_two_below == &Block::BAMBOO));
+    props.age = if props.age != 1 && block_two_below != &Block::BAMBOO { 0 } else { 1 };
 
     props.stage = u8::from(
         !((bamboo_count < 11 || rand::rng().random::<f32>() >= 0.25) && bamboo_count != 15),
