@@ -13850,3 +13850,52 @@ et/minecraft/world/level/block/StructureBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_block_entities_and_containers_parity_gap508`.
   - **Unit Tests**: Vượt qua 100% `test_block_entities_and_containers_parity_gap508`.
+
+### Gap 509: Redstone Transmission, Diodes & Signal Propagation Lifecycle Parity
+- **Mức độ nghiêm trọng**: Trung bình (Ảnh hưởng đến cơ chế truyền tín hiệu đá đỏ, cập nhật khối lân cận khi phá vỡ linh kiện, chu kỳ trễ diode repeater, observer pulse, redstone torch burnout và lightning rod)
+- **Tập tin liên quan trong Neth**:
+  - crates/pumpkin-core/src/block/blocks/redstone/redstone_wire.rs
+  - crates/pumpkin-core/src/block/blocks/redstone/tripwire_hook.rs
+  - crates/pumpkin-core/src/block/blocks/redstone/lever.rs
+  - crates/pumpkin-core/src/block/blocks/redstone/buttons.rs
+  - crates/pumpkin-core/src/block/blocks/redstone/redstone_torch.rs
+  - crates/pumpkin-core/src/entity/combat.rs
+- **Tập tin tham chiếu trong JVMC**:
+  - 
+et/minecraft/world/level/block/RedStoneWireBlock.java
+  - 
+et/minecraft/world/level/block/RepeaterBlock.java
+  - 
+et/minecraft/world/level/block/ObserverBlock.java
+  - 
+et/minecraft/world/level/block/RedstoneLampBlock.java
+  - 
+et/minecraft/world/level/block/LightningRodBlock.java
+  - 
+et/minecraft/world/level/block/ButtonBlock.java
+  - 
+et/minecraft/world/level/block/LeverBlock.java
+  - 
+et/minecraft/world/level/block/RedstoneTorchBlock.java
+  - 
+et/minecraft/world/level/block/TripWireHookBlock.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Redstone Component Neighbor Updates Lifecycle on Broken**:
+    - RedstoneWireBlock: bổ sung world.update_neighbors(position, None) trong roken, đảm bảo khi dây đá đỏ bị phá vỡ, các khối lân cận nhận được bản tin cập nhật trạng thái nguồn điện ngay lập tức khớp 100% với RedStoneWireBlock.java (onRemove).
+    - TripWireHookBlock: bổ sung world.update_neighbors(position, None) trong roken, thông báo cho khối gắn và khối xung quanh khi móc bẫy bị đập vỡ.
+    - LeverBlock: sửa roken để phát tín hiệu update_neighbors vô điều kiện khi bị phá vỡ (trước đó chỉ cập nhật khi chưa bật !props.powered).
+    - ButtonBlock: sửa roken để phát tín hiệu update_neighbors vô điều kiện khi bị phá vỡ (trước đó chỉ cập nhật khi !props.powered).
+    - RedstoneTorchBlock: bổ sung world.update_neighbors(position, None) trong roken khớp với sự kiện khi đuốc đá đỏ bị gỡ bỏ trong vanilla.
+  - **Diodes, Timing & Propagation Constants Parity**:
+    - Dây đá đỏ (RedstoneWireBlock): cường độ suy hao tín hiệu 1 đơn vị mỗi khối từ 15 về 0 (MIN_POWER = 0, MAX_POWER = 15), hạt tín hiệu PARTICLE_DENSITY = 0.2, SIDE_OF_BLOCK = 0.4375.
+    - Bộ lặp đá đỏ (RepeaterBlock): độ trễ 1..=4 tương ứng 2, 4, 6, 8 game ticks (DELAY_MULTIPLIER = 2), tín hiệu ra 15 khi kích hoạt, 0 khi tắt, hỗ trợ khóa tín hiệu (locked repeater).
+    - Khối quan sát (ObserverBlock): thời gian phát xung PULSE_DURATION = 2 ticks, độ trễ phát hiện thay đổi DETECTION_DELAY = 2 ticks, phát tín hiệu mạnh 15 ở mặt sau.
+    - Đèn đá đỏ (RedstoneLamp): độ trễ tắt DELAY = 4 ticks (2 redstone ticks), độ sáng phát ra LIGHT_LEVEL_LIT = 15.
+    - Cột thu lôi (LightningRodBlock): phát tín hiệu đá đỏ mạnh 15 trong ACTIVATION_TICKS = 8 ticks khi bị sét đánh, phạm vi dẫn sét RANGE = 128 khối.
+    - Nút bấm (ButtonBlock): nút gỗ kích hoạt trong 30 ticks (1.5s), nút đá kích hoạt trong 20 ticks (1.0s).
+    - Đuốc đá đỏ (RedstoneTorchBlock): giới hạn chuyển trạng thái tối đa 8 lần trong 60 ticks (MAX_RECENT_TOGGLES = 8, RECENT_TOGGLE_TIMER = 60), thời gian cháy kiệt phục hồi 160 ticks (RESTART_DELAY = 160), độ trễ bật tắt 2 ticks (TOGGLE_DELAY = 2), sự kiện khói burnout BURNOUT_EVENT = 1502.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật các file redstone wire, tripwire hook, lever, buttons, redstone torch.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_redstone_transmission_diodes_and_propagation_parity_gap509.
+  - **Unit Tests**: Vượt qua 100% 	est_redstone_transmission_diodes_and_propagation_parity_gap509.

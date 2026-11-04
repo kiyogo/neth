@@ -69,9 +69,8 @@ impl BlockBehaviour for LeverBlock {
         let props = LeverLikeProperties::from_state_id(state.id);
         if props.powered {
             Self::update_neighbors(args.world, args.position, props);
-        } else {
-            args.world.update_neighbors(args.position, None);
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn normal_use(&self, args: NormalUseArgs<'_>) -> BlockActionResult {

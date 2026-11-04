@@ -135,6 +135,7 @@ impl BlockBehaviour for RedstoneWireBlock {
         }
 
         update_neighbors_of_neighboring_wires(args.world, args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn get_state_for_neighbor_update(

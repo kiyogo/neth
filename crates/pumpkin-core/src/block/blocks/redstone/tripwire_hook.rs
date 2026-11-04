@@ -49,6 +49,7 @@ impl BlockBehaviour for TripwireHookBlock {
                 args.block,
             );
         }
+        args.world.update_neighbors(args.position, None);
     }
 
     fn on_place(&self, args: OnPlaceArgs<'_>) -> BlockStateId {

@@ -281,6 +281,7 @@ impl BlockBehaviour for RedstoneTorchBlock {
 
     fn broken(&self, args: BrokenArgs<'_>) {
         update_neighbors(args.world, args.position);
+        args.world.update_neighbors(args.position, None);
     }
 
     fn placed(&self, args: PlacedArgs<'_>) {

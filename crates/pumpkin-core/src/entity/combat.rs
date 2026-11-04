@@ -35234,4 +35234,93 @@ mod tests {
 
         assert_eq!(JukeboxBlockEntity::ID, "minecraft:jukebox");
     }
+
+    #[test]
+    fn test_redstone_transmission_diodes_and_propagation_parity_gap509() {
+        use crate::block::blocks::redstone::redstone_wire::RedstoneWireBlock;
+        use crate::block::blocks::redstone::repeater::RepeaterBlock;
+        use crate::block::blocks::redstone::observer::ObserverBlock;
+        use crate::block::blocks::redstone::redstone_lamp::RedstoneLamp;
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use crate::block::blocks::redstone::lever::LeverBlock;
+        use crate::block::blocks::redstone::buttons::ButtonBlock;
+        use crate::block::blocks::redstone::redstone_torch::RedstoneTorchBlock;
+        use pumpkin_data::block_properties::Facing;
+        use pumpkin_data::BlockDirection;
+
+        // 1. Redstone Wire Transmission Parity (RedstoneWireBlock.java)
+        assert_eq!(RedstoneWireBlock::MIN_POWER, 0);
+        assert_eq!(RedstoneWireBlock::MAX_POWER, 15);
+        assert!((RedstoneWireBlock::PARTICLE_DENSITY - 0.2).abs() < 1e-6);
+        assert!((RedstoneWireBlock::SIDE_OF_BLOCK - 0.4375).abs() < 1e-6);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(1), 0);
+        assert_eq!(RedstoneWireBlock::calculate_wire_dropoff(0), 0);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(0, 15), 14);
+        assert_eq!(RedstoneWireBlock::calculate_target_strength(15, 10), 15);
+        assert!(RedstoneWireBlock::is_cross_props(true, true, true, true));
+        assert!(RedstoneWireBlock::is_dot_props(false, false, false, false));
+
+        // 2. Repeater Diode Timings & Cycle Parity (RepeaterBlock.java)
+        assert_eq!(RepeaterBlock::MIN_DELAY, 1);
+        assert_eq!(RepeaterBlock::MAX_DELAY, 4);
+        assert_eq!(RepeaterBlock::DELAY_MULTIPLIER, 2);
+        assert_eq!(RepeaterBlock::POWER_ON, 15);
+        assert_eq!(RepeaterBlock::POWER_OFF, 0);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(1), 2);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(2), 4);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(3), 6);
+        assert_eq!(RepeaterBlock::calculate_delay_ticks(4), 8);
+        assert_eq!(RepeaterBlock::cycle_delay(1), 2);
+        assert_eq!(RepeaterBlock::cycle_delay(2), 3);
+        assert_eq!(RepeaterBlock::cycle_delay(3), 4);
+        assert_eq!(RepeaterBlock::cycle_delay(4), 1);
+        assert_eq!(RepeaterBlock::get_output_power(true), 15);
+        assert_eq!(RepeaterBlock::get_output_power(false), 0);
+
+        // 3. Observer Detection & Pulse Timing Parity (ObserverBlock.java)
+        assert_eq!(ObserverBlock::PULSE_DURATION, 2);
+        assert_eq!(ObserverBlock::DETECTION_DELAY, 2);
+        assert_eq!(ObserverBlock::POWER_ON, 15);
+        assert_eq!(ObserverBlock::POWER_OFF, 0);
+        assert_eq!(ObserverBlock::get_power_signal(true), 15);
+        assert_eq!(ObserverBlock::get_power_signal(false), 0);
+
+        // 4. Redstone Lamp Activation & Deactivation Delay (RedstoneLampBlock.java)
+        assert_eq!(RedstoneLamp::DELAY, 4);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_LIT, 15);
+        assert_eq!(RedstoneLamp::LIGHT_LEVEL_UNLIT, 0);
+        assert_eq!(RedstoneLamp::get_light_emission(true), 15);
+        assert_eq!(RedstoneLamp::get_light_emission(false), 0);
+        assert!(RedstoneLamp::should_turn_on(false, true));
+        assert!(RedstoneLamp::should_schedule_turn_off(true, false));
+
+        // 5. Lightning Rod Power & Axis Parity (LightningRodBlock.java)
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+        assert_eq!(LightningRodBlock::get_weak_power(true), 15);
+        assert_eq!(LightningRodBlock::get_weak_power(false), 0);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Up), 15);
+        assert_eq!(LightningRodBlock::get_strong_power(true, Facing::Up, BlockDirection::Down), 0);
+
+        // 6. Lever, Buttons & Torch Timings Parity (LeverBlock.java, ButtonBlock.java, RedstoneTorchBlock.java)
+        assert_eq!(LeverBlock::POWER_ON, 15);
+        assert_eq!(LeverBlock::POWER_OFF, 0);
+        assert!((LeverBlock::CLICK_VOLUME - 0.3).abs() < 1e-6);
+        assert!((LeverBlock::CLICK_PITCH_ON - 0.6).abs() < 1e-6);
+        assert!((LeverBlock::CLICK_PITCH_OFF - 0.5).abs() < 1e-6);
+
+        assert_eq!(ButtonBlock::WOODEN_BUTTON_TICKS, 30);
+        assert_eq!(ButtonBlock::STONE_BUTTON_TICKS, 20);
+
+        assert_eq!(RedstoneTorchBlock::RECENT_TOGGLE_TIMER, 60);
+        assert_eq!(RedstoneTorchBlock::MAX_RECENT_TOGGLES, 8);
+        assert_eq!(RedstoneTorchBlock::RESTART_DELAY, 160);
+        assert_eq!(RedstoneTorchBlock::TOGGLE_DELAY, 2);
+        assert_eq!(RedstoneTorchBlock::BURNOUT_EVENT, 1502);
+        assert!(RedstoneTorchBlock::is_burnt_out(8));
+        assert!(!RedstoneTorchBlock::is_burnt_out(7));
+    }
 }
