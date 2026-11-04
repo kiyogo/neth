@@ -61,6 +61,7 @@ pub struct DropperBlock;
 impl DropperBlock {
     pub const TRIGGER_DURATION: u32 = 4;
     pub const CONTAINER_SIZE: usize = 9;
+    pub const DISPENSE_OFFSET_SCALE: f64 = 0.7;
     pub const FAIL_EVENT_ID: i32 = 1001;
     pub const DROP_EVENT_ID: i32 = 1000;
     pub const SMOKE_EVENT_ID: i32 = 2000;
@@ -70,6 +71,20 @@ impl DropperBlock {
     pub const Y_OFFSET_HORIZONTAL: f64 = 0.15625;
     pub const DEFAULT_TRIGGERED: bool = false;
     pub const DEFAULT_FACING: Facing = Facing::North;
+
+    #[must_use]
+    pub const fn evaluate_redstone_trigger(
+        powered: bool,
+        is_triggered: bool,
+    ) -> (bool, bool) {
+        if powered && !is_triggered {
+            (true, true)
+        } else if !powered && is_triggered {
+            (false, false)
+        } else {
+            (is_triggered, false)
+        }
+    }
 
     #[must_use]
     pub fn get_ejection_y_offset(facing: Facing) -> f64 {

@@ -13949,3 +13949,54 @@ et/minecraft/world/level/block/TripWireHookBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_doors_trapdoors_pistons_and_mechanisms_parity_gap510`.
   - **Unit Tests**: Vượt qua 100% `test_doors_trapdoors_pistons_and_mechanisms_parity_gap510`.
+
+### Gap 511: Dispenser, Dropper, Crafter, Sculk Sensors & Target Block Parity
+- **Mức độ nghiêm trọng**: Trung bình (Ảnh hưởng đến logic kích hoạt máy phân phát/máy thả, hằng số khoảng cách phóng, chu kỳ chế tạo tự động, cơ chế T-Flip-Flop bóng đèn đồng và tính toán tín hiệu bia bắn theo hồng tâm)
+- **Tập tin liên quan trong Neth**:
+  - `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/crafter.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/copper_bulb.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/daylight_detector.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/bell.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/sculk_sensor.rs`
+  - `crates/pumpkin-core/src/block/blocks/redstone/target_block.rs`
+  - `crates/pumpkin-core/src/entity/combat.rs`
+- **Tập tin tham chiếu trong JVMC**:
+  - `net/minecraft/world/level/block/DispenserBlock.java`
+  - `net/minecraft/world/level/block/DropperBlock.java`
+  - `net/minecraft/world/level/block/CrafterBlock.java`
+  - `net/minecraft/world/level/block/CopperBulbBlock.java`
+  - `net/minecraft/world/level/block/DaylightDetectorBlock.java`
+  - `net/minecraft/world/level/block/BellBlock.java`
+  - `net/minecraft/world/level/block/SculkSensorBlock.java`
+  - `net/minecraft/world/level/block/TargetBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Dispenser & Dropper Redstone Trigger Lifecycle & Offset Scale (DispenserBlock.java, DropperBlock.java)**:
+    - Bổ sung `DropperBlock::DISPENSE_OFFSET_SCALE = 0.7` đồng bộ với `DispenserBlock` (trong Java gốc `DropperBlock` kế thừa trực tiếp từ `DispenserBlock`).
+    - Triển khai `evaluate_redstone_trigger` cho cả `DispenserBlock` và `DropperBlock`: xử lý chuẩn xác sườn xung kích hoạt (rising edge `powered && !triggered`) lên lịch tick `TRIGGER_DURATION = 4` ticks (2 redstone ticks), và sườn xung tắt (falling edge `!powered && triggered`) đặt lại trạng thái không kích hoạt.
+    - Chuẩn hóa các hằng số: kho chứa 9 ô (`CONTAINER_SIZE = 9`), sự kiện âm thanh/khói phóng (`FAIL_EVENT_ID = 1001`, `DISPENSE_EVENT_ID = 1000`, `DROP_EVENT_ID = 1000`, `LAUNCH_EVENT_ID = 1002`, `SMOKE_EVENT_ID = 2000`), độ chính xác phóng `ACCURACY_DEFAULT = 6.0`, hệ số phân tán `SPREAD_FACTOR = 0.017_227_5`, độ lệch trục Y khi phóng `0.125` (hướng đứng) và `0.15625` (hướng ngang).
+  - **Crafter Automation Timings & Capacity (CrafterBlock.java)**:
+    - Chu kỳ tick chế tạo `CRAFTING_TICK_DELAY = 4` ticks, thời gian chế tạo tối đa `MAX_CRAFTING_TICKS = 6` ticks, đường kính kiểm tra tiến trình `CRAFTER_ADVANCEMENT_DIAMETER = 17.0`, lưới chế tạo 3x3 (9 ô), tín hiệu comparator 0..=9 phản ánh các ô đã kích hoạt/có đồ.
+    - Các mã sự kiện âm thanh và hạt chế tạo: `SOUND_CRAFTER_CRAFT_EVENT_ID = 1049`, `SOUND_CRAFTER_FAIL_EVENT_ID = 1050`, `PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID = 2010`.
+  - **Copper Bulb T-Flip-Flop & Weathering Luminance (CopperBulbBlock.java)**:
+    - Triển khai mạch chốt T-flip-flop: chỉ đảo trạng thái sáng (`lit = !lit`) và phát âm thanh khi có sườn xung đá đỏ đi lên (`!current_powered && has_signal`). Sườn xung đi xuống chỉ tắt cờ nguồn mà không đổi trạng thái sáng hay phát lại âm thanh.
+    - Mức sáng chuẩn xác theo mức độ oxy hóa: khối thường / sáp = 15, phơi nhiễm = 12, phong hóa = 8, oxy hóa = 4, tắt = 0. Tín hiệu comparator xuất 15 khi sáng, 0 khi tắt.
+  - **Daylight Detector Brightness, Inversion & Weather Darken (DaylightDetectorBlock.java)**:
+    - Độ sáng bầu trời hiệu dụng: giảm 5 khi trời mưa, giảm 5 khi có sấm chớp (tối đa giảm 10 khi bão sấm).
+    - Tín hiệu đảo ngược (Night mode): `15 - effective_sky_brightness`.
+    - Chu kỳ cập nhật tín hiệu `UPDATE_INTERVAL_TICKS = 20` ticks (1.0s), chiều cao khối `SHAPE_HEIGHT = 6.0`.
+  - **Bell Placement, Proper Hits & Directional Axis (BellBlock.java)**:
+    - Sự kiện rung chuông `EVENT_BELL_RING = 1`, âm lượng 2.0, cao độ 1.0, chiều cao click tối đa `MAX_HIT_HEIGHT = 0.8124`.
+    - Khối chuông gắn sàn (`Floor`): chỉ nhận tương tác khi đánh vào cùng trục với hướng quay của chuông (`hit_face.to_axis() == facing.to_axis()`).
+    - Khối chuông gắn tường (`SingleWall` / `DoubleWall`): chỉ nhận tương tác khi đánh vào trục vuông góc (`hit_face.to_axis() != facing.to_axis()`).
+    - Khối chuông treo trần (`Ceiling`): nhận tương tác từ mọi hướng nằm ngang. Bỏ qua mọi tương tác từ đỉnh hoặc đáy chuông.
+  - **Sculk Sensor Frequencies & Target Block Bullseye (SculkSensorBlock.java, TargetBlock.java)**:
+    - Cảm biến sculk: thời gian kích hoạt thường `30` ticks (1.5s), cảm biến hiệu chỉnh `10` ticks (0.5s), thời gian hồi chiêu `10` ticks, bán kính nghe thường `8` khối, hiệu chỉnh `16` khối.
+    - Khối bia bắn Target: thời gian phát tín hiệu 20 ticks (1s) với tên/đinh ba, 8 ticks (0.4s) với các loại vật thể khác; khoảng cách đạt thành tựu Bullseye tối thiểu `30.0` khối; công thức tín hiệu theo khoảng cách từ tâm: `ceil(15.0 * clamp((0.5 - distance) / 0.5, 0.0, 1.0)).clamp(1, 15)` (đạt 15 tại hồng tâm và 1 tại viền ngoài).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dispenser.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/redstone/dropper.rs`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_dispenser_dropper_crafter_sculk_and_sensors_parity_gap511`.
+  - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_crafter_sculk_and_sensors_parity_gap511`.

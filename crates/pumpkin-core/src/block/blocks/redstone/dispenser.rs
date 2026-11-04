@@ -125,6 +125,20 @@ impl DispenserBlock {
     pub const DEFAULT_TRIGGERED: bool = false;
 
     #[must_use]
+    pub const fn evaluate_redstone_trigger(
+        powered: bool,
+        is_triggered: bool,
+    ) -> (bool, bool) {
+        if powered && !is_triggered {
+            (true, true)
+        } else if !powered && is_triggered {
+            (false, false)
+        } else {
+            (is_triggered, false)
+        }
+    }
+
+    #[must_use]
     pub fn get_ejection_y_offset(facing: Facing) -> f64 {
         match facing {
             Facing::Up | Facing::Down => Self::Y_OFFSET_VERTICAL,

@@ -35472,4 +35472,150 @@ mod tests {
         assert_eq!(WeightedPressurePlateBlock::signal_strength(200, 150), 15);
     }
 
+
+    #[test]
+    fn test_dispenser_dropper_crafter_sculk_and_sensors_parity_gap511() {
+        use crate::block::blocks::redstone::bell::BellBlock;
+        use crate::block::blocks::redstone::copper_bulb::CopperBulbBlock;
+        use crate::block::blocks::redstone::crafter::CrafterBlock;
+        use crate::block::blocks::redstone::daylight_detector::DaylightDetectorBlock;
+        use crate::block::blocks::redstone::dispenser::DispenserBlock;
+        use crate::block::blocks::redstone::dropper::DropperBlock;
+        use crate::block::blocks::redstone::sculk_sensor::SculkSensorBlock;
+        use crate::block::blocks::redstone::target_block::TargetBlock;
+        use pumpkin_data::block_properties::{Axis, BellAttachment, Facing, HorizontalFacing, Orientation, SculkSensorPhase};
+        use pumpkin_data::{BlockDirection, BlockId};
+        use pumpkin_data::entity::EntityType;
+
+        // 1. Dispenser & Dropper Parity (DispenserBlock.java, DropperBlock.java)
+        assert_eq!(DispenserBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DispenserBlock::CONTAINER_SIZE, 9);
+        assert!((DispenserBlock::DISPENSE_OFFSET_SCALE - 0.7).abs() < 1e-6);
+        assert_eq!(DispenserBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DispenserBlock::DISPENSE_EVENT_ID, 1000);
+        assert_eq!(DispenserBlock::LAUNCH_EVENT_ID, 1002);
+        assert_eq!(DispenserBlock::SMOKE_EVENT_ID, 2000);
+        assert!((DispenserBlock::ACCURACY_DEFAULT - 6.0).abs() < 1e-6);
+        assert!((DispenserBlock::SPREAD_FACTOR - 0.017_227_5).abs() < 1e-9);
+        assert!((DispenserBlock::Y_OFFSET_VERTICAL - 0.125).abs() < 1e-6);
+        assert!((DispenserBlock::Y_OFFSET_HORIZONTAL - 0.15625).abs() < 1e-6);
+        assert_eq!(DispenserBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(DispenserBlock::DEFAULT_FACING, Facing::North);
+
+        assert_eq!(DispenserBlock::evaluate_redstone_trigger(true, false), (true, true));
+        assert_eq!(DispenserBlock::evaluate_redstone_trigger(false, true), (false, false));
+        assert_eq!(DispenserBlock::evaluate_redstone_trigger(true, true), (true, false));
+        assert_eq!(DispenserBlock::evaluate_redstone_trigger(false, false), (false, false));
+        assert!((DispenserBlock::get_ejection_y_offset(Facing::Up) - 0.125).abs() < 1e-6);
+        assert!((DispenserBlock::get_ejection_y_offset(Facing::North) - 0.15625).abs() < 1e-6);
+
+        assert_eq!(DropperBlock::TRIGGER_DURATION, 4);
+        assert_eq!(DropperBlock::CONTAINER_SIZE, 9);
+        assert!((DropperBlock::DISPENSE_OFFSET_SCALE - 0.7).abs() < 1e-6);
+        assert_eq!(DropperBlock::FAIL_EVENT_ID, 1001);
+        assert_eq!(DropperBlock::DROP_EVENT_ID, 1000);
+        assert_eq!(DropperBlock::SMOKE_EVENT_ID, 2000);
+        assert_eq!(DropperBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(DropperBlock::DEFAULT_FACING, Facing::North);
+        assert_eq!(DropperBlock::evaluate_redstone_trigger(true, false), (true, true));
+        assert_eq!(DropperBlock::evaluate_redstone_trigger(false, true), (false, false));
+
+        // 2. Crafter Parity (CrafterBlock.java)
+        assert_eq!(CrafterBlock::CRAFTING_TICK_DELAY, 4);
+        assert_eq!(CrafterBlock::MAX_CRAFTING_TICKS, 6);
+        assert!((CrafterBlock::CRAFTER_ADVANCEMENT_DIAMETER - 17.0).abs() < 1e-6);
+        assert_eq!(CrafterBlock::CONTAINER_SIZE, 9);
+        assert_eq!(CrafterBlock::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlock::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlock::MAX_COMPARATOR_OUTPUT, 9);
+        assert_eq!(CrafterBlock::DEFAULT_ORIENTATION, Orientation::NorthUp);
+        assert_eq!(CrafterBlock::DEFAULT_TRIGGERED, false);
+        assert_eq!(CrafterBlock::DEFAULT_CRAFTING, false);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_CRAFT_EVENT_ID, 1049);
+        assert_eq!(CrafterBlock::SOUND_CRAFTER_FAIL_EVENT_ID, 1050);
+        assert_eq!(CrafterBlock::PARTICLES_SHOOT_WHITE_SMOKE_EVENT_ID, 2010);
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(true, false), (true, true));
+        assert_eq!(CrafterBlock::evaluate_redstone_trigger(false, true), (false, false));
+
+        // 3. Copper Bulb T-Flip-Flop & Oxidation Brightness Parity (CopperBulbBlock.java)
+        assert_eq!(CopperBulbBlock::DEFAULT_POWERED, false);
+        assert_eq!(CopperBulbBlock::DEFAULT_LIT, false);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_LIT, 15);
+        assert_eq!(CopperBulbBlock::COMPARATOR_SIGNAL_UNLIT, 0);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(true), 15);
+        assert_eq!(CopperBulbBlock::get_comparator_output_value(false), 0);
+
+        // Rising edge toggles lit: false -> true with sound Some(true)
+        assert_eq!(CopperBulbBlock::evaluate_t_flip_flop(false, false, true), (true, true, Some(true)));
+        // Falling edge preserves lit: true -> true with sound None
+        assert_eq!(CopperBulbBlock::evaluate_t_flip_flop(true, true, false), (true, false, None));
+        // Next rising edge toggles lit: true -> false with sound Some(false)
+        assert_eq!(CopperBulbBlock::evaluate_t_flip_flop(true, false, true), (false, true, Some(false)));
+
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, true), 15);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::EXPOSED_COPPER_BULB, true), 12);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::WEATHERED_COPPER_BULB, true), 8);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::OXIDIZED_COPPER_BULB, true), 4);
+        assert_eq!(CopperBulbBlock::get_light_level(BlockId::COPPER_BULB, false), 0);
+
+        // 4. Daylight Detector Sky Brightness & Inversion Parity (DaylightDetectorBlock.java)
+        assert_eq!(DaylightDetectorBlock::MIN_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::MAX_POWER, 15);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_POWER, 0);
+        assert_eq!(DaylightDetectorBlock::DEFAULT_INVERTED, false);
+        assert_eq!(DaylightDetectorBlock::UPDATE_INTERVAL_TICKS, 20);
+        assert!((DaylightDetectorBlock::SHAPE_HEIGHT - 6.0).abs() < 1e-6);
+
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, false), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, false), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, false, true), 10);
+        assert_eq!(DaylightDetectorBlock::calculate_effective_sky_brightness(15, true, true), 5);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(15), 0);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(0), 15);
+        assert_eq!(DaylightDetectorBlock::calculate_inverted_signal(10), 5);
+
+        // 5. Bell Mechanics & Proper Hit Parity (BellBlock.java)
+        assert_eq!(BellBlock::EVENT_BELL_RING, 1);
+        assert!((BellBlock::SOUND_VOLUME - 2.0).abs() < 1e-6);
+        assert!((BellBlock::SOUND_PITCH - 1.0).abs() < 1e-6);
+        assert!((BellBlock::MAX_HIT_HEIGHT - 0.8124).abs() < 1e-4);
+        assert_eq!(BellBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(BellBlock::DEFAULT_ATTACHMENT, BellAttachment::Floor);
+        assert_eq!(BellBlock::DEFAULT_POWERED, false);
+
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::Up, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::North, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::Floor, HorizontalFacing::North, BlockDirection::East, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::SingleWall, HorizontalFacing::North, BlockDirection::East, 0.5));
+        assert!(!BellBlock::is_proper_hit(BellAttachment::SingleWall, HorizontalFacing::North, BlockDirection::North, 0.5));
+        assert!(BellBlock::is_proper_hit(BellAttachment::Ceiling, HorizontalFacing::North, BlockDirection::East, 0.5));
+
+        // 6. Sculk Sensor & Target Block Parity (SculkSensorBlock.java, TargetBlock.java)
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_REGULAR, 30);
+        assert_eq!(SculkSensorBlock::ACTIVE_TICKS_CALIBRATED, 10);
+        assert_eq!(SculkSensorBlock::COOLDOWN_TICKS, 10);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_REGULAR, 8);
+        assert_eq!(SculkSensorBlock::LISTENER_RANGE_CALIBRATED, 16);
+        assert_eq!(SculkSensorBlock::DEFAULT_PHASE, SculkSensorPhase::Inactive);
+        assert_eq!(SculkSensorBlock::DEFAULT_POWER, 0);
+
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_ARROWS, 20);
+        assert_eq!(TargetBlock::ACTIVATION_TICKS_OTHER, 8);
+        assert_eq!(TargetBlock::MIN_POWER, 1);
+        assert_eq!(TargetBlock::MAX_POWER, 15);
+        assert_eq!(TargetBlock::DEFAULT_POWER, 0);
+        assert!((TargetBlock::BULLSEYE_MIN_DISTANCE - 30.0).abs() < 1e-6);
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::SPECTRAL_ARROW));
+        assert!(TargetBlock::is_arrow_projectile(&EntityType::TRIDENT));
+        assert!(!TargetBlock::is_arrow_projectile(&EntityType::SNOWBALL));
+
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.0), 15);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.25), 8);
+        assert_eq!(TargetBlock::calculate_power_from_distance(0.49), 1);
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.0, 0.5, 0.0, Axis::Y), 15);
+        assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.1, 0.2, 0.5, Axis::Y), 1);
+    }
+
 }
