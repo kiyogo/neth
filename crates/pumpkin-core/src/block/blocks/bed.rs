@@ -134,6 +134,7 @@ impl BlockBehaviour for BedBlock {
         let neighbor_state_id = args.world.get_block_state_id(&other_half_pos);
         if neighbor_state_id.to_block_id() != args.block.id {
             args.world.update_neighbors(&other_half_pos, None);
+            args.world.update_neighbors(args.position, None);
             return;
         }
 

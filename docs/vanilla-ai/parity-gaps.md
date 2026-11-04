@@ -14000,3 +14000,60 @@ et/minecraft/world/level/block/TripWireHookBlock.java
   - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
     - Bổ sung unit test `test_dispenser_dropper_crafter_sculk_and_sensors_parity_gap511`.
   - **Unit Tests**: Vượt qua 100% `test_dispenser_dropper_crafter_sculk_and_sensors_parity_gap511`.
+
+### Gap 512: Utility Blocks, Interactive Containers & Functional Structures Parity
+- **Mức độ nghiêm trọng**: Trung bình (Ảnh hưởng đến cơ chế cập nhật khối lân cận khi phá hủy giường, cơ chế giàn giáo ổn định theo khoảng cách, vật lý thuốc nổ và ngòi nổ, các cấp độ vạc nước/thùng ủ phân, bánh ngọt, khối nốt nhạc, tổ ong, mỏ neo hồi sinh và bục đọc sách)
+- **Tập tin liên quan trong Neth**:
+  - `crates/pumpkin-core/src/block/blocks/bed.rs`
+  - `crates/pumpkin-core/src/block/blocks/scaffolding.rs`
+  - `crates/pumpkin-core/src/block/blocks/tnt.rs`
+  - `crates/pumpkin-core/src/block/blocks/cauldron.rs`
+  - `crates/pumpkin-core/src/block/blocks/composter.rs`
+  - `crates/pumpkin-core/src/block/blocks/cake.rs`
+  - `crates/pumpkin-core/src/block/blocks/candles.rs`
+  - `crates/pumpkin-core/src/block/blocks/note.rs`
+  - `crates/pumpkin-core/src/block/blocks/beehive.rs`
+  - `crates/pumpkin-core/src/block/blocks/respawn_anchor.rs`
+  - `crates/pumpkin-core/src/block/blocks/lectern.rs`
+  - `crates/pumpkin-core/src/entity/combat.rs`
+- **Tập tin tham chiếu trong JVMC**:
+  - `net/minecraft/world/level/block/BedBlock.java`
+  - `net/minecraft/world/level/block/ScaffoldingBlock.java`
+  - `net/minecraft/world/level/block/TntBlock.java`
+  - `net/minecraft/world/level/block/AbstractCauldronBlock.java`
+  - `net/minecraft/world/level/block/LayeredCauldronBlock.java`
+  - `net/minecraft/world/level/block/ComposterBlock.java`
+  - `net/minecraft/world/level/block/CakeBlock.java`
+  - `net/minecraft/world/level/block/CandleBlock.java`
+  - `net/minecraft/world/level/block/NoteBlock.java`
+  - `net/minecraft/world/level/block/BeehiveBlock.java`
+  - `net/minecraft/world/level/block/RespawnAnchorBlock.java`
+  - `net/minecraft/world/level/block/LecternBlock.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Bed Neighbor Updates on Broken (BedBlock.java)**:
+    - Sửa lỗi trong `BedBlock::broken`: khi phá hủy một nửa chiếc giường mà nửa còn lại đã bị mất trước đó (`neighbor_state_id.to_block_id() != args.block.id`), bổ sung `args.world.update_neighbors(args.position, None);` trước lệnh `return;`, đảm bảo các khối lân cận nhận được thông báo cập nhật khối ngay lập tức.
+    - Sức nổ khi cố gắng ngủ ở Nether/End là 5.0, hệ số nảy nảy người chơi khi rơi lên giường là 0.66.
+  - **Scaffolding Stability & Placement Distance (ScaffoldingBlock.java)**:
+    - Khoảng cách ổn định tối đa `STABILITY_MAX_DISTANCE = 7` khối, độ trễ tick rơi `TICK_DELAY = 1` tick. Khoảng cách = 0 khi đặt trên mặt khối vững chắc, tăng dần +1 theo chiều ngang giữa các khối giàn giáo nối tiếp.
+  - **TNT Physics, Priming & Fuses (TntBlock.java)**:
+    - Thời gian ngòi nổ tiêu chuẩn `DEFAULT_FUSE = 80` ticks (4.0s), sức nổ `DEFAULT_POWER = 4.0`, trọng lực 0.04, lực cản không khí 0.98.
+    - Vận tốc ban đầu chuẩn vanilla: $v_y = 0.2$, tỷ lệ vận tốc ngang $0.02$, hệ số nảy va chạm mặt đất 0.7 (ngang) và -0.5 (dọc). Tự động kích hoạt khi nhận tín hiệu đá đỏ lúc đặt hoặc trúng đạn lửa.
+  - **Cauldron Levels, Extinguish & Drips (AbstractCauldronBlock.java, LayeredCauldronBlock.java)**:
+    - 3 mức chứa (1..=3), tín hiệu comparator 0..=3 (nham thạch luôn là 3).
+    - Dập tắt thực thể đang cháy làm giảm 1 mức nước (`lower_fill_level_on_extinguish`), trở về vạc rỗng khi mức nước là 1.
+    - Nhận nước hoặc nham thạch nhỏ giọt từ nhũ đá stalactite, sự kiện âm thanh `DRIP_WATER_EVENT = 1047` và `DRIP_LAVA_EVENT = 1046`.
+  - **Composter Stages, Bone Meal & Probabilities (ComposterBlock.java)**:
+    - 8 mức lấp đầy (0..=8, mức 8 là `READY`), chu kỳ ủ phân 20 ticks (1.0s), 5 bậc xác suất ủ phân hữu cơ (0.30, 0.50, 0.65, 0.85, 1.00). Sinh bột xương tại $Y + 1.01$ kèm độ trễ nhặt 10 ticks.
+  - **Cake, Candles & Note Blocks Parity (CakeBlock.java, CandleBlock.java, NoteBlock.java)**:
+    - Bánh ngọt: công thức tín hiệu comparator `(7 - bites) * 2` (14, 12, 10, 8, 6, 4, 2, 0), mỗi lần ăn hồi phục 2 hunger và 0.4 saturation (tối đa 7 lần).
+    - Cây nến: 1..=4 cây tương ứng mức sáng 3, 6, 9, 12 (0 khi tắt), sự kiện dập tắt `1009`.
+    - Khối nốt nhạc: công thức cao độ chuẩn semitone $2^{(note - 12) / 12}$, dải 25 nốt (0..=24), chu kỳ chuyển nốt `(note + 1) % 25`, âm lượng phát 3.0.
+  - **Beehive, Respawn Anchor & Lectern Parity (BeehiveBlock.java, RespawnAnchorBlock.java, LecternBlock.java)**:
+    - Tổ ong: 5 mức mật (0..=5), khoảng cách khói lửa trại an toàn $\le 5$ khối, bán kính ong tức giận 8 ngang / 6 dọc, xác suất hạt mật nhỏ giọt 70%.
+    - Mỏ neo hồi sinh: 4 mức nạp điện (0..=4), tín hiệu comparator rời rạc (0, 3, 7, 11, 15), 25 vị trí đứng ứng viên xung quanh, sức nổ 5.0 khi bấm ở Overworld.
+    - Bục đọc sách: xung đá đỏ khi lật trang kéo dài 2 ticks (1 redstone tick), tín hiệu 15, độ lệch rớt sách 0.25 theo hướng quay.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/blocks/bed.rs`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_utility_interactive_blocks_parity_gap512`.
+  - **Unit Tests**: Vượt qua 100% `test_utility_interactive_blocks_parity_gap512`.

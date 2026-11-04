@@ -35618,4 +35618,179 @@ mod tests {
         assert_eq!(TargetBlock::calculate_hit_power_on_axis(0.1, 0.2, 0.5, Axis::Y), 1);
     }
 
+
+    #[test]
+    fn test_utility_interactive_blocks_parity_gap512() {
+        use crate::block::blocks::bed::BedBlock;
+        use crate::block::blocks::beehive::BeehiveBlock;
+        use crate::block::blocks::cake::{CakeBlock, cake_output_signal};
+        use crate::block::blocks::candles::CandleBlock;
+        use crate::block::blocks::cauldron::CauldronBlock;
+        use crate::block::blocks::composter::ComposterBlock;
+        use crate::block::blocks::lectern::LecternBlock;
+        use crate::block::blocks::note::NoteBlock;
+        use crate::block::blocks::respawn_anchor::RespawnAnchorBlock;
+        use crate::block::blocks::scaffolding::ScaffoldingBlock;
+        use crate::block::blocks::tnt::TNTBlock;
+        use pumpkin_data::block_properties::HorizontalFacing;
+        use pumpkin_data::{Block, BlockId};
+
+        // 1. Bed Parity (BedBlock.java)
+        assert_eq!(BedBlock::EXPLOSION_POWER, 5.0);
+        assert!((BedBlock::BOUNCE_FACTOR - 0.66).abs() < 1e-6);
+
+        // 2. Scaffolding Parity (ScaffoldingBlock.java)
+        assert_eq!(ScaffoldingBlock::TICK_DELAY, 1);
+        assert_eq!(ScaffoldingBlock::STABILITY_MAX_DISTANCE, 7);
+
+        // 3. TNT Physics & Priming Parity (TntBlock.java)
+        assert_eq!(TNTBlock::DEFAULT_UNSTABLE, false);
+        assert_eq!(TNTBlock::DEFAULT_FUSE, 80);
+        assert_eq!(TNTBlock::DEFAULT_POWER, 4.0);
+        assert!((TNTBlock::EXPLOSION_Y_OFFSET_SCALE - 0.0625).abs() < 1e-6);
+        assert!((TNTBlock::INITIAL_VELOCITY_Y - 0.2).abs() < 1e-6);
+        assert!((TNTBlock::INITIAL_VELOCITY_HORIZONTAL_SCALE - 0.02).abs() < 1e-6);
+        assert!((TNTBlock::GRAVITY - 0.04).abs() < 1e-6);
+        assert!((TNTBlock::AIR_DRAG - 0.98).abs() < 1e-6);
+        assert!((TNTBlock::GROUND_BOUNCE_HORIZONTAL - 0.7).abs() < 1e-6);
+        assert!((TNTBlock::GROUND_BOUNCE_VERTICAL - (-0.5)).abs() < 1e-6);
+        assert_eq!(TNTBlock::PRIME_SOUND_VOLUME, 1.0);
+        assert_eq!(TNTBlock::PRIME_SOUND_PITCH, 1.0);
+
+        let bounce = TNTBlock::calculate_ground_bounce_velocity((1.0, 1.0, 1.0));
+        assert!((bounce.0 - 0.7).abs() < 1e-6);
+        assert!((bounce.1 - (-0.5)).abs() < 1e-6);
+        assert!((bounce.2 - 0.7).abs() < 1e-6);
+
+        let init_v = TNTBlock::calculate_initial_velocity(0.0);
+        assert!((init_v.0 - 0.0).abs() < 1e-6);
+        assert!((init_v.1 - 0.2).abs() < 1e-6);
+        assert!((init_v.2 - (-0.02)).abs() < 1e-6);
+
+        assert!(TNTBlock::should_prime_on_placement(&Block::STONE, true));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::TNT, true));
+        assert!(!TNTBlock::should_prime_on_placement(&Block::STONE, false));
+
+        // 4. Cauldron Parity (AbstractCauldronBlock.java, LayeredCauldronBlock.java)
+        assert_eq!(CauldronBlock::MIN_FILL_LEVEL, 1);
+        assert_eq!(CauldronBlock::MAX_FILL_LEVEL, 3);
+        assert_eq!(CauldronBlock::LAVA_SIGNAL, 3);
+        assert_eq!(CauldronBlock::EMPTY_SIGNAL, 0);
+        assert_eq!(CauldronBlock::FLOOR_LEVEL, 4);
+        assert!((CauldronBlock::RAIN_FILL_CHANCE - 0.05).abs() < 1e-6);
+        assert!((CauldronBlock::POWDER_SNOW_FILL_CHANCE - 0.1).abs() < 1e-6);
+        assert_eq!(CauldronBlock::DRIP_WATER_EVENT, 1047);
+        assert_eq!(CauldronBlock::DRIP_LAVA_EVENT, 1046);
+
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(3, false), (BlockId::WATER_CAULDRON, 2));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(2, false), (BlockId::WATER_CAULDRON, 1));
+        assert_eq!(CauldronBlock::lower_fill_level_on_extinguish(1, false), (BlockId::CAULDRON, 0));
+
+        assert!(CauldronBlock::can_receive_drip(BlockId::CAULDRON, true, 0));
+        assert!(CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 2));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, true, 3));
+        assert!(!CauldronBlock::can_receive_drip(BlockId::WATER_CAULDRON, false, 1));
+
+        // 5. Composter Parity (ComposterBlock.java)
+        assert_eq!(ComposterBlock::READY, 8);
+        assert_eq!(ComposterBlock::MIN_LEVEL, 0);
+        assert_eq!(ComposterBlock::MAX_LEVEL, 7);
+        assert_eq!(ComposterBlock::NUM_LEVELS, 9);
+        assert_eq!(ComposterBlock::FULL_COMPOSTING_TICKS, 20);
+        assert_eq!(ComposterBlock::COMPOSTER_FILL_EVENT, 1500);
+        assert_eq!(ComposterBlock::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(ComposterBlock::MAX_COMPARATOR_OUTPUT, 8);
+        assert!((ComposterBlock::BONE_MEAL_Y_OFFSET - 1.01).abs() < 1e-6);
+        assert_eq!(ComposterBlock::BONE_MEAL_PICKUP_DELAY_TICKS, 10);
+        assert!((ComposterBlock::CHANCE_TIER_1 - 0.30).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_2 - 0.50).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_3 - 0.65).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_4 - 0.85).abs() < 1e-6);
+        assert!((ComposterBlock::CHANCE_TIER_5 - 1.00).abs() < 1e-6);
+
+        // 6. Cake & Candle Parity (CakeBlock.java, CandleBlock.java)
+        assert_eq!(CakeBlock::MAX_BITES, 6);
+        assert_eq!(CakeBlock::BITES_TO_EAT, 7);
+        assert_eq!(CakeBlock::HUNGER_RESTORE, 2);
+        assert!((CakeBlock::SATURATION_RESTORE - 0.4).abs() < 1e-6);
+        assert_eq!(CakeBlock::MIN_COMPARATOR_SIGNAL, 0);
+        assert_eq!(CakeBlock::MAX_COMPARATOR_SIGNAL, 14);
+
+        assert_eq!(cake_output_signal(0), 14);
+        assert_eq!(cake_output_signal(1), 12);
+        assert_eq!(cake_output_signal(3), 8);
+        assert_eq!(cake_output_signal(6), 2);
+        assert_eq!(cake_output_signal(7), 0);
+
+        assert_eq!(CandleBlock::LIGHT_PER_CANDLE, 3);
+        assert_eq!(CandleBlock::MAX_CANDLES, 4);
+        assert_eq!(CandleBlock::MIN_CANDLES, 1);
+        assert_eq!(CandleBlock::EVENT_EXTINGUISH_CANDLE, 1009);
+        assert_eq!(CandleBlock::get_light_level(1, true), 3);
+        assert_eq!(CandleBlock::get_light_level(2, true), 6);
+        assert_eq!(CandleBlock::get_light_level(3, true), 9);
+        assert_eq!(CandleBlock::get_light_level(4, true), 12);
+        assert_eq!(CandleBlock::get_light_level(4, false), 0);
+
+        // 7. Note Block Pitch & Semitones Parity (NoteBlock.java)
+        assert_eq!(NoteBlock::NOTE_VOLUME, 3.0);
+        assert_eq!(NoteBlock::MIN_NOTE, 0);
+        assert_eq!(NoteBlock::MAX_NOTE, 24);
+        assert_eq!(NoteBlock::NUM_NOTES, 25);
+        assert_eq!(NoteBlock::DEFAULT_NOTE, 0);
+        assert_eq!(NoteBlock::DEFAULT_POWERED, false);
+
+        assert!((NoteBlock::get_pitch_from_note(0) - 0.5).abs() < 1e-6);
+        assert!((NoteBlock::get_pitch_from_note(12) - 1.0).abs() < 1e-6);
+        assert!((NoteBlock::get_pitch_from_note(24) - 2.0).abs() < 1e-6);
+        assert_eq!(NoteBlock::cycle_note(0), 1);
+        assert_eq!(NoteBlock::cycle_note(23), 24);
+        assert_eq!(NoteBlock::cycle_note(24), 0);
+
+        // 8. Beehive Parity (BeehiveBlock.java)
+        assert_eq!(BeehiveBlock::MAX_HONEY_LEVEL, 5);
+        assert_eq!(BeehiveBlock::MIN_HONEY_LEVEL, 0);
+        assert_eq!(BeehiveBlock::MAX_CAMPFIRE_SMOKE_DISTANCE, 5);
+        assert_eq!(BeehiveBlock::HONEYCOMB_HARVEST_AMOUNT, 3);
+        assert_eq!(BeehiveBlock::BEE_ANGER_RANGE_HORIZONTAL, 8.0);
+        assert_eq!(BeehiveBlock::BEE_ANGER_RANGE_VERTICAL, 6.0);
+        assert!((BeehiveBlock::DRIP_PARTICLE_CHANCE - 0.7).abs() < 1e-6);
+        assert!(BeehiveBlock::is_honey_full(5));
+        assert!(!BeehiveBlock::is_honey_full(4));
+        assert!(BeehiveBlock::is_within_smoke_distance(1));
+        assert!(BeehiveBlock::is_within_smoke_distance(5));
+        assert!(!BeehiveBlock::is_within_smoke_distance(0));
+        assert!(!BeehiveBlock::is_within_smoke_distance(6));
+        assert_eq!(BeehiveBlock::calculate_comparator_output(3), 3);
+        assert_eq!(BeehiveBlock::calculate_comparator_output(5), 5);
+        assert_eq!(BeehiveBlock::calculate_comparator_output(6), 5);
+
+        // 9. Respawn Anchor Parity (RespawnAnchorBlock.java)
+        assert_eq!(RespawnAnchorBlock::MIN_CHARGES, 0);
+        assert_eq!(RespawnAnchorBlock::MAX_CHARGES, 4);
+        assert_eq!(RespawnAnchorBlock::EXPLOSION_POWER, 5.0);
+        assert_eq!(RespawnAnchorBlock::MAX_COMPARATOR_SIGNAL, 15);
+        assert_eq!(RespawnAnchorBlock::NUM_RESPAWN_OFFSETS, 25);
+        assert_eq!(RespawnAnchorBlock::RESPAWN_OFFSETS.len(), 25);
+        assert!(RespawnAnchorBlock::can_be_charged(0));
+        assert!(RespawnAnchorBlock::can_be_charged(3));
+        assert!(!RespawnAnchorBlock::can_be_charged(4));
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(0), 0);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(1), 3);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(2), 7);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(3), 11);
+        assert_eq!(RespawnAnchorBlock::calculate_comparator_signal(4), 15);
+
+        // 10. Lectern Parity (LecternBlock.java)
+        assert_eq!(LecternBlock::PAGE_CHANGE_IMPULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_TURN_PULSE_TICKS, 2);
+        assert_eq!(LecternBlock::PAGE_CHANGE_EVENT, 1043);
+        assert_eq!(LecternBlock::POWER_ON, 15);
+        assert_eq!(LecternBlock::POWER_OFF, 0);
+        assert_eq!(LecternBlock::DEFAULT_FACING, HorizontalFacing::North);
+        assert_eq!(LecternBlock::DEFAULT_POWERED, false);
+        assert_eq!(LecternBlock::DEFAULT_HAS_BOOK, false);
+        assert_eq!(LecternBlock::BOOK_DROP_PICKUP_DELAY_TICKS, 10);
+    }
+
 }
