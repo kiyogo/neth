@@ -35948,4 +35948,67 @@ mod tests {
         assert_eq!(COCOA_MAX_AGE, 2);
     }
 
+    #[test]
+    fn test_fluids_fire_and_hazards_parity_gap515() {
+        use crate::block::blocks::bubble_column::BubbleColumnBlock;
+        use crate::block::blocks::fire::fire::FireBlock;
+        use crate::block::blocks::fire::soul_fire::SoulFireBlock;
+        use crate::block::blocks::campfire::CampfireBlock;
+        use crate::block::blocks::redstone::lightning_rod::LightningRodBlock;
+        use crate::block::blocks::magma::MagmaBlock;
+        use crate::block::fluid::water::FlowingWater;
+        use crate::block::fluid::lava::FlowingLava;
+
+        // 1. Bubble Column Lifecycle & Movement (BubbleColumnBlock.java)
+        assert_eq!(BubbleColumnBlock::CREATE_DELAY_TICKS, 20);
+        assert_eq!(BubbleColumnBlock::REMOVE_DELAY_TICKS, 5);
+        assert!((BubbleColumnBlock::UPWARD_ACCELERATION - 0.06).abs() < 1e-6);
+        assert!((BubbleColumnBlock::UPWARD_MAX_SPEED - 0.7).abs() < 1e-6);
+        assert!((BubbleColumnBlock::SURFACE_UPWARD_ACCELERATION - 0.1).abs() < 1e-6);
+        assert!((BubbleColumnBlock::SURFACE_UPWARD_MAX_SPEED - 1.8).abs() < 1e-6);
+        assert!((BubbleColumnBlock::DOWNWARD_ACCELERATION - (-0.03)).abs() < 1e-6);
+        assert!((BubbleColumnBlock::DOWNWARD_MIN_SPEED - (-0.3)).abs() < 1e-6);
+        assert!((BubbleColumnBlock::SURFACE_DOWNWARD_ACCELERATION - (-0.03)).abs() < 1e-6);
+        assert!((BubbleColumnBlock::SURFACE_DOWNWARD_MIN_SPEED - (-0.9)).abs() < 1e-6);
+
+        // 2. Fire & Soul Fire Mechanics (FireBlock.java, SoulFireBlock.java)
+        assert_eq!(FireBlock::MAX_AGE, 15);
+        let tick_delay = FireBlock::get_fire_tick_delay();
+        assert!((30..=40).contains(&tick_delay));
+        assert_eq!(SoulFireBlock::DAMAGE, 2.0);
+
+        // 3. Campfire Lifecycle, Damage & Signal Fire (CampfireBlock.java)
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_REGULAR, 1.0);
+        assert_eq!(CampfireBlock::FIRE_DAMAGE_SOUL, 2.0);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_REGULAR, 10);
+        assert_eq!(CampfireBlock::SMOKE_HEIGHT_SIGNAL, 24);
+        assert_eq!(CampfireBlock::EVENT_EXTINGUISH_FIRE, 1009);
+        assert_eq!(CampfireBlock::BURN_COOL_SPEED, 2);
+        assert_eq!(CampfireBlock::DEFAULT_COOKING_TIME, 600);
+
+        assert_eq!(CampfireBlock::get_fire_damage(false), 1.0);
+        assert_eq!(CampfireBlock::get_fire_damage(true), 2.0);
+        assert_eq!(CampfireBlock::get_smoke_height(false), 10);
+        assert_eq!(CampfireBlock::get_smoke_height(true), 24);
+        assert_eq!(CampfireBlock::cool_progress(10), 8);
+        assert_eq!(CampfireBlock::cool_progress(1), 0);
+
+        // 4. Lightning Rod Redirection & Signals (LightningRodBlock.java)
+        assert_eq!(LightningRodBlock::ACTIVATION_TICKS, 8);
+        assert_eq!(LightningRodBlock::RANGE, 128);
+        assert_eq!(LightningRodBlock::EVENT_LIGHTNING_STRIKE, 3002);
+        assert_eq!(LightningRodBlock::POWER_ON, 15);
+        assert_eq!(LightningRodBlock::POWER_OFF, 0);
+        assert_eq!(LightningRodBlock::get_weak_power(true), 15);
+        assert_eq!(LightningRodBlock::get_weak_power(false), 0);
+
+        // 5. Magma Block Damage (MagmaBlock.java)
+        assert_eq!(MagmaBlock::DAMAGE_AMOUNT, 1.0);
+
+        // 6. Fluid Flow Speeds (Water & Lava Fluid.java)
+        assert_eq!(FlowingWater::FLOW_SPEED, 5);
+        assert_eq!(FlowingLava::FLOW_SPEED_NETHER, 10);
+        assert_eq!(FlowingLava::FLOW_SPEED_SLOW, 30);
+    }
+
 }

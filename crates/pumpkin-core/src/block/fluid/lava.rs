@@ -27,6 +27,9 @@ impl FluidMetadata for FlowingLava {
 }
 
 impl FlowingLava {
+    pub const FLOW_SPEED_NETHER: u32 = 10;
+    pub const FLOW_SPEED_SLOW: u32 = 30;
+
     fn can_spread_fire_around(world: &Arc<World>, pos: &BlockPos) -> bool {
         let spread_radius = world
             .level_info

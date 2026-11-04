@@ -18,7 +18,11 @@ impl FluidMetadata for FlowingWater {
     }
 }
 
-const WATER_FLOW_SPEED: u32 = 5;
+pub const WATER_FLOW_SPEED: u32 = 5;
+
+impl FlowingWater {
+    pub const FLOW_SPEED: u32 = WATER_FLOW_SPEED;
+}
 
 impl FluidBehaviour for FlowingWater {
     fn placed(

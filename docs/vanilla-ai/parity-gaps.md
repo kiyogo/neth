@@ -14176,3 +14176,57 @@ andom_range(0..3) != 0 (2/3). Chuyển thành khối hoa TORCHFLOWER khi đạt 
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_plants_crops_vegetation_parity_gap514.
   - **Unit Tests**: Vượt qua 100% 	est_plants_crops_vegetation_parity_gap514.
+
+### Gap 515: Fluid Dynamics, Bubble Columns, Fire Spreading & Environmental Hazards Parity
+- **Mã nguồn Minecraft Java gốc đối chiếu**:
+  - 
+et/minecraft/world/level/block/BubbleColumnBlock.java
+  - 
+et/minecraft/world/level/block/FireBlock.java
+  - 
+et/minecraft/world/level/block/BaseFireBlock.java
+  - 
+et/minecraft/world/level/block/SoulFireBlock.java
+  - 
+et/minecraft/world/level/block/CampfireBlock.java
+  - 
+et/minecraft/world/level/block/LightningRodBlock.java
+  - 
+et/minecraft/world/level/block/MagmaBlock.java
+  - 
+et/minecraft/world/level/material/FlowingFluid.java
+  - 
+et/minecraft/world/level/material/WaterFluid.java
+  - 
+et/minecraft/world/level/material/LavaFluid.java
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Bubble Column Physics & Lifecycle (BubbleColumnBlock.java)**:
+    - Cột bọt khí đẩy lên tạo bởi khối cát linh hồn Soul Sand (	ag:enables_bubble_column_push_up, drag = false), cột bọt khí kéo xuống tạo bởi khối nham thạch Magma Block (	ag:enables_bubble_column_drag_down, drag = true).
+    - Thời gian thiết lập CREATE_DELAY_TICKS = 20 ticks (1.0s), thời gian dỡ bỏ REMOVE_DELAY_TICKS = 5 ticks (0.25s).
+    - Vận tốc thẳng đứng chuẩn Vanilla: Cột đẩy lên đạt gia tốc bên trong 0.06 (tối đa 0.7) và tại mặt nước 0.1 (tối đa 1.8); Cột kéo xuống đạt gia tốc bên trong -0.03 (tối thiểu -0.3) và tại mặt nước -0.03 (tối thiểu -0.9). Hỗ trợ thuyền nghiêng lắc và chìm tại mặt nước.
+  - **Fire Spread & Soul Fire Lifecycle (FireBlock.java, SoulFireBlock.java)**:
+    - Độ tuổi tối đa MAX_AGE = 15. Độ trễ tick ngẫu nhiên chuẩn vanilla:  + \text{rand}(0..10)$ ticks (30..40 ticks).
+    - Lửa thường gây 1.0 sát thương; Lửa linh hồn gây 2.0 sát thương và chỉ duy trì trên #minecraft:soul_fire_base_blocks (cát/đất linh hồn), không lan truyền và không bị tắt bởi thời gian.
+  - **Campfire & Signal Fire Mechanics (CampfireBlock.java)**:
+    - Lửa trại thường gây 1.0 sát thương, lửa trại linh hồn gây 2.0 sát thương. Sát thương bị triệt tiêu khi sinh vật đi ủng Frost Walker hoặc có hiệu ứng Fire Resistance.
+    - Cột khói bình thường cao 10 khối (SMOKE_HEIGHT_REGULAR = 10); khi đặt trên kiện rơm Hay Block (signal_fire = true), cột khói bốc cao 24 khối (SMOKE_HEIGHT_SIGNAL = 24).
+    - Dập tắt bằng xẻng (#minecraft:douses_campfires) phát sự kiện âm thanh EVENT_EXTINGUISH_FIRE = 1009, hoặc bị dập tắt khi ngập nước (waterlogged = true thì lit = false). Kích hoạt lại khi trúng tên lửa (is_on_fire).
+    - Thời gian nấu nướng mặc định DEFAULT_COOKING_TIME = 600 ticks (30.0s), tốc độ làm nguội BURN_COOL_SPEED = 2.
+  - **Lightning Rod Activation & Redstone Emission (LightningRodBlock.java)**:
+    - Bán kính thu hút sét RANGE = 128 khối. Khi bị sét đánh kích hoạt xung đá đỏ kéo dài ACTIVATION_TICKS = 8 ticks (4 redstone ticks), phát tín hiệu yếu 15 ở mọi mặt và tín hiệu mạnh 15 theo hướng que thu lôi chỉ ra, đồng bộ hiệu ứng hạt điện quang 3002.
+  - **Magma Block Hot Floor Hazard (MagmaBlock.java)**:
+    - Gây 1.0 sát thương DamageType::HOT_FLOOR. Không gây sát thương khi sinh vật đang cúi (sneak), miễn nhiễm lửa, đi ủng Frost Walker hoặc có hiệu ứng kháng lửa Fire Resistance.
+  - **Fluid Dynamics & Interactions (WaterFluid.java, LavaFluid.java)**:
+    - Nước: Tốc độ chảy FLOW_SPEED = 5 ticks, dập tắt lửa khi thực thể va chạm.
+    - Nham thạch: Tốc độ chảy ở Nether FLOW_SPEED_NETHER = 10 ticks (ast_lava = true, tầm chảy 5), ở Overworld FLOW_SPEED_SLOW = 30 ticks (tầm chảy 3). Gây 4.0 sát thương nham thạch và bén lửa 15.0 giây.
+    - Tương tác tạo khối:
+      - Nước chạm nham thạch tĩnh $\to$ Đá hắc diện Obsidian (Block::OBSIDIAN).
+      - Nước chạm nham thạch động $\to$ Đá cuội Cobblestone (Block::COBBLESTONE).
+      - Nham thạch rơi từ trên xuống trúng nước $\to$ Đá cứng Stone (Block::STONE).
+      - Nham thạch kề băng xanh Blue Ice trên đất linh hồn Soul Soil $\to$ Đá bazan Basalt (Block::BASALT).
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật crates/pumpkin-core/src/block/fluid/water.rs.
+  - Cập nhật crates/pumpkin-core/src/block/fluid/lava.rs.
+  - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
+    - Bổ sung unit test 	est_fluids_fire_and_hazards_parity_gap515.
+  - **Unit Tests**: Vượt qua 100% 	est_fluids_fire_and_hazards_parity_gap515.
