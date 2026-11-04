@@ -35081,4 +35081,157 @@ mod tests {
         assert!((ChainBlock::THICKNESS - (3.0 / 16.0)).abs() < 1e-6);
         assert_eq!(HangingMossBlock::IDLE_SOUND_CHANCE, 500);
     }
+
+    #[test]
+    fn test_block_entities_and_containers_parity_gap508() {
+        use crate::block::calculate_comparator_output;
+        use crate::block::entities::decorated_pot::DecoratedPotBlockEntity;
+        use crate::block::entities::hopper::HopperBlockEntity;
+        use crate::block::entities::furnace_like_block_entity::{
+            FURNACE_DEFAULT_COOK_TIME, FURNACE_FAST_COOK_TIME, FURNACE_BURN_TIME_STANDARD,
+            FURNACE_NUM_DATA_VALUES, FURNACE_SLOT_INPUT, FURNACE_SLOT_FUEL, FURNACE_SLOT_RESULT,
+            FURNACE_SLOTS_UP, FURNACE_SLOTS_DOWN, FURNACE_SLOTS_SIDES,
+        };
+        use crate::block::entities::brewing_stand::{
+            BrewingStandBlockEntity, BREWING_TIME_TICKS, BREWING_DEFAULT_FUEL_USES,
+            BREWING_NUM_DATA_VALUES, BREWING_SLOTS_UP, BREWING_SLOTS_DOWN, BREWING_SLOTS_SIDES,
+        };
+        use crate::block::entities::crafter::CrafterBlockEntity;
+        use crate::block::entities::chiseled_bookshelf::ChiseledBookshelfBlockEntity;
+        use crate::block::entities::lectern::{LecternBlockEntity, calculate_lectern_comparator_output};
+        use crate::block::entities::beacon::{
+            BEACON_MAX_LEVELS, BEACON_LEVELS_NEEDED_FOR_SECONDARY, BEACON_BLOCKS_CHECK_PER_TICK,
+            BEACON_EFFECT_INTERVAL_TICKS, TOTAL_PYRAMID_BLOCKS_MAX,
+        };
+        use crate::block::entities::campfire::CampfireBlockEntity;
+        use crate::block::entities::jukebox::JukeboxBlockEntity;
+        use crate::block::entities::BlockEntity;
+        use pumpkin_util::math::position::BlockPos;
+        use pumpkin_inventory::{Inventory, SimpleInventory};
+        use pumpkin_data::item::Item;
+        use pumpkin_data::item_stack::ItemStack;
+
+        // 1. Container Comparator Output Parity (AbstractContainerMenu.java:766-782, Mth.java:545-548)
+        let inv = SimpleInventory::new(5);
+        assert_eq!(calculate_comparator_output(&inv), 0);
+
+        // Put 1 item of stack size 64 into 1 of 5 slots: totalPercent = (1/64) / 5 = 1 / 320 > 0 => signal = 1
+        let dirt = Item::from_registry_key("minecraft:dirt").unwrap();
+        inv.set_stack(0, ItemStack::new(1, dirt));
+        assert_eq!(calculate_comparator_output(&inv), 1);
+
+        // Put full stacks in all 5 slots: totalPercent = 1.0 => signal = 15
+        for i in 0..5 {
+            inv.set_stack(i, ItemStack::new(64, dirt));
+        }
+        assert_eq!(calculate_comparator_output(&inv), 15);
+
+        // Put half capacity (e.g. 5 slots of 32): totalPercent = 0.5 => 0.5 * 14 = 7.0 => floor(7.0) + 1 = 8
+        for i in 0..5 {
+            inv.set_stack(i, ItemStack::new(32, dirt));
+        }
+        assert_eq!(calculate_comparator_output(&inv), 8);
+
+        // 2. Decorated Pot Parity & Dirty Tracking (DecoratedPotBlock.java, DecoratedPotBlockEntity.java)
+        let pot = DecoratedPotBlockEntity::new(BlockPos::new(10, 64, 10));
+        assert_eq!(pot.resource_location(), DecoratedPotBlockEntity::ID);
+        assert_eq!(pot.get_comparator_output(), 0);
+        assert!(!pot.is_comparator_dirty());
+        assert!(!pot.is_dirty());
+
+        // Insert item into pot -> comparator_dirty and dirty should be flagged
+        let mut insert_stack = ItemStack::new(16, dirt);
+        assert!(pot.try_insert_item(&mut insert_stack, 16));
+        assert_eq!(insert_stack.item_count, 0);
+        assert!(pot.is_comparator_dirty());
+        assert!(pot.is_dirty());
+        // Filled: 16/64 = 0.25 => 1 + floor(0.25 * 14.0) = 1 + floor(3.5) = 1 + 3 = 4
+        assert_eq!(pot.get_comparator_output(), 4);
+
+        // Clear dirty flags
+        pot.clear_comparator_dirty();
+        pot.clear_dirty();
+        assert!(!pot.is_comparator_dirty());
+        assert!(!pot.is_dirty());
+
+        // Extract item -> flags should be set again
+        let taken = pot.take_item();
+        assert!(taken.is_some());
+        assert!(pot.is_comparator_dirty());
+        assert!(pot.is_dirty());
+        assert_eq!(pot.get_comparator_output(), 0);
+
+        // 3. Hopper Block Entity Parity (HopperBlockEntity.java)
+        assert_eq!(HopperBlockEntity::INVENTORY_SIZE, 5);
+        assert_eq!(HopperBlockEntity::CONTAINER_SIZE, 5);
+        assert_eq!(HopperBlockEntity::MOVE_ITEM_SPEED, 8);
+        assert_eq!(HopperBlockEntity::NO_COOLDOWN_TIME, -1);
+        let hopper = HopperBlockEntity::new(BlockPos::new(0, 60, 0), pumpkin_data::block_properties::FacingHopper::Down);
+        assert_eq!(hopper.resource_location(), HopperBlockEntity::ID);
+        assert!(!hopper.is_on_cooldown());
+
+        // 4. Furnaces & Smelting Parity (AbstractFurnaceBlockEntity.java)
+        assert_eq!(FURNACE_DEFAULT_COOK_TIME, 200);
+        assert_eq!(FURNACE_FAST_COOK_TIME, 100);
+        assert_eq!(FURNACE_BURN_TIME_STANDARD, 200);
+        assert_eq!(FURNACE_NUM_DATA_VALUES, 4);
+        assert_eq!(FURNACE_SLOT_INPUT, 0);
+        assert_eq!(FURNACE_SLOT_FUEL, 1);
+        assert_eq!(FURNACE_SLOT_RESULT, 2);
+        assert_eq!(FURNACE_SLOTS_UP, [0]);
+        assert_eq!(FURNACE_SLOTS_DOWN, [2, 1]);
+        assert_eq!(FURNACE_SLOTS_SIDES, [1]);
+
+        // 5. Brewing Stand Parity (BrewingStandBlockEntity.java)
+        assert_eq!(BrewingStandBlockEntity::INVENTORY_SIZE, 5);
+        assert_eq!(BREWING_TIME_TICKS, 400);
+        assert_eq!(BREWING_DEFAULT_FUEL_USES, 20);
+        assert_eq!(BREWING_NUM_DATA_VALUES, 4);
+        assert_eq!(BREWING_SLOTS_UP, [3]);
+        assert_eq!(BREWING_SLOTS_DOWN, [0, 1, 2, 3]);
+        assert_eq!(BREWING_SLOTS_SIDES, [0, 1, 2, 4]);
+
+        // 6. Crafter, Chiseled Bookshelf, Lectern, Jukebox, Beacon, Campfire Parity
+        assert_eq!(CrafterBlockEntity::INVENTORY_SIZE, 9);
+        assert_eq!(CrafterBlockEntity::CONTAINER_WIDTH, 3);
+        assert_eq!(CrafterBlockEntity::CONTAINER_HEIGHT, 3);
+        assert_eq!(CrafterBlockEntity::NUM_DATA, 10);
+        assert_eq!(CrafterBlockEntity::MIN_COMPARATOR_OUTPUT, 0);
+        assert_eq!(CrafterBlockEntity::MAX_COMPARATOR_OUTPUT, 9);
+
+        assert_eq!(ChiseledBookshelfBlockEntity::MAX_BOOKS_IN_STORAGE, 6);
+        assert_eq!(ChiseledBookshelfBlockEntity::BOOKS_PER_ROW, 3);
+        assert_eq!(ChiseledBookshelfBlockEntity::ROWS, 2);
+        assert_eq!(ChiseledBookshelfBlockEntity::COLUMNS, 3);
+        assert_eq!(ChiseledBookshelfBlockEntity::MAX_STACK_SIZE, 1);
+        let bookshelf = ChiseledBookshelfBlockEntity::new(BlockPos::new(1, 1, 1));
+        assert_eq!(bookshelf.calculate_comparator_output(), 0);
+
+        assert_eq!(LecternBlockEntity::NUM_SLOTS, 1);
+        assert_eq!(LecternBlockEntity::NUM_DATA, 1);
+        assert_eq!(LecternBlockEntity::MIN_COMPARATOR_SIGNAL, 1);
+        assert_eq!(LecternBlockEntity::MAX_COMPARATOR_SIGNAL, 15);
+        // Lectern comparator: 1 page book -> signal 15
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 1), 15);
+        // Lectern comparator: 0 pages -> 0
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 0), 0);
+        // Lectern comparator: no book -> 0
+        assert_eq!(calculate_lectern_comparator_output(false, 0, 10), 0);
+        // Lectern comparator: 15 pages, page 0 -> 1, page 7 -> 8, page 14 -> 15
+        assert_eq!(calculate_lectern_comparator_output(true, 0, 15), 1);
+        assert_eq!(calculate_lectern_comparator_output(true, 7, 15), 8);
+        assert_eq!(calculate_lectern_comparator_output(true, 14, 15), 15);
+
+        assert_eq!(BEACON_MAX_LEVELS, 4);
+        assert_eq!(BEACON_LEVELS_NEEDED_FOR_SECONDARY, 4);
+        assert_eq!(BEACON_BLOCKS_CHECK_PER_TICK, 10);
+        assert_eq!(BEACON_EFFECT_INTERVAL_TICKS, 80);
+        assert_eq!(TOTAL_PYRAMID_BLOCKS_MAX, 164);
+
+        assert_eq!(CampfireBlockEntity::SLOT_COUNT, 4);
+        assert_eq!(CampfireBlockEntity::DEFAULT_COOKING_TIME, 600);
+        assert_eq!(CampfireBlockEntity::BURN_COOL_SPEED, 2);
+
+        assert_eq!(JukeboxBlockEntity::ID, "minecraft:jukebox");
+    }
 }

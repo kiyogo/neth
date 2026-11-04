@@ -8,7 +8,7 @@ use pumpkin_data::item_stack::ItemStack;
 use pumpkin_inventory::{Clearable, Inventory};
 use pumpkin_nbt::compound::NbtCompound;
 use pumpkin_util::math::position::BlockPos;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 
 use crate::world::World;
 
@@ -17,6 +17,8 @@ pub struct DecoratedPotBlockEntity {
     pub components: BlockEntityComponents,
     pub item: Mutex<Option<ItemStack>>,
     pub pending_loot: Mutex<Option<ContainerLootImpl>>,
+    pub dirty: AtomicBool,
+    pub comparator_dirty: AtomicBool,
 }
 
 impl BlockEntity for DecoratedPotBlockEntity {
@@ -121,6 +123,8 @@ impl BlockEntity for DecoratedPotBlockEntity {
             components,
             item: Mutex::new(item),
             pending_loot: Mutex::new(pending_loot),
+            dirty: AtomicBool::new(false),
+            comparator_dirty: AtomicBool::new(false),
         }
     }
 
@@ -156,6 +160,22 @@ impl BlockEntity for DecoratedPotBlockEntity {
         Some(self)
     }
 
+    fn is_comparator_dirty(&self) -> bool {
+        self.comparator_dirty.load(Ordering::Relaxed)
+    }
+
+    fn clear_comparator_dirty(&self) {
+        self.comparator_dirty.store(false, Ordering::Relaxed);
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty.load(Ordering::Relaxed)
+    }
+
+    fn clear_dirty(&self) {
+        self.dirty.store(false, Ordering::Relaxed);
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -173,6 +193,8 @@ impl DecoratedPotBlockEntity {
             components: BlockEntityComponents::new(Self::COMPONENT_FIELDS),
             item: Mutex::new(None),
             pending_loot: Mutex::new(None),
+            dirty: AtomicBool::new(false),
+            comparator_dirty: AtomicBool::new(false),
         }
     }
 
@@ -198,11 +220,21 @@ impl DecoratedPotBlockEntity {
             .clone()
     }
 
+    pub fn mark_dirty(&self) {
+        self.dirty.store(true, Ordering::Relaxed);
+        self.comparator_dirty.store(true, Ordering::Relaxed);
+    }
+
     pub fn take_item(&self) -> Option<ItemStack> {
-        self.item
+        let taken = self
+            .item
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .take()
+            .take();
+        if taken.is_some() {
+            self.mark_dirty();
+        }
+        taken
     }
 
     pub fn take_loot_table(&self) -> Option<(String, i64)> {
@@ -239,6 +271,8 @@ impl DecoratedPotBlockEntity {
                 if add > 0 {
                     existing.item_count += add;
                     stack.item_count -= add;
+                    drop(item_guard);
+                    self.mark_dirty();
                     return true;
                 }
             }
@@ -249,6 +283,8 @@ impl DecoratedPotBlockEntity {
             inserted.item_count = insert_count;
             *item_guard = Some(inserted);
             stack.item_count -= insert_count;
+            drop(item_guard);
+            self.mark_dirty();
             true
         }
     }
@@ -349,6 +385,8 @@ impl Inventory for DecoratedPotBlockEntity {
                 if existing.is_empty() {
                     *item_guard = None;
                 }
+                drop(item_guard);
+                self.mark_dirty();
                 split
             } else {
                 ItemStack::EMPTY.clone()
@@ -369,6 +407,8 @@ impl Inventory for DecoratedPotBlockEntity {
             } else {
                 *item_guard = Some(stack);
             }
+            drop(item_guard);
+            self.mark_dirty();
         }
     }
 

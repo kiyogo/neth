@@ -13795,3 +13795,58 @@ et/minecraft/world/level/block/StructureBlock.java
   - Cập nhật crates/pumpkin-core/src/entity/combat.rs:
     - Bổ sung unit test 	est_workstations_anvil_candles_and_utilities_parity_gap507.
   - **Unit Tests**: Vượt qua 100% 	est_workstations_anvil_candles_and_utilities_parity_gap507.
+
+### Gap 508: Block Entities, Container Inventories, Comparator Signals & Lifecycle Parity
+- **Mức độ nghiêm trọng**: Cao (Logic khối / Hệ thống tín hiệu Redstone Comparator / Khối lưu trữ & Chức năng)
+- **Tập tin liên quan trong Neth**:
+  - `crates/pumpkin-core/src/block/mod.rs`
+  - `crates/pumpkin-core/src/block/entities/decorated_pot.rs`
+  - `crates/pumpkin-core/src/block/entities/hopper.rs`
+  - `crates/pumpkin-core/src/block/entities/furnace_like_block_entity.rs`
+  - `crates/pumpkin-core/src/block/entities/brewing_stand.rs`
+  - `crates/pumpkin-core/src/block/entities/crafter.rs`
+  - `crates/pumpkin-core/src/block/entities/chiseled_bookshelf.rs`
+  - `crates/pumpkin-core/src/block/entities/lectern.rs`
+  - `crates/pumpkin-core/src/block/entities/jukebox.rs`
+  - `crates/pumpkin-core/src/block/entities/beacon.rs`
+  - `crates/pumpkin-core/src/block/entities/campfire.rs`
+  - `crates/pumpkin-core/src/entity/combat.rs`
+- **Tập tin tham chiếu trong JVMC**:
+  - `net/minecraft/world/inventory/AbstractContainerMenu.java`
+  - `net/minecraft/world/Container.java`
+  - `net/minecraft/util/Mth.java`
+  - `net/minecraft/world/level/block/entity/DecoratedPotBlockEntity.java`
+  - `net/minecraft/world/level/block/DecoratedPotBlock.java`
+  - `net/minecraft/world/level/block/entity/HopperBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/BrewingStandBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/CrafterBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/ChiseledBookShelfBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/LecternBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/JukeboxBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/BeaconBlockEntity.java`
+  - `net/minecraft/world/level/block/entity/CampfireBlockEntity.java`
+- **Chi tiết khác biệt & Đồng bộ (Parity Fixes)**:
+  - **Container Comparator Signal Parity (AbstractContainerMenu.java, Container.java, Mth.java)**:
+    - Chuẩn hóa `calculate_comparator_output`: tính toán giới hạn kích thước stack của từng ô là `inventory.get_max_count_per_stack().min(stack.get_max_stack_size())`, tránh sai lệch khi container có giới hạn stack đặc thù.
+    - Áp dụng công thức nội suy rời rạc chuẩn vanilla Java `Mth.lerpDiscrete(totalPercent, 0, 15)`: khi container có ít nhất 1 vật phẩm, tín hiệu luôn tối thiểu là 1; đạt 15 khi đầy 100% (tỷ lệ 0.5 đạt tín hiệu 8).
+  - **Decorated Pot Comparator & Dirty State Parity (DecoratedPotBlock.java, DecoratedPotBlockEntity.java)**:
+    - Bổ sung `dirty: AtomicBool` và `comparator_dirty: AtomicBool` vào `DecoratedPotBlockEntity`.
+    - Triển khai `is_comparator_dirty()`, `clear_comparator_dirty()`, `is_dirty()`, `clear_dirty()`.
+    - Kích hoạt dirty flags khi đưa vào vật phẩm (`try_insert_item`), rút vật phẩm (`take_item`), chỉnh sửa kho (`set_stack`, `remove_stack_specific`, `clear`), đảm bảo `world.flush_comparator_updates()` cập nhật các khối comparator lân cận chuẩn 100% vanilla.
+  - **Block Entities Constants, Inventories & Capacities Parity**:
+    - Phễu (Hopper): chu kỳ truyền vật phẩm `MOVE_ITEM_SPEED = 8` ticks, sức chứa kho `INVENTORY_SIZE = 5` ô, `NO_COOLDOWN_TIME = -1`.
+    - Lò nung & Lò luyện (Furnace, Blast Furnace, Smoker): thời gian nung lò thường `FURNACE_DEFAULT_COOK_TIME = 200` ticks (10s), lò luyện `FURNACE_FAST_COOK_TIME = 100` ticks (5s), thời gian cháy tiêu chuẩn `FURNACE_BURN_TIME_STANDARD = 200` ticks, 4 thuộc tính container data, các khe truy cập theo mặt (UP [0], DOWN [2, 1], SIDES [1]).
+    - Giàn pha chế (Brewing Stand): thời gian pha chế `BREWING_TIME_TICKS = 400` ticks (20s), lượng dùng nhiên liệu `BREWING_DEFAULT_FUEL_USES = 20`, kho chứa 5 ô, 4 thuộc tính container data, các khe truy cập theo mặt (UP [3], DOWN [0, 1, 2, 3], SIDES [0, 1, 2, 4]).
+    - Máy chế tạo tự động (Crafter): kích thước kho 9 ô (3x3), 10 thuộc tính container data, tín hiệu comparator 0..=9 phản ánh số ô có vật phẩm hoặc bị vô hiệu hóa.
+    - Kệ sách chạm khắc (Chiseled Bookshelf): sức chứa tối đa 6 quyển sách, 2 hàng 3 cột, tín hiệu comparator 1..=6 dựa trên `last_interacted_slot + 1` (0 nếu chưa tương tác).
+    - Bục đọc sách (Lectern): 1 ô sách, tín hiệu comparator 1..=15 theo tỷ lệ trang hiện tại `(page / (page_count - 1)) * 14.0 + 1` (15 nếu sách có 1 trang, 0 nếu không có sách).
+    - Hộp nhạc (Jukebox): tín hiệu comparator 1..=15 tương ứng theo đĩa nhạc.
+    - Đèn hiệu (Beacon): tối đa 4 tầng tháp kim tự tháp (164 khối), quét 10 khối/tick, chu kỳ áp dụng hiệu ứng 80 ticks.
+    - Lửa trại (Campfire): 4 vị trí nấu nướng, thời gian nấu tiêu chuẩn 600 ticks, tốc độ nguội tắt lửa 2.
+- **Neth Status**: **RESOLVED & VERIFIED**
+  - Cập nhật `crates/pumpkin-core/src/block/mod.rs`.
+  - Cập nhật `crates/pumpkin-core/src/block/entities/decorated_pot.rs`.
+  - Cập nhật `crates/pumpkin-core/src/entity/combat.rs`:
+    - Bổ sung unit test `test_block_entities_and_containers_parity_gap508`.
+  - **Unit Tests**: Vượt qua 100% `test_block_entities_and_containers_parity_gap508`.
